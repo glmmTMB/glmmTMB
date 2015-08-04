@@ -1,10 +1,12 @@
 Package: glmmTMB
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Generalized Linear Mixed Models using TMB
 Version: 0.1
 Date: 2015-08-03
-Author: Who wrote it
-Maintainer: Who to complain to <yourfault@somewhere.net>
-Description: More about what it does (maybe more than one line)
+Author:
+Maintainer:
+Description: Fit linear and generalized linear mixed models with or without zero-inflation.
+    The models are fit using TMB (Template Model Builder)
 License: What license is it under?
 LazyData: TRUE
+VignetteBuilder: knitr
