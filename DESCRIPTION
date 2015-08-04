@@ -3,8 +3,8 @@ Type: Package
 Title: Generalized Linear Mixed Models using TMB
 Version: 0.1
 Date: 2015-08-03
-Author:
-Maintainer:
+Author: Author
+Maintainer: Author <author@gmail.com>
 Description: Fit linear and generalized linear mixed models with or without zero-inflation.
     The models are fit using TMB (Template Model Builder)
 License: What license is it under?
