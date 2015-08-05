@@ -1,12 +1,19 @@
 Package: glmmTMB
 Type: Package
 Title: Generalized Linear Mixed Models using TMB
-Version: 0.1
+Version: 0.0.0.9000
 Date: 2015-08-03
 Author: Author
 Maintainer: Author <author@gmail.com>
-Description: Fit linear and generalized linear mixed models with or without zero-inflation.
-    The models are fit using TMB (Template Model Builder)
+Description: Fit linear and generalized linear mixed models with or without
+    zero-inflation. The models are fit using maximum likelihood estimation
+    via TMB (Template Model Builder). Random effects are assumed to be
+    Gaussian and are integrated out to produce the marginal likelihood using
+    the Laplace approximation. Gradients are calulated using automtic
+    differentiation.
 License: What license is it under?
 LazyData: TRUE
 VignetteBuilder: knitr
+Imports:
+    TMB
+BugReports: https://github.com/glmmTMB/glmmTMB/issues
