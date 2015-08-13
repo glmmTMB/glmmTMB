@@ -17,3 +17,5 @@ VignetteBuilder: knitr
 Imports:
     TMB
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
+Depends: TMB
+LinkingTo: TMB
