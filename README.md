@@ -8,9 +8,9 @@ Rough daily schedule
 
 12-13 lunch
 
-coffee breaks as needed
+coffee breaks ad libitum
 
-* We could take a group excursion in the second half of the week if the weather cooperates (e.g., hike Rigi or boating on Zürichsee). We will continue to discuss the project while on the excursion, leading to new insights.
+We could take a group excursion in the second half of the week if the weather cooperates (e.g., hike Rigi or boating on Zürichsee). We will continue to discuss the project while on the excursion, leading to new insights.
 
 Goals for each day
 ==========
@@ -43,7 +43,7 @@ Tuesday: Teams begin coding
 * Teams meet separately to discuss strategy
 * Discuss inputs and outputs expected from each team so code parts are compatible
 * Teams work on coding
-16:30-17 Entire group comes together to discuss progress
+* Entire group comes together to discuss progress
 
 Wednesday: Coding and Excursion
 ------------
@@ -51,7 +51,7 @@ Wednesday: Coding and Excursion
 
 Thursday
 ------------
-* Bring code pieces together (if not already done)
+* Bring code pieces together
 * Discuss warning messages
 * Divide into new teams: debugging, documentation, and installation
 
@@ -59,6 +59,6 @@ Friday
 ------------
 * Code should work on examples already
 * Debugger team continues to debug extreme cases
-* Documentation team works on examples
+* Documentation team works on examples and papers
 * Installation team works on installation on various platforms
 * Discuss future plans
