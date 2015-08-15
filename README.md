@@ -5,7 +5,9 @@ The subdirectory of the same name organizes the R package.
 Rough daily schedule
 ==========
 9am meet in room Y13-L-11
+
 12-13 lunch
+
 coffee breaks as needed
 
 * We could take a group excursion in the second half of the week if the weather cooperates (e.g., hike Rigi or boating on Zürichsee). We will continue to discuss the project while on the excursion, leading to new insights.
