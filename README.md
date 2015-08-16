@@ -42,6 +42,7 @@ Tuesday: Teams begin coding
 * Decide teams and tasks: R code, C++ code, and documentation
 * Teams meet separately to discuss strategy
 * Discuss inputs and outputs expected from each team so code parts are compatible
+* Discuss starting values (Fournier expertise input)
 * Teams work on coding
 * Entire group comes together to discuss progress
 
