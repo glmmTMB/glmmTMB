@@ -50,13 +50,16 @@ Monday: Orientation and Planning
 		* gamma
 	* correlation structure wishlist
 	* features wishlist
-		* Wald tests
-		* predict function
+		* summary
+		* predict
 		* AIC
+		*confint
 * Discuss code management, code style, license type
-* Discuss authorship of paper(s) 
+* Discuss paper 
 * Discuss the variety of application data sets available for the paper
- 
+	* owls
+	* toenails
+	* seeds
 
 Tuesday: Teams begin coding
 ------------
