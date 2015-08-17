@@ -32,6 +32,11 @@ Type inverse_linkfun(Type eta, int link) {
   case identity_link:
     ans = eta;
     break;
+  case logit_link:
+    ans = Type(1.0)/(Type(1.0)+exp(-eta));
+    break;
+
+
     // TODO: Implement remaining links
   default:
     error("Link not implemented!");
