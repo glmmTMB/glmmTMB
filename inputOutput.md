@@ -29,7 +29,6 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	             truncated_nbinom2  =503,
 	             t                  =600,
 	             tweedie            =700 )
-	* covInt 
 	* MATRIX X
 	* MATRIX Z
 	* MATRIX Xzi
