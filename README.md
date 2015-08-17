@@ -24,10 +24,31 @@ Monday: Orientation and Planning
 	* assume they install TMB or distribute DLL?
 	* RE on count intercept only? ZI? slope? (Fournier input on identifiability)
 	* distribution wishlist
-		* normal, binomial, NB and Poisson
-		* ZI NB and Poisson
-		* hurdle NB and Poisson
-		* truncated NB and Poisson
+		* Gaussian 
+		* binomial
+		* beta
+		* beta-binomial
+		* gamma
+		* Poisson
+		* negative binomial (also with other variance relationships)
+		* t
+		* tweedie
+	* link wishlist
+		* identity
+		* log
+		* logit
+		* probit
+		* clog-log
+		* inverse
+		* sqrt
+		* Cauchy
+	* dispersion formulas on variance for
+		* Gaussian
+		* beta
+		* beta-binomial
+		* negative binomial
+		* gamma
+	* correlation structure wishlist
 	* features wishlist
 		* Wald tests
 		* predict function
