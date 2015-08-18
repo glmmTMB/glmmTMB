@@ -26,8 +26,8 @@ names(.valid_link) <- sub("_link","",names(.valid_link))
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
 ##' @param fr full model frame
-##' @param type label for model type
 ##' @param ranOK random effects allowed here?
+##' @param type label for model type
 ##' @return 
 getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
     ## fixed-effects model matrix X -
@@ -111,8 +111,8 @@ getReStruc <- function(reTrms) {
         blksize <- sapply(reTrms$Ztlist,nrow)/nreps
         ## figure out number of parameters from block size + structure type
 
-        ## for now *all* RE are unstructured
-        covCode <- rep(1,length(nreps))
+        ## for now *all* RE are diagonal
+        covCode <- rep(0,length(nreps))
 
         parFun <- function(struc,blksize) {
             switch(as.character(struc),
@@ -280,7 +280,15 @@ glmmTMB <- function (
                      profile = NULL, ## TODO: Optionally "beta"
                      silent = FALSE, ## TODO: set to TRUE
                      DLL="glmmTMB")
+
     obj ## For now give the object without optimizing
+
+    optTime <- system.time(fit <- with(obj,nlminb(start=par,objective=fn,
+                                                  gradient=gr)))
+
+    ## now structure the output object
+
+    
 }
 
 
