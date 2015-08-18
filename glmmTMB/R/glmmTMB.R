@@ -22,6 +22,7 @@ names(.valid_link) <- sub("_link","",names(.valid_link))
 ## TODO: Steamline construction of design matrices
 ## - Can we use lme4 utilities ?
 
+##' main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4 syntac
 ##' @param data data frame
 ##' @param family \code{\link{family}}
@@ -29,6 +30,7 @@ names(.valid_link) <- sub("_link","",names(.valid_link))
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun
+##' @export
 ##' @examples
 ##' data(sleepstudy,package="lme4")
 ##' glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
@@ -48,7 +50,7 @@ glmmTMB <- function (
     ##     contrasts = NULL, mustart, etastart,
     ##                      control = glmerControl(), ...) {
 
-    ## 
+    ##
     mf <- mc <- match.call()
     ## extract family, call lmer for gaussian
 
@@ -114,7 +116,7 @@ glmmTMB <- function (
 
     ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix(...)
     X <- model.matrix(fixedform, fr, contrasts)
-    
+
     ## if(is.null(rankX.chk <- control[["check.rankX"]]))
     ## rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
     ## X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
@@ -146,7 +148,7 @@ glmmTMB <- function (
 
     ## Get info on sizes of RE components
     theta <- numeric(length(reTrms$theta))
-    
+
     ## FAKE EXAMPLE
     ## dd <- expand.grid(year=1:10,site=1:20)
     ## dd$size <- dd$y <- rnorm(nrow(dd))
@@ -162,7 +164,7 @@ glmmTMB <- function (
     ## figure out number of parameters from block size + structure type
 
     ## for now *all* RE are unstructured
-    struc <- rep(1,length(nlevs)) 
+    struc <- rep(1,length(nlevs))
 
     parFun <- function(struc,blksize) {
         switch(as.character(struc),
@@ -173,7 +175,7 @@ glmmTMB <- function (
     npars <- mapply(parFun,struc,blksize)
 
     Z <- t(reTrms$Zt)
-    
+
     data.tmb <- namedList(
         X,
         Z,
