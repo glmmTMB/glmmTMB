@@ -1,1 +1,7 @@
+importFrom("lme4",
+           mkReTrms)
+
+## be better than this :
 exportPattern("^[[:alpha:]]+")
+
+
