@@ -279,8 +279,8 @@ glmmTMB <- function (
     if(debug) return(namedList(data.tmb,parameters))
 
     randomArg <- NULL
-    if (ncol(Z)>0) randomArg <- c(randomArg,"b")
-    if (ncol(Zzi)>0) randomArg <- c(randomArg,"bzi")
+    if (ncol(data.tmb$Z)>0) randomArg <- c(randomArg,"b")
+    if (ncol(data.tmb$Zzi)>0) randomArg <- c(randomArg,"bzi")
     
     obj <- MakeADFun(data.tmb,
                      parameters,
