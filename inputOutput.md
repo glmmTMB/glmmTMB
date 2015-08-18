@@ -22,13 +22,13 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	             beta               =200,
 	             gamma              =300,
 	             poisson            =400,
-	             truncatedpoisson   =401,
-	             nbinom1            =500, 
-	             nbinom2            =501, 
-	             truncatednbinom    =502,
+	             truncated_poisson  =401,
+	             nbinom1            =500,
+	             nbinom2            =501,
+	             truncated_nbinom1  =502,
+	             truncated_nbinom2  =503,
 	             t                  =600,
 	             tweedie            =700 )
-	* covInt 
 	* MATRIX X
 	* MATRIX Z
 	* MATRIX Xzi
@@ -39,7 +39,7 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	* IVECTOR blockReps
 	* IVECTOR blockSize
 	* IVECTOR blockNumTheta
-	* IVECTOR covCode (0=diag, 1=unstructured, 2=compound symmetry)
+	* IVECTOR covCode (0=diagonal, 1=unstructured, 2=compound symmetry, 3=ar1)
 	* IVECTOR blockRepszi
 	* IVECTOR blockSizezi
 	* IVECTOR blockNumThetazi
