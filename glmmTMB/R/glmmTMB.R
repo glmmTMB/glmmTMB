@@ -19,14 +19,84 @@
 names(.valid_family) <- sub("_family","",names(.valid_family))
 names(.valid_link) <- sub("_link","",names(.valid_link))
 
-## TODO: Steamline construction of design matrices
-## - Can we use lme4 utilities ?
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param formula current formula, containing both fixed & random effects
+##' @param mf matched call
+##' @param fr full model frame
+##' @param type label for model type
+##' @param ranOK random effects allowed here?
+##' @return 
+getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
+    ## fixed-effects model matrix X -
+    ## remove random effect parts from formula:
+    fixedform <- formula
+    RHSForm(fixedform) <- nobars(RHSForm(fixedform))
+
+    nobs <- nrow(fr)
+    ## check for empty fixed form
+
+    if (identical(RHSForm(fixedform),~0) ||
+        identical(RHSForm(fixedform),~-1)) {
+        X <- NULL
+        fixedfr <- NULL
+    } else {
+        mf$formula <- fixedform
+        ## re-evaluate model frame to extract predvars component
+        ## in *grandparent* environment
+        fixedfr <- eval(mf, parent.frame(2))
+        attr(attr(fr,"terms"),"predvars.fixed") <-
+            attr(attr(fixedfr,"terms"),"predvars")
+
+        ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix(...)
+        X <- model.matrix(fixedform, fr, contrasts)
+        ## will be 0-column matrix if fixed formula is empty
+    }
+    ## ran-effects model frame (for predvars)
+    ## important to COPY formula (and its environment)?
+    ranform <- formula
+    if (is.null(findbars(ranform))) {
+        ranfr <- NULL
+        reTrms <- NULL
+        Z <- matrix(0,ncol=0,nrow=nobs)
+    } else {
+        if (!ranOK) stop("no random effects allowed in ",type," term")
+        RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
+
+        mf$formula <- ranform
+        ranfr <- eval(mf, parent.frame(2)) 
+        attr(attr(fr,"terms"), "predvars.random") <-
+            attr(terms(ranfr), "predvars")
+        reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
+
+        Z <- t(reTrms$Zt)
+    }
+
+    ## if(is.null(rankX.chk <- control[["check.rankX"]]))
+    ## rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
+    ## X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
+    ## if(is.null(scaleX.chk <- control[["check.scaleX"]]))
+    ##     scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
+    ## X <- checkScaleX(X, kind=scaleX.chk)
+
+    ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
+    ##  wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
+
+    ## FIXME: come back and figure out how we need to store fixedfr and ranfr
+
+    return(namedList(X,Z,fixedfr,ranfr,reTrms))
+}
 
 ##' main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4 syntac
 ##' @param data data frame
 ##' @param family \code{\link{family}}
 ##' @param ziformula combined fixed and random effects formula for zero-inflation: the default \code{~0} specifies no zero-inflation
+##' @param dispformula combined fixed and random effects formula for dispersion: the default \code{~0} specifies no zero-inflation
+##' @param weights 
+##' @param offset 
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun
@@ -39,6 +109,7 @@ glmmTMB <- function (
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
+    dispformula= ~0,
     weights,
     offset
     )
@@ -50,6 +121,7 @@ glmmTMB <- function (
     ##     contrasts = NULL, mustart, etastart,
     ##                      control = glmerControl(), ...) {
 
+    ## FIXME: check for offsets in ziformula/dispformula, throw an error
     ##
     mf <- mc <- match.call()
     ## extract family, call lmer for gaussian
@@ -71,63 +143,44 @@ glmmTMB <- function (
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
-    fr.form <- subbars(formula) # substitute "|" by "+"
-    environment(fr.form) <- environment(formula)
+
+
+    ## want the model frame to contain the union of all variables
+    ## used in any of the terms
+    ## combine all formulas
+
+    formList <- list(formula[[3]],ziformula,dispformula)
+    formList <- lapply(formList,subbars) # substitute "|" by "+"
+    formList <- gsub("~","\\+",lapply(formList,safeDeparse))  ## character
+    combForm <- reformulate(Reduce(paste,formList), 
+                            response= deparse(formula[[2]]))
+    environment(combForm) <- environment(formula)
     ## model.frame.default looks for these objects in the environment
     ## of the *formula* (see 'extras', which is anything passed in ...),
     ## so they have to be put there ...
     for (i in c("weights", "offset")) {
         if (!eval(bquote(missing(x=.(i)))))
-            assign(i, get(i, parent.frame()), environment(fr.form))
+            assign(i, get(i, parent.frame()), environment(combForm))
     }
-    mf$formula <- fr.form
+
+    mf$formula <- combForm
     fr <- eval(mf, parent.frame())
     ## FIXME: throw an error *or* convert character to factor
     ## convert character vectors to factor (defensive)
     ## fr <- factorize(fr.form, fr, char.only = TRUE)
     ## store full, original formula & offset
-    attr(fr,"formula") <- formula
+    attr(fr,"formula") <- combForm
     attr(fr,"offset") <- mf$offset
     n <- nrow(fr)
-    ## random effects and terms modules
-    reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
+
+    fixedList <- getXReTrms(formula,mf,fr)
+    ziList    <- getXReTrms(ziformula,mf,fr)
+    dispList  <- getXReTrms(dispformula,mf,fr,ranOK=FALSE,"dispersion")
+
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n = n, control, allow.n = TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n = n, control, allow.n = TRUE)
     ## wmsgZrank <- checkZrank(reTrms$ Zt, n = n, control, nonSmall = 1e6, allow.n = TRUE)
-
-    ## fixed-effects model matrix X - remove random effect parts from formula:
-    fixedform <- formula
-    RHSForm(fixedform) <- nobars(RHSForm(fixedform))
-    mf$formula <- fixedform
-    ## re-evaluate model frame to extract predvars component
-    fixedfr <- eval(mf, parent.frame())
-    attr(attr(fr,"terms"),"predvars.fixed") <-
-        attr(attr(fixedfr,"terms"),"predvars")
-
-    ## ran-effects model frame (for predvars)
-    ## important to COPY formula (and its environment)?
-    ranform <- formula
-    RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
-    mf$formula <- ranform
-    ranfr <- eval(mf, parent.frame())
-    attr(attr(fr,"terms"), "predvars.random") <-
-        attr(terms(ranfr), "predvars")
-
-    ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix(...)
-    X <- model.matrix(fixedform, fr, contrasts)
-
-    ## if(is.null(rankX.chk <- control[["check.rankX"]]))
-    ## rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
-    ## X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
-    ## if(is.null(scaleX.chk <- control[["check.scaleX"]]))
-    ##     scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
-    ## X <- checkScaleX(X, kind=scaleX.chk)
-
-    ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
-    ##  wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
-
-    ## ... done with
 
     ## extract family and link information from family object
     link <- family$link
@@ -141,19 +194,8 @@ glmmTMB <- function (
     ## no. of parameters  (length of theta vector)
     ##
 
-    ## FIXME: go back and process zero-inflation formula, if any
-    nobs <- nrow(fr)
-    Xzi <- matrix(ncol=0,nrow=nobs)
-    Zzi <- matrix(ncol=0,nrow=nobs)
-
     ## Get info on sizes of RE components
     theta <- numeric(length(reTrms$theta))
-
-    ## FAKE EXAMPLE
-    ## dd <- expand.grid(year=1:10,site=1:20)
-    ## dd$size <- dd$y <- rnorm(nrow(dd))
-    ## L <- lFormula(y~(1|site)+(size|year),data=dd)
-    ## rr <- L$reTrms
 
     ## hack names of Ztlist to extract grouping variable of each RE term
     grpVar <- gsub("^[^|]*\\| ","",names(reTrms$Ztlist)) ## remove 1st term+|
@@ -177,15 +219,29 @@ glmmTMB <- function (
     Z <- t(reTrms$Zt)
 
     data.tmb <- namedList(
-        X,
-        Z,
-        Xzi,
-        Zzi,
+        X=fixedList$X,
+        Z=fixedList$Z,
+        Xzi=ziList$X,
+        Zzi=ziList$Z,
+        Xdisp=dispList$X,
+        ## Zdisp=dispList$Z,
         yobs,
+        
         npars,   ## number of variance-covariance params per term
         nlevs,   ## " " levels " "
         struc,   ## structure code
         blksize, ## block size
+
+        npars,   ## number of variance-covariance params per term
+        nlevs,   ## " " levels " "
+        struc,   ## structure code
+        blksize, ## block size
+
+        npars,   ## number of variance-covariance params per term
+        nlevs,   ## " " levels " "
+        struc,   ## structure code
+        blksize, ## block size
+
         family = .valid_family[family],
         link = .valid_link[link]
         )
