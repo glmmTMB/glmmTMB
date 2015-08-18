@@ -26,10 +26,10 @@ enum valid_link {
 };
 
 enum valid_covStruct {
-  diag = 0,
-  us   = 1,
-  cs   = 2,
-  ar1  = 3
+  diag_covstruct = 0,
+  us_covstruct   = 1,
+  cs_covstruct   = 2,
+  ar1_covstruct  = 3
 };
 
 template<class Type>
@@ -66,18 +66,36 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, int blockCode, int blockSi
   vector<int> dim(2);
   dim << blockSize, blockReps;
   array<Type> U(u, dim); // Note: Fill columnwise
+  vector<Type> sd;
   switch (blockCode){
-  case diag:
-    vector<Type> sd = exp(theta);
+  case diag_covstruct:
+    sd = exp(theta);
     for(int i = 0; i < blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
     }
     break;
-  case us:
-
+  case us_covstruct:
+    break;
   default:
     error("covStruct not implemented!");
   } // End switch
+  return ans;
+}
+
+template <class Type>
+Type allterms_nll(vector<Type> u, vector<Type> theta, vector<int> blockCode, vector<int> blockSize, vector<int> blockReps, vector<int> blockNumTheta){
+  Type ans = 0;
+  int upointer = 0;
+  int tpointer = 0;
+  int nr;
+  for(int i=0; i < blockCode.size(); i++){
+    nr = blockSize(i) * blockReps(i);
+    vector<Type> useg = u.segment(upointer, nr);
+    vector<Type> tseg = theta.segment(tpointer, blockNumTheta(i));
+    ans += termwise_nll(useg, tseg, blockCode(i), blockSize(i), blockReps(i), blockNumTheta(i));
+    upointer += nr;
+    tpointer += blockNumTheta(i);
+  }
   return ans;
 }
 
@@ -111,46 +129,41 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(betad);
 
   // Joint vector of covariance parameters
-  PARAMETER(theta);
-  PARAMETER(thetazi);
+  PARAMETER_VECTOR(theta);
+  PARAMETER_VECTOR(thetazi);
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
+
+  // Flags
+  bool zi_flag = (betazi.size() > 0);
 
   // Joint negative log-likelihood
   Type jnll = 0;
 
   // Random effects
-  // TODO: Other corr structures
-  if (b.size() > 0) {
-    // vector<Type> sigma = exp(logsigma);
-    // jnll -= dnorm(b, Type(0), sigma, true).sum();
-  }
+  jnll += allterms_nll(b, theta, blockCode, blockSize, blockReps, blockNumTheta);
+  jnll += allterms_nll(bzi, thetazi, blockCodezi, blockSizezi, blockRepszi, blockNumThetazi);
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b;
+  vector<Type> etazi = Xzi * betazi + Zzi * bzi;
+  vector<Type> etad = Xd * betad;
 
   // Apply link
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
     mu(i) = inverse_linkfun(eta(i), link);
-
-  // Zero-inflation
-  // TODO: Allow multiple links for zero-infl as well ?
-  bool zi_flag = (betazi.size() > 0);
-  vector<Type> pz;
-  if(zi_flag) {
-    vector<Type> etazi = Zzi * betazi;
-    pz = invlogit(etazi);
-  }
+  vector<Type> pz = invlogit(etazi);
+  vector<Type> phi = exp(etad);
 
   // Observation likelihood
   Type tmp_loglik;
-  for (int i=0; i<yobs.size(); i++){
+  for (int i=0; i < yobs.size(); i++){
 
     switch (family) {
     case gaussian_family:
-      // tmp_loglik = dnorm(yobs(i), mu(i), exp(logalpha), true);
+      tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
     break;
     // TODO: Implement remaining families
     default:
