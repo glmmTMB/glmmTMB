@@ -88,6 +88,46 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
 
     return(namedList(X,Z,fixedfr,ranfr,reTrms))
 }
+##' .. content for \description{} (no empty lines) ..
+##'
+##' .. content for \details{} ..
+##' @title 
+##' @param reTrms  random-effects terms list
+##' @return 
+getReStruc <- function(reTrms) {
+
+    if (is.null(reTrms)) {
+        blksize <- nreps <- covCode <- blockNumTheta <- integer(0)
+    } else {
+        
+        ## Get info on sizes of RE components
+        theta <- numeric(length(reTrms$theta))
+
+        ## hack names of Ztlist to extract grouping variable of each RE term
+        grpVar <- gsub("^[^|]*\\| ","",names(reTrms$Ztlist)) ## remove 1st term+|
+        getLevs <- function(i) with(reTrms,
+                                    length(levels(flist[[grpVar[i]]])))
+        nreps <- sapply(seq_along(reTrms$cnms),getLevs)
+        blksize <- sapply(reTrms$Ztlist,nrow)/nreps
+        ## figure out number of parameters from block size + structure type
+
+        ## for now *all* RE are unstructured
+        covCode <- rep(1,length(nreps))
+
+        parFun <- function(struc,blksize) {
+            switch(as.character(struc),
+                   "0"=blksize, ## diag
+                   "1"=blksize*(blksize+1)/2, ## us
+                   "2"=blksize+1)  ## cs
+        }
+        blockNumTheta <- mapply(parFun,covCode,blksize)
+    }
+    
+    return(namedList(blockNumTheta,
+                     blockSize=blksize,
+                     blockReps=nreps,
+                     covCode))
+}
 
 ##' main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4 syntac
@@ -187,36 +227,10 @@ glmmTMB <- function (
     family <- family$family   ## overwrites family: original info lost
 
     ## extract response variable
-    yobs <- fr[,attr(fr,"response")]
+    yobs <- fr[,attr(terms(fr),"response")]
 
-    ## structure (0 =  diag, 1 = us, 2 = comp symm ...)
-    ## no. of REs (length of b vector)
-    ## no. of parameters  (length of theta vector)
-    ##
-
-    ## Get info on sizes of RE components
-    theta <- numeric(length(reTrms$theta))
-
-    ## hack names of Ztlist to extract grouping variable of each RE term
-    grpVar <- gsub("^[^|]*\\| ","",names(reTrms$Ztlist)) ## remove 1st term+|
-    getLevs <- function(i) with(reTrms,
-                                length(levels(flist[[grpVar[i]]])))
-    nlevs <- sapply(seq_along(reTrms$cnms),getLevs)
-    blksize <- sapply(reTrms$Ztlist,nrow)/nlevs
-    ## figure out number of parameters from block size + structure type
-
-    ## for now *all* RE are unstructured
-    struc <- rep(1,length(nlevs))
-
-    parFun <- function(struc,blksize) {
-        switch(as.character(struc),
-               "0"=blksize, ## diag
-               "1"=blksize*(blksize+1)/2, ## us
-               "2"=blksize+1)  ## cs
-    }
-    npars <- mapply(parFun,struc,blksize)
-
-    Z <- t(reTrms$Zt)
+    fixedReStruc <- getReStruc(fixedList$reTrms)
+    ziReStruc <- getReStruc(ziList$reTrms)
 
     data.tmb <- namedList(
         X=fixedList$X,
@@ -226,34 +240,39 @@ glmmTMB <- function (
         Xdisp=dispList$X,
         ## Zdisp=dispList$Z,
         yobs,
-        
-        npars,   ## number of variance-covariance params per term
-        nlevs,   ## " " levels " "
-        struc,   ## structure code
-        blksize, ## block size
+        ## offset,
 
-        npars,   ## number of variance-covariance params per term
-        nlevs,   ## " " levels " "
-        struc,   ## structure code
-        blksize, ## block size
+        ## information about random effects structure
+        blockReps=fixedReStruc$blockReps,     ## nreps,   ## " " levels " "
+        blockSize=fixedReStruc$blockSize,     ## blksize, ## block size
+        blockNumTheta=fixedReStruc$blockNumTheta, ##  number of variance-covariance params per term
+        covCode=fixedReStruc$covCode,       ## struc,   ## structure code
 
-        npars,   ## number of variance-covariance params per term
-        nlevs,   ## " " levels " "
-        struc,   ## structure code
-        blksize, ## block size
+        blockRepszi=ziReStruc$blockReps,     ## nreps,   ## " " levels " "
+        blockSizezi=ziReStruc$blockSize,     ## blksize, ## block size
+        ## FIXME: change blockNumTheta to numTheta???
+        blockNumThetazi=ziReStruc$blockNumTheta, ##  number of variance-covariance params per term
+        covCodezi=ziReStruc$covCode,       ## struc,   ## structure code
+
+
 
         family = .valid_family[family],
         link = .valid_link[link]
         )
-    parameters <- list(
-        beta     = rep(0, ncol(X)) ,
-        b        = rep(0, ncol(Z)) ,
-        betazi   = rep(0, ncol(Xzi)),
-        bzi      = rep(0, ncol(Zzi)),
-        theta    = rep(0, length(reTrms$theta))
-        )
+    parameters <- with(data.tmb,
+      list(
+          beta     = rep(0, ncol(X)) ,
+          b        = rep(0, ncol(Z)) ,
+          betazi   = rep(0, ncol(Xzi)),
+          bzi      = rep(0, ncol(Zzi)),
+          theta    = rep(0, sum(blockNumTheta)),
+          thetazi  = rep(0, sum(blockNumThetazi)),
+          betadisp = rep(0, ncol(Xdisp))
+          )
+                       )
 
-    ## FIXME: something about dispersion/model matrix?
+    ## short-circuit
+    return(namedList(data.tmb,parameters))
 
     obj <- MakeADFun(data.tmb,
                      parameters,
