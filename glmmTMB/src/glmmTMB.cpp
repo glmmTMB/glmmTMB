@@ -22,9 +22,9 @@ enum valid_link {
   identity_link            = 5
 };
 
-template<class Type>
-Type inverse_linkfun(Type eta, int link) {
-  Type ans;
+template<class VT>
+VT inverse_linkfun(VT eta, int link) {
+  VT ans;
   switch (link) {
   case log_link:
     ans = exp(eta);
@@ -33,7 +33,10 @@ Type inverse_linkfun(Type eta, int link) {
     ans = eta;
     break;
   case logit_link:
-    ans = Type(1.0)/(Type(1.0)+exp(-eta));
+    ans = invlogit(eta);
+    break;
+  case probit_link:
+    ans = pnorm(eta);
     break;
 
 
