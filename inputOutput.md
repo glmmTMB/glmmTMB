@@ -35,19 +35,23 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	* MATRIX Zzi
 	* MATRIX Xd (for dispersion model)
 	* VECTOR yobs
-	* IVECTOR blockreps
-	* IVECTOR blocksize
-	* IVECTOR blocknumtheta
-	* IVECTOR covcode
-	*
+	* IVECTOR blockReps
+	* IVECTOR blockSize
+	* IVECTOR blockNumTheta
+	* IVECTOR covCode
+	* IVECTOR blockRepszi
+	* IVECTOR blockSizezi
+	* IVECTOR blockNumThetazi
+	* IVECTOR covCodezi
+	
 * initial values for all parameters (size is the important characteristic)
 	* VECTOR beta
 	* VECTOR betazi
 	* VECTOR betad (for dispersion model)
 	* VECTOR b
 	* VECTOR bzi
-	* VECTOR theta (to build variance covariance 
-	* VECTOR 
+	* VECTOR theta (to build variance covariance of the RE of conditional model)
+	* VECTOR thetazi (to build variance covariance of the RE of zero-inflation model)
 
 TMB sends back to R (TODO: be more specific with names and types here)
 ------------------
