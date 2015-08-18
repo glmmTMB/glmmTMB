@@ -1,6 +1,9 @@
 importFrom("lme4",
-           mkReTrms)
+           mkReTrms,findbars,subbars,nobars)
 
+importFrom("Matrix",t)
+
+export(glmmTMB)
 ## be better than this :
 exportPattern("^[[:alpha:]]+")
 
