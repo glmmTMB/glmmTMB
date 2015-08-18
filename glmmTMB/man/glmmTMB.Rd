@@ -5,7 +5,7 @@
 \title{main TMB function}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  weights, offset)
+  dispformula = ~1, weights, offset, debug = FALSE)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4 syntac}
@@ -15,6 +15,12 @@ glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
 \item{family}{\code{\link{family}}}
 
 \item{ziformula}{combined fixed and random effects formula for zero-inflation: the default \code{~0} specifies no zero-inflation}
+
+\item{dispformula}{combined fixed and random effects formula for dispersion: the default \code{~0} specifies no zero-inflation}
+
+\item{weights}{}
+
+\item{offset}{}
 }
 \description{
 main TMB function
