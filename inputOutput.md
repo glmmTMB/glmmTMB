@@ -28,17 +28,18 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	             truncatednbinom    =502,
 	             t                  =600,
 	             tweedie            =700 )
-	* covInt (0=diag, 1=unstructured, 2=compound symmetry)
+	* covInt 
 	* MATRIX X
 	* MATRIX Z
 	* MATRIX Xzi
 	* MATRIX Zzi
 	* MATRIX Xd (for dispersion model)
 	* VECTOR yobs
+	* VECTOR offset
 	* IVECTOR blockReps
 	* IVECTOR blockSize
 	* IVECTOR blockNumTheta
-	* IVECTOR covCode
+	* IVECTOR covCode (0=diag, 1=unstructured, 2=compound symmetry)
 	* IVECTOR blockRepszi
 	* IVECTOR blockSizezi
 	* IVECTOR blockNumThetazi
