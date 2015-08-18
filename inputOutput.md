@@ -33,14 +33,21 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	* MATRIX Z
 	* MATRIX Xzi
 	* MATRIX Zzi
-	* VECTOR obs (responses)
+	* MATRIX Xd (for dispersion model)
+	* VECTOR yobs
+	* IVECTOR blockreps
+	* IVECTOR blocksize
+	* IVECTOR blocknumtheta
+	* IVECTOR covcode
+	*
 * initial values for all parameters (size is the important characteristic)
 	* VECTOR beta
 	* VECTOR betazi
+	* VECTOR betad (for dispersion model)
 	* VECTOR b
 	* VECTOR bzi
-	* VECTOR a (integer vector containing number of variance parameters for each RE term of conditional model, sizes of theta blocks)
-	* VECTOR azi (integer vector containing number of variance parameters for each RE term of zero-inflation model, sizes of thetazi blocks)
+	* VECTOR theta (to build variance covariance 
+	* VECTOR 
 
 TMB sends back to R (TODO: be more specific with names and types here)
 ------------------
