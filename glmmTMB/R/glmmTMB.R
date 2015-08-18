@@ -278,9 +278,13 @@ glmmTMB <- function (
     ## short-circuit
     if(debug) return(namedList(data.tmb,parameters))
 
+    randomArg <- NULL
+    if (ncol(Z)>0) randomArg <- c(randomArg,"b")
+    if (ncol(Zzi)>0) randomArg <- c(randomArg,"bzi")
+    
     obj <- MakeADFun(data.tmb,
                      parameters,
-                     random = c("b","bzi"),
+                     random = randomArg,
                      profile = NULL, ## TODO: Optionally "beta"
                      silent = FALSE, ## TODO: set to TRUE
                      DLL="glmmTMB")
