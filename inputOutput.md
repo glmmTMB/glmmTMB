@@ -22,10 +22,10 @@ TODO: create translation tables for integers below in C++ that gets sent to R
 	             beta               =200,
 	             gamma              =300,
 	             poisson            =400,
-	             trunkatedpoisson   =401,
+	             truncatedpoisson   =401,
 	             nbinom1            =500, 
 	             nbinom2            =501, 
-	             trunkatednbinom    =502,
+	             truncatednbinom    =502,
 	             t                  =600,
 	             tweedie            =700 )
 	* covInt (0=diag, 1=unstructured, 2=compound symmetry)
