@@ -74,7 +74,7 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
             attr(terms(ranfr), "predvars")
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
 
-        Z <- t(reTrms$Zt)
+        Z <- as.matrix(t(reTrms$Zt))
     }
 
     ## if(is.null(rankX.chk <- control[["check.rankX"]]))
@@ -152,9 +152,10 @@ glmmTMB <- function (
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
-    dispformula= ~0,
+    dispformula= ~1, #FIXME: set appropriate family-specific defaults
     weights,
-    offset
+    offset,
+    debug=FALSE
     )
 {
 
@@ -240,7 +241,7 @@ glmmTMB <- function (
         Z=fixedList$Z,
         Xzi=ziList$X,
         Zzi=ziList$Z,
-        Xdisp=dispList$X,
+        Xd=dispList$X,
         ## Zdisp=dispList$Z,
         yobs,
         ## offset,
@@ -249,13 +250,13 @@ glmmTMB <- function (
         blockReps=fixedReStruc$blockReps,     ## nreps,   ## " " levels " "
         blockSize=fixedReStruc$blockSize,     ## blksize, ## block size
         blockNumTheta=fixedReStruc$blockNumTheta, ##  number of variance-covariance params per term
-        covCode=fixedReStruc$covCode,       ## struc,   ## structure code
+        blockCode=fixedReStruc$covCode,       ## struc,   ## structure code
 
         blockRepszi=ziReStruc$blockReps,     ## nreps,   ## " " levels " "
         blockSizezi=ziReStruc$blockSize,     ## blksize, ## block size
         ## FIXME: change blockNumTheta to numTheta???
         blockNumThetazi=ziReStruc$blockNumTheta, ##  number of variance-covariance params per term
-        covCodezi=ziReStruc$covCode,       ## struc,   ## structure code
+        blockCodezi=ziReStruc$covCode,       ## struc,   ## structure code
 
 
 
@@ -270,12 +271,12 @@ glmmTMB <- function (
           bzi      = rep(0, ncol(Zzi)),
           theta    = rep(0, sum(blockNumTheta)),
           thetazi  = rep(0, sum(blockNumThetazi)),
-          betadisp = rep(0, ncol(Xdisp))
+          betad    = rep(0, ncol(Xd))
           )
                        )
 
     ## short-circuit
-    return(namedList(data.tmb,parameters))
+    if(debug) return(namedList(data.tmb,parameters))
 
     obj <- MakeADFun(data.tmb,
                      parameters,
@@ -288,10 +289,12 @@ glmmTMB <- function (
 
     optTime <- system.time(fit <- with(obj,nlminb(start=par,objective=fn,
                                                   gradient=gr)))
-
+    #sdr <- sdreport(obj)
+	
+#    return(list(optTime, fit, sdr))
+    return(namedList(optTime, fit))
     ## now structure the output object
 
-    
 }
 
 
