@@ -223,6 +223,20 @@ glmmTMB <- function (
     fixedReStruc <- getReStruc(fixedList$reTrms)
     ziReStruc <- getReStruc(ziList$reTrms)
 
+    ## FIXME: Get termwise info directly from formula object !
+    getStruct <- function(ReStruc){
+        fun <- function(i){
+            list(
+                blockReps=ReStruc$blockReps[i],     ## nreps,   ## " " levels " "
+                blockSize=ReStruc$blockSize[i],     ## blksize, ## block size
+                blockNumTheta=ReStruc$blockNumTheta[i], ##  number of variance-covariance params per term
+                blockCode=ReStruc$covCode[i]       ## struc,   ## structure code
+                )
+        }
+        lapply(seq(length=length(ReStruc$blockReps)),
+               fun)
+    }
+
     data.tmb <- namedList(
         X=fixedList$X,
         Z=fixedList$Z,
@@ -234,11 +248,13 @@ glmmTMB <- function (
         ## offset,
 
         ## information about random effects structure
+        terms = getStruct(fixedReStruc),
         blockReps=fixedReStruc$blockReps,     ## nreps,   ## " " levels " "
         blockSize=fixedReStruc$blockSize,     ## blksize, ## block size
         blockNumTheta=fixedReStruc$blockNumTheta, ##  number of variance-covariance params per term
         blockCode=fixedReStruc$covCode,       ## struc,   ## structure code
 
+        termszi = getStruct(ziReStruc),
         blockRepszi=ziReStruc$blockReps,     ## nreps,   ## " " levels " "
         blockSizezi=ziReStruc$blockSize,     ## blksize, ## block size
         ## FIXME: change blockNumTheta to numTheta???
