@@ -28,6 +28,9 @@ enum-update:
 doc-update:
 	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\"))" | R --slave
 
+namespace-update:
+	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\"))" | R --slave
+
 build-package:
 	R CMD build --resave-data=no $(PACKAGE)
 
