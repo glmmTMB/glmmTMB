@@ -25,13 +25,18 @@ names(.valid_link) <- sub("_link","",names(.valid_link))
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
-##' @title 
+##' @title Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
 ##' @param fr full model frame
 ##' @param ranOK random effects allowed here?
 ##' @param type label for model type
-##' @return 
+##' @return a list composed of
+##' \item{X}{design matrix for fixed effects}
+##' \item{Z}{design matrix for random effects}
+##' \item{fixedfr}{model frame for fixed effects. Reading this in prevents the predictor function from recalculating bases for splines and orthogonal polynomials. Might have to be removed later}
+##' \item{ranfr}{as fixedfr but for random effects}
+##' \item{reTrms}{output from mkReTerms from LME4}
 getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
@@ -94,9 +99,15 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
-##' @title 
+##' @title Calculate random effect structure
+##' calculates number of random effects, number of parameters,
+##' blocksize and number of blocks.
 ##' @param reTrms  random-effects terms list
-##' @return 
+##' @return a list
+##' \item{blockNumTheta}{number of variance covariance parameters per term}
+##' \item{blockSize}{size (dimension) of one block}
+##' \item{blockReps}{number of times the blocks are repeated (levels)}
+##' \item{covCode}{structure code}
 getReStruc <- function(reTrms) {
 
     if (is.null(reTrms)) {
@@ -132,7 +143,7 @@ getReStruc <- function(reTrms) {
                      covCode))
 }
 
-##' main TMB function
+##' @title main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4 syntac
 ##' @param data data frame
 ##' @param family \code{\link{family}}
