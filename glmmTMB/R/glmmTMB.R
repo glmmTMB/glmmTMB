@@ -145,6 +145,8 @@ getReStruc <- function(reTrms,ss) {
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy, debug=TRUE)
+##' glmmTMB(Reaction ~ Days + us(1|Subject), sleepstudy, debug=TRUE)
+##' glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy, debug=TRUE)
 glmmTMB <- function (
     formula,
     data = NULL,
@@ -192,7 +194,9 @@ glmmTMB <- function (
     ## combine all formulas
 
     formList <- list(formula[[3]], ziformula, dispformula)
-    formList <- lapply(formList, subbars) # substitute "|" by "+"
+    formList <- lapply(formList,
+                   function(x) noSpecials(subbars(x),delete=FALSE))
+                       ## substitute "|" by "+"; drop special
     formList <- gsub("~", "\\+", lapply(formList,safeDeparse)) # character
     combForm <- reformulate(Reduce(paste,formList),
                             response=deparse(formula[[2]]))

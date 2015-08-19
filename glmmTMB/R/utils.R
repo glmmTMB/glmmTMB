@@ -186,9 +186,12 @@ uncoverHiddenSpecials <- function(trm) {
 
 ##' @param term language object
 ##' @rdname splitForm
+##' @examples
+##' noSpecials(y~1+us(1|f))
+##' noSpecials(y~1+us(1|f),delete=FALSE)
 ##' @keywords internal
-noSpecials <- function(term) {
-    nospec <- noSpecials_(term)
+noSpecials <- function(term,delete=TRUE) {
+    nospec <- noSpecials_(term,delete=delete)
     if (is(term,"formula") && length(term)==3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
@@ -197,11 +200,20 @@ noSpecials <- function(term) {
     return(nospec)
 }
 
-noSpecials_ <- function(term) {
+    
+## noSpecials_(y~1+us(1|f))
+noSpecials_ <- function(term,delete=TRUE) {
     if (!anySpecial(term)) return(term)
-    if (isSpecial(term)) return(NULL)
-    nb2 <- noSpecials(term[[2]])
-    nb3 <- noSpecials(term[[3]])
+    if (isSpecial(term)) {
+        if(delete) {
+            return(NULL)
+        } else {
+            ## FIXME: returns 1 | f, would like (1|f)
+            return(term[[2]])
+        }
+    }
+    nb2 <- noSpecials(term[[2]],delete=delete)
+    nb3 <- noSpecials(term[[3]],delete=delete)
     if (is.null(nb2)) return(nb3)
     if (is.null(nb3)) return(nb2)
     term[[2]] <- nb2
@@ -225,6 +237,8 @@ isAnyArgSpecial <- function(term) {
     FALSE
 }
 
+## FIXME: this could be fooled by a term with a matching name
+## should really look for [special]\\(.+\\)
 anySpecial <- function(term) {
     any(findReTrmClasses() %in% all.names(term))
 }
