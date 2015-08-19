@@ -97,3 +97,35 @@ ranef.glmmTMB <- function(object, condVar = FALSE, drop = FALSE,
 {
 	tmp=obj$env$parList()$b
 }
+
+##' 
+##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
+##' Method borrowed from lme4
+getME <- function(object,
+                  name = c("X", "Xzi","Z", "Zzi","Xd","theta"))
+{
+  if(missing(name)) stop("'name' must not be missing")
+  stopifnot(is(object,"glmmTMB"))
+  ## Deal with multiple names -- "FIXME" is inefficiently redoing things
+  if (length(name <- as.character(name)) > 1) {
+    names(name) <- name
+    return(lapply(name, getME, object = object))
+  }
+  name <- match.arg(name)
+  
+  ### Start of the switch
+  switch(name,
+         "X" = object$obj$env$data$X,
+         "Xzi" = object$obj$env$data$Xzi,
+         "Z" = object$obj$env$data$Z,
+         "Zzi" = object$obj$env$data$Zzi,
+         "Xd" = object$obj$env$data$Xd,
+         "theta" = object$obj$env$parList()$theta ,
+         "..foo.." = # placeholder!
+           stop(gettextf("'%s' is not implemented yet",
+                         sprintf("getME(*, \"%s\")", name))),
+         ## otherwise
+         stop(sprintf("Mixed-Effects extraction of '%s' is not available for class \"%s\"",
+                      name, class(object))))
+}## {getME}
+
