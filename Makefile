@@ -53,3 +53,5 @@ check:
 unlock:
 	rm -rf ${R_LIBS}/00LOCK-glmmTMB
 
+test:
+	echo "library(glmmTMB);example(glmmTMB)" | R --slave
