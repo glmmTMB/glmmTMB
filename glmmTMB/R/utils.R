@@ -37,7 +37,7 @@ safeDeparse <- function(x, collapse=" ") {
 ##' list of specials
 ##' FIXME: 
 findReTrmClasses <- function() {
-    c("diag","cs","us")
+    names(.valid_covstruct)
 }
 
 ##' Parse a formula into fixed formula and random effect terms,
@@ -49,26 +49,30 @@ findReTrmClasses <- function() {
 ##' @title Split formula containing special random effect terms
 ##' @param formula a formula containing special random effect terms
 ##' @param defaultTerm default type for non-special RE terms
-##' @param addSpecials additional special types not in standard list
 ##' @param allowFixedOnly (logical) are formulas with no RE terms OK?
 ##' @param allowNoSpecials (logical) are formulas with only standard RE terms OK?
-##' @param noSpecialsAlt name for alternative functions to be used with non-special formulas
-##' @return a list containing elements
+##' @return a list containing elements \code{fixedFormula};
+##' \code{reTrmFormulas} list of \code{x | g} formulas for each term;
+##' \code{reTrmAddArgs} list of function+additional arguments, i.e. \code{list()} (non-special), \code{foo()} (no additional arguments), \code{foo(addArgs)} (additional arguments); \code{reTrmClasses} (vector of special functions/classes, as character)
 ##' @examples
 ##' glmmTMB:::splitForm(~x+y)            ## no specials or RE
 ##' glmmTMB:::splitForm(~x+y+(f|g))      ## no specials
 ##' glmmTMB:::splitForm(~x+y+diag(f|g))  ## one special
 ##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g))
-##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g)+foo(a|b,stuff),
-##'                     addSpecials=c("cs","foo"))
+##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))
+##'                    
 ##' @author Fabian Scheipl, Steve Walker
 ##' @importFrom lme4 nobars
 ##' @export 
-splitForm <- function(formula,defaultTerm="unstruc",
-                      addSpecials=NULL,
+splitForm <- function(formula,
+                      defaultTerm="unstruc",
                       allowFixedOnly=TRUE,
-                      allowNoSpecials=TRUE,
-                      noSpecialsAlt="lmer or glmer") {
+                      allowNoSpecials=TRUE) {
+
+    ## string for error message *if* specials not allowed
+    ## (probably package-specific)
+    noSpecialsAlt <- "lmer or glmer"
+
     
     specials <- c(findReTrmClasses(),addSpecials)
     ## ignore any specials not in formula
