@@ -42,6 +42,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         ranfr <- NULL
         reTrms <- NULL
         Z <- matrix(0, ncol=0, nrow=nobs)
+        ss <- integer(0)
     } else {
         if (!ranOK) stop("no random effects allowed in ", type, " term")
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
@@ -51,6 +52,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         attr(attr(fr,"terms"), "predvars.random") <-
             attr(terms(ranfr), "predvars")
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
+
+        ss <- splitForm(formula)
+        ss <- unlist(ss$reTrmClasses)
 
         Z <- as.matrix(t(reTrms$Zt))
     }
@@ -67,7 +71,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     ## FIXME: come back and figure out how we need to store fixedfr and ranfr
 
-    return(namedList(X, Z, fixedfr, ranfr, reTrms))
+    return(namedList(X, Z, fixedfr, ranfr, reTrms, ss))
 }
 ##' .. content for \description{} (no empty lines) ..
 ##'
@@ -87,7 +91,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)                    
-getReStruc <- function(reTrms) {
+getReStruc <- function(reTrms,ss) {
 
     if (is.null(reTrms)) {
         ReStrucList <- list()
@@ -102,8 +106,7 @@ getReStruc <- function(reTrms) {
         blksize <- sapply(reTrms$Ztlist,nrow) / nreps
         ## figure out number of parameters from block size + structure type
 
-        ## for now *all* RE are diagonal
-        covCode <- rep(0, length(nreps))
+        covCode <- .valid_covstruct[ss]
 
         parFun <- function(struc, blksize) {
             switch(as.character(struc),
@@ -228,8 +231,8 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,attr(terms(fr),"response")]
 
-    fixedReStruc <- getReStruc(fixedList$reTrms)
-    ziReStruc <- getReStruc(ziList$reTrms)
+    fixedReStruc <- with(fixedList,getReStruc(reTrms,ss))
+    ziReStruc <- with(ziList,getReStruc(reTrms,ss))
 
     if (is.null(offset)) offset <- rep(0,nrow(fr))
     if (is.null(weights)) weights <- rep(1,nrow(fr))
