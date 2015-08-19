@@ -257,6 +257,16 @@ Type objective_function<Type>::operator() ()
       s2 = phi(i) / mu(i);
       tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
       break;
+    case nbinom1_family:
+      s1 = mu(i);
+      s2 = mu(i) * phi(i);
+      tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
+      break;
+    case nbinom2_family:
+      s1 = mu(i);
+      s2 = mu(i) * (Type(1) + mu(i) / phi(i));
+      tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
+      break;
       // TODO: Implement remaining families
     default:
       error("Family not implemented!");
