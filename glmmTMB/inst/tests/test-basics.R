@@ -33,6 +33,22 @@ test_that("Update Gaussian", {
     expect_equal(fm1,fm1u )
 })
 
+
+test_that("Variance structures", {
+  ## FIXME, redundant
+  expect_is(fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy), 
+            "glmmTMB")
+  expect_is(fm2us <- glmmTMB(Reaction ~ Days + us(Days| Subject), sleepstudy), 
+            "glmmTMB")
+  expect_is(fm2cs <- glmmTMB(Reaction ~ Days + cs(Days| Subject), sleepstudy), 
+            "glmmTMB")
+  expect_is(fm2diag <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy), 
+            "glmmTMB")
+  gm <- glmmTMB:::getME
+  expect_equal(gm(fm2,"theta"),gm(fm2us,"theta"))
+  ## FIXME: more here, compare results against lme4 ...
+})
+
 test_that("Sleepdata Variance components", {
     ## TODO: Variance Components ("theta"s)
 })
