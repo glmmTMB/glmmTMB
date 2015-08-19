@@ -61,16 +61,43 @@ Type inverse_linkfun(Type eta, int link) {
 }
 
 template <class Type>
-Type termwise_nll(vector<Type> u, vector<Type> theta, int blockCode, int blockSize, int blockReps, int blockNumTheta){
+struct per_term_info {
+  int blockCode;     // Code that defines structure
+  int blockSize;     // Size of one block 
+  int blockReps;     // Repeat block number of times
+  int blockNumTheta; // Parameter count per block
+  matrix<Type> dist;
+};
+
+template <class Type>
+struct terms_t : vector<per_term_info<Type> > {
+  terms_t(SEXP x){
+    (*this).resize(LENGTH(x));
+    for(int i=0; i<LENGTH(x); i++){
+      SEXP y = VECTOR_ELT(x, i);    // y = x[[i]]
+      int blockCode = (int) REAL(getListElement(y, "blockCode", &isNumericScalar))[0];
+      int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
+      int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
+      int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];      
+      (*this)(i).blockCode = blockCode;
+      (*this)(i).blockSize = blockSize;
+      (*this)(i).blockReps = blockReps;
+      (*this)(i).blockNumTheta = blockNumTheta;
+    }
+  }
+};
+
+template <class Type>
+Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type> term) {
   Type ans = 0;
   vector<int> dim(2);
-  dim << blockSize, blockReps;
+  dim << term.blockSize, term.blockReps;
   array<Type> U(u, dim); // Note: Fill columnwise
   vector<Type> sd;
-  switch (blockCode){
+  switch (term.blockCode){
   case diag_covstruct:
     sd = exp(theta);
-    for(int i = 0; i < blockReps; i++){
+    for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
     }
     break;
@@ -83,18 +110,19 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, int blockCode, int blockSi
 }
 
 template <class Type>
-Type allterms_nll(vector<Type> u, vector<Type> theta, vector<int> blockCode, vector<int> blockSize, vector<int> blockReps, vector<int> blockNumTheta){
+Type allterms_nll(vector<Type> u, vector<Type> theta, 
+		  vector<per_term_info<Type> > terms) {
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
   int nr;
-  for(int i=0; i < blockCode.size(); i++){
-    nr = blockSize(i) * blockReps(i);
+  for(int i=0; i < terms.size(); i++){
+    nr = terms(i).blockSize * terms(i).blockReps;
     vector<Type> useg = u.segment(upointer, nr);
-    vector<Type> tseg = theta.segment(tpointer, blockNumTheta(i));
-    ans += termwise_nll(useg, tseg, blockCode(i), blockSize(i), blockReps(i), blockNumTheta(i));
+    vector<Type> tseg = theta.segment(tpointer, terms(i).blockNumTheta);
+    ans += termwise_nll(useg, tseg, terms(i));
     upointer += nr;
-    tpointer += blockNumTheta(i);
+    tpointer += terms(i).blockNumTheta;
   }
   return ans;
 }
@@ -110,20 +138,14 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR(yobs);
 
   // Define covariance structure for the conditional model
-  DATA_IVECTOR(blockCode);     // Code that defines structure
-  DATA_IVECTOR(blockSize);     // Size of one block
-  DATA_IVECTOR(blockReps);     // Repeat block number of times
-  DATA_IVECTOR(blockNumTheta); // Parameter count per block
+  DATA_STRUCT(terms, terms_t);
 
   // Define covariance structure for the zero inflation
-  DATA_IVECTOR(blockCodezi);     // Code that defines structure
-  DATA_IVECTOR(blockSizezi);     // Size of one block
-  DATA_IVECTOR(blockRepszi);     // Repeat block number of times
-  DATA_IVECTOR(blockNumThetazi); // Parameter count per block
+  DATA_STRUCT(termszi, terms_t);
 
   // Parameters related to design matrices
   PARAMETER_VECTOR(beta);
-  PARAMETER_VECTOR(betazi); // TODO: Notation ?
+  PARAMETER_VECTOR(betazi);
   PARAMETER_VECTOR(b);
   PARAMETER_VECTOR(bzi);
   PARAMETER_VECTOR(betad);
@@ -142,8 +164,8 @@ Type objective_function<Type>::operator() ()
   Type jnll = 0;
 
   // Random effects
-  jnll += allterms_nll(b, theta, blockCode, blockSize, blockReps, blockNumTheta);
-  jnll += allterms_nll(bzi, thetazi, blockCodezi, blockSizezi, blockRepszi, blockNumThetazi);
+  jnll += allterms_nll(b, theta, terms);
+  jnll += allterms_nll(bzi, thetazi, termszi);
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b;
