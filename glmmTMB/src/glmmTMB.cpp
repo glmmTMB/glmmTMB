@@ -62,11 +62,15 @@ Type inverse_linkfun(Type eta, int link) {
 
 template <class Type>
 struct per_term_info {
+  // Input from R
   int blockCode;     // Code that defines structure
   int blockSize;     // Size of one block 
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   matrix<Type> dist;
+  // Report output
+  matrix<Type> corr;
+  vector<Type> sd;
 };
 
 template <class Type>
@@ -88,30 +92,41 @@ struct terms_t : vector<per_term_info<Type> > {
 };
 
 template <class Type>
-Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type> term) {
+Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term) {
   Type ans = 0;
   vector<int> dim(2);
   dim << term.blockSize, term.blockReps;
   array<Type> U(u, dim); // Note: Fill columnwise
-  vector<Type> sd;
-  switch (term.blockCode){
-  case diag_covstruct:
-    sd = exp(theta);
+  
+  if (term.blockCode == diag_covstruct){
+    // case: diag_covstruct
+    vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
     }
-    break;
-  case us_covstruct:
-    break;
-  default:
-    error("covStruct not implemented!");
-  } // End switch
+    term.sd = sd; // For report
+  }
+  else if (term.blockCode == us_covstruct){
+    // case: us_covstruct
+    int n = term.blockSize;
+    vector<Type> logsd = theta.head(n);
+    vector<Type> corr_transf = theta.tail(theta.size() - n);
+    vector<Type> sd = exp(logsd);
+    density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
+    density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+    }
+    term.corr = nldens.cov();
+  }
+  else error("covStruct not implemented!");
+
   return ans;
 }
 
 template <class Type>
 Type allterms_nll(vector<Type> u, vector<Type> theta, 
-		  vector<per_term_info<Type> > terms) {
+		  vector<per_term_info<Type> >& terms) {
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
@@ -186,8 +201,8 @@ Type objective_function<Type>::operator() ()
     switch (family) {
     case gaussian_family:
       tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-    break;
-    // TODO: Implement remaining families
+      break;
+      // TODO: Implement remaining families
     default:
       error("Family not implemented!");
     } // End switch
