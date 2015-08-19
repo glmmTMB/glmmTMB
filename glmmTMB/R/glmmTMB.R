@@ -290,7 +290,7 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    output <- namedList(obj, fit, se=sdr, call, optTime)
+    output <- namedList(obj, fit, sdr, call, optTime)
     class(output) <- "glmmTMB"
 
     return(output)
