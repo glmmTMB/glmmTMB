@@ -1,5 +1,16 @@
 #include <TMB.hpp>
 
+namespace glmmtmb{
+  template<class Type>
+  Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
+  {
+    Type logres = -lgamma(n + 1) + lgamma(y + 1) + lgamma(n - y + 1) - lgamma(a + y) -
+      lgamma(b + n - y) - lgamma(a + b) + lgamma(a) + lgamma(b) + lgamma(a + b + n);
+    if(!give_log) return exp(logres);
+    else return logres;
+  }
+}
+
 enum valid_family {
   gaussian_family = 0,
   binomial_family = 100,
@@ -205,7 +216,7 @@ Type objective_function<Type>::operator() ()
   jnll += allterms_nll(bzi, thetazi, termszi);
 
   // Linear predictor
-  vector<Type> eta = X * beta + Z * b;
+  vector<Type> eta = X * beta + Z * b + offset;
   vector<Type> etazi = Xzi * betazi + Zzi * bzi;
   vector<Type> etad = Xd * betad;
 
@@ -217,9 +228,9 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etad);
 
   // Observation likelihood
+  Type s1, s2, stmp;
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
-
     switch (family) {
     case gaussian_family:
       tmp_loglik = weights(i) * dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
@@ -229,6 +240,22 @@ Type objective_function<Type>::operator() ()
       break;
     case binomial_family:
       tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
+      break;
+    case gamma_family:
+      s1 = mu(i) * mu(i) / phi(i); // shape
+      s2 = phi(i) / mu(i);         // scale
+      tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
+      break;
+    case beta_family:
+      stmp = (mu(i) * mu(i) - mu(i) + phi(i)) / phi(i);
+      s1 = -mu(i) * stmp;
+      s2 = (mu(i) - Type(1)) * stmp;
+      tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
+      break;
+    case betabinomial_family:
+      s1 = mu(i) * mu(i) / phi(i);
+      s2 = phi(i) / mu(i);
+      tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
       break;
       // TODO: Implement remaining families
     default:
