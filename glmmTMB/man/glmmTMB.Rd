@@ -5,7 +5,8 @@
 \title{main TMB function}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = ~1, weights, offset, debug = FALSE)
+  dispformula = ~1, weights = NULL, offset = NULL, se = FALSE,
+  debug = FALSE)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4 syntac}
@@ -21,12 +22,16 @@ glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
 \item{weights}{}
 
 \item{offset}{}
+
+\item{se}{whether to return standard errors}
+
+\item{debug}{whether to return the preprocessed data and parameter objects, without fitting the model}
 }
 \description{
 main TMB function
 }
 \examples{
-data(sleepstudy,package="lme4")
-glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
+data(sleepstudy, package="lme4")
+glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy, debug=TRUE)
 }
 
