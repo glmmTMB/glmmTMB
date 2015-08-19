@@ -34,8 +34,7 @@ safeDeparse <- function(x, collapse=" ") {
     paste(deparse(x, 500L), collapse=collapse)
 }
 
-##' list of specials
-##' FIXME: 
+##' list of specials -- taken from enum.R 
 findReTrmClasses <- function() {
     names(.valid_covstruct)
 }
@@ -44,8 +43,8 @@ findReTrmClasses <- function() {
 ##' treating 'special' terms (of the form foo(x|g[,m])) appropriately
 ##'
 ##' Taken from Steve Walker's lme4ord,
-##' ultimately from Fabian Scheipl's flexLambda branch of lme4
-##' <https://github.com/stevencarlislewalker/lme4ord/blob/master/R/formulaParsing.R>
+##' ultimately from the flexLambda branch of lme4
+##' <https://github.com/stevencarlislewalker/lme4ord/blob/master/R/formulaParsing.R>.  Mostly for internal use.
 ##' @title Split formula containing special random effect terms
 ##' @param formula a formula containing special random effect terms
 ##' @param defaultTerm default type for non-special RE terms
@@ -55,13 +54,13 @@ findReTrmClasses <- function() {
 ##' \code{reTrmFormulas} list of \code{x | g} formulas for each term;
 ##' \code{reTrmAddArgs} list of function+additional arguments, i.e. \code{list()} (non-special), \code{foo()} (no additional arguments), \code{foo(addArgs)} (additional arguments); \code{reTrmClasses} (vector of special functions/classes, as character)
 ##' @examples
-##' glmmTMB:::splitForm(~x+y)            ## no specials or RE
-##' glmmTMB:::splitForm(~x+y+(f|g))      ## no specials
-##' glmmTMB:::splitForm(~x+y+diag(f|g))  ## one special
-##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g))
-##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))
+##' splitForm(~x+y)            ## no specials or RE
+##' splitForm(~x+y+(f|g))      ## no specials
+##' splitForm(~x+y+diag(f|g))  ## one special
+##' splitForm(~x+y+(f|g)+cs(1|g))
+##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))
 ##'                    
-##' @author Fabian Scheipl, Steve Walker
+##' @author Steve Walker
 ##' @importFrom lme4 nobars
 ##' @export 
 splitForm <- function(formula,
@@ -73,7 +72,6 @@ splitForm <- function(formula,
     ## (probably package-specific)
     noSpecialsAlt <- "lmer or glmer"
 
-    
     specials <- c(findReTrmClasses(),addSpecials)
     ## ignore any specials not in formula
     specialsToKeep <- vapply(specials, grepl,
@@ -172,7 +170,6 @@ splitForm <- function(formula,
         reTrmFormulas <- reTrmAddArgs <- reTrmClasses <- NULL
     }
     fixedFormula <- noSpecials(nobars(formula))
-
 
     return(list(fixedFormula  = fixedFormula,
                 reTrmFormulas = reTrmFormulas,
