@@ -104,10 +104,10 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
 ##' blocksize and number of blocks.
 ##' @param reTrms  random-effects terms list
 ##' @return a list
-##' \item{blockNumTheta}{number of parameters theta}
-##' \item{blockSize}{}
-##' \item{blockReps}{}
-##' \item{covCode}{}
+##' \item{blockNumTheta}{number of variance covariance parameters per term}
+##' \item{blockSize}{size (dimension) of one block}
+##' \item{blockReps}{number of times the blocks are repeated (levels)}
+##' \item{covCode}{structure code}
 getReStruc <- function(reTrms) {
 
     if (is.null(reTrms)) {
