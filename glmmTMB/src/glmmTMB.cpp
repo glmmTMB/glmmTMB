@@ -117,7 +117,8 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
     }
-    term.corr = nldens.cov();
+    term.corr = nldens.cov(); // For report
+    term.sd = sd;             // For report
   }
   else error("covStruct not implemented!");
 
@@ -219,6 +220,25 @@ Type objective_function<Type>::operator() ()
     // Add up
     jnll -= tmp_loglik;
   }
+
+  // Report / ADreport
+  vector<matrix<Type> > corr(terms.size());
+  vector<vector<Type> > sd(terms.size());
+  for(int i=0; i<terms.size(); i++){
+    corr(i) = terms(i).corr;
+    sd(i) = terms(i).sd;
+  }
+  vector<matrix<Type> > corrzi(termszi.size());
+  vector<vector<Type> > sdzi(termszi.size());
+  for(int i=0; i<termszi.size(); i++){
+    corrzi(i) = termszi(i).corr;
+    sdzi(i) = termszi(i).sd;
+  }
+
+  REPORT(corr);
+  REPORT(sd);
+  REPORT(corrzi);
+  REPORT(sdzi);
 
   return jnll;
 }
