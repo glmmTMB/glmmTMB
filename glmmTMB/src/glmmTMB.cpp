@@ -171,6 +171,8 @@ Type objective_function<Type>::operator() ()
   DATA_MATRIX(Zzi);
   DATA_MATRIX(Xd);
   DATA_VECTOR(yobs);
+  DATA_VECTOR(weights);
+  DATA_VECTOR(offset);
 
   // Define covariance structure for the conditional model
   DATA_STRUCT(terms, terms_t);
@@ -220,7 +222,13 @@ Type objective_function<Type>::operator() ()
 
     switch (family) {
     case gaussian_family:
-      tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+      tmp_loglik = weights(i) * dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+      break;
+    case poisson_family:
+      tmp_loglik = weights(i) * dpois(yobs(i), mu(i), true);
+      break;
+    case binomial_family:
+      tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
       break;
       // TODO: Implement remaining families
     default:
