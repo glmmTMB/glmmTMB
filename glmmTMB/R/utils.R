@@ -34,29 +34,42 @@ safeDeparse <- function(x, collapse=" ") {
     paste(deparse(x, 500L), collapse=collapse)
 }
 
+##' list of specials
+##' FIXME: 
 findReTrmClasses <- function() {
     c("diag","cs","us")
 }
 
-##' .. content for \description{} (no empty lines) ..
+##' Parse a formula into fixed formula and random effect terms,
+##' treating 'special' terms (of the form foo(x|g[,m])) appropriately
 ##'
-##' Stolen from Steve Walker, ultimately (?) from Fabian Scheipl's flexLambda branch
+##' Taken from Steve Walker's lme4ord,
+##' ultimately from Fabian Scheipl's flexLambda branch of lme4
 ##' <https://github.com/stevencarlislewalker/lme4ord/blob/master/R/formulaParsing.R>
-##' @title split formula containing 'specials'
-##' @param formula 
-##' @param specials 
-##' @return something
+##' @title Split formula containing special random effect terms
+##' @param formula a formula containing special random effect terms
+##' @param defaultTerm default type for non-special RE terms
+##' @param addSpecials additional special types not in standard list
+##' @param allowFixedOnly (logical) are formulas with no RE terms OK?
+##' @param allowNoSpecials (logical) are formulas with only standard RE terms OK?
+##' @param noSpecialsAlt name for alternative functions to be used with non-special formulas
+##' @return a list containing elements
 ##' @examples
-##' glmmTMB:::splitForm(~x+y+diag(f|g))
-##' glmmTMB:::splitForm(~x+y+(f|g))
+##' glmmTMB:::splitForm(~x+y)            ## no specials or RE
+##' glmmTMB:::splitForm(~x+y+(f|g))      ## no specials
+##' glmmTMB:::splitForm(~x+y+diag(f|g))  ## one special
 ##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g))
 ##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g)+foo(a|b,stuff),
 ##'                     addSpecials=c("cs","foo"))
 ##' @author Fabian Scheipl, Steve Walker
 ##' @importFrom lme4 nobars
-##' @keywords internal
+##' @export 
 splitForm <- function(formula,defaultTerm="unstruc",
-                      addSpecials=NULL) {
+                      addSpecials=NULL,
+                      allowFixedOnly=TRUE,
+                      allowNoSpecials=TRUE,
+                      noSpecialsAlt="lmer or glmer") {
+    
     specials <- c(findReTrmClasses(),addSpecials)
     ## ignore any specials not in formula
     specialsToKeep <- vapply(specials, grepl,
@@ -93,7 +106,7 @@ splitForm <- function(formula,defaultTerm="unstruc",
     }
 
     ## not used in glmmTMB
-    ### formula <- expandDoubleVerts(formula)
+    ## formula <- expandDoubleVerts(formula)
                                         # split formula into separate
                                         # random effects terms
                                         # (including special terms)
@@ -101,56 +114,62 @@ splitForm <- function(formula,defaultTerm="unstruc",
                                         # check for hidden specials
                                         # (i.e. specials hidden behind
                                         # parentheses)
-    formSplits <- lapply(formSplits, uncoverHiddenSpecials)
+
+    if (!is.null(formSplits)) {
+        formSplits <- lapply(formSplits, uncoverHiddenSpecials)
                                         # vector to identify what
                                         # special (by name), or give
                                         # "(" for standard terms, or
                                         # give "|" for specials
                                         # without a setReTrm method
-    formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
-    as.character(formSplits[[1]])
+        formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
+        as.character(formSplits[[1]])
                                         # warn about terms without a
                                         # setReTrm method
-    badTrms <- formSplitID == "|"
-    if(any(badTrms)) {
-        stop("can't find setReTrm method(s)\n",
-             "use findReTrmClasses() for available methods")
-        # FIXME: coerce bad terms to default as attempted below
-        warning(paste("can't find setReTrm method(s) for term number(s)",
-                      paste(which(badTrms), collapse = ", "),
-                      "\ntreating those terms as unstructured"))
-        formSplitID[badTrms] <- "("
-        fixBadTrm <- function(formSplit) {
-            as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
-                             collapse = " "))[[2]]
+        badTrms <- formSplitID == "|"
+        if(any(badTrms)) {
+            stop("can't find setReTrm method(s)\n",
+                 "use findReTrmClasses() for available methods")
+            ## FIXME: coerce bad terms to default as attempted below
+            warning(paste("can't find setReTrm method(s) for term number(s)",
+                          paste(which(badTrms), collapse = ", "),
+                          "\ntreating those terms as unstructured"))
+            formSplitID[badTrms] <- "("
+            fixBadTrm <- function(formSplit) {
+                as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
+                                 collapse = " "))[[2]]
+            }
+            formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
         }
-        formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
-    }
 
-    parenTerm <- formSplitID == "("
+        parenTerm <- formSplitID == "("
                                         # capture additional arguments
-    reTrmAddArgs <- lapply(formSplits, "[", -2)[!parenTerm]
+        reTrmAddArgs <- lapply(formSplits, "[", -2)[!parenTerm]
                                         # remove these additional
                                         # arguments
-    formSplits <- lapply(formSplits, "[", 1:2)
+        formSplits <- lapply(formSplits, "[", 1:2)
                                         # standard RE terms
-    formSplitStan <- formSplits[parenTerm]
+        formSplitStan <- formSplits[parenTerm]
                                         # structured RE terms
-    formSplitSpec <- formSplits[!parenTerm]
+        formSplitSpec <- formSplits[!parenTerm]
 
-    ### not needed for glmmTMB
-    ##
-    ## if(length(formSplitSpec) == 0) stop(
-    ##             "no special covariance structures. ",
-    ## "please use lmer or glmer, ",
-    ## "or use findReTrmClasses() for available structures.")
-
+        if (!allowNoSpecials) {
+            if(length(formSplitSpec) == 0) stop(
+                     "no special covariance structures. ",
+                     "please use ",noSpecialsAlt,
+                     " or use findReTrmClasses() for available structures.")
+        }
+        
+        reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
+                           lapply(formSplitSpec, "[[", 2))
+        reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
+                          sapply(lapply(formSplitSpec, "[[", 1), as.character))
+    } else {
+        reTrmFormulas <- reTrmAddArgs <- reTrmClasses <- NULL
+    }
     fixedFormula <- noSpecials(nobars(formula))
-    reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
-                       lapply(formSplitSpec, "[[", 2))
-    reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
-                      sapply(lapply(formSplitSpec, "[[", 1), as.character))
-    
+
+
     return(list(fixedFormula  = fixedFormula,
                 reTrmFormulas = reTrmFormulas,
                 reTrmAddArgs  = reTrmAddArgs,
@@ -164,10 +183,9 @@ uncoverHiddenSpecials <- function(trm) {
     return(trm)
 }
 
-
 ##' @param term language object
 ##' @rdname splitForm
-##' @export
+##' @keywords internal
 noSpecials <- function(term) {
     nospec <- noSpecials_(term)
     if (is(term,"formula") && length(term)==3 && is.symbol(nospec)) {
