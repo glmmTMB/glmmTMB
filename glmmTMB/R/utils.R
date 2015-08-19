@@ -64,7 +64,7 @@ findReTrmClasses <- function() {
 ##' @importFrom lme4 nobars
 ##' @export 
 splitForm <- function(formula,
-                      defaultTerm="unstruc",
+                      defaultTerm="us",
                       allowFixedOnly=TRUE,
                       allowNoSpecials=TRUE) {
 
@@ -72,7 +72,7 @@ splitForm <- function(formula,
     ## (probably package-specific)
     noSpecialsAlt <- "lmer or glmer"
 
-    specials <- c(findReTrmClasses(),addSpecials)
+    specials <- findReTrmClasses()
     ## ignore any specials not in formula
     specialsToKeep <- vapply(specials, grepl,
                              x = safeDeparse(formula),
