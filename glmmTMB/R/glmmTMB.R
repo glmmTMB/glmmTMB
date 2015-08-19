@@ -1,6 +1,3 @@
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
 ##' @title Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
@@ -13,7 +10,7 @@
 ##' \item{fixedfr}{model frame for fixed effects. Reading this in prevents the predictor function from recalculating bases for splines and orthogonal polynomials. Might have to be removed later}
 ##' \item{ranfr}{as fixedfr but for random effects}
 ##' \item{reTrms}{output from mkReTerms from LME4}
-getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -31,8 +28,8 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
         ## re-evaluate model frame to extract predvars component
         ## in *grandparent* environment
         fixedfr <- eval(mf, parent.frame(2))
-        attr(attr(fr,"terms"),"predvars.fixed") <-
-            attr(attr(fixedfr,"terms"),"predvars")
+        attr(attr(fr,"terms"), "predvars.fixed") <-
+            attr(attr(fixedfr,"terms"), "predvars")
 
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix(...)
         X <- model.matrix(fixedform, fr, contrasts)
@@ -44,13 +41,13 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
     if (is.null(findbars(ranform))) {
         ranfr <- NULL
         reTrms <- NULL
-        Z <- matrix(0,ncol=0,nrow=nobs)
+        Z <- matrix(0, ncol=0, nrow=nobs)
     } else {
-        if (!ranOK) stop("no random effects allowed in ",type," term")
+        if (!ranOK) stop("no random effects allowed in ", type, " term")
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
         mf$formula <- ranform
-        ranfr <- eval(mf, parent.frame(2)) 
+        ranfr <- eval(mf, parent.frame(2))
         attr(attr(fr,"terms"), "predvars.random") <-
             attr(terms(ranfr), "predvars")
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
@@ -66,11 +63,11 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
     ## X <- checkScaleX(X, kind=scaleX.chk)
 
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
-    ##  wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
+    ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
     ## FIXME: come back and figure out how we need to store fixedfr and ranfr
 
-    return(namedList(X,Z,fixedfr,ranfr,reTrms))
+    return(namedList(X, Z, fixedfr, ranfr, reTrms))
 }
 ##' .. content for \description{} (no empty lines) ..
 ##'
@@ -78,7 +75,7 @@ getXReTrms <- function(formula,mf,fr,ranOK=TRUE,type="") {
 ##' @title Calculate random effect structure
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
-##' @param reTrms  random-effects terms list
+##' @param reTrms random-effects terms list
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -89,30 +86,28 @@ getReStruc <- function(reTrms) {
     if (is.null(reTrms)) {
         blksize <- nreps <- covCode <- blockNumTheta <- integer(0)
     } else {
-        
         ## Get info on sizes of RE components
         theta <- numeric(length(reTrms$theta))
 
         ## hack names of Ztlist to extract grouping variable of each RE term
-        grpVar <- gsub("^[^|]*\\| ","",names(reTrms$Ztlist)) ## remove 1st term+|
-        getLevs <- function(i) with(reTrms,
-                                    length(levels(flist[[grpVar[i]]])))
-        nreps <- sapply(seq_along(reTrms$cnms),getLevs)
-        blksize <- sapply(reTrms$Ztlist,nrow)/nreps
+        grpVar <- gsub("^[^|]*\\| ", "", names(reTrms$Ztlist)) # remove 1st term+|
+        getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
+        nreps <- sapply(seq_along(reTrms$cnms), getLevs)
+        blksize <- sapply(reTrms$Ztlist,nrow) / nreps
         ## figure out number of parameters from block size + structure type
 
         ## for now *all* RE are diagonal
-        covCode <- rep(0,length(nreps))
+        covCode <- rep(0, length(nreps))
 
-        parFun <- function(struc,blksize) {
+        parFun <- function(struc, blksize) {
             switch(as.character(struc),
-                   "0"=blksize, ## diag
-                   "1"=blksize*(blksize+1)/2, ## us
-                   "2"=blksize+1)  ## cs
+                   "0" = blksize, # diag
+                   "1" = blksize * (blksize+1) / 2, # us
+                   "2" = blksize + 1) # cs
         }
-        blockNumTheta <- mapply(parFun,covCode,blksize)
+        blockNumTheta <- mapply(parFun, covCode, blksize)
     }
-    
+
     return(namedList(blockNumTheta,
                      blockSize=blksize,
                      blockReps=nreps,
@@ -125,39 +120,43 @@ getReStruc <- function(reTrms) {
 ##' @param family \code{\link{family}}
 ##' @param ziformula combined fixed and random effects formula for zero-inflation: the default \code{~0} specifies no zero-inflation
 ##' @param dispformula combined fixed and random effects formula for dispersion: the default \code{~0} specifies no zero-inflation
-##' @param weights 
-##' @param offset 
+##' @param weights
+##' @param offset
+##' @param se whether to return standard errors
+##' @param debug whether to return the preprocessed data and parameter objects, without fitting the model
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
-##' @importFrom TMB MakeADFun
+##' @importFrom TMB MakeADFun sdreport
+##' @importMethodsFrom TMB print.sdreport
 ##' @export
 ##' @examples
-##' data(sleepstudy,package="lme4")
-##' glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
+##' data(sleepstudy, package="lme4")
+##' glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
 glmmTMB <- function (
     formula,
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
-    dispformula= ~1, #FIXME: set appropriate family-specific defaults
+    dispformula= ~1, # FIXME: set appropriate family-specific defaults
     weights,
     offset,
+    se=FALSE,
     debug=FALSE
     )
 {
 
     ## edited copy-paste from glFormula
     ## glFormula <- function(formula, data=NULL, family = gaussian,
-    ##    subset, weights, na.action, offset,
-    ##     contrasts = NULL, mustart, etastart,
-    ##                      control = glmerControl(), ...) {
+    ##                       subset, weights, na.action, offset,
+    ##                       contrasts = NULL, mustart, etastart,
+    ##                       control = glmerControl(), ...) {
 
     ## FIXME: check for offsets in ziformula/dispformula, throw an error
-    ##
-    mf <- mc <- match.call()
+
+    call <- mf <- mc <- match.call()
     ## extract family, call lmer for gaussian
 
-    if (grepl("^quasi",family$family))
+    if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmtmb')
 
     ## ignoreArgs <- c("start","verbose","devFunOnly",
@@ -166,7 +165,7 @@ glmmTMB <- function (
     ## l... <- l...[!names(l...) %in% ignoreArgs]
     ## do.call(checkArgs, c(list("glmer"), l...))
 
-    mc$formula <- formula <- as.formula(formula, env = denv)    ## substitute evaluated version
+    mc$formula <- formula <- as.formula(formula, env = denv) # substitute evaluated version
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -175,16 +174,15 @@ glmmTMB <- function (
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
 
-
     ## want the model frame to contain the union of all variables
     ## used in any of the terms
     ## combine all formulas
 
-    formList <- list(formula[[3]],ziformula,dispformula)
-    formList <- lapply(formList,subbars) # substitute "|" by "+"
-    formList <- gsub("~","\\+",lapply(formList,safeDeparse))  ## character
-    combForm <- reformulate(Reduce(paste,formList), 
-                            response= deparse(formula[[2]]))
+    formList <- list(formula[[3]], ziformula, dispformula)
+    formList <- lapply(formList, subbars) # substitute "|" by "+"
+    formList <- gsub("~", "\\+", lapply(formList,safeDeparse)) # character
+    combForm <- reformulate(Reduce(paste,formList),
+                            response=deparse(formula[[2]]))
     environment(combForm) <- environment(formula)
     ## model.frame.default looks for these objects in the environment
     ## of the *formula* (see 'extras', which is anything passed in ...),
@@ -204,18 +202,18 @@ glmmTMB <- function (
     attr(fr,"offset") <- mf$offset
     n <- nrow(fr)
 
-    fixedList <- getXReTrms(formula,mf,fr)
-    ziList    <- getXReTrms(ziformula,mf,fr)
-    dispList  <- getXReTrms(dispformula,mf,fr,ranOK=FALSE,"dispersion")
+    fixedList <- getXReTrms(formula, mf, fr)
+    ziList    <- getXReTrms(ziformula, mf, fr)
+    dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
 
     ## sanity checks (skipped!)
-    ## wmsgNlev <- checkNlevels(reTrms$ flist, n = n, control, allow.n = TRUE)
-    ## wmsgZdims <- checkZdims(reTrms$Ztlist, n = n, control, allow.n = TRUE)
-    ## wmsgZrank <- checkZrank(reTrms$ Zt, n = n, control, nonSmall = 1e6, allow.n = TRUE)
+    ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
+    ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
+    ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
 
     ## extract family and link information from family object
     link <- family$link
-    family <- family$family   ## overwrites family: original info lost
+    family <- family$family # overwrites family: original info lost
 
     ## extract response variable
     yobs <- fr[,attr(terms(fr),"response")]
@@ -238,70 +236,62 @@ glmmTMB <- function (
     }
 
     data.tmb <- namedList(
-        X=fixedList$X,
-        Z=fixedList$Z,
-        Xzi=ziList$X,
-        Zzi=ziList$Z,
-        Xd=dispList$X,
+        X = fixedList$X,
+        Z = fixedList$Z,
+        Xzi = ziList$X,
+        Zzi = ziList$Z,
+        Xd = dispList$X,
         ## Zdisp=dispList$Z,
         yobs,
         ## offset,
 
         ## information about random effects structure
         terms = getStruct(fixedReStruc),
-        blockReps=fixedReStruc$blockReps,     ## nreps,   ## " " levels " "
-        blockSize=fixedReStruc$blockSize,     ## blksize, ## block size
-        blockNumTheta=fixedReStruc$blockNumTheta, ##  number of variance-covariance params per term
-        blockCode=fixedReStruc$covCode,       ## struc,   ## structure code
+        blockReps = fixedReStruc$blockReps,    ## nreps,   ## " " levels " "
+        blockSize = fixedReStruc$blockSize,    ## blksize, ## block size
+        blockNumTheta = fixedReStruc$blockNumTheta, ##  number of variance-covariance params per term
+        blockCode = fixedReStruc$covCode,      ## struc,   ## structure code
 
         termszi = getStruct(ziReStruc),
-        blockRepszi=ziReStruc$blockReps,     ## nreps,   ## " " levels " "
-        blockSizezi=ziReStruc$blockSize,     ## blksize, ## block size
+        blockRepszi = ziReStruc$blockReps,     ## nreps,   ## " " levels " "
+        blockSizezi = ziReStruc$blockSize,     ## blksize, ## block size
         ## FIXME: change blockNumTheta to numTheta???
-        blockNumThetazi=ziReStruc$blockNumTheta, ##  number of variance-covariance params per term
-        blockCodezi=ziReStruc$covCode,       ## struc,   ## structure code
-
-
+        blockNumThetazi = ziReStruc$blockNumTheta, ## number of variance-covariance params per term
+        blockCodezi = ziReStruc$covCode,       ## struc,   ## structure code
 
         family = .valid_family[family],
         link = .valid_link[link]
         )
     parameters <- with(data.tmb,
       list(
-          beta     = rep(0, ncol(X)) ,
-          b        = rep(0, ncol(Z)) ,
-          betazi   = rep(0, ncol(Xzi)),
-          bzi      = rep(0, ncol(Zzi)),
-          theta    = rep(0, sum(blockNumTheta)),
-          thetazi  = rep(0, sum(blockNumThetazi)),
-          betad    = rep(0, ncol(Xd))
-          )
-                       )
+          beta    = rep(0, ncol(X)),
+          b       = rep(0, ncol(Z)),
+          betazi  = rep(0, ncol(Xzi)),
+          bzi     = rep(0, ncol(Zzi)),
+          theta   = rep(0, sum(blockNumTheta)),
+          thetazi = rep(0, sum(blockNumThetazi)),
+          betad   = rep(0, ncol(Xd))
+          ))
 
     ## short-circuit
     if(debug) return(namedList(data.tmb,parameters))
 
     randomArg <- NULL
-    if (ncol(data.tmb$Z)>0) randomArg <- c(randomArg,"b")
-    if (ncol(data.tmb$Zzi)>0) randomArg <- c(randomArg,"bzi")
-    
+    if (ncol(data.tmb$Z) > 0) randomArg <- c(randomArg,"b")
+    if (ncol(data.tmb$Zzi) > 0) randomArg <- c(randomArg,"bzi")
+
     obj <- MakeADFun(data.tmb,
                      parameters,
                      random = randomArg,
-                     profile = NULL, ## TODO: Optionally "beta"
-                     silent = FALSE, ## TODO: set to TRUE
-                     DLL="glmmTMB")
+                     profile = NULL, # TODO: Optionally "beta"
+                     silent = FALSE, # TODO: set to TRUE
+                     DLL = "glmmTMB")
+    optTime <- system.time(fit <- with(obj, nlminb(start=par,objective=fn,
+                                                   gradient=gr)))
+    sdr <- if (se) sdreport(obj) else NULL
 
-    obj ## For now give the object without optimizing
+    output <- namedList(obj, fit, se=sdr, call, optTime)
+    class(output) <- "glmmTMB"
 
-    optTime <- system.time(fit <- with(obj,nlminb(start=par,objective=fn,
-                                                  gradient=gr)))
-    #sdr <- sdreport(obj)
-	
-#    return(list(optTime, fit, sdr))
-    return(namedList(optTime, fit))
-    ## now structure the output object
-
+    return(output)
 }
-
-
