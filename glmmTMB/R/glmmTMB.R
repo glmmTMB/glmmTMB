@@ -81,16 +81,22 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
+##' data(sleepstudy,package="lme4")
+##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
+##'                     sleepstudy)$reTrms
+##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
+##'                     sleepstudy)$reTrms
+##' getReStruc(rt)                    
 getReStruc <- function(reTrms) {
 
     if (is.null(reTrms)) {
-        blksize <- nreps <- covCode <- blockNumTheta <- integer(0)
+        ReStrucList <- list()
     } else {
         ## Get info on sizes of RE components
-        theta <- numeric(length(reTrms$theta))
 
         ## hack names of Ztlist to extract grouping variable of each RE term
-        grpVar <- gsub("^[^|]*\\| ", "", names(reTrms$Ztlist)) # remove 1st term+|
+        ## remove 1st term+|
+        grpVar <- gsub("^[^|]*\\| ", "", names(reTrms$Ztlist))
         getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
         nreps <- sapply(seq_along(reTrms$cnms), getLevs)
         blksize <- sapply(reTrms$Ztlist,nrow) / nreps
@@ -105,13 +111,17 @@ getReStruc <- function(reTrms) {
                    "1" = blksize * (blksize+1) / 2, # us
                    "2" = blksize + 1) # cs
         }
-        blockNumTheta <- mapply(parFun, covCode, blksize)
+        blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
+
+        ReStrucList <- mapply(list,
+                              blockReps=nreps,
+                              blockSize=blksize,
+                              blockNumTheta=blockNumTheta,
+                              blockCode=covCode,SIMPLIFY=FALSE)
+        names(ReStrucList) <- names(reTrms$Ztlist)
     }
 
-    return(namedList(blockNumTheta,
-                     blockSize=blksize,
-                     blockReps=nreps,
-                     covCode))
+    return(ReStrucList)
 }
 
 ##' @title main TMB function
@@ -131,15 +141,15 @@ getReStruc <- function(reTrms) {
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
-##' glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
+##' glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy, debug=TRUE)
 glmmTMB <- function (
     formula,
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
     dispformula= ~1, # FIXME: set appropriate family-specific defaults
-    weights,
-    offset,
+    weights=NULL,
+    offset=NULL,
     se=FALSE,
     debug=FALSE
     )
@@ -221,20 +231,9 @@ glmmTMB <- function (
     fixedReStruc <- getReStruc(fixedList$reTrms)
     ziReStruc <- getReStruc(ziList$reTrms)
 
-    ## FIXME: Get termwise info directly from formula object !
-    getStruct <- function(ReStruc){
-        fun <- function(i){
-            list(
-                blockReps=ReStruc$blockReps[i],     ## nreps,   ## " " levels " "
-                blockSize=ReStruc$blockSize[i],     ## blksize, ## block size
-                blockNumTheta=ReStruc$blockNumTheta[i], ##  number of variance-covariance params per term
-                blockCode=ReStruc$covCode[i]       ## struc,   ## structure code
-                )
-        }
-        lapply(seq(length=length(ReStruc$blockReps)),
-               fun)
-    }
-
+    if (is.null(offset)) offset <- rep(0,nrow(fr))
+    if (is.null(weights)) weights <- rep(1,nrow(fr))
+    
     data.tmb <- namedList(
         X = fixedList$X,
         Z = fixedList$Z,
@@ -243,33 +242,25 @@ glmmTMB <- function (
         Xd = dispList$X,
         ## Zdisp=dispList$Z,
         yobs,
-        ## offset,
-
+        offset,
+        weights,
         ## information about random effects structure
-        terms = getStruct(fixedReStruc),
-        blockReps = fixedReStruc$blockReps,    ## nreps,   ## " " levels " "
-        blockSize = fixedReStruc$blockSize,    ## blksize, ## block size
-        blockNumTheta = fixedReStruc$blockNumTheta, ##  number of variance-covariance params per term
-        blockCode = fixedReStruc$covCode,      ## struc,   ## structure code
-
-        termszi = getStruct(ziReStruc),
-        blockRepszi = ziReStruc$blockReps,     ## nreps,   ## " " levels " "
-        blockSizezi = ziReStruc$blockSize,     ## blksize, ## block size
-        ## FIXME: change blockNumTheta to numTheta???
-        blockNumThetazi = ziReStruc$blockNumTheta, ## number of variance-covariance params per term
-        blockCodezi = ziReStruc$covCode,       ## struc,   ## structure code
-
+        terms = fixedReStruc,
+        termszi = ziReStruc,
         family = .valid_family[family],
         link = .valid_link[link]
         )
+    getVal <- function(object,component) {
+        vapply(object,function(x) x[[component]],numeric(1))
+    }
     parameters <- with(data.tmb,
       list(
           beta    = rep(0, ncol(X)),
           b       = rep(0, ncol(Z)),
           betazi  = rep(0, ncol(Xzi)),
           bzi     = rep(0, ncol(Zzi)),
-          theta   = rep(0, sum(blockNumTheta)),
-          thetazi = rep(0, sum(blockNumThetazi)),
+          theta   = rep(0, sum(getVal(fixedReStruc,"blockNumTheta"))),
+          thetazi = rep(0, sum(getVal(ziReStruc,"blockNumTheta"))),
           betad   = rep(0, ncol(Xd))
           ))
 
