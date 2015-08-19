@@ -4,6 +4,7 @@ TARBALL=${PACKAGE}_${VERSION}.tar.gz
 ZIPFILE=${PACKAGE}_${VERSION}.zip
 
 all:
+	make enum-update
 	make doc-update
 	make build-package
 	make install
@@ -37,6 +38,7 @@ install:
 ## To enable quick compile, run from R:
 ##    library(TMB); precompile(flags="-O0 -g")
 quick-install:
+	make enum-update
 	cd $(PACKAGE)/src; echo "library(TMB); compile('glmmTMB.cpp','-O0 -g')" | R --slave
 	R CMD INSTALL $(PACKAGE)
 
