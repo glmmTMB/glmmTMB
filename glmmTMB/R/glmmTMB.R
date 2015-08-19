@@ -239,7 +239,9 @@ glmmTMB <- function (
     ziReStruc <- with(ziList,getReStruc(reTrms,ss))
 
     if (is.null(offset)) offset <- rep(0,nrow(fr))
-    if (is.null(weights)) weights <- rep(1,nrow(fr))
+    
+    if (is.null(weights <- fr[["(weights)"]]))
+        weights <- rep(1,nrow(fr))
     
     data.tmb <- namedList(
         X = fixedList$X,
