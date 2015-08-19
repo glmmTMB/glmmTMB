@@ -15,18 +15,22 @@ test_that("Basic Gaussian Sleepdata examples", {
                              sleepstudy), "glmmTMB")
 
     ## *_equivalent(.), a misnomer, means  all.equal(*, check.attributes = FALSE):
-    expect_equivalent(fixef(fm0), 298.508, tolerance = .0001)
-    if(FALSE) ## TODO instead
+    ## but can't use tolerance with *_equivalent (sigh) ...
+    expect_equal(unname(fixef(fm0)), 298.508, tolerance = .0001)
     expect_equal(fixef(fm0), c("(Intercept)" = 298.508), tolerance = .0001)
 
-    expect_equivalent(fixef(fm1), c(251.405, 10.4673),   tolerance = .0001)
-    if(FALSE) ## TODO instead
+    expect_equal(unname(fixef(fm1)), c(251.405, 10.4673),   tolerance = .0001)
     expect_equal(fixef(fm1), c("(Intercept)" = 251.405, Days = 10.4673),
                  tolerance = .0001)
 })
 
 test_that("Update Gaussian", {
-    expect_equal(fm1, update(fm0, . ~ . + Days))
+  ## call doesn't match (formula gets mangled?)
+  ## timing different
+  fm1u <- update(fm0, . ~ . + Days)
+  fm1u$call <- fm1$call
+  fm1u$optTime <- fm1$optTime
+    expect_equal(fm1,fm1u )
 })
 
 test_that("Sleepdata Variance components", {
