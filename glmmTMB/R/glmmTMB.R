@@ -1,27 +1,3 @@
-## Copy-paste from cpp-source:
-## FIXME: to be read from C++ internals
-.valid_family <- c(gaussian_family           = 0,
-                   binomial_family           = 100,
-                   betabinomial_family       = 101,
-                   beta_family               = 200,
-                   gamma_family              = 300,
-                   poisson_family            = 400,
-                   truncated_poisson_family  = 401,
-                   nbinom1_family            = 500,
-                   nbinom2_family            = 501,
-                   truncated_nbinom1_family  = 502,
-                   truncated_nbinom2_family  = 503,
-                   t_family                  = 600,
-                   tweedie_family            = 700 )
-.valid_link <- c(log_link                 = 0,
-                 logit_link               = 1,
-                 probit_link              = 2,
-                 inverse_link             = 3,
-                 cloglog_link             = 4,
-                 identity_link            = 5 )
-names(.valid_family) <- sub("_family","",names(.valid_family))
-names(.valid_link) <- sub("_link","",names(.valid_link))
-
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
