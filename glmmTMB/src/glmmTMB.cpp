@@ -120,8 +120,27 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
   }
+  else if (term.blockCode == cs_covstruct){
+    // case: cs_covstruct
+    int n = term.blockSize;
+    vector<Type> logsd = theta.head(n);
+    Type corr_transf = theta(n);
+    vector<Type> sd = exp(logsd);
+    Type a = Type(1) / (Type(n) - Type(1));
+    Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
+    matrix<Type> corr(n,n);
+    for(int i=0; i<n; i++)
+      for(int j=0; j<n; j++)
+	corr(i,j) = (i==j ? Type(1) : rho);
+    density::MVNORM_t<Type> nldens(corr);
+    density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+    }
+    term.corr = nldens.cov(); // For report
+    term.sd = sd;             // For report
+  }
   else error("covStruct not implemented!");
-
   return ans;
 }
 
