@@ -30,63 +30,182 @@ reOnly <- function(f,response=FALSE) {
 ##' deparse(.) returning \bold{one} string
 ##' @note Protects against the possibility that results from deparse() will be
 ##'       split after 'width.cutoff' (by default 60, maximally 500)
-safeDeparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)
+safeDeparse <- function(x, collapse=" ") {
+    paste(deparse(x, 500L), collapse=collapse)
+}
 
+findReTrmClasses <- function() {
+    c("diag","cs","us")
+}
 
 ##' .. content for \description{} (no empty lines) ..
 ##'
-##' Stolen from flexLambda branch 
+##' Stolen from Steve Walker, ultimately (?) from Fabian Scheipl's flexLambda branch
+##' <https://github.com/stevencarlislewalker/lme4ord/blob/master/R/formulaParsing.R>
 ##' @title split formula containing 'specials'
 ##' @param formula 
 ##' @param specials 
 ##' @return something
 ##' @examples
 ##' glmmTMB:::splitForm(~x+y+diag(f|g))
-##' @author Fabian Scheipl?
+##' glmmTMB:::splitForm(~x+y+(f|g))
+##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g))
+##' glmmTMB:::splitForm(~x+y+(f|g)+cs(1|g)+foo(a|b,stuff),
+##'                     addSpecials=c("cs","foo"))
+##' @author Fabian Scheipl, Steve Walker
 ##' @importFrom lme4 nobars
 ##' @keywords internal
-splitForm <- function(formula, specials = c("diag", "cs", "ar1d")) {
+splitForm <- function(formula,defaultTerm="unstruc",
+                      addSpecials=NULL) {
+    specials <- c(findReTrmClasses(),addSpecials)
+    ## ignore any specials not in formula
+    specialsToKeep <- vapply(specials, grepl,
+                             x = safeDeparse(formula),
+                             logical(1))
+    specials <- specials[specialsToKeep]
 
     ## Recursive function: (f)ind (b)ars (a)nd (s)pecials
     ## cf. fb function in findbars (i.e. this is a little DRY)
-    fbas <- function(term) {
+    fbas <- function(term,debug=FALSE) {
         if (is.name(term) || !is.language(term)) return(NULL)
-        for (sp in specials) if (term[[1]] == as.name(sp)) return(term)
-        if (term[[1]] == as.name("(")) return(term)
+        for (sp in specials) if (term[[1]] == as.name(sp)) { ## found special
+            if (debug) cat("special: ",deparse(term),"\n")
+            return(term)
+        }
+        if (term[[1]] == as.name("(")) {  ## found (...)
+            if (debug) cat("paren term:",deparse(term),"\n")
+            return(term)
+        }
         stopifnot(is.call(term))
-        if (term[[1]] == as.name('|')) return(term)
-        if (length(term) == 2) return(fbas(term[[2]]))
-        c(fbas(term[[2]]), fbas(term[[3]]))
+        if (term[[1]] == as.name('|')) {  ## found x | g
+            if (debug) cat("bar term:",deparse(term),"\n")
+            return(term)
+        }
+        if (length(term) == 2) {
+            ## unary operator, decompose argument
+            if (debug) cat("unary operator:",deparse(term[[2]]),"\n")
+            return(fbas(term[[2]],debug=debug))
+        }
+        ## binary operator, decompose both arguments
+        if (debug) cat("binary operator:",deparse(term[[2]]),",",
+                       deparse(term[[3]]),"\n")
+        c(fbas(term[[2]],debug=debug), fbas(term[[3]],debug=debug))
     }
-    ## we don't need this
-    ## formula <- expandDoubleVerts(formula)
+
+    ## not used in glmmTMB
+    ### formula <- expandDoubleVerts(formula)
                                         # split formula into separate
                                         # random effects terms
                                         # (including special terms)
-    formSplits <- fbas(formula)
+    formSplits <- fbas(formula,debug=TRUE)
+                                        # check for hidden specials
+                                        # (i.e. specials hidden behind
+                                        # parentheses)
+    formSplits <- lapply(formSplits, uncoverHiddenSpecials)
                                         # vector to identify what
                                         # special (by name), or give
-                                        # "(" for standard terms
+                                        # "(" for standard terms, or
+                                        # give "|" for specials
+                                        # without a setReTrm method
     formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
-                                        # standard RE terms
-    formSplitStan <- formSplits[formSplitID == "("]
-                                        # special RE terms
-    formSplitSpec <- formSplits[!(formSplitID == "(")]
-
-    if(length(formSplitSpec) == 0) stop(
-             "no special covariance structures. ",
-             "please use lmer, not flexLmer")
-
-                                        # construct the formula for
-                                        # the specials only
-    reGenerators <- as.formula(paste("~ ", paste(formSplitSpec, collapse = " + ")))   
-
-
-                                        # construct the standard
-                                        # 'lmer'-style formula
-                                        # (without the specials)
-    if(length(formSplitStan) == 0) {
-        lmerformula <- nobars(formula)
+    as.character(formSplits[[1]])
+                                        # warn about terms without a
+                                        # setReTrm method
+    badTrms <- formSplitID == "|"
+    if(any(badTrms)) {
+        stop("can't find setReTrm method(s)\n",
+             "use findReTrmClasses() for available methods")
+        # FIXME: coerce bad terms to default as attempted below
+        warning(paste("can't find setReTrm method(s) for term number(s)",
+                      paste(which(badTrms), collapse = ", "),
+                      "\ntreating those terms as unstructured"))
+        formSplitID[badTrms] <- "("
+        fixBadTrm <- function(formSplit) {
+            as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
+                             collapse = " "))[[2]]
+        }
+        formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
     }
-    return(lmerformula)
+
+    parenTerm <- formSplitID == "("
+                                        # capture additional arguments
+    reTrmAddArgs <- lapply(formSplits, "[", -2)[!parenTerm]
+                                        # remove these additional
+                                        # arguments
+    formSplits <- lapply(formSplits, "[", 1:2)
+                                        # standard RE terms
+    formSplitStan <- formSplits[parenTerm]
+                                        # structured RE terms
+    formSplitSpec <- formSplits[!parenTerm]
+
+    ### not needed for glmmTMB
+    ##
+    ## if(length(formSplitSpec) == 0) stop(
+    ##             "no special covariance structures. ",
+    ## "please use lmer or glmer, ",
+    ## "or use findReTrmClasses() for available structures.")
+
+    fixedFormula <- noSpecials(nobars(formula))
+    reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
+                       lapply(formSplitSpec, "[[", 2))
+    reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
+                      sapply(lapply(formSplitSpec, "[[", 1), as.character))
+    
+    return(list(fixedFormula  = fixedFormula,
+                reTrmFormulas = reTrmFormulas,
+                reTrmAddArgs  = reTrmAddArgs,
+                reTrmClasses  = reTrmClasses))
+}
+
+uncoverHiddenSpecials <- function(trm) {
+    if(trm[[1]] == "(") {
+        if(anySpecial(trm[[2]][[1]])) trm <- trm[[2]]
+    }
+    return(trm)
+}
+
+
+##' @param term language object
+##' @rdname splitForm
+##' @export
+noSpecials <- function(term) {
+    nospec <- noSpecials_(term)
+    if (is(term,"formula") && length(term)==3 && is.symbol(nospec)) {
+        ## called with two-sided RE-only formula:
+        ##    construct response~1 formula
+        nospec <- reformulate("1", response = deparse(nospec))
+    }
+    return(nospec)
+}
+
+noSpecials_ <- function(term) {
+    if (!anySpecial(term)) return(term)
+    if (isSpecial(term)) return(NULL)
+    nb2 <- noSpecials(term[[2]])
+    nb3 <- noSpecials(term[[3]])
+    if (is.null(nb2)) return(nb3)
+    if (is.null(nb3)) return(nb2)
+    term[[2]] <- nb2
+    term[[3]] <- nb3
+    term
+}
+
+isSpecial <- function(term) {
+    if(is.call(term)) {
+        for(cls in findReTrmClasses()) {
+            if(term[[1]] == cls) return(TRUE)
+        }
+    }
+    FALSE
+}
+
+isAnyArgSpecial <- function(term) {
+    for(i in seq_along(term)) {
+        if(isSpecial(term[[i]])) return(TRUE)
+    }
+    FALSE
+}
+
+anySpecial <- function(term) {
+    any(findReTrmClasses() %in% all.names(term))
 }
