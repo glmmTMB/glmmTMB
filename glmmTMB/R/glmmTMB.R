@@ -7,7 +7,9 @@
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{fixedfr}{model frame for fixed effects. Reading this in prevents the predictor function from recalculating bases for splines and orthogonal polynomials. Might have to be removed later}
+##' \item{fixedfr}{model frame for fixed effects. Reading this in prevents the
+##'     predictor function from recalculating bases for splines and orthogonal
+##'     polynomials. Might have to be removed later}
 ##' \item{ranfr}{as fixedfr but for random effects}
 ##' \item{reTrms}{output from mkReTerms from LME4}
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
@@ -31,7 +33,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         attr(attr(fr,"terms"), "predvars.fixed") <-
             attr(attr(fixedfr,"terms"), "predvars")
 
-        ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix(...)
+        ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(fixedform, fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
     }
@@ -73,6 +75,19 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     return(namedList(X, Z, fixedfr, ranfr, reTrms, ss))
 }
+##' Extract grouping variable from a random effect term.
+##' @title Get Grouping Variable
+##' @param x string containing RE term with grouping variable separated by a
+##'     vertical bar.
+##' @return Same string as \code{x} but with the first term and vertical bar
+##'     removed.
+##' @examples
+##' getGrpVar("1 | Subject")
+getGrpVar <- function(x)
+{
+  ## Strip everything up to and including the vertical bar and space
+  gsub(".*\\| ", "", x)
+}
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
@@ -90,7 +105,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 ##'                     sleepstudy)$reTrms
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
-##' getReStruc(rt)                    
+##' getReStruc(rt)
 getReStruc <- function(reTrms,ss) {
 
     if (is.null(reTrms)) {
@@ -100,7 +115,7 @@ getReStruc <- function(reTrms,ss) {
 
         ## hack names of Ztlist to extract grouping variable of each RE term
         ## remove 1st term+|
-        grpVar <- gsub("^[^|]*\\| ", "", names(reTrms$Ztlist))
+        grpVar <- getGrpVar(names(reTrms$Ztlist))
         getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
         nreps <- sapply(seq_along(reTrms$cnms), getLevs)
         blksize <- sapply(reTrms$Ztlist,nrow) / nreps
@@ -132,15 +147,19 @@ usesDispersion <- function(x) {
 }
 
 ##' @title main TMB function
-##' @param formula combined fixed and random effects formula, following lme4 syntac
+##' @param formula combined fixed and random effects formula, following lme4
+##'     syntax
 ##' @param data data frame
 ##' @param family \code{\link{family}}
-##' @param ziformula combined fixed and random effects formula for zero-inflation: the default \code{~0} specifies no zero-inflation
-##' @param dispformula combined fixed and random effects formula for dispersion: the default \code{~0} specifies no zero-inflation
+##' @param ziformula combined fixed and random effects formula for
+##'     zero-inflation: the default \code{~0} specifies no zero-inflation
+##' @param dispformula combined fixed and random effects formula for dispersion:
+##'     the default \code{~0} specifies no zero-inflation
 ##' @param weights
 ##' @param offset
 ##' @param se whether to return standard errors
-##' @param debug whether to return the preprocessed data and parameter objects, without fitting the model
+##' @param debug whether to return the preprocessed data and parameter objects,
+##'     without fitting the model
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
@@ -156,7 +175,7 @@ glmmTMB <- function (
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
-    dispformula= NULL, 
+    dispformula= NULL,
     weights=NULL,
     offset=NULL,
     se=FALSE,
@@ -176,25 +195,26 @@ glmmTMB <- function (
     ## extract family, call lmer for gaussian
 
     ## FIXME: jump through the usual hoops to allow
-    ## character, function, family-object 
+    ## character, function, family-object
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmtmb')
 
     ## extract family and link information from family object
     link <- family$link
     family <- family$family # overwrites family: original info lost
-    
+
     if (is.null(dispformula)) {
       dispformula <- if (usesDispersion(family)) ~1 else ~0
     }
-    
+
     ## ignoreArgs <- c("start","verbose","devFunOnly",
     ##   "optimizer", "control", "nAGQ")
     ## l... <- list(...)
     ## l... <- l...[!names(l...) %in% ignoreArgs]
     ## do.call(checkArgs, c(list("glmer"), l...))
 
-    mc$formula <- formula <- as.formula(formula, env = denv) # substitute evaluated version
+    ## Substitute evaluated version
+    mc$formula <- formula <- as.formula(formula, env = denv)
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -203,7 +223,6 @@ glmmTMB <- function (
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
 
-   
     ## want the model frame to contain the union of all variables
     ## used in any of the terms
     ## combine all formulas
@@ -234,7 +253,6 @@ glmmTMB <- function (
     attr(fr,"offset") <- mf$offset
     n <- nrow(fr)
 
-    
     fixedList <- getXReTrms(formula, mf, fr)
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
@@ -242,21 +260,23 @@ glmmTMB <- function (
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
-    ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
+    ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6,
+    ##     allow.n=TRUE)
 
-    
-    
+
+
     ## extract response variable
     yobs <- fr[,attr(terms(fr),"response")]
 
     fixedReStruc <- with(fixedList,getReStruc(reTrms,ss))
     ziReStruc <- with(ziList,getReStruc(reTrms,ss))
+    grpVar <- with(fixedList,getGrpVar(names(reTrms$Ztlist)))
 
     if (is.null(offset)) offset <- rep(0,nrow(fr))
-    
+
     if (is.null(weights <- fr[["(weights)"]]))
         weights <- rep(1,nrow(fr))
-    
+
     data.tmb <- namedList(
         X = fixedList$X,
         Z = fixedList$Z,
@@ -304,7 +324,7 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    output <- namedList(obj, fit, sdr, call, optTime)
+    output <- namedList(obj, fit, sdr, call, grpVar, optTime)
     class(output) <- "glmmTMB"
 
     return(output)
