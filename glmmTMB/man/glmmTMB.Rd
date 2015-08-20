@@ -5,7 +5,7 @@
 \title{main TMB function}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = ~1, weights = NULL, offset = NULL, se = FALSE,
+  dispformula = NULL, weights = NULL, offset = NULL, se = FALSE,
   debug = FALSE)
 }
 \arguments{
@@ -32,8 +32,8 @@ main TMB function
 }
 \examples{
 data(sleepstudy, package="lme4")
-glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy, debug=TRUE)
-glmmTMB(Reaction ~ Days + us(1|Subject), sleepstudy, debug=TRUE)
-glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy, debug=TRUE)
+glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
+glmmTMB(Reaction ~ Days + us(1|Subject), sleepstudy)
+glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy)
 }
 
