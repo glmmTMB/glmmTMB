@@ -131,6 +131,11 @@ usesDispersion <- function(x) {
   !x %in% c("binomial","poisson","truncated_poisson")
 }
 
+##' select only desired pieces from results of getXReTrms
+stripReTrms <- function(xrt,whichel=c("cnms","flist")) {
+  xrt$reTrms[whichel]
+}
+
 ##' @title main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4 syntac
 ##' @param data data frame
@@ -261,7 +266,7 @@ glmmTMB <- function (
     ## FIXME: deal with offset in formula
     if (grepl("offset",safeDeparse(formula)))
         stop("offsets within formulas not implemented")
-    if (is.null(offset)) offset <- rep(0,nobs))
+    if (is.null(offset)) offset <- rep(0,nobs)
     
     if (is.null(weights <- fr[["(weights)"]]))
         weights <- rep(1,nobs)
@@ -314,7 +319,8 @@ glmmTMB <- function (
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- namedList(nobs,respCol,
-         restruc=namedList(condReStruc,ziReStruc),
+         reTrms=lapply(stripReTrms,namedList(condList,ziList,dispList)),
+         reStruc=namedList(condReStruc,ziReStruc),
          allForm=namedList(combForm,formula,
                            ziformula,dispformula))
     ## FIXME: are we including obj and frame or not?  
