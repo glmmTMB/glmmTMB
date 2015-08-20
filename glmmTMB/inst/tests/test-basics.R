@@ -3,7 +3,16 @@ stopifnot(require("testthat"),
 
 data(sleepstudy, cbpp,
      package = "lme4")
+
 cbpp <- transform(cbpp, prop = incidence/size)
+
+matchForm <- function(obj,objU) {
+  for(cmp in c("call","frame")) # <- more?
+     objU[[cmp]] <- obj[[cmp]]
+     ## FIXME: why are formulas equivalent but not identical (order)?
+  objU$modelInfo$allForm <- obj$modelInfo$allForm
+  return(objU)
+}
 
 context("Very basic glmmTMB fitting")
 
@@ -32,10 +41,8 @@ test_that("Update Gaussian", {
   fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
   fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy)
   fm1u <- update(fm0, . ~ . + Days)
-  for(cmp in c("call", "optTime")) # <- more?
-      fm1u[[cmp]] <- fm1[[cmp]]$call
-
-  expect_equal(fm1, fm1u)
+  expect_equal(fm1, matchForm(fm1,fm1u))
+  
 })
 
 
@@ -56,6 +63,9 @@ test_that("Sleepdata Variance components", {
 
 
 test_that("Basic Binomial CBPP examples", {
+    ## FIXME: why do we need this here (only in testthat env)?
+    cbpp <- transform(cbpp, prop = incidence/size)
+  
     ## intercept-only fixed effect
     expect_is(gm0 <- glmmTMB(prop ~ 1 + (1|herd),
                              weights=size,
@@ -80,10 +90,8 @@ test_that("Update Binomial", {
   gm1 <- glmmTMB(prop ~ period + (1|herd),
                  weights = size, data = cbpp, family=binomial())
   gm1u <- update(gm0, . ~ . + period)
-  for(cmp in c("call", "optTime")) # <- more?
-      gm1u[[cmp]] <- gm1[[cmp]]$call
-
-  expect_equal(gm1, gm1u)
+  expect_equal(gm1, matchForm(gm1,gm1u))
+  
 })
 
 

@@ -4,7 +4,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        yobs, offset, weights,
                        family, link) {
   
-  condList <- getXReTrms(formula, mf, fr)
+  condList <- eval.parent(getXReTrms(formula, mf, fr))
   ziList    <- getXReTrms(ziformula, mf, fr)
   dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
   
@@ -88,7 +88,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         mf$formula <- fixedform
         ## re-evaluate model frame to extract predvars component
         ## in *grandparent* environment
-        fixedfr <- eval(mf, parent.frame(2))
+        fixedfr <- eval.parent(mf)
         attr(attr(fr,"terms"), "predvars.fixed") <-
             attr(attr(fixedfr,"terms"), "predvars")
 
@@ -335,10 +335,10 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,respCol]
 
-    TMBStruc <- mkTMBStruc(formula, ziformula, dispformula,
+    TMBStruc <- eval.parent(mkTMBStruc(formula, ziformula, dispformula,
                            mf, fr,
                            yobs, offset, weights,
-                           family, link)
+                           family, link))
 
     ## short-circuit
     if(debug) return(TMBStruc)
