@@ -14,7 +14,7 @@
   binomial = 100,
   betabinomial =101,
   beta =200,
-  gamma =300,
+  Gamma =300,
   poisson =400,
   truncated_poisson =401,
   nbinom1 =500,
