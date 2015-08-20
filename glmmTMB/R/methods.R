@@ -131,3 +131,23 @@ getME <- function(object,
                       name, class(object))))
 }## {getME}
 
+##' Extract the log likelihood of a glmmTMB model
+##' 
+##' @return object of class \code{logLik} with attributes
+##' \item{val}{log likelihood}
+##' \item{nobs,nall}{number of non NA observations initially supplied to TMB}
+##' \item{df}{number of parameters}
+logLik.glmmTMB<-function(object){
+  val <- object$fit$objective
+  nobs <- sum(!is.na(object$obj$env$data$yobs))
+  structure(val, nobs = nobs, nall = nobs, df = npar.glmmTMB(object),
+            class = "logLik")
+}
+
+##' Retrieve number of parameters
+##' 
+##' Also counts dispersion parameter and thetas
+npar.glmmTMB<-function(object){
+  length(object$fit$par)
+}
+
