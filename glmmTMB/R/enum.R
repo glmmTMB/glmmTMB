@@ -1,5 +1,4 @@
 ## Auto generated - do not edit by hand
-
 .valid_link <- c(
   log                 = 0,
   logit               = 1,
@@ -8,7 +7,6 @@
   cloglog             = 4,
   identity            = 5
 )
-
 .valid_family <- c(
   gaussian = 0,
   binomial = 100,
@@ -24,7 +22,6 @@
   t =600,
   tweedie = 700
 )
-
 .valid_covstruct <- c(
   diag = 0,
   us   = 1,

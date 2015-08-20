@@ -279,7 +279,7 @@ glmmTMB <- function (
 
     condReStruc <- with(condList,getReStruc(reTrms,ss))
     ziReStruc <- with(ziList,getReStruc(reTrms,ss))
-    grpVar <- with(fixedList,getGrpVar(names(reTrms$Ztlist)))
+    grpVar <- with(condList,getGrpVar(names(reTrms$Ztlist)))
 
     ## FIXME: deal with offset in formula
     if (grepl("offset",safeDeparse(formula)))
@@ -337,7 +337,7 @@ glmmTMB <- function (
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- namedList(nobs,respCol,
-         reTrms=lapply(stripReTrms,namedList(condList,ziList,dispList)),
+         reTrms=lapply(namedList(condList,ziList,dispList),stripReTrms),
          reStruc=namedList(condReStruc,ziReStruc),
          allForm=namedList(combForm,formula,
                            ziformula,dispformula))
