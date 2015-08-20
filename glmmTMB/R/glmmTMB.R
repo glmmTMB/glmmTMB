@@ -348,7 +348,7 @@ glmmTMB <- function (
                      random = randomArg,
                      profile = NULL, # TODO: Optionally "beta"
                      silent = !verbose,
-                     DLL = "glmmTMB")
+                     DLL = "glmmTMB"))
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par,objective=fn,
                                                    gradient=gr)))
