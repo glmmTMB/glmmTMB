@@ -247,19 +247,24 @@ glmmTMB <- function (
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
     ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
-
     
+    ## store info on location of response variable
+    respCol <- attr(terms(fr),"response")
+    names(respCol) <- names(fr)[respCol]
     
     ## extract response variable
-    yobs <- fr[,attr(terms(fr),"response")]
+    yobs <- fr[,respCol]
 
     condReStruc <- with(condList,getReStruc(reTrms,ss))
     ziReStruc <- with(ziList,getReStruc(reTrms,ss))
 
-    if (is.null(offset)) offset <- rep(0,nrow(fr))
+    ## FIXME: deal with offset in formula
+    if (grepl("offset",safeDeparse(formula)))
+        stop("offsets within formulas not implemented")
+    if (is.null(offset)) offset <- rep(0,nobs))
     
     if (is.null(weights <- fr[["(weights)"]]))
-        weights <- rep(1,nrow(fr))
+        weights <- rep(1,nobs)
     
     data.tmb <- namedList(
         X = condList$X,
@@ -308,15 +313,17 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    modelInfo <- namedList(
-         allForm=namedList(combForm,formula,ziformula,dispformula))
+    modelInfo <- namedList(nobs,respCol,
+         restruc=namedList(condReStruc,ziReStruc),
+         allForm=namedList(combForm,formula,
+                           ziformula,dispformula))
     ## FIXME: are we including obj and frame or not?  
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    output <- namedList(obj, fit, sdr, call, optTime, frame=fr)
+    output <- namedList(obj, fit, sdr, call, frame=fr)
     class(output) <- "glmmTMB"
 
     return(output)

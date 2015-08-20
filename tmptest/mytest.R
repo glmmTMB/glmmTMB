@@ -30,14 +30,25 @@ predict.glmmTMB <- function(object,newdata=NULL,...) {
   mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
-  m <- match(c("data", "subset", "weights", "na.action", "offset"),
+  ## do we want to re-do this part???
+  m <- match(c("subset", "weights", "na.action", "offset"),
              names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
+  mf$data <- newdata
   mf[[1]] <- as.name("model.frame")
 
   mf$formula <- object$modelInfo$allForm$combForm
-  fr <- eval(mf, parent.frame())
+  newFr <- eval(mf, parent.frame())
+  respCol <- match(respNm <- names(object$modelInfo$respCol),names(newFr))
+  ## create *or* overwrite response column for prediction data with NA
+  newFr$respNm <- NA
   
-  ## replace append to existing model frame
+  ## FIXME: not yet handling population-level predictions (re.form
+  ##  or new levels/allow.new.levels)
+  
+  ## append to existing model frame
+  augFr <- rbind(object$fr,newFr)
+  
+  ## now re-do 
 }
