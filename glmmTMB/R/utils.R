@@ -112,7 +112,7 @@ splitForm <- function(formula,
                                         # split formula into separate
                                         # random effects terms
                                         # (including special terms)
-    formSplits <- fbas(formula,debug=TRUE)
+    formSplits <- fbas(formula,debug=FALSE)
                                         # check for hidden specials
                                         # (i.e. specials hidden behind
                                         # parentheses)

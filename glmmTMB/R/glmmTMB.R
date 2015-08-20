@@ -1,6 +1,6 @@
 ##' extract info from formulas, reTrms, etc., format for TMB
 mkTMBStruc <- function(formula,ziformula,dispformula,
-                       mf,fr,reTrms,
+                       mf,fr,
                        yobs,offset,weights,
                        family,link) {
   
@@ -13,13 +13,14 @@ mkTMBStruc <- function(formula,ziformula,dispformula,
   
   grpVar <- with(condList,getGrpVar(names(reTrms$Ztlist)))
   
+  nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
   if (grepl("offset",safeDeparse(formula)))
     stop("offsets within formulas not implemented")
-  if (is.null(offset)) offset <- rep(0,nobs)
+  if (is.null(offset)) offset <- rep(0,nObs)
   
   if (is.null(weights <- fr[["(weights)"]]))
-    weights <- rep(1,nobs)
+    weights <- rep(1,nObs)
   
   data.tmb <- namedList(
     X = condList$X,
@@ -54,7 +55,8 @@ mkTMBStruc <- function(formula,ziformula,dispformula,
   if (ncol(data.tmb$Z) > 0) randomArg <- c(randomArg,"b")
   if (ncol(data.tmb$Zzi) > 0) randomArg <- c(randomArg,"bzi")
   
-  return(namedList(data.tmb,parameters,randomArg))
+  return(namedList(data.tmb,parameters,randomArg,grpVar,
+                   condList,ziList,dispList,condReStruc,ziReStruc))
   
 }
 
@@ -78,7 +80,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     fixedform <- formula
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
-    nobs <- nrow(fr)
+    nObs <- nrow(fr)
     ## check for empty fixed form
 
     if (identical(RHSForm(fixedform),~0) ||
@@ -103,7 +105,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     if (is.null(findbars(ranform))) {
         ranfr <- NULL
         reTrms <- NULL
-        Z <- matrix(0, ncol=0, nrow=nobs)
+        Z <- matrix(0, ncol=0, nrow=nObs)
         ss <- integer(0)
     } else {
         if (!ranOK) stop("no random effects allowed in ", type, " term")
@@ -320,7 +322,7 @@ glmmTMB <- function (
     ## store full, original formula & offset
     attr(fr,"formula") <- combForm
     attr(fr,"offset") <- mf$offset
-    nobs <- nrow(fr)
+    nObs <- nrow(fr)
 
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
@@ -335,7 +337,7 @@ glmmTMB <- function (
     yobs <- fr[,respCol]
 
     TMBStruc <- mkTMBStruc(formula,ziformula,dispformula,
-               mf,fr,reTrms,
+               mf,fr,
                yobs,offset,weights,
                family,link)
 
@@ -354,11 +356,12 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    modelInfo <- namedList(nobs,respCol,grpVar,
+    modelInfo <- with(TMBStruc,
+        namedList(nObs,respCol,grpVar,family,link,
          reTrms=lapply(namedList(condList,ziList,dispList),stripReTrms),
          reStruc=namedList(condReStruc,ziReStruc),
          allForm=namedList(combForm,formula,
-                           ziformula,dispformula))
+                           ziformula,dispformula)))
     ## FIXME: are we including obj and frame or not?  
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
