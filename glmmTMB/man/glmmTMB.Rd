@@ -6,18 +6,21 @@
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
   dispformula = NULL, weights = NULL, offset = NULL, se = FALSE,
-  debug = FALSE)
+  verbose = FALSE, debug = FALSE)
 }
 \arguments{
-\item{formula}{combined fixed and random effects formula, following lme4 syntac}
+\item{formula}{combined fixed and random effects formula, following lme4
+syntax}
 
 \item{data}{data frame}
 
 \item{family}{\code{\link{family}}}
 
-\item{ziformula}{combined fixed and random effects formula for zero-inflation: the default \code{~0} specifies no zero-inflation}
+\item{ziformula}{combined fixed and random effects formula for
+zero-inflation: the default \code{~0} specifies no zero-inflation}
 
-\item{dispformula}{combined fixed and random effects formula for dispersion: the default \code{~0} specifies no zero-inflation}
+\item{dispformula}{combined fixed and random effects formula for dispersion:
+the default \code{~0} specifies no zero-inflation}
 
 \item{weights}{}
 
@@ -25,7 +28,10 @@ glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
 
 \item{se}{whether to return standard errors}
 
-\item{debug}{whether to return the preprocessed data and parameter objects, without fitting the model}
+\item{verbose}{}
+
+\item{debug}{whether to return the preprocessed data and parameter objects,
+without fitting the model}
 }
 \description{
 main TMB function

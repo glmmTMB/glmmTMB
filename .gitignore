@@ -1,3 +1,5 @@
 .Rproj.user
 .Rhistory
 .RData
+glmmTMB.o
+glmmTMB.so

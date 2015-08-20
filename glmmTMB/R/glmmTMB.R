@@ -1,21 +1,21 @@
 ##' extract info from formulas, reTrms, etc., format for TMB
-mkTMBStruc <- function(formula,ziformula,dispformula,
-                       mf,fr,
-                       yobs,offset,weights,
-                       family,link) {
+mkTMBStruc <- function(formula, ziformula, dispformula,
+                       mf, fr,
+                       yobs, offset, weights,
+                       family, link) {
   
   condList <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
   dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
   
-  condReStruc <- with(condList,getReStruc(reTrms,ss))
-  ziReStruc <- with(ziList,getReStruc(reTrms,ss))
+  condReStruc <- with(condList, getReStruc(reTrms, ss))
+  ziReStruc <- with(ziList, getReStruc(reTrms, ss))
   
-  grpVar <- with(condList,getGrpVar(names(reTrms$Ztlist)))
+  grpVar <- with(condList, getGrpVar(names(reTrms$Ztlist)))
   
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
-  if (grepl("offset",safeDeparse(formula)))
+  if (grepl("offset", safeDeparse(formula)))
     stop("offsets within formulas not implemented")
   if (is.null(offset)) offset <- rep(0,nObs)
   
@@ -38,9 +38,9 @@ mkTMBStruc <- function(formula,ziformula,dispformula,
     family = .valid_family[family],
     link = .valid_link[link]
   )
-  getVal <- function(object,component) {
-    vapply(object,function(x) x[[component]],numeric(1))
-  }
+  getVal <- function(obj, component)
+    vapply(obj, function(x) x[[component]], numeric(1))
+
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(0, ncol(X)),
@@ -48,16 +48,13 @@ mkTMBStruc <- function(formula,ziformula,dispformula,
                        betazi  = rep(0, ncol(Xzi)),
                        bzi     = rep(0, ncol(Zzi)),
                        theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
-                       thetazi = rep(0, sum(getVal(ziReStruc,"blockNumTheta"))),
+                       thetazi = rep(0, sum(getVal(ziReStruc,  "blockNumTheta"))),
                        betad   = rep(0, ncol(Xd))
                      ))
-  randomArg <- NULL
-  if (ncol(data.tmb$Z) > 0) randomArg <- c(randomArg,"b")
-  if (ncol(data.tmb$Zzi) > 0) randomArg <- c(randomArg,"bzi")
-  
-  return(namedList(data.tmb,parameters,randomArg,grpVar,
-                   condList,ziList,dispList,condReStruc,ziReStruc))
-  
+  randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
+                 if(ncol(data.tmb$Zzi) > 0) "bzi")
+  namedList(data.tmb, parameters, randomArg, grpVar,
+            condList, ziList, dispList, condReStruc, ziReStruc)
 }
 
 ##' @title Create X and random effect terms from formula
@@ -135,7 +132,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     ## FIXME: come back and figure out how we need to store fixedfr and ranfr
 
-    return(namedList(X, Z, fixedfr, ranfr, reTrms, ss))
+    namedList(X, Z, fixedfr, ranfr, reTrms, ss)
 }
 ##' Extract grouping variable from a random effect term.
 ##' @title Get Grouping Variable
@@ -150,6 +147,7 @@ getGrpVar <- function(x)
   ## Strip everything up to and including the vertical bar and space
   gsub(".*\\| ", "", x)
 }
+
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
@@ -157,21 +155,24 @@ getGrpVar <- function(x)
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
 ##' @param reTrms random-effects terms list
+##' @param ss 
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
-##' data(sleepstudy,package="lme4")
+##' @examples
+##' data(sleepstudy, package="lme4")
 ##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)
-getReStruc <- function(reTrms,ss) {
+##' @importFrom stats setNames
+getReStruc <- function(reTrms, ss) {
 
     if (is.null(reTrms)) {
-        ReStrucList <- list()
+        list()
     } else {
         ## Get info on sizes of RE components
 
@@ -180,7 +181,7 @@ getReStruc <- function(reTrms,ss) {
         grpVar <- getGrpVar(names(reTrms$Ztlist))
         getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
         nreps <- sapply(seq_along(reTrms$cnms), getLevs)
-        blksize <- sapply(reTrms$Ztlist,nrow) / nreps
+        blksize <- sapply(reTrms$Ztlist, nrow) / nreps
         ## figure out number of parameters from block size + structure type
 
         covCode <- .valid_covstruct[ss]
@@ -193,15 +194,13 @@ getReStruc <- function(reTrms,ss) {
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
-        ReStrucList <- mapply(list,
-                              blockReps=nreps,
-                              blockSize=blksize,
-                              blockNumTheta=blockNumTheta,
-                              blockCode=covCode,SIMPLIFY=FALSE)
-        names(ReStrucList) <- names(reTrms$Ztlist)
+        setNames(mapply(list,
+                        blockReps = nreps,
+                        blockSize = blksize,
+                        blockNumTheta = blockNumTheta,
+                        blockCode = covCode, SIMPLIFY=FALSE),
+                 names(reTrms$Ztlist))
     }
-
-    return(ReStrucList)
 }
 
 usesDispersion <- function(x) {
@@ -209,7 +208,7 @@ usesDispersion <- function(x) {
 }
 
 ##' select only desired pieces from results of getXReTrms
-stripReTrms <- function(xrt,whichel=c("cnms","flist")) {
+stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
   xrt$reTrms[whichel]
 }
 
@@ -222,15 +221,15 @@ stripReTrms <- function(xrt,whichel=c("cnms","flist")) {
 ##'     zero-inflation: the default \code{~0} specifies no zero-inflation
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{~0} specifies no zero-inflation
-##' @param weights
-##' @param offset
+##' @param weights 
+##' @param offset 
 ##' @param se whether to return standard errors
+##' @param verbose 
 ##' @param debug whether to return the preprocessed data and parameter objects,
 ##'     without fitting the model
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
-##' @importMethodsFrom TMB print.sdreport
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
@@ -300,10 +299,10 @@ glmmTMB <- function (
 
     formList <- list(formula[[3]], ziformula, dispformula)
     formList <- lapply(formList,
-                   function(x) noSpecials(subbars(x),delete=FALSE))
+                   function(x) noSpecials(subbars(x), delete=FALSE))
                        ## substitute "|" by "+"; drop special
-    formList <- gsub("~", "\\+", lapply(formList,safeDeparse)) # character
-    combForm <- reformulate(Reduce(paste,formList),
+    formList <- gsub("~", "\\+", lapply(formList, safeDeparse)) # character
+    combForm <- reformulate(Reduce(paste, formList),
                             response=deparse(formula[[2]]))
     environment(combForm) <- environment(formula)
     ## model.frame.default looks for these objects in the environment
@@ -336,10 +335,10 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,respCol]
 
-    TMBStruc <- mkTMBStruc(formula,ziformula,dispformula,
-               mf,fr,
-               yobs,offset,weights,
-               family,link)
+    TMBStruc <- mkTMBStruc(formula, ziformula, dispformula,
+                           mf, fr,
+                           yobs, offset, weights,
+                           family, link)
 
     ## short-circuit
     if(debug) return(TMBStruc)
@@ -352,24 +351,23 @@ glmmTMB <- function (
                      silent = !verbose,
                      DLL = "glmmTMB"))
 
-    optTime <- system.time(fit <- with(obj, nlminb(start=par,objective=fn,
+    optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
-        namedList(nObs,respCol,grpVar,family,link,
-         reTrms=lapply(namedList(condList,ziList,dispList),stripReTrms),
-         reStruc=namedList(condReStruc,ziReStruc),
-         allForm=namedList(combForm,formula,
-                           ziformula,dispformula)))
+                      namedList(nObs, respCol, grpVar, family, link,
+                                reTrms = lapply(namedList(condList, ziList, dispList),
+                                                stripReTrms),
+                                reStruc = namedList(condReStruc, ziReStruc),
+                                allForm = namedList(combForm, formula,
+                                                    ziformula, dispformula)))
     ## FIXME: are we including obj and frame or not?  
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    output <- namedList(obj, fit, sdr, call, frame=fr, modelInfo)
-    class(output) <- "glmmTMB"
-
-    return(output)
+    structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo),
+              class = "glmmTMB")
 }
