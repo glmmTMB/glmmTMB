@@ -127,6 +127,10 @@ getReStruc <- function(reTrms,ss) {
     return(ReStrucList)
 }
 
+usesDispersion <- function(x) {
+  !x %in% c("binomial","poisson","truncated_poisson")
+}
+
 ##' @title main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4 syntac
 ##' @param data data frame
@@ -152,7 +156,7 @@ glmmTMB <- function (
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
-    dispformula= ~1, # FIXME: set appropriate family-specific defaults
+    dispformula= NULL, 
     weights=NULL,
     offset=NULL,
     se=FALSE,
@@ -171,9 +175,19 @@ glmmTMB <- function (
     call <- mf <- mc <- match.call()
     ## extract family, call lmer for gaussian
 
+    ## FIXME: jump through the usual hoops to allow
+    ## character, function, family-object 
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmtmb')
 
+    ## extract family and link information from family object
+    link <- family$link
+    family <- family$family # overwrites family: original info lost
+    
+    if (is.null(dispformula)) {
+      dispformula <- if (usesDispersion(family)) ~1 else ~0
+    }
+    
     ## ignoreArgs <- c("start","verbose","devFunOnly",
     ##   "optimizer", "control", "nAGQ")
     ## l... <- list(...)
@@ -189,6 +203,7 @@ glmmTMB <- function (
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
 
+   
     ## want the model frame to contain the union of all variables
     ## used in any of the terms
     ## combine all formulas
@@ -219,6 +234,7 @@ glmmTMB <- function (
     attr(fr,"offset") <- mf$offset
     n <- nrow(fr)
 
+    
     fixedList <- getXReTrms(formula, mf, fr)
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
@@ -228,10 +244,8 @@ glmmTMB <- function (
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
     ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
 
-    ## extract family and link information from family object
-    link <- family$link
-    family <- family$family # overwrites family: original info lost
-
+    
+    
     ## extract response variable
     yobs <- fr[,attr(terms(fr),"response")]
 
