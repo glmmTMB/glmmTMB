@@ -20,3 +20,24 @@ summary(sdr2,"report")
 
 head(summary(sdr2,"report"),10)
 tail(summary(sdr2,"report"),10)
+
+predict.glmmTMB <- function(object,newdata=NULL,...) {
+   
+  if (is.null(newdata)) {
+    stop("newdata=NULL case not yet written")
+    ## FIXME: in sdr object
+  }
+  mf <- object$call
+  ## FIXME: DRY so much
+  ## now work on evaluating model frame
+  m <- match(c("data", "subset", "weights", "na.action", "offset"),
+             names(mf), 0L)
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1]] <- as.name("model.frame")
+
+  mf$formula <- object$modelInfo$allForm$combForm
+  fr <- eval(mf, parent.frame())
+  
+  ## replace append to existing model frame
+}
