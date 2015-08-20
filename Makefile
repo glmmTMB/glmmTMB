@@ -53,6 +53,12 @@ pdf:
 check:
 	R CMD check $(PACKAGE)
 
+quick-check:
+	make quick-install
+	echo "require('glmmTMB'); example('glmmTMB')" | R --vanilla --slave
+	echo "source('glmmTMB/tests/AAAtest-all.R',echo=TRUE)" | R --vanilla --slave
+
+
 unlock:
 	rm -rf ${R_LIBS}/00LOCK-glmmTMB
 
