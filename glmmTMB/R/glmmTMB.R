@@ -336,7 +336,7 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    modelInfo <- namedList(nobs,respCol,
+    modelInfo <- namedList(nobs,respCol,grpVar,
          reTrms=lapply(namedList(condList,ziList,dispList),stripReTrms),
          reStruc=namedList(condReStruc,ziReStruc),
          allForm=namedList(combForm,formula,
@@ -347,7 +347,7 @@ glmmTMB <- function (
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    output <- namedList(obj, fit, sdr, call, frame=fr)
+    output <- namedList(obj, fit, sdr, call, frame=fr, modelInfo)
     class(output) <- "glmmTMB"
 
     return(output)
