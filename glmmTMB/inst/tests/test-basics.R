@@ -3,6 +3,7 @@ stopifnot(require("testthat"),
 
 data(sleepstudy, cbpp,
      package = "lme4")
+cbpp <- transform(cbpp,prop=incidence/size)
 
 context("Very basic glmmTMB fitting")
 
@@ -59,7 +60,6 @@ test_that("Sleepdata Variance components", {
 
 test_that("Basic Binomial CBPP examples", {
     ## intercept-only fixed effect
-    cbpp <- transform(cbpp,prop=incidence/size)
     expect_is(gm0 <- glmmTMB(prop ~ 1 + (1|herd),
                              weights=size,
                              data = cbpp, family=binomial()), "glmmTMB")
@@ -78,6 +78,12 @@ test_that("Basic Binomial CBPP examples", {
 test_that("Update Binomial", {
   ## call doesn't match (formula gets mangled?)
   ## timing different
+  gm0 <- glmmTMB(prop ~ 1 + (1|herd),
+                             weights=size,
+                             data = cbpp, family=binomial())
+  gm1 <- glmmTMB(prop ~ period + (1|herd),
+                 weights=size,
+                 data = cbpp, family=binomial())
   gm1u <- update(gm0, . ~ . + period)
   gm1u$call <- gm1$call
   gm1u$optTime <- gm1$optTime
