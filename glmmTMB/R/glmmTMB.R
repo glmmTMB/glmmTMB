@@ -349,6 +349,7 @@ glmmTMB <- function (
                      profile = NULL, # TODO: Optionally "beta"
                      silent = !verbose,
                      DLL = "glmmTMB")
+
     optTime <- system.time(fit <- with(obj, nlminb(start=par,objective=fn,
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
