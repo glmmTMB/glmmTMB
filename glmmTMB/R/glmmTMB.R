@@ -75,6 +75,19 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     return(namedList(X, Z, fixedfr, ranfr, reTrms, ss))
 }
+##' Extract grouping variable from a random effect term.
+##' @title Get Grouping Variable
+##' @param x string containing RE term with grouping variable separated by a
+##'     vertical bar.
+##' @return Same string as \code{x} but with the first term and vertical bar
+##'     removed.
+##' @examples
+##' getGrpVar("1 | Subject")
+getGrpVar <- function(x)
+{
+  ## Strip everything up to and including the vertical bar and space
+  gsub(".*\\| ", "", x)
+}
 ##' .. content for \description{} (no empty lines) ..
 ##'
 ##' .. content for \details{} ..
@@ -102,7 +115,7 @@ getReStruc <- function(reTrms,ss) {
 
         ## hack names of Ztlist to extract grouping variable of each RE term
         ## remove 1st term+|
-        grpVar <- gsub("^[^|]*\\| ", "", names(reTrms$Ztlist))
+        grpVar <- getGrpVar(names(reTrms$Ztlist))
         getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
         nreps <- sapply(seq_along(reTrms$cnms), getLevs)
         blksize <- sapply(reTrms$Ztlist,nrow) / nreps
@@ -257,6 +270,7 @@ glmmTMB <- function (
 
     fixedReStruc <- with(fixedList,getReStruc(reTrms,ss))
     ziReStruc <- with(ziList,getReStruc(reTrms,ss))
+    grpVar <- with(fixedList,getGrpVar(names(reTrms$Ztlist)))
 
     if (is.null(offset)) offset <- rep(0,nrow(fr))
 
@@ -310,7 +324,7 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    output <- namedList(obj, fit, sdr, call, optTime)
+    output <- namedList(obj, fit, sdr, call, grpVar, optTime)
     class(output) <- "glmmTMB"
 
     return(output)
