@@ -9,6 +9,10 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
+  template<class Type>
+  bool isNA(Type x){
+    return R_IsNA(asDouble(x));
+  }
 }
 
 enum valid_family {
@@ -231,58 +235,60 @@ Type objective_function<Type>::operator() ()
   Type s1, s2, stmp;
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
-    switch (family) {
-    case gaussian_family:
-      tmp_loglik = weights(i) * dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-      break;
-    case poisson_family:
-      tmp_loglik = weights(i) * dpois(yobs(i), mu(i), true);
-      break;
-    case binomial_family:
-      tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
-      break;
-    case gamma_family:
-      s1 = mu(i) * mu(i) / phi(i); // shape
-      s2 = phi(i) / mu(i);         // scale
-      tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
-      break;
-    case beta_family:
-      stmp = (mu(i) * mu(i) - mu(i) + phi(i)) / phi(i);
-      s1 = -mu(i) * stmp;
-      s2 = (mu(i) - Type(1)) * stmp;
-      tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
-      break;
-    case betabinomial_family:
-      s1 = mu(i) * mu(i) / phi(i);
-      s2 = phi(i) / mu(i);
-      tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
-      break;
-    case nbinom1_family:
-      s1 = mu(i);
-      s2 = mu(i) * phi(i);
-      tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
-      break;
-    case nbinom2_family:
-      s1 = mu(i);
-      s2 = mu(i) * (Type(1) + mu(i) / phi(i));
-      tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
-      break;
-      // TODO: Implement remaining families
-    default:
-      error("Family not implemented!");
-    } // End switch
+    if ( !glmmtmb::isNA(yobs(i)) ) {
+      switch (family) {
+      case gaussian_family:
+	tmp_loglik = weights(i) * dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+	break;
+      case poisson_family:
+	tmp_loglik = weights(i) * dpois(yobs(i), mu(i), true);
+	break;
+      case binomial_family:
+	tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
+	break;
+      case gamma_family:
+	s1 = mu(i) * mu(i) / phi(i); // shape
+	s2 = phi(i) / mu(i);         // scale
+	tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
+	break;
+      case beta_family:
+	stmp = (mu(i) * mu(i) - mu(i) + phi(i)) / phi(i);
+	s1 = -mu(i) * stmp;
+	s2 = (mu(i) - Type(1)) * stmp;
+	tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
+	break;
+      case betabinomial_family:
+	s1 = mu(i) * mu(i) / phi(i);
+	s2 = phi(i) / mu(i);
+	tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
+	break;
+      case nbinom1_family:
+	s1 = mu(i);
+	s2 = mu(i) * phi(i);
+	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
+	break;
+      case nbinom2_family:
+	s1 = mu(i);
+	s2 = mu(i) * (Type(1) + mu(i) / phi(i));
+	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
+	break;
+	// TODO: Implement remaining families
+      default:
+	error("Family not implemented!");
+      } // End switch
 
-    // Add zero inflation
-    if(zi_flag){
-      if(yobs(i) == Type(0)){
-	tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
-      } else {
-	tmp_loglik += log( 1.0 - pz(i) );
+      // Add zero inflation
+      if(zi_flag){
+	if(yobs(i) == Type(0)){
+	  tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
+	} else {
+	  tmp_loglik += log( 1.0 - pz(i) );
+	}
       }
-    }
 
-    // Add up
-    jnll -= tmp_loglik;
+      // Add up
+      jnll -= tmp_loglik;
+    }
   }
 
   // Report / ADreport
@@ -303,6 +309,8 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+
+  ADREPORT(mu);
 
   return jnll;
 }
