@@ -146,6 +146,11 @@ usesDispersion <- function(x) {
   !x %in% c("binomial","poisson","truncated_poisson")
 }
 
+##' select only desired pieces from results of getXReTrms
+stripReTrms <- function(xrt,whichel=c("cnms","flist")) {
+  xrt$reTrms[whichel]
+}
+
 ##' @title main TMB function
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
@@ -206,16 +211,19 @@ glmmTMB <- function (
     if (is.null(dispformula)) {
       dispformula <- if (usesDispersion(family)) ~1 else ~0
     }
-
+    
+    ## lme4 function for warning about unused arguments in ...
     ## ignoreArgs <- c("start","verbose","devFunOnly",
     ##   "optimizer", "control", "nAGQ")
     ## l... <- list(...)
     ## l... <- l...[!names(l...) %in% ignoreArgs]
     ## do.call(checkArgs, c(list("glmer"), l...))
 
-    ## Substitute evaluated version
+    # substitute evaluated version
+    ## FIXME: denv leftover from lme4, not defined yet
+    
     mc$formula <- formula <- as.formula(formula, env = denv)
-
+    
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
                names(mf), 0L)
@@ -251,35 +259,39 @@ glmmTMB <- function (
     ## store full, original formula & offset
     attr(fr,"formula") <- combForm
     attr(fr,"offset") <- mf$offset
-    n <- nrow(fr)
+    nobs <- nrow(fr)
 
-    fixedList <- getXReTrms(formula, mf, fr)
+    condList <- getXReTrms(formula, mf, fr)
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
 
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
-    ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6,
-    ##     allow.n=TRUE)
-
-
-
+    ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
+    
+    ## store info on location of response variable
+    respCol <- attr(terms(fr),"response")
+    names(respCol) <- names(fr)[respCol]
+    
     ## extract response variable
-    yobs <- fr[,attr(terms(fr),"response")]
+    yobs <- fr[,respCol]
 
-    fixedReStruc <- with(fixedList,getReStruc(reTrms,ss))
+    condReStruc <- with(condList,getReStruc(reTrms,ss))
     ziReStruc <- with(ziList,getReStruc(reTrms,ss))
-    grpVar <- with(fixedList,getGrpVar(names(reTrms$Ztlist)))
+    grpVar <- with(condList,getGrpVar(names(reTrms$Ztlist)))
 
-    if (is.null(offset)) offset <- rep(0,nrow(fr))
-
+    ## FIXME: deal with offset in formula
+    if (grepl("offset",safeDeparse(formula)))
+        stop("offsets within formulas not implemented")
+    if (is.null(offset)) offset <- rep(0,nobs)
+    
     if (is.null(weights <- fr[["(weights)"]]))
-        weights <- rep(1,nrow(fr))
-
+        weights <- rep(1,nobs)
+    
     data.tmb <- namedList(
-        X = fixedList$X,
-        Z = fixedList$Z,
+        X = condList$X,
+        Z = condList$Z,
         Xzi = ziList$X,
         Zzi = ziList$Z,
         Xd = dispList$X,
@@ -288,7 +300,7 @@ glmmTMB <- function (
         offset,
         weights,
         ## information about random effects structure
-        terms = fixedReStruc,
+        terms = condReStruc,
         termszi = ziReStruc,
         family = .valid_family[family],
         link = .valid_link[link]
@@ -302,7 +314,7 @@ glmmTMB <- function (
           b       = rep(0, ncol(Z)),
           betazi  = rep(0, ncol(Xzi)),
           bzi     = rep(0, ncol(Zzi)),
-          theta   = rep(0, sum(getVal(fixedReStruc,"blockNumTheta"))),
+          theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
           thetazi = rep(0, sum(getVal(ziReStruc,"blockNumTheta"))),
           betad   = rep(0, ncol(Xd))
           ))
@@ -324,7 +336,18 @@ glmmTMB <- function (
                                                    gradient=gr)))
     sdr <- if (se) sdreport(obj) else NULL
 
-    output <- namedList(obj, fit, sdr, call, grpVar, optTime)
+    modelInfo <- namedList(nobs,respCol,
+         reTrms=lapply(namedList(condList,ziList,dispList),stripReTrms),
+         reStruc=namedList(condReStruc,ziReStruc),
+         allForm=namedList(combForm,formula,
+                           ziformula,dispformula))
+    ## FIXME: are we including obj and frame or not?  
+    ##  may want model= argument as in lm() to exclude big stuff from the fit
+    ## If we don't include obj we need to get the basic info out
+    ##    and provide a way to regenerate it as necessary
+    ## If we don't include frame, then we may have difficulty
+    ##    with predict() in its current form
+    output <- namedList(obj, fit, sdr, call, frame=fr)
     class(output) <- "glmmTMB"
 
     return(output)
