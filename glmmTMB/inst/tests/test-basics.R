@@ -27,6 +27,9 @@ test_that("Basic Gaussian Sleepdata examples", {
 test_that("Update Gaussian", {
   ## call doesn't match (formula gets mangled?)
   ## timing different
+  ## FIXME: more redundancy
+  fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
+  fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy)
   fm1u <- update(fm0, . ~ . + Days)
   fm1u$call <- fm1$call
   fm1u$optTime <- fm1$optTime
