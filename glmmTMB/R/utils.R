@@ -116,8 +116,12 @@ splitForm <- function(formula,
                                         # check for hidden specials
                                         # (i.e. specials hidden behind
                                         # parentheses)
-
-    if (!is.null(formSplits)) {
+    ## FIXME: parenthesized terms without bars should be skipped
+    ## in fbas anyway
+    hasBars <- grep("\\|",vapply(formSplits,safeDeparse,""))
+    formSplits <- formSplits[hasBars]
+    if (length(formSplits)>0) {
+        
         formSplits <- lapply(formSplits, uncoverHiddenSpecials)
                                         # vector to identify what
                                         # special (by name), or give
