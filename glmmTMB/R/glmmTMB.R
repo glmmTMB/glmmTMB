@@ -1,3 +1,63 @@
+##' extract info from formulas, reTrms, etc., format for TMB
+mkTMBStruc <- function(formula,ziformula,dispformula,
+                       mf,fr,reTrms,
+                       yobs,offset,weights,
+                       family,link) {
+  
+  condList <- getXReTrms(formula, mf, fr)
+  ziList    <- getXReTrms(ziformula, mf, fr)
+  dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
+  
+  condReStruc <- with(condList,getReStruc(reTrms,ss))
+  ziReStruc <- with(ziList,getReStruc(reTrms,ss))
+  
+  grpVar <- with(condList,getGrpVar(names(reTrms$Ztlist)))
+  
+  ## FIXME: deal with offset in formula
+  if (grepl("offset",safeDeparse(formula)))
+    stop("offsets within formulas not implemented")
+  if (is.null(offset)) offset <- rep(0,nobs)
+  
+  if (is.null(weights <- fr[["(weights)"]]))
+    weights <- rep(1,nobs)
+  
+  data.tmb <- namedList(
+    X = condList$X,
+    Z = condList$Z,
+    Xzi = ziList$X,
+    Zzi = ziList$Z,
+    Xd = dispList$X,
+    ## Zdisp=dispList$Z,
+    yobs,
+    offset,
+    weights,
+    ## information about random effects structure
+    terms = condReStruc,
+    termszi = ziReStruc,
+    family = .valid_family[family],
+    link = .valid_link[link]
+  )
+  getVal <- function(object,component) {
+    vapply(object,function(x) x[[component]],numeric(1))
+  }
+  parameters <- with(data.tmb,
+                     list(
+                       beta    = rep(0, ncol(X)),
+                       b       = rep(0, ncol(Z)),
+                       betazi  = rep(0, ncol(Xzi)),
+                       bzi     = rep(0, ncol(Zzi)),
+                       theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
+                       thetazi = rep(0, sum(getVal(ziReStruc,"blockNumTheta"))),
+                       betad   = rep(0, ncol(Xd))
+                     ))
+  randomArg <- NULL
+  if (ncol(data.tmb$Z) > 0) randomArg <- c(randomArg,"b")
+  if (ncol(data.tmb$Zzi) > 0) randomArg <- c(randomArg,"bzi")
+  
+  return(namedList(data.tmb,parameters,randomArg))
+  
+}
+
 ##' @title Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
@@ -262,10 +322,6 @@ glmmTMB <- function (
     attr(fr,"offset") <- mf$offset
     nobs <- nrow(fr)
 
-    condList <- getXReTrms(formula, mf, fr)
-    ziList    <- getXReTrms(ziformula, mf, fr)
-    dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
-
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
@@ -278,56 +334,16 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,respCol]
 
-    condReStruc <- with(condList,getReStruc(reTrms,ss))
-    ziReStruc <- with(ziList,getReStruc(reTrms,ss))
-    grpVar <- with(condList,getGrpVar(names(reTrms$Ztlist)))
-
-    ## FIXME: deal with offset in formula
-    if (grepl("offset",safeDeparse(formula)))
-        stop("offsets within formulas not implemented")
-    if (is.null(offset)) offset <- rep(0,nobs)
-    
-    if (is.null(weights <- fr[["(weights)"]]))
-        weights <- rep(1,nobs)
-    
-    data.tmb <- namedList(
-        X = condList$X,
-        Z = condList$Z,
-        Xzi = ziList$X,
-        Zzi = ziList$Z,
-        Xd = dispList$X,
-        ## Zdisp=dispList$Z,
-        yobs,
-        offset,
-        weights,
-        ## information about random effects structure
-        terms = condReStruc,
-        termszi = ziReStruc,
-        family = .valid_family[family],
-        link = .valid_link[link]
-        )
-    getVal <- function(object,component) {
-        vapply(object,function(x) x[[component]],numeric(1))
-    }
-    parameters <- with(data.tmb,
-      list(
-          beta    = rep(0, ncol(X)),
-          b       = rep(0, ncol(Z)),
-          betazi  = rep(0, ncol(Xzi)),
-          bzi     = rep(0, ncol(Zzi)),
-          theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
-          thetazi = rep(0, sum(getVal(ziReStruc,"blockNumTheta"))),
-          betad   = rep(0, ncol(Xd))
-          ))
+    TMBStruc <- mkTMBStruc(formula,ziformula,dispformula,
+               mf,fr,reTrms,
+               yobs,offset,weights,
+               family,link)
 
     ## short-circuit
-    if(debug) return(namedList(data.tmb,parameters))
+    if(debug) return(TMBStruc)
 
-    randomArg <- NULL
-    if (ncol(data.tmb$Z) > 0) randomArg <- c(randomArg,"b")
-    if (ncol(data.tmb$Zzi) > 0) randomArg <- c(randomArg,"bzi")
-
-    obj <- MakeADFun(data.tmb,
+    obj <- with(TMBStruc,
+                MakeADFun(data.tmb,
                      parameters,
                      random = randomArg,
                      profile = NULL, # TODO: Optionally "beta"

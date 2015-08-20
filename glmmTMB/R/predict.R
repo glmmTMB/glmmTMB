@@ -27,7 +27,7 @@ predict.glmmTMB <- function(object,newdata=NULL,...) {
   newFr <- eval(mf, parent.frame())
   respCol <- match(respNm <- names(object$modelInfo$respCol),names(newFr))
   ## create *or* overwrite response column for prediction data with NA
-  newFr$respNm <- NA
+  newFr[[respNm]] <- NA
   
   ## FIXME: not yet handling population-level predictions (re.form
   ##  or new levels/allow.new.levels)
@@ -35,5 +35,7 @@ predict.glmmTMB <- function(object,newdata=NULL,...) {
   ## append to existing model frame
   augFr <- rbind(object$fr,newFr)
   
+  return(augFr)
   ## now re-do 
+  
 }
