@@ -19,10 +19,11 @@
 ##' @export
 fixef.glmmTMB <- function(object,...) {
   X <- getME(object,"X")
-  ffcond <- structure(object$obj$env$parList()$beta, names = dimnames(object$obj$env$data$X)[[2]])
+  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  ffcond <- structure(pl$beta, names = dimnames(object$obj$env$data$X)[[2]])
   #FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
   Xzi <- getME(object,"Xzi")
-  ffzi <- structure(object$obj$env$parList()$betazi, names = dimnames(object$obj$env$data$Xzi)[[2]])
+  ffzi <- structure(pl$betazi, names = dimnames(object$obj$env$data$Xzi)[[2]])
   ff=list("conditional model"=ffcond, "zero-inflation"=ffzi)
   l <-sapply(ff, length)>0
   if(sum(l)==1) return(ff[[which(l)]])
