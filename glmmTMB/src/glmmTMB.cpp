@@ -20,7 +20,7 @@ enum valid_family {
   binomial_family = 100,
   betabinomial_family =101,
   beta_family =200,
-  gamma_family =300,
+  Gamma_family =300,
   poisson_family =400,
   truncated_poisson_family =401,
   nbinom1_family =500,
@@ -246,7 +246,7 @@ Type objective_function<Type>::operator() ()
       case binomial_family:
 	tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
 	break;
-      case gamma_family:
+      case Gamma_family:
 	s1 = mu(i) * mu(i) / phi(i); // shape
 	s2 = phi(i) / mu(i);         // scale
 	tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
