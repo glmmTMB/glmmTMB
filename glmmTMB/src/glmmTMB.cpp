@@ -247,8 +247,8 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
 	break;
       case Gamma_family:
-	s1 = mu(i) * mu(i) / phi(i); // shape
-	s2 = phi(i) / mu(i);         // scale
+	s1 = phi(i);           // shape
+	s2 = mu(i) / phi(i);   // scale
 	tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
 	break;
       case beta_family:
