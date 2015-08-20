@@ -13,15 +13,15 @@ all:
 enum-update:
 	echo "## Auto generated - do not edit by hand" > glmmTMB/R/enum.R
 
-	echo -e "\n.valid_link <- c(" >> glmmTMB/R/enum.R
+	echo ".valid_link <- c(" >> glmmTMB/R/enum.R
 	grep _link.*= glmmTMB/src/glmmTMB.cpp | sed s/_link//g >> glmmTMB/R/enum.R
 	echo ")" >> glmmTMB/R/enum.R
 
-	echo -e "\n.valid_family <- c(" >> glmmTMB/R/enum.R
+	echo ".valid_family <- c(" >> glmmTMB/R/enum.R
 	grep _family.*= glmmTMB/src/glmmTMB.cpp | sed s/_family//g >> glmmTMB/R/enum.R
 	echo ")" >> glmmTMB/R/enum.R
 
-	echo -e "\n.valid_covstruct <- c(" >> glmmTMB/R/enum.R
+	echo ".valid_covstruct <- c(" >> glmmTMB/R/enum.R
 	grep _covstruct.*= glmmTMB/src/glmmTMB.cpp | sed s/_covstruct//g >> glmmTMB/R/enum.R
 	echo ")" >> glmmTMB/R/enum.R
 
