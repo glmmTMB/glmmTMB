@@ -18,15 +18,15 @@
 ##' @method fixef glmmTMB
 ##' @export
 fixef.glmmTMB <- function(object,...) {
-	X <- getME(object,"X")
-    ffcond <- structure(object$obj$env$parList()$beta, names = dimnames(object$obj$env$data$X)[[2]])
-	#FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
-	Xzi <- getME(object,"Xzi")
-    ffzi <- structure(object$obj$env$parList()$betazi, names = dimnames(object$obj$env$data$Xzi)[[2]])
-	ff=list("conditional model"=ffcond, "zero-inflation"=ffzi)
-	l <-sapply(ff, length)>0
-	if(sum(l)==1) return(ff[[which(l)]])
-	else return(ff[l])
+  X <- getME(object,"X")
+  ffcond <- structure(object$obj$env$parList()$beta, names = dimnames(object$obj$env$data$X)[[2]])
+  #FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
+  Xzi <- getME(object,"Xzi")
+  ffzi <- structure(object$obj$env$parList()$betazi, names = dimnames(object$obj$env$data$Xzi)[[2]])
+  ff=list("conditional model"=ffcond, "zero-inflation"=ffzi)
+  l <-sapply(ff, length)>0
+  if(sum(l)==1) return(ff[[which(l)]])
+  else return(ff[l])
 }
 ##' Extract the modes of the random effects
 ##'
@@ -95,16 +95,21 @@ fixef.glmmTMB <- function(object,...) {
 ##' @export
 
 ranef.glmmTMB <- function(object, condVar = FALSE, drop = FALSE,
-			 whichel = names(ans))
+                          whichel = names(ans))
 {
-	tmp=obj$env$parList()$b
+  tmp=obj$env$parList()$b
 }
 
 ##' 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##' Method borrowed from lme4
-getME <- function(object,
-                  name = c("X", "Xzi","Z", "Zzi","Xd","theta"))
+##' 
+##' @importFrom lme4 getME
+##' @export getME
+##' @method getME glmmTMB
+##' @export
+getME.glmmTMB <- function(object,
+                          name = c("X", "Xzi","Z", "Zzi","Xd","theta"),...)
 {
   if(missing(name)) stop("'name' must not be missing")
   stopifnot(is(object,"glmmTMB"))
@@ -137,6 +142,10 @@ getME <- function(object,
 ##' \item{val}{log likelihood}
 ##' \item{nobs,nall}{number of non NA observations initially supplied to TMB}
 ##' \item{df}{number of parameters}
+##' @importFrom stats logLik
+##' @export logLik
+##' @method logLik glmmTMB
+##' @export
 logLik.glmmTMB<-function(object){
   val <- object$fit$objective
   nobs <- sum(!is.na(object$obj$env$data$yobs))
