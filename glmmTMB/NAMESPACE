@@ -24,9 +24,3 @@ importFrom(nlme,fixef)
 importFrom(nlme,ranef)
 importFrom(stats,logLik)
 importFrom(stats,vcov)
-<<<<<<< HEAD
-
-=======
-importMethodsFrom(TMB,print.sdreport)
-importMethodsFrom(TMB,summary.sdreport)
->>>>>>> master
