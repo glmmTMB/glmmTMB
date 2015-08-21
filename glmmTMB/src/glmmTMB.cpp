@@ -89,6 +89,7 @@ struct per_term_info {
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   matrix<Type> dist;
+  vector<Type> times;// For ar1 case
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
@@ -108,6 +109,12 @@ struct terms_t : vector<per_term_info<Type> > {
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
+      // Optionally, pass time vector:
+      SEXP t = getListElement(y, "times");
+      if(!isNull(t)){
+	RObjectTestExpectedType(t, &isNumeric, "times");
+	(*this)(i).times = asVector<Type>(t);
+      }
     }
   }
 };
