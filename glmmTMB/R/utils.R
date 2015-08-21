@@ -58,6 +58,7 @@ findReTrmClasses <- function() {
 ##' splitForm(~x+y+(f|g))      ## no specials
 ##' splitForm(~x+y+diag(f|g))  ## one special
 ##' splitForm(~x+y+(f|g)+cs(1|g))
+##' splitForm(~x+y+(1|f/g))
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))
 ##'                    
 ##' @author Steve Walker
@@ -118,6 +119,13 @@ splitForm <- function(formula,
                                         # parentheses)
     ## FIXME: parenthesized terms without bars should be skipped
     ## in fbas anyway
+    
+    browser()
+    ## MM hates this.  Doing it anyway for the short term 
+    ##  until we can incorporate expandSlash appropriately (GH #96)
+    hasComplexGroup <- grep("\\|[^*/]+[*/]",
+                            vapply(formSplits,safeDeparse,""))
+    
     hasBars <- grep("\\|",vapply(formSplits,safeDeparse,""))
     formSplits <- formSplits[hasBars]
     if (length(formSplits)>0) {
