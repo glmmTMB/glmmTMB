@@ -144,7 +144,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 ##' @title Get Grouping Variable
 ##' @param "flist" object; a data frame of factors including an \code{assign} attribute
 ##' matching columns to random effect terms
-##' @return 
+##' @return character vector of grouping variables
 ##' @keywords internal
 ##' @examples
 ##' data(cbpp,package="lme4")
@@ -158,9 +158,6 @@ getGrpVar <- function(x)
   names(x)[assign]
 }
 
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
 ##' @title Calculate random effect structure
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
