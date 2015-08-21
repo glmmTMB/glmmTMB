@@ -17,9 +17,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
   if (grepl("offset", safeDeparse(formula)))
-    stop("offsets within formulas not implemented")
-  if (is.null(offset)) offset <- rep(0,nObs)
-  
+    stop("Offsets within formulas not implemented. Use argument.")
+
+  if (is.null(offset <- fr[["(offset)"]]))
+    offset <- rep(0,nObs)
+
   if (is.null(weights <- fr[["(weights)"]]))
     weights <- rep(1,nObs)
   
