@@ -182,7 +182,7 @@ vcov.glmmTMB<-function(object,full=T){
   Xzinames <- colnames(getME(object,"Xzi"))
   if(!is.null(Xzinames)) Xzinames <- paste("zi",Xzinames,sep="~")
   Xdnames <- colnames(getME(object,"Xd"))
-  if(!is.null(Xdnames)) Xdnames <- paste("zi",Xdnames,sep="~")
+  if(!is.null(Xdnames)) Xdnames <- paste("d",Xdnames,sep="~")
   colnames(object$sdr$cov.fixed) <- c(Xnames,Xzinames,Xdnames)
   rownames(object$sdr$cov.fixed) <- colnames(object$sdr$cov.fixed)
   
