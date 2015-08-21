@@ -113,7 +113,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ranform <- formula
     if (is.null(findbars(ranform))) {
         reTrms <- NULL
-        Z <- matrix(0, ncol=0, nrow=nObs)
+        Z <- new("dgCMatrix",Dim=c(as.integer(nObs),0L)) ## matrix(0, ncol=0, nrow=nObs)
         ss <- integer(0)
     } else {
         if (!ranOK) stop("no random effects allowed in ", type, " term")
@@ -125,7 +125,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         ss <- splitForm(formula)
         ss <- unlist(ss$reTrmClasses)
 
-        Z <- as.matrix(t(reTrms$Zt))
+        Z <- t(reTrms$Zt)   ## still sparse ...
     }
 
     ## if(is.null(rankX.chk <- control[["check.rankX"]]))
