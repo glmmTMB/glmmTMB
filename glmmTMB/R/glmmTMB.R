@@ -2,26 +2,27 @@
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs, offset, weights,
-                       family, link) {
-  
+                       family, link)
+{
+  stopifnot(is.character(family)) ## -- FIXME we should store 'family' as family-object
   condList  <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
   dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
-  
+
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
-  
+
   grpVar <- with(condList, getGrpVar(names(reTrms$Ztlist)))
-  
+
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
   if (grepl("offset", safeDeparse(formula)))
     stop("offsets within formulas not implemented")
   if (is.null(offset)) offset <- rep(0,nObs)
-  
+
   if (is.null(weights <- fr[["(weights)"]]))
     weights <- rep(1,nObs)
-  
+
   data.tmb <- namedList(
     X = condList$X,
     Z = condList$Z,
@@ -81,9 +82,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         X <- NULL
     } else {
         mf$formula <- fixedform
-        
+
         ## FIXME: make sure that predvars are captured appropriately
-        
+
         ## attr(attr(fr,"terms"), "predvars.fixed") <-
         ##    attr(attr(fixedfr,"terms"), "predvars")
 
@@ -144,7 +145,7 @@ getGrpVar <- function(x)
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
 ##' @param reTrms random-effects terms list
-##' @param ss 
+##' @param ss
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -210,10 +211,10 @@ stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
 ##'     zero-inflation: the default \code{~0} specifies no zero-inflation
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{~0} specifies no zero-inflation
-##' @param weights 
-##' @param offset 
+##' @param weights
+##' @param offset
 ##' @param se whether to return standard errors
-##' @param verbose 
+##' @param verbose
 ##' @param debug whether to return the preprocessed data and parameter objects,
 ##'     without fitting the model
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
@@ -262,7 +263,7 @@ glmmTMB <- function (
     if (is.null(dispformula)) {
       dispformula <- if (usesDispersion(family)) ~1 else ~0
     }
-    
+
     ## lme4 function for warning about unused arguments in ...
     ## ignoreArgs <- c("start","verbose","devFunOnly",
     ##   "optimizer", "control", "nAGQ")
@@ -272,9 +273,9 @@ glmmTMB <- function (
 
     # substitute evaluated version
     ## FIXME: denv leftover from lme4, not defined yet
-    
+
     mc$formula <- formula <- as.formula(formula, env = denv)
-    
+
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
                names(mf), 0L)
@@ -316,11 +317,11 @@ glmmTMB <- function (
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
     ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
-    
+
     ## store info on location of response variable
     respCol <- attr(terms(fr),"response")
     names(respCol) <- names(fr)[respCol]
-    
+
     ## extract response variable
     yobs <- fr[,respCol]
 
@@ -351,7 +352,7 @@ glmmTMB <- function (
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm = namedList(combForm, formula,
                                                     ziformula, dispformula)))
-    ## FIXME: are we including obj and frame or not?  
+    ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
     ##    and provide a way to regenerate it as necessary
