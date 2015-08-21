@@ -98,10 +98,10 @@ fixef.glmmTMB <- function(object,...) {
 ranef.glmmTMB <- function(object,...) {
   Z <- getME(object,"Z")
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  ffcond <- structure(pl$beta, names = colnames(Z))
+  ffcond <- structure(pl$b, names = colnames(Z))
   #FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
   Zzi <- getME(object,"Zzi")
-  ffzi <- structure(pl$betazi, names = colnames(Zzi))
+  ffzi <- structure(pl$bzi, names = colnames(Zzi))
   ff=list("conditional model"=ffcond, "zero_inflation"=ffzi)
   l <-sapply(ff, length)>0
   if(sum(l)==1) return(ff[[which(l)]])
