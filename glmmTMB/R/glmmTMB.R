@@ -1,4 +1,16 @@
 ##' extract info from formulas, reTrms, etc., format for TMB
+##' @param formula
+##' @param ziformula
+##' @param dispformula
+##' @param mf
+##' @param fr
+##' @param yobs
+##' @param offset
+##' @param weights
+##' @param family character
+##' @param link character
+##' @param ziPredictCode zero-inflation code
+##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs, offset, weights,
@@ -170,19 +182,14 @@ getGrpVar <- function(x)
 getReStruc <- function(reTrms, ss) {
 
   ## information from ReTrms is contained in cnms, flist
-  ## data("cbpp",package="lme4")
-  ## cc <- transform(cbpp,obs=factor(seq(nrow(cbpp))))
-  ## gg <- glFormula(cbind(incidence,size-incidence)~(1|herd)+(1|obs),cc,
-  ##       family=binomial)$reTrms
-  ## family=binomial)$reTrms
-  ##       family=binomial)$reTrms
+  ## cnms: list of column-name vectors per term
+  ## flist: data frame of grouping variables (factors)
+  ##   'assign' attribute gives match between RE terms and factors
     if (is.null(reTrms)) {
         list()
     } else {
         ## Get info on sizes of RE components
 
-        ## hack names of Ztlist to extract grouping variable of each RE term
-        ## remove 1st term+|
         assign <- attr(reTrms$flist,"assign")
         nreps <- vapply(assign,
                           function(i) length(levels(reTrms$flist[[i]])),
@@ -265,19 +272,25 @@ glmmTMB <- function (
     ## FIXME: check for offsets in ziformula/dispformula, throw an error
 
     call <- mf <- mc <- match.call()
-    ## extract family, call lmer for gaussian
 
-    ## FIXME: jump through the usual hoops to allow
-    ## character, function, family-object
+    if (is.character(family)) 
+      family <- get(family, mode = "function", envir = parent.frame())
+    if (is.function(family)) 
+      family <- family()
+    if (is.null(family$family)) {
+      print(family)
+      stop("'family' not recognized")
+    }
+    
     if (grepl("^quasi", family$family))
-        stop('"quasi" families cannot be used in glmmtmb')
+        stop('"quasi" families cannot be used in glmmTMB')
 
     ## extract family and link information from family object
     link <- family$link
-    family <- family$family # overwrites family: original info lost
+    familyStr <- family$family 
 
     if (is.null(dispformula)) {
-      dispformula <- if (usesDispersion(family)) ~1 else ~0
+      dispformula <- if (usesDispersion(familyStr)) ~1 else ~0
     }
     
     ## lme4 function for warning about unused arguments in ...
@@ -344,7 +357,7 @@ glmmTMB <- function (
     TMBStruc <- eval.parent(mkTMBStruc(formula, ziformula, dispformula,
                            mf, fr,
                            yobs, offset, weights,
-                           family, link))
+                           familyStr, link))
 
     ## short-circuit
     if(debug) return(TMBStruc)
@@ -362,7 +375,7 @@ glmmTMB <- function (
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
-                      namedList(nObs, respCol, grpVar, family, link,
+                      namedList(nObs, respCol, grpVar, familyStr, family, link,
                                 reTrms = lapply(namedList(condList, ziList, dispList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
