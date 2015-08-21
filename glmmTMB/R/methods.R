@@ -187,12 +187,14 @@ vcov.glmmTMB<-function(object,full=T){
   rownames(object$sdr$cov.fixed) <- colnames(object$sdr$cov.fixed)
   
   if(full){
+    if(object$modelInfo$allForm$dispformula==~1) object$sdr$cov.fixed <- object$sdr$cov.fixed[-nrow(object$sdr$cov.fixed),-nrow(object$sdr$cov.fixed)]
+    
     return(object$sdr$cov.fixed)
   }else{
     di <- grep("d~.*",colnames(object$sdr$cov.fixed))
     zii <- grep("zi~.*",colnames(object$sdr$cov.fixed))
     xi <- setdiff(1:ncol(object$sdr$cov.fixed),c(di,zii))
-    output <- list("conditional model" = object$sdr$cov.fixed[xi,xi], "zero_inflation" = object$sdr$cov.fixed[zii,zii], "dispersion" = object$sdr$cov.fixed[di,di])
+    output <- list("conditional_model" = object$sdr$cov.fixed[xi,xi], "zero_inflation" = object$sdr$cov.fixed[zii,zii], "dispersion" = object$sdr$cov.fixed[di,di])
     l <-sapply(output, length)>0
     if(sum(l)==1) return(output[[which(l)]])
     else return(output[l])
