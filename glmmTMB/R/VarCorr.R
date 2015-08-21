@@ -61,8 +61,10 @@ mkVC <- function(cor, sd, nms) {
     stopifnot(length(nms) == (nc <- length(cor)),  nc == length(sd),
               is.list(nms), is.list(cor), is.list(sd))
 
-    lapply
-    sd * cor * rep(sd, each = length()
+    do1cov <- function(sd, cor, n = length(sd)) sd * cor * rep(sd, each = n)
+
+    if(FALSE)
+        rr <- lapply(..., do1cov)
     ##
 
     if(is.character(nms)) {
@@ -103,8 +105,8 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = reT$condList$cnms)
     vs.zi   <- mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = reT$ ziList $cnms)
 
+    ## unfinished
     structure(ans, sc = sc)
-}
 
 
    structure(mkVarCorr(sigma, cnms = cnms, nc = nc, theta = x@theta,
