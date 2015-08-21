@@ -212,9 +212,9 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
   DATA_MATRIX(X);
-  DATA_MATRIX(Z);
+  DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
-  DATA_MATRIX(Zzi);
+  DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
   DATA_VECTOR(yobs);
   DATA_VECTOR(weights);
