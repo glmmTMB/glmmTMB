@@ -12,7 +12,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
   
-  grpVar <- with(condList, getGrpVar(names(reTrms$Ztlist)))
+  grpVar <- with(condList, getGrpVar(reTrms$flist))
   
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
@@ -128,18 +128,22 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     namedList(X, Z, reTrms, ss)
 }
-##' Extract grouping variable from a random effect term.
+##' Extract grouping variables for random effect terms from a factor list
 ##' @title Get Grouping Variable
-##' @param x string containing RE term with grouping variable separated by a
-##'     vertical bar.
-##' @return Same string as \code{x} but with the first term and vertical bar
-##'     removed.
+##' @param "flist" object; a data frame of factors including an \code{assign} attribute
+##' matching columns to random effect terms
+##' @return 
+##' @keywords internal
 ##' @examples
-##' getGrpVar("1 | Subject")
+##' data(cbpp,package="lme4")
+##' cbpp$obs <- factor(seq(nrow(cbpp)))
+##' rt <- lme4::glFormula(cbind(size,incidence-size)~(1|herd)+(1|obs),
+##'   data=cbpp,family=binomial)$reTrms
+##' getGrpVar(rt$flist)
 getGrpVar <- function(x)
 {
-  ## Strip everything up to and including the vertical bar and space
-  gsub(".*\\| ", "", x)
+  assign <- attr(x,"assign")
+  names(x)[assign]
 }
 
 ##' .. content for \description{} (no empty lines) ..
@@ -165,6 +169,13 @@ getGrpVar <- function(x)
 ##' @importFrom stats setNames
 getReStruc <- function(reTrms, ss) {
 
+  ## information from ReTrms is contained in cnms, flist
+  ## data("cbpp",package="lme4")
+  ## cc <- transform(cbpp,obs=factor(seq(nrow(cbpp))))
+  ## gg <- glFormula(cbind(incidence,size-incidence)~(1|herd)+(1|obs),cc,
+  ##       family=binomial)$reTrms
+  ## family=binomial)$reTrms
+  ##       family=binomial)$reTrms
     if (is.null(reTrms)) {
         list()
     } else {
@@ -172,10 +183,11 @@ getReStruc <- function(reTrms, ss) {
 
         ## hack names of Ztlist to extract grouping variable of each RE term
         ## remove 1st term+|
-        grpVar <- getGrpVar(names(reTrms$Ztlist))
-        getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
-        nreps <- sapply(seq_along(reTrms$cnms), getLevs)
-        blksize <- sapply(reTrms$Ztlist, nrow) / nreps
+        assign <- attr(reTrms$flist,"assign")
+        nreps <- vapply(assign,
+                          function(i) length(levels(reTrms$flist[[i]])),
+                          0)
+        blksize <- diff(reTrms$Gp) / nreps
         ## figure out number of parameters from block size + structure type
 
         covCode <- .valid_covstruct[ss]

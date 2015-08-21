@@ -4,7 +4,7 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp,
      package = "lme4")
 
-cbpp <- transform(cbpp, prop = incidence/size)
+cbpp <- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 
 matchForm <- function(obj,objU) {
   for(cmp in c("call","frame")) # <- more?
@@ -81,6 +81,13 @@ test_that("Basic Binomial CBPP examples", {
                   tolerance = .001) # <- TODO: lower eventually
 })
 
+test_that("multiple RE, reordering", {
+ tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs), 
+                  family=binomial(), data=cbpp, weights=size)
+ tmb2 <- glmmTMB(prop ~ period +  (1|obs) + (1|herd), 
+                 family=binomial(), data=cbpp, weights=size)
+ expect_equal(getME(tmb1,"theta"),getME(tmb2,"theta"))
+})
 
 test_that("Update Binomial", {
   ## call doesn't match (formula gets mangled?)
