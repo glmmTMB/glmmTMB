@@ -98,7 +98,8 @@ fixef.glmmTMB <- function(object,...) {
 ranef.glmmTMB <- function(object, condVar = FALSE, drop = FALSE,
                           whichel = names(ans))
 {
-  tmp=obj$env$parList()$b
+  bb <- obj$env$parList()$b
+  .NotYetImplemented()
 }
 
 ##' 
@@ -110,25 +111,32 @@ ranef.glmmTMB <- function(object, condVar = FALSE, drop = FALSE,
 ##' @method getME glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
-                          name = c("X", "Xzi","Z", "Zzi","Xd","theta"),...)
+                          name = c("X", "Xzi","Z", "Zzi", "Xd", "theta"),
+                          ...)
 {
   if(missing(name)) stop("'name' must not be missing")
-  stopifnot(is(object,"glmmTMB"))
   ## Deal with multiple names -- "FIXME" is inefficiently redoing things
   if (length(name <- as.character(name)) > 1) {
     names(name) <- name
     return(lapply(name, getME, object = object))
   }
+  if(name == "ALL") ## recursively get all provided components
+      return(sapply(eval(formals()$name),
+                    getME.glmmTMB, object=object, simplify=FALSE))
+
+  stopifnot(is(object,"glmmTMB"))
   name <- match.arg(name)
   
+  oo.env <- object$obj$env
   ### Start of the switch
   switch(name,
-         "X" = object$obj$env$data$X,
-         "Xzi" = object$obj$env$data$Xzi,
-         "Z" = object$obj$env$data$Z,
-         "Zzi" = object$obj$env$data$Zzi,
-         "Xd" = object$obj$env$data$Xd,
-         "theta" = object$obj$env$parList()$theta ,
+         "X"     = oo.env$data$X,
+         "Xzi"   = oo.env$data$Xzi,
+         "Z"     = oo.env$data$Z,
+         "Zzi"   = oo.env$data$Zzi,
+         "Xd"    = oo.env$data$Xd,
+         "theta" = oo.env$parList()$theta ,
+
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
