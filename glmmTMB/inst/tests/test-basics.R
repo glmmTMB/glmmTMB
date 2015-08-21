@@ -6,11 +6,14 @@ data(sleepstudy, cbpp,
 
 cbpp <- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 
-matchForm <- function(obj,objU) {
+## utility: hack/replace parts of the updated result that will
+##  be cosmetically different
+matchForm <- function(obj,objU,family=FALSE) {
   for(cmp in c("call","frame")) # <- more?
      objU[[cmp]] <- obj[[cmp]]
      ## FIXME: why are formulas equivalent but not identical (order)?
   objU$modelInfo$allForm <- obj$modelInfo$allForm
+  if (family)  objU$modelInfo$family <- obj$modelInfo$family
   return(objU)
 }
 
@@ -42,7 +45,7 @@ test_that("Update Gaussian", {
   fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy)
   fm1u <- update(fm0, . ~ . + Days)
   expect_equal(fm1, matchForm(fm1,fm1u))
-  
+
 })
 
 
@@ -63,9 +66,7 @@ test_that("Sleepdata Variance components", {
 
 
 test_that("Basic Binomial CBPP examples", {
-    ## FIXME: why do we need this here (only in testthat env)?
-    cbpp <- transform(cbpp, prop = incidence/size)
-  
+
     ## intercept-only fixed effect
     expect_is(gm0 <- glmmTMB(prop ~ 1 + (1|herd),
                              weights=size,
@@ -89,6 +90,29 @@ test_that("multiple RE, reordering", {
  expect_equal(getME(tmb1,"theta"),getME(tmb2,"theta"))
 })
 
+test_that("alternative family specifications", {
+
+  ## intercept-only fixed effect
+  expect_is(gm0 <- glmmTMB(prop ~ 1 + (1|herd),
+                           weights=size,
+                           data = cbpp, family=binomial), "glmmTMB")
+  expect_equal(matchForm(gm0,update(gm0,family="binomial")),gm0)
+  expect_equal(matchForm(gm0,update(gm0,family=binomial())),gm0)
+  expect_equal(matchForm(gm0,update(gm0,
+                                family=list(family="binomial",link="logit")),
+                         family=TRUE),gm0)
+
+  })
+
+
+test_that("multiple RE, reordering", {
+ tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs),
+                  family=binomial(), data=cbpp, weights=size)
+ tmb2 <- glmmTMB(prop ~ period +  (1|obs) + (1|herd),
+                 family=binomial(), data=cbpp, weights=size)
+ expect_equal(getME(tmb1,"theta"),getME(tmb2,"theta"))
+})
+
 test_that("Update Binomial", {
   ## call doesn't match (formula gets mangled?)
   ## timing different
@@ -98,7 +122,7 @@ test_that("Update Binomial", {
                  weights = size, data = cbpp, family=binomial())
   gm1u <- update(gm0, . ~ . + period)
   expect_equal(gm1, matchForm(gm1,gm1u))
-  
+
 })
 
 

@@ -1,30 +1,47 @@
 ## source("https://raw.githubusercontent.com/glmmTMB/glmmTMB/master/glmmTMB/R/methods.R")
-source("~/git/glmmTMB/glmmTMB/R/methods.R")
+## source("~/git/glmmTMB/glmmTMB/R/methods.R")
 
 ## library(glmmTMB)
-library(reshape)
 data(Owls, package="glmmADMB")
-Owls <- rename(Owls, c(SiblingNegotiation="NCalls"))
-Owls <- transform(Owls, ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE))
+Owls <- transform(Owls, ArrivalTime=c(scale(ArrivalTime,scale=FALSE)),
+                  NCalls=SiblingNegotiation)
 
 tmb0 <- glmmTMB(Reaction ~ Days, sleepstudy)
 tmb1 <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
 tmb2 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
 tmb3 <- glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy)
-tmbz <- glmmTMB(NCalls ~ FoodTreatment * SexParent + ArrivalTime * SexParent
-                + offset(logBroodSize) + (1|Nest), ziformula = ~1,
+sleepstudy$Year <- gl(2, 90, labels=2001:2002)
+tmb4 <- glmmTMB(Reaction ~ Days + (1|Subject) + (1|Year), sleepstudy)
+tmbz <- glmmTMB(NCalls ~ FoodTreatment + ArrivalTime + (ArrivalTime|Nest) + (1|SexParent),
+                ziformula = ~1 + (1|Nest) + (1|SexParent),
                 data=Owls, family=poisson(link="log"))
+
+## update(tmb4, .~Days+(1|Subject)+(1|Year))
+## update(tmb4, .~Days+(1|Year)+(1|Subject))
+## tmb4 <- glmmTMB(Reaction ~ Days + (1|Subject) + (1|Year), sleepstudy)
+## tmb4b <- glmmTMB(Reaction ~ Days + (1|Year) + (1|Subject), sleepstudy)
 
 ## Z-I with random effects:
 ## glmmTMB(Reaction ~ Days, ziformula = ~(1|g), sleepstudy)
 
 admb0 <- glmmadmb(Reaction ~ Days, sleepstudy, family="gaussian")
 admb1 <- glmmadmb(Reaction ~ Days, sleepstudy, family="gaussian", random=~1|Subject)
-admb3 <- glmmadmb(Reaction ~ Days, sleepstudy, family="gaussian", random=~(1|Subject)+(0+Days|Subject))
+admb3 <- glmmadmb(Reaction ~ Days, sleepstudy, family="gaussian",
+                  random=~(1|Subject)+(0+Days|Subject))
+admbz <- glmmadmb(NCalls ~ FoodTreatment * SexParent + ArrivalTime * SexParent,
+                random=~(1|Nest), zeroInflation=TRUE,
+                data=Owls, family="poisson")
 
 lme1 <- lmer(Reaction ~ Days + (1|Subject), sleepstudy, REML=FALSE)
 lme2 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy, REML=FALSE)
 lme3 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy, REML=FALSE)
+lme4 <- lmer(Reaction ~ Days + (1|Subject) + (1|Year), sleepstudy)
+
+cbpp <- transform(cbpp, prop=incidence/size, obs=factor(1:nrow(cbpp)))
+glme.binom <- glmer(prop ~ period + (1|herd) + (1|obs), family=binomial, data=cbpp, weights=size)
+
+
+## tmb.binom <- glmmTMB(prop ~ period + (1|herd) + (1|obs), family=binomial(), data=cbpp, weights=size)
 
 ## fixef.glmmTMB <- function(object, ...)
 ## {
@@ -33,15 +50,56 @@ lme3 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy, REML=
 ##   return(output)
 ## }
 
-ranef.glmmTMB <- function(object, se.fit=FALSE, ...)
-{
-  re <- data.frame(object$obj$env$parList()$b)
-  names(re) <- object$modelInfo$reTrms$condList$cnms$Subject
-  rownames(re) <- colnames(getME(object,"Z"))
-  output <- list(re)
-  names(output) <- object$modelInfo$grpVar
-  return(output)
+## ranef.glmmTMB <- function(object, se.fit=FALSE, ...)
+## {
+##   re <- data.frame(object$obj$env$parList()$b)
+##   names(re) <- object$modelInfo$reTrms$condList$cnms$Subject
+##   rownames(re) <- colnames(getME(object,"Z"))
+##   output <- list(re)
+##   names(output) <- object$modelInfo$grpVar
+##   return(output)
+## }
+
+fixef.glmmTMB <- function(object,...) {
+  X <- getME(object,"X")
+  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  ffcond <- structure(pl$beta, names = colnames(X))
+  #FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
+  Xzi <- getME(object,"Xzi")
+  ffzi <- structure(pl$betazi, names = colnames(Xzi))
+  ff=list("conditional model"=ffcond, "zero_inflation"=ffzi)
+  l <-sapply(ff, length)>0
+  if(sum(l)==1) return(ff[[which(l)]])
+  else return(ff[l])
 }
+
+ranef.glmmTMB <- function(object,...) {
+  Z <- getME(object,"Z")
+  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  ffcond <- structure(pl$b, names = colnames(Z))
+  #FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
+  Zzi <- getME(object,"Zzi")
+  ffzi <- structure(pl$bzi, names = colnames(Zzi))
+  ff=list("conditional model"=ffcond, "zero_inflation"=ffzi)
+  l <-sapply(ff, length)>0
+  if(sum(l)==1) return(ff[[which(l)]])
+  else return(ff[l])
+}
+
+
+object <- tmb4
+object$modelInfo$reTrms$condList # cnms is a list, flist is a data.frame
+object$modelInfo$reTrms$condList$cnms
+## $Subject
+## "(Intercept)"
+## $Year
+## "(Intercept)"
+object$modelInfo$reTrms$condList$flist
+## Subject Year
+##     308 2001
+##     308 2001
+##     308 2001
+##     ... ...
 
 vcov.glmmTMB <- function(object, ...)
 {
@@ -59,6 +117,7 @@ fixef(tmb0)
 fixef(tmb1)
 fixef(tmb2)
 fixef(tmb3)
+fixef(tmbz)
 
 fixef(lme1)
 fixef(lme2)
@@ -67,6 +126,7 @@ fixef(lme3)
 fixef(admb0)
 fixef(admb1)
 fixef(admb3)
+fixef(admbz)
 ## Rename to (Intercept) and Days
 ## betad will be returned by the sigma.glmmTMB() method
 ## theta will be returned by getME
@@ -103,6 +163,22 @@ vcov(lme2)
 vcov(lme3)
 ## if the model had zero inflation, then we would be interested in the full vcov
 ## provide vcov(, full=TRUE) that returns something more than the basic
+
+logLik(tmb0)
+logLik(tmb1)
+logLik(tmb2)
+logLik(tmb3)
+logLik(tmbz)
+
+logLik(lme1)
+logLik(lme2)
+logLik(lme3)
+
+logLik(admb0)
+logLik(admb1)
+logLik(admb3)
+logLik(admbz)
+
 
 ## the vcov matrix for the random effects should be returned by ranef(model, se.fit=TRUE),
 ##   i.e., sqrt(model$sdr$diag.cov.random)
