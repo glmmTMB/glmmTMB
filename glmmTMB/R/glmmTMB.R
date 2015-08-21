@@ -4,7 +4,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        yobs, offset, weights,
                        family, link) {
   
-  condList <- eval.parent(getXReTrms(formula, mf, fr))
+  condList  <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
   dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
   
@@ -66,10 +66,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{fixedfr}{model frame for fixed effects. Reading this in prevents the
-##'     predictor function from recalculating bases for splines and orthogonal
-##'     polynomials. Might have to be removed later}
-##' \item{ranfr}{as fixedfr but for random effects}
 ##' \item{reTrms}{output from mkReTerms from LME4}
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## fixed-effects model matrix X -
@@ -83,14 +79,13 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     if (identical(RHSForm(fixedform),~0) ||
         identical(RHSForm(fixedform),~-1)) {
         X <- NULL
-        fixedfr <- NULL
     } else {
         mf$formula <- fixedform
-        ## re-evaluate model frame to extract predvars component
-        ## in *grandparent* environment
-        fixedfr <- eval.parent(mf)
-        attr(attr(fr,"terms"), "predvars.fixed") <-
-            attr(attr(fixedfr,"terms"), "predvars")
+        
+        ## FIXME: make sure that predvars are captured appropriately
+        
+        ## attr(attr(fr,"terms"), "predvars.fixed") <-
+        ##    attr(attr(fixedfr,"terms"), "predvars")
 
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(fixedform, fr, contrasts)
@@ -100,7 +95,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## important to COPY formula (and its environment)?
     ranform <- formula
     if (is.null(findbars(ranform))) {
-        ranfr <- NULL
         reTrms <- NULL
         Z <- matrix(0, ncol=0, nrow=nObs)
         ss <- integer(0)
@@ -109,9 +103,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
         mf$formula <- ranform
-        ranfr <- eval(mf, parent.frame(2))
-        attr(attr(fr,"terms"), "predvars.random") <-
-            attr(terms(ranfr), "predvars")
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
 
         ss <- splitForm(formula)
@@ -130,9 +121,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    ## FIXME: come back and figure out how we need to store fixedfr and ranfr
-
-    namedList(X, Z, fixedfr, ranfr, reTrms, ss)
+    namedList(X, Z, reTrms, ss)
 }
 ##' Extract grouping variable from a random effect term.
 ##' @title Get Grouping Variable
