@@ -2,7 +2,8 @@
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs, offset, weights,
-                       family, link) {
+                       family, link,
+                       ziPredictCode="corrected") {
   
   condList  <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
@@ -36,7 +37,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     terms = condReStruc,
     termszi = ziReStruc,
     family = .valid_family[family],
-    link = .valid_link[link]
+    link = .valid_link[link],
+    ziPredictCode = .valid_zipredictcode[ziPredictCode]
+    
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
