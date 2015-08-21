@@ -30,6 +30,10 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	grep _covstruct.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
 	echo ")" >> $@
 
+	echo ".valid_zipredictcode <- c(" >> $@
+	grep _zipredictcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_zipredictcode//g >> $@
+	echo ")" >> $@
+
 doc-update: $(PACKAGE)/R/*.R
 	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\"))" | $(R) --slave
 	@touch doc-update

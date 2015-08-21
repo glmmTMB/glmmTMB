@@ -47,6 +47,12 @@ enum valid_covStruct {
   ar1_covstruct  = 3
 };
 
+enum valid_ziPredictCode {
+  corrected_zipredictcode = 0,
+  uncorrected_zipredictcode = 1,
+  prob_zipredictcode = 2
+};
+
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -210,6 +216,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(link);
 
   // Flags
+  DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
 
   // Joint negative log-likelihood
@@ -310,6 +317,22 @@ Type objective_function<Type>::operator() ()
   REPORT(corrzi);
   REPORT(sdzi);
 
+  // For predict
+  if(zi_flag) {
+    switch(ziPredictCode){
+    case corrected_zipredictcode:
+      mu *= (Type(1) - pz); // Account for zi in prediction
+      break;
+    case uncorrected_zipredictcode:
+      mu = mu; // Predict mean of 'family'
+      break;
+    case prob_zipredictcode:
+      mu = pz; // Predict zi probability
+      break;
+    default:
+      error("Invalid 'ziPredictCode'");
+    }
+  }
   ADREPORT(mu);
 
   return jnll;

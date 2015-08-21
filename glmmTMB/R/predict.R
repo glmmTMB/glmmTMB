@@ -1,6 +1,11 @@
 ##' prediction
 ##' @param object a \code{glmmTMB} object
 ##' @param newdata new data for prediction
+##' @param zitype for zero-inflated models, 
+##' return expected value ("response": (mu*(1-p))),
+##' the mean of the conditional distribution ("conditional": mu),
+##' or the probability of a structural zero ("zprob")?
+##' mean of 
 ##' @examples 
 ##' data(sleepstudy,package="lme4")
 ##' g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
@@ -9,7 +14,8 @@
 ##' @importMethodsFrom TMB summary.sdreport
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,debug=FALSE,
-                            re.form,allow.new.levels=FALSE,...) {
+                            re.form,allow.new.levels=FALSE,
+                            zitype=c("response","conditional","zprob"),...) {
   ## FIXME: add re.form, type, ...
   
   if (is.null(newdata)) {
@@ -43,7 +49,14 @@ predict.glmmTMB <- function(object,newdata=NULL,debug=FALSE,
   augFr <- rbind(object$fr,newFr)
   
   yobs <- augFr[[names(object$modelInfo$respCol)]]
-  
+
+  ## match zitype arg with internal name
+  ziPredNm <- switch(zitype,
+                       response="corrected",
+                       conditional="uncorrected",
+                         zprob="prob",
+                       stop("unknown zitype ",zitype))
+  ziPredCode <- .valid_zipredcode[ziPredNm]
   TMBStruc <- with(object$modelInfo,
                    ## FIXME: make first arg of mkTMBStruc into a formula list
                    mkTMBStruc(allForm$formula,
@@ -51,7 +64,8 @@ predict.glmmTMB <- function(object,newdata=NULL,debug=FALSE,
                          mf,augFr,
                          yobs=augFr[[names(respCol)]],
                          offset=NULL,weights=NULL,
-                         family=family,link=link))
+                         family=family,link=link,
+                         ziPredCode=ziPredCode))
   
   
   
