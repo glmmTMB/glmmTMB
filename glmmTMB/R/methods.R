@@ -156,7 +156,7 @@ getME.glmmTMB <- function(object,
 ##' @method logLik glmmTMB
 ##' @export
 logLik.glmmTMB<-function(object){
-  val <- object$fit$objective
+  val <- -object$fit$objective
   nobs <- sum(!is.na(object$obj$env$data$yobs))
   structure(val, nobs = nobs, nall = nobs, df = npar.glmmTMB(object),
             class = "logLik")
