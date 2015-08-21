@@ -28,3 +28,8 @@
   cs   = 2,
   ar1  = 3
 )
+.valid_zipredictcode <- c(
+  corrected = 0,
+  uncorrected = 1,
+  prob = 2
+)

@@ -95,11 +95,17 @@ fixef.glmmTMB <- function(object,...) {
 ##' @method ranef glmmTMB
 ##' @export
 
-ranef.glmmTMB <- function(object, condVar = FALSE, drop = FALSE,
-                          whichel = names(ans))
-{
-  bb <- obj$env$parList()$b
-  .NotYetImplemented()
+ranef.glmmTMB <- function(object,...) {
+  Z <- getME(object,"Z")
+  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  ffcond <- structure(pl$b, names = colnames(Z))
+  #FIXME: if we later let glmmTMB.R deal with rank deficient X, then go back to fixef.merMod and copy more complicated part for add.dropped=TRUE case 
+  Zzi <- getME(object,"Zzi")
+  ffzi <- structure(pl$bzi, names = colnames(Zzi))
+  ff=list("conditional model"=ffcond, "zero_inflation"=ffzi)
+  l <-sapply(ff, length)>0
+  if(sum(l)==1) return(ff[[which(l)]])
+  else return(ff[l])
 }
 
 ##' 
@@ -156,7 +162,7 @@ getME.glmmTMB <- function(object,
 ##' @method logLik glmmTMB
 ##' @export
 logLik.glmmTMB<-function(object){
-  val <- object$fit$objective
+  val <- -object$fit$objective
   nobs <- sum(!is.na(object$obj$env$data$yobs))
   structure(val, nobs = nobs, nall = nobs, df = npar.glmmTMB(object),
             class = "logLik")
@@ -190,17 +196,19 @@ vcov.glmmTMB<-function(object,full=T){
   Xzinames <- colnames(getME(object,"Xzi"))
   if(!is.null(Xzinames)) Xzinames <- paste("zi",Xzinames,sep="~")
   Xdnames <- colnames(getME(object,"Xd"))
-  if(!is.null(Xdnames)) Xdnames <- paste("zi",Xdnames,sep="~")
+  if(!is.null(Xdnames)) Xdnames <- paste("d",Xdnames,sep="~")
   colnames(object$sdr$cov.fixed) <- c(Xnames,Xzinames,Xdnames)
   rownames(object$sdr$cov.fixed) <- colnames(object$sdr$cov.fixed)
   
   if(full){
+    if(object$modelInfo$allForm$dispformula==~1) object$sdr$cov.fixed <- object$sdr$cov.fixed[-nrow(object$sdr$cov.fixed),-nrow(object$sdr$cov.fixed)]
+    
     return(object$sdr$cov.fixed)
   }else{
     di <- grep("d~.*",colnames(object$sdr$cov.fixed))
     zii <- grep("zi~.*",colnames(object$sdr$cov.fixed))
     xi <- setdiff(1:ncol(object$sdr$cov.fixed),c(di,zii))
-    output <- list("conditional model" = object$sdr$cov.fixed[xi,xi], "zero_inflation" = object$sdr$cov.fixed[zii,zii], "dispersion" = object$sdr$cov.fixed[di,di])
+    output <- list("conditional_model" = object$sdr$cov.fixed[xi,xi], "zero_inflation" = object$sdr$cov.fixed[zii,zii], "dispersion" = object$sdr$cov.fixed[di,di])
     l <-sapply(output, length)>0
     if(sum(l)==1) return(output[[which(l)]])
     else return(output[l])

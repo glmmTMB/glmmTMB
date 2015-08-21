@@ -47,6 +47,12 @@ enum valid_covStruct {
   ar1_covstruct  = 3
 };
 
+enum valid_ziPredictCode {
+  corrected_zipredictcode = 0,
+  uncorrected_zipredictcode = 1,
+  prob_zipredictcode = 2
+};
+
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -83,6 +89,7 @@ struct per_term_info {
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   matrix<Type> dist;
+  vector<Type> times;// For ar1 case
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
@@ -102,6 +109,12 @@ struct terms_t : vector<per_term_info<Type> > {
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
+      // Optionally, pass time vector:
+      SEXP t = getListElement(y, "times");
+      if(!isNull(t)){
+	RObjectTestExpectedType(t, &isNumeric, "times");
+	(*this)(i).times = asVector<Type>(t);
+      }
     }
   }
 };
@@ -154,6 +167,24 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
+  }
+  else if (term.blockCode == ar1_covstruct){
+    // case: ar1_covstruct
+    //  * NOTE: Only one block allowed !
+    //  * NOTE: 'times' assumed sorted !
+    int n = term.times.size();
+    Type logsd = theta(0);
+    Type corr_transf = theta(1);
+    Type sd = exp(logsd);
+    ans -= dnorm(u(0), Type(0), sd, true);   // Initialize
+    for(int i=1; i<n; i++){
+      Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
+      ans -= dnorm(u(i), rho * u(i-1), sd * sqrt(1-rho*rho), true);
+    }
+    term.corr.resize(1,1);
+    term.sd.resize(1);
+    term.corr(0,0) = exp(-exp(corr_transf)); // One-step correlation
+    term.sd(0) = sd;                         // Marginal standard dev.
   }
   else error("covStruct not implemented!");
   return ans;
@@ -210,6 +241,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(link);
 
   // Flags
+  DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
 
   // Joint negative log-likelihood
@@ -264,7 +296,7 @@ Type objective_function<Type>::operator() ()
 	break;
       case nbinom1_family:
 	s1 = mu(i);
-	s2 = mu(i) * phi(i);
+	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guaranties that var >= mu
 	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
 	break;
       case nbinom2_family:
@@ -295,14 +327,20 @@ Type objective_function<Type>::operator() ()
   vector<matrix<Type> > corr(terms.size());
   vector<vector<Type> > sd(terms.size());
   for(int i=0; i<terms.size(); i++){
-    corr(i) = terms(i).corr;
-    sd(i) = terms(i).sd;
+    // NOTE: Dummy terms reported as empty
+    if(terms(i).blockNumTheta > 0){
+      corr(i) = terms(i).corr;
+      sd(i) = terms(i).sd;
+    }
   }
   vector<matrix<Type> > corrzi(termszi.size());
   vector<vector<Type> > sdzi(termszi.size());
   for(int i=0; i<termszi.size(); i++){
-    corrzi(i) = termszi(i).corr;
-    sdzi(i) = termszi(i).sd;
+    // NOTE: Dummy terms reported as empty
+    if(termszi(i).blockNumTheta > 0){
+      corrzi(i) = termszi(i).corr;
+      sdzi(i) = termszi(i).sd;
+    }
   }
 
   REPORT(corr);
@@ -310,6 +348,22 @@ Type objective_function<Type>::operator() ()
   REPORT(corrzi);
   REPORT(sdzi);
 
+  // For predict
+  if(zi_flag) {
+    switch(ziPredictCode){
+    case corrected_zipredictcode:
+      mu *= (Type(1) - pz); // Account for zi in prediction
+      break;
+    case uncorrected_zipredictcode:
+      mu = mu; // Predict mean of 'family'
+      break;
+    case prob_zipredictcode:
+      mu = pz; // Predict zi probability
+      break;
+    default:
+      error("Invalid 'ziPredictCode'");
+    }
+  }
   ADREPORT(mu);
 
   return jnll;

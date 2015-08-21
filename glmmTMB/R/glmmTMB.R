@@ -1,28 +1,42 @@
 ##' extract info from formulas, reTrms, etc., format for TMB
+##' @param formula
+##' @param ziformula
+##' @param dispformula
+##' @param mf
+##' @param fr
+##' @param yobs
+##' @param offset
+##' @param weights
+##' @param family character
+##' @param link character
+##' @param ziPredictCode zero-inflation code
+##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs, offset, weights,
-                       family, link)
-{
-  stopifnot(is.character(family)) ## -- FIXME we should store 'family' as family-object
+                       family, link,
+                       ziPredictCode="corrected") {
+  
   condList  <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
   dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
-
+  
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
-
-  grpVar <- with(condList, getGrpVar(names(reTrms$Ztlist)))
-
+  
+  grpVar <- with(condList, getGrpVar(reTrms$flist))
+  
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
   if (grepl("offset", safeDeparse(formula)))
-    stop("offsets within formulas not implemented")
-  if (is.null(offset)) offset <- rep(0,nObs)
+    stop("Offsets within formulas not implemented. Use argument.")
+
+  if (is.null(offset <- fr[["(offset)"]]))
+    offset <- rep(0,nObs)
 
   if (is.null(weights <- fr[["(weights)"]]))
     weights <- rep(1,nObs)
-
+  
   data.tmb <- namedList(
     X = condList$X,
     Z = condList$Z,
@@ -37,7 +51,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     terms = condReStruc,
     termszi = ziReStruc,
     family = .valid_family[family],
-    link = .valid_link[link]
+    link = .valid_link[link],
+    ziPredictCode = .valid_zipredictcode[ziPredictCode]
+    
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -82,9 +98,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         X <- NULL
     } else {
         mf$formula <- fixedform
-
+        
         ## FIXME: make sure that predvars are captured appropriately
-
+        
         ## attr(attr(fr,"terms"), "predvars.fixed") <-
         ##    attr(attr(fixedfr,"terms"), "predvars")
 
@@ -124,28 +140,29 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     namedList(X, Z, reTrms, ss)
 }
-##' Extract grouping variable from a random effect term.
+##' Extract grouping variables for random effect terms from a factor list
 ##' @title Get Grouping Variable
-##' @param x string containing RE term with grouping variable separated by a
-##'     vertical bar.
-##' @return Same string as \code{x} but with the first term and vertical bar
-##'     removed.
+##' @param "flist" object; a data frame of factors including an \code{assign} attribute
+##' matching columns to random effect terms
+##' @return character vector of grouping variables
+##' @keywords internal
 ##' @examples
-##' getGrpVar("1 | Subject")
+##' data(cbpp,package="lme4")
+##' cbpp$obs <- factor(seq(nrow(cbpp)))
+##' rt <- lme4::glFormula(cbind(size,incidence-size)~(1|herd)+(1|obs),
+##'   data=cbpp,family=binomial)$reTrms
+##' getGrpVar(rt$flist)
 getGrpVar <- function(x)
 {
-  ## Strip everything up to and including the vertical bar and space
-  gsub(".*\\| ", "", x)
+  assign <- attr(x,"assign")
+  names(x)[assign]
 }
 
-##' .. content for \description{} (no empty lines) ..
-##'
-##' .. content for \details{} ..
 ##' @title Calculate random effect structure
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
 ##' @param reTrms random-effects terms list
-##' @param ss
+##' @param ss 
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -161,17 +178,20 @@ getGrpVar <- function(x)
 ##' @importFrom stats setNames
 getReStruc <- function(reTrms, ss) {
 
+  ## information from ReTrms is contained in cnms, flist
+  ## cnms: list of column-name vectors per term
+  ## flist: data frame of grouping variables (factors)
+  ##   'assign' attribute gives match between RE terms and factors
     if (is.null(reTrms)) {
         list()
     } else {
         ## Get info on sizes of RE components
 
-        ## hack names of Ztlist to extract grouping variable of each RE term
-        ## remove 1st term+|
-        grpVar <- getGrpVar(names(reTrms$Ztlist))
-        getLevs <- function(i) with(reTrms, length(levels(flist[[grpVar[i]]])))
-        nreps <- sapply(seq_along(reTrms$cnms), getLevs)
-        blksize <- sapply(reTrms$Ztlist, nrow) / nreps
+        assign <- attr(reTrms$flist,"assign")
+        nreps <- vapply(assign,
+                          function(i) length(levels(reTrms$flist[[i]])),
+                          0)
+        blksize <- diff(reTrms$Gp) / nreps
         ## figure out number of parameters from block size + structure type
 
         covCode <- .valid_covstruct[ss]
@@ -211,10 +231,10 @@ stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
 ##'     zero-inflation: the default \code{~0} specifies no zero-inflation
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{~0} specifies no zero-inflation
-##' @param weights
-##' @param offset
+##' @param weights 
+##' @param offset 
 ##' @param se whether to return standard errors
-##' @param verbose
+##' @param verbose 
 ##' @param debug whether to return the preprocessed data and parameter objects,
 ##'     without fitting the model
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
@@ -249,21 +269,27 @@ glmmTMB <- function (
     ## FIXME: check for offsets in ziformula/dispformula, throw an error
 
     call <- mf <- mc <- match.call()
-    ## extract family, call lmer for gaussian
 
-    ## FIXME: jump through the usual hoops to allow
-    ## character, function, family-object
+    if (is.character(family)) 
+      family <- get(family, mode = "function", envir = parent.frame())
+    if (is.function(family)) 
+      family <- family()
+    if (is.null(family$family)) {
+      print(family)
+      stop("'family' not recognized")
+    }
+    
     if (grepl("^quasi", family$family))
-        stop('"quasi" families cannot be used in glmmtmb')
+        stop('"quasi" families cannot be used in glmmTMB')
 
     ## extract family and link information from family object
     link <- family$link
-    family <- family$family # overwrites family: original info lost
+    familyStr <- family$family 
 
     if (is.null(dispformula)) {
-      dispformula <- if (usesDispersion(family)) ~1 else ~0
+      dispformula <- if (usesDispersion(familyStr)) ~1 else ~0
     }
-
+    
     ## lme4 function for warning about unused arguments in ...
     ## ignoreArgs <- c("start","verbose","devFunOnly",
     ##   "optimizer", "control", "nAGQ")
@@ -273,9 +299,9 @@ glmmTMB <- function (
 
     # substitute evaluated version
     ## FIXME: denv leftover from lme4, not defined yet
-
+    
     mc$formula <- formula <- as.formula(formula, env = denv)
-
+    
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
                names(mf), 0L)
@@ -317,18 +343,18 @@ glmmTMB <- function (
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
     ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
-
+    
     ## store info on location of response variable
     respCol <- attr(terms(fr),"response")
     names(respCol) <- names(fr)[respCol]
-
+    
     ## extract response variable
     yobs <- fr[,respCol]
 
     TMBStruc <- eval.parent(mkTMBStruc(formula, ziformula, dispformula,
                            mf, fr,
                            yobs, offset, weights,
-                           family, link))
+                           familyStr, link))
 
     ## short-circuit
     if(debug) return(TMBStruc)
@@ -346,13 +372,13 @@ glmmTMB <- function (
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
-                      namedList(nObs, respCol, grpVar, family, link,
+                      namedList(nObs, respCol, grpVar, familyStr, family, link,
                                 reTrms = lapply(namedList(condList, ziList, dispList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm = namedList(combForm, formula,
                                                     ziformula, dispformula)))
-    ## FIXME: are we including obj and frame or not?
+    ## FIXME: are we including obj and frame or not?  
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
     ##    and provide a way to regenerate it as necessary
