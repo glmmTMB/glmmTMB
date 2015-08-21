@@ -120,7 +120,6 @@ splitForm <- function(formula,
     ## FIXME: parenthesized terms without bars should be skipped
     ## in fbas anyway
     
-    browser()
     ## MM hates this.  Doing it anyway for the short term 
     ##  until we can incorporate expandSlash appropriately (GH #96)
     hasComplexGroup <- grep("\\|[^*/]+[*/]",
