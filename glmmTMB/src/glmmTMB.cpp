@@ -169,7 +169,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     term.sd = sd;             // For report
   }
   else if (term.blockCode == ar1_covstruct){
-    // case: ar1_covstruct (NOTE: Only one block allowed!)
+    // case: ar1_covstruct
+    //  * NOTE: Only one block allowed !
+    //  * NOTE: 'times' assumed sorted !
     int n = term.times.size();
     Type logsd = theta(0);
     Type corr_transf = theta(1);
@@ -325,14 +327,20 @@ Type objective_function<Type>::operator() ()
   vector<matrix<Type> > corr(terms.size());
   vector<vector<Type> > sd(terms.size());
   for(int i=0; i<terms.size(); i++){
-    corr(i) = terms(i).corr;
-    sd(i) = terms(i).sd;
+    // NOTE: Dummy terms reported as empty
+    if(terms(i).blockNumTheta > 0){
+      corr(i) = terms(i).corr;
+      sd(i) = terms(i).sd;
+    }
   }
   vector<matrix<Type> > corrzi(termszi.size());
   vector<vector<Type> > sdzi(termszi.size());
   for(int i=0; i<termszi.size(); i++){
-    corrzi(i) = termszi(i).corr;
-    sdzi(i) = termszi(i).sd;
+    // NOTE: Dummy terms reported as empty
+    if(termszi(i).blockNumTheta > 0){
+      corrzi(i) = termszi(i).corr;
+      sdzi(i) = termszi(i).sd;
+    }
   }
 
   REPORT(corr);
