@@ -168,6 +168,22 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
   }
+  else if (term.blockCode == ar1_covstruct){
+    // case: ar1_covstruct (NOTE: Only one block allowed!)
+    int n = term.times.size();
+    Type logsd = theta(0);
+    Type corr_transf = theta(1);
+    Type sd = exp(logsd);
+    ans -= dnorm(u(0), Type(0), sd, true);   // Initialize
+    for(int i=1; i<n; i++){
+      Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
+      ans -= dnorm(u(i), rho * u(i-1), sd * sqrt(1-rho*rho), true);
+    }
+    term.corr.resize(1,1);
+    term.sd.resize(1);
+    term.corr(0,0) = exp(-exp(corr_transf)); // One-step correlation
+    term.sd(0) = sd;                         // Marginal standard dev.
+  }
   else error("covStruct not implemented!");
   return ans;
 }
