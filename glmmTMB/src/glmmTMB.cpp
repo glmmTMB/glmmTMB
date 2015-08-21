@@ -296,7 +296,7 @@ Type objective_function<Type>::operator() ()
 	break;
       case nbinom1_family:
 	s1 = mu(i);
-	s2 = mu(i) * phi(i);
+	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guaranties that var >= mu
 	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
 	break;
       case nbinom2_family:
