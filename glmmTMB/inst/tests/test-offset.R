@@ -18,15 +18,14 @@ m.lm <- lm(y~x, offset=o, dat)
 
 test_that("LM with offset as argument", {
 	m1 <- glmmTMB(y~x, offset=o, dat) 
-    expect_equal(fixef(m1), coef(m.lm), tol=1e-6)
+    expect_equal(fixef(m1)[[1]], coef(m.lm), tol=1e-6)
     m3 <- glmmTMB(y~x, offset=o)
-    expect_equal(fixef(m3), coef(m.lm), tol=1e-6)
+    expect_equal(fixef(m3)[[1]], coef(m.lm), tol=1e-6)
 })
 
-## FIXME: enable offset in formula
-#test_that("LM with offset in formula", {
-#    m2 <- glmmTMB(y~x+offset(o), dat)
-#    expect_equal(fixef(m2), coef(m.lm), tol=1e-6)
-#    m4 <- glmmTMB(y~x+offset(o))
-#    expect_equal(fixef(m4), coef(m.lm), tol=1e-6)
-#})
+test_that("LM with offset in formula", {
+    m2 <- glmmTMB(y~x+offset(o), dat)
+    expect_equal(fixef(m2)[[1]], coef(m.lm), tol=1e-6)
+    m4 <- glmmTMB(y~x+offset(o))
+    expect_equal(fixef(m4)[[1]], coef(m.lm), tol=1e-6)
+})
