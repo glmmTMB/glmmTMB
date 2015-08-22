@@ -313,13 +313,11 @@ glmmTMB <- function (
     ## used in any of the terms
     ## combine all formulas
 
-    formList <- list(formula[[3]], ziformula, dispformula)
+    formList <- list(formula, ziformula, dispformula)
     formList <- lapply(formList,
                    function(x) noSpecials(subbars(x), delete=FALSE))
                        ## substitute "|" by "+"; drop special
-    formList <- gsub("~", "\\+", lapply(formList, safeDeparse)) # character
-    combForm <- reformulate(Reduce(paste, formList),
-                            response=deparse(formula[[2]]))
+    combForm <- do.call(addForm,formList)
     environment(combForm) <- environment(formula)
     ## model.frame.default looks for these objects in the environment
     ## of the *formula* (see 'extras', which is anything passed in ...),

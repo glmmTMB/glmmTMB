@@ -27,6 +27,20 @@ reOnly <- function(f,response=FALSE) {
                 response=response)
 }
 
+
+##' @param f1
+##' @param f2
+##' @keywords internal
+##' @examples 
+##' addForm0(y~x,~1)
+addForm0 <- function(f1,f2) {
+  f1[[3]] <- substitute(FOO+BAR,list(FOO=f1[[3]],BAR=f2[[2]]))
+  return(f1)
+}
+addForm <- function(...) {
+  Reduce(addForm0,list(...))
+}
+
 ##' deparse(.) returning \bold{one} string
 ##' @note Protects against the possibility that results from deparse() will be
 ##'       split after 'width.cutoff' (by default 60, maximally 500)
