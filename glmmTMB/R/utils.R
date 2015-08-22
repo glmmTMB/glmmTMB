@@ -28,15 +28,19 @@ reOnly <- function(f,response=FALSE) {
 }
 
 
+##' combines the right-hand sides of two formulas
 ##' @param f1
 ##' @param f2
 ##' @keywords internal
 ##' @examples 
 ##' addForm0(y~x,~1)
 addForm0 <- function(f1,f2) {
-  f1[[3]] <- substitute(FOO+BAR,list(FOO=f1[[3]],BAR=f2[[2]]))
+  if (length(f2)==3) warning("discarding RHS of second argument")
+  RHSForm(f1) <- substitute(FOO+BAR,list(FOO=RHSForm(f1),
+                                     BAR=RHSForm(f2)))
   return(f1)
 }
+##' combine right-hand sides of an arbitrary number of formulas
 addForm <- function(...) {
   Reduce(addForm0,list(...))
 }

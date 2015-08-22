@@ -28,11 +28,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
-  if (grepl("offset", safeDeparse(formula)))
-    stop("Offsets within formulas not implemented. Use argument.")
+  ##if (grepl("offset", safeDeparse(formula)))
+  ##  stop("Offsets within formulas not implemented. Use argument.")
 
-  if (is.null(offset <- fr[["(offset)"]]))
-    offset <- rep(0,nObs)
+  if (is.null(offset <- model.offset(fr)))
+      offset <- rep(0,nObs)
 
   if (is.null(weights <- fr[["(weights)"]]))
     weights <- rep(1,nObs)
@@ -333,8 +333,7 @@ glmmTMB <- function (
     ## convert character vectors to factor (defensive)
     ## fr <- factorize(fr.form, fr, char.only = TRUE)
     ## store full, original formula & offset
-    attr(fr,"formula") <- combForm
-    attr(fr,"offset") <- mf$offset
+    ## attr(fr,"formula") <- combForm  ## unnecessary?
     nObs <- nrow(fr)
 
     ## sanity checks (skipped!)
