@@ -71,6 +71,7 @@ Type inverse_linkfun(Type eta, int link) {
     break;
   case cloglog_link:
     ans = Type(1) - exp(-exp(eta));
+    break;
   case inverse_link:
     ans = Type(1) / eta;
     break;
