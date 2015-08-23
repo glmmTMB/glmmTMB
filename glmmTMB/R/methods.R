@@ -65,7 +65,8 @@ print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
 ##' ranef(model)$conditional_model$Subject
 ##'
 ##' @aliases ranef ranef.glmmTMB
-##' @method ranef glmmTMB
+##' @importFrom nlme ranef
+##' @export ranef
 ##' @export
 ranef.glmmTMB <- function(object, ...) {
   ## The arrange() function converts a vector of random effects to a list of
