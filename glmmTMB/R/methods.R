@@ -93,6 +93,13 @@ ranef.glmmTMB <- function(object, ...) {
   class(output) <- "ranef.glmmTMB"
   return(output)
 }
+print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
+  if (simplify && length(x$zero_inflation) == 0L)
+    print(unclass(x$conditional_model, ...))
+  else
+    print(unclass(x), ...)
+  invisible(x)
+}
 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##' Method borrowed from lme4
