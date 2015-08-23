@@ -19,13 +19,18 @@
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  X <- getME(object, "X")
-  ffcond <- structure(pl$beta, names=colnames(X))
-  Xzi <- getME(object, "Xzi")
-  ffzi <- structure(pl$betazi, names=colnames(Xzi))
-  ff <- list(conditional_model=ffcond, zero_inflation=ffzi)
-  class(ff) <- "fixef.glmmTMB"
-  return(ff)
+  ansc <- structure(pl$beta, names=colnames(getME(object,"X")))
+  ansz <- structure(pl$betazi, names=colnames(getME(object,"Xzi")))
+  output <- list(conditional_model=ansc, zero_inflation=ansz)
+  class(output) <- "fixef.glmmTMB"
+  return(output)
+}
+print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
+  if (simplify && length(x$zero_inflation) == 0L)
+    print(unclass(x$conditional_model, ...))
+  else
+    print(unclass(x), ...)
+  invisible(x)
 }
 
 ##' Extract Random Effects
