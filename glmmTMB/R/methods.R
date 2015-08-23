@@ -25,6 +25,7 @@ fixef.glmmTMB <- function(object, ...) {
   class(output) <- "fixef.glmmTMB"
   return(output)
 }
+##' @export
 print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
   if (simplify && length(x$zero_inflation) == 0L)
     print(unclass(x$conditional_model, ...))
@@ -52,7 +53,7 @@ print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
 ##'   \code{ranef} is to simplify the printed format of the random effects. To
 ##'   show the full list structure, run \code{print(ranef(model),
 ##'   simplify=FALSE)}. In all cases, the full list structure is used to access
-##'   the data frames.
+##'   the data frames (see example).
 ##'
 ##' @seealso \code{\link{fixef.glmmTMB}}.
 ##'
@@ -63,7 +64,9 @@ print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
 ##' print(ranef(model), simplify=FALSE)
 ##' ranef(model)$conditional_model$Subject
 ##'
-##' @keywords methods models
+##' @aliases ranef ranef.glmmTMB
+##' @method ranef glmmTMB
+##' @export
 ranef.glmmTMB <- function(object, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
@@ -98,6 +101,7 @@ ranef.glmmTMB <- function(object, ...) {
   class(output) <- "ranef.glmmTMB"
   return(output)
 }
+##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
   if (simplify && length(x$zero_inflation) == 0L)
     print(unclass(x$conditional_model, ...))
