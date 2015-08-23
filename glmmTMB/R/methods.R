@@ -19,90 +19,97 @@
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  X <- getME(object, "X")
-  ffcond <- structure(pl$beta, names=colnames(X))
-  Xzi <- getME(object, "Xzi")
-  ffzi <- structure(pl$betazi, names=colnames(Xzi))
-  ff <- list(conditional_model=ffcond, zero_inflation=ffzi)
-  class(ff) <- "fixef.glmmTMB"
-  return(ff)
+  ansc <- structure(pl$beta, names=colnames(getME(object,"X")))
+  ansz <- structure(pl$betazi, names=colnames(getME(object,"Xzi")))
+  output <- list(conditional_model=ansc, zero_inflation=ansz)
+  class(output) <- "fixef.glmmTMB"
+  return(output)
 }
-##' Extract the modes of the random effects
+##' @export
+print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
+  if (simplify && length(x$zero_inflation) == 0L)
+    print(unclass(x$conditional_model, ...))
+  else
+    print(unclass(x), ...)
+  invisible(x)
+}
+
+##' Extract Random Effects
 ##'
-##' A generic function to extract the conditional modes of the random effects
-##' from a fitted model object.  For linear mixed models the conditional modes
-##' of the random effects are also the conditional means.
+##' Generic function to extract random effects from \code{glmmTMB} models, both
+##' for the conditional model and zero inflation.
 ##'
-##' If grouping factor i has k levels and j random effects per level the ith
-##' component of the list returned by \code{ranef} is a data frame with k rows
-##' and j columns.  If \code{condVar} is \code{TRUE} the \code{"postVar"}
-##' attribute is an array of dimension j by j by k.  The kth face of this array
-##' is a positive definite symmetric j by j matrix.  If there is only one
-##' grouping factor in the model the variance-covariance matrix for the entire
-##' random effects vector, conditional on the estimates of the model parameters
-##' and on the data will be block diagonal and this j by j matrix is the kth
-##' diagonal block.  With multiple grouping factors the faces of the
-##' \code{"postVar"} attributes are still the diagonal blocks of this
-##' conditional variance-covariance matrix but the matrix itself is no longer
-##' block diagonal.
-##' @name ranef
-##' @aliases ranef ranef.glmmTMB
-##' @param object an object of a class of fitted models with random effects,
-##' typically a \code{"glmmTMB"} object.
-##' @param condVar an optional logical argument indicating if the conditional
-##' variance-covariance matrices of the random effects should be added as an attribute.
-##' @param drop an optional logical argument indicating components of the return
-##' value that would be data frames with a single column, usually a column
-##' called \sQuote{\code{(Intercept)}}, should be returned as named vectors.
-##' @param whichel an optional character vector of names of grouping factors for
-##' which the random effects should be returned.  Defaults to all the grouping
-##' factors.
-##' @param \dots some methods for this generic function require additional
-##' arguments.
-##' @return A list of data frames, one for each grouping factor for the random
-##' effects.  The number of rows in the data frame is the number of levels of
-##' the grouping factor.  The number of columns is the dimension of the random
-##' effect associated with each level of the factor.
+##' @param object a \code{glmmTMB} model.
+##' @param ... some methods for this generic function require additional
+##'   arguments.
 ##'
-##' If \code{condVar} is \code{TRUE} each of the data frames has an attribute
-##' called \code{"postVar"} which is a three-dimensional array with symmetric
-##' faces.
+##' @return Object of class \code{ranef.glmmTMB} with two components:
+##'   \item{conditional_model}{a list of data frames, containing random effects
+##'     for the conditional model.}
+##'   \item{zero_inflation}{a list of data frames, containing random effects for
+##'     the zero inflation.}
 ##'
-##' When \code{drop} is \code{TRUE} any components that would be data frames of
-##' a single column are converted to named numeric vectors.
-##' @note To produce a \dQuote{caterpillar plot} of the random effects apply
-##' \code{\link[lattice:xyplot]{dotplot}} to the result of a call to
-##' \code{ranef} with \code{condVar = TRUE}.
+##' @note When a model has no zero inflation, the default behavior of
+##'   \code{ranef} is to simplify the printed format of the random effects. To
+##'   show the full list structure, run \code{print(ranef(model),
+##'   simplify=FALSE)}. In all cases, the full list structure is used to access
+##'   the data frames (see example).
+##'
+##' @seealso \code{\link{fixef.glmmTMB}}.
+##'
 ##' @examples
-##' fm1 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
-##' fm2 <- glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy)
-##' fm3 <- glmmTMB(diameter ~ (1|plate) + (1|sample), Penicillin)
-##' ranef(fm1)
-##' str(rr1 <- ranef(fm1, condVar = TRUE))
-##' dotplot(rr1)  ## default
-##' ## specify free scales in order to make Day effects more visible
-##' dotplot(rr1,scales = list(x = list(relation = 'free')))[["Subject"]]
-##' if(FALSE) { ##-- condVar=TRUE is not yet implemented for multiple terms -- FIXME
-##' str(ranef(fm2, condVar = TRUE))
-##' }
-##' op <- options(digits = 4)
-##' ranef(fm3, drop = TRUE)
-##' options(op)
-##' @keywords models methods
-##' @importFrom nlme ranef
+##' data(sleepstudy, package="lme4")
+##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
+##' ranef(model)
+##' print(ranef(model), simplify=FALSE)
+##' ranef(model)$conditional_model$Subject
+##'
+##' @aliases ranef ranef.glmmTMB
 ##' @method ranef glmmTMB
 ##' @export
 ranef.glmmTMB <- function(object, ...) {
+  ## The arrange() function converts a vector of random effects to a list of
+  ## data frames, in the same way as lme4 does.
+  arrange <- function(x, listname)
+  {
+    cnms <- object$modelInfo$reTrms[[listname]]$cnms
+    flist <- object$modelInfo$reTrms[[listname]]$flist
+    if (!is.null(cnms)) {
+      levs <- lapply(fl <- flist, levels)
+      asgn <- attr(fl, "assign")
+      nc <- vapply(cnms, length, 1L)
+      nb <- nc * vapply(levs, length, 1L)[asgn]
+      nbseq <- rep.int(seq_along(nb), nb)
+      ml <- split(x, nbseq)
+      for (i in seq_along(ml))
+        ml[[i]] <- matrix(ml[[i]], ncol=nc[i], byrow=TRUE,
+                          dimnames=list(NULL, cnms[[i]]))
+      x <- lapply(seq_along(fl), function(i)
+        data.frame(do.call(cbind, ml[asgn==i]), row.names=levs[[i]],
+                   check.names=FALSE))
+      names(x) <- names(fl)
+    }
+    else {
+      x <- list()
+    }
+    return(x)
+  }
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  Z <- getME(object, "Z")
-  recond <- structure(pl$b, names=colnames(Z))
-  Zzi <- getME(object, "Zzi")
-  rezi <- structure(pl$bzi, names=colnames(Zzi))
-  re <- list(conditional_model=recond, zero_inflation=rezi)
-  class(re) <- "ranef.glmmTMB"
-  return(re)
+  ansc <- arrange(pl$b, "condList")
+  ansz <- arrange(pl$bzi, "ziList")
+  output <- list(conditional_model=ansc, zero_inflation=ansz)
+  class(output) <- "ranef.glmmTMB"
+  return(output)
 }
-##' 
+##' @export
+print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
+  if (simplify && length(x$zero_inflation) == 0L)
+    print(unclass(x$conditional_model, ...))
+  else
+    print(unclass(x), ...)
+  invisible(x)
+}
+
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##' Method borrowed from lme4
 ##' 

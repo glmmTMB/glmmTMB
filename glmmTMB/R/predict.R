@@ -11,7 +11,7 @@
 ##' g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
 ##' glmmTMB:::predict.glmmTMB(g0,sleepstudy)
 ##' @importFrom TMB sdreport
-##' @importMethodsFrom TMB summary.sdreport
+##' @importFrom TMB summary.sdreport
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,debug=FALSE,
                             re.form,allow.new.levels=FALSE,
