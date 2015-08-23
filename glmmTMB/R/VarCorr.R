@@ -1,12 +1,21 @@
 
 
-##' @S3method family glmmTMB
+
+##' returns a true family() object iff one was given
+##' to glmmTMB() in the first place ....
+##' @importFrom stats family
+##' @export
+##' @keywords internal
 family.glmmTMB <- function(object, ...) {
-    ## FIXME: this is wrong! -- family() must return a family, not a string !!!
     object$modelInfo$family
 }
 
-##' @S3method sigma glmmTMB
+## FIXME should import from stats if R >= 3.3.0 ...
+## (feature request for roxygen2?)
+##' @importFrom lme4 sigma
+##' @export sigma
+##' @export
+##' @keywords internal
 sigma.glmmTMB <- function(object, ...) {
     if(family(object) == "gaussian")
         exp( .5 * object$obj$env$parList()$betad ) # betad is  log(sigma ^ 2)
@@ -24,6 +33,7 @@ sigma.glmmTMB <- function(object, ...) {
 ##' @seealso \code{\link{VarCorr}}
 ##' @return A matrix
 ##' @export
+##' @keywords internal
 mkVarCorr <- function(sc, cnms, nc, theta, nms) {
     ncseq <- seq_along(nc)
     thl <- split(theta, rep.int(ncseq, (nc * (nc + 1))/2))
@@ -116,7 +126,8 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 }
 
 
-##' @S3method print VarCorr.merMod
+##' @export
+##' @keywords internal
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 		   comp = "Std.Dev.", formatter = format, ...) {
     print(formatVC(x, digits = digits, comp = comp, formatter = formatter), quote = FALSE, ...)
