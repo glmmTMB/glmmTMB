@@ -132,7 +132,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 ##' @title Get Grouping Variable
 ##' @param "flist" object; a data frame of factors including an \code{assign} attribute
 ##' matching columns to random effect terms
-##' @return String vector of grouping variables.
+##' @return character vector of grouping variables
 ##' @keywords internal
 ##' @examples
 ##' data(cbpp,package="lme4")
