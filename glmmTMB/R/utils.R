@@ -1,15 +1,16 @@
 ## generate a list with names equal to values
-namedList <- function (...) 
+namedList <- function (...)
 {
     L <- list(...)
     snm <- sapply(substitute(list(...)), deparse)[-1]
-    if (is.null(nm <- names(L))) 
+    if (is.null(nm <- names(L)))
         nm <- snm
-    if (any(nonames <- nm == "")) 
+    if (any(nonames <- nm == ""))
         nm[nonames] <- snm[nonames]
     setNames(L, nm)
 }
 
+##' @importFrom stats reformulate
 RHSForm <- function(form,as.form=FALSE) {
     rhsf <- form[[length(form)]]
     if (as.form) reformulate(deparse(rhsf)) else rhsf
@@ -32,14 +33,16 @@ reOnly <- function(f,response=FALSE) {
 ##' @param f1
 ##' @param f2
 ##' @keywords internal
-##' @examples 
+##' @examples
+##' if(FALSE) ## not exported
 ##' addForm0(y~x,~1)
 addForm0 <- function(f1,f2) {
   if (length(f2)==3) warning("discarding RHS of second argument")
-  RHSForm(f1) <- substitute(FOO+BAR,list(FOO=RHSForm(f1),
-                                     BAR=RHSForm(f2)))
-  return(f1)
+  RHSForm(f1) <- substitute(FOO+BAR, list(FOO = RHSForm(f1),
+                                          BAR = RHSForm(f2)))
+  f1
 }
+
 ##' combine right-hand sides of an arbitrary number of formulas
 addForm <- function(...) {
   Reduce(addForm0,list(...))
@@ -52,7 +55,7 @@ safeDeparse <- function(x, collapse=" ") {
     paste(deparse(x, 500L), collapse=collapse)
 }
 
-##' list of specials -- taken from enum.R 
+##' list of specials -- taken from enum.R
 findReTrmClasses <- function() {
     names(.valid_covstruct)
 }
@@ -78,10 +81,10 @@ findReTrmClasses <- function() {
 ##' splitForm(~x+y+(f|g)+cs(1|g))
 ##' splitForm(~x+y+(1|f/g))
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))
-##'                    
+##'
 ##' @author Steve Walker
 ##' @importFrom lme4 nobars
-##' @export 
+##' @export
 splitForm <- function(formula,
                       defaultTerm="us",
                       allowFixedOnly=TRUE,
@@ -137,16 +140,16 @@ splitForm <- function(formula,
                                         # parentheses)
     ## FIXME: parenthesized terms without bars should be skipped
     ## in fbas anyway
-    
-    ## MM hates this.  Doing it anyway for the short term 
+
+    ## MM hates this.  Doing it anyway for the short term
     ##  until we can incorporate expandSlash appropriately (GH #96)
     hasComplexGroup <- grep("\\|[^*/]+[*/]",
                             vapply(formSplits,safeDeparse,""))
-    
+
     hasBars <- grep("\\|",vapply(formSplits,safeDeparse,""))
     formSplits <- formSplits[hasBars]
     if (length(formSplits)>0) {
-        
+
         formSplits <- lapply(formSplits, uncoverHiddenSpecials)
                                         # vector to identify what
                                         # special (by name), or give
@@ -162,9 +165,9 @@ splitForm <- function(formula,
             stop("can't find setReTrm method(s)\n",
                  "use findReTrmClasses() for available methods")
             ## FIXME: coerce bad terms to default as attempted below
-            warning(paste("can't find setReTrm method(s) for term number(s)",
-                          paste(which(badTrms), collapse = ", "),
-                          "\ntreating those terms as unstructured"))
+            warning("can't find setReTrm method(s) for term number(s) ",
+                    paste(which(badTrms), collapse = ", "),
+                    "\ntreating those terms as unstructured")
             formSplitID[badTrms] <- "("
             fixBadTrm <- function(formSplit) {
                 as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
@@ -190,7 +193,7 @@ splitForm <- function(formula,
                      "please use ",noSpecialsAlt,
                      " or use findReTrmClasses() for available structures.")
         }
-        
+
         reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
                            lapply(formSplitSpec, "[[", 2))
         reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
@@ -200,10 +203,10 @@ splitForm <- function(formula,
     }
     fixedFormula <- noSpecials(nobars(formula))
 
-    return(list(fixedFormula  = fixedFormula,
-                reTrmFormulas = reTrmFormulas,
-                reTrmAddArgs  = reTrmAddArgs,
-                reTrmClasses  = reTrmClasses))
+    list(fixedFormula  = fixedFormula,
+         reTrmFormulas = reTrmFormulas,
+         reTrmAddArgs  = reTrmAddArgs,
+         reTrmClasses  = reTrmClasses)
 }
 
 uncoverHiddenSpecials <- function(trm) {
@@ -218,18 +221,19 @@ uncoverHiddenSpecials <- function(trm) {
 ##' @examples
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
+##' @export
 ##' @keywords internal
-noSpecials <- function(term,delete=TRUE) {
-    nospec <- noSpecials_(term,delete=delete)
-    if (is(term,"formula") && length(term)==3 && is.symbol(nospec)) {
+noSpecials <- function(term, delete=TRUE) {
+    nospec <- noSpecials_(term, delete=delete)
+    if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
-        nospec <- reformulate("1", response = deparse(nospec))
-    }
-    return(nospec)
+        reformulate("1", response = deparse(nospec))
+    } else
+        nospec
 }
 
-    
+
 ## noSpecials_(y~1+us(1|f))
 noSpecials_ <- function(term,delete=TRUE) {
     if (!anySpecial(term)) return(term)
@@ -260,9 +264,8 @@ isSpecial <- function(term) {
 }
 
 isAnyArgSpecial <- function(term) {
-    for(i in seq_along(term)) {
-        if(isSpecial(term[[i]])) return(TRUE)
-    }
+    for(tt in term)
+        if(isSpecial(tt)) return(TRUE)
     FALSE
 }
 

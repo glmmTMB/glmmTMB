@@ -11,7 +11,7 @@ getGrpVar(x)
 matching columns to random effect terms}
 }
 \value{
-String vector of grouping variables.
+character vector of grouping variables
 }
 \description{
 Extract grouping variables for random effect terms from a factor list
