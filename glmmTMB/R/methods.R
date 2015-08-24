@@ -217,3 +217,55 @@ vcov.glmmTMB<-function(object,full=T){
   }
 }
 
+cat.f <- function(...) cat(..., fill = TRUE)
+
+.prt.call.glmmTMB <- function(call, long = TRUE) {
+  pass<-0
+  if (!is.null(cc <- call$formula)){
+    cat.f("Formula:         ", deparse(cc))
+    pass<-nchar(as.character(call$formula[[2]]))
+  }
+  if(!is.null(cc <- call$ziformula))
+    cat.f("Zero inflation:  ",rep(' ',pass+2),'~ ' ,deparse(cc[[2]]),sep='')
+  if(!is.null(cc <- call$dispformula))
+    cat.f("Dispersion:      ",rep(' ',pass+2),'~ ', deparse(cc[[2]]), sep='')
+  if (!is.null(cc <- call$data))
+    cat.f("   Data:", deparse(cc))
+  if (!is.null(cc <- call$weights))
+    cat.f("Weights:", deparse(cc))
+  if (!is.null(cc <- call$offset))
+    cat.f(" Offset:", deparse(cc))
+  if (long && length(cc <- call$control) &&
+      !identical((dc <- deparse(cc)), "lmerControl()"))
+    ## && !identical(eval(cc), lmerControl()))
+    cat.f("Control:", dc)
+  if (!is.null(cc <- call$subset))
+    cat.f(" Subset:", deparse(cc))
+}
+
+##' Print glmmTMB model
+##' @method print glmmTMB
+##' @export
+##' 
+print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
+                        correlation = NULL, symbolic.cor = FALSE,
+                        signif.stars = getOption("show.signif.stars"),
+                        ranef.comp = "Std.Dev.", ...){
+  
+  # TYPE OF MODEL FIT --- REML? ---['class']
+  # FAMILY
+  # CALL
+  .prt.call.glmmTMB(object$call)
+  # AIC TABLE
+  
+  # varcorr
+  # ngroups
+  
+  # Print fixed effects
+  if(length(cf <- fixef(object)) > 0) {
+    cat("Fixed Effects:\n")
+    print(cf, ...)
+  } else cat("No fixed effect coefficients\n")
+  
+}
+
