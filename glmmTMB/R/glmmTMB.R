@@ -58,10 +58,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
 
+  beta_init <- ifelse(link == "inverse", 1, 0)
+
   parameters <- with(data.tmb,
                      list(
-                       beta    = rep(0, ncol(X)),
-                       b       = rep(0, ncol(Z)),
+                       beta    = rep(beta_init, ncol(X)),
+                       b       = rep(beta_init, ncol(Z)),
                        betazi  = rep(0, ncol(Xzi)),
                        bzi     = rep(0, ncol(Zzi)),
                        theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
