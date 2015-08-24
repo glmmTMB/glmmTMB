@@ -4,7 +4,7 @@
 \alias{vcov.glmmTMB}
 \title{Extracts the variance covariance structure}
 \usage{
-\method{vcov}{glmmTMB}(object, full = T)
+\method{vcov}{glmmTMB}(object, full = TRUE, ...)
 }
 \description{
 Extracts the variance covariance structure

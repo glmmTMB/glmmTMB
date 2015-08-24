@@ -11,21 +11,22 @@
 ##' @param link character
 ##' @param ziPredictCode zero-inflation code
 ##' @keywords internal
+##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs, offset, weights,
                        family, link,
                        ziPredictCode="corrected") {
-  
+
   condList  <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
   dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
-  
+
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
-  
+
   grpVar <- with(condList, getGrpVar(reTrms$flist))
-  
+
   nObs <- nrow(fr)
   ## FIXME: deal with offset in formula
   ##if (grepl("offset", safeDeparse(formula)))
@@ -36,7 +37,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   if (is.null(weights <- fr[["(weights)"]]))
     weights <- rep(1,nObs)
-  
+
   data.tmb <- namedList(
     X = condList$X,
     Z = condList$Z,
@@ -53,7 +54,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     family = .valid_family[family],
     link = .valid_link[link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode]
-    
+
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -84,6 +85,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from mkReTerms from LME4}
+##'
+##' @importFrom stats model.matrix contrasts
+##' @importFrom methods new
+##' @importFrom lme4 findbars nobars
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
@@ -98,9 +103,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         X <- NULL
     } else {
         mf$formula <- fixedform
-        
+
         ## FIXME: make sure that predvars are captured appropriately
-        
+
         ## attr(attr(fr,"terms"), "predvars.fixed") <-
         ##    attr(attr(fixedfr,"terms"), "predvars")
 
@@ -152,6 +157,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 ##' rt <- lme4::glFormula(cbind(size,incidence-size)~(1|herd)+(1|obs),
 ##'   data=cbpp,family=binomial)$reTrms
 ##' getGrpVar(rt$flist)
+##' @export
 getGrpVar <- function(x)
 {
   assign <- attr(x,"assign")
@@ -162,7 +168,7 @@ getGrpVar <- function(x)
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
 ##' @param reTrms random-effects terms list
-##' @param ss 
+##' @param ss
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -176,6 +182,7 @@ getGrpVar <- function(x)
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)
 ##' @importFrom stats setNames
+##' @export
 getReStruc <- function(reTrms, ss) {
 
   ## information from ReTrms is contained in cnms, flist
@@ -231,12 +238,13 @@ stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
 ##'     zero-inflation: the default \code{~0} specifies no zero-inflation
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{~0} specifies no zero-inflation
-##' @param weights 
-##' @param offset 
+##' @param weights
+##' @param offset
 ##' @param se whether to return standard errors
-##' @param verbose 
+##' @param verbose
 ##' @param debug whether to return the preprocessed data and parameter objects,
 ##'     without fitting the model
+##' @importFrom stats gaussian binomial poisson nlminb as.formula terms
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
@@ -270,26 +278,26 @@ glmmTMB <- function (
 
     call <- mf <- mc <- match.call()
 
-    if (is.character(family)) 
+    if (is.character(family))
       family <- get(family, mode = "function", envir = parent.frame())
-    if (is.function(family)) 
+    if (is.function(family))
       family <- family()
     if (is.null(family$family)) {
       print(family)
       stop("'family' not recognized")
     }
-    
+
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmTMB')
 
     ## extract family and link information from family object
     link <- family$link
-    familyStr <- family$family 
+    familyStr <- family$family
 
     if (is.null(dispformula)) {
       dispformula <- if (usesDispersion(familyStr)) ~1 else ~0
     }
-    
+
     ## lme4 function for warning about unused arguments in ...
     ## ignoreArgs <- c("start","verbose","devFunOnly",
     ##   "optimizer", "control", "nAGQ")
@@ -299,9 +307,9 @@ glmmTMB <- function (
 
     # substitute evaluated version
     ## FIXME: denv leftover from lme4, not defined yet
-    
+
     mc$formula <- formula <- as.formula(formula, env = denv)
-    
+
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
                names(mf), 0L)
@@ -340,11 +348,11 @@ glmmTMB <- function (
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
     ## wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall=1e6, allow.n=TRUE)
-    
+
     ## store info on location of response variable
-    respCol <- attr(terms(fr),"response")
+    respCol <- attr(terms(fr), "response")
     names(respCol) <- names(fr)[respCol]
-    
+
     ## extract response variable
     yobs <- fr[,respCol]
 
@@ -375,7 +383,7 @@ glmmTMB <- function (
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm = namedList(combForm, formula,
                                                     ziformula, dispformula)))
-    ## FIXME: are we including obj and frame or not?  
+    ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
     ##    and provide a way to regenerate it as necessary

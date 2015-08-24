@@ -2,10 +2,8 @@
 % Please edit documentation in R/methods.R
 \docType{methods}
 \name{fixef}
-\alias{fixed.effects}
 \alias{fixef}
 \alias{fixef.glmmTMB}
-\alias{fixef.merMod}
 \title{Extract fixed-effects estimates}
 \usage{
 \method{fixef}{glmmTMB}(object, ...)
@@ -27,7 +25,8 @@ Extract the fixed-effects estimates
 Extract the estimates of the fixed-effects parameters from a fitted model.
 }
 \examples{
-fixef(glmmtmb(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
+data(sleepstudy, package = "lme4")
+fixef(glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
 }
 \keyword{models}
 
