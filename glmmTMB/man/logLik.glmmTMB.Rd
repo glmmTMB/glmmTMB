@@ -4,7 +4,7 @@
 \alias{logLik.glmmTMB}
 \title{Extract the log likelihood of a glmmTMB model}
 \usage{
-\method{logLik}{glmmTMB}(object)
+\method{logLik}{glmmTMB}(object, ...)
 }
 \value{
 object of class \code{logLik} with attributes

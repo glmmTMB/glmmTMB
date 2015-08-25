@@ -21,10 +21,9 @@ a list
 \item{covCode}{structure code}
 }
 \description{
-.. content for \description{} (no empty lines) ..
-}
-\details{
-.. content for \details{} ..
+Calculate random effect structure
+calculates number of random effects, number of parameters,
+blocksize and number of blocks.
 }
 \examples{
 data(sleepstudy, package="lme4")

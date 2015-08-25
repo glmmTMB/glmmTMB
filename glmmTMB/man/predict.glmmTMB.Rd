@@ -25,6 +25,7 @@ prediction
 \examples{
 data(sleepstudy,package="lme4")
 g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
-glmmTMB:::predict.glmmTMB(g0,sleepstudy)
+if(FALSE) ## ___FIXME___ (not yet working)
+predict(g0, sleepstudy)
 }
 
