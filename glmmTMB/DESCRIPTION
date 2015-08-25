@@ -1,14 +1,23 @@
 Package: glmmTMB
-Title: Generalized Linear Mixed Models using TMB
-Version: 0.0.0.9000
+Title: Generalized Linear Mixed Models using Template Model Builder
+Version: 0.0.1
 Date: 2015-08-17
-Author: Author
-Maintainer: Author <author@gmail.com>
-Description: Fit linear and generalized linear mixed models with or without
-    zero-inflation. The models are fit using maximum likelihood estimation
-    via TMB (Template Model Builder). Random effects are assumed to be
+Authors@R: c(person("Arni","Magnusson",role="aut"),
+	    person("Hans","Skaug",role="aut"),
+	    person("Anders","Nielsen",role="aut"),
+	    person("Casper","Berg",role="aut"),
+            person("Kasper","Kristensen",role="aut"),
+            person("Martin","Maechler",role="aut"),
+            person("Koen","van Bentham",role="aut"),
+            person("Ben","Bolker",role="aut"),
+            person("Mollie","Brooks",role=c("aut","cre"),
+                   email="mollieebrooks@gmail.com"))
+Description: Fit linear and generalized linear mixed models 
+    with various extensions, including zero-inflation. The models are 
+    fitted using maximum likelihood estimation 
+    via 'TMB' (Template Model Builder). Random effects are assumed to be
     Gaussian and are integrated out to produce the marginal likelihood using
-    the Laplace approximation. Gradients are calulated using automtic
+    the Laplace approximation. Gradients are calculated using automtic
     differentiation.
 License: AGPL-3
 Imports: TMB, lme4 (>= 1.1-9), Matrix, nlme
