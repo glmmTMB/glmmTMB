@@ -17,7 +17,7 @@ family.glmmTMB <- function(object, ...) {
 ##' @export
 ##' @keywords internal
 sigma.glmmTMB <- function(object, ...) {
-    if(family(object) == "gaussian")
+    if(family(object)$family == "gaussian")
         exp( .5 * object$obj$env$parList()$betad ) # betad is  log(sigma ^ 2)
     else 1.
 }
@@ -67,67 +67,62 @@ mkVarCorr <- function(sc, cnms, nc, theta, nms) {
     structure(ans, sc = sc)
 }
 
-mkVC <- function(cor, sd, nms) {
-    stopifnot(length(nms) == (nc <- length(cor)),  nc == length(sd),
-              is.list(nms), is.list(cor), is.list(sd))
-
-    do1cov <- function(sd, cor, n = length(sd)) sd * cor * rep(sd, each = n)
-
-    if(FALSE)
-        rr <- lapply(..., do1cov)
+mkVC <- function(cor, sd, cnms) {
+    stopifnot(length(cnms) == (nc <- length(cor)),  nc == length(sd),
+              is.list(cnms), is.list(cor), is.list(sd),
+              is.character(nnms <- names(cnms)), nzchar(nnms))
     ##
-
-    if(is.character(nms)) {
-	## FIXME: do we want this?  Maybe not.
-	## Potential problem: the names of the elements of the VarCorr() list
-	##  are not necessarily unique (e.g. fm2 from example("lmer") has *two*
-	##  Subject terms, so the names are "Subject", "Subject".  The print method
-	##  for VarCorrs handles this just fine, but it's a little awkward if we
-	##  want to dig out elements of the VarCorr list ... ???
-	if (anyDuplicated(nms))
-	    nms <- make.names(nms, unique = TRUE)
-	names(ans) <- nms
-    }
-
-
-    structure(cov, stddev = sd, correlation = cor)
-
-
+    ## FIXME: do we want this?  Maybe not.
+    ## Potential problem: the names of the elements of the VarCorr() list
+    ##  are not necessarily unique (e.g. fm2 from example("lmer") has *two*
+    ##  Subject terms, so the names are "Subject", "Subject".  The print method
+    ##  for VarCorrs handles this just fine, but it's a little awkward if we
+    ##  want to dig out elements of the VarCorr list ... ???
+    if (anyDuplicated(nnms))
+        nnms <- make.names(nnms, unique = TRUE)
+    ##
+    ## cov :=  F(sd, cor) :
+    do1cov <- function(sd, cor, n = length(sd)) sd * cor * rep(sd, each = n)
+    ##
+    setNames(lapply(seq_len(nc), function(i) {
+        cov <- do1cov(sd = (sd.i <- sd[[i]]), cor = (cor.i <- cor[[i]]))
+        names(sd.i) <- nm.i <- cnms[[i]]
+        dimnames(cov) <- dimnames(cor.i) <- list(nm.i, nm.i)
+        structure(cov, stddev = sd.i, correlation = cor.i)
+    }), nnms)
 }
+
 
 ##' Extract variance and correlation components
 ##'
+##' @importFrom nlme VarCorr
+##'  and re-export the generic:
+##' @export VarCorr
+##' @export
 VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 {
-
-  ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
+    ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
     stopifnot(is.numeric(sigma), length(sigma) == 1)
-
     xrep <- x$obj$env$report()
-
-    reT <- x$modelInfo$reTerms
-    ## $ reTrms :List of 3
-    ##   ..$ condList:List of 2
-    ##   .. ..$ cnms :List of 1
-    ##   .. .. ..$ Subject: chr [1:2] "(Intercept)" "age"
-
-    ## ans <- structure(val, stddev = stddev, correlation = corr)
-    vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = reT$condList$cnms)
-    vs.zi   <- mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = reT$ ziList $cnms)
-
-    ## unfinished
-    structure(ans, sc = sc)
-
-
-   structure(mkVarCorr(sigma, cnms = cnms, nc = nc, theta = x@theta,
-			nms = { fl <- x@flist; names(fl)[attr(fl, "assign")]}),
-	      useSc = as.logical(x@devcomp$dims[["useSc"]]),
+    reT <- x$modelInfo$reTrms
+    vc.cond <- if(length(cn <- reT$condList$cnms))
+                   mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn)
+    vc.zi   <- if(length(cn <- reT$  ziList$cnms))
+                   mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
+    structure(list(cond = vc.cond, zi = vc.zi),
+              sc = usesDispersion(x), ## 'useScale'
 	      class = "VarCorr.merMod")
 }
 
-
+##' @title Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
-##' @keywords internal
+##' @export
+##'  document as it is a method with "surprising arguments":
+##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
+##' @param digits number of significant digits to use
+##' @param comp a string specifying the component to format and print
+##' @param formatter a \code{\link{function}}
+##' @param ...
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 		   comp = "Std.Dev.", formatter = format, ...) {
     print(formatVC(x, digits = digits, comp = comp, formatter = formatter), quote = FALSE, ...)
