@@ -19,21 +19,23 @@
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  structure(list(conditional_model = setNames(pl$beta,   colnames(getME(object, "X"))),
-                 zero_inflation    = setNames(pl$betazi, colnames(getME(object, "Xzi")))),
+  structure(list(cond = setNames(pl$beta,   colnames(getME(object, "X"))),
+                 zi    = setNames(pl$betazi, colnames(getME(object, "Xzi")))),
             class =  "fixef.glmmTMB")
 }
 
 ##' @method print fixef.glmmTMB
 ##' @export
-print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
-  if (simplify && length(x$zero_inflation) == 0L)
-    print(unclass(x$conditional_model, ...))
-  else
-    print(unclass(x), ...)
-  invisible(x)
+print.fixef.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3), ...){
+  if(length(object$cond)>0){
+    cat("\nConditional model",fill=TRUE)
+    print.default(format(object$cond,digits=digits), print.gap = 2L, quote = FALSE,...)
+  }
+  if(length(object$zi)>0){
+    cat("\nZero inflation",fill=TRUE)
+    print.default(format(object$zi,digits=digits), print.gap = 2L, quote = FALSE,...)
+  }
 }
-
 ##' Extract Random Effects
 ##'
 ##' Generic function to extract random effects from \code{glmmTMB} models, both
@@ -97,16 +99,16 @@ ranef.glmmTMB <- function(object, ...) {
   }
 
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  structure(list(conditional_model = arrange(pl$b, "condList"),
-                 zero_inflation    = arrange(pl$bzi, "ziList")),
+  structure(list(cond = arrange(pl$b, "condList"),
+                 zi    = arrange(pl$bzi, "ziList")),
             class = "ranef.glmmTMB")
 }
 
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
-  if (simplify && length(x$zero_inflation) == 0L)
-    print(unclass(x$conditional_model, ...))
+  if (simplify && length(x$zi) == 0L)
+    print(unclass(x$cond, ...))
   else
     print(unclass(x), ...)
   invisible(x)
@@ -252,7 +254,7 @@ print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
                         correlation = NULL, symbolic.cor = FALSE,
                         signif.stars = getOption("show.signif.stars"),
                         ranef.comp = "Std.Dev.", ...){
-  
+
   # TYPE OF MODEL FIT --- REML? ---['class']
   # FAMILY
   # CALL
@@ -264,9 +266,8 @@ print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
   
   # Print fixed effects
   if(length(cf <- fixef(object)) > 0) {
-    cat("Fixed Effects:\n")
+    cat("\nFixed Effects:\n")
     print(cf, ...)
   } else cat("No fixed effect coefficients\n")
   
 }
-
