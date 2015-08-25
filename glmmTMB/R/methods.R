@@ -167,17 +167,39 @@ getME.glmmTMB <- function(object,
 logLik.glmmTMB <- function(object, ...) {
   val <- -object$fit$objective
   nobs <- sum(!is.na(object$obj$env$data$yobs))
-  structure(val, nobs = nobs, nall = nobs, df = npar.glmmTMB(object),
+  structure(val, nobs = nobs, nall = nobs, df = length(object$fit$par),
             class = "logLik")
 }
 
-##' Retrieve number of parameters
-##'
-##' Also counts dispersion parameter and thetas
-npar.glmmTMB <- function(object){
-  length(object$fit$par)
+##' @importFrom stats nobs
+##' @method nobs glmmTMB
+nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
+
+
+.prt.aictab <- function(object, digits = 1) {
+  aictab <- c(AIC = AIC(object), BIC = BIC(object), logLik = logLik(object),
+              df.resid = df.residual(object))
+  t.4 <- round(aictab, digits)
+
+    ## slight hack to get residual df formatted as an integer
+    t.4F <- format(t.4)
+    t.4F["df.resid"] <- format(t.4["df.resid"])
+    print(t.4F, quote = FALSE)
+
 }
-## ^^ really ?
+
+##'
+##' @importFrom stats df.residual
+##' @method df.residual glmmTMB
+##  TODO: not clear whether the residual df should be based
+##  on p=length(beta) or p=length(c(theta,beta)) ... but
+##  this is just to allow things like aods3::gof to work ...
+##  Taken from LME4, including the todo
+##
+df.residual.glmmTMB <- function(object, ...) {
+  nobs(object)-length(object$fit$par)
+}
+
 
 ##' Extracts the variance covariance structure
 ##'
@@ -261,7 +283,7 @@ print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
   # CALL
   .prt.call.glmmTMB(object$call)
   # AIC TABLE
-  
+  .prt.aictab(object,4)
   # varcorr
   # ngroups
   
