@@ -8,10 +8,10 @@ cbpp <- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 
 ## utility: hack/replace parts of the updated result that will
 ##  be cosmetically different
-matchForm <- function(obj,objU,family=FALSE) {
+matchForm <- function(obj, objU, family=FALSE) {
   for(cmp in c("call","frame")) # <- more?
      objU[[cmp]] <- obj[[cmp]]
-     ## FIXME: why are formulas equivalent but not identical (order)?
+     ## Q: why are formulas equivalent but not identical?  A: their environments may differ
   objU$modelInfo$allForm <- obj$modelInfo$allForm
   if (family)  objU$modelInfo$family <- obj$modelInfo$family
   return(objU)
@@ -19,39 +19,35 @@ matchForm <- function(obj,objU,family=FALSE) {
 
 context("Very basic glmmTMB fitting")
 
+fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
+fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy)
+fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
+fm3 <- glmmTMB(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
+               sleepstudy)
 
 test_that("Basic Gaussian Sleepdata examples", {
-    expect_is(fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy), "glmmTMB")
-    expect_is(fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy), "glmmTMB")
-    expect_is(fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy), "glmmTMB")
-    expect_is(fm3 <- glmmTMB(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
-                             sleepstudy), "glmmTMB")
+    expect_is(fm0, "glmmTMB")
+    expect_is(fm1, "glmmTMB")
+    expect_is(fm2, "glmmTMB")
+    expect_is(fm3, "glmmTMB")
 
-    ## *_equivalent(.), a misnomer, means  all.equal(*, check.attributes = FALSE):
-    ## but can't use tolerance with *_equivalent (sigh) ...
-    expect_equal(unname(fixef(fm0)), 298.508, tolerance = .0001)
-    expect_equal(fixef(fm0), c("(Intercept)" = 298.508), tolerance = .0001)
-
-    expect_equal(unname(fixef(fm1)), c(251.405, 10.4673),   tolerance = .0001)
-    expect_equal(fixef(fm1), c("(Intercept)" = 251.405, Days = 10.4673),
+    expect_equal(fixef(fm0)[[1]], c("(Intercept)" = 298.508), tolerance = .0001)
+    expect_equal(fixef(fm1)[[1]], c("(Intercept)" = 251.405, Days = 10.4673),
                  tolerance = .0001)
+    expect_equal(fixef(fm2), fixef(fm1), tolerance = 1e-5)# seen 1.042 e-6
+    expect_equal(fixef(fm3), fixef(fm1), tolerance = 5e-6)# seen 2.250 e-7
 })
 
 test_that("Update Gaussian", {
   ## call doesn't match (formula gets mangled?)
   ## timing different
-  ## FIXME: more redundancy
-  fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
-  fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy)
   fm1u <- update(fm0, . ~ . + Days)
-  expect_equal(fm1, matchForm(fm1,fm1u))
-
+  expect_equal(fm1, matchForm(fm1, fm1u))
 })
 
 
 test_that("Variance structures", {
-  ## FIXME, redundant
-  expect_is(fm2     <- glmmTMB(Reaction ~ Days +     (Days| Subject), sleepstudy), "glmmTMB")
+  ## above: fm2     <- glmmTMB(Reaction ~ Days +     (Days| Subject), sleepstudy)
   expect_is(fm2us   <- glmmTMB(Reaction ~ Days +   us(Days| Subject), sleepstudy), "glmmTMB")
   expect_is(fm2cs   <- glmmTMB(Reaction ~ Days +   cs(Days| Subject), sleepstudy), "glmmTMB")
   expect_is(fm2diag <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy), "glmmTMB")
@@ -64,75 +60,60 @@ test_that("Sleepdata Variance components", {
     ## TODO: Variance Components ("theta"s)
 })
 
+## Basic Binomial CBPP examples ---- intercept-only fixed effect
+gm0 <- glmmTMB(prop ~ 1 +      (1|herd),
+               weights = size, data = cbpp, family=binomial())
+gm1 <- glmmTMB(prop ~ period + (1|herd),
+               weights = size, data = cbpp, family=binomial())
 
 test_that("Basic Binomial CBPP examples", {
-
-    ## intercept-only fixed effect
-    expect_is(gm0 <- glmmTMB(prop ~ 1 + (1|herd),
-                             weights=size,
-                             data = cbpp, family=binomial()), "glmmTMB")
-    expect_is(gm1 <- glmmTMB(prop ~ 1 + period + (1|herd),
-                             weights=size,
-                             data = cbpp, family=binomial()), "glmmTMB")
-
-    expect_equal(fixef(gm0), c("(Intercept)" = -2.04567), tolerance = .0005)
-    expect_equal(fixef(gm1), c("(Intercept)" = -1.39834,
-                               period2 = -0.991925, period3 = -1.12822,
-                               period4 = -1.57975),
+    expect_is(gm0, "glmmTMB")
+    expect_is(gm1, "glmmTMB")
+    expect_equal(fixef(gm0)[[1]], c("(Intercept)" = -2.053136), tolerance = .0005)
+    expect_equal(fixef(gm1)[[1]], c("(Intercept)" = -1.3928024,
+                               period2 = -0.9976629, period3 = -1.1337828,
+                               period4 = -1.5865186),
                   tolerance = .001) # <- TODO: lower eventually
 })
 
-test_that("multiple RE, reordering", {
- tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs), 
-                  family=binomial(), data=cbpp, weights=size)
- tmb2 <- glmmTMB(prop ~ period +  (1|obs) + (1|herd), 
-                 family=binomial(), data=cbpp, weights=size)
- expect_equal(getME(tmb1,"theta"),getME(tmb2,"theta"))
+### Multiple RE,  reordering
+tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs),
+                weights = size, data = cbpp, family=binomial())
+tmb2 <- glmmTMB(prop ~ period + (1|obs) + (1|herd),
+                weights = size, data = cbpp, family=binomial())
+
+test_that("Multiple RE, reordering", {
+ expect_equal(fixef(tmb1), fixef(tmb2),                   tolerance = 1e-13)
+ expect_equal(getME(tmb1, "theta"), getME(tmb2, "theta"), tolerance = 1e-13)
 })
 
-test_that("alternative family specifications", {
-
+test_that("Alternative family specifications [via update(.)]", {
   ## intercept-only fixed effect
-  expect_is(gm0 <- glmmTMB(prop ~ 1 + (1|herd),
-                           weights=size,
-                           data = cbpp, family=binomial), "glmmTMB")
-  expect_equal(matchForm(gm0,update(gm0,family="binomial")),gm0)
-  expect_equal(matchForm(gm0,update(gm0,family=binomial())),gm0)
-  expect_equal(matchForm(gm0,update(gm0,
-                                family=list(family="binomial",link="logit")),
-                         family=TRUE),gm0)
-
-  })
-
-
-test_that("multiple RE, reordering", {
- tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs),
-                  family=binomial(), data=cbpp, weights=size)
- tmb2 <- glmmTMB(prop ~ period +  (1|obs) + (1|herd),
-                 family=binomial(), data=cbpp, weights=size)
- expect_equal(getME(tmb1,"theta"),getME(tmb2,"theta"))
+  expect_equal(gm0, matchForm(gm0, update(gm0, family= "binomial")))
+  expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial())))
+  expect_equal(gm0, matchForm(gm0, update(gm0, family= list(family = "binomial",
+                                                       link = "logit")),
+                              family=TRUE))
 })
+
 
 test_that("Update Binomial", {
-  ## call doesn't match (formula gets mangled?)
+  ## matchForm(): call doesn't match (formula gets mangled?)
   ## timing different
-  gm0 <- glmmTMB(prop ~ 1 + (1|herd),
-                 weights = size, data = cbpp, family=binomial())
-  gm1 <- glmmTMB(prop ~ period + (1|herd),
-                 weights = size, data = cbpp, family=binomial())
   gm1u <- update(gm0, . ~ . + period)
-  expect_equal(gm1, matchForm(gm1,gm1u))
-
+  expect_equal(gm1, matchForm(gm1, gm1u))
 })
 
 
 
-if(require("lme4")) {
-
+test_that("close to lme4 results", {
+    expect_true(require("lme4"))
     L <- load(system.file("testdata", "lme-tst-fits.rda",
                           package="lme4", mustWork=TRUE))
-    message("loaded testdata from lme4:\n ",
-            strwrap(paste(L, collapse = ", ")))
+    expect_is(L, "character")
+    message("Loaded testdata from lme4:\n ",
+            paste(strwrap(paste(L, collapse = ", ")),
+                  collapse = "\n "))
 
     if(FALSE) { ## part of the above [not recreated here for speed mostly:]
         ## intercept only in both fixed and random effects
@@ -144,14 +125,6 @@ if(require("lme4")) {
         ## fixed slope, independent intercept & slope RE
         fit_sleepstudy_3 <- lmer(Reaction ~ Days + (1|Subject)+ (0+Days|Subject), sleepstudy)
 
-        ## What we really want to compare against - Maximum Likelihood (package 'DESCRIPTION' !)
-        fi_0 <- lmer(Reaction ~   1  + ( 1  | Subject), sleepstudy, REML=FALSE)
-        fi_1 <- lmer(Reaction ~ Days + ( 1  | Subject), sleepstudy, REML=FALSE)
-        fi_2 <- lmer(Reaction ~ Days + (Days| Subject), sleepstudy, REML=FALSE)
-        fi_3 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject),
-                     sleepstudy, REML=FALSE)
-
-
         cbpp$obs <- factor(seq(nrow(cbpp)))
         ## intercept-only fixed effect
         fit_cbpp_0 <- glmer(cbind(incidence, size-incidence) ~ 1 + (1|herd),
@@ -162,9 +135,17 @@ if(require("lme4")) {
         fit_cbpp_2 <- update(fit_cbpp_1, . ~ . + (1|obs))
         ## specify formula by proportion/weights instead
         fit_cbpp_3 <- update(fit_cbpp_1, incidence/size ~ period + (1 | herd), weights = size)
+
     }
+
+    ## What we really want to compare against - Maximum Likelihood (package 'DESCRIPTION' !)
+    fi_0 <- lmer(Reaction ~   1  + ( 1  | Subject), sleepstudy, REML=FALSE)
+    fi_1 <- lmer(Reaction ~ Days + ( 1  | Subject), sleepstudy, REML=FALSE)
+    fi_2 <- lmer(Reaction ~ Days + (Days| Subject), sleepstudy, REML=FALSE)
+    fi_3 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject),
+                 sleepstudy, REML=FALSE)
 
     ## Now check closeness to lme4 results
 
-
-}# comparing with lme4 if there..
+    ## ......................................
+})
