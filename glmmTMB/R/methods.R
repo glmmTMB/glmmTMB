@@ -116,6 +116,7 @@ print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
 ##' Method borrowed from lme4
 ##'
 ##' @importFrom lme4 getME
+##' @export getME
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi", "Xd", "theta"),
