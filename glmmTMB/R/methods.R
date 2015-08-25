@@ -244,7 +244,6 @@ cat.f <- function(...) cat(..., fill = TRUE)
 }
 
 ##' Print glmmTMB model
-##' @export
 ##' @method print glmmTMB
 ##' @export
 ##' 
