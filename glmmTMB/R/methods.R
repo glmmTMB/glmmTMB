@@ -20,22 +20,23 @@
 fixef.glmmTMB <- function(object, ...) {
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
   structure(list(cond = setNames(pl$beta,   colnames(getME(object, "X"))),
-                 zi    = setNames(pl$betazi, colnames(getME(object, "Xzi")))),
+                 zi    = setNames(pl$betazi, colnames(getME(object, "Xzi"))),
+                 disp = setNames(pl$betad, colnames(getME(object, "Xd")))),
             class =  "fixef.glmmTMB")
 }
 
 ##' @method print fixef.glmmTMB
 ##' @export
-print.fixef.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3), ...){
-  if(length(object$cond)>0){
-    cat("\nConditional model",fill=TRUE)
-    print.default(format(object$cond,digits=digits), print.gap = 2L, quote = FALSE,...)
-  }
-  if(length(object$zi)>0){
-    cat("\nZero inflation",fill=TRUE)
-    print.default(format(object$zi,digits=digits), print.gap = 2L, quote = FALSE,...)
+print.fixef.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3)){
+  name <- list(cond = "Conditional model", zi = "Zero inflation", disp = "Dispersion")
+  for(x in names(object)){
+    if((length(object[[x]])-as.numeric(x == 'disp' & '(Intercept)' %in% names(object[[x]])))>0){
+      cat("\n",name[[x]],"\n",sep="")
+      print.default(format(object[[x]],digits=digits), print.gap = 2L, quote = FALSE)
+    }
   }
 }
+
 ##' Extract Random Effects
 ##'
 ##' Generic function to extract random effects from \code{glmmTMB} models, both
