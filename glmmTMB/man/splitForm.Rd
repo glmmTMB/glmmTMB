@@ -40,6 +40,7 @@ splitForm(~x+y)            ## no specials or RE
 splitForm(~x+y+(f|g))      ## no specials
 splitForm(~x+y+diag(f|g))  ## one special
 splitForm(~x+y+(f|g)+cs(1|g))
+splitForm(~x+y+(1|f/g))
 splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))
 noSpecials(y~1+us(1|f))
 noSpecials(y~1+us(1|f),delete=FALSE)

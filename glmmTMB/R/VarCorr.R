@@ -126,7 +126,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 }
 
 
-##' @export
+##' @method print VarCorr.glmmTMB
 ##' @keywords internal
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 		   comp = "Std.Dev.", formatter = format, ...) {

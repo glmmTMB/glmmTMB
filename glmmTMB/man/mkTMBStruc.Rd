@@ -7,7 +7,31 @@
 mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
   family, link, ziPredictCode = "corrected")
 }
+\arguments{
+\item{formula}{}
+
+\item{ziformula}{}
+
+\item{dispformula}{}
+
+\item{mf}{}
+
+\item{fr}{}
+
+\item{yobs}{}
+
+\item{offset}{}
+
+\item{weights}{}
+
+\item{family}{character}
+
+\item{link}{character}
+
+\item{ziPredictCode}{zero-inflation code}
+}
 \description{
 extract info from formulas, reTrms, etc., format for TMB
 }
+\keyword{internal}
 

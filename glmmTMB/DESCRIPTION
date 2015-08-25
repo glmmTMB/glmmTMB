@@ -1,7 +1,7 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using TMB
 Version: 0.0.0.9000
-Date: 2015-08-17
+Date: 2015-08-25
 Author: Author
 Maintainer: Author <author@gmail.com>
 Description: Fit linear and generalized linear mixed models with or without
@@ -11,7 +11,7 @@ Description: Fit linear and generalized linear mixed models with or without
     the Laplace approximation. Gradients are calulated using automtic
     differentiation.
 License: AGPL-3
-Imports: TMB, lme4 (>= 1.1-9), Matrix, nlme
+Imports: methods, TMB, lme4 (>= 1.1-9), Matrix, nlme
 LinkingTo: TMB
 Suggests: knitr, testthat
 VignetteBuilder: knitr
