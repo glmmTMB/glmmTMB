@@ -380,7 +380,7 @@ glmmTMB <- function (
 
     modelInfo <- with(TMBStruc,
                       namedList(nObs, respCol, grpVar, familyStr, family, link,
-                                reTrms = lapply(namedList(condList, ziList, dispList),
+                                reTrms = lapply(namedList(condList, ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm = namedList(combForm, formula,
