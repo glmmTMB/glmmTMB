@@ -4,8 +4,17 @@ namespace glmmtmb{
   template<class Type>
   Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
   {
-    Type logres = -lgamma(n + 1) + lgamma(y + 1) + lgamma(n - y + 1) - lgamma(a + y) -
-      lgamma(b + n - y) - lgamma(a + b) + lgamma(a) + lgamma(b) + lgamma(a + b + n);
+    /*
+      Wikipedia:
+      f(k|n,\alpha,\beta) =
+      \frac{\Gamma(n+1)}{\Gamma(k+1)\Gamma(n-k+1)}
+      \frac{\Gamma(k+\alpha)\Gamma(n-k+\beta)}{\Gamma(n+\alpha+\beta)}
+      \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}
+    */
+    Type logres =
+      lgamma(n + 1) - lgamma(y + 1)     - lgamma(n - y + 1) +
+      lgamma(y + a) + lgamma(n - y + b) - lgamma(n + a + b) +
+      lgamma(a + b) - lgamma(a)         - lgamma(b) ;
     if(!give_log) return exp(logres);
     else return logres;
   }
