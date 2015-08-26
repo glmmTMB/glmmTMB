@@ -66,47 +66,66 @@ findReTrmClasses <- function() {
     names(.valid_covstruct)
 }
 
-## Expand any slashes in the grouping factors returned by fb
-## Original by Doug Bates: copied and streamlined from lme4/utilities.R
+slashTerms <- function(x,debug=FALSE)
+{
+    if (debug) cat("slashTerms: ",deparse(x),"\n")
+    if (!("/" %in% all.names(x))) return(x)
+    if (x[[1]] == as.name("("))  ## strip parens if necessary
+        return(slashTerms(x[[2]]))
+    if (x[[1]] != as.name("/")) {
+        stop("didn't expect head ",deparse(x[[1]]))
+    }
+    ## recursively apply to all terms
+    lapply(x[-1],slashTerms,debug=debug)
+}
+
+
+##' Expand any slashes in the grouping factors returned by fb
+##' 
+##' Original by Doug Bates: copied and streamlined from lme4/utilities.R
+##' @examples
+##' ff <- fbx(y~1+(x|f/g))
+##' expandSlash(quote(1|(f/g)/h))
+##' expandSlash(quote(1|f/g/h))
+##' expandSlash(ff,debug=TRUE)
 expandSlash <- function(bb,debug=FALSE) {
     ## Create the interaction terms for nested effects
-    makeInteraction <- function(x)
-    {
+    makeInteraction <- function(x) {
         if (length(x) < 2) return(x)
         trm1 <- makeInteraction(x[[1]])
         trm11 <- if(is.list(trm1)) trm1[[1]] else trm1
         list(makeOp(x[[2]],trm11,quote(`:`)), trm1)
     }
     ## Return the list of '/'-separated terms
-    slashTerms <- function(x,debug=FALSE)
-    {
-        if (debug) cat("slashTerms: ",deparse(x),"\n")
-        if (!("/" %in% all.names(x))) return(x)
-        if (x[[1]] != as.name("/")) {
-            stop("unparseable formula for grouping factor",call.=FALSE)
-        }
-        ## recursively apply to all terms
-        lapply(x[-1],slashTerms,debug=debug)
-    }
-
     if (!is.list(bb))
         expandSlash(list(bb),debug=debug)
-    else
-        unlist(lapply(bb,
-          function(x) {
-            if (length(x) > 2 &&
-                is.list(trms <- slashTerms(RHSForm(x)))) {
-                ## lapply(unlist(...)) - unlist returns a flattened list
-                lapply(unlist(makeInteraction(trms)),
-                       function(trm) makeOp(x[[2]],trm,quote(`|`)))
-                ## function(trm) substitute(foo|bar,
-                ## list(foo = x[[2]], bar = trm)))
-            }
-            else x
-        }))
-}## {expandSlash}
+    else {
+        for (i in seq_along(bb)) {
+            esfun <- function(x) {
+                if (!("/" %in% all.names(x))) return(x)
+                if (length(x)==1) stop("term should have length >1")
+                if (length(x)==2) {
+                    ## unary operator such as diag(1|f/g)
+                    ## return diag(...) + diag(...) + ...
+                    return(lapply(esfun(x[[2]]),
+                                  makeOp,y=head(x)))
+                }
+                if (!head(x)==quote(`|`)) stop("operator should be a bar")
+                if (is.list(trms <- slashTerms(x[[3]]))) {
+                    ## replicate LHS of bar with each RHS term
+                    return(lapply(unlist(makeInteraction(trms)),
+                                  makeOp,x=x[[2]],op=quote(`|`)))
+                }  else {
+                    return(x)
+                }
+            } ## esfun def.
+            return(unlist(lapply(bb,esfun)))
+        } ## loop over bb
+    }
+} ## {expandSlash}
 
-head.formula <- function(x, ...) {
+## sugar
+head.formula <- head.call <- function(x, ...) {
     x[[1]]
 }
 
@@ -135,31 +154,36 @@ inLang <- function(x,table) {
 ##' 
 ##' 1. atom (not a call or an expression): NULL
 ##' 2. special, i.e. foo(...) where "foo" is in specials: return term
-##' 3. parenthesized term: *if*  
-fbx <- function(term,debug=FALSE,specials=character(0)) {
+##' 3. parenthesized term: *if* the head of the head is | (i.e.
+##'    it is of the form (xx|gg), then convert it to the default
+##'    special type; we won't allow pathological cases like
+##'    ((xx|gg)) ... [can we detect them?]
+fbx <- function(term,debug=FALSE,specials=character(0),
+                default.special="us") {
+    ds <- eval(substitute(as.name(foo),list(foo=default.special)))
     if (is.name(term) || !is.language(term)) return(NULL)
-    if (inLang(head(term),lapply(specials,as.name)) {
+    if (list(term[[1]]) %in% lapply(specials,as.name)) {
         if (debug) cat("special: ",deparse(term),"\n")
         return(term)
     }
     if (head(term) == as.name('|')) {  ## found x | g
         if (debug) cat("bar term:",deparse(term),"\n")
-        return(term)
+        return(makeOp(term,ds))
     }
-    if (term[[1]] == as.name("(")) {  ## found (...)
+    if (head(term) == as.name("(")) {  ## found (...)
         if (debug) cat("paren term:",deparse(term),"\n")
-        return(fbas(term[[2]],debug,specials))
+        return(fbx(term[[2]],debug,specials))
     }
     stopifnot(is.call(term))
     if (length(term) == 2) {
         ## unary operator, decompose argument
         if (debug) cat("unary operator:",deparse(term[[2]]),"\n")
-        return(fbas(term[[2]],debug,specials))
+        return(fbx(term[[2]],debug,specials))
     }
     ## binary operator, decompose both arguments
     if (debug) cat("binary operator:",deparse(term[[2]]),",",
                    deparse(term[[3]]),"\n")
-    c(fbas(term[[2]],debug,specials), fbas(term[[3]],debug,specials))
+    c(fbx(term[[2]],debug,specials), fbx(term[[3]],debug,specials))
 }
 
 ## mm <- ~1|x/y/z
@@ -183,8 +207,11 @@ fbx <- function(term,debug=FALSE,specials=character(0)) {
 ##' splitForm(~x+y)                     ## no specials or RE
 ##' splitForm(~x+y+(f|g))               ## no specials
 ##' splitForm(~x+y+diag(f|g))           ## one special
+##' splitForm(~x+y+(diag(f|g)))         ## 'hidden' special
 ##' splitForm(~x+y+(f|g)+cs(1|g))       ## combination
 ##' splitForm(~x+y+(1|f/g))             ## 'slash'; term
+##' splitForm(~x+y+(1|f/g/h))             ## 'slash'; term
+##' splitForm(~x+y+(1|(f/g)/h))             ## 'slash'; term
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
 ##' splitForm(~(((x+y))))               ## lots of parentheses
 ##' 
@@ -210,27 +237,20 @@ splitForm <- function(formula,
     ## random effects terms
     ## (including special terms)
 
-    formSplits <- fbas(formula,debug,specials)
+    formSplits <- fbx(formula,debug,specials)
     formSplits <- expandSlash(formSplits,debug)
                                         # check for hidden specials
                                         # (i.e. specials hidden behind
                                         # parentheses)
-    ## FIXME: parenthesized terms without bars should be skipped
-    ## in fbas anyway
-    hasBars <- grep("\\|",vapply(formSplits,safeDeparse,""))
-    formSplits <- formSplits[hasBars]
     if (length(formSplits)>0) {
-
-        formSplits <- lapply(formSplits, uncoverHiddenSpecials)
-                                        # vector to identify what
-                                        # special (by name), or give
-                                        # "(" for standard terms, or
-                                        # give "|" for specials
-                                        # without a setReTrm method
         formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
                                         # warn about terms without a
                                         # setReTrm method
-        badTrms <- formSplitID == "|"
+
+        ## FIXME:: do we need all of this??
+
+        if (FALSE) {
+            badTrms <- formSplitID == "|"
         ## if(any(badTrms)) {
         ## stop("can't find setReTrm method(s)\n",
         ## "use findReTrmClasses() for available methods")
@@ -238,13 +258,15 @@ splitForm <- function(formula,
         ## warning(paste("can't find setReTrm method(s) for term number(s)",
         ## paste(which(badTrms), collapse = ", "),
         ## "\ntreating those terms as unstructured"))
-        formSplitID[badTrms] <- "("
-        fixBadTrm <- function(formSplit) {
-            makeOp(formSplit[[1]],quote(`(`))
-                   ## as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
-                   ## collapse = " "))[[2]]
+            formSplitID[badTrms] <- "("
+            fixBadTrm <- function(formSplit) {
+                makeOp(formSplit[[1]],quote(`(`))
+                ## as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
+                ## collapse = " "))[[2]]
+            }
+            formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
+
         }
-        formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
 
         parenTerm <- formSplitID == "("
                                         # capture additional arguments
