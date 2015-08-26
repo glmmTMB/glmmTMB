@@ -66,6 +66,8 @@ findReTrmClasses <- function() {
     names(.valid_covstruct)
 }
 
+##' find individual slashless terms within
+##' formula elements
 slashTerms <- function(x,debug=FALSE)
 {
     if (debug) cat("slashTerms: ",deparse(x),"\n")
@@ -83,11 +85,12 @@ slashTerms <- function(x,debug=FALSE)
 ##' Expand any slashes in the grouping factors returned by fb
 ##' 
 ##' Original by Doug Bates: copied and streamlined from lme4/utilities.R
+##' FIXME: expand to allow expansion of '+', '*'
 ##' @examples
 ##' ff <- fbx(y~1+(x|f/g))
+##' expandSlash(ff)
 ##' expandSlash(quote(1|(f/g)/h))
 ##' expandSlash(quote(1|f/g/h))
-##' expandSlash(ff,debug=TRUE)
 expandSlash <- function(bb,debug=FALSE) {
     ## Create the interaction terms for nested effects
     makeInteraction <- function(x) {
@@ -129,27 +132,6 @@ head.formula <- head.call <- function(x, ...) {
     x[[1]]
 }
 
-## specials <- c("foo","bar")
-## spList <- lapply(specials,as.name)
-
-## specials <- c("foo","bar")
-## spList <- lapply(specials,as.name)
-## "a" %in% spList  ## works (FALSE)
-## spList[[1]] %in% spList ##   'match' requires vector arguments
-## quote(foo) %in% spList  ## ditto
-## deparse(spList[[1]]) %in% specials  ## TRUE
-
-inLang <- function(x,table) {
-    inTable <- FALSE
-    for (i in table) {
-        if (x==table[[i]]) {
-            inTable <- TRUE
-            break
-        }
-    }
-    return(inTable)
-}
-
 ##' (f)ind (b)ars e(x)tended: recursive
 ##' 
 ##' 1. atom (not a call or an expression): NULL
@@ -186,9 +168,6 @@ fbx <- function(term,debug=FALSE,specials=character(0),
     c(fbx(term[[2]],debug,specials), fbx(term[[3]],debug,specials))
 }
 
-## mm <- ~1|x/y/z
-## findbars(mm) ->  language()
-## language 1 | x/y/z
 ##' Parse a formula into fixed formula and random effect terms,
 ##' treating 'special' terms (of the form foo(x|g[,m])) appropriately
 ##'
@@ -299,13 +278,6 @@ splitForm <- function(formula,
          reTrmFormulas = reTrmFormulas,
          reTrmAddArgs  = reTrmAddArgs,
          reTrmClasses  = reTrmClasses)
-}
-
-uncoverHiddenSpecials <- function(trm) {
-    if(trm[[1]] == "(") {
-        if(anySpecial(trm[[2]][[1]])) trm <- trm[[2]]
-    }
-    return(trm)
 }
 
 ##' @param term language object
