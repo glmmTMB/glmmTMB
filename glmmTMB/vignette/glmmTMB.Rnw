@@ -2,17 +2,16 @@
 % \VignettePackage{glmmTMB}
 % \VignetteDepends{ggplot2}
 % \VignetteDepends{grid}
+% \VignetteDepends{bbmle}
 %\VignetteEngine{knitr::knitr}
 \documentclass{article}
 %\usepackage{lineno}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
-%\usepackage[usenames]{color}
 \usepackage[american]{babel}
 \newcommand{\R}{{\sf R}}
-\newcommand{\Splus}{{\sf S-PLUS}}
-\newcommand{\fixme}[1]{\textbf{FIXME: #1}}
-% \newcommand{\fixme}[1]{\color{red} #1 \color{black}}
+\newcommand{\fixme}[1]{\textbf{\color{red} fixme: #1}}
+\newcommand{\notimpl}[1]{\emph{\color{magenta} #1}}
 \usepackage{url}
 \usepackage{hyperref}
 \usepackage{alltt}
@@ -42,13 +41,15 @@ used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 \section{Introduction/quick start}
 
 \code{glmmTMB} is an R package built on 
-the \href{Template Model Builder}{https://github.com/kaskr/adcomp} nonlinear fitting engine, for fitting generalized
+the \href{https://github.com/kaskr/adcomp}{Template Model Builder} automatic differentiation engine, for fitting generalized
 linear mixed models and extensions.
 
+(Not-yet-implemented features are denoted \notimpl{like this})
+
 \begin{itemize}
-  \item response distributions: Poisson, binomial, negative binomial (NB1 and NB2 parameterizations), Gamma, Beta, truncated Poisson and negative binomial; Gaussian; logistic
+  \item response distributions: Poisson, binomial, negative binomial (NB1 and NB2 parameterizations), Gamma, Beta, Gaussian; \notimpl{truncated Poisson and negative binomial; Student $t$; Tweedie}
   \item link functions: log, logit, probit, complementary log-log, inverse, identity
-  \item zero-inflation with fixed and random-effects components; hurdle models via truncated Poisson/NB
+  \item zero-inflation with fixed and random-effects components; \notimpl{hurdle models via truncated Poisson/NB}
   \item single or multiple (nested or crossed) random effects
   \item offsets
   \item fixed-effects models for dispersion
@@ -61,7 +62,9 @@ be reasonably familiar with generalized linear mixed models
 linear models (e.g. the special cases of logistic, binomial,
 and Poisson regression) and (ii) `modern' mixed models (those
 working via maximization of the marginal likelihood rather
-than by manipulating sums of squares).
+than by manipulating sums of squares).   \cite{bolker_generalized_2009} and \cite{bolker_glmm_2014} are reasonable starting
+points in this area. \fixme{too self-centered?  other good
+pointers, e.g. Zuur et al.'s books?}
 
 In order to fit a model in \code{glmmTMB} you need to:
 \begin{itemize}
@@ -92,24 +95,27 @@ pkgver <- vapply(sort(used.pkgs),function(x) as.character(packageVersion(x)),"")
 print(pkgver,quote=FALSE)
 @ 
 
+The current citation for \code{glmmTMB} is:
+\begin{quote}
 %% fixme: would like to deal with smart quotes
-<<citation,echo=FALSE>>=
-op <- options(useFancyQuotes=FALSE)
-citation("glmmTMB")
-options(op)
+<<citation,echo=FALSE,results="asis">>=
+print(citation("glmmTMB"),style="latex")
 @ 
+\end{quote}
+
 \section{Preliminaries: packages and data}
 
+Load required packages:
 <<pkgs,message=FALSE>>=
 library("glmmTMB")
-library("bbmle")
+library("bbmle")    ## for AICtab
 library("ggplot2")
 ## cosmetic
 theme_set(theme_bw()+
   theme(panel.margin=grid::unit(0,"lines")))
 @ 
 
-These data, taken from \cite{zuur_mixed_2009} and ultimately
+The data, taken from \cite{zuur_mixed_2009} and ultimately
 from \cite{roulinbersier_2007}, quantify
 the number of negotiations among owlets (owl chicks)
 in different nests \emph{prior} to the arrival
@@ -124,7 +130,7 @@ a random effect.
 The model can be expressed as a zero-inflated generalized
 linear mixed model (ZIGLMM).
 
-First we draw a picture (Figures~\ref{fig:owl1}).
+First we draw a picture (Figure~\ref{fig:owlplot1}).
 
 Various small manipulations of the data set:
 (1) reorder nests by mean negotiations per chick, for plotting
@@ -141,7 +147,7 @@ Owls <- transform(Owls,
 (If you were really using this data set you should start
 with \code{summary(Owls)} to explore the data set.)
 
-<<owlplot1,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Basic view of owl data (arrival time not shown). (FIXME: clip at zero?)",fig.ref="fig:owl1">>=
+<<owlplot1,echo=FALSE,message=FALSE,warning=FALSE,fig.cap="Basic view of owl data from \\cite{roulinbersier_2007}.">>=
 G0 <- ggplot(Owls,aes(x=reorder(Nest,NegPerChick),
                       y=NegPerChick))+
   labs(x="Nest",y="Negotiations per chick")+coord_flip()+
@@ -159,7 +165,8 @@ not data visualization \ldots
 
 Now fit some models:
 
-The basic \code{glmmTMB} fit --- a zero-inflated Poisson model.
+The basic \code{glmmTMB} fit --- a zero-inflated Poisson model with a single zero-inflation parameter applying to all observations (\verb+zi~1+).  (Excluding zero-inflation is \code{glmmTMB}'s default:
+to exclude it explicitly, use \verb+zi~0+.)
 <<time1,echo=FALSE,cache=TRUE>>=
 gt1 <- system.time(glmmTMB(NCalls~(FoodTreatment+ArrivalTime)*SexParent+
                                      offset(log(BroodSize))+(1|Nest),
@@ -167,7 +174,7 @@ gt1 <- system.time(glmmTMB(NCalls~(FoodTreatment+ArrivalTime)*SexParent+
                                      data=Owls,
                                      family=poisson))
 @ 
-%% ditto with NA coercion warnings
+
 <<glmmadmbfit,cache=TRUE>>=
 fit_zipoisson <- glmmTMB(NCalls~(FoodTreatment+ArrivalTime)*SexParent+
                                      offset(log(BroodSize))+(1|Nest),
@@ -176,22 +183,39 @@ fit_zipoisson <- glmmTMB(NCalls~(FoodTreatment+ArrivalTime)*SexParent+
                                      family=poisson)
 @
 
+\notimpl{summary method not yet written!}
 <<zipoisssum>>=
 summary(fit_zipoisson)
 @ 
 
 We can also try a standard zero-inflated negative binomial model;
-the default is the ``NB2'' parameterization (variance = $\mu(1+\mu/k)$).
+the default is the ``NB2'' parameterization (variance = $\mu(1+\mu/k)$: \cite{hardin_generalized_2007}).
+To use families (Poisson, binomial, Gaussian) that are defined
+in \R, you should specify them as in \code{?glm} (as a string
+referring to the family function, as the family function itself,
+or as the result of a call to the family function: i.e.
+\code{family="poisson"}, \code{family=poisson},
+\code{family=poisson()}, and \code{family=poisson(link="log")}
+are all allowed and all equivalent (the log link is the default
+for the Poisson family).  For families that are \emph{not} 
+specified in R, you should specify the \code{family} argument
+as a list containing (character) elements \code{family}
+and \code{link}, as follows:
+
 <<glmmadmbnbinomfit,cache=TRUE>>=
 fit_zinbinom <- update(fit_zipoisson,
                   family=list(family="nbinom2",link="log"))
 @
 
-Alternatively, use an ``NB1'' fit (variance = $\phi \mu$).
+Alternatively, we can use an ``NB1'' fit (variance = $\phi \mu$).
 <<glmmadmbnbinom1fit,cache=TRUE>>=
 fit_zinbinom1 <- update(fit_zipoisson,
                   family=list(family="nbinom1",link="log"))
 @
+
+\notimpl{we should have a \code{getFamily} function:
+ideally it would also specify which are really implemented
+(although that's harder), and specify default links}
 
 Relax the assumption that total number of calls is strictly proportional
 to brood size (i.e. using log(brood size) as an offset):
@@ -205,7 +229,7 @@ Every change we have made so far improves the fit --- changing distributions
 improves it enormously, while changing the role of brood size makes only
 a modest (-1 AIC unit) difference:
 <<aictab>>=
-AICtab(fit_zipoiss,fit_zinbinom,fit_zinbinom1,fit_zinbinom1_bs)
+AICtab(fit_zipoisson,fit_zinbinom,fit_zinbinom1,fit_zinbinom1_bs)
 @ 
 
 \subsection{Hurdle models}
@@ -215,7 +239,7 @@ and non-zero outcomes as two completely separate categories, rather than
 treating the zero-count outcomes as a mixture of structural and
 sampling zeros.
 
-\\code{glmmTMB} includes truncated
+\code{glmmTMB} includes truncated
 Poisson and negative binomial familes and hence can fit hurdle models.
 The two parts of the model have to be fitted separately, however.
 First we fit a truncated distribution to the non-zero outcomes:
@@ -223,70 +247,14 @@ First we fit a truncated distribution to the non-zero outcomes:
 <<glmmadmbnbinomhfit,eval=FALSE>>=
 fit_hnbinom1 <- update(fit_zinbinom1_bs,
                          data=subset(Owls,NCalls>0),
-                         family=list(family="truncnbinom1",link="log"))
+                        family=list(family="truncated_nbinom1",link="log"))
 @ 
-
-Then we fit a model to the binary part of the data (zero vs. non-zero).
-In this case, I started by fitting a simple (intercept-only) model
-with intercept-level random effects only.  This comes a bit closer
-to matching the previous (zero-inflation) models, which treated zero-inflation
-as a single constant level across the entire data set (in fact,
-leaving out the random effects and just using 
-\verb+glmmADMB(nz~1,data=Owls,family="binomial")+, or 
-\verb+glm(nz~1,data=Owls,family="binomial")+, would
-be an even closer match).
-I then fitted a more complex binary model --- this is
-all a matter of judgment about how complex a model it's worth
-trying to fit to a given data set --- but it does look as though
-the zero-inflation varies with arrival time and satiation.
-
-<<glmmadmbcfit,cache=TRUE>>=
-Owls$nz <- as.numeric(Owls$NCalls>0)
-fit_count <- glmmadmb(nz~1+(1|Nest),
-                         data=Owls,
-                         family="binomial")
-fit_ccount <- glmmadmb(nz~(FoodTreatment+ArrivalTime)*SexParent+(1|Nest),
-                       data=Owls,
-                       family="binomial")
-AICtab(fit_count,fit_ccount)
-summary(fit_ccount)
-@ 
-
-\subsection{Testing and inference}
-
-(Sketchy: to be expanded.)
-
-There are many challenging statistical issues surrounding tests
-of terms in GLMMs. Most often people use minor variations of 
-existing approaches (Wald tests, likelihood ratio tests, etc.),
-either accounting for or sweeping under the rug some of the
-differences that should be accounted for when moving either from
-linear mixed models (LMMs) or generalized linear models (GLMs)
-to GLMMs.  See \url{http://glmm.wikidot.com/faq}, or a good
-book on GLMMs (!!), for a discussion of these issues.
-
-In the meantime, keeping the limitations in mind, 
-you can 
-\begin{itemize}
-  \item use AIC to select models or generated weighted predictions (see example above).
-  \item use \code{anova} to perform a likelihood ratio test:
-<<anovacomp>>=
-anova(fit_zipoiss,fit_zinbinom)
-@     
-\item use \code{Anova} from the \code{car} package to generate Wald tests:
-<<caranova>>=
-car::Anova(fit_zinbinom)
-@   
-\end{itemize}
-
-\begin{itemize}
-\item coefplot2
-\item drop1??, 
-\item simulate??, 
-\item parametric bootstrapping ??
-\end{itemize}
-
-
+\notimpl{Truncated families aren't there yet. Once they are, we might not
+actually need to fit two separate models -- \emph{if} we simply ignore zero
+values rather than giving them a 0 likelihood, we could fit a zero-inflated
+model and let the zero-inflation handle the zero/not-zero stuff automatically
+(should there be a flag to allow ignoring zeros for this purpose? Should
+we implement a \code{control} argument soon??)}
 
 \bibliography{glmmTMB}
 \end{document}
