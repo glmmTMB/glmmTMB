@@ -10,7 +10,7 @@ library("dplyr")
 ## make sure this is run with optimized build of glmmTMB,
 ## i.e. "make install" rather than "make quick-install/quick-check"
 ## (or at least document)
-nmax <- 30     ## max replications for glmer/glmmTMB
+nmax <- 40     ## max replications for glmer/glmmTMB
 nmaxADMB <- 2  ## max reps for glmmadmb (much slower)
  
 ## slow enough that I should consider using something with 
