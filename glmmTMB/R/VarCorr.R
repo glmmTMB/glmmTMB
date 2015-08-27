@@ -96,7 +96,7 @@ mkVC <- function(cor, sd, cnms) {
 ##' Extract variance and correlation components
 ##'
 ##' @importFrom nlme VarCorr
-##'  and re-export the generic:
+## and re-export the generic:
 ##' @export VarCorr
 ##' @export
 VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
@@ -117,7 +117,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 ##' @title Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
-##'  document as it is a method with "surprising arguments":
+##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
 ##' @param digits number of significant digits to use
 ##' @param comp a string specifying the component to format and print

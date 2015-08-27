@@ -2,7 +2,7 @@ R=R
 # -> you can do    R=R-devel  make ....
 
 PACKAGE=glmmTMB
-VERSION=0.0.0.9000
+VERSION=0.0.1
 TARBALL=${PACKAGE}_${VERSION}.tar.gz
 ZIPFILE=${PACKAGE}_${VERSION}.zip
 

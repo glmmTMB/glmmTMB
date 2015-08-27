@@ -3,6 +3,7 @@
 % \VignetteDepends{ggplot2}
 % \VignetteDepends{grid}
 % \VignetteDepends{bbmle}
+% \VignetteDepends{mlmRev}
 %\VignetteEngine{knitr::knitr}
 \documentclass{article}
 %\usepackage{lineno}
@@ -255,6 +256,30 @@ values rather than giving them a 0 likelihood, we could fit a zero-inflated
 model and let the zero-inflation handle the zero/not-zero stuff automatically
 (should there be a flag to allow ignoring zeros for this purpose? Should
 we implement a \code{control} argument soon??)}
+
+\section{Sample timings}
+
+\subsection{Contraception}
+
+<<contraception_sum,echo=FALSE>>=
+data("Contraception",package="mlmRev")
+nc <- nrow(Contraception)
+nl <- length(levels(Contraception$district))
+@
+
+Replicating the \code{Contraception} data set
+(\Sexpr{nc} observations, \Sexpr{nl} levels in the
+random effects grouping level) multiple times
+
+<<contraception,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting the replicated Contraception data set.">>=
+load("contraceptionTimings.rda")
+ggplot(tmatContraception,aes(n,time,colour=pkg))+geom_point()+
+  scale_y_log10(breaks=c(1,2,5,10,20,50,100))+
+  scale_x_log10(breaks=c(1,2,4,10,20,40))+
+  labs(x="Replication (x 1934 obs.)",y="Elapsed time (s)")+
+  geom_smooth(method="lm")+
+  scale_colour_brewer(palette="Set1")
+@
 
 \bibliography{glmmTMB}
 \end{document}
