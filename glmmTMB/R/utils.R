@@ -66,66 +66,56 @@ findReTrmClasses <- function() {
     names(.valid_covstruct)
 }
 
-##' find individual slashless terms within
-##' formula elements
-slashTerms <- function(x,debug=FALSE)
-{
-    if (debug) cat("slashTerms: ",deparse(x),"\n")
-    if (!("/" %in% all.names(x))) return(x)
-    if (x[[1]] == as.name("("))  ## strip parens if necessary
-        return(slashTerms(x[[2]]))
-    if (x[[1]] != as.name("/")) {
-        stop("didn't expect head ",deparse(x[[1]]))
-    }
-    ## recursively apply to all terms
-    lapply(x[-1],slashTerms,debug=debug)
+##' expandGrpVar(quote(x*y))
+##' expandGrpVar(quote(x/y))
+expandGrpVar <- function(f) {
+    form <- as.formula(makeOp(f,quote(`~`)))
+    mm <- terms(form)
+    toLang <- function(x) parse(text=x)[[1]]
+    res <- lapply(attr(mm,"term.labels"),toLang)
+    return(res)
 }
 
-
-##' Expand any slashes in the grouping factors returned by fb
-##' 
-##' Original by Doug Bates: copied and streamlined from lme4/utilities.R
-##' FIXME: expand to allow expansion of '+', '*'
+##' expand interactions/combinations of grouping variables
+##'
+##' Modeled after lme4:::expandSlash, by Doug Bates
+##' @param bb a list of naked grouping variables, i.e. 1 | f
 ##' @examples
 ##' ff <- fbx(y~1+(x|f/g))
-##' expandSlash(ff)
-##' expandSlash(quote(1|(f/g)/h))
-##' expandSlash(quote(1|f/g/h))
-expandSlash <- function(bb,debug=FALSE) {
-    ## Create the interaction terms for nested effects
-    makeInteraction <- function(x) {
-        if (length(x) < 2) return(x)
-        trm1 <- makeInteraction(x[[1]])
-        trm11 <- if(is.list(trm1)) trm1[[1]] else trm1
-        list(makeOp(x[[2]],trm11,quote(`:`)), trm1)
-    }
-    ## Return the list of '/'-separated terms
+##' expandAllGrpVar(ff)
+##' expandAllGrpVar(quote(1|(f/g)/h))
+##' expandAllGrpVar(quote(1|f/g/h))
+##' expandAllGrpVar(quote(1|f*g))
+##' @keywords internal
+expandAllGrpVar <- function(bb) {
+        ## Return the list of '/'-separated terms
     if (!is.list(bb))
-        expandSlash(list(bb),debug=debug)
+        expandAllGrpVar(list(bb))
     else {
         for (i in seq_along(bb)) {
             esfun <- function(x) {
-                if (!("/" %in% all.names(x))) return(x)
-                if (length(x)==1) stop("term should have length >1")
+                if (length(x)==1) return(x)
                 if (length(x)==2) {
                     ## unary operator such as diag(1|f/g)
                     ## return diag(...) + diag(...) + ...
                     return(lapply(esfun(x[[2]]),
                                   makeOp,y=head(x)))
                 }
-                if (!head(x)==quote(`|`)) stop("operator should be a bar")
-                if (is.list(trms <- slashTerms(x[[3]]))) {
-                    ## replicate LHS of bar with each RHS term
-                    return(lapply(unlist(makeInteraction(trms)),
-                                  makeOp,x=x[[2]],op=quote(`|`)))
-                }  else {
-                    return(x)
+                if (length(x)==3) {
+                    ## binary operator
+                    if (x[[1]]==quote(`|`)) {
+                        return(lapply(expandGrpVar(x[[3]]),
+                                      makeOp,x=x[[2]],op=quote(`|`)))
+                    } else {
+                        return(makeOp(esfun(x[[2]]),esfun(x[[3]]),
+                                      op=x[[1]]))
+                    }
                 }
             } ## esfun def.
             return(unlist(lapply(bb,esfun)))
         } ## loop over bb
     }
-} ## {expandSlash}
+}
 
 ## sugar
 head.formula <- head.call <- function(x, ...) {
@@ -217,10 +207,8 @@ splitForm <- function(formula,
     ## (including special terms)
 
     formSplits <- fbx(formula,debug,specials)
-    formSplits <- expandSlash(formSplits,debug)
-                                        # check for hidden specials
-                                        # (i.e. specials hidden behind
-                                        # parentheses)
+    formSplits <- expandAllGrpVar(formSplits)
+    
     if (length(formSplits)>0) {
         formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
                                         # warn about terms without a
@@ -245,7 +233,7 @@ splitForm <- function(formula,
             }
             formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
 
-        }
+        }  ## skipped
 
         parenTerm <- formSplitID == "("
                                         # capture additional arguments

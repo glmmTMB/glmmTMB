@@ -28,4 +28,13 @@ test_that("slash terms", {
   expect_equal(sf6,sf7)
 })
 
+test_that("grpvar terms", {
+  sf8 <- splitForm(~x+y+(1|f*g)) 
+  sf9 <- splitForm(~x+y+(1|f+g+h))
+  expect_equal(sf8$reTrmClasses,rep("us",3))
+  expect_equal(sf8$reTrmFormula,list(quote(1|f),quote(1|g),quote(1|f:g)))
+  expect_equal(sf9$reTrmClasses,rep("us",3))
+  expect_equal(sf9$reTrmFormula,list(quote(1|f),quote(1|g),quote(1|h)))
+})
+
 
