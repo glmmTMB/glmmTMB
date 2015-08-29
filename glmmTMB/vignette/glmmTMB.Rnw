@@ -267,9 +267,9 @@ nc <- nrow(Contraception)
 nl <- length(levels(Contraception$district))
 @
 
-Replicating the \code{Contraception} data set
-(\Sexpr{nc} observations, \Sexpr{nl} levels in the
-random effects grouping level) multiple times
+%Replicating the \code{Contraception} data set
+%(\Sexpr{nc} observations, \Sexpr{nl} levels in the
+% random effects grouping level) multiple times
 
 <<contraception,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting the replicated Contraception data set.">>=
 load("contraceptionTimings.rda")
@@ -277,6 +277,16 @@ ggplot(tmatContraception,aes(n,time,colour=pkg))+geom_point()+
   scale_y_log10(breaks=c(1,2,5,10,20,50,100))+
   scale_x_log10(breaks=c(1,2,4,10,20,40))+
   labs(x="Replication (x 1934 obs.)",y="Elapsed time (s)")+
+  geom_smooth(method="lm")+
+  scale_colour_brewer(palette="Set1")
+@
+
+<<insteval,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting subsets of the InstEval data set.">>=
+load("InstEvalTimings.rda")
+ggplot(tmatInstEval,aes(n,time,colour=pkg))+geom_point()+
+  scale_y_log10(breaks=c(1,2,5,10,20,50,100,200))+
+      scale_x_log10(breaks=c(0.1,0.2,0.5,1.0))+
+  labs(x="Replication (x 73421 obs.)",y="Elapsed time (s)")+
   geom_smooth(method="lm")+
   scale_colour_brewer(palette="Set1")
 @

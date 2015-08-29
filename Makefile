@@ -41,6 +41,7 @@ doc-update: $(PACKAGE)/R/*.R
 namespace-update :: $(PACKAGE)/NAMESPACE
 $(PACKAGE)/NAMESPACE: $(PACKAGE)/R/*.R
 	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\"))" | $(R) --slave
+	sed -i -e "s/importFrom(lme4,sigma)/if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)/" $(PACKAGE)/NAMESPACE
 
 build-package: $(TARBALL)
 $(TARBALL): $(PACKAGE)/NAMESPACE $(CPP_SRC)

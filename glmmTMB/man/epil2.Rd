@@ -30,16 +30,10 @@
   Booth, J.G., G. Casella, H. Friedl, and J.P. Hobert. 2003. Negative
   binomial loglinear mixed models. Statistical Modelling 3:179--191.
 }
-\seealso{
-  \code{\link{glmmadmb}}.
-
-  \code{\link{glmmADMB-package}}.
-}
 \examples{
 epil2$subject <- factor(epil2$subject)
-\dontrun{
-(fm <- glmmadmb(y~Base*trt+Age+Visit+(Visit|subject),
-                data=epil2, family="nbinom"))
+fm <- glmmTMB(y~Base*trt+Age+Visit+(Visit|subject),
+                data=epil2, family=list(family="nbinom2",link="log")))
 }
 }
 \keyword{datasets}

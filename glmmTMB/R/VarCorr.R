@@ -10,8 +10,9 @@ family.glmmTMB <- function(object, ...) {
     object$modelInfo$family
 }
 
-## FIXME should import from stats if R >= 3.3.0 ...
-## (feature request for roxygen2?)
+## note the following line is hacked in Makefile/namespace-update to ...
+## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
+## also see <https://github.com/klutometis/roxygen/issues/371>
 ##' @importFrom lme4 sigma
 ##' @export sigma
 ##' @export
