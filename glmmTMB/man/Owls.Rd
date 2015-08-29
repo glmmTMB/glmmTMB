@@ -25,17 +25,6 @@ Begging by owl nestlings
     \item{\code{BroodSize}}{brood size}
     \item{\code{NegPerChick}}{number of negotations per chick}
   }
-  For convenience in testing methods, several pre-fitted models are provided:
-  \itemize{
-    \item \code{OwlModel} is the results of fitting the model
-      \code{glmmadmb(SiblingNegotiation~FoodTreatment*SexParent+
-	(1|Nest)+offset(log(BroodSize)),family="nbinom",
-	zeroInflation=TRUE,data=Owls)}
-    \item \code{OwlModel_nb1_bs}: \code{glmmadmb(SiblingNegotiation~FoodTreatment*SexParent+BroodSize+
-      (1|Nest),family="nbinom1",zeroInflation=TRUE,data=Owls)}
-    \item \code{OwlModel_nb1_bs_mcmc}: \code{glmmadmb(SiblingNegotiation~FoodTreatment*SexParent+BroodSize+
-      (1|Nest),family="nbinom1",zeroInflation=TRUE,MCMC=TRUE,data=Owls)}
-    }
 }
 \source{
   Roulin, A. and L. Bersier. 2007. Nestling barn owls beg more intensely
@@ -49,13 +38,19 @@ G. M. Smith. 2009. Mixed Effects Models and Extensions in Ecology with R. Spring
 }
 \note{Access to data kindly provided by Alain Zuur}
 \examples{
+library("glmmTMB")
 data(Owls)
-library(lattice)
+library("lattice")
 bwplot(reorder(Nest,NegPerChick)~NegPerChick|FoodTreatment:SexParent,
-data=Owls)
+       data=Owls)
 dotplot(reorder(Nest,NegPerChick)~NegPerChick|FoodTreatment:SexParent,
-data=Owls)
-getdata("OwlModel")
-summary(OwlModel)
+        data=Owls)
+owls_nb1 <- glmmTMB(SiblingNegotiation~FoodTreatment*SexParent+
+                  (1|Nest)+offset(log(BroodSize)),
+              family=list(family="nbinom1",link="log"),
+              zi=~1,data=Owls)
+owls_nb1_bs <- update(owls_nb1,
+                      .~.-offset(log(BroodSize))+log(BroodSize))
+fixef(owls_nb1_bs)
 }
 \keyword{datasets}
