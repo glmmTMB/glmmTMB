@@ -188,6 +188,7 @@ nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
 
 }
 
+##' Residual Degrees-of-Freedom
 ##'
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
