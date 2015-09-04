@@ -25,13 +25,16 @@ fixef.glmmTMB <- function(object, ...) {
             class =  "fixef.glmmTMB")
 }
 
+## general purpose matching between component names and printable names
+cNames <- list(cond = "Conditional model",
+               zi = "Zero inflation", disp = "Dispersion")
+
 ##' @method print fixef.glmmTMB
 ##' @export
 print.fixef.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3)){
-  name <- list(cond = "Conditional model", zi = "Zero inflation", disp = "Dispersion")
   for(x in names(object)){
     if((length(object[[x]])-as.numeric(x == 'disp' & '(Intercept)' %in% names(object[[x]])))>0){
-      cat("\n",name[[x]],"\n",sep="")
+      cat("\n",cNames[[x]],"\n",sep="")
       print.default(format(object[[x]],digits=digits), print.gap = 2L, quote = FALSE)
     }
   }

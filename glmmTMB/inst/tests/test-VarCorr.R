@@ -7,46 +7,43 @@ context("VarCorr Testing")
 
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
-lm1 <-    lmer(distance ~ age + (age|Subject), data = Orthodont) # to compare
-fm1.r <- fm1$obj$env$report()
-fm1.r$corr[[1]] ## very highly correlated - ?
+lm1 <-    lmer(distance ~ age + (age|Subject), data = Orthodont,
+               REML=FALSE) # to compare
+gm1 <-    glmer(round(distance) ~ age + (age|Subject),
+                family=poisson, data = Orthodont) # to compare
+expect_equal(VarCorr(fm1)[["cond"]],unclass(VarCorr(lm1)),
+             tol=1e-5)
+## have to take only last 4 lines
+expect_equal(tail(capture.output(print(VarCorr(fm1),digits=3)),4),
+             capture.output(print(VarCorr(lm1),digits=3)))
 
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
-if(FALSE) ## segmentation fault !!
-fmPix1 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Dog/Side), data = Pixel)
-## no segfault; just 13 warnings:
-unique(warnings()) ## 3 different ones
+fmPix1 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
+                  data = Pixel)
 
-fmPix2 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog), data = Pixel)
-## Warning messages:
-## 1: In mapply(parFun, covCode, blksize, SIMPLIFY = FALSE) :
-##   longer argument not a multiple of length of shorter
-## 2: In mapply(list, blockReps = nreps, blockSize = blksize, blockNumTheta = blockNumTheta,  :
-##   longer argument not a multiple of length of shorter
+fmPix1B <-   lmer(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
+                  data = Pixel)
+## expect_equal(VarCorr(fmPix1)[["cond"]],
+##           unclass(VarCorr(fmPix1B)))
 
 ## "manual"  (1 | Dog / Side) :
 fmPix3 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Dog) + (1 | Side:Dog), data = Pixel)
-## 11 warnings
-unique(warnings()) ## all 11 are :
-## In nlminb(start = par, objective = fn, gradient = gr) : NA/NaN function evaluation
 
-## "manual"  (1 | Side / Dog) :
-fmPix4 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side) + (1 | Side:Dog), data = Pixel)
-## no warnings... good!
-str(fmP4.r <- fmPix4$obj$env$report())
+str(fmP1.r <- fmPix1$obj$env$report())
 ## List of 4
 ##  $ corrzi: list()
 ##  $ sdzi  : list()
 ##  $ corr  :List of 3
 ##   ..$ : num [1, 1] 1
-##   ..$ : num [1:2, 1:2] 1 -1 -1 1
 ##   ..$ : num [1, 1] 1
+##   ..$ : num [1:2, 1:2] 1 -0.598 -0.598 1
 ##  $ sd    :List of 3
-##   ..$ : num 28.9
-##   ..$ : num [1:2] 1.53 1.51
-##   ..$ : num 0.000165
-fmP4.r $ corr
+##   ..$ : num 16.8
+##   ..$ : num 9.44
+##   ..$ : num [1:2] 24.83 1.73
+fmP1.r $ corr
+vv <- VarCorr(fmPix1)
 
 set.seed(12345)
 dd <- data.frame(a=gl(10,100), b = rnorm(1000))
@@ -77,13 +74,15 @@ str(gm.r <- gm$obj$env$report())
 
 
 
-quit()
-##===  Not yet :
 
 (vc <- VarCorr(fm1))  ## default print method: standard dev and corr
 ## both variance and std.dev.
 print(vc,comp=c("Variance","Std.Dev."),digits=2)
 ## variance only
 print(vc,comp=c("Variance"))
+
+quit()
+##===  Not yet :
+
 as.data.frame(vc)
 as.data.frame(vc,order="lower.tri")
