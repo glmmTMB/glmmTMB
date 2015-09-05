@@ -31,7 +31,7 @@
   Negative binomial loglinear mixed models.
   \emph{Statistical Modelling} \bold{3}, 179--191.
 }
-\examples{% why not provide the version with 'subject' a factor ?
+\examples{
 epil2$subject <- factor(epil2$subject)
 fm <- glmmTMB(y ~ Base*trt + Age + Visit + (Visit|subject),
               data=epil2, family=list(family="nbinom2",link="log"))
@@ -39,11 +39,11 @@ fm
 meths <- methods(class = class(fm))
 (funs <- attr(meths, "info")[, "generic"])
 for(F in funs[is.na(match(funs, "getME"))]) {
-   cat(sprintf("%s:\n-----\n", F))
+   cat(sprintf("\%s:\n-----\n", F))
    r <- tryCatch( get(F)(fm), error=identity)
    if (inherits(r, "error")) cat("** Error:", r$message,"\n")
    else tryCatch( print(r) )
-   cat(sprintf("---end{%s}--------------\n\n", F))
+   cat(sprintf("---end{\%s}--------------\n\n", F))
 }
 }
 \keyword{datasets}
