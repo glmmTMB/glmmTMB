@@ -116,6 +116,7 @@ print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
     print(if (simplify && length(x$zi) == 0L)
               unclass(x$cond) else unclass(x),
           ...)
+    invisible(x)
 }
 
 
