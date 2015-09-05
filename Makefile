@@ -2,7 +2,9 @@ R=R
 # -> you can do    R=R-devel  make ....
 
 PACKAGE=glmmTMB
-VERSION=0.0.1
+# get VERSION from glmmTMB/DESCRIPTION :
+VERSION=$(shell sed -n '/^Version: +/s///p' glmmTMB/DESCRIPTION)
+
 TARBALL=${PACKAGE}_${VERSION}.tar.gz
 ZIPFILE=${PACKAGE}_${VERSION}.zip
 
