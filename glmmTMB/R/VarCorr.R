@@ -106,26 +106,25 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     stopifnot(is.numeric(sigma), length(sigma) == 1)
     xrep <- x$obj$env$report()
     reT <- x$modelInfo$reTrms
-    if (missing(sigma)) {
+    useSc <- if (missing(sigma)) {
         sigma <- sigma(x)
-        useSc <- usesDispersion(family(x)$family)
-    } else {
-        useSc <- TRUE
-    }
-    vc.cond <- if(length(cn <- reT$condList$cnms)) {
-        mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
-             sc = sigma, useSc = useSc)
-        
-    }
+        usesDispersion(family(x)$family)
+    } else TRUE
+
+    vc.cond <- if(length(cn <- reT$condList$cnms))
+        mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn, sc = sigma, useSc = useSc)
     vc.zi   <- if(length(cn <- reT$  ziList$cnms))
-                   mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
+        mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
     structure(list(cond = vc.cond, zi = vc.zi),
+	      sc = usesDispersion(x), ## 'useScale'
 	      class = "VarCorr.glmmTMB")
 }
 
 ##' @title Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
+##' @importFrom lme4 formatVC
+##              ^^^^ github version >= 2015-09-05
 ##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
 ##' @param digits number of significant digits to use
@@ -134,12 +133,11 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 ##' @param ...
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 		   comp = "Std.Dev.", formatter = format, ...) {
-    for (cc in names(x)) {
-        if (!is.null(term <- x[[cc]])) {
-            cat("\n",cNames[[cc]],"\n",sep="")
-            print(formatVC(term,
-                           digits = digits, comp = comp, formatter = formatter), quote = FALSE, ...)
-        }
+    for (cc in names(x))  if(!is.null(x[[cc]]))) {
+	cat(sprintf("\n%s:\n", cNames[[cc]]))
+	print(formatVC(x[[cc]],
+		       digits = digits, comp = comp, formatter = formatter),
+	      quote = FALSE, ...)
     }
     invisible(x)
 }
