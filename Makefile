@@ -2,13 +2,13 @@ R=R
 # -> you can do    R=R-devel  make ....
 
 PACKAGE=glmmTMB
-# get VERSION from glmmTMB/DESCRIPTION :
-VERSION=$(shell sed -n '/^Version: +/s///p' glmmTMB/DESCRIPTION)
+# get VERSION from glmmTMB/DESCRIPTION  ("::" = expand only  once)
+VERSION ::= $(shell sed -n '/^Version: /s///p' glmmTMB/DESCRIPTION)
 
-TARBALL=${PACKAGE}_${VERSION}.tar.gz
-ZIPFILE=${PACKAGE}_${VERSION}.zip
+TARBALL ::= $(PACKAGE)_$(VERSION).tar.gz
+ZIPFILE ::= =$(PACKAGE)_$(VERSION).zip
 
-CPP_SRC = $(PACKAGE)/src/*.cpp
+CPP_SRC ::= $(PACKAGE)/src/*.cpp
 
 all:
 	make enum-update
@@ -50,8 +50,8 @@ $(TARBALL): $(PACKAGE)/NAMESPACE $(CPP_SRC)
 	$(R) CMD build --resave-data=no $(PACKAGE)
 
 install: $(TARBALL)
-	$(R) CMD INSTALL --preclean $(TARBALL)
-	@touch install
+	$(R) CMD INSTALL --preclean $<
+	@touch $@
 
 ## To enable quick compile, run from R:
 ##    library(TMB); precompile(flags="-O0 -g")
