@@ -1,7 +1,7 @@
 \name{epil2}
+\title{Seizure Counts for Epileptics - Extended}
 \alias{epil2}
 \docType{data}
-\title{Seizure Counts for Epileptics}
 \description{
   Extended version of the \code{epil} dataset of the \pkg{MASS} package.
   The three transformed variables \code{Visit}, \code{Base}, and
