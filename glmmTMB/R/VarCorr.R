@@ -1,6 +1,3 @@
-
-
-
 ##' returns a true family() object iff one was given
 ##' to glmmTMB() in the first place ....
 ##' @importFrom stats family
@@ -68,7 +65,7 @@ mkVarCorr <- function(sc, cnms, nc, theta, nms) {
     structure(ans, sc = sc)
 }
 
-mkVC <- function(cor, sd, cnms) {
+mkVC <- function(cor, sd, cnms, sc, useSc) {
     stopifnot(length(cnms) == (nc <- length(cor)),  nc == length(sd),
               is.list(cnms), is.list(cor), is.list(sd),
               is.character(nnms <- names(cnms)), nzchar(nnms))
@@ -85,12 +82,15 @@ mkVC <- function(cor, sd, cnms) {
     ## cov :=  F(sd, cor) :
     do1cov <- function(sd, cor, n = length(sd)) sd * cor * rep(sd, each = n)
     ##
-    setNames(lapply(seq_len(nc), function(i) {
+    ss <- setNames(lapply(seq_len(nc), function(i) {
         cov <- do1cov(sd = (sd.i <- sd[[i]]), cor = (cor.i <- cor[[i]]))
         names(sd.i) <- nm.i <- cnms[[i]]
         dimnames(cov) <- dimnames(cor.i) <- list(nm.i, nm.i)
         structure(cov, stddev = sd.i, correlation = cor.i)
     }), nnms)
+    attr(ss,"sc") <- sc
+    attr(ss,"useSc") <- useSc
+    ss
 }
 
 
@@ -106,13 +106,21 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     stopifnot(is.numeric(sigma), length(sigma) == 1)
     xrep <- x$obj$env$report()
     reT <- x$modelInfo$reTrms
-    vc.cond <- if(length(cn <- reT$condList$cnms))
-                   mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn)
+    if (missing(sigma)) {
+        sigma <- sigma(x)
+        useSc <- usesDispersion(family(x)$family)
+    } else {
+        useSc <- TRUE
+    }
+    vc.cond <- if(length(cn <- reT$condList$cnms)) {
+        mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
+             sc = sigma, useSc = useSc)
+        
+    }
     vc.zi   <- if(length(cn <- reT$  ziList$cnms))
                    mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
     structure(list(cond = vc.cond, zi = vc.zi),
-              sc = usesDispersion(x), ## 'useScale'
-	      class = "VarCorr.merMod")
+	      class = "VarCorr.glmmTMB")
 }
 
 ##' @title Printing The Variance and Correlation Parameters of a \code{glmmTMB}
@@ -126,7 +134,13 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 ##' @param ...
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 		   comp = "Std.Dev.", formatter = format, ...) {
-    print(formatVC(x, digits = digits, comp = comp, formatter = formatter), quote = FALSE, ...)
+    for (cc in names(x)) {
+        if (!is.null(term <- x[[cc]])) {
+            cat("\n",cNames[[cc]],"\n",sep="")
+            print(formatVC(term,
+                           digits = digits, comp = comp, formatter = formatter), quote = FALSE, ...)
+        }
+    }
     invisible(x)
 }
 
