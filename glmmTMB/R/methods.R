@@ -108,21 +108,25 @@ ranef.glmmTMB <- function(object, ...) {
             class = "ranef.glmmTMB")
 }
 
+##' Print method
+##'
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
-  if (simplify && length(x$zi) == 0L)
-    print(unclass(x$cond, ...))
-  else
-    print(unclass(x), ...)
-  invisible(x)
+    print(if (simplify && length(x$zi) == 0L)
+              unclass(x$cond) else unclass(x),
+          ...)
 }
+
 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##' Method borrowed from lme4
 ##'
+##' Get generic and re-export:
 ##' @importFrom lme4 getME
 ##' @export getME
+##'
+##' @method getME glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi", "Xd", "theta"),
@@ -276,7 +280,7 @@ cat.f <- function(...) cat(..., fill = TRUE)
 ##' Print glmmTMB model
 ##' @method print glmmTMB
 ##' @export
-##' 
+##'
 print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
                         correlation = NULL, symbolic.cor = FALSE,
                         signif.stars = getOption("show.signif.stars"),
@@ -290,11 +294,11 @@ print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
   .prt.aictab(object,4)
   # varcorr
   # ngroups
-  
+
   # Print fixed effects
   if(length(cf <- fixef(object)) > 0) {
     cat("\nFixed Effects:\n")
     print(cf, ...)
   } else cat("No fixed effect coefficients\n")
-  
+
 }

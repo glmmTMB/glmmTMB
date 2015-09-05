@@ -7,11 +7,14 @@ family.glmmTMB <- function(object, ...) {
     object$modelInfo$family
 }
 
+## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
 ## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
 ## also see <https://github.com/klutometis/roxygen/issues/371>
 ##' @importFrom lme4 sigma
 ##' @export sigma
+
+##' @method sigma glmmTMB
 ##' @export
 ##' @keywords internal
 sigma.glmmTMB <- function(object, ...) {
@@ -132,8 +135,9 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 ##' @param formatter a \code{\link{function}}
 ##' @param ...
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
-		   comp = "Std.Dev.", formatter = format, ...) {
-    for (cc in names(x))  if(!is.null(x[[cc]]))) {
+				  comp = "Std.Dev.", formatter = format, ...)
+{
+    for (cc in names(x))  if(!is.null(x[[cc]])) {
 	cat(sprintf("\n%s:\n", cNames[[cc]]))
 	print(formatVC(x[[cc]],
 		       digits = digits, comp = comp, formatter = formatter),
