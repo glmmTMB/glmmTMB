@@ -31,13 +31,15 @@ cNames <- list(cond = "Conditional model",
 
 ##' @method print fixef.glmmTMB
 ##' @export
-print.fixef.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3)){
-  for(x in names(object)){
-    if((length(object[[x]])-as.numeric(x == 'disp' & '(Intercept)' %in% names(object[[x]])))>0){
-      cat("\n",cNames[[x]],"\n",sep="")
-      print.default(format(object[[x]],digits=digits), print.gap = 2L, quote = FALSE)
+print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...)
+{
+  for(nm in names(x)) {
+    if((length(x[[nm]]) - as.numeric(nm == 'disp' && '(Intercept)' %in% names(x[[nm]]))) > 0) {
+      cat(sprintf("\n%s:\n", cNames[[nm]]))
+      print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
     }
   }
+  invisible(x)
 }
 
 ##' Extract Random Effects
@@ -174,7 +176,7 @@ getME.glmmTMB <- function(object,
 ##' @export
 logLik.glmmTMB <- function(object, ...) {
   val <- -object$fit$objective
-  nobs <- sum(!is.na(object$obj$env$data$yobs))
+  nobs <- nobs.glmmTMB(object)
   structure(val, nobs = nobs, nall = nobs, df = length(object$fit$par),
             class = "logLik")
 }
@@ -282,24 +284,26 @@ cat.f <- function(...) cat(..., fill = TRUE)
 ##' @method print glmmTMB
 ##' @export
 ##'
-print.glmmTMB<-function(object, digits = max(3, getOption("digits") - 3),
-                        correlation = NULL, symbolic.cor = FALSE,
-                        signif.stars = getOption("show.signif.stars"),
-                        ranef.comp = "Std.Dev.", ...){
+print.glmmTMB <-
+    function(x, digits = max(3, getOption("digits") - 3),
+             correlation = NULL, symbolic.cor = FALSE,
+             signif.stars = getOption("show.signif.stars"),
+             longCall = TRUE, ranef.comp = "Std.Dev.", ...)
+{
+  ## Type Of Model fit --- REML? ---['class']  & Family & Call
+  .prt.call.glmmTMB(x$call, long=longCall)
+  ## the 'digits' argument should have an action here
+  .prt.aictab(x, digits=digits+1)
+  ## varcorr
+  .prt.VC(VarCorr(x), digits=digits, comp = ranef.comp)
 
-  # TYPE OF MODEL FIT --- REML? ---['class']
-  # FAMILY
-  # CALL
-  .prt.call.glmmTMB(object$call)
-  # AIC TABLE
-  .prt.aictab(object,4)
-  # varcorr
-  # ngroups
+  ## ngroups
 
-  # Print fixed effects
-  if(length(cf <- fixef(object)) > 0) {
+  ## Fixed effects:
+  if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
     print(cf, ...)
-  } else cat("No fixed effect coefficients\n")
-
+  } else
+    cat("No fixed effect coefficients\n")
+  invisible(x)
 }

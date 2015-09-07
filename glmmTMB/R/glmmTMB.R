@@ -27,16 +27,16 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   grpVar <- with(condList, getGrpVar(reTrms$flist))
 
-  nObs <- nrow(fr)
+  nobs <- nrow(fr)
   ## FIXME: deal with offset in formula
   ##if (grepl("offset", safeDeparse(formula)))
   ##  stop("Offsets within formulas not implemented. Use argument.")
 
   if (is.null(offset <- model.offset(fr)))
-      offset <- rep(0,nObs)
+      offset <- rep(0,nobs)
 
   if (is.null(weights <- fr[["(weights)"]]))
-    weights <- rep(1,nObs)
+    weights <- rep(1,nobs)
 
   data.tmb <- namedList(
     X = condList$X,
@@ -59,7 +59,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
 
-  beta_init <- ifelse(link == "inverse", 1, 0)
+  beta_init <- as.numeric(link == "inverse") # 1 or 0
 
   parameters <- with(data.tmb,
                      list(
@@ -86,7 +86,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from mkReTerms from LME4}
+##' \item{reTrms}{output from \code{\link[lme4]{mkReTerms}} from \pkg{lme4}}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -97,11 +97,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     fixedform <- formula
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
-    nObs <- nrow(fr)
+    nobs <- nrow(fr)
     ## check for empty fixed form
 
-    if (identical(RHSForm(fixedform),~0) ||
-        identical(RHSForm(fixedform),~-1)) {
+    if (identical(RHSForm(fixedform), ~  0) ||
+        identical(RHSForm(fixedform), ~ -1)) {
         X <- NULL
     } else {
         mf$formula <- fixedform
@@ -120,7 +120,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ranform <- formula
     if (is.null(findbars(ranform))) {
         reTrms <- NULL
-        Z <- new("dgCMatrix",Dim=c(as.integer(nObs),0L)) ## matrix(0, ncol=0, nrow=nObs)
+        Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         ss <- integer(0)
     } else {
         if (!ranOK) stop("no random effects allowed in ", type, " term")
@@ -147,9 +147,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
 
     namedList(X, Z, reTrms, ss)
 }
+
 ##' Extract grouping variables for random effect terms from a factor list
 ##' @title Get Grouping Variable
-##' @param "flist" object; a data frame of factors including an \code{assign} attribute
+##' @param x "flist" object; a data frame of factors including an \code{assign} attribute
 ##' matching columns to random effect terms
 ##' @return character vector of grouping variables
 ##' @keywords internal
@@ -170,7 +171,8 @@ getGrpVar <- function(x)
 ##' calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.
 ##' @param reTrms random-effects terms list
-##' @param ss
+##' @param ss a character string indicating a valid covariance structure (as currently implemented,
+##'   one of \code{names(glmmTMB:::.valid_covstruct)}).
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -222,14 +224,16 @@ getReStruc <- function(reTrms, ss) {
     }
 }
 
-## FIXME: store this data elsewhere/externally
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
+
 usesDispersion <- function(x) {
-  !x %in% c("binomial","poisson","truncated_poisson")
+    is.na(match(x, .noDispersionFamilies))
+    ## !x %in% .noDispersionFamilies
 }
 
 ##' select only desired pieces from results of getXReTrms
-stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
-  xrt$reTrms[whichel]
+stripReTrms <- function(xrt, which = c("cnms","flist")) {
+  xrt$reTrms[which]
 }
 
 ##' @title main TMB function
@@ -241,10 +245,10 @@ stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
 ##'     zero-inflation: the default \code{~0} specifies no zero-inflation
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{~0} specifies no zero-inflation
-##' @param weights
-##' @param offset
+##' @param weights weights
+##' @param offset offset
 ##' @param se whether to return standard errors
-##' @param verbose
+##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param debug whether to return the preprocessed data and parameter objects,
 ##'     without fitting the model
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms
@@ -254,9 +258,9 @@ stripReTrms <- function(xrt, whichel=c("cnms","flist")) {
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
-##' glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
-##' glmmTMB(Reaction ~ Days + us(1|Subject), sleepstudy)
-##' glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy)
+##' (fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy))
+##' (fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy))
+##' (fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy))
 glmmTMB <- function (
     formula,
     data = NULL,
@@ -345,7 +349,7 @@ glmmTMB <- function (
     ## fr <- factorize(fr.form, fr, char.only = TRUE)
     ## store full, original formula & offset
     ## attr(fr,"formula") <- combForm  ## unnecessary?
-    nObs <- nrow(fr)
+    nobs <- nrow(fr)
 
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
@@ -359,10 +363,11 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,respCol]
 
-    TMBStruc <- eval.parent(mkTMBStruc(formula, ziformula, dispformula,
-                           mf, fr,
-                           yobs, offset, weights,
-                           familyStr, link))
+    TMBStruc <- eval.parent(
+        mkTMBStruc(formula, ziformula, dispformula,
+                   mf, fr,
+                   yobs, offset, weights,
+                   familyStr, link))
 
     ## short-circuit
     if(debug) return(TMBStruc)
@@ -380,7 +385,7 @@ glmmTMB <- function (
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
-                      namedList(nObs, respCol, grpVar, familyStr, family, link,
+                      namedList(nobs, respCol, grpVar, familyStr, family, link,
                                 reTrms = lapply(namedList(condList, ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),

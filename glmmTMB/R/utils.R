@@ -72,8 +72,8 @@ expandGrpVar <- function(f) {
     form <- as.formula(makeOp(f,quote(`~`)))
     mm <- terms(form)
     toLang <- function(x) parse(text=x)[[1]]
-    res <- lapply(attr(mm,"term.labels"),toLang)
-    return(res)
+    lapply(attr(mm,"term.labels"),
+           toLang)
 }
 
 ##' expand interactions/combinations of grouping variables
@@ -117,13 +117,13 @@ expandAllGrpVar <- function(bb) {
     }
 }
 
-## sugar
+## sugar -- ???? this returns '~'  ???
 head.formula <- head.call <- function(x, ...) {
     x[[1]]
 }
 
 ##' (f)ind (b)ars e(x)tended: recursive
-##' 
+##'
 ##' 1. atom (not a call or an expression): NULL
 ##' 2. special, i.e. foo(...) where "foo" is in specials: return term
 ##' 3. parenthesized term: *if* the head of the head is | (i.e.
@@ -183,7 +183,7 @@ fbx <- function(term,debug=FALSE,specials=character(0),
 ##' splitForm(~x+y+(1|(f/g)/h))             ## 'slash'; term
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
 ##' splitForm(~(((x+y))))               ## lots of parentheses
-##' 
+##'
 ##' @author Steve Walker
 ##' @importFrom lme4 nobars
 ##' @export
@@ -194,21 +194,21 @@ splitForm <- function(formula,
                       debug=FALSE) {
 
     ## logic:
-    
+
     ## string for error message *if* specials not allowed
     ## (probably package-specific)
     noSpecialsAlt <- "lmer or glmer"
 
     specials <- findReTrmClasses()
-    
+
     ## formula <- expandDoubleVerts(formula)
     ## split formula into separate
     ## random effects terms
     ## (including special terms)
 
-    formSplits <- fbx(formula,debug,specials)
-    formSplits <- expandAllGrpVar(formSplits)
-    
+    fbxx <- fbx(formula,debug,specials)
+    formSplits <- expandAllGrpVar(fbxx)
+
     if (length(formSplits)>0) {
         formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
                                         # warn about terms without a
@@ -291,19 +291,23 @@ noSpecials_ <- function(term,delete=TRUE) {
     if (!anySpecial(term)) return(term)
     if (isSpecial(term)) {
         if(delete) {
-            return(NULL)
-        } else {
-            ## FIXME: returns 1 | f, would like (1|f)
-            return(term[[2]])
+            NULL
+        } else { ## carful to return  (1|f) and not  1|f:
+            substitute((TERM), TERM = term[[2]])
+        }
+    } else {
+        nb2 <- noSpecials(term[[2]],delete=delete)
+        nb3 <- noSpecials(term[[3]],delete=delete)
+        if (is.null(nb2))
+            nb3
+        else if (is.null(nb3))
+            nb2
+        else {
+            term[[2]] <- nb2
+            term[[3]] <- nb3
+            term
         }
     }
-    nb2 <- noSpecials(term[[2]],delete=delete)
-    nb3 <- noSpecials(term[[3]],delete=delete)
-    if (is.null(nb2)) return(nb3)
-    if (is.null(nb3)) return(nb2)
-    term[[2]] <- nb2
-    term[[3]] <- nb3
-    term
 }
 
 isSpecial <- function(term) {
