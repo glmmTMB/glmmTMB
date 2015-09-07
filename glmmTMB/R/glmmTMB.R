@@ -222,6 +222,7 @@ getReStruc <- function(reTrms, ss) {
     }
 }
 
+## FIXME: store this data elsewhere/externally
 usesDispersion <- function(x) {
   !x %in% c("binomial","poisson","truncated_poisson")
 }

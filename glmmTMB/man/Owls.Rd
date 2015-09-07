@@ -1,15 +1,12 @@
 \name{Owls}
+\title{Begging by Owl Nestlings}
+\docType{data}
 \alias{Owls}
 \alias{OwlModel}
 \alias{OwlModel_nb1_bs}
 \alias{OwlModel_nb1_bs_mcmc}
-
-\docType{data}
-\title{
-Begging by owl nestlings
-}
 \description{
-Begging by owl nestlings
+  Begging by owl nestlings
 }
 \usage{data(Owls)}
 \format{
@@ -27,30 +24,32 @@ Begging by owl nestlings
   }
 }
 \source{
-  Roulin, A. and L. Bersier. 2007. Nestling barn owls beg more intensely
-  in the presence of their mother than in the presence of their father. Animal
-  Behaviour 74:1099-1106. \url{http://www.sciencedirect.com/science/article/B6W9W-4PK8B6H-8/2/e43cfbaad4dc0bb2207adfc54a460c89};
+  Roulin, A. and L. Bersier (2007)
+  Nestling barn owls beg more intensely in the presence of their mother
+  than in the presence of their father.
+  \emph{Animal Behaviour} \bold{74} 1099--1106.
+  \url{http://www.sciencedirect.com/science/article/B6W9W-4PK8B6H-8/2/e43cfbaad4dc0bb2207adfc54a460c89};
   \url{http://www.highstat.com/Book2/ZuurDataMixedModelling.zip}
 }
 \references{
-Zuur, A. F., E. N. Ieno, N. J. Walker, A. A. Saveliev, and
-G. M. Smith. 2009. Mixed Effects Models and Extensions in Ecology with R. Springer.
+  Zuur, A. F., E. N. Ieno, N. J. Walker, A. A. Saveliev, and G. M. Smith (2009)
+  \emph{Mixed Effects Models and Extensions in Ecology with R}; Springer.
 }
 \note{Access to data kindly provided by Alain Zuur}
 \examples{
-library("glmmTMB")
-data(Owls)
-library("lattice")
-bwplot(reorder(Nest,NegPerChick)~NegPerChick|FoodTreatment:SexParent,
+data(Owls, package = "glmmTMB")
+require("lattice")
+bwplot(reorder(Nest,NegPerChick) ~ NegPerChick | FoodTreatment:SexParent,
        data=Owls)
-dotplot(reorder(Nest,NegPerChick)~NegPerChick|FoodTreatment:SexParent,
+dotplot(reorder(Nest,NegPerChick) ~ NegPerChick| FoodTreatment:SexParent,
         data=Owls)
-owls_nb1 <- glmmTMB(SiblingNegotiation~FoodTreatment*SexParent+
-                  (1|Nest)+offset(log(BroodSize)),
-              family=list(family="nbinom1",link="log"),
-              zi=~1,data=Owls)
+## Fit negative binomial model with "constant" Zero Inflation :
+owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
+                                    (1|Nest)+offset(log(BroodSize)),
+              family = list(family="nbinom1",link="log"),
+              zi = ~1, data=Owls)
 owls_nb1_bs <- update(owls_nb1,
-                      .~.-offset(log(BroodSize))+log(BroodSize))
+                      . ~ . - offset(log(BroodSize)) + log(BroodSize))
 fixef(owls_nb1_bs)
 }
 \keyword{datasets}
