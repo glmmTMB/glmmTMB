@@ -7,15 +7,22 @@ context("VarCorr Testing")
 
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
-lm1 <-    lmer(distance ~ age + (age|Subject), data = Orthodont,
+fm1C <-    lmer(distance ~ age + (age|Subject), data = Orthodont,
                REML=FALSE) # to compare
-gm1 <-    glmer(round(distance) ~ age + (age|Subject),
-                family=poisson, data = Orthodont) # to compare
-expect_equal(VarCorr(fm1)[["cond"]],unclass(VarCorr(lm1)),
+gm1 <- glmmTMB(incidence/size ~ period + (1 | herd),
+               weights=size,
+               data = cbpp, family = binomial)
+gm1C <- glmer(incidence/size ~ period + (1 | herd),
+              weights=size,
+              data = cbpp, family = binomial)
+
+expect_equal(VarCorr(fm1)[["cond"]],unclass(VarCorr(fm1C)),
              tol=1e-5)
+expect_equal(VarCorr(gm1)[["cond"]],unclass(VarCorr(gm1C)),
+             tol=5e-3)
 ## have to take only last 4 lines
 expect_equal(tail(capture.output(print(VarCorr(fm1),digits=3)),4),
-             capture.output(print(VarCorr(lm1),digits=3)))
+             capture.output(print(VarCorr(fm1C),digits=3)))
 
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
@@ -30,7 +37,8 @@ fmPix1B <-   lmer(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
 ## "manual"  (1 | Dog / Side) :
 fmPix3 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Dog) + (1 | Side:Dog), data = Pixel)
 
-str(fmP1.r <- fmPix1$obj$env$report())
+fmP1.r <- fmPix1$obj$env$report()
+## str(fmP1.r)
 ## List of 4
 ##  $ corrzi: list()
 ##  $ sdzi  : list()
@@ -42,14 +50,14 @@ str(fmP1.r <- fmPix1$obj$env$report())
 ##   ..$ : num 16.8
 ##   ..$ : num 9.44
 ##   ..$ : num [1:2] 24.83 1.73
-fmP1.r $ corr
+## fmP1.r $ corr
 vv <- VarCorr(fmPix1)
 
 set.seed(12345)
 dd <- data.frame(a=gl(10,100), b = rnorm(1000))
-test2 <- simulate(~1+(b|a), newdata=dd, family=poisson,
+test2 <- suppressMessages(simulate(~1+(b|a), newdata=dd, family=poisson,
                   newparams= list(beta = c("(Intercept)" = 1),
-                                  theta = c(1,1,1)))
+                                  theta = c(1,1,1))))
 ## Zero-inflation : set all i.0 indices to 0:
 i.0 <- sample(c(FALSE,TRUE), 1000, prob=c(.3,.7), replace=TRUE)
 test2[i.0, 1] <- 0

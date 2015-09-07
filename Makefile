@@ -2,13 +2,14 @@ R=R
 # -> you can do    R=R-devel  make ....
 
 PACKAGE=glmmTMB
-# get VERSION from glmmTMB/DESCRIPTION  ("::" = expand only  once)
-VERSION ::= $(shell sed -n '/^Version: /s///p' glmmTMB/DESCRIPTION)
+# get VERSION from glmmTMB/DESCRIPTION  
+## ("::" = expand only  once, but doesn't work in make <= 3.81)
+VERSION := $(shell sed -n '/^Version: /s///p' glmmTMB/DESCRIPTION)
 
-TARBALL ::= $(PACKAGE)_$(VERSION).tar.gz
-ZIPFILE ::= =$(PACKAGE)_$(VERSION).zip
+TARBALL := $(PACKAGE)_$(VERSION).tar.gz
+ZIPFILE := =$(PACKAGE)_$(VERSION).zip
 
-CPP_SRC ::= $(PACKAGE)/src/*.cpp
+CPP_SRC := $(PACKAGE)/src/*.cpp
 
 all:
 	make enum-update
