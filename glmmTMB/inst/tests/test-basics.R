@@ -104,7 +104,11 @@ test_that("Update Binomial", {
   expect_equal(gm1, matchForm(gm1, gm1u))
 })
 
-
+test_that("internal structures", {
+  ## RE terms only in cond and zi model, not disp: GH #79
+  expect_equal(names(fm0$modelInfo$reTrms),
+               c("condList","ziList"))
+})
 
 test_that("close to lme4 results", {
     expect_true(require("lme4"))

@@ -19,18 +19,26 @@
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  structure(list(conditional_model = setNames(pl$beta,   colnames(getME(object, "X"))),
-                 zero_inflation    = setNames(pl$betazi, colnames(getME(object, "Xzi")))),
+  structure(list(cond = setNames(pl$beta,   colnames(getME(object, "X"))),
+                 zi    = setNames(pl$betazi, colnames(getME(object, "Xzi"))),
+                 disp = setNames(pl$betad, colnames(getME(object, "Xd")))),
             class =  "fixef.glmmTMB")
 }
 
+## general purpose matching between component names and printable names
+cNames <- list(cond = "Conditional model",
+               zi = "Zero inflation", disp = "Dispersion")
+
 ##' @method print fixef.glmmTMB
 ##' @export
-print.fixef.glmmTMB <- function(x, simplify=TRUE, ...) {
-  if (simplify && length(x$zero_inflation) == 0L)
-    print(unclass(x$conditional_model, ...))
-  else
-    print(unclass(x), ...)
+print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...)
+{
+  for(nm in names(x)) {
+    if((length(x[[nm]]) - as.numeric(nm == 'disp' && '(Intercept)' %in% names(x[[nm]]))) > 0) {
+      cat(sprintf("\n%s:\n", cNames[[nm]]))
+      print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
+    }
+  }
   invisible(x)
 }
 
@@ -97,26 +105,31 @@ ranef.glmmTMB <- function(object, ...) {
   }
 
   pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
-  structure(list(conditional_model = arrange(pl$b, "condList"),
-                 zero_inflation    = arrange(pl$bzi, "ziList")),
+  structure(list(cond = arrange(pl$b, "condList"),
+                 zi    = arrange(pl$bzi, "ziList")),
             class = "ranef.glmmTMB")
 }
 
+##' Print method
+##'
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
-  if (simplify && length(x$zero_inflation) == 0L)
-    print(unclass(x$conditional_model, ...))
-  else
-    print(unclass(x), ...)
-  invisible(x)
+    print(if (simplify && length(x$zi) == 0L)
+              unclass(x$cond) else unclass(x),
+          ...)
+    invisible(x)
 }
+
 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##' Method borrowed from lme4
 ##'
+##' Get generic and re-export:
 ##' @importFrom lme4 getME
 ##' @export getME
+##'
+##' @method getME glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi", "Xd", "theta"),
@@ -163,18 +176,41 @@ getME.glmmTMB <- function(object,
 ##' @export
 logLik.glmmTMB <- function(object, ...) {
   val <- -object$fit$objective
-  nobs <- sum(!is.na(object$obj$env$data$yobs))
-  structure(val, nobs = nobs, nall = nobs, df = npar.glmmTMB(object),
+  nobs <- nobs.glmmTMB(object)
+  structure(val, nobs = nobs, nall = nobs, df = length(object$fit$par),
             class = "logLik")
 }
 
-##' Retrieve number of parameters
-##'
-##' Also counts dispersion parameter and thetas
-npar.glmmTMB <- function(object){
-  length(object$fit$par)
+##' @importFrom stats nobs
+##' @method nobs glmmTMB
+nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
+
+
+.prt.aictab <- function(object, digits = 1) {
+  aictab <- c(AIC = AIC(object), BIC = BIC(object), logLik = logLik(object),
+              df.resid = df.residual(object))
+  t.4 <- round(aictab, digits)
+
+    ## slight hack to get residual df formatted as an integer
+    t.4F <- format(t.4)
+    t.4F["df.resid"] <- format(t.4["df.resid"])
+    print(t.4F, quote = FALSE)
+
 }
-## ^^ really ?
+
+##' Residual Degrees-of-Freedom
+##'
+##' @importFrom stats df.residual
+##' @method df.residual glmmTMB
+##  TODO: not clear whether the residual df should be based
+##  on p=length(beta) or p=length(c(theta,beta)) ... but
+##  this is just to allow things like aods3::gof to work ...
+##  Taken from LME4, including the todo
+##
+df.residual.glmmTMB <- function(object, ...) {
+  nobs(object)-length(object$fit$par)
+}
+
 
 ##' Extracts the variance covariance structure
 ##'
@@ -218,3 +254,56 @@ vcov.glmmTMB <- function(object, full=TRUE, ...) {
   }
 }
 
+cat.f <- function(...) cat(..., fill = TRUE)
+
+.prt.call.glmmTMB <- function(call, long = TRUE) {
+  pass<-0
+  if (!is.null(cc <- call$formula)){
+    cat.f("Formula:         ", deparse(cc))
+    pass<-nchar(as.character(call$formula[[2]]))
+  }
+  if(!is.null(cc <- call$ziformula))
+    cat.f("Zero inflation:  ",rep(' ',pass+2),'~ ' ,deparse(cc[[2]]),sep='')
+  if(!is.null(cc <- call$dispformula))
+    cat.f("Dispersion:      ",rep(' ',pass+2),'~ ', deparse(cc[[2]]), sep='')
+  if (!is.null(cc <- call$data))
+    cat.f("   Data:", deparse(cc))
+  if (!is.null(cc <- call$weights))
+    cat.f("Weights:", deparse(cc))
+  if (!is.null(cc <- call$offset))
+    cat.f(" Offset:", deparse(cc))
+  if (long && length(cc <- call$control) &&
+      !identical((dc <- deparse(cc)), "lmerControl()"))
+    ## && !identical(eval(cc), lmerControl()))
+    cat.f("Control:", dc)
+  if (!is.null(cc <- call$subset))
+    cat.f(" Subset:", deparse(cc))
+}
+
+##' Print glmmTMB model
+##' @method print glmmTMB
+##' @export
+##'
+print.glmmTMB <-
+    function(x, digits = max(3, getOption("digits") - 3),
+             correlation = NULL, symbolic.cor = FALSE,
+             signif.stars = getOption("show.signif.stars"),
+             longCall = TRUE, ranef.comp = "Std.Dev.", ...)
+{
+  ## Type Of Model fit --- REML? ---['class']  & Family & Call
+  .prt.call.glmmTMB(x$call, long=longCall)
+  ## the 'digits' argument should have an action here
+  .prt.aictab(x, digits=digits+1)
+  ## varcorr
+  .prt.VC(VarCorr(x), digits=digits, comp = ranef.comp)
+
+  ## ngroups
+
+  ## Fixed effects:
+  if(length(cf <- fixef(x)) > 0) {
+    cat("\nFixed Effects:\n")
+    print(cf, ...)
+  } else
+    cat("No fixed effect coefficients\n")
+  invisible(x)
+}
