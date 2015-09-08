@@ -86,10 +86,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 ##              ^^^^ github version >= 2015-09-05
 ##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
-##' @param digits number of significant digits to use
-##' @param comp a string specifying the component to format and print
-##' @param formatter a \code{\link{function}}
-##' @param ...
+##' @param digits number of significant digits to use.
+##' @param comp a string specifying the component to format and print.
+##' @param formatter a \code{\link{function}}.
+##' @param ... optional further arguments, passed the next \code{\link{print}} method.
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 				  comp = "Std.Dev.", formatter = format, ...)
 {
