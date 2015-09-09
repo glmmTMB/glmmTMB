@@ -293,7 +293,7 @@ noSpecials_ <- function(term,delete=TRUE) {
         if(delete) {
             NULL
         } else { ## carful to return  (1|f) and not  1|f:
-            substitute((TERM), TERM = term[[2]])
+            substitute((TERM), list(TERM = term[[2]]))
         }
     } else {
         nb2 <- noSpecials(term[[2]],delete=delete)
