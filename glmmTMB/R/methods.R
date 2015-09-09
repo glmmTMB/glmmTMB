@@ -295,7 +295,7 @@ print.glmmTMB <-
   ## the 'digits' argument should have an action here
   .prt.aictab(x, digits=digits+1)
   ## varcorr
-  .prt.VC(VarCorr(x), digits=digits, comp = ranef.comp)
+  print(VarCorr(x), digits=digits, comp = ranef.comp)
 
   ## ngroups
 
