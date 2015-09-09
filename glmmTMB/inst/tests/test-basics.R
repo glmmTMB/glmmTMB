@@ -34,8 +34,8 @@ test_that("Basic Gaussian Sleepdata examples", {
     expect_equal(fixef(fm0)[[1]], c("(Intercept)" = 298.508), tolerance = .0001)
     expect_equal(fixef(fm1)[[1]], c("(Intercept)" = 251.405, Days = 10.4673),
                  tolerance = .0001)
-    expect_equal(fixef(fm2), fixef(fm1), tolerance = 1e-5)# seen 1.042 e-6
-    expect_equal(fixef(fm3), fixef(fm1), tolerance = 5e-6)# seen 2.250 e-7
+    expect_equal(fixef(fm2)$cond, fixef(fm1)$cond, tolerance = 1e-5)# seen 1.042 e-6
+    expect_equal(fixef(fm3)$cond, fixef(fm1)$cond, tolerance = 5e-6)# seen 2.250 e-7
 })
 
 test_that("Update Gaussian", {
@@ -69,11 +69,11 @@ gm1 <- glmmTMB(prop ~ period + (1|herd),
 test_that("Basic Binomial CBPP examples", {
     expect_is(gm0, "glmmTMB")
     expect_is(gm1, "glmmTMB")
-    expect_equal(fixef(gm0)[[1]], c("(Intercept)" = -2.053136), tolerance = .0005)
-    expect_equal(fixef(gm1)[[1]], c("(Intercept)" = -1.3928024,
-                               period2 = -0.9976629, period3 = -1.1337828,
-                               period4 = -1.5865186),
-                  tolerance = .001) # <- TODO: lower eventually
+    expect_equal(fixef(gm0)[[1]], c("(Intercept)" = -2.045671), tolerance = 1e-3)#lme4 results
+    expect_equal(fixef(gm1)[[1]], c("(Intercept)" = -1.398343,#lme4 results
+                               period2 = -0.991925, period3 = -1.128216,
+                               period4 = -1.579745),
+                  tolerance = 1e-3) # <- TODO: lower eventually
 })
 
 ### Multiple RE,  reordering
