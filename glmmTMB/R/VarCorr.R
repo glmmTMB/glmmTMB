@@ -39,14 +39,18 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         nnms <- make.names(nnms, unique = TRUE)
     ##
     ## cov :=  F(sd, cor) :
-    do1cov <- function(sd, cor, n = length(sd)) sd * cor * rep(sd, each = n)
-    ##
-    ss <- setNames(lapply(seq_len(nc), function(i) {
-        cov <- do1cov(sd = (sd.i <- sd[[i]]), cor = (cor.i <- cor[[i]]))
-        names(sd.i) <- nm.i <- cnms[[i]]
-        dimnames(cov) <- dimnames(cor.i) <- list(nm.i, nm.i)
-        structure(cov, stddev = sd.i, correlation = cor.i)
-    }), nnms)
+    do1cov <- function(sd, cor, n = length(sd)) {
+        sd * cor * rep(sd, each = n)
+    }
+    docov <- function(sd,cor,nm) {
+        ## FIXME: what should be in cor for a 1x1 diag model?
+        if (identical(dim(cor),c(0L,0L))) cor <- matrix(1)
+        cov <- do1cov(sd, cor)
+        names(sd) <- nm
+        dimnames(cov) <- dimnames(cor) <- list(nm,nm)
+        structure(cov,stddev=sd,correlation=cor)
+    }
+    ss <- setNames(mapply(docov,sd,cor,cnms),nnms)
     attr(ss,"sc") <- sc
     attr(ss,"useSc") <- useSc
     ss
