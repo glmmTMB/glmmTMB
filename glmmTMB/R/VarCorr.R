@@ -1,7 +1,7 @@
 ##' returns a true family() object iff one was given
 ##' to glmmTMB() in the first place ....
 ##' @importFrom stats family
-##' @export family
+##' @export
 ##' @keywords internal
 family.glmmTMB <- function(object, ...) {
     object$modelInfo$family
