@@ -416,6 +416,7 @@ glmmTMB <- function (
               class = "glmmTMB")
 }
 
+##' @importFrom stats AIC BIC
 llikAIC <- function(object) {
     llik <- logLik(object)
     AICstats <- 
@@ -438,6 +439,7 @@ ngrps.glmmTMB <- function(object, ...) {
 ngrps.factor <- function(object, ...) nlevels(object)
 
 
+##' @importFrom stats pnorm
 ##' @export
 summary.glmmTMB <- function(object,...)
 {
@@ -449,12 +451,16 @@ summary.glmmTMB <- function(object,...)
     sig <- sigma(object)
 
     famL <- family(object)
-    
-    p <- length(coefs <- fixef(object))
+
+    p <- length(coefs <- fixef(object)$cond)
 
     coefs <- cbind("Estimate" = coefs,
                    "Std. Error" = sqrt(diag(vcov(object))))
 
+    ## FIXME:: need to mkCoefTab for each non-trivial model component ...
+    ## implies that vcov may need to return a list as well?
+    ## for now, just getting conditional component
+    
     if (p > 0) {
 	coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]), deparse.level = 0)
         ## statType <- if (useSc) "t" else "z"
@@ -477,7 +483,7 @@ summary.glmmTMB <- function(object,...)
 		   coefficients = coefs, sigma = sig,
 		   vcov = vcov(object),
 		   varcor = varcor, # and use formatVC(.) for printing.
-		   AICtab = llAIC[["AICtab"]], call = object$call,
+		   AICtab = llAIC[["AICtab"]], call = object$call
                    ## residuals = residuals(object,"pearson",scaled = TRUE),
 		   ## fitMsgs = .merMod.msgs(object),
                    ## optinfo = object@optinfo
