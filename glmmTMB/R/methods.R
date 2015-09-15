@@ -105,7 +105,7 @@ ranef.glmmTMB <- function(object, ...) {
     }
   }
 
-  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  pl <- getParList(object)
   structure(list(cond = arrange(pl$b, "condList"),
                  zi    = arrange(pl$bzi, "ziList")),
             class = "ranef.glmmTMB")
@@ -183,7 +183,7 @@ logLik.glmmTMB <- function(object, ...) {
 }
 
 ##' @importFrom stats nobs
-##' @method nobs glmmTMB
+##' @export
 nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
 
 
@@ -203,6 +203,7 @@ nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
 ##'
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
+##' @export
 ##  TODO: not clear whether the residual df should be based
 ##  on p=length(beta) or p=length(c(theta,beta)) ... but
 ##  this is just to allow things like aods3::gof to work ...

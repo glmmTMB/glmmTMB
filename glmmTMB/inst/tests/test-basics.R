@@ -19,6 +19,8 @@ matchForm <- function(obj, objU, family=FALSE) {
 
 context("Very basic glmmTMB fitting")
 
+lm0 <- lm(Reaction~Days,sleepstudy)
+fm00 <- glmmTMB(Reaction ~ Days, sleepstudy)
 fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
 fm1 <- glmmTMB(Reaction ~ Days + ( 1  | Subject), sleepstudy)
 fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
@@ -26,11 +28,15 @@ fm3 <- glmmTMB(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
                sleepstudy)
 
 test_that("Basic Gaussian Sleepdata examples", {
+    expect_is(fm00, "glmmTMB")
     expect_is(fm0, "glmmTMB")
     expect_is(fm1, "glmmTMB")
     expect_is(fm2, "glmmTMB")
     expect_is(fm3, "glmmTMB")
 
+    expect_equal(fixef(fm00)[[1]],coef(lm0),tol=1e-5)
+    expect_equal(sigma(fm00)*sqrt(nobs(fm00)/(df.residual(fm00)+1)),
+                 sigma(lm0),tol=1e-5)
     expect_equal(fixef(fm0)[[1]], c("(Intercept)" = 298.508), tolerance = .0001)
     expect_equal(fixef(fm1)[[1]], c("(Intercept)" = 251.405, Days = 10.4673),
                  tolerance = .0001)

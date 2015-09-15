@@ -169,7 +169,7 @@ getGrpVar <- function(x)
 
 ##' @title Calculate random effect structure
 ##' calculates number of random effects, number of parameters,
-##' blocksize and number of blocks.
+##' blocksize and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
 ##' @param ss a character string indicating a valid covariance structure (as currently implemented,
 ##'   one of \code{names(glmmTMB:::.valid_covstruct)}).
@@ -240,12 +240,20 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
 ##' @param data data frame
-##' @param family \code{\link{family}}
+##' @param family family (variance/link function) information; see \code{\link{family}} for
+##' details.  As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
+##' referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
+##' such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
+##' In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
+##' can be specified as (4) a list comprising the name of the distribution and the link function
+##' (\sQuote{list(family="binomial",link="logit")}).
 ##' @param ziformula combined fixed and random effects formula for
-##'     zero-inflation: the default \code{~0} specifies no zero-inflation
+##'     zero-inflation: the default \code{~0} specifies no zero-inflation.
+##' The zero-inflation model uses a logit link.
 ##' @param dispformula combined fixed and random effects formula for dispersion:
-##'     the default \code{~0} specifies no zero-inflation
-##' @param weights weights
+##'     the default \code{~0} specifies no zero-inflation.  The dispersion model
+##' uses a log link.
+##' @param weights weights, as in \code{glm}.
 ##' @param offset offset
 ##' @param se whether to return standard errors
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
@@ -255,6 +263,13 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
+##' @details
+##' \itemize{
+##' \item binomial models with more than one trial (i.e., not binary/Bernoulli)
+##' must be specified in the form \code{prob ~ ..., weights = N} rather than in
+##' the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
+##' \item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
+##' }
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
@@ -399,4 +414,73 @@ glmmTMB <- function (
     ##    with predict() in its current form
     structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo),
               class = "glmmTMB")
+}
+
+llikAIC <- function(object) {
+    llik <- logLik(object)
+    AICstats <- 
+        c(AIC = AIC(llik), BIC = BIC(llik), logLik = c(llik),
+          deviance = -2*llik, ## FIXME:
+          df.resid = df.residual(object))
+    list(logLik = llik, AICtab = AICstats)
+}
+
+## FIXME: export/import from lme4?
+ngrps <- function(object, ...) UseMethod("ngrps")
+
+ngrps.default <- function(object, ...) stop("Cannot extract the number of groups from this object")
+
+ngrps.glmmTMB <- function(object, ...) {
+    lapply(object$modelInfo$reTrms,
+           function(x) vapply(x$flist, nlevels, 1))
+}
+
+ngrps.factor <- function(object, ...) nlevels(object)
+
+
+##' @export
+summary.glmmTMB <- function(object,...)
+{
+    if (length(list(...)) > 0) {
+        ## FIXME: need testing code
+        warning("additional arguments ignored")
+    }
+    ## figure out useSc
+    sig <- sigma(object)
+
+    famL <- family(object)
+    
+    p <- length(coefs <- fixef(object))
+
+    coefs <- cbind("Estimate" = coefs,
+                   "Std. Error" = sqrt(diag(vcov(object))))
+
+    if (p > 0) {
+	coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]), deparse.level = 0)
+        ## statType <- if (useSc) "t" else "z"
+        statType <- "z"
+        ### ??? should we provide Wald p-values???
+        coefs <- cbind(coefs, 2*pnorm(abs(cf3), lower.tail = FALSE))
+        colnames(coefs)[3:4] <- c(paste(statType, "value"),
+                                  paste0("Pr(>|",statType,"|)"))
+    }
+
+    llAIC <- llikAIC(object)
+                   
+    ## FIXME: You can't count on object@re@flist,
+    ##	      nor compute VarCorr() unless is(re, "reTrms"):
+    varcor <- VarCorr(object)
+					# use S3 class for now
+    structure(list(logLik = llAIC[["logLik"]],
+                   family = famL$fami, link = famL$link,
+		   ngrps = ngrps(object),
+		   coefficients = coefs, sigma = sig,
+		   vcov = vcov(object),
+		   varcor = varcor, # and use formatVC(.) for printing.
+		   AICtab = llAIC[["AICtab"]], call = object$call,
+                   ## residuals = residuals(object,"pearson",scaled = TRUE),
+		   ## fitMsgs = .merMod.msgs(object),
+                   ## optinfo = object@optinfo
+		   ), class = "summary.glmmTMB")
+               
 }
