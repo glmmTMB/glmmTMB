@@ -34,10 +34,11 @@ cNames <- list(cond = "Conditional model",
 print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...)
 {
   for(nm in names(x)) {
-    if((length(x[[nm]]) - as.numeric(nm == 'disp' && '(Intercept)' %in% names(x[[nm]]))) > 0) {
-      cat(sprintf("\n%s:\n", cNames[[nm]]))
-      print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
-    }
+      trivialDispModel <- nm == 'disp' && identical(names(x[[nm]]),'(Intercept)')
+      if (length(x[[nm]])>0  && !trivialDispModel) {
+          cat(sprintf("\n%s:\n", cNames[[nm]]))
+          print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
+      }
   }
   invisible(x)
 }
