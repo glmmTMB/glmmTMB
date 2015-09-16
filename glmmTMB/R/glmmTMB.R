@@ -432,8 +432,12 @@ ngrps <- function(object, ...) UseMethod("ngrps")
 ngrps.default <- function(object, ...) stop("Cannot extract the number of groups from this object")
 
 ngrps.glmmTMB <- function(object, ...) {
-    lapply(object$modelInfo$reTrms,
+    res <- lapply(object$modelInfo$reTrms,
            function(x) vapply(x$flist, nlevels, 1))
+    ## FIXME: adjust reTrms names for consistency rather than hacking here
+    names(res) <- gsub("List$","",names(res))
+    return(res)
+    
 }
 
 ngrps.factor <- function(object, ...) nlevels(object)
@@ -452,24 +456,29 @@ summary.glmmTMB <- function(object,...)
 
     famL <- family(object)
 
-    p <- length(coefs <- fixef(object)$cond)
-
-    coefs <- cbind("Estimate" = coefs,
-                   "Std. Error" = sqrt(diag(vcov(object))))
-
-    ## FIXME:: need to mkCoefTab for each non-trivial model component ...
-    ## implies that vcov may need to return a list as well?
-    ## for now, just getting conditional component
-    
-    if (p > 0) {
-	coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]), deparse.level = 0)
-        ## statType <- if (useSc) "t" else "z"
-        statType <- "z"
-        ### ??? should we provide Wald p-values???
-        coefs <- cbind(coefs, 2*pnorm(abs(cf3), lower.tail = FALSE))
-        colnames(coefs)[3:4] <- c(paste(statType, "value"),
-                                  paste0("Pr(>|",statType,"|)"))
+    mkCoeftab <- function(coefs,vcov) {
+        p <- length(coefs)
+        coefs <- cbind("Estimate" = coefs,
+                       "Std. Error" = sqrt(diag(vcov)))
+        if (p > 0) {
+            coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]),
+                           deparse.level = 0)
+            ## statType <- if (useSc) "t" else "z"
+            statType <- "z"
+            ## ??? should we provide Wald p-values???
+            coefs <- cbind(coefs, 2*pnorm(abs(cf3), lower.tail = FALSE))
+            colnames(coefs)[3:4] <- c(paste(statType, "value"),
+                                      paste0("Pr(>|",statType,"|)"))
+        }
+        coefs
     }
+
+    ff <- fixef(object)
+    vv <- vcov(object)
+    coefs <- setNames(lapply(names(ff),
+            function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
+                             mkCoeftab(ff[[nm]],vv[[nm]])),
+                      names(ff))
 
     llAIC <- llikAIC(object)
                    
@@ -480,6 +489,7 @@ summary.glmmTMB <- function(object,...)
     structure(list(logLik = llAIC[["logLik"]],
                    family = famL$fami, link = famL$link,
 		   ngrps = ngrps(object),
+                   nobs = nobs(object),
 		   coefficients = coefs, sigma = sig,
 		   vcov = vcov(object),
 		   varcor = varcor, # and use formatVC(.) for printing.
@@ -490,3 +500,47 @@ summary.glmmTMB <- function(object,...)
 		   ), class = "summary.glmmTMB")
                
 }
+
+## copied from lme4:::print.summary.merMod (makes use of
+##' @importFrom lme4 .prt.family .prt.call .prt.resids .prt.VC .prt.grps
+##' @importFrom stats printCoefmat
+##' @export
+print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
+                                 signif.stars = getOption("show.signif.stars"),
+                                 ranef.comp = c("Variance", "Std.Dev."),
+                                 show.resids = FALSE, ...)
+{
+    .prt.family(x)
+    .prt.call(x$call); cat("\n")
+    .prt.aictab(x$AICtab); cat("\n")
+    if (show.resids)
+        .prt.resids(x$residuals, digits = digits)
+
+    if (any(whichRE <- !sapply(x$varcor,is.null))) {
+        cat("Random effects:\n")
+        for (nn in names(x$varcor[whichRE])) {
+            cat("\n",cNames[[nn]],":\n",sep="")
+            ## lme4:::.prt.VC is not quite what we want here
+            print(formatVC(x$varcor[[nn]],
+                           digits = digits,
+                           comp = ranef.comp),
+                  quote=FALSE, digits=digits)
+            ## FIXME: redundant nobs output
+            .prt.grps(x$ngrps[[nn]],nobs=x$nobs)
+        }
+    }
+
+    for (nn in names(x$coefficients)) {
+        cc <- x$coefficients[[nn]]
+        p <- length(cc)
+        if (p > 0) {
+            cat("\n",cNames[[nn]],":\n",sep="")
+            printCoefmat(cc, zap.ind = 3, #, tst.ind = 4
+                         digits = digits, signif.stars = signif.stars)
+        } ## if (p>0)
+    }
+
+    invisible(x)
+}## print.summary.glmmTMB
+
+
