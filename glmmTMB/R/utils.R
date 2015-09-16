@@ -38,11 +38,12 @@ makeOp <- function(x,y,op=NULL) {
 ##' combines the right-hand sides of two formulas
 ##' @param f1
 ##' @param f2
-##' @keywords internal
 ##' @examples
-##' if(FALSE) ## not exported
+##' if (FALSE) {  ## still being exported despite "<at>keywords internal" ??
 ##' addForm0(y~x,~1)
 ##' addForm0(~x,~y)
+##' }
+##' @keywords internal
 addForm0 <- function(f1,f2) {
   if (length(f2)==3) warning("discarding RHS of second argument")
   RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
@@ -86,6 +87,7 @@ expandGrpVar <- function(f) {
 ##' expandAllGrpVar(quote(1|(f/g)/h))
 ##' expandAllGrpVar(quote(1|f/g/h))
 ##' expandAllGrpVar(quote(1|f*g))
+##' @importFrom utils head
 ##' @keywords internal
 expandAllGrpVar <- function(bb) {
         ## Return the list of '/'-separated terms

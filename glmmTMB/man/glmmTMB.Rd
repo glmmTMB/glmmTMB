@@ -14,21 +14,29 @@ syntax}
 
 \item{data}{data frame}
 
-\item{family}{\code{\link{family}}}
+\item{family}{family (variance/link function) information; see \code{\link{family}} for
+details.  As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
+referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
+such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
+In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
+can be specified as (4) a list comprising the name of the distribution and the link function
+(\sQuote{list(family="binomial",link="logit")}).}
 
 \item{ziformula}{combined fixed and random effects formula for
-zero-inflation: the default \code{~0} specifies no zero-inflation}
+    zero-inflation: the default \code{~0} specifies no zero-inflation.
+The zero-inflation model uses a logit link.}
 
 \item{dispformula}{combined fixed and random effects formula for dispersion:
-the default \code{~0} specifies no zero-inflation}
+    the default \code{~0} specifies no zero-inflation.  The dispersion model
+uses a log link.}
 
-\item{weights}{}
+\item{weights}{weights, as in \code{glm}.}
 
-\item{offset}{}
+\item{offset}{offset}
 
 \item{se}{whether to return standard errors}
 
-\item{verbose}{}
+\item{verbose}{logical indicating if some progress indication should be printed to the console.}
 
 \item{debug}{whether to return the preprocessed data and parameter objects,
 without fitting the model}
@@ -36,10 +44,18 @@ without fitting the model}
 \description{
 main TMB function
 }
+\details{
+\itemize{
+\item binomial models with more than one trial (i.e., not binary/Bernoulli)
+must be specified in the form \code{prob ~ ..., weights = N} rather than in
+the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
+\item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
+}
+}
 \examples{
 data(sleepstudy, package="lme4")
-glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
-glmmTMB(Reaction ~ Days + us(1|Subject), sleepstudy)
-glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy)
+(fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy))
+(fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy))
+(fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy))
 }
 

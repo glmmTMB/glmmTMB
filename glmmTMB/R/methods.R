@@ -29,15 +29,30 @@ fixef.glmmTMB <- function(object, ...) {
 cNames <- list(cond = "Conditional model",
                zi = "Zero inflation", disp = "Dispersion")
 
+## FIXME: this is a bit ugly. On the other hand, a single-parameter
+## dispersion model without a
+trivialDisp <- function(object) {
+    ## FIXME: is there a better way to strip the environment before
+    ## comparing?
+    identical(deparse(object$modelInfo$allForm$dispformula),"~1")
+}
+
+trivialFixef <- function(xnm,nm) {
+    length(xnm)==0 ||
+        (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
+    ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
+}
+
+
 ##' @method print fixef.glmmTMB
 ##' @export
 print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...)
 {
   for(nm in names(x)) {
-    if((length(x[[nm]]) - as.numeric(nm == 'disp' && '(Intercept)' %in% names(x[[nm]]))) > 0) {
-      cat(sprintf("\n%s:\n", cNames[[nm]]))
-      print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
-    }
+      if (!trivialFixef(names(x[[nm]]),nm)) {
+          cat(sprintf("\n%s:\n", cNames[[nm]]))
+          print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
+      }
   }
   invisible(x)
 }
@@ -104,7 +119,7 @@ ranef.glmmTMB <- function(object, ...) {
     }
   }
 
-  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  pl <- getParList(object)
   structure(list(cond = arrange(pl$b, "condList"),
                  zi    = arrange(pl$bzi, "ziList")),
             class = "ranef.glmmTMB")
@@ -182,26 +197,14 @@ logLik.glmmTMB <- function(object, ...) {
 }
 
 ##' @importFrom stats nobs
-##' @method nobs glmmTMB
+##' @export
 nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
-
-
-.prt.aictab <- function(object, digits = 1) {
-  aictab <- c(AIC = AIC(object), BIC = BIC(object), logLik = logLik(object),
-              df.resid = df.residual(object))
-  t.4 <- round(aictab, digits)
-
-    ## slight hack to get residual df formatted as an integer
-    t.4F <- format(t.4)
-    t.4F["df.resid"] <- format(t.4["df.resid"])
-    print(t.4F, quote = FALSE)
-
-}
 
 ##' Residual Degrees-of-Freedom
 ##'
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
+##' @export
 ##  TODO: not clear whether the residual df should be based
 ##  on p=length(beta) or p=length(c(theta,beta)) ... but
 ##  this is just to allow things like aods3::gof to work ...
@@ -218,40 +221,65 @@ df.residual.glmmTMB <- function(object, ...) {
 ##'
 ##' @importFrom stats vcov
 ##' @export
-vcov.glmmTMB <- function(object, full=TRUE, ...) {
+vcov.glmmTMB <- function(object, full=FALSE, ...) {
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj)
   }
 
-  to_keep <- grep("beta*",colnames(sdr$cov.fixed)) # only keep betas
+  keepTag <- if (full) "beta*" else "beta($|[^d])"
+  to_keep <- grep(keepTag,colnames(sdr$cov.fixed)) # only keep betas
   covF <- sdr$cov.fixed[to_keep,to_keep]
 
-  Xnames <- colnames(getME(object,"X"))
-  Xzinames <- colnames(getME(object,"Xzi"))
-  if(!is.null(Xzinames)) Xzinames <- paste("zi",Xzinames,sep="~")
-  Xdnames <- colnames(getME(object,"Xd"))
-  if(!is.null(Xdnames)) Xdnames <- paste("d",Xdnames,sep="~")
-  colnames(covF) <- rownames(covF) <- nms <- c(Xnames,Xzinames,Xdnames)
-
-  if(full) {
-    if(object$modelInfo$allForm$dispformula == ~1)
-      covF <- covF[-nrow(covF),-nrow(covF)]
-    covF
-  } else {
-    di <- grep("d~.*",nms)
-    zii <- grep("zi~.*",nms)
-    xi <- setdiff(1:ncol(covF),c(di,zii))
-    output <- list(conditional_model = covF[xi,xi],
-                   zero_inflation = covF[zii,zii],
-                   dispersion = covF[di,di])
-    ## FIXME: this may look "convenient" but the result should have same structure in all cases
-    l <- sapply(output, length) > 0
-    if(sum(l)==1)
-      output[[which(l)]]
-    else
-      output[l]
+  mkNames <- function(tag) {
+      X <- getME(object,paste0("X",tag))
+      if (trivialFixef(nn <- colnames(X),tag)) character(0)
+      else paste(tag,nn,sep="~")
   }
+
+  nameList <- setNames(list(colnames(getME(object,"X")),
+                mkNames("zi"),
+                mkNames("d")),
+                       names(cNames))
+                
+  if(full) {
+      ## FIXME: haven't really decided if we should drop the
+      ##   trivial variance-covariance dispersion parameter ??
+      ## if (trivialDisp(object))
+      ##    res <- covF[-nrow(covF),-nrow(covF)]
+      colnames(covF) <- rownames(covF) <- unlist(nameList)
+      res <- covF        ## return just a matrix in this case
+  } else {
+      splitMat <- function(x) {
+          ss <- split(seq_along(colnames(x)),
+                      colnames(x))
+          lapply(ss,function(z) x[z,z])
+      }
+      covList <- splitMat(covF)
+      names(covList) <-
+          names(cNames)[match(names(covList),c("beta","betazi","betad"))]
+      for (nm in names(covList)) {
+          if (length(xnms <- nameList[[nm]])==0) {
+              covList[[nm]] <- NULL
+          }
+          else dimnames(covList[[nm]]) <- list(xnms,xnms)
+      }
+      res <- covList
+      ##  FIXME: should vcov always return a three-element list
+      ## (with NULL values for trivial models)?
+      class(res) <- c("vcov.glmmTMB","matrix")
+  }
+  return(res)
+}
+
+##' @export
+print.vcov.glmmTMB <- function(object,...) {
+    for (nm in names(object)) {
+        cat(cNames[[nm]],":\n",sep="")
+        print(object[[nm]])
+        cat("\n")
+    }
+    invisible(object)
 }
 
 cat.f <- function(...) cat(..., fill = TRUE)
@@ -282,6 +310,7 @@ cat.f <- function(...) cat(..., fill = TRUE)
 
 ##' Print glmmTMB model
 ##' @method print glmmTMB
+##' @importFrom lme4 .prt.aictab
 ##' @export
 ##'
 print.glmmTMB <-
@@ -293,7 +322,9 @@ print.glmmTMB <-
   ## Type Of Model fit --- REML? ---['class']  & Family & Call
   .prt.call.glmmTMB(x$call, long=longCall)
   ## the 'digits' argument should have an action here
-  .prt.aictab(x, digits=digits+1)
+  aictab <- c(AIC = AIC(x), BIC = BIC(x), logLik = logLik(x),
+              df.resid = df.residual(x))
+  .prt.aictab(aictab, digits=digits+1)
   ## varcorr
   print(VarCorr(x), digits=digits, comp = ranef.comp)
 

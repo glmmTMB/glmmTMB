@@ -7,6 +7,12 @@ family.glmmTMB <- function(object, ...) {
     object$modelInfo$family
 }
 
+## don't quite know why this (rather than just ...$parList()) is
+## necessary -- used in ranef.glmmTMB and sigma.glmmTMB
+getParList <- function(object) {
+    object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+}
+
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
 ## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
@@ -16,10 +22,12 @@ family.glmmTMB <- function(object, ...) {
 
 ##' @method sigma glmmTMB
 ##' @export
+##'
 ##' @keywords internal
 sigma.glmmTMB <- function(object, ...) {
+    pl <- getParList(object)
     if(family(object)$family == "gaussian")
-        exp( .5 * object$obj$env$parList()$betad ) # betad is  log(sigma ^ 2)
+        exp( .5 * pl$betad ) # betad is  log(sigma ^ 2)
     else 1.
 }
 
@@ -63,6 +71,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ## and re-export the generic:
 ##' @export VarCorr
 ##' @export
+##' @keywords internal
 VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 {
     ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
@@ -75,8 +84,9 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     } else TRUE
 
     vc.cond <- if(length(cn <- reT$condList$cnms))
-        mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn, sc = sigma, useSc = useSc)
-    vc.zi   <- if(length(cn <- reT$  ziList$cnms))
+        mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
+             sc = sigma, useSc = useSc)
+    vc.zi   <- if(length(cn <- reT$ziList$cnms))
         mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
     structure(list(cond = vc.cond, zi = vc.zi),
 	      sc = usesDispersion(x), ## 'useScale'
