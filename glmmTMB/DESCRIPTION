@@ -20,7 +20,7 @@ Description: Fit linear and generalized linear mixed models
  the Laplace approximation.  Gradients are calculated using automtic differentiation.
 License: AGPL-3
 Imports: methods, TMB, lme4 (>= 1.1-10), Matrix, nlme
-LinkingTo: TMB
+LinkingTo: TMB, RcppEigen
 Suggests: knitr, testthat
 VignetteBuilder: knitr
 LazyData: TRUE
