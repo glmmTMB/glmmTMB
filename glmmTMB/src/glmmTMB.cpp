@@ -206,11 +206,15 @@ Type allterms_nll(vector<Type> u, vector<Type> theta,
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
-  int nr;
+  int nr, np, offset;
   for(int i=0; i < terms.size(); i++){
     nr = terms(i).blockSize * terms(i).blockReps;
-    vector<Type> useg = u.segment(upointer, nr);
-    vector<Type> tseg = theta.segment(tpointer, terms(i).blockNumTheta);
+    // Note: 'blockNumTheta=0' ==> Same parameters as previous term.
+    bool emptyTheta = ( terms(i).blockNumTheta == 0 );
+    offset = ( emptyTheta ? -np : 0 );
+    np     = ( emptyTheta ?  np : terms(i).blockNumTheta );
+    vector<Type> useg =     u.segment(upointer         , nr);
+    vector<Type> tseg = theta.segment(tpointer + offset, np);
     ans += termwise_nll(useg, tseg, terms(i));
     upointer += nr;
     tpointer += terms(i).blockNumTheta;
