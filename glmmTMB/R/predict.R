@@ -66,8 +66,8 @@ predict.glmmTMB <- function(object,newdata=NULL,debug=FALSE,
                          mf,augFr,
                          yobs=augFr[[names(respCol)]],
                          offset=NULL,weights=NULL,
-                         family=family,link=link,
-                         ziPredCode=ziPredCode))
+                         family=familyStr,link=link,
+                         ziPredictCode=ziPredNm))
 
 
 
