@@ -284,7 +284,7 @@ glmmTMB <- function (
     dispformula= NULL,
     weights=NULL,
     offset=NULL,
-    se=FALSE,
+    se=TRUE,
     verbose=FALSE,
     debug=FALSE
     )
@@ -397,6 +397,13 @@ glmmTMB <- function (
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
                                                    gradient=gr)))
+    if (se) {
+        sdr <- sdreport(obj)
+        ## FIXME: assign original rownames to fitted?
+        fitted <- unname(sdr$value)
+    } else {
+        sdr <- fitted <- NULL
+    }
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
@@ -412,7 +419,8 @@ glmmTMB <- function (
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo),
+    structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo,
+                        fitted),
               class = "glmmTMB")
 }
 

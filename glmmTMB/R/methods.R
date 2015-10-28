@@ -338,3 +338,16 @@ print.glmmTMB <-
     cat("No fixed effect coefficients\n")
   invisible(x)
 }
+
+##' @export
+model.frame.glmmTMB <- function(formula, ...) {
+    formula$frame
+}
+
+##' @export
+residuals.glmmTMB <- function(object, type=c("response", "pearson"),
+                              ...) {
+    type <- match.arg(type)
+    if (type=="pearson") stop("not yet implemented")
+    fitted(object)-model.response(object$frame)
+}
