@@ -78,9 +78,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     stopifnot(is.numeric(sigma), length(sigma) == 1)
     xrep <- x$obj$env$report()
     reT <- x$modelInfo$reTrms
+    familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {
         sigma <- sigma(x)
-        usesDispersion(family(x)$family)
+        usesDispersion(familyStr)
     } else TRUE
 
     vc.cond <- if(length(cn <- reT$condList$cnms))
@@ -89,7 +90,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     vc.zi   <- if(length(cn <- reT$ziList$cnms))
         mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
     structure(list(cond = vc.cond, zi = vc.zi),
-	      sc = usesDispersion(x), ## 'useScale'
+	      sc = usesDispersion(familyStr), ## 'useScale'
 	      class = "VarCorr.glmmTMB")
 }
 
