@@ -344,10 +344,21 @@ model.frame.glmmTMB <- function(formula, ...) {
     formula$frame
 }
 
+##' Compute residuals for a glmmTMB object
+##'
+##' 
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson"),
                               ...) {
     type <- match.arg(type)
-    if (type=="pearson") stop("not yet implemented")
-    fitted(object)-model.response(object$frame)
+    r <- fitted(object)-model.response(object$frame)
+    switch(type,
+           response=r,
+           pearson={
+               if (is.null(v <- family(object)$variance))
+                   stop("variance function undefined for family ",
+                        sQuote(family(object)$family),"; cannot compute",
+                        " Pearson residuals")
+               r/sqrt(v(fitted(object)))
+           })
 }

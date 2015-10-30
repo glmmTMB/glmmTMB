@@ -308,6 +308,9 @@ glmmTMB <- function (
       print(family)
       stop("'family' not recognized")
     }
+    if (!all(c("family","link") %in% names(family)))
+        stop("'family' must contain at least 'family' and 'link' components")
+    ## FIXME: warning/message if 'family' doesn't contain 'variance' ?
 
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmTMB')
