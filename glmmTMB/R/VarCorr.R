@@ -58,7 +58,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         dimnames(cov) <- dimnames(cor) <- list(nm,nm)
         structure(cov,stddev=sd,correlation=cor)
     }
-    ss <- setNames(mapply(docov,sd,cor,cnms),nnms)
+    ss <- setNames(mapply(docov,sd,cor,cnms,SIMPLIFY=FALSE),nnms)
     attr(ss,"sc") <- sc
     attr(ss,"useSc") <- useSc
     ss
