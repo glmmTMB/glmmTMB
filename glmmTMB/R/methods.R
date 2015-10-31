@@ -394,16 +394,21 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         ses <- sqrt(ss)[parm]
         ci[] <- cf[parm] + ses %o% fac
     } else {
-
+        ## FIXME: compute profile(object)
+        ## call confint.tmbprofile()
     }
     ci
 }
 
 confint.tmbprofile <- function(object, parm=NULL, level = 0.95, ...) {
     ## find locations of top-level (fixed + VarCorr) parameters
+    ## fit splines?
+    ## invert splines
 }
 
 ##' @importFrom TMB tmbprofile
 profile.glmmTMB <- function(fitted, trace=FALSE, ...) {
+    ## lower default spacing?
+    ## use Wald std err for initial stepsize guess?
     tmbprofile(fitted$obj, trace=trace, ...)
 }
