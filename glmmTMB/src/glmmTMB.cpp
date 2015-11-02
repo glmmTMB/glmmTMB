@@ -192,10 +192,19 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
 	ans -= dnorm(U(i, j), rho * U(i-1, j), sd * sqrt(1 - rho*rho), true);
       }
     }
-    term.corr.resize(1,1);
-    term.sd.resize(1);
-    term.corr(0,0) = exp(-exp(corr_transf)); // One-step correlation
-    term.sd(0) = sd;                         // Marginal standard dev.
+    // For consistency with output for other structs we report entire
+    // covariance matrix.
+    if(isDouble<Type>::value) { // Disable AD for this part
+      term.corr.resize(n,n);
+      term.sd.resize(n);
+      for(int i=0; i<n; i++){
+	term.sd(i) = sd;
+	for(int j=0; j<n; j++){
+	  term.corr(i,j) =
+	    exp(-exp(corr_transf) * abs(term.times(i) - term.times(j)));
+	}
+      }
+    }
   }
   else error("covStruct not implemented!");
   return ans;
