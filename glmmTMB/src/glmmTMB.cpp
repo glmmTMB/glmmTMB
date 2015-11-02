@@ -180,16 +180,17 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
   }
   else if (term.blockCode == ar1_covstruct){
     // case: ar1_covstruct
-    //  * NOTE: Only one block allowed !
     //  * NOTE: 'times' assumed sorted !
     int n = term.times.size();
     Type logsd = theta(0);
     Type corr_transf = theta(1);
     Type sd = exp(logsd);
-    ans -= dnorm(u(0), Type(0), sd, true);   // Initialize
-    for(int i=1; i<n; i++){
-      Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
-      ans -= dnorm(u(i), rho * u(i-1), sd * sqrt(1-rho*rho), true);
+    for(int j = 0; j < term.blockReps; j++){
+      ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+      for(int i=1; i<n; i++){
+	Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
+	ans -= dnorm(U(i, j), rho * U(i-1, j), sd * sqrt(1 - rho*rho), true);
+      }
     }
     term.corr.resize(1,1);
     term.sd.resize(1);
