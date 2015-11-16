@@ -15,8 +15,10 @@ getParList <- function(object) {
 
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
-## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
+## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
 ## also see <https://github.com/klutometis/roxygen/issues/371>
+##  FIXME: use @rawNamespace instead once developers have updated
+##         to roxygen2 >= 5.0.0
 ##' @importFrom lme4 sigma
 ##' @export sigma
 
