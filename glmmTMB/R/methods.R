@@ -273,22 +273,25 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
 }
 
 ##' @export
-print.vcov.glmmTMB <- function(object,...) {
-    for (nm in names(object)) {
+print.vcov.glmmTMB <- function(x,...) {
+    for (nm in names(x)) {
         cat(cNames[[nm]],":\n",sep="")
-        print(object[[nm]])
+        print(x[[nm]])
         cat("\n")
     }
-    invisible(object)
+    invisible(x)
 }
 
 cat.f <- function(...) cat(..., fill = TRUE)
 
 .prt.call.glmmTMB <- function(call, long = TRUE) {
-  pass<-0
+  pass <- 0
   if (!is.null(cc <- call$formula)){
     cat.f("Formula:         ", deparse(cc))
-    pass<-nchar(as.character(call$formula[[2]]))
+    rhs <- cc[[2]]
+    if (!is.null(rhs)) {
+        pass<-nchar(as.character(rhs))
+    }
   }
   if(!is.null(cc <- call$ziformula))
     cat.f("Zero inflation:  ",rep(' ',pass+2),'~ ' ,deparse(cc[[2]]),sep='')
@@ -306,6 +309,45 @@ cat.f <- function(...) cat(..., fill = TRUE)
     cat.f("Control:", dc)
   if (!is.null(cc <- call$subset))
     cat.f(" Subset:", deparse(cc))
+}
+
+
+### FIXME: attempted refactoring ...
+cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
+    if (!is.null(cc <- call[[component]])) {
+        if (!is.null(cind)) {
+            ## try to extract component (of formula)
+            if (!is.null(ccc <- cc[[cind]]))
+                cc <- ccc
+        }
+        f1 <- format(paste0(label,":"),width=lwid,justify="right")
+        f2 <- deparse(cc)
+        if (!is.null(fwid)) {
+            f2 <- format(f2,width=fwid,justify="right")
+        }
+        cat(f1,f2,fill=TRUE)
+    }
+}
+
+## reworked version
+.prt.call.glmmTMB2 <- function(call, long = TRUE) {
+  labs <- c("Formula","Zero inflation","Dispersion","Data",
+            "Weights","Offset","Control","Subset")
+  components <- c("formula","ziformula","dispformula",
+                  "data","weights","offset","control","subset")
+
+  lwid1 <- max(nchar(labs[1:3]))+2
+  for (i in 1:3) {
+      cat.f2(call,components[i],labs[i],lwid1,cind=2)
+  }
+  lwid2 <- max(nchar(labs[-(1:3)]))+1
+  for (i in 4:6) {
+      cat.f2(call,components[i],labs[i],lwid2)
+  }
+  if (long && length(cc <- call$control) &&
+      (deparse(cc) != "lmerControl()"))
+      cat.f2(call,"Control","control",lwid2)
+  cat.f2(call,"Subset","subset",lwid2)
 }
 
 ##' Print glmmTMB model
@@ -411,4 +453,11 @@ profile.glmmTMB <- function(fitted, trace=FALSE, ...) {
     ## lower default spacing?
     ## use Wald std err for initial stepsize guess?
     tmbprofile(fitted$obj, trace=trace, ...)
+}
+
+##' @export
+## FIXME: establish separate 'terms' components for
+##   each model component (conditional, random, zero-inflation, dispersion ...)
+terms.glmmTMB <- function(x, ...) {
+    terms(x$frame)
 }

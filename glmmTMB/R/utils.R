@@ -103,10 +103,10 @@ expandGrpVar <- function(f) {
 ##' @param bb a list of naked grouping variables, i.e. 1 | f
 ##' @examples
 ##' ff <- glmmTMB:::fbx(y~1+(x|f/g))
-##' expandAllGrpVar(ff)
-##' expandAllGrpVar(quote(1|(f/g)/h))
-##' expandAllGrpVar(quote(1|f/g/h))
-##' expandAllGrpVar(quote(1|f*g))
+##' glmmTMB:::expandAllGrpVar(ff)
+##' glmmTMB:::expandAllGrpVar(quote(1|(f/g)/h))
+##' glmmTMB:::expandAllGrpVar(quote(1|f/g/h))
+##' glmmTMB:::expandAllGrpVar(quote(1|f*g))
 ##' @importFrom utils head
 ##' @keywords internal
 expandAllGrpVar <- function(bb) {
