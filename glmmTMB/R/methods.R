@@ -229,7 +229,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
 
   keepTag <- if (full) "beta*" else "beta($|[^d])"
   to_keep <- grep(keepTag,colnames(sdr$cov.fixed)) # only keep betas
-  covF <- sdr$cov.fixed[to_keep,to_keep]
+  covF <- sdr$cov.fixed[to_keep,to_keep,drop=FALSE]
 
   mkNames <- function(tag) {
       X <- getME(object,paste0("X",tag))
@@ -253,7 +253,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
       splitMat <- function(x) {
           ss <- split(seq_along(colnames(x)),
                       colnames(x))
-          lapply(ss,function(z) x[z,z])
+          lapply(ss,function(z) x[z,z,drop=FALSE])
       }
       covList <- splitMat(covF)
       names(covList) <-
