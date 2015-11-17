@@ -30,7 +30,9 @@ sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     if(family(object)$family == "gaussian")
         exp( .5 * pl$betad ) # betad is  log(sigma ^ 2)
-    else 1.
+    else if (usesDispersion(object$modelInfo$familyStr)) {
+        exp( pl$betad)  ## assuming log-link
+    } else 1.
 }
 
 
@@ -83,7 +85,9 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {
         sigma <- sigma(x)
-        usesDispersion(familyStr)
+        familyStr=="gaussian"
+        ## *only* report residual variance for Gaussian family ...
+        ## usesDispersion(familyStr)
     } else TRUE
 
     vc.cond <- if(length(cn <- reT$condList$cnms))

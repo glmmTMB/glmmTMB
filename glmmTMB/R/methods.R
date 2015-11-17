@@ -367,10 +367,29 @@ print.glmmTMB <-
               df.resid = df.residual(x))
   .prt.aictab(aictab, digits=digits+1)
   ## varcorr
-  print(VarCorr(x), digits=digits, comp = ranef.comp)
-
+  if (!all(sapply(vc <- VarCorr(x),is.null))) {
+      cat("Random-effects (co)variances:\n")
+      print(VarCorr(x), digits=digits, comp = ranef.comp)
+  }
   ## ngroups
+  gvec <- list(obs=sprintf("\nNumber of obs: %d",nobs(x)))
+  ng <- ngrps.glmmTMB(x)
+  for (i in seq_along(ng)) {
+      if (length(ng[[i]])>0) {
+          nm <- names(ng)[i]
+          gvec[[nm]] <- paste0(cNames[nm],": ",
+                      paste(paste(names(ng[[i]]), ng[[i]], sep=", "), collapse="; "))
+      }
+  }
+  cat(do.call(paste,c(gvec,list(sep=" / "))),fill=TRUE)
+  cat("\n")
 
+  ## dispersion
+  ff <- x$modelInfo$familyStr
+  if (usesDispersion(ff)) {
+      cat("Dispersion/variance estimate:",signif(sigma(x),3),"\n")
+  }
+      
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
