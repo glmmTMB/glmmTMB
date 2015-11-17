@@ -4,6 +4,8 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp,
      package = "lme4")
 
+data(quine, package="MASS")
+
 cbpp <- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 
 ## utility: hack/replace parts of the updated result that will
@@ -162,3 +164,19 @@ test_that("close to lme4 results", {
 
     ## ......................................
 })
+
+context("trickier examples")
+
+## test that formulas are expanded in the call/printed
+form <- Reaction ~ Days + (1|Subject)
+expect_equal(grep("Reaction ~ Days",
+            capture.output(print(glmmTMB(form, sleepstudy))),
+            fixed=TRUE),1)
+
+quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
+quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,
+                     family=list(family="nbinom2",link="log"))
+quine.nb3 <- glmmTMB(Days ~ Sex + (1|Age), data = quine,
+                     family=list(family="nbinom2",link="log"))
+
+## FIX ME: need to actually test these things!

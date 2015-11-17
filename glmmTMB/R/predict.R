@@ -85,7 +85,7 @@ predict.glmmTMB <- function(object,newdata=NULL,debug=FALSE,
   oldPar <- object$fit$par
   newObj$fn(oldPar)  ## call once to update internal structures
   H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
-  sdr <- sdreport(newObj,oldPar,hessian=H)
+  sdr <- sdreport(newObj,oldPar,hessian.fixed=H)
   sdr.rpt <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
   ## now strip off original values
   w <- which(is.na(augFr[[respNm]]))

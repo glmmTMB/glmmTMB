@@ -77,7 +77,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc)
 }
 
-##' @title Create X and random effect terms from formula
+##' Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
 ##' @param fr full model frame
@@ -86,7 +86,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link[lme4]{mkReTerms}} from \pkg{lme4}}
+##' \item{reTrms}{output from \code{\link{mkReTerms} from \pkg{lme4}}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -167,12 +167,14 @@ getGrpVar <- function(x)
   names(x)[assign]
 }
 
-##' @title Calculate random effect structure
-##' calculates number of random effects, number of parameters,
+##' Calculate random effect structure
+##' Calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
-##' @param ss a character string indicating a valid covariance structure (as currently implemented,
-##'   one of \code{names(glmmTMB:::.valid_covstruct)}).
+##' @param ss a character string indicating a valid covariance structure. 
+##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
+##' default is to use an unstructured  variance-covariance
+##' matrix (\code{"us"}) for all blocks).
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -187,7 +189,7 @@ getGrpVar <- function(x)
 ##' getReStruc(rt)
 ##' @importFrom stats setNames
 ##' @export
-getReStruc <- function(reTrms, ss) {
+getReStruc <- function(reTrms, ss=NULL) {
 
   ## information from ReTrms is contained in cnms, flist
   ## cnms: list of column-name vectors per term
@@ -204,6 +206,10 @@ getReStruc <- function(reTrms, ss) {
                           0)
         blksize <- diff(reTrms$Gp) / nreps
         ## figure out number of parameters from block size + structure type
+
+        if (is.null(ss)) {
+            ss <- rep("us",length(blksize))
+        }
 
         covCode <- .valid_covstruct[ss]
 
@@ -251,7 +257,7 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
   xrt$reTrms[which]
 }
 
-##' @title main TMB function
+##' Fit models with TMB
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
 ##' @param data data frame
@@ -288,9 +294,9 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
-##' (fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy))
-##' (fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy))
-##' (fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy))
+##' fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy)
+##' fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy)
+##' fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy)
 glmmTMB <- function (
     formula,
     data = NULL,
@@ -299,7 +305,7 @@ glmmTMB <- function (
     dispformula= NULL,
     weights=NULL,
     offset=NULL,
-    se=FALSE,
+    se=TRUE,
     verbose=FALSE,
     debug=FALSE
     )
@@ -323,6 +329,9 @@ glmmTMB <- function (
       print(family)
       stop("'family' not recognized")
     }
+    if (!all(c("family","link") %in% names(family)))
+        stop("'family' must contain at least 'family' and 'link' components")
+    ## FIXME: warning/message if 'family' doesn't contain 'variance' ?
 
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmTMB')
@@ -345,7 +354,8 @@ glmmTMB <- function (
     # substitute evaluated version
     ## FIXME: denv leftover from lme4, not defined yet
 
-    mc$formula <- formula <- as.formula(formula, env = denv)
+    call$formula <- mc$formula <- formula <-
+        as.formula(formula, env = parent.frame())
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -412,6 +422,13 @@ glmmTMB <- function (
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
                                                    gradient=gr)))
+    if (se) {
+        sdr <- sdreport(obj)
+        ## FIXME: assign original rownames to fitted?
+        fitted <- unname(sdr$value)
+    } else {
+        sdr <- fitted <- NULL
+    }
     sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
@@ -427,7 +444,8 @@ glmmTMB <- function (
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo),
+    structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo,
+                        fitted),
               class = "glmmTMB")
 }
 
@@ -459,6 +477,7 @@ ngrps.factor <- function(object, ...) nlevels(object)
 
 
 ##' @importFrom stats pnorm
+##' @method summary glmmTMB
 ##' @export
 summary.glmmTMB <- function(object,...)
 {
@@ -519,6 +538,7 @@ summary.glmmTMB <- function(object,...)
 ## copied from lme4:::print.summary.merMod (makes use of
 ##' @importFrom lme4 .prt.family .prt.call .prt.resids .prt.VC .prt.grps
 ##' @importFrom stats printCoefmat
+##' @method print summary.glmmTMB
 ##' @export
 print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                                  signif.stars = getOption("show.signif.stars"),

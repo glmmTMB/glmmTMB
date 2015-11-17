@@ -229,7 +229,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
 
   keepTag <- if (full) "beta*" else "beta($|[^d])"
   to_keep <- grep(keepTag,colnames(sdr$cov.fixed)) # only keep betas
-  covF <- sdr$cov.fixed[to_keep,to_keep]
+  covF <- sdr$cov.fixed[to_keep,to_keep,drop=FALSE]
 
   mkNames <- function(tag) {
       X <- getME(object,paste0("X",tag))
@@ -253,7 +253,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
       splitMat <- function(x) {
           ss <- split(seq_along(colnames(x)),
                       colnames(x))
-          lapply(ss,function(z) x[z,z])
+          lapply(ss,function(z) x[z,z,drop=FALSE])
       }
       covList <- splitMat(covF)
       names(covList) <-
@@ -273,22 +273,25 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
 }
 
 ##' @export
-print.vcov.glmmTMB <- function(object,...) {
-    for (nm in names(object)) {
+print.vcov.glmmTMB <- function(x,...) {
+    for (nm in names(x)) {
         cat(cNames[[nm]],":\n",sep="")
-        print(object[[nm]])
+        print(x[[nm]])
         cat("\n")
     }
-    invisible(object)
+    invisible(x)
 }
 
 cat.f <- function(...) cat(..., fill = TRUE)
 
 .prt.call.glmmTMB <- function(call, long = TRUE) {
-  pass<-0
+  pass <- 0
   if (!is.null(cc <- call$formula)){
     cat.f("Formula:         ", deparse(cc))
-    pass<-nchar(as.character(call$formula[[2]]))
+    rhs <- cc[[2]]
+    if (!is.null(rhs)) {
+        pass<-nchar(as.character(rhs))
+    }
   }
   if(!is.null(cc <- call$ziformula))
     cat.f("Zero inflation:  ",rep(' ',pass+2),'~ ' ,deparse(cc[[2]]),sep='')
@@ -308,11 +311,49 @@ cat.f <- function(...) cat(..., fill = TRUE)
     cat.f(" Subset:", deparse(cc))
 }
 
+
+### FIXME: attempted refactoring ...
+cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
+    if (!is.null(cc <- call[[component]])) {
+        if (!is.null(cind)) {
+            ## try to extract component (of formula)
+            if (!is.null(ccc <- cc[[cind]]))
+                cc <- ccc
+        }
+        f1 <- format(paste0(label,":"),width=lwid,justify="right")
+        f2 <- deparse(cc)
+        if (!is.null(fwid)) {
+            f2 <- format(f2,width=fwid,justify="right")
+        }
+        cat(f1,f2,fill=TRUE)
+    }
+}
+
+## reworked version
+.prt.call.glmmTMB2 <- function(call, long = TRUE) {
+  labs <- c("Formula","Zero inflation","Dispersion","Data",
+            "Weights","Offset","Control","Subset")
+  components <- c("formula","ziformula","dispformula",
+                  "data","weights","offset","control","subset")
+
+  lwid1 <- max(nchar(labs[1:3]))+2
+  for (i in 1:3) {
+      cat.f2(call,components[i],labs[i],lwid1,cind=2)
+  }
+  lwid2 <- max(nchar(labs[-(1:3)]))+1
+  for (i in 4:6) {
+      cat.f2(call,components[i],labs[i],lwid2)
+  }
+  if (long && length(cc <- call$control) &&
+      (deparse(cc) != "lmerControl()"))
+      cat.f2(call,"Control","control",lwid2)
+  cat.f2(call,"Subset","subset",lwid2)
+}
+
 ##' Print glmmTMB model
-##' @method print glmmTMB
 ##' @importFrom lme4 .prt.aictab
+##' @method print glmmTMB
 ##' @export
-##'
 print.glmmTMB <-
     function(x, digits = max(3, getOption("digits") - 3),
              correlation = NULL, symbolic.cor = FALSE,
@@ -326,10 +367,29 @@ print.glmmTMB <-
               df.resid = df.residual(x))
   .prt.aictab(aictab, digits=digits+1)
   ## varcorr
-  print(VarCorr(x), digits=digits, comp = ranef.comp)
-
+  if (!all(sapply(vc <- VarCorr(x),is.null))) {
+      cat("Random-effects (co)variances:\n")
+      print(VarCorr(x), digits=digits, comp = ranef.comp)
+  }
   ## ngroups
+  gvec <- list(obs=sprintf("\nNumber of obs: %d",nobs(x)))
+  ng <- ngrps.glmmTMB(x)
+  for (i in seq_along(ng)) {
+      if (length(ng[[i]])>0) {
+          nm <- names(ng)[i]
+          gvec[[nm]] <- paste0(cNames[nm],": ",
+                      paste(paste(names(ng[[i]]), ng[[i]], sep=", "), collapse="; "))
+      }
+  }
+  cat(do.call(paste,c(gvec,list(sep=" / "))),fill=TRUE)
+  cat("\n")
 
+  ## dispersion
+  ff <- x$modelInfo$familyStr
+  if (usesDispersion(ff)) {
+      cat("Dispersion/variance estimate:",signif(sigma(x),3),"\n")
+  }
+      
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
@@ -337,4 +397,85 @@ print.glmmTMB <-
   } else
     cat("No fixed effect coefficients\n")
   invisible(x)
+}
+
+##' @export
+model.frame.glmmTMB <- function(formula, ...) {
+    formula$frame
+}
+
+##' Compute residuals for a glmmTMB object
+##'
+##' 
+##' @export
+residuals.glmmTMB <- function(object, type=c("response", "pearson"),
+                              ...) {
+    type <- match.arg(type)
+    r <- fitted(object)-model.response(object$frame)
+    switch(type,
+           response=r,
+           pearson={
+               if (is.null(v <- family(object)$variance))
+                   stop("variance function undefined for family ",
+                        sQuote(family(object)$family),"; cannot compute",
+                        " Pearson residuals")
+               r/sqrt(v(fitted(object)))
+           })
+}
+
+## copied from 'stats'
+
+format.perc <- function (probs, digits) {
+    paste(format(100 * probs, trim = TRUE, scientific = FALSE, digits = digits), 
+    "%")
+}
+
+##' @export
+confint.glmmTMB <- function (object, parm, level = 0.95,
+                             method=c("wald"),
+                             component= "cond", ...) 
+{
+    method <- match.arg(tolower(method))
+    cf <- unlist(fixef(object)[component])
+    pnames <- names(cf)
+    if (missing(parm)) 
+        parm <- pnames
+    else if (is.numeric(parm)) 
+        parm <- pnames[parm]
+    a <- (1 - level)/2
+    a <- c(a, 1 - a)
+    pct <- format.perc(a, 3)
+    fac <- qnorm(a)
+    ci <- array(NA, dim = c(length(parm), 2L), dimnames = list(parm, 
+        pct))
+    if (method=="wald") {
+        vv <- vcov(object)[component]
+        ss <- unlist(lapply(vv,diag))
+        ses <- sqrt(ss)[parm]
+        ci[] <- cf[parm] + ses %o% fac
+    } else {
+        ## FIXME: compute profile(object)
+        ## call confint.tmbprofile()
+    }
+    ci
+}
+
+confint.tmbprofile <- function(object, parm=NULL, level = 0.95, ...) {
+    ## find locations of top-level (fixed + VarCorr) parameters
+    ## fit splines?
+    ## invert splines
+}
+
+##' @importFrom TMB tmbprofile
+profile.glmmTMB <- function(fitted, trace=FALSE, ...) {
+    ## lower default spacing?
+    ## use Wald std err for initial stepsize guess?
+    tmbprofile(fitted$obj, trace=trace, ...)
+}
+
+##' @export
+## FIXME: establish separate 'terms' components for
+##   each model component (conditional, random, zero-inflation, dispersion ...)
+terms.glmmTMB <- function(x, ...) {
+    terms(x$frame)
 }

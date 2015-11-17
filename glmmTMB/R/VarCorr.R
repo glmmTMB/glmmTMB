@@ -15,8 +15,10 @@ getParList <- function(object) {
 
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
-## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
+## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
 ## also see <https://github.com/klutometis/roxygen/issues/371>
+##  FIXME: use @rawNamespace instead once developers have updated
+##         to roxygen2 >= 5.0.0
 ##' @importFrom lme4 sigma
 ##' @export sigma
 
@@ -28,7 +30,9 @@ sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     if(family(object)$family == "gaussian")
         exp( .5 * pl$betad ) # betad is  log(sigma ^ 2)
-    else 1.
+    else if (usesDispersion(object$modelInfo$familyStr)) {
+        exp( pl$betad)  ## assuming log-link
+    } else 1.
 }
 
 
@@ -58,7 +62,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         dimnames(cov) <- dimnames(cor) <- list(nm,nm)
         structure(cov,stddev=sd,correlation=cor)
     }
-    ss <- setNames(mapply(docov,sd,cor,cnms),nnms)
+    ss <- setNames(mapply(docov,sd,cor,cnms,SIMPLIFY=FALSE),nnms)
     attr(ss,"sc") <- sc
     attr(ss,"useSc") <- useSc
     ss
@@ -81,7 +85,9 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
     familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {
         sigma <- sigma(x)
-        usesDispersion(familyStr)
+        familyStr=="gaussian"
+        ## *only* report residual variance for Gaussian family ...
+        ## usesDispersion(familyStr)
     } else TRUE
 
     vc.cond <- if(length(cn <- reT$condList$cnms))
@@ -94,7 +100,8 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 	      class = "VarCorr.glmmTMB")
 }
 
-##' @title Printing The Variance and Correlation Parameters of a \code{glmmTMB}
+##'
+##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
 ##' @importFrom lme4 formatVC

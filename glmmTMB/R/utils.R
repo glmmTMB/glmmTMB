@@ -22,13 +22,29 @@ RHSForm <- function(form,as.form=FALSE) {
 }
 
 ##' Random Effects formula only
-reOnly <- function(f,response=FALSE) {
-    response <- if (response && length(f)==3) f[[2]] else NULL
-    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"),
-                response=response)
+## reOnly <- function(f,response=FALSE) {
+##    response <- if (response && length(f)==3) f[[2]] else NULL
+##    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"),
+##                response=response)
+## }
+
+## better version -- operates on language objects (no deparse())
+reOnly <- function(f,response=FALSE,bracket=TRUE) {
+    ff <- f
+    if (bracket)
+        ff <- lapply(findbars(ff),makeOp,quote(`(`)) ## bracket-protect terms
+    ff <- Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),ff)
+    if (response && length(f)==3) {
+        form <- makeOp(f[[2]],ff,quote(`~`))
+    } else {
+        form <- makeOp(ff,quote(`~`))
+    }
+    return(form)
 }
 
 ##' combine unary or binary operator + arguments (sugar for 'substitute')
+##' FIXME: would be nice to have multiple dispatch, so
+##' (arg,op) gave unary, (arg,arg,op) gave binary operator
 makeOp <- function(x,y,op=NULL) {
     if (is.null(op)) {  ## unary
         substitute(OP(X),list(X=x,OP=y))
@@ -51,8 +67,14 @@ addForm0 <- function(f1,f2) {
 }
 
 ##' combine right-hand sides of an arbitrary number of formulas
+##' @param ... arguments to pass through to \code{addForm0}
+##' @keywords internal
 addForm <- function(...) {
   Reduce(addForm0,list(...))
+}
+
+addArgs <- function(argList) {
+  Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),argList)
 }
 
 ##' deparse(.) returning \bold{one} string
@@ -82,11 +104,11 @@ expandGrpVar <- function(f) {
 ##' Modeled after lme4:::expandSlash, by Doug Bates
 ##' @param bb a list of naked grouping variables, i.e. 1 | f
 ##' @examples
-##' ff <- fbx(y~1+(x|f/g))
-##' expandAllGrpVar(ff)
-##' expandAllGrpVar(quote(1|(f/g)/h))
-##' expandAllGrpVar(quote(1|f/g/h))
-##' expandAllGrpVar(quote(1|f*g))
+##' ff <- glmmTMB:::fbx(y~1+(x|f/g))
+##' glmmTMB:::expandAllGrpVar(ff)
+##' glmmTMB:::expandAllGrpVar(quote(1|(f/g)/h))
+##' glmmTMB:::expandAllGrpVar(quote(1|f/g/h))
+##' glmmTMB:::expandAllGrpVar(quote(1|f*g))
 ##' @importFrom utils head
 ##' @keywords internal
 expandAllGrpVar <- function(bb) {
