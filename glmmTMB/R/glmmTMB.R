@@ -77,7 +77,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc)
 }
 
-##' @title Create X and random effect terms from formula
+##' Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
 ##' @param fr full model frame
@@ -86,7 +86,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link[lme4]{mkReTerms}} from \pkg{lme4}}
+##' \item{reTrms}{output from \code{\link{mkReTerms} from \pkg{lme4}}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -167,8 +167,8 @@ getGrpVar <- function(x)
   names(x)[assign]
 }
 
-##' @title Calculate random effect structure
-##' calculates number of random effects, number of parameters,
+##' Calculate random effect structure
+##' Calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
 ##' @param ss a character string indicating a valid covariance structure (as currently implemented,
@@ -236,7 +236,7 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
   xrt$reTrms[which]
 }
 
-##' @title main TMB function
+##' Fit models with TMB
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
 ##' @param data data frame
@@ -273,9 +273,9 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
-##' (fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy))
-##' (fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy))
-##' (fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy))
+##' fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy)
+##' fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy)
+##' fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy)
 glmmTMB <- function (
     formula,
     data = NULL,
@@ -333,7 +333,8 @@ glmmTMB <- function (
     # substitute evaluated version
     ## FIXME: denv leftover from lme4, not defined yet
 
-    mc$formula <- formula <- as.formula(formula, env = denv)
+    call$formula <- mc$formula <- formula <-
+        as.formula(formula, env = parent.frame())
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -455,6 +456,7 @@ ngrps.factor <- function(object, ...) nlevels(object)
 
 
 ##' @importFrom stats pnorm
+##' @method summary glmmTMB
 ##' @export
 summary.glmmTMB <- function(object,...)
 {
@@ -515,6 +517,7 @@ summary.glmmTMB <- function(object,...)
 ## copied from lme4:::print.summary.merMod (makes use of
 ##' @importFrom lme4 .prt.family .prt.call .prt.resids .prt.VC .prt.grps
 ##' @importFrom stats printCoefmat
+##' @method print summary.glmmTMB
 ##' @export
 print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                                  signif.stars = getOption("show.signif.stars"),

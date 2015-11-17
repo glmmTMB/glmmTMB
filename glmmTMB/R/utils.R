@@ -67,6 +67,8 @@ addForm0 <- function(f1,f2) {
 }
 
 ##' combine right-hand sides of an arbitrary number of formulas
+##' @param ... arguments to pass through to \code{addForm0}
+##' @keywords internal
 addForm <- function(...) {
   Reduce(addForm0,list(...))
 }

@@ -162,3 +162,11 @@ test_that("close to lme4 results", {
 
     ## ......................................
 })
+
+context("trickier examples")
+
+## test that formulas are expanded in the call/printed
+form <- Reaction ~ Days + (1|Subject)
+expect_equal(grep("Reaction ~ Days",
+            capture.output(print(glmmTMB(form, sleepstudy))),
+            fixed=TRUE),1)

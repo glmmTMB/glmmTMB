@@ -95,7 +95,8 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 	      class = "VarCorr.glmmTMB")
 }
 
-##' @title Printing The Variance and Correlation Parameters of a \code{glmmTMB}
+##'
+##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
 ##' @importFrom lme4 formatVC

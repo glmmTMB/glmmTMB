@@ -351,10 +351,9 @@ cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
 }
 
 ##' Print glmmTMB model
-##' @method print glmmTMB
 ##' @importFrom lme4 .prt.aictab
+##' @method print glmmTMB
 ##' @export
-##'
 print.glmmTMB <-
     function(x, digits = max(3, getOption("digits") - 3),
              correlation = NULL, symbolic.cor = FALSE,

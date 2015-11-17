@@ -34,6 +34,7 @@ test_that("VarCorr", {
    vv <- VarCorr(fm2)
    vv2 <- vv$cond$Subject
    expect_equal(dim(vv2),c(2,2))
-   expect_equal(outer(attr(vv2,"stddev"),attr(vv2,"stddev"))*attr(vv2,"correlation"),
+   expect_equal(outer(attr(vv2,"stddev"),
+                      attr(vv2,"stddev"))*attr(vv2,"correlation"),
                 vv2,check.attributes=FALSE)
-}
+})
