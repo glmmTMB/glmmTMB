@@ -211,16 +211,31 @@ getReStruc <- function(reTrms, ss) {
             switch(as.character(struc),
                    "0" = blksize, # diag
                    "1" = blksize * (blksize+1) / 2, # us
-                   "2" = blksize + 1) # cs
+                   "2" = blksize + 1, # cs
+                   "3" = 2 ) # ar1
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
-        setNames(mapply(list,
-                        blockReps = nreps,
-                        blockSize = blksize,
-                        blockNumTheta = blockNumTheta,
-                        blockCode = covCode, SIMPLIFY=FALSE),
-                 names(reTrms$Ztlist))
+        ans <-
+            lapply( seq_along(ss), function(i) {
+                tmp <-
+                    list(blockReps = nreps[i],
+                         blockSize = blksize[i],
+                         blockNumTheta = blockNumTheta[[i]],
+                         blockCode = covCode[i]
+                         )
+                if(ss[i] == "ar1"){
+                    ## FIXME: Find proper way to pass data associated
+                    ## with factor levels (such as numeric 'times') to
+                    ## struct. For now, assume levels correspond to
+                    ## equally spaced time points.
+                    if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                        warning("AR1 not meaningful with intercept")
+                    tmp$times <- seq_along( reTrms$cnms[[i]] )
+                }
+                tmp
+            })
+        setNames(ans, names(reTrms$Ztlist))
     }
 }
 
