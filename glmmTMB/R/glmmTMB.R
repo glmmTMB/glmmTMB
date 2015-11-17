@@ -171,8 +171,10 @@ getGrpVar <- function(x)
 ##' Calculates number of random effects, number of parameters,
 ##' blocksize and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
-##' @param ss a character string indicating a valid covariance structure (as currently implemented,
-##'   one of \code{names(glmmTMB:::.valid_covstruct)}).
+##' @param ss a character string indicating a valid covariance structure. 
+##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
+##' default is to use an unstructured  variance-covariance
+##' matrix (\code{"us"}) for all blocks).
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -187,7 +189,7 @@ getGrpVar <- function(x)
 ##' getReStruc(rt)
 ##' @importFrom stats setNames
 ##' @export
-getReStruc <- function(reTrms, ss) {
+getReStruc <- function(reTrms, ss=NULL) {
 
   ## information from ReTrms is contained in cnms, flist
   ## cnms: list of column-name vectors per term
@@ -204,6 +206,10 @@ getReStruc <- function(reTrms, ss) {
                           0)
         blksize <- diff(reTrms$Gp) / nreps
         ## figure out number of parameters from block size + structure type
+
+        if (is.null(ss)) {
+            ss <- rep("us",length(blksize))
+        }
 
         covCode <- .valid_covstruct[ss]
 
