@@ -28,7 +28,9 @@ Imports:
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
-    testthat
+    testthat,
+    MASS,
+    lattice
 VignetteBuilder: knitr
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
