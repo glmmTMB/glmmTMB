@@ -4,7 +4,7 @@
 ## Get example struct we can use as starting point:
 library(glmmTMB)
 data(sleepstudy, package="lme4")
-if(FALSE){
+if(TRUE){
     ## Original example is 'too easy'. Try with multiple days within
     ## subject and randomly re-order the data. Then run multiple times
     ## and check that 'fit' is un-changed.
@@ -68,3 +68,9 @@ optTime <- system.time(fit <- with(obj, nlminb(start = par,
 obj$report()$corr[[1]] ## Estimate corr ~ 1 Day
 obj$report()$sd[[1]]   ## Estimate sd of AR1
 plot(obj$env$parList()$b, type="b")
+
+## =============================================
+## Replicate this example with formula interface:
+sleepstudy$DaysFac <- factor(sleepstudy$Days)
+fm <- glmmTMB(Reaction ~ 1 + ar1(DaysFac + 0 | Subject), sleepstudy)
+all.equal( fit$par, fm$fit$par )
