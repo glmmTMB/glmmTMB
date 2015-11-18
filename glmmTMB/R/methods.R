@@ -432,10 +432,11 @@ format.perc <- function (probs, digits) {
 
 ##' @export
 confint.glmmTMB <- function (object, parm, level = 0.95,
-                             method=c("wald"),
+                             method=c("Wald","wald",  ## ugh -- allow synonyms?
+                                      "profile"),
                              component= "cond", ...) 
 {
-    method <- match.arg(tolower(method))
+    method <- match.arg(method)
     cf <- unlist(fixef(object)[component])
     pnames <- names(cf)
     if (missing(parm)) 
@@ -448,16 +449,17 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     fac <- qnorm(a)
     ci <- array(NA, dim = c(length(parm), 2L), dimnames = list(parm, 
         pct))
-    if (method=="wald") {
+    if (tolower(method)=="wald") {
         vv <- vcov(object)[component]
         ss <- unlist(lapply(vv,diag))
         ses <- sqrt(ss)[parm]
         ci[] <- cf[parm] + ses %o% fac
     } else {
+        stop("profile CI not yet implemented")
         ## FIXME: compute profile(object)
         ## call confint.tmbprofile()
     }
-    ci
+    return(ci)
 }
 
 confint.tmbprofile <- function(object, parm=NULL, level = 0.95, ...) {
