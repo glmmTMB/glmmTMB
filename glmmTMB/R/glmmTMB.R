@@ -86,7 +86,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{mkReTerms} from \pkg{lme4}}
+##' \item{reTrms}{output from \code{\link{mkReTerms} from \pkg{lme4}}}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
