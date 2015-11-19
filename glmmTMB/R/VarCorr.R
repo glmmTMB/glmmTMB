@@ -25,7 +25,6 @@ getParList <- function(object) {
 ##' @method sigma glmmTMB
 ##' @export
 ##'
-##' @keywords internal
 sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     if(family(object)$family == "gaussian")

@@ -38,7 +38,7 @@ test_that("Basic Gaussian Sleepdata examples", {
 
     expect_equal(fixef(fm00)[[1]],coef(lm0),tol=1e-5)
     expect_equal(sigma(fm00)*sqrt(nobs(fm00)/(df.residual(fm00)+1)),
-                 sigma(lm0),tol=1e-5)
+                 summary(lm0)$sigma,tol=1e-5)
     expect_equal(fixef(fm0)[[1]], c("(Intercept)" = 298.508), tolerance = .0001)
     expect_equal(fixef(fm1)[[1]], c("(Intercept)" = 251.405, Days = 10.4673),
                  tolerance = .0001)
