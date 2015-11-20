@@ -34,4 +34,4 @@ Suggests:
 VignetteBuilder: knitr
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 5.0.0
+RoxygenNote: 5.0.1
