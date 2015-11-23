@@ -168,10 +168,9 @@ test_that("close to lme4 results", {
 context("trickier examples")
 
 test_that("basic zero inflation", {
-	data(Owls, package="glmmADMB")
-	Owls <- rename(Owls,c(SiblingNegotiation="NCalls"))
-	Owls <- transform(Owls,ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE)) 
-	
+	data(Owls)
+	Owls <- transform(Owls,ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE),
+							NCalls= SiblingNegotiation) 
 	expect_true(require("pscl"))
 	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
         offset(logBroodSize), 
@@ -180,12 +179,12 @@ test_that("basic zero inflation", {
         offset(logBroodSize)|1, data = Owls)
     expect_equal(summary(o0.pscl)$coefficients$count, summary(o0.tmb)$coefficients$cond, tolerance=1e-5)
     expect_equal(summary(o0.pscl)$coefficients$zero, summary(o0.tmb)$coefficients$zi, tolerance=1e-5)
-    
+ 
     o1.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
         offset(logBroodSize) + diag(1 | Nest), 
         ziformula=~1, data = Owls, family=poisson(link = "log"))
-    
 	expect_equal(ranef(o1.tmb)$cond$Nest[1,1], -0.484, tolerance=1e-2) #glmmADMB gave -0.4842771
+})
 
 ## test that formulas are expanded in the call/printed
 form <- Reaction ~ Days + (1|Subject)
