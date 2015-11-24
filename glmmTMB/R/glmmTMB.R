@@ -274,7 +274,7 @@ stripReTrms <- function(xrt, which = c("cnms","flist")) {
 ##'     zero-inflation: the default \code{~0} specifies no zero-inflation.
 ##' The zero-inflation model uses a logit link.
 ##' @param dispformula combined fixed and random effects formula for dispersion:
-##'     the default \code{~0} specifies no zero-inflation.  The dispersion model
+##'     the default \code{NULL} specifies no extra dispersion.  The dispersion model
 ##' uses a log link.
 ##' @param weights weights, as in \code{glm}.
 ##' @param offset offset
