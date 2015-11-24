@@ -216,7 +216,7 @@ Type allterms_nll(vector<Type> u, vector<Type> theta,
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
-  int nr, np, offset;
+  int nr, np = 0, offset;
   for(int i=0; i < terms.size(); i++){
     nr = terms(i).blockSize * terms(i).blockReps;
     // Note: 'blockNumTheta=0' ==> Same parameters as previous term.
@@ -267,6 +267,7 @@ Type objective_function<Type>::operator() ()
   // Flags
   DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
+  DATA_INTEGER(doPredict);
 
   // Joint negative log-likelihood
   Type jnll = 0;
@@ -388,7 +389,12 @@ Type objective_function<Type>::operator() ()
       error("Invalid 'ziPredictCode'");
     }
   }
-  ADREPORT(mu);
+
+  REPORT(mu);
+  // ADREPORT expensive for long vectors - only needed by predict()
+  // method. FIXME: May even consider reducing mu to some subset
+  // before ADREPORTing.
+  if (doPredict) ADREPORT(mu);
 
   return jnll;
 }
