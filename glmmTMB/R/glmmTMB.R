@@ -10,13 +10,15 @@
 ##' @param family character
 ##' @param link character
 ##' @param ziPredictCode zero-inflation code
+##' @param doPredict flag to enable sds of predictions
 ##' @keywords internal
 ##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs, offset, weights,
                        family, link,
-                       ziPredictCode="corrected") {
+                       ziPredictCode="corrected",
+                       doPredict=0) {
 
   condList  <- getXReTrms(formula, mf, fr)
   ziList    <- getXReTrms(ziformula, mf, fr)
@@ -53,8 +55,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     termszi = ziReStruc,
     family = .valid_family[family],
     link = .valid_link[link],
-    ziPredictCode = .valid_zipredictcode[ziPredictCode]
-
+    ziPredictCode = .valid_zipredictcode[ziPredictCode],
+    doPredict = doPredict
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -429,7 +431,6 @@ glmmTMB <- function (
     } else {
         sdr <- fitted <- NULL
     }
-    sdr <- if (se) sdreport(obj) else NULL
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
