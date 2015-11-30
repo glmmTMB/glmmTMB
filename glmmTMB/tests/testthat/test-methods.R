@@ -7,6 +7,7 @@ data(sleepstudy, cbpp,
 context("Basic methods tests")
 
 fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
+fm0 <- update(fm2, . ~ . -Days)
 fm2P <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
                family=poisson)
 fm2NB <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
@@ -38,3 +39,12 @@ test_that("VarCorr", {
                       attr(vv2,"stddev"))*attr(vv2,"correlation"),
                 vv2,check.attributes=FALSE)
 })
+
+test_that("drop1", {
+      dd <- drop1(fm2,test="Chisq")
+      expect_equal(dd$AIC,c(1763.94,1785.48),tol=1e-4)              
+          })
+test_that("anova", {
+      aa <- anova(fm0,fm2)
+      expect_equal(aa$AIC,c(1785.48,1763.94),tol=1e-4)
+          })

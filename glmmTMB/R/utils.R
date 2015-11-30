@@ -52,8 +52,8 @@ makeOp <- function(x,y,op=NULL) {
 }
 
 ##' combines the right-hand sides of two formulas
-##' @param f1
-##' @param f2
+##' @param f1 formula #1
+##' @param f2 formula #2
 ##' @examples
 ##' if (FALSE) {  ## still being exported despite "<at>keywords internal" ??
 ##' addForm0(y~x,~1)
