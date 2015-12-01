@@ -27,7 +27,7 @@ can be specified as (4) a list comprising the name of the distribution and the l
 The zero-inflation model uses a logit link.}
 
 \item{dispformula}{combined fixed and random effects formula for dispersion:
-    the default \code{~0} specifies no zero-inflation.  The dispersion model
+    the default \code{NULL} specifies no extra dispersion.  The dispersion model
 uses a log link.}
 
 \item{weights}{weights, as in \code{glm}.}

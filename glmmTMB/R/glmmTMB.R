@@ -88,7 +88,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{mkReTerms} from \pkg{lme4}}}
+##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -256,7 +256,7 @@ usesDispersion <- function(x) {
     ## !x %in% .noDispersionFamilies
 }
 
-##' select only desired pieces from results of getXReTrms
+## select only desired pieces from results of getXReTrms
 stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
   c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
 }

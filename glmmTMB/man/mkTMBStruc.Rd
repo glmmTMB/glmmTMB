@@ -2,20 +2,38 @@
 % Please edit documentation in R/glmmTMB.R
 \name{mkTMBStruc}
 \alias{mkTMBStruc}
-\title{extract info from formulas, reTrms, etc., format for TMB}
+\title{Extract info from formulas, reTrms, etc., format for TMB}
 \usage{
 mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
-  family, link, ziPredictCode = "corrected")
+  family, link, ziPredictCode = "corrected", doPredict = 0)
 }
 \arguments{
+\item{formula}{conditional formula}
+
+\item{ziformula}{zero-inflation formula}
+
+\item{dispformula}{dispersion formula}
+
+\item{mf}{call to model frame}
+
+\item{fr}{frame}
+
+\item{yobs}{observed y}
+
+\item{offset}{offset}
+
+\item{weights}{weights}
+
 \item{family}{character}
 
 \item{link}{character}
 
 \item{ziPredictCode}{zero-inflation code}
+
+\item{doPredict}{flag to enable sds of predictions}
 }
 \description{
-extract info from formulas, reTrms, etc., format for TMB
+Extract info from formulas, reTrms, etc., format for TMB
 }
 \keyword{internal}
 

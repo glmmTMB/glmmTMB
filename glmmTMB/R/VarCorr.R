@@ -1,8 +1,7 @@
-##' returns a true family() object iff one was given
-##' to glmmTMB() in the first place ....
+## returns a true family() object iff one was given
+## to glmmTMB() in the first place ....
 ##' @importFrom stats family
 ##' @export
-##' @keywords internal
 family.glmmTMB <- function(object, ...) {
     object$modelInfo$family
 }
@@ -70,6 +69,10 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 
 ##' Extract variance and correlation components
 ##'
+##' @aliases VarCorr
+##' @param x a fitted \code{glmmTMB} model
+##' @param sigma residual standard deviation (usually set automatically from internal information)
+##' @param rdig ignored: for \code{nlme} compatibility
 ##' @importFrom nlme VarCorr
 ## and re-export the generic:
 ##' @export VarCorr
@@ -99,12 +102,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 	      class = "VarCorr.glmmTMB")
 }
 
-##'
 ##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
 ##' @importFrom lme4 formatVC
-##              ^^^^ github version >= 2015-09-05
 ##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
 ##' @param digits number of significant digits to use.

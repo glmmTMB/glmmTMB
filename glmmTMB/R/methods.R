@@ -125,8 +125,6 @@ ranef.glmmTMB <- function(object, ...) {
             class = "ranef.glmmTMB")
 }
 
-##' Print method
-##'
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
@@ -181,12 +179,14 @@ getME.glmmTMB <- function(object,
                       name, class(object))))
 }## {getME}
 
-##' Extract the log likelihood of a glmmTMB model
-##'
-##' @return object of class \code{logLik} with attributes
-##' \item{val}{log likelihood}
-##' \item{nobs,nall}{number of non NA observations initially supplied to TMB}
-##' \item{df}{number of parameters}
+## FIXME: (1) why is this non-standard (containing nobs, nall?)
+##        (2) do we really need to document it??
+## Extract the log likelihood of a glmmTMB model
+##
+## @return object of class \code{logLik} with attributes
+## \item{val}{log likelihood}
+## \item{nobs,nall}{number of non NA observations initially supplied to TMB}
+## \item{df}{number of parameters}
 ##' @importFrom stats logLik
 ##' @export
 logLik.glmmTMB <- function(object, ...) {
@@ -200,8 +200,6 @@ logLik.glmmTMB <- function(object, ...) {
 ##' @export
 nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
 
-##' Residual Degrees-of-Freedom
-##'
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
 ##' @export
@@ -215,10 +213,13 @@ df.residual.glmmTMB <- function(object, ...) {
 }
 
 
-##' Extracts the variance covariance structure
+##' Calculate Variance-Covariance Matrix for a Fitted glmmTMB model
 ##'
+##' @param object a \dQuote{glmmTMB} fit
+##' @param full return a full variance-covariance matrix?
+##' @param \dots ignored, for method compatibility
+##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} model parameters
 ##' @importFrom TMB MakeADFun sdreport
-##'
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
@@ -351,7 +352,6 @@ cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
   cat.f2(call,"Subset","subset",lwid2)
 }
 
-##' Print glmmTMB model
 ##' @importFrom lme4 .prt.aictab
 ##' @method print glmmTMB
 ##' @export
@@ -407,7 +407,9 @@ model.frame.glmmTMB <- function(formula, ...) {
 
 ##' Compute residuals for a glmmTMB object
 ##'
-##'
+##' @param object a \dQuote{glmmTMB} object
+##' @param type (character) residual type
+##' @param \dots ignored, for method compatibility
 ##' @importFrom stats fitted model.response
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson"),
@@ -494,11 +496,12 @@ extractAIC.glmmTMB <- function(fit, scale, k = 2, ...) {
     return(c(edf,c(-2*L + k*edf)))
 }
 
-##' deparse(.) returning \bold{one} string
-##' copied from lme4/R/utilities.R
-##' @note Protects against the possibility that results from deparse() will be
-##'       split after 'width.cutoff' (by default 60, maximally 500)
+## deparse(.) returning \bold{one} string
+## copied from lme4/R/utilities.R
+## Protects against the possibility that results from deparse() will be
+##       split after 'width.cutoff' (by default 60, maximally 500)
 safeDeparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)
+
 abbrDeparse <- function(x, width=60) {
     r <- deparse(x, width)
     if(length(r) > 1) paste(r[1], "...") else r

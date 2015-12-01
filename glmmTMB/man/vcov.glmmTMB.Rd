@@ -2,11 +2,21 @@
 % Please edit documentation in R/methods.R
 \name{vcov.glmmTMB}
 \alias{vcov.glmmTMB}
-\title{Extracts the variance covariance structure}
+\title{Calculate Variance-Covariance Matrix for a Fitted glmmTMB model}
 \usage{
 \method{vcov}{glmmTMB}(object, full = FALSE, ...)
 }
+\arguments{
+\item{object}{a \dQuote{glmmTMB} fit}
+
+\item{full}{return a full variance-covariance matrix?}
+
+\item{\dots}{ignored, for method compatibility}
+}
+\value{
+By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} model parameters
+}
 \description{
-Extracts the variance covariance structure
+Calculate Variance-Covariance Matrix for a Fitted glmmTMB model
 }
 
