@@ -12,6 +12,17 @@ getParList <- function(object) {
     object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
 }
 
+
+##' Extract Residual Standard Deviation or dispersion parameter
+##'
+##' For Gaussian models, retrieves the value of the residual
+##' standard deviation; for other model types, retrieves the
+##' dispersion parameter, \emph{however it is defined for that
+##' particular family}.
+## FIXME: cross-link to family definitions! 
+##' @aliases sigma
+##' @param object a \dQuote{glmmTMB} fitted object
+##' @param \dots (ignored; for method compatibility)
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
 ## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
@@ -20,10 +31,8 @@ getParList <- function(object) {
 ##         to roxygen2 >= 5.0.0
 ##' @importFrom lme4 sigma
 ##' @export sigma
-
 ##' @method sigma glmmTMB
 ##' @export
-##'
 sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     if(family(object)$family == "gaussian")
