@@ -1,6 +1,5 @@
 ## generate a list with names equal to values
-namedList <- function (...)
-{
+namedList <- function (...) {
     L <- list(...)
     snm <- sapply(substitute(list(...)), deparse)[-1]
     if (is.null(nm <- names(L)))
@@ -21,7 +20,7 @@ RHSForm <- function(form,as.form=FALSE) {
     formula
 }
 
-##' Random Effects formula only
+## Random Effects formula only
 ## reOnly <- function(f,response=FALSE) {
 ##    response <- if (response && length(f)==3) f[[2]] else NULL
 ##    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"),
@@ -42,33 +41,33 @@ reOnly <- function(f,response=FALSE,bracket=TRUE) {
     return(form)
 }
 
-##' combine unary or binary operator + arguments (sugar for 'substitute')
-##' FIXME: would be nice to have multiple dispatch, so
-##' (arg,op) gave unary, (arg,arg,op) gave binary operator
+## combine unary or binary operator + arguments (sugar for 'substitute')
+## FIXME: would be nice to have multiple dispatch, so
+## (arg,op) gave unary, (arg,arg,op) gave binary operator
 makeOp <- function(x,y,op=NULL) {
     if (is.null(op)) {  ## unary
         substitute(OP(X),list(X=x,OP=y))
     } else substitute(OP(X,Y), list(X=x,OP=op,Y=y))
 }
 
-##' combines the right-hand sides of two formulas
-##' @param f1
-##' @param f2
-##' @examples
-##' if (FALSE) {  ## still being exported despite "<at>keywords internal" ??
-##' addForm0(y~x,~1)
-##' addForm0(~x,~y)
-##' }
-##' @keywords internal
+## combines the right-hand sides of two formulas
+## @param f1 formula #1
+## @param f2 formula #2
+## @examples
+## if (FALSE) {  ## still being exported despite "<at>keywords internal" ??
+## addForm0(y~x,~1)
+## addForm0(~x,~y)
+## }
+## @keywords internal
 addForm0 <- function(f1,f2) {
   if (length(f2)==3) warning("discarding RHS of second argument")
   RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
   return(f1)
 }
 
-##' combine right-hand sides of an arbitrary number of formulas
-##' @param ... arguments to pass through to \code{addForm0}
-##' @keywords internal
+## combine right-hand sides of an arbitrary number of formulas
+## @param ... arguments to pass through to \code{addForm0}
+## @keywords internal
 addForm <- function(...) {
   Reduce(addForm0,list(...))
 }
@@ -77,20 +76,13 @@ addArgs <- function(argList) {
   Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),argList)
 }
 
-##' deparse(.) returning \bold{one} string
-##' @note Protects against the possibility that results from deparse() will be
-##'       split after 'width.cutoff' (by default 60, maximally 500)
-safeDeparse <- function(x, collapse=" ") {
-    paste(deparse(x, 500L), collapse=collapse)
-}
-
 ##' list of specials -- taken from enum.R
 findReTrmClasses <- function() {
     names(.valid_covstruct)
 }
 
-##' expandGrpVar(quote(x*y))
-##' expandGrpVar(quote(x/y))
+## expandGrpVar(quote(x*y))
+## expandGrpVar(quote(x/y))
 expandGrpVar <- function(f) {
     form <- as.formula(makeOp(f,quote(`~`)))
     mm <- terms(form)
@@ -148,12 +140,17 @@ head.formula <- head.call <- function(x, ...) {
 
 ##' (f)ind (b)ars e(x)tended: recursive
 ##'
+##' @param term a formula or piece of a formula
+##' @param debug (logical) debug?
+##' @param specials list of special terms
+##' @param default.special character: special to use for parenthesized terms - i.e. random effects terms with unspecified structure
 ##' 1. atom (not a call or an expression): NULL
 ##' 2. special, i.e. foo(...) where "foo" is in specials: return term
-##' 3. parenthesized term: *if* the head of the head is | (i.e.
+##' 3. parenthesized term: \emph{if} the head of the head is | (i.e.
 ##'    it is of the form (xx|gg), then convert it to the default
 ##'    special type; we won't allow pathological cases like
 ##'    ((xx|gg)) ... [can we detect them?]
+##' @keywords internal
 fbx <- function(term,debug=FALSE,specials=character(0),
                 default.special="us") {
     ds <- eval(substitute(as.name(foo),list(foo=default.special)))

@@ -43,6 +43,7 @@ bwplot(reorder(Nest,NegPerChick) ~ NegPerChick | FoodTreatment:SexParent,
        data=Owls)
 dotplot(reorder(Nest,NegPerChick) ~ NegPerChick| FoodTreatment:SexParent,
         data=Owls)
+\dontrun{
 ## Fit negative binomial model with "constant" Zero Inflation :
 owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                                     (1|Nest)+offset(log(BroodSize)),
@@ -51,5 +52,6 @@ owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
 owls_nb1_bs <- update(owls_nb1,
                       . ~ . - offset(log(BroodSize)) + log(BroodSize))
 fixef(owls_nb1_bs)
+}
 }
 \keyword{datasets}

@@ -3,3 +3,12 @@
 .RData
 glmmTMB.o
 glmmTMB.so
+glmmTMB/vignettes/*.pdf
+glmmTMB/vignettes/*.aux
+glmmTMB/vignettes/*.log
+glmmTMB/vignettes/*.bbl
+glmmTMB/vignettes/*.blg
+glmmTMB/vignettes/*.tex
+glmmTMB/vignettes/*.out
+glmmTMB/vignettes/figure
+glmmTMB/vignettes/cache

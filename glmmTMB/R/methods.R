@@ -125,8 +125,6 @@ ranef.glmmTMB <- function(object, ...) {
             class = "ranef.glmmTMB")
 }
 
-##' Print method
-##'
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
@@ -181,12 +179,14 @@ getME.glmmTMB <- function(object,
                       name, class(object))))
 }## {getME}
 
-##' Extract the log likelihood of a glmmTMB model
-##'
-##' @return object of class \code{logLik} with attributes
-##' \item{val}{log likelihood}
-##' \item{nobs,nall}{number of non NA observations initially supplied to TMB}
-##' \item{df}{number of parameters}
+## FIXME: (1) why is this non-standard (containing nobs, nall?)
+##        (2) do we really need to document it??
+## Extract the log likelihood of a glmmTMB model
+##
+## @return object of class \code{logLik} with attributes
+## \item{val}{log likelihood}
+## \item{nobs,nall}{number of non NA observations initially supplied to TMB}
+## \item{df}{number of parameters}
 ##' @importFrom stats logLik
 ##' @export
 logLik.glmmTMB <- function(object, ...) {
@@ -200,8 +200,6 @@ logLik.glmmTMB <- function(object, ...) {
 ##' @export
 nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
 
-##' Residual Degrees-of-Freedom
-##'
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
 ##' @export
@@ -215,10 +213,13 @@ df.residual.glmmTMB <- function(object, ...) {
 }
 
 
-##' Extracts the variance covariance structure
+##' Calculate Variance-Covariance Matrix for a Fitted glmmTMB model
 ##'
+##' @param object a \dQuote{glmmTMB} fit
+##' @param full return a full variance-covariance matrix?
+##' @param \dots ignored, for method compatibility
+##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} model parameters
 ##' @importFrom TMB MakeADFun sdreport
-##'
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
@@ -272,6 +273,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
   return(res)
 }
 
+##' @method print vcov.glmmTMB
 ##' @export
 print.vcov.glmmTMB <- function(x,...) {
     for (nm in names(x)) {
@@ -350,7 +352,6 @@ cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
   cat.f2(call,"Subset","subset",lwid2)
 }
 
-##' Print glmmTMB model
 ##' @importFrom lme4 .prt.aictab
 ##' @method print glmmTMB
 ##' @export
@@ -406,7 +407,10 @@ model.frame.glmmTMB <- function(formula, ...) {
 
 ##' Compute residuals for a glmmTMB object
 ##'
-##' 
+##' @param object a \dQuote{glmmTMB} object
+##' @param type (character) residual type
+##' @param \dots ignored, for method compatibility
+##' @importFrom stats fitted model.response
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson"),
                               ...) {
@@ -430,6 +434,7 @@ format.perc <- function (probs, digits) {
     "%")
 }
 
+##' @importFrom stats qnorm
 ##' @export
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("Wald","wald",  ## ugh -- allow synonyms?
@@ -478,6 +483,86 @@ profile.glmmTMB <- function(fitted, trace=FALSE, ...) {
 ##' @export
 ## FIXME: establish separate 'terms' components for
 ##   each model component (conditional, random, zero-inflation, dispersion ...)
-terms.glmmTMB <- function(x, ...) {
-    terms(x$frame)
+terms.glmmTMB <- function(x, component="cond", part="fixed", ...) {
+    if (part != "fixed") stop("only fixed terms currently available")
+    return(x$modelInfo$reTrms[[component]]$terms[[part]])
+    ## terms(x$frame)
 }
+
+##' @export
+extractAIC.glmmTMB <- function(fit, scale, k = 2, ...) {
+    L <- logLik(fit)
+    edf <- attr(L,"df")
+    return(c(edf,c(-2*L + k*edf)))
+}
+
+## deparse(.) returning \bold{one} string
+## copied from lme4/R/utilities.R
+## Protects against the possibility that results from deparse() will be
+##       split after 'width.cutoff' (by default 60, maximally 500)
+safeDeparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)
+
+abbrDeparse <- function(x, width=60) {
+    r <- deparse(x, width)
+    if(length(r) > 1) paste(r[1], "...") else r
+}
+
+
+
+##' @importFrom methods is
+##' @importFrom stats var getCall pchisq
+##' @export
+anova.glmmTMB <- function (object, ..., model.names = NULL) 
+{
+    mCall <- match.call(expand.dots = TRUE)
+    dots <- list(...)
+    .sapply <- function(L, FUN, ...) unlist(lapply(L, FUN, ...))
+    ## detect multiple models, i.e. models in ...
+    modp <- as.logical(vapply(dots, is, NA, "glmmTMB"))
+    if (any(modp)) {
+        mods <- c(list(object), dots[modp])
+        nobs.vec <- vapply(mods, nobs, 1L)
+        if (var(nobs.vec) > 0) 
+            stop("models were not all fitted to the same size of dataset")
+        if (is.null(mNms <- model.names)) 
+            mNms <- vapply(as.list(mCall)[c(FALSE, TRUE, modp)], 
+                           safeDeparse, "")
+        if (any(duplicated(mNms))) {
+            warning("failed to find unique model names, assigning generic names")
+            mNms <- paste0("MODEL", seq_along(mNms))
+        }
+        if (length(mNms) != length(mods)) 
+            stop("model names vector and model list have different lengths")
+        names(mods) <- sub("@env$", "", mNms)
+        llks <- lapply(mods, logLik)
+        ii <- order(Df <- vapply(llks, attr, FUN.VALUE = numeric(1), 
+            "df"))
+        mods <- mods[ii]
+        llks <- llks[ii]
+        Df <- Df[ii]
+        calls <- lapply(mods, getCall)
+        data <- lapply(calls, `[[`, "data")
+        if (!all(vapply(data, identical, NA, data[[1]]))) 
+            stop("all models must be fit to the same data object")
+        header <- paste("Data:", abbrDeparse(data[[1]]))
+        subset <- lapply(calls, `[[`, "subset")
+        if (!all(vapply(subset, identical, NA, subset[[1]]))) 
+            stop("all models must use the same subset")
+        if (!is.null(subset[[1]])) 
+            header <- c(header, paste("Subset:", abbrDeparse(subset[[1]])))
+        llk <- unlist(llks)
+        chisq <- 2 * pmax(0, c(NA, diff(llk)))
+        dfChisq <- c(NA, diff(Df))
+        val <- data.frame(Df = Df, AIC = .sapply(llks, AIC), 
+            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 * 
+                llk, Chisq = chisq, `Chi Df` = dfChisq, `Pr(>Chisq)` = pchisq(chisq, 
+                dfChisq, lower.tail = FALSE), row.names = names(mods), 
+            check.names = FALSE)
+        class(val) <- c("anova", class(val))
+        forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
+        structure(val, heading = c(header, "Models:", paste(rep(names(mods), 
+            times = lengths(forms)), unlist(forms), sep = ": ")))
+    } else stop("no single-model anova() method for glmmTMB")
+}
+
+

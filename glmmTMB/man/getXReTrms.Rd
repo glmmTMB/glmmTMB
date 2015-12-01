@@ -17,6 +17,12 @@ getXReTrms(formula, mf, fr, ranOK = TRUE, type = "")
 
 \item{type}{label for model type}
 }
+\value{
+a list composed of
+\item{X}{design matrix for fixed effects}
+\item{Z}{design matrix for random effects}
+\item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+}
 \description{
 Create X and random effect terms from formula
 }

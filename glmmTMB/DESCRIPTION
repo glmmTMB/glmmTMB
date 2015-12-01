@@ -1,7 +1,7 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 0.0.1
-Date: 2015-09-05
+Version: 0.0.2
+Date: 2015-11-30
 Authors@R: c(person("Arni","Magnusson",role="aut"),
 	    person("Hans","Skaug",role="aut"),
 	    person("Anders","Nielsen",role="aut"),
@@ -30,8 +30,12 @@ Suggests:
     knitr,
     testthat,
     MASS,
-    lattice
+    lattice,
+    ggplot2,
+    mlmRev,
+    bbmle
 VignetteBuilder: knitr
+URL: https://github.com/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 RoxygenNote: 5.0.1

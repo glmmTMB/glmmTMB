@@ -1,12 +1,12 @@
-##' extract info from formulas, reTrms, etc., format for TMB
-##' @param formula
-##' @param ziformula
-##' @param dispformula
-##' @param mf
-##' @param fr
-##' @param yobs
-##' @param offset
-##' @param weights
+##' Extract info from formulas, reTrms, etc., format for TMB
+##' @param formula conditional formula
+##' @param ziformula zero-inflation formula
+##' @param dispformula dispersion formula
+##' @param mf call to model frame
+##' @param fr frame
+##' @param yobs observed y
+##' @param offset offset
+##' @param weights weights
 ##' @param family character
 ##' @param link character
 ##' @param ziPredictCode zero-inflation code
@@ -88,7 +88,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{mkReTerms} from \pkg{lme4}}}
+##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -116,6 +116,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(fixedform, fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
+        
+        terms <- list(fixed=terms(fixedform))
     }
     ## ran-effects model frame (for predvars)
     ## important to COPY formula (and its environment)?
@@ -147,7 +149,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss)
+    namedList(X, Z, reTrms, ss, terms)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -254,9 +256,9 @@ usesDispersion <- function(x) {
     ## !x %in% .noDispersionFamilies
 }
 
-##' select only desired pieces from results of getXReTrms
-stripReTrms <- function(xrt, which = c("cnms","flist")) {
-  xrt$reTrms[which]
+## select only desired pieces from results of getXReTrms
+stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
+  c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
 }
 
 ##' Fit models with TMB
@@ -434,7 +436,7 @@ glmmTMB <- function (
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
-                                reTrms = lapply(namedList(condList, ziList),
+                                reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm = namedList(combForm, formula,

@@ -1,8 +1,7 @@
-##' returns a true family() object iff one was given
-##' to glmmTMB() in the first place ....
+## returns a true family() object iff one was given
+## to glmmTMB() in the first place ....
 ##' @importFrom stats family
 ##' @export
-##' @keywords internal
 family.glmmTMB <- function(object, ...) {
     object$modelInfo$family
 }
@@ -13,6 +12,17 @@ getParList <- function(object) {
     object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
 }
 
+
+##' Extract Residual Standard Deviation or dispersion parameter
+##'
+##' For Gaussian models, retrieves the value of the residual
+##' standard deviation; for other model types, retrieves the
+##' dispersion parameter, \emph{however it is defined for that
+##' particular family}.
+## FIXME: cross-link to family definitions! 
+##' @aliases sigma
+##' @param object a \dQuote{glmmTMB} fitted object
+##' @param \dots (ignored; for method compatibility)
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
 ## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
@@ -21,10 +31,8 @@ getParList <- function(object) {
 ##         to roxygen2 >= 5.0.0
 ##' @importFrom lme4 sigma
 ##' @export sigma
-
 ##' @method sigma glmmTMB
 ##' @export
-##'
 sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     if(family(object)$family == "gaussian")
@@ -70,6 +78,10 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 
 ##' Extract variance and correlation components
 ##'
+##' @aliases VarCorr
+##' @param x a fitted \code{glmmTMB} model
+##' @param sigma residual standard deviation (usually set automatically from internal information)
+##' @param rdig ignored: for \code{nlme} compatibility
 ##' @importFrom nlme VarCorr
 ## and re-export the generic:
 ##' @export VarCorr
@@ -99,12 +111,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
 	      class = "VarCorr.glmmTMB")
 }
 
-##'
 ##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
 ##' @importFrom lme4 formatVC
-##              ^^^^ github version >= 2015-09-05
 ##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
 ##' @param digits number of significant digits to use.
