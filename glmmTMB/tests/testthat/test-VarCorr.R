@@ -17,7 +17,7 @@ gm1C <- glmer(incidence/size ~ period + (1 | herd),
               data = cbpp, family = binomial)
 
 expect_equal(VarCorr(fm1)[["cond"]],unclass(VarCorr(fm1C)),
-             tol=1e-5)
+             tol=1e-3)
 expect_equal(VarCorr(gm1)[["cond"]],unclass(VarCorr(gm1C)),
              tol=5e-3)
 ## have to take only last 4 lines
@@ -79,9 +79,6 @@ str(gm.r <- gm$obj$env$report())
 ##   ..$ : num [1:2, 1:2] 1 0.921 0.921 1
 ##  $ sd    :List of 1
 ##   ..$ : num [1:2] 0.779 1.575
-
-
-
 
 (vc <- VarCorr(fm1))  ## default print method: standard dev and corr
 ## both variance and std.dev.

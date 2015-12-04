@@ -101,10 +101,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
         ## usesDispersion(familyStr)
     } else TRUE
 
-    vc.cond <- if(length(cn <- reT$condList$cnms))
+    vc.cond <- if(length(cn <- reT$cond$cnms))
         mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
              sc = sigma, useSc = useSc)
-    vc.zi   <- if(length(cn <- reT$ziList$cnms))
+    vc.zi   <- if(length(cn <- reT$zi$cnms))
         mkVC(cor = xrep$corzi, sd = xrep$sdzi, cnms = cn)
     structure(list(cond = vc.cond, zi = vc.zi),
 	      sc = usesDispersion(familyStr), ## 'useScale'

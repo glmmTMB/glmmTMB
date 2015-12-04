@@ -28,7 +28,8 @@ test_that("Fitted and residuals", {
 })
 
 test_that("Predict", {
-          })
+     expect_equal(predict(fm2),predict(fm2,newdata=sleepstudy))
+ })
 
 
 test_that("VarCorr", {

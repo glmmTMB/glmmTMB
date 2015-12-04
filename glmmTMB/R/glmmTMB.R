@@ -436,6 +436,7 @@ glmmTMB <- function (
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
+                                ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
