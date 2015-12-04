@@ -4,20 +4,30 @@
 \alias{predict.glmmTMB}
 \title{prediction}
 \usage{
-\method{predict}{glmmTMB}(object, newdata = NULL, debug = FALSE, re.form,
+\method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE, re.form,
   allow.new.levels = FALSE, zitype = c("response", "conditional", "zprob"),
-  ...)
+  debug = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
 
 \item{newdata}{new data for prediction}
 
+\item{se.fit}{return the standard errors of the predicted values?}
+
+\item{re.form}{(not yet implemented) specify which random effects to condition on when predicting}
+
+\item{allow.new.levels}{(not yet implemented) allow previously unobserved levels in random-effects grouping variables?}
+
 \item{zitype}{for zero-inflated models,
 return expected value ("response": (mu*(1-p))),
 the mean of the conditional distribution ("conditional": mu),
-or the probability of a structural zero ("zprob")?
-mean of}
+or the probability of a structural zero ("zprob")?}
+
+\item{debug}{(logical) return the \code{TMBStruc} object that will be
+used internally for debuggin?}
+
+\item{\dots}{unused - for method compatibility}
 }
 \description{
 prediction
@@ -25,7 +35,6 @@ prediction
 \examples{
 data(sleepstudy,package="lme4")
 g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
-if(FALSE) ## ___FIXME___ (not yet working)
 predict(g0, sleepstudy)
 }
 
