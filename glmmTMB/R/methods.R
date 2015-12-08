@@ -410,6 +410,7 @@ model.frame.glmmTMB <- function(formula, ...) {
     formula$frame
 }
 
+    
 ##' Compute residuals for a glmmTMB object
 ##'
 ##' @param object a \dQuote{glmmTMB} object
@@ -428,7 +429,11 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"),
                    stop("variance function undefined for family ",
                         sQuote(family(object)$family),"; cannot compute",
                         " Pearson residuals")
-               r/sqrt(v(fitted(object)))
+               vv <- switch(length(formals(v)),
+                            v(fitted(object)),
+                            v(fitted(object),sigma(object)),
+                            stop("variance function should take 1 or 2 arguments"))
+               r/sqrt(vv)
            })
 }
 
