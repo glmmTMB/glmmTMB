@@ -136,8 +136,13 @@ print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
 
 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
-##' Method borrowed from lme4
 ##'
+##' @aliases getME
+##' @param object a fitted \code{glmmTMB} object
+##' @param name of the component to be retrieved
+##' @param \dots ignored, for method compatibility
+##'
+##' @seealso \code{\link[lme4]{getME}}
 ##' Get generic and re-export:
 ##' @importFrom lme4 getME
 ##' @export getME
@@ -565,4 +570,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
     } else stop("no single-model anova() method for glmmTMB")
 }
 
-
+#' @export
+fitted.glmmTMB <- function(object, ...) {
+    predict(object)
+}

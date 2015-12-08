@@ -426,16 +426,19 @@ glmmTMB <- function (
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
                                                    gradient=gr)))
+
+    fitted <- NULL
+
     if (se) {
         sdr <- sdreport(obj)
         ## FIXME: assign original rownames to fitted?
-        fitted <- unname(sdr$value)
     } else {
-        sdr <- fitted <- NULL
+        sdr <- NULL
     }
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
+                                ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
