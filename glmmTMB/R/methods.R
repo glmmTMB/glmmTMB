@@ -421,7 +421,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 residuals.glmmTMB <- function(object, type=c("response", "pearson"),
                               ...) {
     type <- match.arg(type)
-    r <- fitted(object)-model.response(object$frame)
+    r <- model.response(object$frame)-fitted(object)
     switch(type,
            response=r,
            pearson={
