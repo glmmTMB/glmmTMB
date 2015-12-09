@@ -575,6 +575,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
     } else stop("no single-model anova() method for glmmTMB")
 }
 
+#' @importFrom stats predict
 #' @export
 fitted.glmmTMB <- function(object, ...) {
     predict(object)
