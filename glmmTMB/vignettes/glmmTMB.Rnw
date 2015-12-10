@@ -66,8 +66,7 @@ linear models (e.g. the special cases of logistic, binomial,
 and Poisson regression) and (ii) `modern' mixed models (those
 working via maximization of the marginal likelihood rather
 than by manipulating sums of squares).   \cite{bolker_generalized_2009} and \cite{bolker_glmm_2014} are reasonable starting
-points in this area. \fixme{too self-centered?  other good
-pointers, e.g. Zuur et al.'s books?}
+points in this area (especially geared to biologists and less-technical readers), as are \cite{zuur_mixed_2009}, \cite{millar_maximum_2011}, and \cite{zuur_beginners_2013}.
 
 In order to fit a model in \code{glmmTMB} you need to:
 \begin{itemize}
@@ -138,14 +137,15 @@ First we draw a picture (Figure~\ref{fig:owlplot1}).
 Various small manipulations of the data set:
 (1) reorder nests by mean negotiations per chick, for plotting
 purposes; (2) add log brood size variable (for offset);
-(3) rename response variable.
+(3) rename response variable and abbreviate one of the input variables.
 %% FIXME: I get a warning message ("NAs introduced by coercion")  here, but only in knitr,
 %%  and not on a clean start ... ?
 %% some weird package interaction ?
 <<owltransform,warning=FALSE>>=
 Owls <- transform(Owls,
                   Nest=reorder(Nest,NegPerChick),
-                  NCalls=SiblingNegotiation)
+                  NCalls=SiblingNegotiation,
+                  FT=FoodTreatment)
 @ 
 (If you were really using this data set you should start
 with \code{summary(Owls)} to explore the data set.)
@@ -171,22 +171,21 @@ Now fit some models:
 The basic \code{glmmTMB} fit --- a zero-inflated Poisson model with a single zero-inflation parameter applying to all observations (\verb+zi~1+).  (Excluding zero-inflation is \code{glmmTMB}'s default:
 to exclude it explicitly, use \verb+zi~0+.)
 <<time1,echo=FALSE,cache=TRUE>>=
-gt1 <- system.time(glmmTMB(NCalls~(FoodTreatment+ArrivalTime)*SexParent+
+gt1 <- system.time(glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
                                      offset(log(BroodSize))+(1|Nest),
                                      zi=~1,
                                      data=Owls,
                                      family=poisson))
 @ 
 
-<<glmmadmbfit,cache=TRUE>>=
-fit_zipoisson <- glmmTMB(NCalls~(FoodTreatment+ArrivalTime)*SexParent+
+<<glmmadmbfit>>=
+fit_zipoisson <- glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
                                      offset(log(BroodSize))+(1|Nest),
                                      data=Owls,
                                      zi=~1,
                                      family=poisson)
 @
 
-\notimpl{summary method not yet written!}
 <<zipoisssum>>=
 summary(fit_zipoisson)
 @ 
@@ -200,20 +199,33 @@ or as the result of a call to the family function: i.e.
 \code{family="poisson"}, \code{family=poisson},
 \code{family=poisson()}, and \code{family=poisson(link="log")}
 are all allowed and all equivalent (the log link is the default
-for the Poisson family).  For families that are \emph{not} 
-specified in R, you should specify the \code{family} argument
-as a list containing (character) elements \code{family}
-and \code{link}, as follows:
+for the Poisson family).  Some of the additional families that
+are \emph{not} defined in base R (at this point \code{nbinom2}
+and \code{nbinom1}) can be specified using the same format.
+Otherwise, for families that are implemented in \code{glmmTMB}
+but for which \code{glmmTMB} does not provide a function,
+you should specify the \code{family} argument
+as a list containing (at least) the (character) elements \code{family}
+and \code{link}, e.g. \code{family=list(family="nbinom2",link="log")}.
+(In order to be able to retrieve Pearson (variance-scaled) residuals
+from a fit, you also need to specify a \code{variance} component;
+see \code{?family\_glmmTMB}.)
 
-<<glmmadmbnbinomfit,cache=TRUE>>=
-fit_zinbinom <- update(fit_zipoisson,
-                  family=list(family="nbinom2",link="log"))
+<<glmmadmbnbinomfit>>=
+fit_zinbinom <- update(fit_zipoisson,family=nbinom2)
 @
 
+%% FIXME: caching may lead to
+%% ## Error in ICtab(..., mnames = mnames, type = "AIC"): memory block of size 3.1 Gb
+%% downstream, in AICtab() ...
+%% for now I'm removing caching, but we should 
+%%   (1) document this as an issue/make a MWE
+%%   (2) fix it
+%%   (3) we could also cache the AICtab chunk as well ..
+
 Alternatively, we can use an ``NB1'' fit (variance = $\phi \mu$).
-<<glmmadmbnbinom1fit,cache=TRUE>>=
-fit_zinbinom1 <- update(fit_zipoisson,
-                  family=list(family="nbinom1",link="log"))
+<<glmmadmbnbinom1fit>>=
+fit_zinbinom1 <- update(fit_zipoisson,family=nbinom1)
 @
 
 \notimpl{we should have a \code{getFamily} function:
@@ -222,9 +234,9 @@ ideally it would also specify which are really implemented
 
 Relax the assumption that total number of calls is strictly proportional
 to brood size (i.e. using log(brood size) as an offset):
-<<glmmadmbnbinom1vfit,cache=TRUE>>=
+<<glmmadmbnbinom1vfit>>=
 fit_zinbinom1_bs <- update(fit_zinbinom1,
-                           . ~ (FoodTreatment+ArrivalTime)*SexParent+
+                           . ~ (FT+ArrivalTime)*SexParent+
                                BroodSize+(1|Nest))
 @ 
 
@@ -249,8 +261,8 @@ First we fit a truncated distribution to the non-zero outcomes:
 
 <<glmmadmbnbinomhfit,eval=FALSE>>=
 fit_hnbinom1 <- update(fit_zinbinom1_bs,
-                         data=subset(Owls,NCalls>0),
-                        family=list(family="truncated_nbinom1",link="log"))
+                       data=subset(Owls,NCalls>0),
+                       family=list(family="truncated_nbinom1",link="log"))
 @ 
 \notimpl{Truncated families aren't there yet. Once they are, we might not
 actually need to fit two separate models -- \emph{if} we simply ignore zero
@@ -261,20 +273,31 @@ we implement a \code{control} argument soon??)}
 
 \section{Sample timings}
 
-\subsection{Contraception}
+To get a rough idea of \code{glmmTMB}'s speed relative to
+\code{lme4} (the most commonly used mixed-model package for R),
+we try a few standard problems, enlarging the data sets by
+cloning the original data set (making multiple copies and 
+sticking them together).
 
 <<contraception_sum,echo=FALSE>>=
 data("Contraception",package="mlmRev")
 nc <- nrow(Contraception)
 nl <- length(levels(Contraception$district))
+load("contraceptionTimings.rda")
+meandiff <- mean(with(tmatContraception,
+                      time[pkg=="glmer"]/time[pkg=="glmmTMB"]))
 @
 
-%Replicating the \code{Contraception} data set
-%(\Sexpr{nc} observations, \Sexpr{nl} levels in the
-% random effects grouping level) multiple times
+Figure~\ref{fig:contraception} shows the results of 
+replicating the \code{Contraception} data set
+(\Sexpr{nc} observations, \Sexpr{nl} levels in the
+random effects grouping level) from 1 to 40 times.
+\code{glmmADMB} is sufficiently slow ($\approx 1$ minute for
+a single copy of the data) that we didn't try replicating very much.
+On average, \code{glmmTMB} is about \Sexpr{round(meandiff,1)} times
+faster than \code{glmer} for this problem.
 
 <<contraception,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting the replicated Contraception data set.">>=
-load("contraceptionTimings.rda")
 ggplot(tmatContraception,aes(n,time,colour=pkg))+geom_point()+
   scale_y_log10(breaks=c(1,2,5,10,20,50,100))+
   scale_x_log10(breaks=c(1,2,4,10,20,40))+
@@ -283,15 +306,35 @@ ggplot(tmatContraception,aes(n,time,colour=pkg))+geom_point()+
   scale_colour_brewer(palette="Set1")
 @
 
+
 <<insteval,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting subsets of the InstEval data set.">>=
 load("InstEvalTimings.rda")
+n_InstEval <- 73421L  ## seems silly to require lme4 just to get this number
+meandiff_inst2 <- with(tmatInstEval,
+     time[pkg=="lmer"]/time[pkg=="glmmTMB"])
 ggplot(tmatInstEval,aes(n,time,colour=pkg))+geom_point()+
   scale_y_log10(breaks=c(1,2,5,10,20,50,100,200))+
       scale_x_log10(breaks=c(0.1,0.2,0.5,1.0))+
-  labs(x="Replication (x 73421 obs.)",y="Elapsed time (s)")+
+  labs(x=sprintf("Replication (x %d obs.)",n_InstEval),
+       y="Elapsed time (s)")+
   geom_smooth(method="lm")+
   scale_colour_brewer(palette="Set1")
 @
+
+Figure~\ref{fig:insteval} shows equivalent timings for the
+\code{InstEval} data set, although in this case since the
+original data set is large (\Sexpr{n_InstEval} observations)
+we subsample the data set rather than cloning it:
+in this case, the advantage is reversed
+and \code{lmer} is about \Sexpr{round(1/mean(meandiff_inst2,1))} times
+faster.
+
+In general, we expect \code{glmmTMB}'s advantages over \code{lme4} to
+be (1) greater flexibility (zero-inflation etc.); (2) greater speed for
+GLMMs, especially those with large number of ``top-level'' parameters
+(fixed effects plus random-effects variance-covariance parameters).
+In contrast, \code{lme4} should be faster for LMMs (for maximum
+speed, you may want to check the \href{https://github.com/dmbates/MixedModels.jl}{MixedModels.jl} package for Julia); \code{lme4} is more mature and at present has a wider variety of diagnostic checks and methods for using model results, including downstream packages.
 
 \bibliography{glmmTMB}
 \end{document}
