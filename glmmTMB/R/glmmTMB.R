@@ -407,6 +407,15 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,respCol]
 
+    if (!is.numeric(yobs) || is.matrix(yobs)) {
+        err <- "response variable must be a numeric vector"
+        if (family$family=="binomial") {
+            err <- c(err,
+                     " (use probability as response vector, and use 'weights' for sample size)")
+        }
+        stop(err)
+    }
+
     TMBStruc <- eval.parent(
         mkTMBStruc(formula, ziformula, dispformula,
                    mf, fr,

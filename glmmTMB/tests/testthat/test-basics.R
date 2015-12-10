@@ -77,6 +77,8 @@ gm0 <- glmmTMB(prop ~ 1 +      (1|herd),
 gm1 <- glmmTMB(prop ~ period + (1|herd),
                weights = size, data = cbpp, family=binomial())
 
+
+
 test_that("Basic Binomial CBPP examples", {
     expect_is(gm0, "glmmTMB")
     expect_is(gm1, "glmmTMB")
@@ -85,6 +87,10 @@ test_that("Basic Binomial CBPP examples", {
                                period2 = -0.991925, period3 = -1.128216,
                                period4 = -1.579745),
                   tolerance = 1e-3) # <- TODO: lower eventually
+    expect_error(glmmTMB(cbind(incidence,size-incidence) ~ period + (1|herd),
+                         data = cbpp, family=binomial()),
+                 "use probability as response vector")
+
 })
 
 ### Multiple RE,  reordering
