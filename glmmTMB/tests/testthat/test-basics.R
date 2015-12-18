@@ -45,6 +45,8 @@ test_that("Basic Gaussian Sleepdata examples", {
     expect_equal(fixef(fm2)$cond, fixef(fm1)$cond, tolerance = 1e-5)# seen 1.042 e-6
     expect_equal(fixef(fm3)$cond, fixef(fm1)$cond, tolerance = 5e-6)# seen 2.250 e-7
 
+    expect_equal(head(ranef(fm0)$cond$Subject[,1],3),
+                 c(37.4881849228705, -71.5589277273216, -58.009085500647))
     ## test *existence* of summary method -- nothing else for now
     expect_is(suppressWarnings(summary(fm3)),"summary.glmmTMB")
 })
@@ -87,9 +89,6 @@ test_that("Basic Binomial CBPP examples", {
                                period2 = -0.991925, period3 = -1.128216,
                                period4 = -1.579745),
                   tolerance = 1e-3) # <- TODO: lower eventually
-    expect_error(glmmTMB(cbind(incidence,size-incidence) ~ period + (1|herd),
-                         data = cbpp, family=binomial()),
-                 "use probability as response vector")
 
 })
 
@@ -192,11 +191,25 @@ test_that("basic zero inflation", {
 	expect_equal(ranef(o1.tmb)$cond$Nest[1,1], -0.484, tolerance=1e-2) #glmmADMB gave -0.4842771
 })
 
-## test that formulas are expanded in the call/printed
-form <- Reaction ~ Days + (1|Subject)
-expect_equal(grep("Reaction ~ Days",
-            capture.output(print(glmmTMB(form, sleepstudy))),
+test_that("alternative binomial model specifications", {
+    d <- data.frame(y=1:10,N=20,x=1)
+    expect_error(glmmTMB(cbind(y,N-y) ~ 1, data=d,
+                         family=binomial()),
+                 "use probability as response vector")
+    m1 <- glmmTMB((y>5)~1,data=d,family=binomial)
+    m2 <- glmmTMB(factor(y>5)~1,data=d,family=binomial)
+    expect_equal(c(unname(logLik(m1))),-6.931472,tol=1e-6)
+    expect_equal(c(unname(logLik(m2))),-6.931472,tol=1e-6)          
+
+})
+
+test_that("formula expansion", {
+              ## test that formulas are expanded in the call/printed
+              form <- Reaction ~ Days + (1|Subject)
+              expect_equal(grep("Reaction ~ Days",
+                       capture.output(print(glmmTMB(form, sleepstudy))),
             fixed=TRUE),1)
+})
 
 quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
 quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,

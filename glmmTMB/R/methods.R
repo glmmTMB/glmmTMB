@@ -120,8 +120,8 @@ ranef.glmmTMB <- function(object, ...) {
   }
 
   pl <- getParList(object)
-  structure(list(cond = arrange(pl$b, "condList"),
-                 zi    = arrange(pl$bzi, "ziList")),
+  structure(list(cond = arrange(pl$b, "cond"),
+                 zi    = arrange(pl$bzi, "zi")),
             class = "ranef.glmmTMB")
 }
 

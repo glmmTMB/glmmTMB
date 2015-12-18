@@ -407,15 +407,29 @@ glmmTMB <- function (
     ## extract response variable
     yobs <- fr[,respCol]
 
+    err0 <- "response variable must be a numeric vector"
     if (!is.numeric(yobs) || is.matrix(yobs)) {
-        err <- "response variable must be a numeric vector"
-        if (family$family=="binomial") {
-            err <- c(err,
-                     " (use probability as response vector, and use 'weights' for sample size)")
+        if (family$family!="binomial") {
+            stop(err0)
+        } else {
+            ## allow factor/logical values as in glm() (?)
+            if (is.matrix(yobs)) {
+                err <- c(err0,
+                         " (use probability as response vector, ",
+                         "and use 'weights' for sample size)")
+                stop(err)
+            }
+            if (is.factor(yobs)) {
+                ## ‘success’ is interpreted as the factor not
+                ## having the first level (and hence usually of having the
+                ## second level).
+                yobs <- pmin(as.numeric(yobs)-1,1)
+            } else {
+                yobs <- as.numeric(yobs)
+            }
         }
-        stop(err)
     }
-
+    
     TMBStruc <- eval.parent(
         mkTMBStruc(formula, ziformula, dispformula,
                    mf, fr,
