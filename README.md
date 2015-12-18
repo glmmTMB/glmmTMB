@@ -4,7 +4,7 @@
 
 ## Installation 
 
-To install `glmmTMB`, first install TMB following [its installation instructions](https://github.com/kaskr/adcomp/blob/master/README.md), then install `glmmTMB` via
+To install `glmmTMB`, first install `TMB` from CRAN, then install `glmmTMB` via
 ```
 devtools::install_github("glmmTMB/glmmTMB",subdir="glmmTMB")
 ```
