@@ -233,7 +233,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
     sdr <- sdreport(object$obj)
   }
 
-  keepTag <- if (full) "beta*" else "beta($|[^d])"
+  keepTag <- if (full || !trivialDisp(object)) "beta*" else "beta($|[^d])"
   to_keep <- grep(keepTag,colnames(sdr$cov.fixed)) # only keep betas
   covF <- sdr$cov.fixed[to_keep,to_keep,drop=FALSE]
 
