@@ -65,6 +65,15 @@ str(mydata <- cbind(dd, test2))
 ## The zeros in the 10 groups:
 xtabs(~ a + (sim_1 == 0), mydata)
 
+## non-trivial dispersion model
+data(sleepstudy, package="lme4")
+fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject),
+               dispformula=~ Days, sleepstudy)
+cc0 <- capture.output(print(fm1))
+cc1 <- capture.output(print(summary(fm1)))
+expect_true(any(grepl("Dispersion model:",cc0)))
+expect_true(any(grepl("Dispersion model:",cc1)))
+
 
 # not simulated this way, but returns right structure
 gm <- glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a), data=mydata, family=poisson())
@@ -91,3 +100,4 @@ quit()
 
 as.data.frame(vc)
 as.data.frame(vc,order="lower.tri")
+

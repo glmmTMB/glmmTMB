@@ -27,7 +27,8 @@ fixef.glmmTMB <- function(object, ...) {
 
 ## general purpose matching between component names and printable names
 cNames <- list(cond = "Conditional model",
-               zi = "Zero inflation", disp = "Dispersion")
+               zi = "Zero-inflation model",
+               disp = "Dispersion model")
 
 ## FIXME: this is a bit ugly. On the other hand, a single-parameter
 ## dispersion model without a

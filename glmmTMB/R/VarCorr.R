@@ -70,7 +70,10 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         structure(cov,stddev=sd,correlation=cor)
     }
     ss <- setNames(mapply(docov,sd,cor,cnms,SIMPLIFY=FALSE),nnms)
-    attr(ss,"sc") <- sc
+    ## ONLY first element -- otherwise breaks formatVC
+    ## FIXME: do we want a message/warning here, or elsewhere,
+    ##   when the 'Residual' var parameters are truncated?
+    attr(ss,"sc") <- sc[1]
     attr(ss,"useSc") <- useSc
     ss
 }
