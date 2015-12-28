@@ -1,3 +1,9 @@
+## backward compat (copied from lme4)
+if((Rv <- getRversion()) < "3.2.1") {
+    lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
+}
+rm(Rv)
+
 ## generate a list with names equal to values
 namedList <- function (...) {
     L <- list(...)
