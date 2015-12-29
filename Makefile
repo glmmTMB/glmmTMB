@@ -74,21 +74,20 @@ check:
 
 ## *NOT* using 'R --vanilla' : then cannot find testthat, TMB, etc they are installed into R's "system" library
 
+test:
+	echo "devtools::test('glmmTMB')" | $(R) --slave
+
 quick-check: quick-install ex-test
-	echo "source('glmmTMB/tests/AAAtest-all.R', echo=TRUE)" | $(R) --slave
 
-
-
-unlock:
-	rm -rf `Rscript --vanilla -e 'writeLines(.Library)'`/00LOCK-glmmTMB
-#               ------------------------------------------ = R's system library
-#	rm -rf ${R_LIBS}/00LOCK-glmmTMB
-##               ^^^^^^^ This only works if R_LIBS contains a single directory and the same that 'R CMD INSTALL' uses..
-
-test: ex-test
 ex-test:
 	echo "library(glmmTMB); example(glmmTMB)" | $(R) --slave
 
+
+unlock:
+	\rm -rf `Rscript --vanilla -e 'writeLines(.Library)'`/00LOCK-glmmTMB
+#               ------------------------------------------ = R's system library
+#	rm -rf ${R_LIBS}/00LOCK-glmmTMB
+##               ^^^^^^^ This only works if R_LIBS contains a single directory and the same that 'R CMD INSTALL' uses..
 
 clean:
 	\rm -f install doc-update

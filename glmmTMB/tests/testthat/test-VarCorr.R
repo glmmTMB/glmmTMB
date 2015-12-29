@@ -61,9 +61,27 @@ test2 <- suppressMessages(simulate(~1+(b|a), newdata=dd, family=poisson,
 ## Zero-inflation : set all i.0 indices to 0:
 i.0 <- sample(c(FALSE,TRUE), 1000, prob=c(.3,.7), replace=TRUE)
 test2[i.0, 1] <- 0
-str(mydata <- cbind(dd, test2))
+mydata <- cbind(dd, test2)
+expect_equal(head(mydata),
+             structure(list(a = structure(c(1L, 1L, 1L, 1L, 1L, 1L),
+               .Label = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
+               class = "factor"), 
+    b = c(0.585528817843856, 0.709466017509524, -0.109303314681054, 
+    -0.453497173462763, 0.605887455840393, -1.81795596770373), 
+    sim_1 = c(40, 38, 8, 0, 0, 0)),
+          .Names = c("a", "b", "sim_1"),
+          row.names = c("1", "2", "3", "4", "5", "6"), class = "data.frame"),
+        tol=1e-5)
+
 ## The zeros in the 10 groups:
-xtabs(~ a + (sim_1 == 0), mydata)
+xx <- xtabs(~ a + (sim_1 == 0), mydata)
+expect_equal(head(xx,3),
+             structure(c(23L, 16L, 21L, 77L, 84L, 79L),
+                       .Dim = c(3L, 2L),
+                       .Dimnames = structure(list(
+                       a = c("1", "2", "3"),
+                       `sim_1 == 0` = c("FALSE", "TRUE")),
+                       .Names = c("a", "sim_1 == 0")), class = "table"))
 
 ## non-trivial dispersion model
 data(sleepstudy, package="lme4")
@@ -89,12 +107,32 @@ str(gm.r <- gm$obj$env$report())
 ##  $ sd    :List of 1
 ##   ..$ : num [1:2] 0.779 1.575
 
-(vc <- VarCorr(fm1))  ## default print method: standard dev and corr
-## both variance and std.dev.
-print(vc,comp=c("Variance","Std.Dev."),digits=2)
-## variance only
-print(vc,comp=c("Variance"))
+vc <- VarCorr(fm1)  ## default print method: standard dev and corr
 
+c1 <- capture.output(print(vc))
+expect_equal(c1,c("", "Conditional model:",
+                  " Groups   Name        Std.Dev. Corr  ", 
+                  " Subject  (Intercept) 2.19409        ",
+                  "          age         0.21492  -0.582", 
+                  " Residual             1.31004        "))
+
+## both variance and std.dev.
+c2 <- capture.output(print(vc,comp=c("Variance","Std.Dev."),digits=2))
+expect_equal(c2,
+             c("", "Conditional model:",
+               " Groups   Name        Variance Std.Dev. Corr ", 
+               " Subject  (Intercept) 4.814    2.19          ",
+               "          age         0.046    0.21     -0.58", 
+               " Residual             1.716    1.31          "))
+
+## variance only
+c3 <- capture.output(print(vc,comp=c("Variance")))
+expect_equal(c3,
+             c("", "Conditional model:",
+               " Groups   Name        Variance Corr  ", 
+               " Subject  (Intercept) 4.814050       ",
+               "          age         0.046192 -0.582", 
+               " Residual             1.716203       "))
 quit()
 ##===  Not yet :
 
