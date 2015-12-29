@@ -33,10 +33,11 @@
 }
 \examples{
 epil2$subject <- factor(epil2$subject)
-fm <- glmmTMB(y ~ Base*trt + Age + Visit + (Visit|subject),
-              data=epil2, family=list(family="nbinom2",link="log"))
-fm
+op <- options(digits=3)
+(fm <- glmmTMB(y ~ Base*trt + Age + Visit + (Visit|subject),
+              data=epil2, family=list(family="nbinom2",link="log")))
 meths <- methods(class = class(fm))
+\donttest{
 if((Rv <- getRversion()) > "3.1.3") {
     (funs <- attr(meths, "info")[, "generic"])
     for(F in funs[is.na(match(funs, "getME"))]) {
@@ -47,5 +48,7 @@ if((Rv <- getRversion()) > "3.1.3") {
         cat(sprintf("---end{\%s}--------------\n\n", F))
     }
 }
+}
+options(op)
 }
 \keyword{datasets}

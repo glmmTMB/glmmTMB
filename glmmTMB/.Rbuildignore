@@ -7,3 +7,4 @@ cache$
 .*\.aux$
 .*\.log$
 .*\.out$
+.*misc/.*$
