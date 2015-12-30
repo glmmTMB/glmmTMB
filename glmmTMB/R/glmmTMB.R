@@ -284,7 +284,7 @@ stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param debug whether to return the preprocessed data and parameter objects,
 ##'     without fitting the model
-##' @importFrom stats gaussian binomial poisson nlminb as.formula terms
+##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
@@ -395,7 +395,9 @@ glmmTMB <- function (
     ## store full, original formula & offset
     ## attr(fr,"formula") <- combForm  ## unnecessary?
     nobs <- nrow(fr)
-
+    weights <- as.vector(model.weights(fr))
+    if (is.null(weights)) weights <- rep(1,nobs)
+    
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
@@ -406,35 +408,21 @@ glmmTMB <- function (
     names(respCol) <- names(fr)[respCol]
 
     ## extract response variable
-    yobs <- fr[,respCol]
+    ## (name *must* be 'y' to match guts of family()$initialize
+    y <- fr[,respCol]
 
-    err0 <- "response variable must be a numeric vector"
-    if (!is.numeric(yobs) || is.matrix(yobs)) {
-        if (family$family!="binomial") {
-            stop(err0)
-        } else {
-            ## allow factor/logical values as in glm() (?)
-            if (is.matrix(yobs)) {
-                err <- c(err0,
-                         " (use probability as response vector, ",
-                         "and use 'weights' for sample size)")
-                stop(err)
-            }
-            if (is.factor(yobs)) {
-                ## ‘success’ is interpreted as the factor not
-                ## having the first level (and hence usually of having the
-                ## second level).
-                yobs <- pmin(as.numeric(yobs)-1,1)
-            } else {
-                yobs <- as.numeric(yobs)
-            }
-        }
+    ## (1) transform 'y' appropriately for binomial models
+    ##     (2-column matrix, factor, logical -> numeric)
+    ## (2) warn on 
+    etastart <- start <- mustart <- NULL
+    if (!is.null(family$initialize)) {
+        eval(family$initialize)
     }
     
     TMBStruc <- eval.parent(
         mkTMBStruc(formula, ziformula, dispformula,
                    mf, fr,
-                   yobs, offset, weights,
+                   y, offset, weights,
                    familyStr, link))
 
     ## short-circuit
