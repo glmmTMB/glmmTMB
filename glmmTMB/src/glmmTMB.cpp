@@ -309,9 +309,16 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
 	break;
       case beta_family:
-	stmp = (mu(i) * mu(i) - mu(i) + phi(i)) / phi(i);
-	s1 = -mu(i) * stmp;
-	s2 = (mu(i) - Type(1)) * stmp;
+	// original:
+	// stmp = (mu(i) * mu(i) - mu(i) + phi(i)) / phi(i);
+	// s1 = -mu(i) * stmp;
+	// s2 = (mu(i) - Type(1)) * stmp;
+        // or as in dbetabinom:
+	// s1 = mu(i) * mu(i) / phi(i);
+	// s2 = phi(i) / mu(i);
+        // as in emdbook::dbetabinom
+        s1 = mu(i)/phi(i);
+        s2 = (Type(1)-mu(i))/phi(i);
 	tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
 	break;
       case betabinomial_family:
@@ -321,7 +328,7 @@ Type objective_function<Type>::operator() ()
 	break;
       case nbinom1_family:
 	s1 = mu(i);
-	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guaranties that var >= mu
+	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
 	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
 	break;
       case nbinom2_family:
