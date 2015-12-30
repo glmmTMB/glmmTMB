@@ -4,14 +4,17 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp,
      package = "lme4")
 
-context("Basic methods tests")
+context("basic methods")
 
 fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
 fm0 <- update(fm2, . ~ . -Days)
 fm2P <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
                family=poisson)
-fm2NB <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
-               family=list(family="nbinom2",link="log"))
+
+## gives warnings (crazy model ...)
+fm2NB <- suppressWarnings(
+    glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
+               family=list(family="nbinom2",link="log")))
                
 test_that("Fitted and residuals", {
     expect_equal(length(fitted(fm2)),nrow(sleepstudy))
