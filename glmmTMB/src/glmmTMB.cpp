@@ -309,16 +309,9 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
 	break;
       case beta_family:
-	// original:
-	// stmp = (mu(i) * mu(i) - mu(i) + phi(i)) / phi(i);
-	// s1 = -mu(i) * stmp;
-	// s2 = (mu(i) - Type(1)) * stmp;
-        // or as in dbetabinom:
-	// s1 = mu(i) * mu(i) / phi(i);
-	// s2 = phi(i) / mu(i);
-        // as in emdbook::dbetabinom
-        s1 = mu(i)/phi(i);
-        s2 = (Type(1)-mu(i))/phi(i);
+        // parameterization after Ferrari and Cribari-Neto 2004, betareg package
+        s1 = mu(i)*phi(i);
+        s2 = (Type(1)-mu(i))*phi(i);
 	tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
 	break;
       case betabinomial_family:
