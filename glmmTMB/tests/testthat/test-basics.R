@@ -123,7 +123,7 @@ test_that("Update Binomial", {
 test_that("internal structures", {
   ## RE terms only in cond and zi model, not disp: GH #79
   expect_equal(names(fm0$modelInfo$reTrms),
-               c("condList","ziList"))
+               c("cond","zi"))
 })
 
 test_that("close to lme4 results", {
@@ -193,9 +193,9 @@ test_that("basic zero inflation", {
 
 test_that("alternative binomial model specifications", {
     d <- data.frame(y=1:10,N=20,x=1)
-    expect_error(glmmTMB(cbind(y,N-y) ~ 1, data=d,
-                         family=binomial()),
-                 "use probability as response vector")
+    m0 <- glmmTMB(cbind(y,N-y) ~ 1, data=d, family=binomial())
+    m3 <- glmmTMB(y/N ~ 1, weights=N, data=d, family=binomial())
+    expect_equal(fixef(m0),fixef(m3))
     m1 <- glmmTMB((y>5)~1,data=d,family=binomial)
     m2 <- glmmTMB(factor(y>5)~1,data=d,family=binomial)
     expect_equal(c(unname(logLik(m1))),-6.931472,tol=1e-6)
