@@ -2,7 +2,7 @@ stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
 
-context("VarCorr Testing")
+context("VarCorr")
 ##       ---------------
 
 data("Orthodont", package="nlme")
@@ -85,10 +85,10 @@ expect_equal(head(xx,3),
 
 ## non-trivial dispersion model
 data(sleepstudy, package="lme4")
-fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject),
+fm3 <- glmmTMB(Reaction ~ Days +     (1|Subject),
                dispformula=~ Days, sleepstudy)
-cc0 <- capture.output(print(fm1))
-cc1 <- capture.output(print(summary(fm1)))
+cc0 <- capture.output(print(fm3))
+cc1 <- capture.output(print(summary(fm3)))
 expect_true(any(grepl("Dispersion model:",cc0)))
 expect_true(any(grepl("Dispersion model:",cc1)))
 
@@ -96,7 +96,8 @@ expect_true(any(grepl("Dispersion model:",cc1)))
 # not simulated this way, but returns right structure
 gm <- glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a), data=mydata, family=poisson())
 ## eight updateCholesky() warnings .. which will suppress *unless* they are in the last iter.
-str(gm.r <- gm$obj$env$report())
+if (FALSE) {
+    str(gm.r <- gm$obj$env$report())
 ## List of 4
 ##  $ corrzi:List of 1
 ##   ..$ : num [1:2, 1:2] 1 0.929 0.929 1
@@ -106,6 +107,7 @@ str(gm.r <- gm$obj$env$report())
 ##   ..$ : num [1:2, 1:2] 1 0.921 0.921 1
 ##  $ sd    :List of 1
 ##   ..$ : num [1:2] 0.779 1.575
+}
 
 vc <- VarCorr(fm1)  ## default print method: standard dev and corr
 
@@ -133,9 +135,9 @@ expect_equal(c3,
                " Subject  (Intercept) 4.814050       ",
                "          age         0.046192 -0.582", 
                " Residual             1.716203       "))
-quit()
-##===  Not yet :
 
-as.data.frame(vc)
-as.data.frame(vc,order="lower.tri")
+if (FALSE) {  ## not yet ...
+    as.data.frame(vc)
+    as.data.frame(vc,order="lower.tri")
+}
 

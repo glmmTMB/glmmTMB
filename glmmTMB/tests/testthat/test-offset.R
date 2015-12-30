@@ -1,7 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-context("Testing offsets")
+context("offsets")
 
 set.seed(101)
 n <- 10000
