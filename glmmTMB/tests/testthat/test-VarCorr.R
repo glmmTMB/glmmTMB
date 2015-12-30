@@ -28,14 +28,17 @@ data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
 fmPix1 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
                   data = Pixel)
-
 fmPix1B <-   lmer(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
                   data = Pixel)
-## expect_equal(VarCorr(fmPix1)[["cond"]],
-##           unclass(VarCorr(fmPix1B)))
+
+vPix1B <- unlist(lapply(VarCorr(fmPix1B),c))
+vPix1 <- unlist(lapply(VarCorr(fmPix1)[["cond"]],c))
+
 
 ## "manual"  (1 | Dog / Side) :
-fmPix3 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Dog) + (1 | Side:Dog), data = Pixel)
+fmPix3 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Dog) +
+                      (1 | Side:Dog), data = Pixel)
+vPix3 <- unlist(lapply(VarCorr(fmPix3)[["cond"]],c))
 
 fmP1.r <- fmPix1$obj$env$report()
 ## str(fmP1.r)
@@ -58,30 +61,16 @@ dd <- data.frame(a=gl(10,100), b = rnorm(1000))
 test2 <- suppressMessages(simulate(~1+(b|a), newdata=dd, family=poisson,
                   newparams= list(beta = c("(Intercept)" = 1),
                                   theta = c(1,1,1))))
+
 ## Zero-inflation : set all i.0 indices to 0:
 i.0 <- sample(c(FALSE,TRUE), 1000, prob=c(.3,.7), replace=TRUE)
 test2[i.0, 1] <- 0
 mydata <- cbind(dd, test2)
-expect_equal(head(mydata),
-             structure(list(a = structure(c(1L, 1L, 1L, 1L, 1L, 1L),
-               .Label = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10"),
-               class = "factor"), 
-    b = c(0.585528817843856, 0.709466017509524, -0.109303314681054, 
-    -0.453497173462763, 0.605887455840393, -1.81795596770373), 
-    sim_1 = c(40, 38, 8, 0, 0, 0)),
-          .Names = c("a", "b", "sim_1"),
-          row.names = c("1", "2", "3", "4", "5", "6"), class = "data.frame"),
-        tol=1e-5)
 
 ## The zeros in the 10 groups:
 xx <- xtabs(~ a + (sim_1 == 0), mydata)
-expect_equal(head(xx,3),
-             structure(c(23L, 16L, 21L, 77L, 84L, 79L),
-                       .Dim = c(3L, 2L),
-                       .Dimnames = structure(list(
-                       a = c("1", "2", "3"),
-                       `sim_1 == 0` = c("FALSE", "TRUE")),
-                       .Names = c("a", "sim_1 == 0")), class = "table"))
+
+## FIXME: actually need to fit this!
 
 ## non-trivial dispersion model
 data(sleepstudy, package="lme4")
@@ -94,7 +83,8 @@ expect_true(any(grepl("Dispersion model:",cc1)))
 
 
 # not simulated this way, but returns right structure
-gm <- glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a), data=mydata, family=poisson())
+gm <- suppressWarnings(glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a),
+                               data=mydata, family=poisson()))
 ## eight updateCholesky() warnings .. which will suppress *unless* they are in the last iter.
 if (FALSE) {
     str(gm.r <- gm$obj$env$report())
