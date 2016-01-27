@@ -20,9 +20,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        ziPredictCode="corrected",
                        doPredict=0) {
 
-  condList  <- getXReTrms(formula, mf, fr)
-  ziList    <- getXReTrms(ziformula, mf, fr)
-  dispList  <- getXReTrms(dispformula, mf, fr, ranOK=FALSE, "dispersion")
+    ## n.b. eval.parent() chain needs to be preserved because
+    ## we are going to try to eval(mf) at the next level down,
+    ## need to be able to find data etc.
+    condList  <- eval.parent(getXReTrms(formula, mf, fr))
+    ziList    <- eval.parent(getXReTrms(ziformula, mf, fr))
+    dispList  <- eval.parent(getXReTrms(dispformula, mf, fr,
+                                        ranOK=FALSE, "dispersion"))
 
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -108,16 +112,14 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     } else {
         mf$formula <- fixedform
 
-        ## FIXME: make sure that predvars are captured appropriately
-
-        ## attr(attr(fr,"terms"), "predvars.fixed") <-
-        ##    attr(attr(fixedfr,"terms"), "predvars")
-
+        terms_fixed <- terms(eval.parent(mf))
+        
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(fixedform, fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
-        
-        terms <- list(fixed=terms(fixedform))
+
+        terms <- list(fixed=terms(terms_fixed))
+
     }
     ## ran-effects model frame (for predvars)
     ## important to COPY formula (and its environment)?
@@ -127,6 +129,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         ss <- integer(0)
     } else {
+
+        ## FIXME: check whether predvars are carried along correctly in terms
         if (!ranOK) stop("no random effects allowed in ", type, " term")
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
@@ -388,7 +392,8 @@ glmmTMB <- function (
     }
 
     mf$formula <- combForm
-    fr <- eval(mf, parent.frame())
+    fr <- eval.parent(mf)
+    
     ## FIXME: throw an error *or* convert character to factor
     ## convert character vectors to factor (defensive)
     ## fr <- factorize(fr.form, fr, char.only = TRUE)
@@ -418,11 +423,12 @@ glmmTMB <- function (
     if (!is.null(family$initialize)) {
         eval(family$initialize)
     }
-    
+
+    ## eval.parent() necessary because we will try to eval(mf) down below
     TMBStruc <- eval.parent(
         mkTMBStruc(formula, ziformula, dispformula,
                    mf, fr,
-                   y, offset, weights,
+                   yobs=y, offset, weights,
                    familyStr, link))
 
     ## short-circuit

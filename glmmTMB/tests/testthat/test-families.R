@@ -19,7 +19,7 @@ test_that("beta", {
      mu <- plogis(eta)
      y <- rbeta(nobs,shape1=mu/phi,shape2=(1-mu)/phi)
      y <- pmin(1-eps,pmax(eps,y))
-     dd <- data.frame(x,y,f)
+     dd <<- data.frame(x,y,f) ## global assignment for testthat
      
      m1 <- glmmTMB(y~x+(1|f),family=list(family="beta",link="logit"),
                    data=dd)
