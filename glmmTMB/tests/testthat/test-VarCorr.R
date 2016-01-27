@@ -7,12 +7,12 @@ context("VarCorr")
 
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
-fm1C <-    lmer(distance ~ age + (age|Subject), data = Orthodont,
+fm1C <-   lmer(distance ~ age + (age|Subject), data = Orthodont,
                REML=FALSE) # to compare
 gm1 <- glmmTMB(incidence/size ~ period + (1 | herd),
                weights=size,
                data = cbpp, family = binomial)
-gm1C <- glmer(incidence/size ~ period + (1 | herd),
+gm1C <-  glmer(incidence/size ~ period + (1 | herd),
               weights=size,
               data = cbpp, family = binomial)
 
@@ -82,9 +82,16 @@ expect_true(any(grepl("Dispersion model:",cc0)))
 expect_true(any(grepl("Dispersion model:",cc1)))
 
 
+## ??? wrong context?
 # not simulated this way, but returns right structure
-gm <- suppressWarnings(glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a),
-                               data=mydata, family=poisson()))
+test_that("weird variance structure", {
+    mydata <- cbind(dd, test2)
+    gm <- suppressWarnings(glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a),
+                                   data=mydata, family=poisson()))
+    ## FIXME: when printed gives
+    ##   Error: length(cnms) == (nc <- length(cor)) is not TRUE
+})
+
 ## eight updateCholesky() warnings .. which will suppress *unless* they are in the last iter.
 if (FALSE) {
     str(gm.r <- gm$obj$env$report())
