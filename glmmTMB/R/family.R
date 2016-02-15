@@ -25,4 +25,16 @@ nbinom1 <- function(link="log") {
            }))
 }
 
-
+## similar to mgcv::betar(), but simplified (variance has two parameters
+##  rather than retrieving a variable from the environment); initialize()
+##  tests for legal response values
+betar <- function(link="logit") {
+    return(list(family="betar",link=link,
+                variance=function(mu,phi) {
+                    mu*(1-mu)/(1+phi)
+                },
+                initialize=expression({
+                    if (any(y <= 0 | y >= 1)) 
+                        stop("y values must be 0 < y < 1")
+                })))
+}
