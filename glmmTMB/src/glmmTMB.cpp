@@ -18,6 +18,7 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
+
   template<class Type>
   bool isNA(Type x){
     return R_IsNA(asDouble(x));
@@ -289,7 +290,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etad);
 
   // Observation likelihood
-  Type s1, s2, stmp;
+  Type s1, s2, s3, stmp;
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
     if ( !glmmtmb::isNA(yobs(i)) ) {
@@ -329,7 +330,17 @@ Type objective_function<Type>::operator() ()
 	s2 = mu(i) * (Type(1) + mu(i) / phi(i));
 	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
 	break;
-	// TODO: Implement remaining families
+      case truncated_nbinom2_family:
+        // FIXME: handle y=0 cases appropriately
+        //    easiest: throw error in R if any(y==0)
+        //    or: take ignoreZeros flag, return 1
+        // special case needed for mu << 1 ?
+	s1 = mu(i);
+        s3 = Type(1) + mu(i) / phi(i); // = 1/prob in (prob,phi) param.
+	s2 = mu(i) * s3;               // variance
+        s3 = Type(1)-pow(Type(1)/s3,phi(i)); // 1-prob(0)
+        tmp_loglik = weights(i) * (dnbinom2(yobs(i), s1, s2, true)-log(s3));
+        break;
       default:
 	error("Family not implemented!");
       } // End switch
