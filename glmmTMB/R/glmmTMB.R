@@ -244,12 +244,17 @@ getReStruc <- function(reTrms, ss=NULL) {
                          blockCode = covCode[i]
                          )
                 if(ss[i] == "ar1"){
+                    ## FIXME: Keep this warning ?
+                    if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                        warning("AR1 not meaningful with intercept")
+                }
+                if(ss[i] == "ou"){
                     ## FIXME: Find proper way to pass data associated
                     ## with factor levels (such as numeric 'times') to
                     ## struct. For now, assume levels correspond to
                     ## equally spaced time points.
                     if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                        warning("AR1 not meaningful with intercept")
+                        warning("OU not meaningful with intercept")
                     tmp$times <- seq_along( reTrms$cnms[[i]] )
                 }
                 tmp
