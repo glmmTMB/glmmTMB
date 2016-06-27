@@ -13,7 +13,8 @@ residsd <- .01
 x <- rnorm(n, mux, sdx)
 o <- 2*x+100
 y <- a*x+b+o+rnorm(n, sd=residsd)
-dat <- data.frame(y=y, x=x, o=o)
+## global assignment for testthat
+dat <<- data.frame(y=y, x=x, o=o)
 m.lm <- lm(y~x, offset=o, dat)
 
 test_that("LM with offset as argument", {
