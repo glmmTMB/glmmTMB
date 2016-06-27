@@ -33,7 +33,8 @@ Suggests:
     lattice,
     ggplot2,
     mlmRev,
-    bbmle
+    bbmle,
+    pscl
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE

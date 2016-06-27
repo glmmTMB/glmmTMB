@@ -4,14 +4,17 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp,
      package = "lme4")
 
-context("Basic methods tests")
-
 fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
 fm0 <- update(fm2, . ~ . -Days)
 fm2P <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
                family=poisson)
-fm2NB <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
-               family=list(family="nbinom2",link="log"))
+
+context("basic methods")
+
+## gives warnings (crazy model ...)
+fm2NB <- suppressWarnings(
+    glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
+               family=list(family="nbinom2",link="log")))
                
 test_that("Fitted and residuals", {
     expect_equal(length(fitted(fm2)),nrow(sleepstudy))
@@ -49,3 +52,15 @@ test_that("anova", {
       aa <- anova(fm0,fm2)
       expect_equal(aa$AIC,c(1785.48,1763.94),tol=1e-4)
           })
+
+test_that("terms", {
+    ## test whether terms() are returned with predvars for doing
+    ## model prediction etc. with complex bases
+    dd <<- data.frame(x=1:10,y=1:10)
+    require("splines")
+    m <- glmmTMB(y~ns(x,3),dd)
+    ## if predvars is not properly attached to term, this will
+    ## fail as it tries to construct a 3-knot spline from a single point
+    model.matrix(delete.response(terms(m)),data=data.frame(x=1))
+})
+

@@ -6,7 +6,10 @@ data(sleepstudy, cbpp,
 
 data(quine, package="MASS")
 
-cbpp <- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
+## n.b. for test_that, this must be assigned within the global
+## environment ...
+
+cbpp <<- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 
 ## utility: hack/replace parts of the updated result that will
 ##  be cosmetically different
@@ -73,15 +76,14 @@ test_that("Sleepdata Variance components", {
     ## TODO: Variance Components ("theta"s)
 })
 
-## Basic Binomial CBPP examples ---- intercept-only fixed effect
-gm0 <- glmmTMB(prop ~ 1 +      (1|herd),
+gm0 <<- glmmTMB(prop ~ 1 +      (1|herd),
                weights = size, data = cbpp, family=binomial())
-gm1 <- glmmTMB(prop ~ period + (1|herd),
+gm1 <<- glmmTMB(prop ~ period + (1|herd),
                weights = size, data = cbpp, family=binomial())
-
-
 
 test_that("Basic Binomial CBPP examples", {
+
+    ## Basic Binomial CBPP examples ---- intercept-only fixed effect
     expect_is(gm0, "glmmTMB")
     expect_is(gm1, "glmmTMB")
     expect_equal(fixef(gm0)[[1]], c("(Intercept)" = -2.045671), tolerance = 1e-3)#lme4 results
@@ -92,26 +94,26 @@ test_that("Basic Binomial CBPP examples", {
 
 })
 
-### Multiple RE,  reordering
-tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs),
-                weights = size, data = cbpp, family=binomial())
-tmb2 <- glmmTMB(prop ~ period + (1|obs) + (1|herd),
-                weights = size, data = cbpp, family=binomial())
-
 test_that("Multiple RE, reordering", {
- expect_equal(fixef(tmb1), fixef(tmb2),                   tolerance = 1e-13)
- expect_equal(getME(tmb1, "theta"), getME(tmb2, "theta"), tolerance = 1e-13)
+    ### Multiple RE,  reordering
+
+    tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs),
+                    weights = size, data = cbpp, family=binomial())
+    tmb2 <- glmmTMB(prop ~ period + (1|obs) + (1|herd),
+                    weights = size, data = cbpp, family=binomial())
+    expect_equal(fixef(tmb1), fixef(tmb2),                   tolerance = 1e-13)
+    expect_equal(getME(tmb1, "theta"), getME(tmb2, "theta"), tolerance = 1e-13)
 })
 
 test_that("Alternative family specifications [via update(.)]", {
-  ## intercept-only fixed effect
-  expect_equal(gm0, matchForm(gm0, update(gm0, family= "binomial")))
-  expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial())))
-  expect_equal(gm0, matchForm(gm0, update(gm0, family= list(family = "binomial",
+    ## intercept-only fixed effect
+    
+    expect_equal(gm0, matchForm(gm0, update(gm0, family= "binomial")))
+    expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial())))
+    expect_equal(gm0, matchForm(gm0, update(gm0, family= list(family = "binomial",
                                                        link = "logit")),
                               family=TRUE))
 })
-
 
 test_that("Update Binomial", {
   ## matchForm(): call doesn't match (formula gets mangled?)
@@ -123,7 +125,7 @@ test_that("Update Binomial", {
 test_that("internal structures", {
   ## RE terms only in cond and zi model, not disp: GH #79
   expect_equal(names(fm0$modelInfo$reTrms),
-               c("condList","ziList"))
+               c("cond","zi"))
 })
 
 test_that("close to lme4 results", {
@@ -172,14 +174,17 @@ test_that("close to lme4 results", {
 
 context("trickier examples")
 
+data(Owls)
+Owls <<- transform(Owls,
+                   ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE),
+                   NCalls= SiblingNegotiation) 
+
 test_that("basic zero inflation", {
-	data(Owls)
-	Owls <- transform(Owls,ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE),
-							NCalls= SiblingNegotiation) 
 	expect_true(require("pscl"))
 	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
-        offset(logBroodSize), 
-        ziformula=~1, data = Owls, family=poisson(link = "log"))
+                              offset(logBroodSize), 
+                          ziformula=~1, data = Owls,
+                          family=poisson(link = "log"))
 	o0.pscl <-zeroinfl(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
         offset(logBroodSize)|1, data = Owls)
     expect_equal(summary(o0.pscl)$coefficients$count, summary(o0.tmb)$coefficients$cond, tolerance=1e-5)
@@ -192,10 +197,10 @@ test_that("basic zero inflation", {
 })
 
 test_that("alternative binomial model specifications", {
-    d <- data.frame(y=1:10,N=20,x=1)
-    expect_error(glmmTMB(cbind(y,N-y) ~ 1, data=d,
-                         family=binomial()),
-                 "use probability as response vector")
+    d <<- data.frame(y=1:10,N=20,x=1) ## n.b. global assignment for testthat
+    m0 <- glmmTMB(cbind(y,N-y) ~ 1, data=d, family=binomial())
+    m3 <- glmmTMB(y/N ~ 1, weights=N, data=d, family=binomial())
+    expect_equal(fixef(m0),fixef(m3))
     m1 <- glmmTMB((y>5)~1,data=d,family=binomial)
     m2 <- glmmTMB(factor(y>5)~1,data=d,family=binomial)
     expect_equal(c(unname(logLik(m1))),-6.931472,tol=1e-6)

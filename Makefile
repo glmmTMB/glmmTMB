@@ -69,8 +69,14 @@ $(PACKAGE).pdf: $(PACKAGE)/man/*.Rd
 	rm -f $(PACKAGE).pdf
 	$(R) CMD Rd2pdf --no-preview $(PACKAGE)
 
-check:
-	$(R) CMD check $(PACKAGE)
+build:
+	$(R) CMD build $(PACKAGE)
+
+check: $(TARBALL)
+	$(R) CMD check $(TARBALL)
+
+check-cran: $(TARBALL)
+	$(R) CMD check --as-cran $(TARBALL)
 
 ## *NOT* using 'R --vanilla' : then cannot find testthat, TMB, etc they are installed into R's "system" library
 

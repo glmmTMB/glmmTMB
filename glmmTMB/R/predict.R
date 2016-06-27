@@ -31,25 +31,30 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   if (!missing(re.form)) stop("re.form not yet implemented")
   if (allow.new.levels) stop("allow.new.levels not yet implemented")
-  mf <- object$call
+  mc <- mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
   ## do we want to re-do this part???
 
+  ## need to 'fix' call to proper model.frame call whether or not
+  ## we have new data, because 
+  m <- match(c("subset", "weights", "na.action", "offset"),
+             names(mf), 0L)
+  mf <- mf[c(1L, m)]
+  mf$drop.unused.levels <- TRUE
+  mf[[1]] <- as.name("model.frame")
+  mf$formula <- object$modelInfo$allForm$combForm
   if (is.null(newdata)) {
+      mf$data <- mc$data ## restore original data
       newFr <- object$fr
   } else {
-      m <- match(c("subset", "weights", "na.action", "offset"),
-                 names(mf), 0L)
-      mf <- mf[c(1L, m)]
-      mf$drop.unused.levels <- TRUE
       mf$data <- newdata
-      mf[[1]] <- as.name("model.frame")
-
-      mf$formula <- object$modelInfo$allForm$combForm
-      newFr <- eval(mf, parent.frame())
+      newFr <- eval.parent(mf)
   }
-  respCol <- match(respNm <- names(object$modelInfo$respCol),names(newFr))
+    
+  omi <- object$modelInfo  ## shorthand
+
+  respCol <- match(respNm <- names(omi$respCol),names(newFr))
   ## create *or* overwrite response column for prediction data with NA
   newFr[[respNm]] <- NA
 
@@ -59,7 +64,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## append to existing model frame
   augFr <- rbind(object$fr,newFr)
 
-  yobs <- augFr[[names(object$modelInfo$respCol)]]
+  yobs <- augFr[[names(omi$respCol)]]
 
   ## match zitype arg with internal name
   ziPredNm <- switch(match.arg(zitype),
@@ -68,16 +73,24 @@ predict.glmmTMB <- function(object,newdata=NULL,
                          zprob="prob",
                        stop("unknown zitype ",zitype))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
-  TMBStruc <- with(object$modelInfo,
-                   ## FIXME: make first arg of mkTMBStruc into a formula list
-                   mkTMBStruc(allForm$formula,
-                              allForm$ziformula,allForm$dispformula,
-                         mf,augFr,
-                         yobs=augFr[[names(respCol)]],
-                         offset=NULL,weights=NULL,
-                         family=familyStr,link=link,
-                         ziPredictCode=ziPredNm,
-                         doPredict=1))
+
+  ## need eval.parent() because we will do eval(mf) down below ...
+    om <- object$modelInfo
+    TMBStruc <- 
+        ## FIXME: make first arg of mkTMBStruc into a formula list
+        ## with() interfering with eval.parent() ?
+        eval.parent(mkTMBStruc(omi$allForm$formula,
+                               omi$allForm$ziformula,
+                               omi$allForm$dispformula,
+                               mf,
+                               fr=augFr,
+                               yobs=augFr[[names(omi$respCol)]],
+                               offset=NULL,
+                               weights=NULL,
+                               family=omi$familyStr,
+                               link=omi$link,
+                               ziPredictCode=ziPredNm,
+                               doPredict=1))
 
   ## short-circuit
   if(debug) return(TMBStruc)
