@@ -31,7 +31,18 @@ test_that("Fitted and residuals", {
 })
 
 test_that("Predict", {
-     expect_equal(predict(fm2),predict(fm2,newdata=sleepstudy))
+    expect_equal(predict(fm2),predict(fm2,newdata=sleepstudy))
+    pr2se <- predict(fm2, se.fit=TRUE)
+    i <- sample(nrow(sleepstudy), 20)
+    newdata <- sleepstudy[i, ]
+    pr2sub <- predict(fm2, newdata=newdata, se.fit=TRUE)
+    expect_equivalent(pr2se$fit, predict(fm2))
+    expect_equivalent(pr2se$fit[i], pr2sub$fit)
+    expect_equivalent(pr2se$se.fit[i], pr2sub$se.fit)
+    expect_equal(unname( pr2se$   fit[1] ), 254.2208, tol=1e-4)
+    expect_equal(unname( pr2se$se.fit[1] ), 12.94514, tol=1e-4)
+    expect_equal(unname( pr2se$   fit[100] ), 457.9684, tol=1e-4)
+    expect_equal(unname( pr2se$se.fit[100] ), 14.13943, tol=1e-4)
  })
 
 
