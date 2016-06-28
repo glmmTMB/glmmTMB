@@ -5,14 +5,14 @@
 \alias{VarCorr.glmmTMB}
 \title{Extract variance and correlation components}
 \usage{
-\method{VarCorr}{glmmTMB}(x, sigma = 1, rdig = 3)
+\method{VarCorr}{glmmTMB}(x, sigma = 1, ...)
 }
 \arguments{
 \item{x}{a fitted \code{glmmTMB} model}
 
 \item{sigma}{residual standard deviation (usually set automatically from internal information)}
 
-\item{rdig}{ignored: for \code{nlme} compatibility}
+\item{extra}{arguments (for consistency with generic method)}
 }
 \description{
 Extract variance and correlation components

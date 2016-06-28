@@ -84,15 +84,17 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' @aliases VarCorr
 ##' @param x a fitted \code{glmmTMB} model
 ##' @param sigma residual standard deviation (usually set automatically from internal information)
-##' @param rdig ignored: for \code{nlme} compatibility
+##' @param extra arguments (for consistency with generic method)
 ##' @importFrom nlme VarCorr
 ## and re-export the generic:
 ##' @export VarCorr
 ##' @export
 ##' @keywords internal
-VarCorr.glmmTMB <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
+VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 {
     ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
+    ## FIXME:: do we need 'sigma' any more (now that nlme generic
+    ##         doesn't have it?)
     stopifnot(is.numeric(sigma), length(sigma) == 1)
     xrep <- x$obj$env$report()
     reT <- x$modelInfo$reTrms
