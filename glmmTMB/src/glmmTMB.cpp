@@ -269,6 +269,7 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
   DATA_INTEGER(doPredict);
+  DATA_IVECTOR(whichPredict);
 
   // Joint negative log-likelihood
   Type jnll = 0;
@@ -401,11 +402,12 @@ Type objective_function<Type>::operator() ()
     }
   }
 
-  REPORT(mu);
+  whichPredict -= 1; // R-index -> C-index
+  vector<Type> mu_predict = mu(whichPredict);
+  REPORT(mu_predict);
   // ADREPORT expensive for long vectors - only needed by predict()
-  // method. FIXME: May even consider reducing mu to some subset
-  // before ADREPORTing.
-  if (doPredict) ADREPORT(mu);
+  // method.
+  if (doPredict) ADREPORT(mu_predict);
 
   return jnll;
 }
