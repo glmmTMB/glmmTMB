@@ -65,7 +65,7 @@ test2 <- suppressMessages(simulate(~1+(b|a), newdata=dd, family=poisson,
 ## Zero-inflation : set all i.0 indices to 0:
 i.0 <- sample(c(FALSE,TRUE), 1000, prob=c(.3,.7), replace=TRUE)
 test2[i.0, 1] <- 0
-mydata <- cbind(dd, test2)
+mydata <<- cbind(dd, test2)  ## GLOBAL
 
 ## The zeros in the 10 groups:
 xx <- xtabs(~ a + (sim_1 == 0), mydata)

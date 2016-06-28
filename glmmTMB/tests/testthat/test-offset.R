@@ -11,7 +11,7 @@ a <- .1
 b <- 0
 residsd <- .01
 x <- rnorm(n, mux, sdx)
-o <- 2*x+100
+o <<- 2*x+100
 y <- a*x+b+o+rnorm(n, sd=residsd)
 ## global assignment for testthat
 dat <<- data.frame(y=y, x=x, o=o)

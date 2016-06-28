@@ -27,7 +27,10 @@ d2=transform(d2,
 	fac=paste0(fac, 2),
 	disp="five")
 
-dat=rbind(d1, d2)
+## global assignment for testthat
+dat <<- rbind(d1, d2)
 
-m0=glmmTMB(x~disp+(1|t)+(1|fac), dispformula=~disp, dat)
-expect_equal(unname(fixef(m0)$disp), c(log(10^2), log(5^2)-log(10^2)), tol=1e-2)
+test_that("disp calc", {
+    m0 <- glmmTMB(x~disp+(1|t)+(1|fac), dispformula=~disp, dat)
+    expect_equal(unname(fixef(m0)$disp), c(log(10^2), log(5^2)-log(10^2)), tol=1e-2)
+})
