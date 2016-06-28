@@ -18,7 +18,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        yobs, offset, weights,
                        family, link,
                        ziPredictCode="corrected",
-                       doPredict=0) {
+                       doPredict=0,
+                       whichPredict=integer(0)) {
 
     ## n.b. eval.parent() chain needs to be preserved because
     ## we are going to try to eval(mf) at the next level down,
@@ -60,7 +61,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     family = .valid_family[family],
     link = .valid_link[link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
-    doPredict = doPredict
+    doPredict = doPredict,
+    whichPredict = whichPredict
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
