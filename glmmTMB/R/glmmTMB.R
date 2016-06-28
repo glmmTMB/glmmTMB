@@ -11,6 +11,7 @@
 ##' @param link character
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
+##' @param whichPredict which observations in model frame represent predictions
 ##' @keywords internal
 ##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
