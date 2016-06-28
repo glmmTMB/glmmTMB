@@ -1,7 +1,7 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
 Version: 0.0.2
-Date: 2015-11-30
+Date: 2016-6-28
 Authors@R: c(person("Arni","Magnusson",role="aut"),
 	    person("Hans","Skaug",role="aut"),
 	    person("Anders","Nielsen",role="aut"),
