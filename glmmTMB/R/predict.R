@@ -64,6 +64,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## append to existing model frame
   augFr <- rbind(object$fr,newFr)
 
+  w <- which(is.na(augFr[[respNm]]))
+
   yobs <- augFr[[names(omi$respCol)]]
 
   ## match zitype arg with internal name
@@ -90,7 +92,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                family=omi$familyStr,
                                link=omi$link,
                                ziPredictCode=ziPredNm,
-                               doPredict=1))
+                               doPredict=as.integer(se.fit)))
 
   ## short-circuit
   if(debug) return(TMBStruc)
@@ -105,17 +107,18 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   oldPar <- object$fit$par
   newObj$fn(oldPar)  ## call once to update internal structures
-  H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
-  sdr <- sdreport(newObj,oldPar,hessian.fixed=H)
-  sdr.rpt <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
-  ## now strip off original values
-  w <- which(is.na(augFr[[respNm]]))
-
-  pred <- sdr.rpt[w, , drop=FALSE]
+  lp <- newObj$env$last.par
 
   if (!se.fit) {
-      return(pred[,"Estimate"])
+      return(newObj$report(lp)$mu[w])
   } else {
+      H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
+      ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
+      ##        call to fix memory issue (requires recent TMB version)
+      sdr <- sdreport(newObj,oldPar,hessian.fixed=H)
+      sdr.rpt <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
+      ## now strip off original values
+      pred <- sdr.rpt[w, , drop=FALSE]
       return(list(fit=pred[,"Estimate"],
                   se.fit=pred[,"Std. Error"]))
   }
