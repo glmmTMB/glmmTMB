@@ -77,8 +77,8 @@ test_that("nbinom", {
 
 test_that("truncated", {
     set.seed(101)
-    z <- rnbinom(1000,size=2,mu=exp(2))
-    z <- z[z>0]
+    z <<- rnbinom(1000,size=2,mu=exp(2))
+    z <<- z[z>0]
     g1 <- glmmTMB(z~1,family=list(family="truncated_nbinom2",
                             link="log"),
             data=data.frame(z))
