@@ -74,3 +74,14 @@ test_that("nbinom", {
        tol=1e-5)
 
  })
+
+test_that("truncated", {
+    set.seed(101)
+    z <- rnbinom(1000,size=2,mu=exp(2))
+    z <- z[z>0]
+    g1 <- glmmTMB(z~1,family=list(family="truncated_nbinom2",
+                            link="log"),
+            data=data.frame(z))
+    expect_equal(c(unname(fixef(g1)[[1]]),sigma(g1)),
+                 c(1.980207,1.892970),tol=1e-5)
+})

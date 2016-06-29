@@ -5,7 +5,8 @@
 \title{Extract info from formulas, reTrms, etc., format for TMB}
 \usage{
 mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
-  family, link, ziPredictCode = "corrected", doPredict = 0)
+  family, link, ziPredictCode = "corrected", doPredict = 0,
+  whichPredict = integer(0))
 }
 \arguments{
 \item{formula}{conditional formula}
@@ -31,6 +32,8 @@ mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
 \item{ziPredictCode}{zero-inflation code}
 
 \item{doPredict}{flag to enable sds of predictions}
+
+\item{whichPredict}{which observations in model frame represent predictions}
 }
 \description{
 Extract info from formulas, reTrms, etc., format for TMB
