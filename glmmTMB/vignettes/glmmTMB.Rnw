@@ -1,13 +1,11 @@
-\documentclass{article}
-
-% \VignetteIndexEntry{basic examples of glmmTMB usage}
-% \VignettePackage{glmmTMB}
-% \VignetteDepends{ggplot2}
-% \VignetteDepends{grid}
-% \VignetteDepends{bbmle}
-% \VignetteDepends{mlmRev}
 %\VignetteEngine{knitr::knitr}
-
+%\VignetteIndexEntry{basic examples of glmmTMB usage}
+%\VignettePackage{glmmTMB}
+%\VignetteDepends{ggplot2}
+%\VignetteDepends{grid}
+%\VignetteDepends{bbmle}
+%\VignetteDepends{mlmRev}
+\documentclass{article}
 %\usepackage{lineno}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}

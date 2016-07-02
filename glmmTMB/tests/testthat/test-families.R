@@ -58,7 +58,8 @@ test_that("nbinom", {
      ## nbinom1
      ## to simulate, back-calculate shape parameters for NB2 ...
      nbphi <- 2
-     nbvar <- nbphi*mu
+     nbvar <- nbphi*mu  ## n.b. actual model is (1+phi)*var,
+                        ## so estimate of phi is approx. 1
      ## V = mu*(1+mu/k) -> mu/k = V/mu-1 -> k = mu/(V/mu-1)
      k <- mu/(nbvar/mu - 1)
      y <- rnbinom(nobs,size=k,mu=mu)
@@ -76,12 +77,48 @@ test_that("nbinom", {
  })
 
 test_that("truncated", {
+    ## Poisson
     set.seed(101)
-    z <<- rnbinom(1000,size=2,mu=exp(2))
-    z <<- z[z>0]
-    g1 <- glmmTMB(z~1,family=list(family="truncated_nbinom2",
+    z_tp <<- rpois(1000,lambda=exp(1))
+    z_tp <<- z_tp[z_tp>0]
+    if (FALSE) {
+        ## n.b.: keep library() calls commented out, they may
+        ##   trigger CRAN complaints
+        ## library(glmmADMB)
+        g0_tp <- glmmadmb(z_tp~1,family="truncpoiss",link="log")
+        fixef(g0) ## 0.9778591
+    }
+    g1_tp <- glmmTMB(z_tp~1,family=list(family="truncated_poisson",
                             link="log"),
-            data=data.frame(z))
-    expect_equal(c(unname(fixef(g1)[[1]]),sigma(g1)),
+                  data=data.frame(z_tp))
+    expect_equal(unname(fixef(g1_tp)[[1]]),0.9778593,tol=1e-5)
+    ## nbinom2
+    set.seed(101)
+    z_nb <<- rnbinom(1000,size=2,mu=exp(2))
+    z_nb <<- z_nb[z_nb>0]
+    if (FALSE) {
+        ## library(glmmADMB)
+        g0_nb2 <- glmmadmb(z_nb~1,family="truncnbinom",link="log")
+        fixef(g0_nb2) ## 1.980207
+        g0_nb2$alpha ## 1.893
+    }
+    g1_nb2 <- glmmTMB(z_nb~1,family=list(family="truncated_nbinom2",
+                            link="log"),
+            data=data.frame(z_nb))
+    expect_equal(c(unname(fixef(g1_nb2)[[1]]),sigma(g1_nb2)),
                  c(1.980207,1.892970),tol=1e-5)
+    ## nbinom1: constant mean, so just a reparameterization of
+    ##     nbinom2 (should have the same likelihood)
+    ## phi=(1+mu/k)=1+exp(2)/2 = 4.69
+    if (FALSE) {
+        ## library(glmmADMB)
+        g0_nb1 <- glmmadmb(z_nb~1,family="truncnbinom1",link="log")
+        fixef(g0_nb1) ## 2.00112
+        g0_nb1$alpha ## 3.784
+    }
+    g1_nb1 <- glmmTMB(z_nb~1,family=list(family="truncated_nbinom1",
+                            link="log"),
+            data=data.frame(z_nb))
+    expect_equal(c(unname(fixef(g1_nb1)[[1]]),sigma(g1_nb1)),
+                 c(1.980207,3.826909),tol=1e-5)
 })

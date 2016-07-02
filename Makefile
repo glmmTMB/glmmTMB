@@ -41,6 +41,13 @@ doc-update: $(PACKAGE)/R/*.R
 	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\"))" | $(R) --slave
 	@touch doc-update
 
+## FIXME: build *all* .Rnw files in the directory
+vignette-update: $(PACKAGE)/vignettes/*.Rnw
+	cd $(PACKAGE)/vignettes
+	echo "library(knitr);knit2pdf('glmmTMB.Rnw')" | $(R) --slave
+	mv glmmTMB.pdf ../inst/doc
+	@touch vignette-update
+
 namespace-update :: $(PACKAGE)/NAMESPACE
 $(PACKAGE)/NAMESPACE: $(PACKAGE)/R/*.R
 	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\"))" | $(R) --slave
