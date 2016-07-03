@@ -298,7 +298,7 @@ cat.f <- function(...) cat(..., fill = TRUE)
     cat.f("Formula:         ", deparse(cc))
     rhs <- cc[[2]]
     if (!is.null(rhs)) {
-        pass<-nchar(as.character(rhs))
+        pass<-nchar(deparse(rhs))
     }
   }
   if(!is.null(cc <- call$ziformula))

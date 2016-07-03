@@ -25,6 +25,9 @@ nbinom1 <- function(link="log") {
            }))
 }
 
+## FIXME: add truncated families (use unconditional variance?),
+## check for zeros on initialization
+
 ## similar to mgcv::betar(), but simplified (variance has two parameters
 ##  rather than retrieving a variable from the environment); initialize()
 ##  tests for legal response values
@@ -37,4 +40,22 @@ betar <- function(link="logit") {
                     if (any(y <= 0 | y >= 1)) 
                         stop("y values must be 0 < y < 1")
                 })))
+}
+
+## fixme: better name?
+
+#' List model options that glmmTMB knows about
+#'
+#' @note these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)
+#' @param what (character) which type of model structure to report on
+#' ("all","family","link","covstruct")
+#' @export
+getCapabilities <- function(what="all") {
+    switch(what,
+           all=list(family=.valid_family,link=.valid_link,
+                    covstruct=.valid_covstruct),
+           family=.valid_family,
+           link=.valid_link,
+           covstruct=.valid_covstruct,
+           stop(sprintf("unknown option %s",what)))
 }

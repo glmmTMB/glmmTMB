@@ -43,9 +43,8 @@ doc-update: $(PACKAGE)/R/*.R
 
 ## FIXME: build *all* .Rnw files in the directory
 vignette-update: $(PACKAGE)/vignettes/*.Rnw
-	cd $(PACKAGE)/vignettes
-	echo "library(knitr);knit2pdf('glmmTMB.Rnw')" | $(R) --slave
-	mv glmmTMB.pdf ../inst/doc
+	cd $(PACKAGE)/vignettes; echo "library(knitr);knit2pdf('glmmTMB.Rnw')" | $(R) --slave
+	 mv $(PACKAGE)/vignettes/glmmTMB.pdf $(PACKAGE)/inst/doc
 	@touch vignette-update
 
 namespace-update :: $(PACKAGE)/NAMESPACE
