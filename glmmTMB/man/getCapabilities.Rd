@@ -4,11 +4,16 @@
 \alias{getCapabilities}
 \title{List model options that glmmTMB knows about}
 \usage{
-getCapabilities(what = "all")
+getCapabilities(what = "all", check = FALSE)
 }
 \arguments{
 \item{what}{(character) which type of model structure to report on
 ("all","family","link","covstruct")}
+
+\item{check}{(logical) do brute-force checking to test whether families are really implemented (only available for \code{what="family"})}
+}
+\value{
+if \code{check==FALSE}, returns a vector of the names (or a list of name vectors) of allowable entries; if \code{check==TRUE}, returns a logical vector of working families
 }
 \description{
 List model options that glmmTMB knows about

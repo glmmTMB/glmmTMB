@@ -49,13 +49,33 @@ betar <- function(link="logit") {
 #' @note these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)
 #' @param what (character) which type of model structure to report on
 #' ("all","family","link","covstruct")
+#' @param check (logical) do brute-force checking to test whether families are really implemented (only available for \code{what="family"})
+#' @return if \code{check==FALSE}, returns a vector of the names (or a list of name vectors) of allowable entries; if \code{check==TRUE}, returns a logical vector of working families
 #' @export
-getCapabilities <- function(what="all") {
-    switch(what,
-           all=list(family=.valid_family,link=.valid_link,
-                    covstruct=.valid_covstruct),
-           family=.valid_family,
-           link=.valid_link,
-           covstruct=.valid_covstruct,
-           stop(sprintf("unknown option %s",what)))
+getCapabilities <- function(what="all",check=FALSE) {
+    if (!check) {
+        switch(what,
+               all=lapply(list(family=.valid_family,link=.valid_link,
+                        covstruct=.valid_covstruct),names),
+               family=names(.valid_family),
+               link=names(.valid_link),
+               covstruct=names(.valid_covstruct),
+               stop(sprintf("unknown option %s",what)))
+    } else {
+        ## run dummy models to see if we get a family-not-implemented error
+        if (what!="family") stop("'check' option only available for families")
+        families <- names(.valid_family)
+        family_OK <- setNames(rep(TRUE,length(.valid_family)),families)
+        y <- 1:3 ## dummy
+        for (f in families) {
+            tt1 <- capture.output(tt0 <- suppressMessages(suppressWarnings(
+                try(glmmTMB(y~1,
+                            family=list(family=f,link="identity")),
+                    silent=TRUE))))
+            family_OK[f] <- !(inherits(tt0,"try-error") &&
+                              grepl("Family not implemented!",tt0))
+
+        }
+        return(family_OK)
+    }
 }
