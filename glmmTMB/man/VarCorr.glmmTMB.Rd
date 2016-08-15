@@ -17,5 +17,28 @@
 \description{
 Extract variance and correlation components
 }
+\details{
+For an unstructured variance-covariance matrix, the internal parameters
+are structured as follows: the first n parameters are the log-standard-deviations,
+while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
+of the correlation matrix, filled in column-wise order 
+(see the \href{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}{TMB documentation}
+for further details).
+}
+\examples{
+## Comparing variance-covariance matrix with manual computation
+data("sleepstudy",package="lme4")
+fm4 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
+VarCorr(fm4)[[c("cond","Subject")]]
+## hand calculation
+pars <- getME(fm4,"theta")
+## construct cholesky factor
+L <- diag(2)
+L[lower.tri(L)] <- pars[-(1:2)]
+C <- crossprod(L)
+diag(C) <- 1
+sdvec <- exp(pars[1:2])
+(V <- outer(sdvec,sdvec) * C)
+}
 \keyword{internal}
 
