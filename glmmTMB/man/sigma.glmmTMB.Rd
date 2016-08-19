@@ -18,4 +18,9 @@ standard deviation; for other model types, retrieves the
 dispersion parameter, \emph{however it is defined for that
 particular family}.
 }
+\references{
+\itemize{
+\item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799–815.
+}
+}
 

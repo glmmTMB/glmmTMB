@@ -4,18 +4,19 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp,
      package = "lme4")
 
-fm2 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
-fm0 <- update(fm2, . ~ . -Days)
-fm2P <- glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
-               family=poisson)
+## FIXME: fit these centrally and restore, to save time
+fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
+fm0   <- update(fm2, . ~ . -Days)
+fm2P  <- update(fm2, round(Reaction) ~ ., family=poisson)
+fm2G  <- update(fm2, family=Gamma(link="log"))
+fm2NB <- update(fm2P, family=nbinom2)
+## for testing sigma() against base R
+fm3   <- update(fm2, . ~ Days)
+fm3G <-  update(fm3, family=Gamma(link="log"))
+fm3NB <- update(fm3, round(Reaction) ~ ., family=nbinom2)
 
 context("basic methods")
 
-## gives warnings (crazy model ...)
-fm2NB <- suppressWarnings(
-    glmmTMB(round(Reaction) ~ Days + (Days| Subject), sleepstudy,
-               family=list(family="nbinom2",link="log")))
-               
 test_that("Fitted and residuals", {
     expect_equal(length(fitted(fm2)),nrow(sleepstudy))
     expect_equal(mean(fitted(fm2)),298.507891)
@@ -23,11 +24,11 @@ test_that("Fitted and residuals", {
     ## Pearson and response are the same for a Gaussian model
     expect_equal(residuals(fm2,type="response"),
                  residuals(fm2,type="pearson"))
-    ## ... but not for Poisson ...
+    ## ... but not for Poisson or NB ...
     expect_false(mean(residuals(fm2P,type="response"))==
                  mean(residuals(fm2P,type="pearson")))
-    expect_error(residuals(fm2NB,type="pearson"),
-                 "variance function undefined")
+    expect_false(mean(residuals(fm2NB,type="response"))==
+                 mean(residuals(fm2NB,type="pearson")))
 })
 
 test_that("Predict", {
@@ -75,3 +76,24 @@ test_that("terms", {
     model.matrix(delete.response(terms(m)),data=data.frame(x=1))
 })
 
+test_that("summary_print", {
+    ## no dispersion printed for Gaussian or disp==1 families
+    c1 <<- capture.output(print(summary(fm2)))
+    expect_true(!any(grepl("Dispersion",c1)))
+    c2 <<- capture.output(print(summary(fm2P)))
+    expect_true(!any(grepl("Dispersion",c2)))
+    ## extract numeric dispersion from printed output 
+    c3 <<- capture.output(print(summary(fm2G)))
+    dline <- grep("Dispersion",c3,value=TRUE)
+    expect_equal(as.numeric(gsub("[^0-9.]","",dline)),0.00853)
+})
+
+test_that("sigma", {
+    s1 <<- sigma(lm(Reaction~Days,sleepstudy))
+    s2 <<- sigma(glm(Reaction~Days,sleepstudy,family=Gamma(link="log")))
+    s3 <<- MASS::glm.nb(round(Reaction)~Days,sleepstudy)
+    ## remove bias-correction
+    expect_equal(sigma(fm3),s1*(1-1/nobs(fm3)),tolerance=1e-3)
+    expect_equal(sigma(fm3G),s2,tolerance=5e-3)
+    expect_equal(s3$theta,sigma(fm3NB),tolerance=1e-4)
+})

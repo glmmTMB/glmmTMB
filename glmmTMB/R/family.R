@@ -1,4 +1,4 @@
-##' Extended family functions for glmmTMB
+##' Family functions for glmmTMB
 ##' 
 ##' @aliases family_glmmTMB
 ##' @param link (character) link function
