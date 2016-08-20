@@ -4,6 +4,12 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp,
      package = "lme4")
 
+if (getRversion() < "3.3.0") {
+    sigma.default <- function (object, use.fallback = TRUE, ...) 
+        sqrt(deviance(object, ...)/(nobs(object, use.fallback = use.fallback) - 
+                                    length(coef(object))))
+}
+
 ## FIXME: fit these centrally and restore, to save time
 fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
 fm0   <- update(fm2, . ~ . -Days)
