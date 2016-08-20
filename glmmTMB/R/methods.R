@@ -417,10 +417,9 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @param object a \dQuote{glmmTMB} object
 ##' @param type (character) residual type
 ##' @param \dots ignored, for method compatibility
-##' @importFrom stats fitted model.response
+##' @importFrom stats fitted model.response residuals
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson"),
-                              ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     type <- match.arg(type)
     r <- model.response(object$frame)-fitted(object)
     switch(type,
@@ -445,7 +444,7 @@ format.perc <- function (probs, digits) {
     "%")
 }
 
-##' @importFrom stats qnorm
+##' @importFrom stats qnorm confint
 ##' @export
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("Wald","wald",  ## ugh -- allow synonyms?
@@ -521,7 +520,7 @@ abbrDeparse <- function(x, width=60) {
 
 
 ##' @importFrom methods is
-##' @importFrom stats var getCall pchisq
+##' @importFrom stats var getCall pchisq anova
 ##' @export
 anova.glmmTMB <- function (object, ..., model.names = NULL) 
 {

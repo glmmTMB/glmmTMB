@@ -14,31 +14,30 @@ simfun0 <- function(beta=c(2,1),
     mu <- invlink(eta)
     return(data.frame(x,f,mu))
 }
-dd <- NULL
 
 context("fitting exotic families")
 test_that("beta", {
     set.seed(101)
     nobs <- 200; eps <- 0.001; phi <- 0.1
-    dd <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
-    y <- with(dd,rbeta(nobs,shape1=mu/phi,shape2=(1-mu)/phi))
-    dd <<- data.frame(dd,y=pmin(1-eps,pmax(eps,y)))
+    dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
+    y <- with(dd0,rbeta(nobs,shape1=mu/phi,shape2=(1-mu)/phi))
+    dd <<- data.frame(dd0,y=pmin(1-eps,pmax(eps,y)))
     m1 <- glmmTMB(y~x+(1|f),family=list(family="beta",link="logit"),
                   data=dd)
     expect_equal(fixef(m1)[[1]],
                  structure(c(1.98250567574413, 0.843382531038295),
-                            .Names = c("(Intercept)", "x")),
-                  tol=1e-5)
-     expect_equal(c(VarCorr(m1)[[1]][[1]]),
-                  0.432365330831596, tol=1e-5)
+                           .Names = c("(Intercept)", "x")),
+                 tol=1e-5)
+    expect_equal(c(VarCorr(m1)[[1]][[1]]),
+                 0.432365330831596, tol=1e-5)
  })
 
 test_that("nbinom", {
     nobs <- 200; phi <- 0.1
     set.seed(101)
-    dd <- simfun0(nobs=nobs)
-    ## global assignment for testthat
-    dd <<- data.frame(dd,y=rnbinom(nobs,size=phi,mu=dd$mu))
+    dd0 <- simfun0(nobs=nobs)
+    ## global assignment for testthat (??)
+    dd <- data.frame(dd0,y=rnbinom(nobs,size=phi,mu=dd0$mu))
     m1 <- glmmTMB(y~x+(1|f),family=list(family="nbinom2",link="log"),
                   data=dd)
     expect_equal(fixef(m1)[[1]],
@@ -52,13 +51,13 @@ test_that("nbinom", {
      ## nbinom1
      ## to simulate, back-calculate shape parameters for NB2 ...
      nbphi <- 2
-     nbvar <- nbphi*dd$mu  ## n.b. actual model is (1+phi)*var,
+     nbvar <- nbphi*dd0$mu  ## n.b. actual model is (1+phi)*var,
                         ## so estimate of phi is approx. 1
      ## V = mu*(1+mu/k) -> mu/k = V/mu-1 -> k = mu/(V/mu-1)
-     k <- with(dd,mu/(nbvar/mu - 1))
+     k <- with(dd0,mu/(nbvar/mu - 1))
      y <- rnbinom(nobs,size=k,mu=dd$mu)
-     dd <<- data.frame(dd,y2=y) ## global assignment for testthat
-     m1 <- glmmTMB(y2~x+(1|f),family=list(family="nbinom1",link="log"),
+     dd <- data.frame(dd0,y=y) ## global assignment for testthat
+     m1 <- glmmTMB(y~x+(1|f),family=list(family="nbinom1",link="log"),
                    data=dd)
      expect_equal(c(unname(c(fixef(m1)[[1]])),
                     c(VarCorr(m1)[[1]][[1]]),
@@ -71,15 +70,20 @@ test_that("nbinom", {
 test_that("dbetabinom", {
     set.seed(101)
     nobs <- 200; eps <- 0.001; phi <- 0.1
-    dd <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
-    p <- with(dd,rbeta(nobs,shape1=mu/phi,shape2=(1-mu)/phi))
-    p <- pmin(1-eps,pmax(p,1-eps))
+    dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
+    p <- with(dd0,rbeta(nobs,shape1=mu/phi,shape2=(1-mu)/phi))
+    p <- pmin(1-eps,pmax(p,eps))
     b <- rbinom(nobs,size=5,prob=p)
-    dd <<- data.frame(dd,y=b,N=5)
-    ## m1 <- glmmTMB(y~x+(1|f),
-    ## weights=N,
-    ## family=list(family="betabinomial",link="logit"),
-    ## data=dd)
+    dd <<- data.frame(dd0,y=b,N=5)
+    m1 <- glmmTMB(y/N~x+(1|f),
+                  weights=N,
+                  family=list(family="betabinomial",link="logit"),
+                  data=dd)
+    expect_equal(c(unname(c(fixef(m1)[[1]])),
+                   c(VarCorr(m1)[[1]][[1]]),
+                   sigma(m1)),
+                 c(2.1482114,1.0574946,0.7002534,8.3768711),
+                 tolerance=1e-5)
 })
 
 test_that("truncated", {

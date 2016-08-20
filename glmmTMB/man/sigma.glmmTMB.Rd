@@ -18,9 +18,39 @@ standard deviation; for other model types, retrieves the
 dispersion parameter, \emph{however it is defined for that
 particular family}.
 }
+\details{
+The precise value returned varies by family:
+ \describe{
+     \item{gaussian}{returns the \emph{maximum likelihood} estimate
+         of the standard deviation (i.e., smaller than the results of
+                                    \code{sigma(lm(...))} by a factor of (n-1)/n)}
+     \item{Gamma}{Internally, glmmTMB fits Gamma responses by fitting a mean
+         and a shape parameter; sigma is estimated as (1/sqrt(shape)),
+         which will typically be close (but not identical to) that estimated
+         by \code{stats:::sigma.default}, which uses sqrt(deviance/df.residual)}
+     \item{nbinom2}{\code{sigma()} returns the \emph{overdispersion parameter}
+         (usually denoted \eqn{\theta} or \eqn{k}); in contrast to
+         most other families, larger
+         \eqn{\theta} corresponds to a \emph{lower} residual variance.}
+     \item{nbinom1}{\code{sigma()} again returns an overdispersion parameter
+         (usually denoted \eqn{\alpha}):
+         in this case the conditional variance equals \eqn{\mu(1+\alpha)}.}
+     \item{beta}{The parameterization follows  Ferrari and Cribari-Neto (2004)
+         (and the \code{betareg} package): \code{sigma} returns the value
+         of \eqn{\phi}, where 
+         the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)} (i.e.,
+             increasing \eqn{\phi} decreases the variance.)}
+     \item{betabinomial}{This family uses the same parameterization (governing
+          the Beta distribution that underlies the binomial probabilities) as \code{beta}.}
+}
+
+ The most commonly used GLM families 
+ (\code{binomial}, \code{poisson}) have their dispersion parameters
+ fixed to 1.
+}
 \references{
 \itemize{
-\item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799–815.
+\item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 }
 }
 

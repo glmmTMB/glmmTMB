@@ -51,6 +51,7 @@ betar <- function(link="logit") {
 #' ("all","family","link","covstruct")
 #' @param check (logical) do brute-force checking to test whether families are really implemented (only available for \code{what="family"})
 #' @return if \code{check==FALSE}, returns a vector of the names (or a list of name vectors) of allowable entries; if \code{check==TRUE}, returns a logical vector of working families
+#' 
 #' @export
 getCapabilities <- function(what="all",check=FALSE) {
     if (!check) {
@@ -68,7 +69,7 @@ getCapabilities <- function(what="all",check=FALSE) {
         family_OK <- setNames(rep(TRUE,length(.valid_family)),families)
         y <- 1:3 ## dummy
         for (f in families) {
-            tt1 <- capture.output(tt0 <- suppressMessages(suppressWarnings(
+            tt1 <- utils::capture.output(tt0 <- suppressMessages(suppressWarnings(
                 try(glmmTMB(y~1,
                             family=list(family=f,link="identity")),
                     silent=TRUE))))
