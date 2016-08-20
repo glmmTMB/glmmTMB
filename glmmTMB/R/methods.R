@@ -394,7 +394,7 @@ print.glmmTMB <-
   ## dispersion
   ff <- x$modelInfo$familyStr
   if (usesDispersion(ff)) {
-      cat("Dispersion/variance estimate:",signif(sigma(x),3),"\n")
+      cat("Dispersion/standard deviation estimate:",signif(sigma(x),3),"\n")
   }
       
   ## Fixed effects:
