@@ -592,6 +592,11 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
         }
     }
 
+    ## don't bother printing dispersion parameter if == 1
+    if (x$family != "gaussian" && x$sigma != 1)
+        cat(sprintf("\n(Dispersion parameter for %s family taken to be %f)\n",
+                    x$family,x$sigma))
+
     for (nn in names(x$coefficients)) {
         cc <- x$coefficients[[nn]]
         p <- length(cc)

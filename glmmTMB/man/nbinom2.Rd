@@ -4,7 +4,7 @@
 \alias{family_glmmTMB}
 \alias{nbinom1}
 \alias{nbinom2}
-\title{Extended family functions for glmmTMB}
+\title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
 
@@ -21,6 +21,6 @@ returns a list with (at least) components
 parameter) arguments giving the predicted variance}
 }
 \description{
-Extended family functions for glmmTMB
+Family functions for glmmTMB
 }
 

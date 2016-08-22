@@ -317,8 +317,8 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
 	break;
       case betabinomial_family:
-	s1 = mu(i) * mu(i) / phi(i);
-	s2 = phi(i) / mu(i);
+        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
+	s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
 	tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
 	break;
       case nbinom1_family:
