@@ -9,7 +9,13 @@ library(glmmTMB)
 collapse_cond <- function(x)
     if (is.list(x) && "cond" %in% names(x)) x[["cond"]] else x
 
-## a cleaned-up/adapted version of Jon Lefcheck's code from SEMfit
+##' Cleaned-up/adapted version of Jon Lefcheck's code from SEMfit;
+##' also incorporates some stuff from MuMIn::rsquaredGLMM.
+##' Computes Nakagawa/Schielzeth/Johnson analogue of R^2 for
+##' GLMMs. Should work for [g]lmer(.nb), glmmTMB models ...
+##'
+##' @param model a fitted model
+##' @return a list composed of elements "family", "link", "marginal", "conditional"
 my_rsq <- function(model) {
 
     ## get basics from model (as generally as possible)
@@ -106,8 +112,6 @@ my_rsq <- function(model) {
                    grepl("Negative Binomial", ret$family)) {
             ## Generate null model (intercept and random effects only, no fixed effects)
 
-
-            
             ## https://stat.ethz.ch/pipermail/r-sig-mixed-models/2014q4/023013.html
             ## FIXME: deparse is a *little* dangerous
             rterms <- paste0("(",sapply(findbars(formula(model)),deparse),")")
@@ -129,7 +133,7 @@ my_rsq <- function(model) {
                             nbinom1=,
                             nbinom2=family(model)$variance(mu,sigma(model)),
                             if (is(model,"merMod"))
-                                getME(model,"glmer.nb.theta")
+                                mu*(1+mu/getME(model,"glmer.nb.theta"))
                             else mu*(1+mu/model$theta))
                 cvsquared <- vv/mu^2
                 return(log1p(cvsquared))
@@ -147,35 +151,28 @@ my_rsq <- function(model) {
     return(ret)
 }
 
+if (FALSE) {
+    fm1 <- lmer(Reaction~Days+(Days|Subject),data=sleepstudy)
+    fm2 <- glmmTMB(Reaction~Days+(Days|Subject),data=sleepstudy)
+    my_rsq(fm1)
+    my_rsq(fm2)
 
-fm1 <- lmer(Reaction~Days+(Days|Subject),data=sleepstudy)
-fm2 <- glmmTMB(Reaction~Days+(Days|Subject),data=sleepstudy)
+    ## devtools::install_github("jslefche/piecewiseSEM")
+    library(piecewiseSEM)
+    sem.model.fits(fm1)  ## same answer
 
-my_rsq(fm1)
-my_rsq(fm2)
+    fm3 <- glmer(incidence/size~period+(1|herd),cbpp,
+                 family=binomial,weights=size)
+    fm4 <- glmmTMB(incidence/size~period+(1|herd),cbpp,
+                   family=binomial,weights=size)
+    my_rsq(fm3)
+    my_rsq(fm4)
 
-## devtools::install_github("jslefche/piecewiseSEM")
-library(piecewiseSEM)
-sem.model.fits(fm1)  ## same answer
-
-
-fm3 <- glmer(incidence/size~period+(1|herd),cbpp,
-             family=binomial,weights=size)
-fm4 <- glmmTMB(incidence/size~period+(1|herd),cbpp,
-             family=binomial,weights=size)
-my_rsq(fm3)
-my_rsq(fm4)
-
-fm5 <- glmer.nb(TICKS~YEAR+scale(HEIGHT)+(1|BROOD),grouseticks)
-fm6 <- glmmTMB(TICKS~YEAR+scale(HEIGHT)+(1|BROOD),grouseticks,family=nbinom2)
-
-my_rsq(fm5)
-my_rsq(fm6)
-
-## NOT tested yet for NB models ...
-gm <- function(x) x$modelInfo$allForm$dispformula
-gm(fm2)
-gm(fm4)
+    fm5 <- glmer.nb(TICKS~YEAR+scale(HEIGHT)+(1|BROOD),grouseticks)
+    fm6 <- glmmTMB(TICKS~YEAR+scale(HEIGHT)+(1|BROOD),grouseticks,family=nbinom2)
+    my_rsq(fm5)
+    my_rsq(fm6)
+}
 
 ## Tjur's coeff of determination, from sjmisc ... ????
 ## only does Bernoulli responses ???
