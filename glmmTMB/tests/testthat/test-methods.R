@@ -83,18 +83,17 @@ test_that("terms", {
 })
 
 test_that("summary_print", {
+    getVal <- function(x,tag="Dispersion") {
+        cc <- capture.output(print(summary(x)))
+        if (length(gg <- grep(tag,cc,value=TRUE))==0) return(NULL)
+        cval <- sub("^.*: ","",gg) ## get value after colon ...
+        return(as.numeric(cval))
+    }
     ## no dispersion printed for Gaussian or disp==1 families
-    c1 <<- capture.output(print(summary(fm2)))
-    expect_true(!any(grepl("Dispersion",c1)))
-    c2 <<- capture.output(print(summary(fm2P)))
-    expect_true(!any(grepl("Dispersion",c2)))
-    ## extract numeric dispersion from printed output 
-    c3 <<- capture.output(print(summary(fm2G)))
-    dline <- grep("Dispersion",c3,value=TRUE)
-    ## print(fm2G)
-    ## print(dline)
-    expect_equal(as.numeric(gsub("[^0-9.]","",dline)),0.0809,tolerance=1e-4)
-    ## FIXME: *weird* environment stuff going on here? 0.006537
+    expect_equal(getVal(fm2),654.9,tolerance=1e-2)
+    expect_equal(getVal(fm2P),NULL)
+    expect_equal(getVal(fm2G),0.00654,tolerance=1e-2)
+    expect_equal(getVal(fm2NB,"Overdispersion"),286,tolerance=1e-2)
 })
 
 test_that("sigma", {

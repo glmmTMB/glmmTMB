@@ -258,10 +258,13 @@ getReStruc <- function(reTrms, ss=NULL) {
 
 .noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
 
+## BMB: why not just sigma(x)!=1.0 ... ? (redundant with sigma.glmmTMB)
 usesDispersion <- function(x) {
     is.na(match(x, .noDispersionFamilies))
     ## !x %in% .noDispersionFamilies
 }
+
+.classicDispersionFamilies <- c("gaussian","Gamma","t")
 
 ## select only desired pieces from results of getXReTrms
 stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
@@ -592,10 +595,7 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
         }
     }
 
-    ## don't bother printing dispersion parameter if == 1
-    if (x$family != "gaussian" && x$sigma != 1)
-        cat(sprintf("\n(Dispersion parameter for %s family taken to be %f)\n",
-                    x$family,x$sigma))
+    printDispersion(x$family,x$sigma)
 
     for (nn in names(x$coefficients)) {
         cc <- x$coefficients[[nn]]

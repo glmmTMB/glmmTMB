@@ -358,6 +358,27 @@ cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
   cat.f2(call,"Subset","subset",lwid2)
 }
 
+##' @param ff name of family (character)
+##' @param s dispersion (results of sigma(x) for original object
+printDispersion <- function(ff,s) {
+    ## dispersion
+    if (usesDispersion(ff)) {
+        if (ff %in% .classicDispersionFamilies) {
+            dname <- "Dispersion estimate"
+            sname <- "sigma^2"
+            sval <- s^2
+        } else {
+            dname <- "Overdispersion parameter"
+            sname <- "sigma"
+            sval <- s
+        }            
+        cat(sprintf("\n%s for %s family (%s): %s",
+                    dname,ff,sname,
+                    formatC(sval,digits=3)),"\n")
+    }
+    NULL
+}
+
 ##' @importFrom lme4 .prt.aictab
 ##' @method print glmmTMB
 ##' @export
@@ -391,12 +412,8 @@ print.glmmTMB <-
   cat(do.call(paste,c(gvec,list(sep=" / "))),fill=TRUE)
   cat("\n")
 
-  ## dispersion
-  ff <- x$modelInfo$familyStr
-  if (usesDispersion(ff)) {
-      cat("Dispersion/standard deviation estimate:",signif(sigma(x),3),"\n")
-  }
-      
+  printDispersion(x$modelInfo$familyStr,sigma(x))  
+   
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
