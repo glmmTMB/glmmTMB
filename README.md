@@ -6,8 +6,22 @@
 
 ## Installation 
 
-To install `glmmTMB`, first install `TMB` from CRAN, then install `glmmTMB` via
+### From Github (source)
+
+First install `TMB` from CRAN, then install `glmmTMB` via
 ```
 devtools::install_github("glmmTMB/glmmTMB",subdir="glmmTMB")
 ```
-(you may need to install the `devtools` package, compiler tools, and other dependencies first).
+You will need to make sure that the `devtools` package and development tools (compilers etc.) are installed first: `devtools::setup_rtools()` should help with this.
+
+### From GH repository
+
+If you are using MacOS or Windows and don't have the development tools, the following should work:
+```
+grepo <- "http://glmmtmb.github.io/glmmTMB/repos/"
+options(repos=c(grepo,getOption("repos")))
+install.packages("glmmTMB")
+```
+At present this repository is only updated manually, so if you find the package to be unavailable or out of date by this route, please contact the maintainers.
+
+
