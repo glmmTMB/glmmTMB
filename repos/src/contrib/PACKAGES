@@ -1,0 +1,9 @@
+Package: glmmTMB
+Version: 0.0.2
+Imports: methods, TMB, lme4 (>= 1.1-10), Matrix, nlme
+LinkingTo: TMB, RcppEigen
+Suggests: knitr, testthat, MASS, lattice, ggplot2, mlmRev, bbmle, pscl
+License: AGPL-3
+MD5sum: 56c6073195c1b990b4beb368da71d417
+NeedsCompilation: yes
+
