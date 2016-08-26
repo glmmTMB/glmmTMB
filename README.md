@@ -12,7 +12,7 @@ First install `TMB` from CRAN, then install `glmmTMB` via
 ```
 devtools::install_github("glmmTMB/glmmTMB",subdir="glmmTMB")
 ```
-You will need to make sure that the `devtools` package and development tools (compilers etc.) are installed first: `devtools::setup_rtools()` should help with this.
+You will need to make sure that the `devtools` package and development tools (compilers etc.) are installed first: `devtools::setup_rtools()` should help with the latter.
 
 ### From GH repository
 
