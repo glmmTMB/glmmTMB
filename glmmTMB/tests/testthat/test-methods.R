@@ -105,3 +105,16 @@ test_that("sigma", {
     expect_equal(sigma(fm3G),s2,tolerance=5e-3)
     expect_equal(s3$theta,sigma(fm3NB),tolerance=1e-4)
 })
+
+test_that("confint", {
+    ci <- confint(fm2)
+    expect_equal(ci,
+        structure(c(238.406083254105, 7.52295734348693,
+                    264.404107485727, 13.4116167530013),
+                  .Dim = c(2L, 2L),
+                  .Dimnames = list(c("cond.(Intercept)", "cond.Days"),
+                                   c("2.5 %", "97.5 %"))),
+        tolerance=1e-6)
+    expect_warning(confint(fm2,type="junk"),
+                   "extra arguments ignored")
+})

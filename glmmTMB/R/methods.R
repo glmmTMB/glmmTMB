@@ -468,6 +468,15 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                       "profile"),
                              component= "cond", ...) 
 {
+    dots <- list(...)
+    if (length(dots)>0) {
+        if (is.null(names(dots))) {
+            warning("extra (unnamed) arguments ignored")
+        } else {
+            warning(paste("extra arguments ignored: ",
+                          paste(names(dots),collapse=", ")))
+        }
+    }
     method <- match.arg(method)
     cf <- unlist(fixef(object)[component])
     pnames <- names(cf)
