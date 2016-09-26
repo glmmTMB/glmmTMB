@@ -97,8 +97,9 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         sd * cor * rep(sd, each = n)
     }
     docov <- function(sd,cor,nm) {
-        ## FIXME: what should be in cor for a 1x1 diag model?
-        if (identical(dim(cor),c(0L,0L))) cor <- matrix(1)
+        ## diagonal model:
+        diagmodel <- identical(dim(cor),c(0L,0L))
+        if (diagmodel) cor <- diag(length(sd))
         cov <- do1cov(sd, cor)
         names(sd) <- nm
         dimnames(cov) <- dimnames(cor) <- list(nm,nm)

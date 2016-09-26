@@ -12,6 +12,7 @@ if (getRversion() < "3.3.0") {
 
 ## FIXME: fit these centrally and restore, to save time
 fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
+fm2diag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy)
 fm0   <- update(fm2, . ~ . -Days)
 fm2P  <- update(fm2, round(Reaction) ~ ., family=poisson)
 fm2G  <- update(fm2, family=Gamma(link="log"))
@@ -60,6 +61,8 @@ test_that("VarCorr", {
    expect_equal(outer(attr(vv2,"stddev"),
                       attr(vv2,"stddev"))*attr(vv2,"correlation"),
                 vv2,check.attributes=FALSE)
+   vvd <- VarCorr(fm2diag)
+   expect_equal(vvd$cond$Subject[1,2],0) ## off-diagonal==0
 })
 
 test_that("drop1", {
