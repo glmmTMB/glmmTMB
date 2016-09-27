@@ -3,7 +3,6 @@ stopifnot(require("testthat"),
 
 context("formula parsing")
 
-
 nrt <- function(x) length(x$reTrmFormulas)
 
 test_that("basic splitForm", {
@@ -38,3 +37,9 @@ test_that("grpvar terms", {
 })
 
 
+test_that("noSpecial", {
+    ## handle parentheses in formulas: GH #174
+    ff <- y~1+(((us(1|f))))
+    expect_equal(noSpecials(ff,delete=FALSE),y~1+(1|f))
+    expect_equal(noSpecials(ff),y~1)
+})

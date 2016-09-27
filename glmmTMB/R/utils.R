@@ -324,7 +324,9 @@ noSpecials_ <- function(term,delete=TRUE) {
         }
     } else {
         nb2 <- noSpecials(term[[2]],delete=delete)
-        nb3 <- noSpecials(term[[3]],delete=delete)
+        nb3 <- if (length(term)==3) {
+                   noSpecials(term[[3]],delete=delete)
+               } else NULL
         if (is.null(nb2))
             nb3
         else if (is.null(nb3))
