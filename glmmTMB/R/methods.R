@@ -358,8 +358,10 @@ cat.f2 <- function(call,component,label,lwid,fwid=NULL,cind=NULL) {
   cat.f2(call,"Subset","subset",lwid2)
 }
 
-##' @param ff name of family (character)
-##' @param s dispersion (results of sigma(x) for original object
+## following https://github.com/glmmTMB/glmmTMB/issues/134#issuecomment-160805926
+## don't use ##' until we're ready to generate a man page
+## @param ff name of family (character)
+## @param s dispersion (results of sigma(x) for original object
 printDispersion <- function(ff,s) {
     ## dispersion
     if (usesDispersion(ff)) {
