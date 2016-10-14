@@ -18,7 +18,7 @@
 ##' @export fixef
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
-  pl <- object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+  pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
   structure(list(cond = setNames(pl$beta,   colnames(getME(object, "X"))),
                  zi    = setNames(pl$betazi, colnames(getME(object, "Xzi"))),
                  disp = setNames(pl$betad, colnames(getME(object, "Xd")))),

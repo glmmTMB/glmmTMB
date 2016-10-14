@@ -9,7 +9,7 @@ family.glmmTMB <- function(object, ...) {
 ## don't quite know why this (rather than just ...$parList()) is
 ## necessary -- used in ranef.glmmTMB and sigma.glmmTMB
 getParList <- function(object) {
-    object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+    object$obj$env$parList(object$fit$par, object$fit$parfull)
 }
 
 
@@ -152,7 +152,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     ## FIXME:: do we need 'sigma' any more (now that nlme generic
     ##         doesn't have it?)
     stopifnot(is.numeric(sigma), length(sigma) == 1)
-    xrep <- x$obj$env$report()
+    xrep <- x$obj$env$report(x$fit$parfull)
     reT <- x$modelInfo$reTrms
     familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {

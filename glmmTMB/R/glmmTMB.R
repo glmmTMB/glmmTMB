@@ -451,6 +451,8 @@ glmmTMB <- function (
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
                                                    gradient=gr)))
 
+    fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
+
     fitted <- NULL
 
     if (se) {
