@@ -9,7 +9,7 @@ family.glmmTMB <- function(object, ...) {
 ## don't quite know why this (rather than just ...$parList()) is
 ## necessary -- used in ranef.glmmTMB and sigma.glmmTMB
 getParList <- function(object) {
-    object$obj$env$parList(object$fit$par, object$obj$env$last.par.best)
+    object$obj$env$parList(object$fit$par, object$fit$parfull)
 }
 
 
