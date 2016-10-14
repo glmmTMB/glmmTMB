@@ -152,7 +152,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     ## FIXME:: do we need 'sigma' any more (now that nlme generic
     ##         doesn't have it?)
     stopifnot(is.numeric(sigma), length(sigma) == 1)
-    xrep <- x$obj$env$report()
+    xrep <- x$obj$env$report(x$fit$parfull)
     reT <- x$modelInfo$reTrms
     familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {
