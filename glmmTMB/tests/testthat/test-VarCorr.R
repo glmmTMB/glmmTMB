@@ -112,7 +112,7 @@ c1 <- capture.output(print(vc))
 expect_equal(c1,c("", "Conditional model:",
                   " Groups   Name        Std.Dev. Corr  ", 
                   " Subject  (Intercept) 2.19409        ",
-                  "          age         0.21492  -0.582", 
+                  "          age         0.21492  -0.581",
                   " Residual             1.31004        "))
 
 ## both variance and std.dev.
@@ -130,7 +130,7 @@ expect_equal(c3,
              c("", "Conditional model:",
                " Groups   Name        Variance Corr  ", 
                " Subject  (Intercept) 4.814050       ",
-               "          age         0.046192 -0.582", 
+               "          age         0.046192 -0.581",
                " Residual             1.716203       "))
 
 if (FALSE) {  ## not yet ...

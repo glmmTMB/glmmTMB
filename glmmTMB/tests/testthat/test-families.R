@@ -29,7 +29,7 @@ test_that("beta", {
                            .Names = c("(Intercept)", "x")),
                  tol=1e-5)
     expect_equal(c(VarCorr(m1)[[1]][[1]]),
-                 0.432365330831596, tol=1e-5)
+                 0.433230926800709, tol=1e-5)
  })
 
 test_that("nbinom", {
@@ -45,7 +45,7 @@ test_that("nbinom", {
                            .Names = c("(Intercept)", "x")),
                  tol=1e-5)
      expect_equal(c(VarCorr(m1)[[1]][[1]]),
-                  9.52772758529216, tol=1e-5)
+                  9.54680210862774, tol=1e-5)
      expect_equal(sigma(m1),0.09922738,tol=1e-5)
 
      ## nbinom1
@@ -63,7 +63,7 @@ test_that("nbinom", {
                     c(VarCorr(m1)[[1]][[1]]),
                     sigma(m1)),
        c(1.93154240357181, 0.992776302432081,
-         16.4150254955972, 1.00770603513152),
+         16.447888398429, 1.00770603513152),
        tol=1e-5)
  })
 
@@ -82,7 +82,7 @@ test_that("dbetabinom", {
     expect_equal(c(unname(c(fixef(m1)[[1]])),
                    c(VarCorr(m1)[[1]][[1]]),
                    sigma(m1)),
-                 c(2.1482114,1.0574946,0.7002534,8.3768711),
+                 c(2.1482114,1.0574946,0.7016553,8.3768711),
                  tolerance=1e-5)
 })
 
