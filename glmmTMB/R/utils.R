@@ -300,6 +300,7 @@ splitForm <- function(formula,
 ##' @examples
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
+##' noSpecials(y~us(1|f))
 ##' @export
 ##' @keywords internal
 noSpecials <- function(term, delete=TRUE) {
@@ -307,7 +308,7 @@ noSpecials <- function(term, delete=TRUE) {
     if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
-        reformulate("1", response = deparse(nospec))
+        substitute(R~1,list(R=nospec))
     } else
         nospec
 }
