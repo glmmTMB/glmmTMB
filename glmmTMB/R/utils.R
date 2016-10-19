@@ -18,7 +18,7 @@ namedList <- function (...) {
 ##' @importFrom stats reformulate
 RHSForm <- function(form,as.form=FALSE) {
     rhsf <- form[[length(form)]]
-    if (as.form) reformulate(deparse(rhsf)) else rhsf
+    if (as.form) substitute(~F,list(F=rhsf)) else rhsf
 }
 
 `RHSForm<-` <- function(formula,value) {
