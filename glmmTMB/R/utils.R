@@ -18,7 +18,8 @@ namedList <- function (...) {
 ##' @importFrom stats reformulate
 RHSForm <- function(form,as.form=FALSE) {
     rhsf <- form[[length(form)]]
-    if (as.form) substitute(~F,list(F=rhsf)) else rhsf
+    if (as.form) as.formula(substitute(~F,list(F=rhsf)),
+                            env=environment(formula)) else rhsf
 }
 
 `RHSForm<-` <- function(formula,value) {
@@ -308,7 +309,8 @@ noSpecials <- function(term, delete=TRUE) {
     if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
-        substitute(R~1,list(R=nospec))
+        as.formula(substitute(R~1,list(R=nospec)),
+                   env=environment(term))
     } else
         nospec
 }

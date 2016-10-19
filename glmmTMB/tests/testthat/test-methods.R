@@ -51,7 +51,12 @@ test_that("Predict", {
     expect_equal(unname( pr2se$se.fit[1] ), 12.94514, tol=1e-4)
     expect_equal(unname( pr2se$   fit[100] ), 457.9684, tol=1e-4)
     expect_equal(unname( pr2se$se.fit[100] ), 14.13943, tol=1e-4)
- })
+
+    ## predict without response in newdata
+    expect_equal(predict(fm2),
+                 predict(fm2,newdata=sleepstudy[,c("Days","Subject")]))
+    
+})
 
 
 test_that("VarCorr", {

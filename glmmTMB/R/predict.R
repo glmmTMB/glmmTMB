@@ -43,7 +43,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
-  mf$formula <- object$modelInfo$allForm$combForm
+  mf$formula <- RHSForm(object$modelInfo$allForm$combForm,as.form=TRUE)
   if (is.null(newdata)) {
       mf$data <- mc$data ## restore original data
       newFr <- object$fr
@@ -85,7 +85,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   TMBStruc <- 
         ## FIXME: make first arg of mkTMBStruc into a formula list
         ## with() interfering with eval.parent() ?
-        eval.parent(mkTMBStruc(omi$allForm$formula,
+        eval.parent(mkTMBStruc(RHSForm(omi$allForm$formula,as.form=TRUE),
                                omi$allForm$ziformula,
                                omi$allForm$dispformula,
                                mf,
