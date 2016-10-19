@@ -43,7 +43,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
-  mf$formula <- object$modelInfo$allForm$combForm
+  mf$formula <- RHSForm(object$modelInfo$allForm$combForm,as.form=TRUE)
   if (is.null(newdata)) {
       mf$data <- mc$data ## restore original data
       newFr <- object$fr
@@ -66,7 +66,12 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   w <- which(is.na(augFr[[respNm]]))
 
-  yobs <- augFr[[names(omi$respCol)]]
+  ## ugh. as.numeric() is to fix GH#178
+  ## not sure if we need to be working harder to translate
+  ##   the variety of possible binomial inputs in this column?
+  ## binomial()$initialize (1) needs y, nobs, weights defined;
+  ##   (2) can't handle NA values in y
+  yobs <- as.numeric(augFr[[names(omi$respCol)]])
 
   ## match zitype arg with internal name
   ziPredNm <- switch(match.arg(zitype),
@@ -77,16 +82,15 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
   ## need eval.parent() because we will do eval(mf) down below ...
-    om <- object$modelInfo
-    TMBStruc <- 
+  TMBStruc <- 
         ## FIXME: make first arg of mkTMBStruc into a formula list
         ## with() interfering with eval.parent() ?
-        eval.parent(mkTMBStruc(omi$allForm$formula,
+        eval.parent(mkTMBStruc(RHSForm(omi$allForm$formula,as.form=TRUE),
                                omi$allForm$ziformula,
                                omi$allForm$dispformula,
                                mf,
                                fr=augFr,
-                               yobs=augFr[[names(omi$respCol)]],
+                               yobs=yobs,
                                offset=NULL,
                                weights=NULL,
                                family=omi$familyStr,

@@ -15,6 +15,15 @@ simfun0 <- function(beta=c(2,1),
     return(data.frame(x,f,mu))
 }
 
+context("alternative binomial specifications")
+test_that("binomial", {
+    load(system.file("testdata","radinger_dat.RData",package="lme4"))
+    radinger_dat <<- radinger_dat ## global assignment for testthat
+    mod1 <<- glmmTMB(presabs~predictor+(1|species),family=binomial,
+                    radinger_dat)
+    mod2 <<- update(mod1,as.logical(presabs)~.)
+    expect_equal(predict(mod1),predict(mod2))
+})
 context("fitting exotic families")
 test_that("beta", {
     set.seed(101)

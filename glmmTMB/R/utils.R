@@ -18,7 +18,8 @@ namedList <- function (...) {
 ##' @importFrom stats reformulate
 RHSForm <- function(form,as.form=FALSE) {
     rhsf <- form[[length(form)]]
-    if (as.form) reformulate(deparse(rhsf)) else rhsf
+    if (as.form) as.formula(substitute(~F,list(F=rhsf)),
+                            env=environment(formula)) else rhsf
 }
 
 `RHSForm<-` <- function(formula,value) {
@@ -300,6 +301,7 @@ splitForm <- function(formula,
 ##' @examples
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
+##' noSpecials(y~us(1|f))
 ##' @export
 ##' @keywords internal
 noSpecials <- function(term, delete=TRUE) {
@@ -307,7 +309,8 @@ noSpecials <- function(term, delete=TRUE) {
     if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
-        reformulate("1", response = deparse(nospec))
+        as.formula(substitute(R~1,list(R=nospec)),
+                   env=environment(term))
     } else
         nospec
 }
