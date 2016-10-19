@@ -66,7 +66,12 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   w <- which(is.na(augFr[[respNm]]))
 
-  yobs <- augFr[[names(omi$respCol)]]
+  ## ugh. as.numeric() is to fix GH#178
+  ## not sure if we need to be working harder to translate
+  ##   the variety of possible binomial inputs in this column?
+  ## binomial()$initialize (1) needs y, nobs, weights defined;
+  ##   (2) can't handle NA values in y
+  yobs <- as.numeric(augFr[[names(omi$respCol)]])
 
   ## match zitype arg with internal name
   ziPredNm <- switch(match.arg(zitype),
@@ -77,8 +82,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
   ## need eval.parent() because we will do eval(mf) down below ...
-    om <- object$modelInfo
-    TMBStruc <- 
+  TMBStruc <- 
         ## FIXME: make first arg of mkTMBStruc into a formula list
         ## with() interfering with eval.parent() ?
         eval.parent(mkTMBStruc(omi$allForm$formula,
@@ -86,7 +90,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                omi$allForm$dispformula,
                                mf,
                                fr=augFr,
-                               yobs=augFr[[names(omi$respCol)]],
+                               yobs=yobs,
                                offset=NULL,
                                weights=NULL,
                                family=omi$familyStr,

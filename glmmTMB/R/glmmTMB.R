@@ -424,11 +424,15 @@ glmmTMB <- function (
 
     ## (1) transform 'y' appropriately for binomial models
     ##     (2-column matrix, factor, logical -> numeric)
-    ## (2) warn on 
+    ## (2) warn on non-integer values
     etastart <- start <- mustart <- NULL
     if (!is.null(family$initialize)) {
         eval(family$initialize)
     }
+    ## binomial()$initialize does *not* coerce logical to numeric ...
+    ##  may cause downstream problems, e.g. with predict()
+    y <- as.numeric(y)
+    
 
     ## eval.parent() necessary because we will try to eval(mf) down below
     TMBStruc <- eval.parent(
