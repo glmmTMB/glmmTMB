@@ -126,3 +126,8 @@ test_that("confint", {
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
 })
+
+test_that("vcov", {
+    expect_equal(dim(vcov(fm2)[[1]]),c(2,2))
+    expect_equal(dim(vcov(fm2,full=TRUE)),c(3,3))
+})
