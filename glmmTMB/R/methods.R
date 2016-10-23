@@ -240,7 +240,9 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
 
   mkNames <- function(tag) {
       X <- getME(object,paste0("X",tag))
-      if (trivialFixef(nn <- colnames(X),tag)) character(0)
+      if (trivialFixef(nn <- colnames(X),tag) &&
+          ## if 'full', keep disp even if trivial
+          !(full && tag =="d")) character(0)
       else paste(tag,nn,sep="~")
   }
 
