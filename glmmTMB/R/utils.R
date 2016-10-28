@@ -67,14 +67,15 @@ makeOp <- function(x,y,op=NULL) {
 ## }
 ## @keywords internal
 addForm0 <- function(f1,f2) {
-  if (length(f2)==3) warning("discarding RHS of second argument")
+  if (length(f2)==3) warning("discarding LHS of second argument")
   RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
   return(f1)
 }
 
-## combine right-hand sides of an arbitrary number of formulas
-## @param ... arguments to pass through to \code{addForm0}
-## @keywords internal
+##' Combine right-hand sides of an arbitrary number of formulas
+##' @param ... arguments to pass through to \code{addForm0}
+##' @rdname splitForm
+##' @export
 addForm <- function(...) {
   Reduce(addForm0,list(...))
 }
