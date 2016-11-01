@@ -282,8 +282,12 @@ stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
 ##' In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
 ##' can be specified as (4) a list comprising the name of the distribution and the link function
 ##' (\sQuote{list(family="binomial",link="logit")}).
-##' @param ziformula combined fixed and random effects formula for
-##'     zero-inflation: the default \code{~0} specifies no zero-inflation.
+##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for
+##'     zero-inflation combining fixed and random effects:
+##' the default \code{~0} specifies no zero-inflation.
+##' Specifying \code{~.} will set the right-hand side of the zero-inflation
+##' formula identical to the right-hand side of the main (conditional effects)
+##' formula.
 ##' The zero-inflation model uses a logit link.
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{NULL} specifies no extra dispersion.  The dispersion model
@@ -383,6 +387,10 @@ glmmTMB <- function (
     ## used in any of the terms
     ## combine all formulas
 
+    if (inForm(ziformula,quote(.))) {
+        ziformula <-
+            update(RHSForm(formula,as.form=TRUE),ziformula)
+    }
     formList <- list(formula, ziformula, dispformula)
     formList <- lapply(formList,
                    function(x) noSpecials(subbars(x), delete=FALSE))
