@@ -323,7 +323,7 @@ noSpecials_ <- function(term,delete=TRUE) {
     if (isSpecial(term)) {
         if(delete) {
             NULL
-        } else { ## carful to return  (1|f) and not  1|f:
+        } else { ## careful to return  (1|f) and not  1|f:
             substitute((TERM), list(TERM = term[[2]]))
         }
     } else {
@@ -363,3 +363,36 @@ isAnyArgSpecial <- function(term) {
 anySpecial <- function(term) {
     any(findReTrmClasses() %in% all.names(term))
 }
+
+## does the formula contain a particular value?
+## inForm(z~.,quote(.))
+## inForm(z~y,quote(.))
+## inForm(z~a+b+c,quote(c))
+## inForm(z~a+b+(d+e),quote(c))
+inForm <- function(form,value) {
+    if (any(sapply(form,identical,value))) return(TRUE)
+    if (all(sapply(form,length)==1)) return(FALSE)
+    return(any(sapply(form,inForm,value)))
+}
+
+# drop.special(x~a + b+ offset(z))
+drop.special <- function(term,value=quote(offset)) {
+    if (length(term)==2 && identical(term[[1]],value)) return(NULL)
+    if (length(term)==1) return(term)
+    ## recurse, treating unary and binary operators separately
+    nb2 <- drop.special(term[[2]])
+    nb3 <- if (length(term)==3) {
+               drop.special(term[[3]])
+           } else NULL
+    if (is.null(nb2)) ## RHS was special-only
+        nb3
+    else if (is.null(nb3)) ## LHS was special-only
+        nb2
+    else {
+        ## insert values into daughters and return
+        term[[2]] <- nb2
+        term[[3]] <- nb3
+        return(term)
+    }
+}
+
