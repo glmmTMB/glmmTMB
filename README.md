@@ -10,13 +10,13 @@
 
 You can install `glmmTMB` via
 ```
-devtools::install_github("glmmTMB/glmmTMB",subdir="glmmTMB")
+devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
 ```
-This will install the very latest version of `glmmTMB` from the repository: since the package is in rapid development, that's probably a good idea. You will need to make sure that the `devtools` package and development tools (compilers etc.) are installed first: `devtools::setup_rtools()` should help with the latter.
+(this string means "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`; if the install fails at the vignette-building step, try `build_vignettes=FALSE`). Alternatively you can use `install_github()` from the `ghit` package, which has fewer dependencies. You'll need to have development tools (compilers etc.) installed first: `devtools::setup_rtools()` might help with that. Installing the source version will ensure that you get the very latest version of the package: since the package is in rapid development, that's probably a good idea. 
 
 ### From GH repository
 
-If you are using MacOS or Windows and don't have the development tools, the following should work:
+If you have any problems with the source install (e.g. you're using MacOS or Windows and don't have the development tools), the following incantation should work:
 ```
 grepo <- "http://glmmtmb.github.io/glmmTMB/repos/"
 options(repos=c(grepo,getOption("repos")))
