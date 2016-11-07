@@ -19,7 +19,7 @@ namedList <- function (...) {
 RHSForm <- function(form,as.form=FALSE) {
     rhsf <- form[[length(form)]]
     if (as.form) as.formula(substitute(~F,list(F=rhsf)),
-                            env=environment(formula)) else rhsf
+                            env=environment(form)) else rhsf
 }
 
 `RHSForm<-` <- function(formula,value) {
