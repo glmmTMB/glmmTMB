@@ -396,3 +396,14 @@ drop.special <- function(term,value=quote(offset)) {
     }
 }
 
+## from Gabor Grothendieck: recursive solution
+## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
+drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
+  k <- 0
+  proc <- function(x) {
+    if (length(x) == 1) return(x)
+    if (x[[1]] == value && !((k<<-k+1) %in% preserve)) return(x[[1]])
+    replace(x, -1, lapply(x[-1], proc))
+  }
+  update(proc(x), substitute(. ~ . - x,list(x=value)))
+}

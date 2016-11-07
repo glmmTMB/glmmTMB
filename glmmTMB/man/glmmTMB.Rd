@@ -22,8 +22,13 @@ In addition, for families such as \code{betabinomial} that are special to \code{
 can be specified as (4) a list comprising the name of the distribution and the link function
 (\sQuote{list(family="binomial",link="logit")}).}
 
-\item{ziformula}{combined fixed and random effects formula for
-    zero-inflation: the default \code{~0} specifies no zero-inflation.
+\item{ziformula}{a \emph{one-sided} (i.e., no response variable) formula for
+    zero-inflation combining fixed and random effects:
+the default \code{~0} specifies no zero-inflation.
+Specifying \code{~.} will set the right-hand side of the zero-inflation
+formula identical to the right-hand side of the main (conditional effects)
+formula; terms can also be added or subtracted. \strong{Offset terms
+will automatically be dropped from the conditional effects formula.}
 The zero-inflation model uses a logit link.}
 
 \item{dispformula}{combined fixed and random effects formula for dispersion:

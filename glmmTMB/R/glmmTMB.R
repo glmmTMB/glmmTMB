@@ -287,7 +287,8 @@ stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
 ##' the default \code{~0} specifies no zero-inflation.
 ##' Specifying \code{~.} will set the right-hand side of the zero-inflation
 ##' formula identical to the right-hand side of the main (conditional effects)
-##' formula.
+##' formula; terms can also be added or subtracted. \strong{Offset terms
+##' will automatically be dropped from the conditional effects formula.}
 ##' The zero-inflation model uses a logit link.
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{NULL} specifies no extra dispersion.  The dispersion model
@@ -383,14 +384,15 @@ glmmTMB <- function (
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
 
+    if (inForm(ziformula,quote(.))) {
+        ziformula <-
+            update(RHSForm(drop.special2(formula),as.form=TRUE),
+                   ziformula)
+    }
+
     ## want the model frame to contain the union of all variables
     ## used in any of the terms
     ## combine all formulas
-
-    if (inForm(ziformula,quote(.))) {
-        ziformula <-
-            update(RHSForm(formula,as.form=TRUE),ziformula)
-    }
     formList <- list(formula, ziformula, dispformula)
     formList <- lapply(formList,
                    function(x) noSpecials(subbars(x), delete=FALSE))
