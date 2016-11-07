@@ -67,14 +67,15 @@ makeOp <- function(x,y,op=NULL) {
 ## }
 ## @keywords internal
 addForm0 <- function(f1,f2) {
-  if (length(f2)==3) warning("discarding RHS of second argument")
+  if (length(f2)==3) warning("discarding LHS of second argument")
   RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
   return(f1)
 }
 
-## combine right-hand sides of an arbitrary number of formulas
-## @param ... arguments to pass through to \code{addForm0}
-## @keywords internal
+##' Combine right-hand sides of an arbitrary number of formulas
+##' @param ... arguments to pass through to \code{addForm0}
+##' @rdname splitForm
+##' @export
 addForm <- function(...) {
   Reduce(addForm0,list(...))
 }
@@ -322,7 +323,7 @@ noSpecials_ <- function(term,delete=TRUE) {
     if (isSpecial(term)) {
         if(delete) {
             NULL
-        } else { ## carful to return  (1|f) and not  1|f:
+        } else { ## careful to return  (1|f) and not  1|f:
             substitute((TERM), list(TERM = term[[2]]))
         }
     } else {
@@ -361,4 +362,48 @@ isAnyArgSpecial <- function(term) {
 ## should really look for [special]\\(.+\\)
 anySpecial <- function(term) {
     any(findReTrmClasses() %in% all.names(term))
+}
+
+## does the formula contain a particular value?
+## inForm(z~.,quote(.))
+## inForm(z~y,quote(.))
+## inForm(z~a+b+c,quote(c))
+## inForm(z~a+b+(d+e),quote(c))
+inForm <- function(form,value) {
+    if (any(sapply(form,identical,value))) return(TRUE)
+    if (all(sapply(form,length)==1)) return(FALSE)
+    return(any(sapply(form,inForm,value)))
+}
+
+# drop.special(x~a + b+ offset(z))
+drop.special <- function(term,value=quote(offset)) {
+    if (length(term)==2 && identical(term[[1]],value)) return(NULL)
+    if (length(term)==1) return(term)
+    ## recurse, treating unary and binary operators separately
+    nb2 <- drop.special(term[[2]])
+    nb3 <- if (length(term)==3) {
+               drop.special(term[[3]])
+           } else NULL
+    if (is.null(nb2)) ## RHS was special-only
+        nb3
+    else if (is.null(nb3)) ## LHS was special-only
+        nb2
+    else {
+        ## insert values into daughters and return
+        term[[2]] <- nb2
+        term[[3]] <- nb3
+        return(term)
+    }
+}
+
+## from Gabor Grothendieck: recursive solution
+## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
+drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
+  k <- 0
+  proc <- function(x) {
+    if (length(x) == 1) return(x)
+    if (x[[1]] == value && !((k<<-k+1) %in% preserve)) return(x[[1]])
+    replace(x, -1, lapply(x[-1], proc))
+  }
+  update(proc(x), substitute(. ~ . - x,list(x=value)))
 }
