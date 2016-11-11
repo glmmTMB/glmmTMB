@@ -224,7 +224,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
 ##' @param \dots ignored, for method compatibility
-##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} model parameters
+##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
 ##' @export
@@ -233,8 +233,9 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj)
   }
-
-  keepTag <- if (full || !trivialDisp(object)) "beta*" else "beta($|[^d])"
+  keepTag <- if (full) { "."
+             } else if (!trivialDisp(object)) { "beta*"
+             } else "beta($|[^d])"
   to_keep <- grep(keepTag,colnames(sdr$cov.fixed)) # only keep betas
   covF <- sdr$cov.fixed[to_keep,to_keep,drop=FALSE]
 
@@ -247,15 +248,26 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
   }
 
   nameList <- setNames(list(colnames(getME(object,"X")),
-                mkNames("zi"),
-                mkNames("d")),
-                       names(cNames))
+                       mkNames("zi"),
+                       mkNames("d")),
+                names(cNames))
                 
   if(full) {
       ## FIXME: haven't really decided if we should drop the
       ##   trivial variance-covariance dispersion parameter ??
       ## if (trivialDisp(object))
       ##    res <- covF[-nrow(covF),-nrow(covF)]
+
+      reNames <- function(tag) {
+          re <- object$modelInfo$reStruc[[paste0(tag,"ReStruc")]]
+          nn <- mapply(function(n,L) paste(n,seq(L),sep="."),
+                 names(re),
+                 sapply(re,"[[","blockNumTheta"))
+          if (length(nn)==0) return(nn)
+          return(paste("theta",gsub(" ","",nn),sep="_"))
+      }
+      nameList <- c(nameList,list(reNames("cond"),reNames("zi")))
+
       colnames(covF) <- rownames(covF) <- unlist(nameList)
       res <- covF        ## return just a matrix in this case
   } else {
