@@ -126,3 +126,13 @@ test_that("confint", {
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
 })
+
+test_that("vcov", {
+    expect_equal(dim(vcov(fm2)[[1]]),c(2,2))
+    expect_equal(dim(vcov(fm2,full=TRUE)),c(6,6))
+    expect_equal(rownames(vcov(fm2,full=TRUE)),
+           structure(c("(Intercept)", "Days", "d~(Intercept)",
+                       "theta_Days|Subject.1", "theta_Days|Subject.2",
+                       "theta_Days|Subject.3"),
+          .Names = c("cond1", "cond2", "disp", "", "", "")))
+})
