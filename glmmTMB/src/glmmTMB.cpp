@@ -298,38 +298,46 @@ Type objective_function<Type>::operator() ()
       switch (family) {
       case gaussian_family:
 	tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+	SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
 	break;
       case poisson_family:
 	tmp_loglik = dpois(yobs(i), mu(i), true);
+	SIMULATE{yobs(i) = rpois(mu(i));}
 	break;
       case binomial_family:
 	tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
+	SIMULATE{yobs(i) = rbinom(weights(i), mu(i));}
 	break;
       case Gamma_family:
 	s1 = phi(i);           // shape
 	s2 = mu(i) / phi(i);   // scale
 	tmp_loglik = dgamma(yobs(i), s1, s2, true);
+	SIMULATE{yobs(i) = rgamma(s1, s2);}
 	break;
       case beta_family:
         // parameterization after Ferrari and Cribari-Neto 2004, betareg package
         s1 = mu(i)*phi(i);
         s2 = (Type(1)-mu(i))*phi(i);
 	tmp_loglik = dbeta(yobs(i), s1, s2, true);
+	SIMULATE{yobs(i) = 0;}//TODO: fill in when rbeta is added to TMB
 	break;
       case betabinomial_family:
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
 	s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
 	tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
+	SIMULATE{yobs(i) = 0;}//TODO: fill in when rbetabinomial is added to TMB
 	break;
       case nbinom1_family:
 	s1 = mu(i);
 	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
 	tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+	SIMULATE{yobs(i) = rnbinom2(s1, s2);}
 	break;
       case nbinom2_family:
 	s1 = mu(i);
 	s2 = mu(i) * (Type(1) + mu(i) / phi(i));
 	tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+	SIMULATE{yobs(i) = rnbinom2(s1, s2);}
 	break;
       case truncated_poisson_family:
         if (mu(i)<1e-6) {
@@ -338,6 +346,7 @@ Type objective_function<Type>::operator() ()
             nzprob = 1-exp(-mu(i));
         }
 	tmp_loglik = dpois(yobs(i), mu(i), true)-log(nzprob);
+	SIMULATE{yobs(i) = 0;}//TODO: fill in later
 	break;
       case truncated_nbinom1_family:
         // see comments below
@@ -348,6 +357,7 @@ Type objective_function<Type>::operator() ()
 	s2 = mu(i) * s3;
         nzprob = Type(1)-pow(Type(1)/s3,mu(i)/phi(i)); // 1-prob(0)
 	tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
+	SIMULATE{yobs(i) = 0;}//TODO: fill in later
         break;
       case truncated_nbinom2_family:
         // FIXME: handle y=0 cases appropriately
@@ -371,6 +381,7 @@ Type objective_function<Type>::operator() ()
 	} else {
 	  tmp_loglik += log( 1.0 - pz(i) );
 	}
+	SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
 
       // Add up
@@ -378,7 +389,7 @@ Type objective_function<Type>::operator() ()
     }
   }
 
-  // Report / ADreport
+  // Report / ADreport / Simulate Report
   vector<matrix<Type> > corr(terms.size());
   vector<vector<Type> > sd(terms.size());
   for(int i=0; i<terms.size(); i++){
@@ -402,7 +413,7 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
-
+  SIMULATE{ REPORT(yobs);}
   // For predict
   if(zi_flag) {
     switch(ziPredictCode){
