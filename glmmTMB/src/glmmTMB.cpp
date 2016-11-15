@@ -297,10 +297,10 @@ Type objective_function<Type>::operator() ()
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
-	tmp_loglik = weights(i) * dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+	tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
 	break;
       case poisson_family:
-	tmp_loglik = weights(i) * dpois(yobs(i), mu(i), true);
+	tmp_loglik = dpois(yobs(i), mu(i), true);
 	break;
       case binomial_family:
 	tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
@@ -308,13 +308,13 @@ Type objective_function<Type>::operator() ()
       case Gamma_family:
 	s1 = phi(i);           // shape
 	s2 = mu(i) / phi(i);   // scale
-	tmp_loglik = weights(i) * dgamma(yobs(i), s1, s2, true);
+	tmp_loglik = dgamma(yobs(i), s1, s2, true);
 	break;
       case beta_family:
         // parameterization after Ferrari and Cribari-Neto 2004, betareg package
         s1 = mu(i)*phi(i);
         s2 = (Type(1)-mu(i))*phi(i);
-	tmp_loglik = weights(i) * dbeta(yobs(i), s1, s2, true);
+	tmp_loglik = dbeta(yobs(i), s1, s2, true);
 	break;
       case betabinomial_family:
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
@@ -324,12 +324,12 @@ Type objective_function<Type>::operator() ()
       case nbinom1_family:
 	s1 = mu(i);
 	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
+	tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
 	break;
       case nbinom2_family:
 	s1 = mu(i);
 	s2 = mu(i) * (Type(1) + mu(i) / phi(i));
-	tmp_loglik = weights(i) * dnbinom2(yobs(i), s1, s2, true);
+	tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
 	break;
       case truncated_poisson_family:
         if (mu(i)<1e-6) {
@@ -337,7 +337,7 @@ Type objective_function<Type>::operator() ()
         } else {
             nzprob = 1-exp(-mu(i));
         }
-	tmp_loglik = weights(i) * (dpois(yobs(i), mu(i), true)-log(nzprob));
+	tmp_loglik = dpois(yobs(i), mu(i), true)-log(nzprob);
 	break;
       case truncated_nbinom1_family:
         // see comments below
@@ -347,7 +347,7 @@ Type objective_function<Type>::operator() ()
 	s3 = Type(1)+phi(i);
 	s2 = mu(i) * s3;
         nzprob = Type(1)-pow(Type(1)/s3,mu(i)/phi(i)); // 1-prob(0)
-	tmp_loglik = weights(i) * (dnbinom2(yobs(i), s1, s2, true)-log(nzprob));
+	tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
         break;
       case truncated_nbinom2_family:
         // FIXME: handle y=0 cases appropriately
@@ -358,7 +358,7 @@ Type objective_function<Type>::operator() ()
         s3 = Type(1) + mu(i) / phi(i); // = 1/prob in (prob,phi) param.
 	s2 = mu(i) * s3;               // variance
         nzprob = Type(1)-pow(Type(1)/s3,phi(i)); // 1-prob(0)
-        tmp_loglik = weights(i) * (dnbinom2(yobs(i), s1, s2, true)-log(nzprob));
+        tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
         break;
       default:
 	error("Family not implemented!");
