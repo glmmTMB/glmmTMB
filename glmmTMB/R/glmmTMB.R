@@ -271,6 +271,13 @@ stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
   c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
 }
 
+.okWeightFamilies <- c("binomial", "betabinomial")
+
+okWeights <- function(x) {
+  !is.na(match(x, .okWeightFamilies))
+  ## x %in% .okWeightFamilies
+}	
+
 ##' Fit models with TMB
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
@@ -293,7 +300,7 @@ stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
 ##' @param dispformula combined fixed and random effects formula for dispersion:
 ##'     the default \code{NULL} specifies no extra dispersion.  The dispersion model
 ##' uses a log link.
-##' @param weights weights, as in \code{glm}.
+##' @param weights weights, as in \code{glm}. Only implemented for binomial and betabinomial families.
 ##' @param offset offset
 ##' @param se whether to return standard errors
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
@@ -360,7 +367,7 @@ glmmTMB <- function (
     ## extract family and link information from family object
     link <- family$link
     familyStr <- family$family
-
+    
     if (is.null(dispformula)) {
       dispformula <- if (usesDispersion(familyStr)) ~1 else ~0
     }
@@ -418,6 +425,11 @@ glmmTMB <- function (
     ## attr(fr,"formula") <- combForm  ## unnecessary?
     nobs <- nrow(fr)
     weights <- as.vector(model.weights(fr))
+
+    if(!is.null(weights) & !okWeights(familyStr)) {
+      stop("'weights' are not available for this family. Try dispersion instead.")
+    }
+
     if (is.null(weights)) weights <- rep(1,nobs)
     
     ## sanity checks (skipped!)
