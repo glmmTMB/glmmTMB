@@ -623,6 +623,12 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object)
 }
 
+.noSimFamilies <- c("beta", "betabinomial", "truncated_poisson", 
+"truncated_nbinom1", "truncated_nbinom2")
+
+noSim <- function(x) {
+	!is.na(match(x, .noSimFamilies))
+}
 
 ##' Simulate from a glmmTMB fitted model
 ##' @method simulate glmmTMB 
@@ -634,6 +640,10 @@ fitted.glmmTMB <- function(object, ...) {
 ##' @return returns a list of vectors. The list has length \code{nsim}. Each simulated vector of observations is the same size as the vector of response variables in the original data set.
 ##' @export
 simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
+ if(noSim(object$modelInfo$family$family))
+ {
+ 	stop("Simulation code has not been implemented for this family")
+ }
  ret <- list()
  if(!is.null(seed)) set.seed(seed)
  for (i in 1:nsim)
