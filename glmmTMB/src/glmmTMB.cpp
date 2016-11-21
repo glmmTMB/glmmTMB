@@ -342,7 +342,7 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = dpois(yobs(i), mu(i), true);
 	break;
       case binomial_family:
-        s1 = ( link == logit_link ? eta(i) : logit(mu(i)) ); // logit(p)
+        s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
         tmp_loglik = dbinom_robust(yobs(i) * weights(i), weights(i), s1, true);
 	break;
       case Gamma_family:
@@ -367,7 +367,7 @@ Type objective_function<Type>::operator() ()
 	//   s1 = mu(i);
 	//   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
 	//   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
-        s1 = ( link == log_link ? eta(i) : log(mu(i)) ); // log(mu)
+        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
         if( family == truncated_nbinom1_family ) {
@@ -383,7 +383,7 @@ Type objective_function<Type>::operator() ()
         //   s1 = mu(i);
         //   s2 = mu(i) * (Type(1) + mu(i) / phi(i));
         //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
-        s1 = ( link == log_link ? eta(i) : log(mu(i)) ); // log(mu)
+        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
         if (family == truncated_nbinom2_family) {
