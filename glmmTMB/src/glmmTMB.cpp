@@ -323,6 +323,7 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
 	break;
       case nbinom1_family:
+      case truncated_nbinom1_family:
         // Was:
 	//   s1 = mu(i);
 	//   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
@@ -330,6 +331,12 @@ Type objective_function<Type>::operator() ()
         s1 = ( link == log_link ? eta(i) : log(mu(i)) ); // log(mu)
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+        if( family == truncated_nbinom1_family ) {
+          // s3 := log( 1. + phi(i) )
+          s3 = logspace_add( Type(0), etad(i) );
+          log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
+          tmp_loglik -= log_nzprob;
+        }
 	break;
       case nbinom2_family:
       case truncated_nbinom2_family:
@@ -358,16 +365,6 @@ Type objective_function<Type>::operator() ()
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
 	break;
-      case truncated_nbinom1_family:
-        // see comments below
-        // DRY: merge truncated, non-truncated, nbinom1/2 code
-	// V=mu*(1+mu/k)=mu*(1+phi) so k = mu/phi
-	s1 = mu(i);
-	s3 = Type(1)+phi(i);
-	s2 = mu(i) * s3;
-        nzprob = Type(1)-pow(Type(1)/s3,mu(i)/phi(i)); // 1-prob(0)
-	tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
-        break;
       default:
 	error("Family not implemented!");
       } // End switch
