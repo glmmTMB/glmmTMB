@@ -291,7 +291,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etad);
 
   // Observation likelihood
-  Type s1, s2, s3, nzprob, stmp;
+  Type s1, s2, s3, log_nzprob, nzprob, stmp;
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
     if ( !glmmtmb::isNA(yobs(i)) ) {
@@ -341,12 +341,15 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	break;
       case truncated_poisson_family:
-        if (mu(i)<1e-6) {
-	    nzprob = mu(i)*(1-mu(i)/2);
-        } else {
-            nzprob = 1-exp(-mu(i));
-        }
-	tmp_loglik = dpois(yobs(i), mu(i), true)-log(nzprob);
+        // Was:
+        //   if (mu(i)<1e-6) {
+        //     nzprob = mu(i)*(1-mu(i)/2);
+        //   } else {
+        //     nzprob = 1-exp(-mu(i));
+        //   }
+        // log(nzprob) = log( 1 - exp(-mu(i)) )
+        log_nzprob = logspace_sub(Type(0), -mu(i));
+        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
 	break;
       case truncated_nbinom1_family:
         // see comments below
