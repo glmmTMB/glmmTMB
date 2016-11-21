@@ -92,6 +92,45 @@ Type inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
+/* logit transformed inverse_linkfun without losing too much
+   accuracy */
+template<class Type>
+Type logit_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case logit_link:
+    ans = eta;
+    break;
+  case probit_link:
+    ans = logit( pnorm(eta) );
+    /* FIXME: use pnorm(eta, lower.tail=TRUE,  log.p=TRUE) -
+                  pnorm(eta, lower.tail=FALSE, log.p=TRUE)
+              via C-API: 'pnorm_both'
+    */
+    break;
+  case cloglog_link:
+    ans = logspace_sub( exp(eta), Type(0) );
+    break;
+  default:
+    ans = logit( inverse_linkfun(eta, link) );
+  } // End switch
+  return ans;
+}
+
+/* log transformed inverse_linkfun without losing too much accuracy */
+template<class Type>
+Type log_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case log_link:
+    ans = eta;
+    break;
+  default:
+    ans = log( inverse_linkfun(eta, link) );
+  } // End switch
+  return ans;
+}
+
 template <class Type>
 struct per_term_info {
   // Input from R
