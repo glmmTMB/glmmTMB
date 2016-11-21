@@ -378,10 +378,17 @@ Type objective_function<Type>::operator() ()
 
       // Add zero inflation
       if(zi_flag){
+        Type logit_pz = etazi(i) ;
+        Type log_pz   = -logspace_add( Type(0) , -logit_pz );
+        Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
 	if(yobs(i) == Type(0)){
-	  tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
+          // Was:
+          //   tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
+          tmp_loglik = logspace_add( log_pz, log_1mpz + tmp_loglik );
 	} else {
-	  tmp_loglik += log( 1.0 - pz(i) );
+          // Was:
+          //   tmp_loglik += log( 1.0 - pz(i) );
+          tmp_loglik += log_1mpz ;
 	}
       }
 
