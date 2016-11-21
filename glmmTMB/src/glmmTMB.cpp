@@ -332,6 +332,7 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	break;
       case nbinom2_family:
+      case truncated_nbinom2_family:
         // Was:
         //   s1 = mu(i);
         //   s2 = mu(i) * (Type(1) + mu(i) / phi(i));
@@ -339,6 +340,12 @@ Type objective_function<Type>::operator() ()
         s1 = ( link == log_link ? eta(i) : log(mu(i)) ); // log(mu)
         s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+        if (family == truncated_nbinom2_family) {
+          // s3 := log( 1. + mu(i) / phi(i) )
+          s3         = logspace_add( Type(0), s1 - etad(i) );
+          log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
+          tmp_loglik -= log_nzprob;
+        }
 	break;
       case truncated_poisson_family:
         // Was:
@@ -360,17 +367,6 @@ Type objective_function<Type>::operator() ()
 	s2 = mu(i) * s3;
         nzprob = Type(1)-pow(Type(1)/s3,mu(i)/phi(i)); // 1-prob(0)
 	tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
-        break;
-      case truncated_nbinom2_family:
-        // FIXME: handle y=0 cases appropriately
-        //    easiest: throw error in R if any(y==0)
-        //    or: take ignoreZeros flag, return 1
-        // special case needed for mu << 1 ?
-	s1 = mu(i);
-        s3 = Type(1) + mu(i) / phi(i); // = 1/prob in (prob,phi) param.
-	s2 = mu(i) * s3;               // variance
-        nzprob = Type(1)-pow(Type(1)/s3,phi(i)); // 1-prob(0)
-        tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
         break;
       default:
 	error("Family not implemented!");
