@@ -399,47 +399,59 @@ Type objective_function<Type>::operator() ()
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
-	tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-	break;
+        tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+        SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
+        break;
       case poisson_family:
-	tmp_loglik = dpois(yobs(i), mu(i), true);
-	break;
+        tmp_loglik = dpois(yobs(i), mu(i), true);
+        SIMULATE{yobs(i) = rpois(mu(i));}
+        break;
       case binomial_family:
         s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
         tmp_loglik = dbinom_robust(yobs(i) * weights(i), weights(i), s1, true);
-	break;
+        SIMULATE{yobs(i) = rbinom(weights(i), mu(i));}
+        break;
       case Gamma_family:
-	s1 = phi(i);           // shape
-	s2 = mu(i) / phi(i);   // scale
-	tmp_loglik = dgamma(yobs(i), s1, s2, true);
-	break;
+        s1 = phi(i);           // shape
+        s2 = mu(i) / phi(i);   // scale
+        tmp_loglik = dgamma(yobs(i), s1, s2, true);
+        SIMULATE{yobs(i) = rgamma(s1, s2);}
+        break;
       case beta_family:
         // parameterization after Ferrari and Cribari-Neto 2004, betareg package
         s1 = mu(i)*phi(i);
         s2 = (Type(1)-mu(i))*phi(i);
-	tmp_loglik = dbeta(yobs(i), s1, s2, true);
-	break;
+        tmp_loglik = dbeta(yobs(i), s1, s2, true);
+        SIMULATE{yobs(i) = 0;}//TODO: fill in when rbeta is added to TMB
+        break;
       case betabinomial_family:
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
-	s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-	tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
-	break;
+        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
+        tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
+        SIMULATE{yobs(i) = 0;}//TODO: fill in when rbetabinomial is added to TMB
+        break;
       case nbinom1_family:
       case truncated_nbinom1_family:
         // Was:
-	//   s1 = mu(i);
-	//   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-	//   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+        //   s1 = mu(i);
+        //   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+        SIMULATE {
+          s1 = mu(i);
+          s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+          yobs(i) = rnbinom2(s1, s2);
+        }
         if( family == truncated_nbinom1_family ) {
           // s3 := log( 1. + phi(i) )
           s3 = logspace_add( Type(0), etad(i) );
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
+          SIMULATE{yobs(i) = 0;}//TODO: fill in later
         }
-	break;
+        break;
       case nbinom2_family:
       case truncated_nbinom2_family:
         // Was:
@@ -449,13 +461,19 @@ Type objective_function<Type>::operator() ()
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+        SIMULATE {
+          s1 = mu(i);
+          s2 = mu(i) * (Type(1) + mu(i) / phi(i));
+          yobs(i) = rnbinom2(s1, s2);
+        }
         if (family == truncated_nbinom2_family) {
           // s3 := log( 1. + mu(i) / phi(i) )
           s3         = logspace_add( Type(0), s1 - etad(i) );
           log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
           tmp_loglik -= log_nzprob;
+          SIMULATE{yobs(i) = 0;}//TODO: fill in later
         }
-	break;
+        break;
       case truncated_poisson_family:
         // Was:
         //   if (mu(i)<1e-6) {
@@ -466,9 +484,10 @@ Type objective_function<Type>::operator() ()
         // log(nzprob) = log( 1 - exp(-mu(i)) )
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
-	break;
+        SIMULATE{yobs(i) = 0;}//TODO: fill in later
+        break;
       default:
-	error("Family not implemented!");
+        error("Family not implemented!");
       } // End switch
 
       // Add zero inflation
@@ -476,15 +495,16 @@ Type objective_function<Type>::operator() ()
         Type logit_pz = etazi(i) ;
         Type log_pz   = -logspace_add( Type(0) , -logit_pz );
         Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
-	if(yobs(i) == Type(0)){
+        if(yobs(i) == Type(0)){
           // Was:
           //   tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
           tmp_loglik = logspace_add( log_pz, log_1mpz + tmp_loglik );
-	} else {
+        } else {
           // Was:
           //   tmp_loglik += log( 1.0 - pz(i) );
           tmp_loglik += log_1mpz ;
-	}
+        }
+        SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
 
       // Add up
@@ -492,7 +512,7 @@ Type objective_function<Type>::operator() ()
     }
   }
 
-  // Report / ADreport
+  // Report / ADreport / Simulate Report
   vector<matrix<Type> > corr(terms.size());
   vector<vector<Type> > sd(terms.size());
   for(int i=0; i<terms.size(); i++){
@@ -516,7 +536,7 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
-
+  SIMULATE{ REPORT(yobs);}
   // For predict
   if(zi_flag) {
     switch(ziPredictCode){

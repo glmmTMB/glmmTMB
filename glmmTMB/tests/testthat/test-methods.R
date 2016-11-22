@@ -136,3 +136,15 @@ test_that("vcov", {
                        "theta_Days|Subject.3"),
           .Names = c("cond1", "cond2", "disp", "", "", "")))
 })
+
+set.seed(101)
+test_that("simulate", {
+    sm2 <<- rowMeans(do.call(cbind, simulate(fm2, 10)))
+    sm2P <<- rowMeans(do.call(cbind, simulate(fm2P, 10)))
+    sm2G <<- rowMeans(do.call(cbind, simulate(fm2G, 10)))
+    sm2NB <<- rowMeans(do.call(cbind, simulate(fm2NB, 10)))
+    expect_equal(sm2, sleepstudy$Reaction, tol=20)
+	expect_equal(sm2P, sleepstudy$Reaction, tol=20)
+	expect_equal(sm2G, sleepstudy$Reaction, tol=20)
+	expect_equal(sm2NB, sleepstudy$Reaction, tol=20)
+})
