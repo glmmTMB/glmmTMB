@@ -12,11 +12,11 @@ You can install `glmmTMB` via
 ```
 devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
 ```
-(this string means "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`; if the install fails at the vignette-building step, try `build_vignettes=FALSE`). Alternatively you can use `install_github()` from the `ghit` package, which has fewer dependencies. You'll need to have development tools (compilers etc.) installed first: `devtools::setup_rtools()` might help with that. Installing the source version will ensure that you get the very latest version of the package: since the package is in rapid development, that's probably a good idea. 
+(this string denotes "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`"). If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. Alternatively you can use `install_github()` from the `ghit` package, which has fewer dependencies. You'll need to have development tools (compilers etc.) installed first: `devtools::setup_rtools()` might help with that. Installing the source version will ensure that you get the very latest version of the package: since the package is in rapid development, that's a good idea. 
 
 ### From GH repository
 
-If you have any problems with the source install (e.g. you're using MacOS or Windows and don't have the development tools), the following incantation should work:
+If you have any problems with the source install (e.g. you're using MacOS or Windows and don't have the development tools), the following alternative incantation should work:
 ```
 grepo <- "http://glmmtmb.github.io/glmmTMB/repos/"
 options(repos=c(grepo,getOption("repos")))
