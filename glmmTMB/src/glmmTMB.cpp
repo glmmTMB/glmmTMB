@@ -23,6 +23,73 @@ namespace glmmtmb{
   bool isNA(Type x){
     return R_IsNA(asDouble(x));
   }
+
+  extern "C" {
+    /* See 'R-API: entry points to C-code' (Writing R-extensions) */
+    double Rf_logspace_sub (double logx, double logy);
+    void   Rf_pnorm_both(double x, double *cum, double *ccum, int i_tail, int log_p);
+  }
+
+  /* y(x) = logit_invcloglog(x) := log( exp(exp(x)) - 1 ) = logspace_sub( exp(x), 0 )
+
+     y'(x) = exp(x) + exp(x-y) = exp( logspace_add(x, x-y) )
+
+   */
+  TMB_ATOMIC_VECTOR_FUNCTION(
+                             // ATOMIC_NAME
+                             logit_invcloglog
+                             ,
+                             // OUTPUT_DIM
+                             1,
+                             // ATOMIC_DOUBLE
+                             ty[0] = Rf_logspace_sub(exp(tx[0]), 0.);
+                             ,
+                             // ATOMIC_REVERSE
+                             px[0] = exp( logspace_add(tx[0], tx[0]-ty[0]) ) * py[0];
+                             )
+  template<class Type>
+  Type logit_invcloglog(Type x) {
+    CppAD::vector<Type> tx(1);
+    tx[0] = x;
+    return logit_invcloglog(tx)[0];
+  }
+
+  /* y(x) = logit_pnorm(x) := logit( pnorm(x) ) =
+     pnorm(x, lower.tail=TRUE,  log.p=TRUE) -
+     pnorm(x, lower.tail=FALSE, log.p=TRUE)
+
+     y'(x) = dnorm(x) * ( (1+exp(y)) + (1+exp(-y)) )
+
+  */
+  double logit_pnorm(double x) {
+    double log_p_lower, log_p_upper;
+    Rf_pnorm_both(x, &log_p_lower, &log_p_upper, 2 /* both tails */, 1 /* log_p */);
+    return log_p_lower - log_p_upper;
+  }
+  TMB_ATOMIC_VECTOR_FUNCTION(
+                             // ATOMIC_NAME
+                             logit_pnorm
+                             ,
+                             // OUTPUT_DIM
+                             1,
+                             // ATOMIC_DOUBLE
+                             ty[0] = logit_pnorm(tx[0])
+                             ,
+                             // ATOMIC_REVERSE
+                             Type zero = 0;
+                             Type tmp1 = logspace_add(zero, ty[0]);
+                             Type tmp2 = logspace_add(zero, -ty[0]);
+                             Type tmp3 = logspace_add(tmp1, tmp2);
+                             Type tmp4 = dnorm(tx[0], Type(0), Type(1), true) + tmp3;
+                             px[0] = exp( tmp4 ) * py[0];
+                             )
+  template<class Type>
+  Type logit_pnorm(Type x) {
+    CppAD::vector<Type> tx(1);
+    tx[0] = x;
+    return logit_pnorm(tx)[0];
+  }
+
 }
 
 enum valid_family {
@@ -88,6 +155,41 @@ Type inverse_linkfun(Type eta, int link) {
     // TODO: Implement remaining links
   default:
     error("Link not implemented!");
+  } // End switch
+  return ans;
+}
+
+/* logit transformed inverse_linkfun without losing too much
+   accuracy */
+template<class Type>
+Type logit_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case logit_link:
+    ans = eta;
+    break;
+  case probit_link:
+    ans = glmmtmb::logit_pnorm(eta);
+    break;
+  case cloglog_link:
+    ans = glmmtmb::logit_invcloglog(eta);
+    break;
+  default:
+    ans = logit( inverse_linkfun(eta, link) );
+  } // End switch
+  return ans;
+}
+
+/* log transformed inverse_linkfun without losing too much accuracy */
+template<class Type>
+Type log_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case log_link:
+    ans = eta;
+    break;
+  default:
+    ans = log( inverse_linkfun(eta, link) );
   } // End switch
   return ans;
 }
@@ -291,7 +393,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etad);
 
   // Observation likelihood
-  Type s1, s2, s3, nzprob, stmp;
+  Type s1, s2, s3, log_nzprob, nzprob, stmp;
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
     if ( !glmmtmb::isNA(yobs(i)) ) {
@@ -303,7 +405,8 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = dpois(yobs(i), mu(i), true);
 	break;
       case binomial_family:
-	tmp_loglik = dbinom(yobs(i) * weights(i), weights(i), mu(i), true);
+        s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
+        tmp_loglik = dbinom_robust(yobs(i) * weights(i), weights(i), s1, true);
 	break;
       case Gamma_family:
 	s1 = phi(i);           // shape
@@ -322,54 +425,65 @@ Type objective_function<Type>::operator() ()
 	tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
 	break;
       case nbinom1_family:
-	s1 = mu(i);
-	s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-	tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+      case truncated_nbinom1_family:
+        // Was:
+	//   s1 = mu(i);
+	//   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+	//   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+        s2 = s1 + etad(i) ;                              // log(var - mu)
+        tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+        if( family == truncated_nbinom1_family ) {
+          // s3 := log( 1. + phi(i) )
+          s3 = logspace_add( Type(0), etad(i) );
+          log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
+          tmp_loglik -= log_nzprob;
+        }
 	break;
       case nbinom2_family:
-	s1 = mu(i);
-	s2 = mu(i) * (Type(1) + mu(i) / phi(i));
-	tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+      case truncated_nbinom2_family:
+        // Was:
+        //   s1 = mu(i);
+        //   s2 = mu(i) * (Type(1) + mu(i) / phi(i));
+        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+        s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
+        tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+        if (family == truncated_nbinom2_family) {
+          // s3 := log( 1. + mu(i) / phi(i) )
+          s3         = logspace_add( Type(0), s1 - etad(i) );
+          log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
+          tmp_loglik -= log_nzprob;
+        }
 	break;
       case truncated_poisson_family:
-        if (mu(i)<1e-6) {
-	    nzprob = mu(i)*(1-mu(i)/2);
-        } else {
-            nzprob = 1-exp(-mu(i));
-        }
-	tmp_loglik = dpois(yobs(i), mu(i), true)-log(nzprob);
+        // Was:
+        //   if (mu(i)<1e-6) {
+        //     nzprob = mu(i)*(1-mu(i)/2);
+        //   } else {
+        //     nzprob = 1-exp(-mu(i));
+        //   }
+        // log(nzprob) = log( 1 - exp(-mu(i)) )
+        log_nzprob = logspace_sub(Type(0), -mu(i));
+        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
 	break;
-      case truncated_nbinom1_family:
-        // see comments below
-        // DRY: merge truncated, non-truncated, nbinom1/2 code
-	// V=mu*(1+mu/k)=mu*(1+phi) so k = mu/phi
-	s1 = mu(i);
-	s3 = Type(1)+phi(i);
-	s2 = mu(i) * s3;
-        nzprob = Type(1)-pow(Type(1)/s3,mu(i)/phi(i)); // 1-prob(0)
-	tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
-        break;
-      case truncated_nbinom2_family:
-        // FIXME: handle y=0 cases appropriately
-        //    easiest: throw error in R if any(y==0)
-        //    or: take ignoreZeros flag, return 1
-        // special case needed for mu << 1 ?
-	s1 = mu(i);
-        s3 = Type(1) + mu(i) / phi(i); // = 1/prob in (prob,phi) param.
-	s2 = mu(i) * s3;               // variance
-        nzprob = Type(1)-pow(Type(1)/s3,phi(i)); // 1-prob(0)
-        tmp_loglik = dnbinom2(yobs(i), s1, s2, true)-log(nzprob);
-        break;
       default:
 	error("Family not implemented!");
       } // End switch
 
       // Add zero inflation
       if(zi_flag){
+        Type logit_pz = etazi(i) ;
+        Type log_pz   = -logspace_add( Type(0) , -logit_pz );
+        Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
 	if(yobs(i) == Type(0)){
-	  tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
+          // Was:
+          //   tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
+          tmp_loglik = logspace_add( log_pz, log_1mpz + tmp_loglik );
 	} else {
-	  tmp_loglik += log( 1.0 - pz(i) );
+          // Was:
+          //   tmp_loglik += log( 1.0 - pz(i) );
+          tmp_loglik += log_1mpz ;
 	}
       }
 
