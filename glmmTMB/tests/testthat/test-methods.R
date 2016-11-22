@@ -148,4 +148,3 @@ test_that("simulate", {
 	expect_equal(sm2G, sleepstudy$Reaction, tol=20)
 	expect_equal(sm2NB, sleepstudy$Reaction, tol=20)
 })
-    
