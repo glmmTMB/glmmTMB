@@ -68,7 +68,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
 
-  beta_init <- as.numeric(link == "inverse") # 1 or 0
+  ## safer initialization for link functions that might give
+  ##  illegal predictions for certain families
+  beta_init <-  if (link %in% c("identity","inverse")) 1 else 0
 
   parameters <- with(data.tmb,
                      list(

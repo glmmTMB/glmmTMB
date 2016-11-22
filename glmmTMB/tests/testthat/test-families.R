@@ -74,6 +74,21 @@ test_that("nbinom", {
        c(1.93154240357181, 0.992776302432081,
          16.447888398429, 1.00770603513152),
        tol=1e-5)
+
+    ## identity link: GH #20
+    x <- 1:100; m <- 2; b <- 100
+    y <- m*x+b
+    set.seed(101)
+    dat <- data.frame(obs=rnbinom(length(y), mu=y, size=5), x=x)
+    ## with(dat, plot(x, obs))
+    ## coef(mod1 <- MASS::glm.nb(obs~x,link="identity",dat))
+    expect_equal(fixef(mod2 <- glmmTMB(obs~x, family=list(family="nbinom2",
+                                             link="identity"), dat)),
+       structure(list(cond = structure(c(115.092240041138, 1.74390840106971),
+       .Names = c("(Intercept)", "x")), zi = numeric(0),
+       disp = structure(1.71242627201796, .Names = "(Intercept)")),
+       .Names = c("cond", "zi", "disp"), class = "fixef.glmmTMB"))
+
  })
 
 test_that("dbetabinom", {
