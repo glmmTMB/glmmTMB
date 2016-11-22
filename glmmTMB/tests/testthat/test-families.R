@@ -79,10 +79,10 @@ test_that("nbinom", {
     x <- 1:100; m <- 2; b <- 100
     y <- m*x+b
     set.seed(101)
-    dat <- data.frame(obs=rnbinom(length(y), mu=y, size=5), x=x)
+    dat <<- data.frame(obs=rnbinom(length(y), mu=y, size=5), x=x)
     ## with(dat, plot(x, obs))
     ## coef(mod1 <- MASS::glm.nb(obs~x,link="identity",dat))
-    expect_equal(fixef(mod2 <- glmmTMB(obs~x, family=list(family="nbinom2",
+    expect_equal(fixef(glmmTMB(obs~x, family=list(family="nbinom2",
                                              link="identity"), dat)),
        structure(list(cond = structure(c(115.092240041138, 1.74390840106971),
        .Names = c("(Intercept)", "x")), zi = numeric(0),

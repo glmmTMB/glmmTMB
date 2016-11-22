@@ -108,30 +108,52 @@ if (FALSE) {
 
 vc <- VarCorr(fm1)  ## default print method: standard dev and corr
 
-c1 <- capture.output(print(vc))
-expect_equal(c1,c("", "Conditional model:",
-                  " Groups   Name        Std.Dev. Corr  ", 
-                  " Subject  (Intercept) 2.19409        ",
-                  "          age         0.21492  -0.581",
-                  " Residual             1.31004        "))
+getVCText <- function(obj,...) {
+    c1 <- capture.output(print(obj,...))
+    c1f <- read.fwf(textConnection(c1[-(1:3)]),header=FALSE,
+                    fill=TRUE,
+                    widths=c(10,12,9,6))
+    return(c1f[,-(1:2)]) ## just value columns
+}
+
+##expect_equal(c1,c("", "Conditional model:",
+##                  " Groups   Name        Std.Dev. Corr  ", 
+##                  " Subject  (Intercept) 2.19409        ",
+##                  "          age         0.21492  -0.581",
+##                  " Residual             1.31004        "))
+expect_equal(getVCText(vc),
+             structure(list(V3 = c(2.1941, 0.21492, 1.31004),
+                            V4 = c(NA, -0.581, NA)),
+                       .Names = c("V3", "V4"),
+                       class = "data.frame", row.names = c(NA, -3L)),
+             tolerance=1e-5)
 
 ## both variance and std.dev.
-c2 <- capture.output(print(vc,comp=c("Variance","Std.Dev."),digits=2))
+c2 <- getVCText(vc,comp=c("Variance","Std.Dev."),digits=2)
+## c2 <- capture.output(print(vc,comp=c("Variance","Std.Dev."),digits=2))
+## expect_equal(c2,
+##              c("", "Conditional model:",
+##                " Groups   Name        Variance Std.Dev. Corr ", 
+##                " Subject  (Intercept) 4.814    2.19          ",
+##                "          age         0.046    0.21     -0.58", 
+##                " Residual             1.716    1.31          "))
 expect_equal(c2,
-             c("", "Conditional model:",
-               " Groups   Name        Variance Std.Dev. Corr ", 
-               " Subject  (Intercept) 4.814    2.19          ",
-               "          age         0.046    0.21     -0.58", 
-               " Residual             1.716    1.31          "))
-
+             structure(list(V3 = c(4.814, 0.046, 1.716), V4 = c(2.19, 0.21, 
+1.31)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA, 
+-3L)))
 ## variance only
-c3 <- capture.output(print(vc,comp=c("Variance")))
-expect_equal(c3,
-             c("", "Conditional model:",
-               " Groups   Name        Variance Corr  ", 
-               " Subject  (Intercept) 4.814050       ",
-               "          age         0.046192 -0.581",
-               " Residual             1.716203       "))
+c3 <- getVCText(vc,comp=c("Variance"))
+## c3 <- capture.output(print(vc,))
+## expect_equal(c3,
+##              c("", "Conditional model:",
+##               " Groups   Name        Variance Corr  ", 
+##               " Subject  (Intercept) 4.814050       ",
+##               "          age         0.046192 -0.581",
+##               " Residual             1.716203       "))
+expect_equal(c3,structure(list(V3 = c(4.814071, 0.046192, 1.716208), V4 = c(NA, 
+-0.581, NA)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA, 
+-3L)),
+tolerance=1e-5)
 
 if (FALSE) {  ## not yet ...
     as.data.frame(vc)

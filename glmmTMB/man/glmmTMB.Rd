@@ -35,7 +35,7 @@ The zero-inflation model uses a logit link.}
     the default \code{NULL} specifies no extra dispersion.  The dispersion model
 uses a log link.}
 
-\item{weights}{weights, as in \code{glm}.}
+\item{weights}{weights, as in \code{glm}. Only implemented for binomial and betabinomial families.}
 
 \item{offset}{offset}
 

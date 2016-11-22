@@ -640,6 +640,7 @@ noSim <- function(x) {
 ##' Currently, it is not possible to marginalize over these or to simulate for new levels.  
 ##' @return returns a list of vectors. The list has length \code{nsim}. 
 ##' Each simulated vector of observations is the same size as the vector of response variables in the original data set.
+##' @importFrom stats simulate
 ##' @export
 simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
  if(noSim(object$modelInfo$family$family))

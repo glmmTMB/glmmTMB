@@ -14,7 +14,7 @@
 \item{\dots}{ignored, for method compatibility}
 }
 \value{
-By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} model parameters
+By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 }
 \description{
 Calculate Variance-Covariance Matrix for a Fitted glmmTMB model

@@ -49,7 +49,8 @@ test_that("Basic Gaussian Sleepdata examples", {
     expect_equal(fixef(fm3)$cond, fixef(fm1)$cond, tolerance = 5e-6)# seen 2.250 e-7
 
     expect_equal(head(ranef(fm0)$cond$Subject[,1],3),
-                 c(37.4881849228705, -71.5589277273216, -58.009085500647))
+                 c(37.4881849228705, -71.5589277273216, -58.009085500647),
+                 tolerance=1e-5)
     ## test *existence* of summary method -- nothing else for now
     expect_is(suppressWarnings(summary(fm3)),"summary.glmmTMB")
 })
