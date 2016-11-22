@@ -23,6 +23,37 @@ namespace glmmtmb{
   bool isNA(Type x){
     return R_IsNA(asDouble(x));
   }
+
+  extern "C" {
+    /* See 'R-API: entry points to C-code' (Writing R-extensions) */
+    double Rf_logspace_sub (double logx, double logy);
+    void   Rf_pnorm_both(double x, double *cum, double *ccum, int i_tail, int log_p);
+  }
+
+  /* y(x) = logit_invcloglog(x) := log( exp(exp(x)) - 1 ) = logspace_sub( exp(x), 0 )
+
+     y'(x) = exp(x) + exp(x-y) = exp( logspace_add(x, x-y) )
+
+   */
+  TMB_ATOMIC_VECTOR_FUNCTION(
+                             // ATOMIC_NAME
+                             logit_invcloglog
+                             ,
+                             // OUTPUT_DIM
+                             1,
+                             // ATOMIC_DOUBLE
+                             ty[0] = Rf_logspace_sub(exp(tx[0]), 0.);
+                             ,
+                             // ATOMIC_REVERSE
+                             px[0] = exp( logspace_add(tx[0], tx[0]-ty[0]) ) * py[0];
+                             )
+  template<class Type>
+  Type logit_invcloglog(Type x) {
+    CppAD::vector<Type> tx(1);
+    tx[0] = x;
+    return logit_invcloglog(tx)[0];
+  }
+
 }
 
 enum valid_family {
@@ -109,7 +140,7 @@ Type logit_inverse_linkfun(Type eta, int link) {
     */
     break;
   case cloglog_link:
-    ans = logspace_sub( exp(eta), Type(0) );
+    ans = glmmtmb::logit_invcloglog(eta);
     break;
   default:
     ans = logit( inverse_linkfun(eta, link) );
