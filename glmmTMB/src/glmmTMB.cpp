@@ -54,6 +54,42 @@ namespace glmmtmb{
     return logit_invcloglog(tx)[0];
   }
 
+  /* y(x) = logit_pnorm(x) := logit( pnorm(x) ) =
+     pnorm(x, lower.tail=TRUE,  log.p=TRUE) -
+     pnorm(x, lower.tail=FALSE, log.p=TRUE)
+
+     y'(x) = dnorm(x) * ( (1+exp(y)) + (1+exp(-y)) )
+
+  */
+  double logit_pnorm(double x) {
+    double log_p_lower, log_p_upper;
+    Rf_pnorm_both(x, &log_p_lower, &log_p_upper, 2 /* both tails */, 1 /* log_p */);
+    return log_p_lower - log_p_upper;
+  }
+  TMB_ATOMIC_VECTOR_FUNCTION(
+                             // ATOMIC_NAME
+                             logit_pnorm
+                             ,
+                             // OUTPUT_DIM
+                             1,
+                             // ATOMIC_DOUBLE
+                             ty[0] = logit_pnorm(tx[0])
+                             ,
+                             // ATOMIC_REVERSE
+                             Type zero = 0;
+                             Type tmp1 = logspace_add(zero, ty[0]);
+                             Type tmp2 = logspace_add(zero, -ty[0]);
+                             Type tmp3 = logspace_add(tmp1, tmp2);
+                             Type tmp4 = dnorm(tx[0], Type(0), Type(1), true) + tmp3;
+                             px[0] = exp( tmp4 ) * py[0];
+                             )
+  template<class Type>
+  Type logit_pnorm(Type x) {
+    CppAD::vector<Type> tx(1);
+    tx[0] = x;
+    return logit_pnorm(tx)[0];
+  }
+
 }
 
 enum valid_family {
@@ -133,11 +169,7 @@ Type logit_inverse_linkfun(Type eta, int link) {
     ans = eta;
     break;
   case probit_link:
-    ans = logit( pnorm(eta) );
-    /* FIXME: use pnorm(eta, lower.tail=TRUE,  log.p=TRUE) -
-                  pnorm(eta, lower.tail=FALSE, log.p=TRUE)
-              via C-API: 'pnorm_both'
-    */
+    ans = glmmtmb::logit_pnorm(eta);
     break;
   case cloglog_link:
     ans = glmmtmb::logit_invcloglog(eta);
