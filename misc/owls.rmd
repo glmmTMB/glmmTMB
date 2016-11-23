@@ -1,0 +1,126 @@
+---
+title: "Compare glmmTMB, glmmADMB, MCMCglmm, and brms"
+author: "Mollie Brooks"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Compare glmmTMB, glmmADMB, MCMCglmm, and brms}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE, message=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
+```
+
+#Preliminaries
+
+##Load packages
+```{r libs,message=FALSE}
+library(glmmTMB)
+library(glmmADMB)
+library(MCMCglmm)
+library(brms)
+library(broom)
+library(plyr)
+library(ggplot2); theme_set(theme_bw())
+```
+
+##Load in data and reorganize it
+```{r data}
+data(Owls)
+Owls = rename(Owls, c(SiblingNegotiation="NCalls"))
+Owls = transform(Owls, ArrivalTime=scale(ArrivalTime, center=TRUE, scale=FALSE)) 
+```
+
+#Fitting the same model in 4 packages
+
+##Fit using glmmTMB
+```{r tmbfit}
+time.tmb = system.time(m1.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+	offset(logBroodSize) + (1|Nest), ziformula=~1, data = Owls, family="poisson"))
+```
+
+##Fit using glmmADMB
+```{r admbfit}
+time.admb = system.time(m1.admb <- glmmadmb(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+	offset(logBroodSize) + (1 | Nest), zeroInflation=TRUE, data = Owls, family="poisson"))
+```
+
+##Fit using MCMCglmm
+```{r mcmcglmmfit}
+offvec = c(1,1,2,rep(1,5))
+fixef2 = NCalls~trait-1+ ## intercept terms for both count and binary terms
+   at.level(trait,1):logBroodSize+
+   at.level(trait,1):((FoodTreatment+ArrivalTime)*SexParent)
+prior_overdisp  = list(R=list(V=diag(c(1,1)),nu=0.002,fix=2),   G=list(list(V=diag(c(1,1e-6)),nu=0.002,fix=2)))
+
+
+ prior_overdisp_broodoff = c(prior_overdisp,
+                              list(B=list(mu=c(0,1)[offvec],
+                                V=diag(c(1e8,1e-6)[offvec]))))
+
+time.mcmc=system.time(m1.mcmc <- MCMCglmm(fixef2,
+                                      rcov=~idh(trait):units,
+                                      random=~idh(trait):Nest,
+                                      prior=prior_overdisp_broodoff,
+                                      data=Owls,
+                                      family="zipoisson",
+                                      verbose=FALSE))
+
+```
+
+##Fit using brms
+```{r brmsfit, results=FALSE, message=FALSE}
+time.brms = system.time(m1.brms <- brm(NCalls ~(FoodTreatment + ArrivalTime) * SexParent + 
+	offset(logBroodSize) + (1 | Nest), data = Owls, family="zero_inflated_poisson"))
+```
+
+##Compare the timings
+```{r times}
+time.tmb
+time.admb
+time.mcmc
+time.brms
+```
+
+#Comparing the results
+
+##Compare the fits
+```{r coefplot, echo=FALSE, fig.width=7}
+abbfun <- function(x) {
+   gsub("(Sol\\.)*(trait|at.level\\(trait, 1\\):)*","",
+        gsub("FoodTreatment","FT",x))
+ }
+
+coefs=list("glmmTMB"=tidy(summary(m1.tmb)$coefficients$cond),
+           "glmmADMB"=tidy(summary(m1.admb)$coefficients), 
+           "MCMCglmm"=tidy(summary(m1.mcmc)$solutions), 
+           "brms"=tidy(summary(m1.brms)$fixed))
+           
+#coefs$MCMCglmm$.rownames=abbfun(coefs$MCMCglmm$.rownames)
+coefs$MCMCglmm=coefs$MCMCglmm[-c(2,3),]
+
+colnames(coefs$MCMCglmm)[2:4]=c("Estimate", "LCI","UCI") 
+colnames(coefs$brms)[2:4]=c("Estimate", "LCI","UCI") 
+coefs$glmmTMB=transform(coefs$glmmTMB, 
+                        LCI=Estimate-2*Std..Error,
+                        UCI=Estimate+2*Std..Error)
+coefs$glmmADMB=transform(coefs$glmmADMB, 
+                        LCI=Estimate-2*Std..Error,
+                        UCI=Estimate+2*Std..Error)
+
+coefs2=ldply(coefs, function(x){
+  x[,".rownames"]=abbfun( x[,".rownames"])
+  x[1,".rownames"]="Intercept"
+  x[,c(".rownames", "Estimate", "LCI", "UCI")]
+})
+ggplot(coefs2, aes(color=.id))+
+  ylab("")+xlab("Regression estimate")+
+  geom_point(aes(y=.rownames, x=Estimate))+
+  geom_errorbarh(aes(y=.rownames, x=Estimate, xmax=UCI, xmin=LCI))+
+  theme(legend.title = element_blank())
+
+```
+
