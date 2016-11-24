@@ -2,11 +2,7 @@
 title: "Compare glmmTMB, glmmADMB, MCMCglmm, and brms"
 author: "Mollie Brooks"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{Compare glmmTMB, glmmADMB, MCMCglmm, and brms}
-  %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
@@ -17,13 +13,14 @@ knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
 #Preliminaries
 
 ##Load packages
-```{r libs,message=FALSE}
+```{r libs,warning=FALSE, message=FALSE}
 library(glmmTMB)
 library(glmmADMB)
 library(MCMCglmm)
 library(brms)
-library(broom)
-library(plyr)
+library(broom)#for tidy
+library(plyr) 
+library(coefplot)#for position_dodgev, may need to install from source
 library(ggplot2); theme_set(theme_bw())
 ```
 
@@ -36,45 +33,44 @@ Owls = transform(Owls, ArrivalTime=scale(ArrivalTime, center=TRUE, scale=FALSE))
 
 #Fitting the same model in 4 packages
 
-##Fit using glmmTMB
+##glmmTMB
 ```{r tmbfit}
-time.tmb = system.time(m1.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
-	offset(logBroodSize) + (1|Nest), ziformula=~1, data = Owls, family="poisson"))
+time.tmb = unname(system.time(m1.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+	offset(logBroodSize) + (1|Nest), ziformula=~1, data = Owls, family="poisson"))['elapsed'])
 ```
 
-##Fit using glmmADMB
+##glmmADMB
 ```{r admbfit}
-time.admb = system.time(m1.admb <- glmmadmb(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
-	offset(logBroodSize) + (1 | Nest), zeroInflation=TRUE, data = Owls, family="poisson"))
+time.admb = unname(system.time(m1.admb <- glmmadmb(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+	offset(logBroodSize) + (1 | Nest), zeroInflation=TRUE, data = Owls, family="poisson"))['elapsed'])
 ```
 
-##Fit using MCMCglmm
+##MCMCglmm
 ```{r mcmcglmmfit}
 offvec = c(1,1,2,rep(1,5))
 fixef2 = NCalls~trait-1+ ## intercept terms for both count and binary terms
    at.level(trait,1):logBroodSize+
    at.level(trait,1):((FoodTreatment+ArrivalTime)*SexParent)
-prior_overdisp  = list(R=list(V=diag(c(1,1)),nu=0.002,fix=2),   G=list(list(V=diag(c(1,1e-6)),nu=0.002,fix=2)))
-
+prior_overdisp  = list(R=list(V=diag(c(1,1)),nu=0.002,fix=2),   
+                       G=list(list(V=diag(c(1,1e-6)),nu=0.002,fix=2)))
 
  prior_overdisp_broodoff = c(prior_overdisp,
                               list(B=list(mu=c(0,1)[offvec],
                                 V=diag(c(1e8,1e-6)[offvec]))))
 
-time.mcmc=system.time(m1.mcmc <- MCMCglmm(fixef2,
+time.mcmc=unname(system.time(m1.mcmc <- MCMCglmm(fixef2,
                                       rcov=~idh(trait):units,
                                       random=~idh(trait):Nest,
                                       prior=prior_overdisp_broodoff,
                                       data=Owls,
                                       family="zipoisson",
-                                      verbose=FALSE))
-
+                                      verbose=FALSE))['elapsed'])
 ```
 
-##Fit using brms
-```{r brmsfit, results=FALSE, message=FALSE}
-time.brms = system.time(m1.brms <- brm(NCalls ~(FoodTreatment + ArrivalTime) * SexParent + 
-	offset(logBroodSize) + (1 | Nest), data = Owls, family="zero_inflated_poisson"))
+##brms
+```{r brmsfit, results=FALSE, message=FALSE, warning=FALSE}
+time.brms = unname(system.time(m1.brms <- brm(NCalls ~(FoodTreatment + ArrivalTime) * SexParent + 
+	offset(logBroodSize) + (1 | Nest), data = Owls, family="zero_inflated_poisson"))['elapsed'])
 ```
 
 ##Compare the timings
@@ -84,6 +80,8 @@ time.admb
 time.mcmc
 time.brms
 ```
+
+`glmmTMB` fit the model in less than 2 seconds. Other methods were slower, but `MCMCglmm` was in the same order of magnitude. 
 
 #Comparing the results
 
@@ -103,7 +101,7 @@ coefs=list("glmmTMB"=tidy(summary(m1.tmb)$coefficients$cond),
 coefs$MCMCglmm=coefs$MCMCglmm[-c(2,3),]
 
 colnames(coefs$MCMCglmm)[2:4]=c("Estimate", "LCI","UCI") 
-colnames(coefs$brms)[2:4]=c("Estimate", "LCI","UCI") 
+colnames(coefs$brms)[c(2,4,5)]=c("Estimate", "LCI","UCI") 
 coefs$glmmTMB=transform(coefs$glmmTMB, 
                         LCI=Estimate-2*Std..Error,
                         UCI=Estimate+2*Std..Error)
@@ -118,9 +116,9 @@ coefs2=ldply(coefs, function(x){
 })
 ggplot(coefs2, aes(color=.id))+
   ylab("")+xlab("Regression estimate")+
-  geom_point(aes(y=.rownames, x=Estimate))+
-  geom_errorbarh(aes(y=.rownames, x=Estimate, xmax=UCI, xmin=LCI))+
+  geom_point(aes(y=.rownames, x=Estimate), position = position_dodgev(height = 1))+
+  geom_errorbarh(aes(y=.rownames, x=Estimate, xmax=UCI, xmin=LCI), position = position_dodgev(height = 1))+
   theme(legend.title = element_blank())
 
 ```
-
+Because we ran `brms` with flat priors, the estimates are very close to the maximum likelihood estimates of `glmmTMB`. Maximum likelihood estimates from `glmmTMB` and `glmmADMB` differ slightly because `glmmADMB` uses some numerical tricks to increase robustness and these change the objective function by a small amount.

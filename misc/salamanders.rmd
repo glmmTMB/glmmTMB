@@ -1,0 +1,152 @@
+---
+title: "Salamander example comparing Poisson, Zero-inflated Poisson, and Hurdle models"
+author: "Mollie Brooks"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+In this appendix, we reanalyze counts of salamanders in streams. Repeated samples of salamanders were taken at 23 sites. Some of the sites were affected by mountian top removal coal mining.
+The data was originally published in Price et al. (2015).
+
+Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2015) Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. Journal of Applied Ecology 53(2): 459-468.
+
+#Packages and data  
+```{r, message=FALSE, warning=FALSE}
+library(glmmTMB)
+library(ggplot2); theme_set(theme_bw())
+library(knitr)
+library(bbmle) #for AICtab
+library(reshape)
+library(plyr)
+dat0 = read.csv("Price2015.csv")
+dat1 = reshape(dat0, varying=list(3:6, 7:10,11:14,16:19, 20:23,24:27, 28:31, 32:35, 36:39, 40:43), 
+             timevar="sample", direction="long", sep=".")[,-15]
+names(dat1) = c("site","mined", "cover", "sample", "DOP", "Wtemp", "DOY", 
+              "GP", "PR", "DM", "EC-A", "EC-L", "DES-L", "DF") 
+dat = melt(dat1, id=1:7)
+names(dat)[8:9] = c("spp", "count")
+dat = transform(dat, 
+              mined=factor(mined, levels=c(1,0), labels=c("yes", "no")),
+              present=as.numeric(count>0)
+)
+head(dat)
+```
+
+#Poisson Models
+The syntax for fitting Poisson models with `glmmTMB` is quite similar to using `glmer`. In the first model, the formula `count~spp + (1|site)` says that counts depend on species and vary randomly by site. We also pass it the data frame (`dat`) and specify a Poisson distribution using the `family` argument. The function assumes that we want a log-link with the Poisson distribution because that's the standard.
+
+```{r pmodels}
+pm0 = glmmTMB(count~spp + (1|site), dat, family="poisson")
+pm1 = glmmTMB(count~spp + mined + (1|site), dat, family="poisson")
+pm2 = glmmTMB(count~spp * mined + (1|site), dat, family="poisson")
+```
+
+#Zero-inflated Poisson
+To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will recognize `zi` also. This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with any predictors. In this example, we might assume that absences will at least vary by species (`spp`), so we write `zi=~spp`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. This probability is modeled with a logit-link to keep it between 0 and 1.
+
+```{r zipmodels}
+zipm0 = glmmTMB(count~spp + (1|site), zi=~spp, dat, family="poisson")
+zipm1 = glmmTMB(count~spp + mined + (1|site), zi=~spp, dat, family="poisson")
+zipm2 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, dat, family="poisson")
+zipm3 = glmmTMB(count~spp * mined + (1|site), zi=~spp * mined, dat, family="poisson")
+```
+
+#Poisson hurdle model
+We can also fit hurdle models. This is done in two parts: first by modelling the zeros versus non-zeros with a binomial distribution and then modelling the non-zeros with a truncated-Poisson distribution. In the salamander example, this means first modeling presence versus absence (`zm1` below) and then modeling the presence only data (`cm1` below). In `zm1`, it's important that the response `present` is numeric (`1` or `0`) instead of (`TRUE` or `FALSE`); that's why we wrote `present=as.numeric(count>0)` in the data organization code above.
+
+```{r hurdle}
+zm0 = glmmTMB(present~spp, family="binomial", dat)
+zm1 = glmmTMB(present~spp + mined, family="binomial", dat)
+zm2 = glmmTMB(present~spp * mined, family="binomial", dat)
+AICtab(zm0, zm1, zm2)
+```
+
+For the second part of the hurdle model, we look at the presence data, `subset(dat, present==1)`.
+```{r counts}
+cm0 = glmmTMB(count~spp + (1|site), 
+  family=list(family="truncated_poisson", link="log"), 
+  data=subset(dat, present==1))
+cm1 = glmmTMB(count~spp + mined + (1|site), 
+  family=list(family="truncated_poisson", link="log"), 
+  data=subset(dat, present==1))
+cm2 = glmmTMB(count~spp * mined + (1|site), 
+  family=list(family="truncated_poisson", link="log"), 
+  data=subset(dat, present==1))
+AICtab(cm0, cm1, cm2)
+```
+
+#Model comparison using AIC
+We can use `AICtab` to compare the Poisson and zero-inflted Poisson models. To get the AIC value of hurdle models, we sum the AIC values of the two parts of the model. Then we can compare this AIC value to that of our best Poisson model.
+```{r hurdleAIC}
+AICtab(pm0, pm1, pm2, zipm0, zipm1, zipm2, zipm3)
+
+AIC(zm2)+AIC(cm2)
+AIC(zipm3)
+```
+The zero-inflated Poisson model is has a slightly lower AIC value than the hurdle model.
+
+##Plotting model results
+Now we can plot estimates from the best model. It's easiest to see these using the `predict` function. To avoid marginalizing over or conditioning on random effects, we refit the best model witout the random effect of site.
+
+```{r estsFE}
+zipm3FE = glmmTMB(count~spp * mined, zi=~spp * mined, dat, family="poisson")
+newdata = unique(dat[,c("mined","spp")])
+temp = predict(zipm3FE, newdata, se.fit=TRUE, zitype="response")
+newdata$predFE = temp$fit
+newdata$predFE.min = temp$fit-1.98*temp$se.fit
+newdata$predFE.max = temp$fit+1.98*temp$se.fit
+
+real=ddply(dat, ~site+spp+mined, summarize, m=mean(count))
+  
+ggplot(newdata, aes(spp, predFE, colour=mined))+geom_point()+
+  geom_errorbar(aes(ymin=predFE.min, ymax=predFE.max))+
+  geom_point(data=real, aes(x=spp, y=m) )+
+  ylab("Average abundance \n including presences and absences")
+``` 
+
+Figure 1 - Points represtent site-specific average counts. Error bars represent the 95% Wald-type confidence intervals for the predicted average count.
+
+We can also get predicted probability of a structural zero using the argument `zitype="zprob"`.
+```{r zpred}
+temp2 = predict(zipm3FE, newdata, se.fit=TRUE, zitype="zprob")
+newdata$predZ = temp2$fit
+newdata$predZ.min = temp2$fit-1.98*temp2$se.fit
+newdata$predZ.max = temp2$fit+1.98*temp2$se.fit
+
+real = ddply(dat, ~site+spp+mined, summarize, absence=mean(count==0))
+  
+ggplot(newdata, aes(spp, predZ, colour=mined))+geom_point()+
+  geom_errorbar(aes(ymin=predZ.min, ymax=predZ.max))+
+  geom_point(data=real, aes(x=spp, y=absence) )+
+  ylab("Probability of a structural zero")
+```
+Wald-type confidence intervals are not really appropriate for probabiliities because they don't take the boundaries (0, 1) into account. 
+
+#Simulating from a fitted model
+We could also look at the distribution of simulated values from the best fitted model. For this we use the function `simulate.glmmTMB`.
+```{r sims}
+sims=simulate(zipm3, seed = 1, nsim = 1000)
+```
+
+This function returns a list of vectors. The list has one element for each simulation (`nsim`) and the vectors are the same shape as our response variable. 
+
+```{r simsums}
+simdatlist=lapply(sims, function(count){ 
+  cbind(count, dat[,c('site', 'mined', 'spp')])
+})
+simdatsums=lapply(simdatlist, function(x){
+  ddply(x, ~spp+mined, summarize, absence=mean(count==0))
+})
+ssd=do.call(rbind, simdatsums)
+```
+
+Then we can plot them with the observations summarized in the same way.
+```{r plotsims}
+real = ddply(dat, ~spp+mined, summarize, absence=mean(count==0))
+ggplot(ssd, aes(x=absence, color=mined))+
+  geom_density(adjust=2)+
+  facet_wrap(~spp)+
+  geom_vline(data=real, aes(xintercept=absence, color=mined))+
+  xlab("Probability that salamanders are not observed")
+```
+
+We can see that this model does a good job of capturing the observed zero counts.
