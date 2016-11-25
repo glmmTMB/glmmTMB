@@ -105,6 +105,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
+                           map = mapArg,
                            random = randomArg,
                            profile = NULL, # TODO: Optionally "beta"
                            silent = TRUE,
