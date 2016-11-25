@@ -26,7 +26,8 @@
   diag = 0,
   us   = 1,
   cs   = 2,
-  ar1  = 3
+  ar1  = 3,
+  ou   = 4
 )
 .valid_zipredictcode <- c(
   corrected = 0,

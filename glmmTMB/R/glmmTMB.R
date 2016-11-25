@@ -22,6 +22,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        doPredict=0,
                        whichPredict=integer(0)) {
 
+    ## Handle ~0 dispersion for gaussian family.
+    mapArg <- NULL
+    if ( usesDispersion(family) && (dispformula == ~0) ) {
+        if (family != "gaussian")
+            stop("~0 dispersion not implemented for ",
+                 sQuote(family),
+                 " family")
+        ## FIXME: Depending on the final estimates, we should somehow
+        ## check that this fixed dispersion is small enough.
+        betad_init <- log( sqrt( .Machine$double.eps ) )
+        dispformula <- ~1
+        mapArg <- list(betad = factor(NA)) ## Fix betad
+    } else {
+        betad_init <- 0
+    }
+
     ## n.b. eval.parent() chain needs to be preserved because
     ## we are going to try to eval(mf) at the next level down,
     ## need to be able to find data etc.
@@ -80,11 +96,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        bzi     = rep(0, ncol(Zzi)),
                        theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
                        thetazi = rep(0, sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       betad   = rep(0, ncol(Xd))
+                       betad   = rep(betad_init, ncol(Xd))
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
-  namedList(data.tmb, parameters, randomArg, grpVar,
+  namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc)
 }
 
@@ -244,12 +260,17 @@ getReStruc <- function(reTrms, ss=NULL) {
                          blockCode = covCode[i]
                          )
                 if(ss[i] == "ar1"){
+                    ## FIXME: Keep this warning ?
+                    if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                        warning("AR1 not meaningful with intercept")
+                }
+                if(ss[i] == "ou"){
                     ## FIXME: Find proper way to pass data associated
                     ## with factor levels (such as numeric 'times') to
                     ## struct. For now, assume levels correspond to
                     ## equally spaced time points.
                     if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                        warning("AR1 not meaningful with intercept")
+                        warning("OU not meaningful with intercept")
                     tmp$times <- seq_along( reTrms$cnms[[i]] )
                 }
                 tmp
@@ -324,9 +345,11 @@ okWeights <- function(x) {
 ##' @export
 ##' @examples
 ##' data(sleepstudy, package="lme4")
+##' sleepstudy <- transform(sleepstudy, DaysFac = factor(Days))
 ##' fm1 <- glmmTMB(Reaction ~ Days +     (1|Subject), sleepstudy)
 ##' fm2 <- glmmTMB(Reaction ~ Days + us  (1|Subject), sleepstudy)
 ##' fm3 <- glmmTMB(Reaction ~ Days + diag(1|Subject), sleepstudy)
+##' fm4 <- glmmTMB(Reaction ~ ar1(DaysFac+0|Subject), sleepstudy)
 glmmTMB <- function (
     formula,
     data = NULL,
@@ -472,6 +495,7 @@ glmmTMB <- function (
     obj <- with(TMBStruc,
                 MakeADFun(data.tmb,
                      parameters,
+                     map = mapArg,
                      random = randomArg,
                      profile = NULL, # TODO: Optionally "beta"
                      silent = !verbose,
