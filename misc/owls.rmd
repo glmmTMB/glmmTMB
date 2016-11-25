@@ -9,6 +9,7 @@ output: pdf_document
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
 ```
+In this appendix, we analyze counts of begging behavior by owl nestlings. This example previously appeared in Zuur et al. (2009) and Bolker et al. (2012) and was origianally published by Roulin and Bersier (2007). More description...
 
 #Preliminaries
 
@@ -54,6 +55,7 @@ time.admb = tfun(m1.admb <<- glmmadmb(form,
 ```
 
 ##MCMCglmm
+Code for this example was copied from Bolker et al. (2012) and a description appears in that text.
 ```{r mcmcglmmfit}
 offvec = c(1,1,2,rep(1,5))
 fixef2 = NCalls~trait-1+ ## intercept terms for both count and binary terms
@@ -134,7 +136,15 @@ ggplot(coefs2, aes(color=.id,y=.rownames, x=Estimate))+
     labs(x="Regression estimate",y="")+
     geom_pointrangeh(aes(xmax=UCI, xmin=LCI),
                      position = position_dodgev(height = 0.5))+
-    theme(legend.title = element_blank())
+    theme(legend.title = element_blank())+theme_bw()
 ```
 
 Because we ran `brms` with flat priors, the estimates are very close to the maximum likelihood estimates of `glmmTMB`. Maximum likelihood estimates from `glmmTMB` and `glmmADMB` differ slightly because `glmmADMB` uses some numerical tricks to increase robustness and these change the objective function by a small amount.
+
+#References
+
+Bolker, B. M., Gardner, B., Maunder, M., Berg, C. W., Brooks, M., Comita, L., Crone, E., Cubaynes, S., Davies, T., de Valpine, P., Ford, J., Gimenez, O., Kéry, M., Kim, E. J., Lennert-Cody, C., Magnusson, A., Martell, S., Nash, J., Nielsen, A., Regetz, J., Skaug, H. and Zipkin, E. (2013), Strategies for fitting nonlinear ecological models in R, AD Model Builder, and BUGS. Methods Ecol Evol, 4: 501–512. doi:10.1111/2041-210X.12044
+
+Roulin, A. and L. Bersier (2007). Nestling barn owls beg more intensely in the presence of their mother than in the presence of their father. Animal Behaviour 74, 1099–1106.
+
+Zuur, A. F., E. N. Ieno, N. J. Walker, A. A. Saveliev, and G. M. Smith (2009, March). Mixed Effects Models and Extensions in Ecology with R (1 ed.). Springer.

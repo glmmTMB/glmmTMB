@@ -9,30 +9,42 @@ The data was originally published in Price et al. (2015).
 
 Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2015) Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. Journal of Applied Ecology 53(2): 459-468.
 
-#Packages and data  
-```{r, message=FALSE, warning=FALSE}
+#Preliminaries
+```{r setup, include=FALSE, message=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
+options(scipen = 1, digits = 2)
+```
+
+## Load packages
+```{r pkgs, message=FALSE, warning=FALSE}
 library(glmmTMB)
 library(ggplot2); theme_set(theme_bw())
 library(knitr)
 library(bbmle) #for AICtab
 library(reshape)
 library(plyr)
+```
+
+##Data organization
+```{r data}
 dat0 = read.csv("Price2015.csv")
 dat1 = reshape(dat0, varying=list(3:6, 7:10,11:14,16:19, 20:23,24:27, 28:31, 32:35, 36:39, 40:43), 
              timevar="sample", direction="long", sep=".")[,-15]
 names(dat1) = c("site","mined", "cover", "sample", "DOP", "Wtemp", "DOY", 
               "GP", "PR", "DM", "EC-A", "EC-L", "DES-L", "DF") 
-dat = melt(dat1, id=1:7)
-names(dat)[8:9] = c("spp", "count")
-dat = transform(dat, 
+dat2 = melt(dat1, id=1:7)
+names(dat2)[8:9] = c("spp", "count")
+dat = transform(dat2, 
               mined=factor(mined, levels=c(1,0), labels=c("yes", "no")),
               present=as.numeric(count>0)
 )
 head(dat)
 ```
+#Model fitting with glmmTMB
 
-#Poisson Models
-The syntax for fitting Poisson models with `glmmTMB` is quite similar to using `glmer`. In the first model, the formula `count~spp + (1|site)` says that counts depend on species and vary randomly by site. We also pass it the data frame (`dat`) and specify a Poisson distribution using the `family` argument. The function assumes that we want a log-link with the Poisson distribution because that's the standard.
+##Poisson Models
+The syntax for fitting Poisson models with `glmmTMB` is quite similar to using `glmer`. In the first model, the formula, `count~spp + (1|site)`, says that counts depend on species and vary randomly by site. We also pass it the data frame, `dat`, and specify a Poisson distribution using the `family` argument. `glmmTMB` assumes that we want a log-link with the Poisson distribution because that's the standard.
 
 ```{r pmodels}
 pm0 = glmmTMB(count~spp + (1|site), dat, family="poisson")
@@ -40,8 +52,8 @@ pm1 = glmmTMB(count~spp + mined + (1|site), dat, family="poisson")
 pm2 = glmmTMB(count~spp * mined + (1|site), dat, family="poisson")
 ```
 
-#Zero-inflated Poisson
-To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will recognize `zi` also. This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with any predictors. In this example, we might assume that absences will at least vary by species (`spp`), so we write `zi=~spp`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. This probability is modeled with a logit-link to keep it between 0 and 1.
+##Zero-inflated Poisson
+To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will also recognize `zi` This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with any predictors. In this example, we might assume that absences will at least vary by species (`spp`), so we write `zi=~spp`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. The zero-inflation probability is always modeled with a logit-link to keep it between 0 and 1.
 
 ```{r zipmodels}
 zipm0 = glmmTMB(count~spp + (1|site), zi=~spp, dat, family="poisson")
@@ -50,7 +62,7 @@ zipm2 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, dat, family="pois
 zipm3 = glmmTMB(count~spp * mined + (1|site), zi=~spp * mined, dat, family="poisson")
 ```
 
-#Poisson hurdle model
+##Poisson hurdle model
 We can also fit hurdle models. This is done in two parts: first by modelling the zeros versus non-zeros with a binomial distribution and then modelling the non-zeros with a truncated-Poisson distribution. In the salamander example, this means first modeling presence versus absence (`zm1` below) and then modeling the presence only data (`cm1` below). In `zm1`, it's important that the response `present` is numeric (`1` or `0`) instead of (`TRUE` or `FALSE`); that's why we wrote `present=as.numeric(count>0)` in the data organization code above.
 
 ```{r hurdle}
@@ -78,13 +90,16 @@ AICtab(cm0, cm1, cm2)
 We can use `AICtab` to compare the Poisson and zero-inflted Poisson models. To get the AIC value of hurdle models, we sum the AIC values of the two parts of the model. Then we can compare this AIC value to that of our best Poisson model.
 ```{r hurdleAIC}
 AICtab(pm0, pm1, pm2, zipm0, zipm1, zipm2, zipm3)
-
 AIC(zm2)+AIC(cm2)
 AIC(zipm3)
 ```
-The zero-inflated Poisson model is has a slightly lower AIC value than the hurdle model.
+The zero-inflated Poisson model has a slightly lower AIC value than the hurdle model.
 
-##Plotting model results
+#Model summary
+```{r summary}
+summary(zipm3)
+```
+#Plotting model results
 Now we can plot estimates from the best model. It's easiest to see these using the `predict` function. To avoid marginalizing over or conditioning on random effects, we refit the best model witout the random effect of site.
 
 ```{r estsFE}
