@@ -2,6 +2,7 @@
 title: "Compare zero-inflated mixed models across R packages"
 author: "Mollie Brooks and Ben Bolker"
 date: "`r Sys.Date()`"
+bibliography: misc.bib
 output: pdf_document
 ---
 
@@ -9,23 +10,25 @@ output: pdf_document
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
 ```
-In this appendix, we analyze counts of begging behavior by owl nestlings. This example previously appeared in Zuur et al. (2009) and Bolker et al. (2012) and was origianally published by Roulin and Bersier (2007). More description...
+In this appendix, we analyze counts of begging behavior by owl nestlings. This example previously appeared in @zuur_mixed_2009 and @bolker_strategies_2013 and was originally published by @roulin_nestling_2007. **More description...**
 
 #Preliminaries
 
 ##Load packages
-```{r libs,warning=FALSE, message=FALSE}
+
+```{r libs,warning=FALSE, message=FALSE,cache=FALSE}
 library(glmmTMB)
 library(glmmADMB)
 library(MCMCglmm)
 library(brms)
-library(broom)#for tidy
+library(broom) #for tidy
 library(plyr)
+library(dplyr) #tidyverse
 library(ggplot2); theme_set(theme_bw())
 library(ggstance)#for position_dodgev
 ```
 
-## Data organization and helper functions
+## Data organization and helper functions (hidden)
 
 ```{r data}
 data(Owls)
@@ -33,41 +36,62 @@ Owls = rename(Owls, c(SiblingNegotiation="NCalls"))
 Owls = transform(Owls, ArrivalTime=scale(ArrivalTime, center=TRUE, scale=FALSE))
 ```
 
-```{r helper}
-## time 
-tfun <- function(...) unname(system.time(capture.output(...))["elapsed"])
+```{r helper,echo=FALSE}
+# time 
+tfun = function(...) unname(system.time(capture.output(...))["elapsed"])
+abbfun = function(x) {
+  gsub("[()]","", # (Intercept) -> Intercept
+    gsub("(Sol\\.)*(trait|at.level\\(trait, 1\\):)*","", # simplify MCMCglmm labs
+     gsub("FoodTreatment","FT",x)))  # shorten
+}
+tidy.brmsfit = function(x, effects=c("fixed"),...) {
+    ss <- summary(x)
+    tidy(ss$fixed) %>%
+        mutate(effect="fixed",group="fixed") %>%
+        select(effect,.rownames,Estimate,Est.Error,l.95..CI,u.95..CI,group) %>%
+        rename(term=.rownames,estimate=Estimate,std.error=Est.Error,
+               conf.low=l.95..CI,conf.high=u.95..CI)
+}
 ```
 
-#Fitting the same model in 4 packages
+# Constant zero-inflation
 
-##glmmTMB
+Here we fit the model with zero-inflation assumed to be constant across the data set, i.e. zero-inflation is independent of the predictor variables.
+
+## glmmTMB
+
 ```{r tmbfit}
-form <- NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+form = NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
 	offset(logBroodSize) + (1|Nest)
 time.tmb = tfun(m1.tmb <<- glmmTMB(form,
                                   ziformula=~1, data = Owls, family="poisson"))
 ```
 
-##glmmADMB
+## glmmADMB
 ```{r admbfit}
 time.admb = tfun(m1.admb <<- glmmadmb(form,
                  zeroInflation=TRUE, data = Owls, family="poisson"))
 ```
 
 ##MCMCglmm
-Code for this example was copied from Bolker et al. (2012) and a description appears in that text.
+
+Code for this example was copied from @bolker_strategies_2013; a more complete description appears in the [supplementary material](https://groups.nceas.ucsb.edu/non-linear-modeling/projects/owls/WRITEUP/owls.pdf) for that paper.
+
 ```{r mcmcglmmfit}
-offvec = c(1,1,2,rep(1,5))
-fixef2 = NCalls~trait-1+ ## intercept terms for both count and binary terms
-   at.level(trait,1):logBroodSize+
+offvec = c(1,1,2,rep(1,5)) # 1=non-offset; 2=offset
+fixef2 = NCalls~trait-1+ # intercept terms for both count and binary terms
+    # other fixed-effect terms only apply to count term
+    at.level(trait,1):logBroodSize+
    at.level(trait,1):((FoodTreatment+ArrivalTime)*SexParent)
+# residual variances independent for count and binary terms;
+#    fixed to 1 for binary term
+# random-effects variances independent for count and binary terms;
+#    fixed very small (1e-6) for binary term
 prior_overdisp  = list(R=list(V=diag(c(1,1)),nu=0.002,fix=2),   
                        G=list(list(V=diag(c(1,1e-6)),nu=0.002,fix=2)))
-
- prior_overdisp_broodoff = c(prior_overdisp,
+prior_overdisp_broodoff = c(prior_overdisp,
                               list(B=list(mu=c(0,1)[offvec],
                                 V=diag(c(1e8,1e-6)[offvec]))))
-
 time.mcmc=tfun(m1.mcmc <<- MCMCglmm(fixef2,
                                    rcov=~idh(trait):units,
                                    random=~idh(trait):Nest,
@@ -104,47 +128,109 @@ sort(c(TMB=time.tmb,ADMB=time.admb,MCMCglmm=time.mcmc,brms=time.brms,
 
 ## Estimated fixed-effect coefficients
 
-```{r coefplot, echo=FALSE, fig.width=7}
-abbfun <- function(x) {
-   gsub("(Sol\\.)*(trait|at.level\\(trait, 1\\):)*","",
-        gsub("FoodTreatment","FT",x))
- }
-
-coefs=list("glmmTMB"=tidy(summary(m1.tmb)$coefficients$cond),
-           "glmmADMB"=tidy(summary(m1.admb)$coefficients), 
-           "MCMCglmm"=tidy(summary(m1.mcmc)$solutions), 
-           "brms"=tidy(summary(m1.brms)$fixed))
-           
-#coefs$MCMCglmm$.rownames=abbfun(coefs$MCMCglmm$.rownames)
-coefs$MCMCglmm=coefs$MCMCglmm[-c(2,3),]
-
-colnames(coefs$MCMCglmm)[2:4]=c("Estimate", "LCI","UCI") 
-colnames(coefs$brms)[c(2,4,5)]=c("Estimate", "LCI","UCI") 
-coefs$glmmTMB=transform(coefs$glmmTMB, 
-                        LCI=Estimate-2*Std..Error,
-                        UCI=Estimate+2*Std..Error)
-coefs$glmmADMB=transform(coefs$glmmADMB, 
-                        LCI=Estimate-2*Std..Error,
-                        UCI=Estimate+2*Std..Error)
-
-coefs2=ldply(coefs, function(x){
-    x[,".rownames"]=abbfun( x[,".rownames"])
-    x[1,".rownames"]="Intercept"
-    x[,c(".rownames", "Estimate", "LCI", "UCI")]
-})
-ggplot(coefs2, aes(color=.id,y=.rownames, x=Estimate))+
+```{r arrange_coefs,echo=FALSE}
+modList = list(glmmTMB=m1.tmb,
+                glmmADMB=m1.admb,
+                MCMCglmm=m1.mcmc,
+                brms=m1.brms)
+coefs = ldply(modList,tidy,effect="fixed",conf.int=TRUE,
+                  .id="model") %>%
+    mutate(term=abbfun(term)) %>%
+    select(model,term,estimate,conf.low,conf.high) %>%
+    filter(!term %in% c("Intercept","NCalls","zi_NCalls","logBroodSize"))
+```
+```{r coefplot, echo=FALSE, fig.width=7, cache=FALSE}
+(gg0 <- ggplot(coefs, aes(color=model,shape=model,y=term, x=estimate))+
     labs(x="Regression estimate",y="")+
-    geom_pointrangeh(aes(xmax=UCI, xmin=LCI),
-                     position = position_dodgev(height = 0.5))+
-    theme(legend.title = element_blank())+theme_bw()
+    geom_pointrangeh(aes(xmax=conf.high, xmin=conf.low),
+                     position = position_dodgev(height = 0.6))+
+    scale_colour_brewer(palette="Set1")+
+    scale_shape_manual(values=15:18))
 ```
 
 Because we ran `brms` with flat priors, the estimates are very close to the maximum likelihood estimates of `glmmTMB`. Maximum likelihood estimates from `glmmTMB` and `glmmADMB` differ slightly because `glmmADMB` uses some numerical tricks to increase robustness and these change the objective function by a small amount.
 
-#References
+# Complex zero-inflation
 
-Bolker, B. M., Gardner, B., Maunder, M., Berg, C. W., Brooks, M., Comita, L., Crone, E., Cubaynes, S., Davies, T., de Valpine, P., Ford, J., Gimenez, O., Kéry, M., Kim, E. J., Lennert-Cody, C., Magnusson, A., Martell, S., Nash, J., Nielsen, A., Regetz, J., Skaug, H. and Zipkin, E. (2013), Strategies for fitting nonlinear ecological models in R, AD Model Builder, and BUGS. Methods Ecol Evol, 4: 501–512. doi:10.1111/2041-210X.12044
+Here we fit the model with zero-inflation depending on some of the predictor variables. We can no longer use `glmmADMB` ...
 
-Roulin, A. and L. Bersier (2007). Nestling barn owls beg more intensely in the presence of their mother than in the presence of their father. Animal Behaviour 74, 1099–1106.
+## glmmTMB
 
-Zuur, A. F., E. N. Ieno, N. J. Walker, A. A. Saveliev, and G. M. Smith (2009, March). Mixed Effects Models and Extensions in Ecology with R (1 ed.). Springer.
+```{r tmbfit_czi}
+ziform = ~FoodTreatment+(1|Nest)
+time.tmb_czi = tfun(m1.tmb_czi <<- glmmTMB(form,
+                            ziformula=ziform, data = Owls, family="poisson"))
+```
+
+## MCMCglmm
+
+```{r MCMCglmm_czi}
+offvec_czi = c(1,1,2,rep(1,6)) # 1=non-offset; 2=offset
+fixef3 = NCalls~trait-1+ # intercept terms for both count and binary terms
+    # fixed-effect terms for count term
+    at.level(trait,1):logBroodSize+
+    at.level(trait,1):((FoodTreatment+ArrivalTime)*SexParent)+
+    # fixed-effect terms for binary term
+    at.level(trait,2):FoodTreatment
+# residual variances independent for count and binary terms;
+#    fixed to 1 for binary term
+# random-effects variances now allow estimated variance for binary term
+#   as well
+prior_overdisp_czi  = list(R=list(V=diag(c(1,1)),nu=0.002,fix=2),   
+                       G=list(list(V=diag(c(1,1)),nu=0.002)))
+prior_overdisp_broodoff_czi = c(prior_overdisp_czi,
+                              list(B=list(mu=c(0,1)[offvec_czi],
+                                V=diag(c(1e8,1e-6)[offvec_czi]))))
+time.mcmc_czi=tfun(m1.mcmc_czi <<- MCMCglmm(fixef3,
+                                   rcov=~idh(trait):units,
+                                   random=~idh(trait):Nest,
+                                   prior=prior_overdisp_broodoff_czi,
+                                   data=Owls,
+                                   family="zipoisson",
+                                   verbose=FALSE))
+```
+
+**to do**: don't know why we're getting the warning, we seem to be getting all of the fixed effects parameters we asked for?
+
+## brms
+
+```{r brmszifit}
+time.brms_czi = tfun(m1.brms_czi <<- brm(brmsformula(form,zi=ziform),
+                                 data = Owls,
+                                 family="zero_inflated_poisson",
+                                 save_dso=TRUE))
+```
+
+```{r brmszifit2}
+time.brms_czi2 = tfun(m1.brms_czi2 <<- update(m1.brms_czi))
+```
+
+## Comparison
+
+Timings:
+
+```{r times_czi}
+sort(c(TMB=time.tmb_czi,MCMCglmm=time.mcmc_czi,brms=time.brms_czi,
+       brms2=time.brms2))
+```
+
+Coefficients:
+
+```{r arrange_coefs_czi,echo=FALSE}
+modList_czi = list(glmmTMB=m1.tmb_czi,
+                MCMCglmm=m1.mcmc_czi,
+                brms=m1.brms_czi)
+coefs_czi = ldply(modList_czi,tidy,effect="fixed",conf.int=TRUE,
+                  .id="model") %>%
+    mutate(term=abbfun(term)) %>%
+    select(model,term,estimate,conf.low,conf.high) %>%
+    filter(!term %in% c("Intercept","NCalls","zi_NCalls","logBroodSize",
+                        "zi_Intercept","zi_FTSatiated",
+                        "FTDeprived:at.level, 2"))
+```
+
+```{r coefplot_czi, fig.width=7, cache=FALSE, echo=FALSE}
+gg0 %+% coefs_czi
+```
+
+# References
