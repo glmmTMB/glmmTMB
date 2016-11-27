@@ -2,14 +2,13 @@
 title: "Salamander example comparing Poisson, Zero-inflated Poisson, and Hurdle models"
 author: "Mollie Brooks"
 date: "`r Sys.Date()`"
+bibliography: misc.bib
 output: pdf_document
 ---
 In this appendix, we reanalyze counts of salamanders in streams. Repeated samples of salamanders were taken at 23 sites. Some of the sites were affected by mountian top removal coal mining.
-The data was originally published in Price et al. (2015).
+The data was originally published in @price_effects_2016.
 
-Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2015) Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. Journal of Applied Ecology 53(2): 459-468.
-
-#Preliminaries
+# Preliminaries
 ```{r setup, include=FALSE, message=FALSE}
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
@@ -99,12 +98,13 @@ The zero-inflated Poisson model has a slightly lower AIC value than the hurdle m
 ```{r summary}
 summary(zipm3)
 ```
+
 #Plotting model results
-Now we can plot estimates from the best model. It's easiest to see these using the `predict` function. To avoid marginalizing over or conditioning on random effects, we refit the best model witout the random effect of site.
+Now we can plot estimates from the best model. It's easiest to see these using the `predict` function. To avoid marginalizing over or conditioning on random effects, we refit the best model without the random effect of site.
 
 ```{r estsFE}
 zipm3FE = glmmTMB(count~spp * mined, zi=~spp * mined, dat, family="poisson")
-newdata = unique(dat[,c("mined","spp")])
+newdata0 = newdata = unique(dat[,c("mined","spp")])
 temp = predict(zipm3FE, newdata, se.fit=TRUE, zitype="response")
 newdata$predFE = temp$fit
 newdata$predFE.min = temp$fit-1.98*temp$se.fit
@@ -136,7 +136,55 @@ ggplot(newdata, aes(spp, predZ, colour=mined))+geom_point()+
 ```
 Wald-type confidence intervals are not really appropriate for probabiliities because they don't take the boundaries (0, 1) into account. 
 
+## alternative prediction methods
+
+As previously discussed in various places there are a whole bunch of decisions to make
+Now we want the predicted value and confidence intervals on `(1-prob)*count`.
+
+see [here](https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html)
+
+Setting random effects to zero (i.e., predicting at population mode):
+
+```{r predmode}
+X.cond <- model.matrix(lme4::nobars(formula(zipm3)[-2]), newdata0)
+beta.cond <- fixef(zipm3)$cond
+pred.cond <- X.cond %*% beta.cond
+predvar.cond <- diag(X.cond %*% vcov(zipm3)$cond %*% t(X.cond))
+predse.cond <- sqrt(predvar.cond)
+ziformula <- zipm3$modelInfo$allForm$ziformula
+X.zi <- model.matrix(lme4::nobars(ziformula), newdata0)
+beta.zi <- fixef(zipm3)$zi
+pred.zi <- X.zi %*% beta.zi
+predvar.zi <- diag(X.zi %*% vcov(zipm3)$zi %*% t(X.zi))
+predse.zi <- sqrt(predvar.zi)
+```
+these are estimates of the linear predictors (i.e., predictions on the link scale: logit(prob) and log(cond)), not the predictions themselves.
+The easiest thing to do for the point estimates of the unconditional cond (`ucount`) is just to transform to the response scale and multiply:
+
+```{r preducount}
+pred.ucount <- exp(pred.cond)*(1-plogis(pred.zi))
+```
+
+For the standard errors/confidence intervals, we could use posterior predictive simulations (i.e. draw MVN samples from the parameter for the fixed effects) (this conditions on/ignores uncertainty in the random-effect parameters ...)
+
+```{r postpredsim}
+library(MASS)
+set.seed(101)
+pred.condpar.psim <- mvrnorm(1000,mu=beta.cond,Sigma=vcov(zipm3)$cond)
+pred.zipar.psim <- mvrnorm(1000,mu=beta.zi,Sigma=vcov(zipm3)$zi)
+pred.cond.psim <- X.cond %*% t(pred.condpar.psim)
+pred.zi.psim <- X.zi %*% t(pred.zipar.psim)
+pred.ucount.psim <- exp(pred.cond.psim)*(1-plogis(pred.zi.psim))
+ci.ucount <- t(apply(pred.ucount.psim,1,quantile,c(0.025,0.975)))
+ci.ucount <- data.frame(ci.ucount)
+names(ci.ucount) <- c("ucount.low","ucount.high")
+print(ci.ucount,digits=2)
+```
+
+We could also use the Delta method for this.
+
 #Simulating from a fitted model
+
 We could also look at the distribution of simulated values from the best fitted model. For this we use the function `simulate.glmmTMB`.
 ```{r sims}
 sims=simulate(zipm3, seed = 1, nsim = 1000)
