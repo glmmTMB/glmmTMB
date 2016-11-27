@@ -404,11 +404,13 @@ glmmTMB <- function (
     ## l... <- l...[!names(l...) %in% ignoreArgs]
     ## do.call(checkArgs, c(list("glmer"), l...))
 
-    # substitute evaluated version
+    # substitute evaluated versions
     ## FIXME: denv leftover from lme4, not defined yet
 
     call$formula <- mc$formula <- formula <-
         as.formula(formula, env = parent.frame())
+    call$ziformula <- as.formula(ziformula, env=parent.frame())
+    call$dispformula <- as.formula(dispformula, env=parent.frame())
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
