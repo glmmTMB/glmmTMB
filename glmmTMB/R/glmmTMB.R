@@ -251,7 +251,8 @@ getReStruc <- function(reTrms, ss=NULL) {
                    "4" = 2,  # ou
                    "5" = 2,  # exp
                    "6" = 3,  # gau
-                   "7" = 3 ) # mat
+                   "7" = 3,  # mat
+                   "8" = 2 * blksize - 1) # toep
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
