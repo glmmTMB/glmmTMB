@@ -30,7 +30,7 @@
 \examples{
 data(Salamanders)
 require("glmmTMB")
-zipm3 = glmmTMB(count~spp * mined + (1|site), zi=~spp * mined, dat, family="poisson")
+zipm3 = glmmTMB(count~spp * mined + (1|site), zi=~spp * mined, Salamanders, family="poisson")
 }
 
 \keyword{datasets}
