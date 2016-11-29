@@ -248,7 +248,10 @@ getReStruc <- function(reTrms, ss=NULL) {
                    "1" = blksize * (blksize+1) / 2, # us
                    "2" = blksize + 1, # cs
                    "3" = 2,  # ar1
-                   "4" = 2 ) # ou
+                   "4" = 2,  # ou
+                   "5" = 2,  # exp
+                   "6" = 3,  # gau
+                   "7" = 3 ) # mat
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
@@ -272,6 +275,10 @@ getReStruc <- function(reTrms, ss=NULL) {
                     if (is.unsorted(times, strictly=TRUE))
                         stop("'ou' is for strictly sorted times only.")
                     tmp$times <- drop(times)
+                }
+                if(ss[i] %in% c("exp", "gau", "mat")){
+                    coords <- parseNumLevels(reTrms$cnms[[i]])
+                    tmp$dist <- as.matrix( dist(coords) )
                 }
                 tmp
             })
