@@ -247,7 +247,12 @@ getReStruc <- function(reTrms, ss=NULL) {
                    "0" = blksize, # diag
                    "1" = blksize * (blksize+1) / 2, # us
                    "2" = blksize + 1, # cs
-                   "3" = 2 ) # ar1
+                   "3" = 2,  # ar1
+                   "4" = 2,  # ou
+                   "5" = 2,  # exp
+                   "6" = 3,  # gau
+                   "7" = 3,  # mat
+                   "8" = 2 * blksize - 1) # toep
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
@@ -265,13 +270,16 @@ getReStruc <- function(reTrms, ss=NULL) {
                         warning("AR1 not meaningful with intercept")
                 }
                 if(ss[i] == "ou"){
-                    ## FIXME: Find proper way to pass data associated
-                    ## with factor levels (such as numeric 'times') to
-                    ## struct. For now, assume levels correspond to
-                    ## equally spaced time points.
-                    if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                        warning("OU not meaningful with intercept")
-                    tmp$times <- seq_along( reTrms$cnms[[i]] )
+                    times <- parseNumLevels(reTrms$cnms[[i]])
+                    if (ncol(times) != 1)
+                        stop("'ou' structure is for 1D coordinates only.")
+                    if (is.unsorted(times, strictly=TRUE))
+                        stop("'ou' is for strictly sorted times only.")
+                    tmp$times <- drop(times)
+                }
+                if(ss[i] %in% c("exp", "gau", "mat")){
+                    coords <- parseNumLevels(reTrms$cnms[[i]])
+                    tmp$dist <- as.matrix( dist(coords) )
                 }
                 tmp
             })

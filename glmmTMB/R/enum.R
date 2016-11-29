@@ -27,7 +27,11 @@
   us   = 1,
   cs   = 2,
   ar1  = 3,
-  ou   = 4
+  ou   = 4,
+  exp = 5,
+  gau = 6,
+  mat = 7,
+  toep = 8
 )
 .valid_zipredictcode <- c(
   corrected = 0,
