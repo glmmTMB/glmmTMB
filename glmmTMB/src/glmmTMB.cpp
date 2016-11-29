@@ -125,7 +125,8 @@ enum valid_covStruct {
   ou_covstruct   = 4,
   exp_covstruct = 5,
   gau_covstruct = 6,
-  mat_covstruct = 7
+  mat_covstruct = 7,
+  toep_covstruct = 8
 };
 
 enum valid_ziPredictCode {
@@ -283,6 +284,26 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     for(int i=0; i<n; i++)
       for(int j=0; j<n; j++)
 	corr(i,j) = (i==j ? Type(1) : rho);
+    density::MVNORM_t<Type> nldens(corr);
+    density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+    }
+    term.corr = nldens.cov(); // For report
+    term.sd = sd;             // For report
+  }
+  else if (term.blockCode == toep_covstruct){
+    // case: toep_covstruct
+    int n = term.blockSize;
+    vector<Type> logsd = theta.head(n);
+    vector<Type> sd = exp(logsd);
+    vector<Type> parms = theta.tail(n-1);              // Corr parms
+    parms = parms / sqrt(Type(1.0) + parms * parms );  // Now in (-1,1)
+    matrix<Type> corr(n,n);
+    for(int i=0; i<n; i++)
+      for(int j=0; j<n; j++)
+        corr(i,j) = (i==j ? Type(1) :
+                     parms( (i > j ? i-j : j-i) - 1 ) );
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
