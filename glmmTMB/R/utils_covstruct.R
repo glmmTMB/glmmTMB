@@ -32,8 +32,9 @@
 ##' @export
 numFactor <- function(x, ...) {
     y <- data.frame(x, ...)
-    if( !all( sapply(y, is.numeric) ) )
-        stop("All arguments to 'numFactor' must be numeric.")
+    if( !all( sapply(y, is.numeric) ||
+              sapply(y, is.factor)) )
+        stop("All arguments to 'numFactor' must be numeric or factor.")
     asChar <- function(y) {
         y <- lapply(y, as.character)
         ans <- do.call("paste", c(y, list(sep=",")))
