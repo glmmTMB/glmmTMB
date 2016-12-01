@@ -5,7 +5,7 @@
 \title{Fit models with TMB}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = NULL, weights = NULL, offset = NULL, se = TRUE,
+  dispformula = ~1, weights = NULL, offset = NULL, se = TRUE,
   verbose = FALSE, debug = FALSE)
 }
 \arguments{
@@ -31,8 +31,12 @@ formula; terms can also be added or subtracted. \strong{Offset terms
 will automatically be dropped from the conditional effects formula.}
 The zero-inflation model uses a logit link.}
 
-\item{dispformula}{formula for dispersion (fixed effects only):
-    the default \code{~1} does the standard dispersion given the family. See details.}
+\item{dispformula}{a \emph{one-sided} formula for dispersion containing only fixed effects: the
+default \code{~1} specifies the standard dispersion given any family.
+The argument is ignored for families that do not have a dispersion parameter.
+For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
+The dispersion model uses a log link. 
+In Gaussian mixed models, \code{dispformula=~0} fixes the paramameter to be 0, forcing variance into the random effects.}
 
 \item{weights}{weights, as in \code{glm}. Only implemented for binomial and betabinomial families.}
 
@@ -54,7 +58,6 @@ Fit models with TMB
 must be specified in the form \code{prob ~ ..., weights = N} rather than in
 the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
 \item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
-\item For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}). In models with a \code{dispfomula} depending on variables, a log link is used and output for the \code{Dispersion model} should be interpreted accordinly. In Gaussian mixed models, it is possible to fix the variance parameter at 0 using \code{dispformula=~0}, thus forcing all variance into the random effects.
 }
 }
 \examples{
