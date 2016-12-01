@@ -666,9 +666,9 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
             .prt.grps(x$ngrps[[nn]],nobs=x$nobs)
         }
     }
-
-    printDispersion(x$family,x$sigma)
-
+    if(length(x$sigma)==1) { #only print here if not printing dispersion model
+        printDispersion(x$family,x$sigma)
+    }
     for (nn in names(x$coefficients)) {
         cc <- x$coefficients[[nn]]
         p <- length(cc)
