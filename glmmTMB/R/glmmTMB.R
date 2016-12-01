@@ -337,11 +337,12 @@ okWeights <- function(x) {
 ##' formula; terms can also be added or subtracted. \strong{Offset terms
 ##' will automatically be dropped from the conditional effects formula.}
 ##' The zero-inflation model uses a logit link.
-##' @param dispformula Fixed effects formula for dispersion: the
-##'     default \code{~1} specifies one dispersion parameter for
-##'     families that allow dispersion. The argument is ignored for
-##'     families that do not have a dispersion parameter. The
-##'     dispersion model uses a log link.
+##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the
+##'     default \code{~1} specifies the standard dispersion given any family.
+##'     The argument is ignored for families that do not have a dispersion parameter.
+##'     For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
+##'     The dispersion model uses a log link. 
+##'     In Gaussian mixed models, \code{dispformula=~0} fixes the paramameter to be 0, forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Only implemented for binomial and betabinomial families.
 ##' @param offset offset
 ##' @param se whether to return standard errors
@@ -469,7 +470,7 @@ glmmTMB <- function (
     weights <- as.vector(model.weights(fr))
 
     if(!is.null(weights) & !okWeights(familyStr)) {
-      stop("'weights' are not available for this family. Try dispersion instead.")
+      stop("'weights' are not available for this family. See `dispformula` instead.")
     }
 
     if (is.null(weights)) weights <- rep(1,nobs)
@@ -666,9 +667,9 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
             .prt.grps(x$ngrps[[nn]],nobs=x$nobs)
         }
     }
-
-    printDispersion(x$family,x$sigma)
-
+    if(trivialDisp(x)) {# if trivial print here, else below(~x) or none(~0)
+        printDispersion(x$family,x$sigma)
+    }
     for (nn in names(x$coefficients)) {
         cc <- x$coefficients[[nn]]
         p <- length(cc)

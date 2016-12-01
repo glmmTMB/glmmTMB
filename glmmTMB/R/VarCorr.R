@@ -13,46 +13,47 @@ getParList <- function(object) {
 }
 
 
-##' Extract Residual Standard Deviation or dispersion parameter
+##' Extract residual standard deviation or dispersion parameter
 ##'
-##' For Gaussian models, retrieves the value of the residual
-##' standard deviation; for other model types, retrieves the
+##' For Gaussian models, \code{sigma} returns the value of the residual
+##' standard deviation; for other families, it returns the
 ##' dispersion parameter, \emph{however it is defined for that
-##' particular family}.
+##' particular family}. See details for each family below.
 ##'
 ##' @details
-##'  The precise value returned varies by family:
+##'  The value returned varies by family:
 ##'  \describe{
 ##'      \item{gaussian}{returns the \emph{maximum likelihood} estimate
 ##'          of the standard deviation (i.e., smaller than the results of
-##'                                     \code{sigma(lm(...))} by a factor of (n-1)/n)}
+##'                                  \code{sigma(lm(...))} by a factor of (n-1)/n)}
+##'      \item{nbinom1}{returns an overdispersion parameter
+##'          (usually denoted \eqn{\alpha} as in Hardin and Hilbe (2007)):
+##'          such that the variance equals \eqn{\mu(1+\alpha)}.}
+##'      \item{nbinom2}{returns an overdispersion parameter
+##'          (usually denoted \eqn{\theta} or \eqn{k}); in contrast to
+##'          most other families, larger \eqn{\theta} corresponds to a \emph{lower}
+##'          variance which is \eqn{\mu(1+\mu/\theta)}.}
 ##'      \item{Gamma}{Internally, glmmTMB fits Gamma responses by fitting a mean
 ##'          and a shape parameter; sigma is estimated as (1/sqrt(shape)),
 ##'          which will typically be close (but not identical to) that estimated
 ##'          by \code{stats:::sigma.default}, which uses sqrt(deviance/df.residual)}
-##'      \item{nbinom2}{\code{sigma()} returns the \emph{overdispersion parameter}
-##'          (usually denoted \eqn{\theta} or \eqn{k}); in contrast to
-##'          most other families, larger
-##'          \eqn{\theta} corresponds to a \emph{lower} residual variance.}
-##'      \item{nbinom1}{\code{sigma()} again returns an overdispersion parameter
-##'          (usually denoted \eqn{\alpha}):
-##'          in this case the conditional variance equals \eqn{\mu(1+\alpha)}.}
-##'      \item{beta}{The parameterization follows  Ferrari and Cribari-Neto (2004)
-##'          (and the \code{betareg} package): \code{sigma} returns the value
-##'          of \eqn{\phi}, where 
-##'          the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)} (i.e.,
-##'              increasing \eqn{\phi} decreases the variance.)}
+##'      \item{beta}{returns the value of \eqn{\phi}, 
+##'          where the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)} 
+##'          (i.e., increasing \eqn{\phi} decreases the variance.) 
+##'          This parameterization follows Ferrari and Cribari-Neto (2004)
+##'          (and the \code{betareg} package):}
 ##'      \item{betabinomial}{This family uses the same parameterization (governing
 ##'           the Beta distribution that underlies the binomial probabilities) as \code{beta}.}
 ##' }
 ##' 
 ##'  The most commonly used GLM families 
-##'  (\code{binomial}, \code{poisson}) have their dispersion parameters
-##'  fixed to 1.
+##'  (\code{binomial}, \code{poisson}) have fixed dispersion parameters which are 
+##'  internally ignored.
 ##' 
 ##' @references
 ##' \itemize{
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
+##' \item Hardin, J. W. & Hilbe, J. M. (2007). "Generalized linear models and extensions." Stata press.
 ##' }
 ##' @aliases sigma
 ##' @param object a \dQuote{glmmTMB} fitted object
