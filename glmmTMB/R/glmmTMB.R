@@ -328,9 +328,11 @@ okWeights <- function(x) {
 ##' formula; terms can also be added or subtracted. \strong{Offset terms
 ##' will automatically be dropped from the conditional effects formula.}
 ##' The zero-inflation model uses a logit link.
-##' @param dispformula combined fixed and random effects formula for dispersion:
-##'     the default \code{NULL} specifies no extra dispersion.  The dispersion model
-##' uses a log link.
+##' @param dispformula Fixed effects formula for dispersion: the
+##'     default \code{~1} specifies one dispersion parameter for
+##'     families that allow dispersion. The argument is ignored for
+##'     families that do not have a dispersion parameter. The
+##'     dispersion model uses a log link.
 ##' @param weights weights, as in \code{glm}. Only implemented for binomial and betabinomial families.
 ##' @param offset offset
 ##' @param se whether to return standard errors
@@ -363,7 +365,7 @@ glmmTMB <- function (
     data = NULL,
     family = gaussian(),
     ziformula = ~0,
-    dispformula= NULL,
+    dispformula= ~1,
     weights=NULL,
     offset=NULL,
     se=TRUE,
