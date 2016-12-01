@@ -29,7 +29,7 @@ Currently the available covariance structures are:
 | AR(1)                            | `ar1`         |  $2$            |             |
 | Ornstein–Uhlenbeck               | `ou`          |  $2$            | Coordinates |
 | Spatial exponential              | `exp`         |  $2$            | Coordinates |
-| Spatial Gaussian                 | `gau`         |  $3$            | Coordinates |
+| Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
 | Spatial Matern                   | `mat`         |  $3$            | Coordinates |
 
 The word 'heterogeneous' refers to the marginal variances of the
