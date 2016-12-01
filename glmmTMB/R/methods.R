@@ -385,7 +385,7 @@ printDispersion <- function(ff,s) {
             sval <- s^2
         } else {
             dname <- "Overdispersion parameter"
-            sname <- "sigma"
+            sname <- ""
             sval <- s
         }            
         cat(sprintf("\n%s for %s family (%s): %s",
