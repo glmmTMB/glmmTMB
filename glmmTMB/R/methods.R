@@ -33,11 +33,11 @@ cNames <- list(cond = "Conditional model",
 ## FIXME: this is a bit ugly. On the other hand, a single-parameter
 ## dispersion model without a
 trivialDisp <- function(object) {
+    ## This version works on summary object or fitted model object
     ## FIXME: is there a better way to strip the environment before
     ## comparing?
-    identical(deparse(object$modelInfo$allForm$dispformula),"~1")
+    identical(deparse(object$call$dispformula),"~1")
 }
-
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
@@ -385,7 +385,7 @@ printDispersion <- function(ff,s) {
             sval <- s^2
         } else {
             dname <- "Overdispersion parameter"
-            sname <- "sigma"
+            sname <- ""
             sval <- s
         }            
         cat(sprintf("\n%s for %s family (%s): %s",
