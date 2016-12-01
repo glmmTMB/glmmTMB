@@ -32,7 +32,7 @@ getParList <- function(object) {
 ##'      \item{nbinom2}{returns an overdispersion parameter
 ##'          (usually denoted \eqn{\theta} or \eqn{k}); in contrast to
 ##'          most other families, larger \eqn{\theta} corresponds to a \emph{lower}
-##'          variance which is \eqn{\mu(1+\mu /\theta)}.}
+##'          variance which is \eqn{\mu(1+\mu/\theta)}.}
 ##'      \item{Gamma}{Internally, glmmTMB fits Gamma responses by fitting a mean
 ##'          and a shape parameter; sigma is estimated as (1/sqrt(shape)),
 ##'          which will typically be close (but not identical to) that estimated
