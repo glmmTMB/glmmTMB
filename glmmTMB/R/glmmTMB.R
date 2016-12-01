@@ -38,6 +38,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         betad_init <- 0
     }
 
+    ## Ignore 'dispformula' argument for non-dispersion families.
+    if ( ! usesDispersion(family) ) {
+        ## if ( dispformula != ~0 &&
+        ##      dispformula != ~1 )
+        ##     warning(sprintf("dispersion parameter ignored for family %s",
+        ##                     sQuote(family)))
+        dispformula <- ~0
+    }
+
     ## n.b. eval.parent() chain needs to be preserved because
     ## we are going to try to eval(mf) at the next level down,
     ## need to be able to find data etc.
