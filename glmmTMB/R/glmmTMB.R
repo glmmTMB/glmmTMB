@@ -402,10 +402,6 @@ glmmTMB <- function (
     ## extract family and link information from family object
     link <- family$link
     familyStr <- family$family
-    
-    if (is.null(dispformula)) {
-      dispformula <- if (usesDispersion(familyStr)) ~1 else ~0
-    }
 
     ## lme4 function for warning about unused arguments in ...
     ## ignoreArgs <- c("start","verbose","devFunOnly",
