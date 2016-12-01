@@ -469,7 +469,7 @@ glmmTMB <- function (
     weights <- as.vector(model.weights(fr))
 
     if(!is.null(weights) & !okWeights(familyStr)) {
-      stop("'weights' are not available for this family. Try dispersion instead.")
+      stop("'weights' are not available for this family. See `dispformula` instead.")
     }
 
     if (is.null(weights)) weights <- rep(1,nobs)
@@ -666,7 +666,7 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
             .prt.grps(x$ngrps[[nn]],nobs=x$nobs)
         }
     }
-    if(length(x$sigma)==1) { #only print here if not printing dispersion model
+    if(trivialDisp(x)) {# if trivial print here, else below(~x) or none(~0)
         printDispersion(x$family,x$sigma)
     }
     for (nn in names(x$coefficients)) {
