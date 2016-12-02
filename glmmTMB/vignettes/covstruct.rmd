@@ -1,0 +1,328 @@
+---
+title: "Covariance structures with glmmTMB"
+author: "Kasper Kristensen"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include=FALSE, message=FALSE}
+library(knitr)
+library(glmmTMB)
+library(MASS)
+knitr::opts_chunk$set(echo = TRUE, eval=TRUE)
+set.seed(1)
+```
+
+This vignette demonstrates some of the covariance structures available in the `glmmTMB` package.
+Currently the available covariance structures are:
+
+| Covariance                       | Notation      | Parameter count | Requirement |
+|----------------------------------|---------------|-----------------|-------------|
+| Heterogeneous unstructured       | `us`          |  $n(n+1)/2$     |             |
+| Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |             |
+| Heterogeneous compound symmetry  | `cs`          |  $n+1$          |             |
+| Heterogeneous diagonal           | `diag`        |  $n$            |             |
+| AR(1)                            | `ar1`         |  $2$            |             |
+| Ornstein–Uhlenbeck               | `ou`          |  $2$            | Coordinates |
+| Spatial exponential              | `exp`         |  $2$            | Coordinates |
+| Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
+| Spatial Matern                   | `mat`         |  $3$            | Coordinates |
+
+The word 'heterogeneous' refers to the marginal variances of the
+model. Beyond correlation parameters, a heteorogenous structure uses
+$n$ additional variance parameters where $n$ is the dimension.
+
+Some of the structures require temporal or spatial coordinates. We
+will show examples of this in a later section.
+
+## The AR(1) covariance structure
+
+### Demonstration on simulated data
+
+First, let's consider a simple time series model. Assume that our
+measurements $Y(t)$ are given at discrete times $t \in \{1,...,n\}$ by
+
+$$Y(t) = \mu + X(t) + \varepsilon(t)$$
+
+where
+
+- $\mu$ is the mean value parameter.
+- $X(t)$ is a stationary AR(1) process, i.e. has covariance $cov(X(s),
+  X(t)) = \sigma^2\exp(-\theta |t-s|)$.
+- $\varepsilon(t)$ is iid. $N(0,\sigma_0^2)$ measurement error.
+
+A simulation experiment is set up using the parameters
+
+| Description            | Parameter     | Value |
+|------------------------|---------------|-------|
+| Mean                   | $\mu$         | 0     |
+| Process variance       | $\sigma^2$    | 1     |
+| Measurement variance   | $\sigma_0^2$  | 1     |
+| One-step correlation   | $e^{-\theta}$ | 0.7   |
+
+The following R-code draws a simulation based on these parameter
+values.  For illustration purposes we consider a very short time
+series.
+
+```{r echo=TRUE, eval=TRUE}
+n <- 6                                              ## Number of time points
+x <- mvrnorm(mu = rep(0,n),
+             Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process using the MASS package
+y <- x + rnorm(n)                                   ## Add measurement noise
+```
+
+In order to fit the model with `glmmTMB` we must first specify a time
+variable as a *factor*. The factor *levels* correspond to unit spaced
+time points.
+
+```{r echo=TRUE, eval=TRUE}
+times <- factor(1:n)
+levels(times)
+```
+
+We also need a grouping variable. In the current case there is only
+one time-series so the grouping is:
+
+```{r echo=TRUE, eval=TRUE}
+group <- factor(rep(1,n))
+```
+
+Now fit the model using
+
+```{r echo=TRUE, eval=FALSE}
+glmmTMB(y ~ ar1(times + 0 | group))
+```
+
+This formula notation follows that of the `lme4` package.
+
+- The left hand side of the bar `times + 0` corresponds to a design
+  matrix $Z$ linking observation vector $y$ (rows) with a random
+  effects vector $u$ (columns).
+- The distribution of $u$ is `ar1` (this is the only `glmmTMB`
+  specific part of the formula).
+- The right hand side of the bar splits the above specification
+  independently among groups. Each group has its own separate $u$
+  vector but shares the same parameters for the covariance structure.
+
+After running the model, we find the parameter estimates $\mu$
+(intercept), $\sigma_0^2$ (dispersion), $\sigma$ (Std. Dev.) and
+$e^{-\theta}$ (First off-diagonal of "Corr") in the output:
+
+> FIXME: Try a longer time series when the print.VarCorr is fixed.
+
+```{r echo=FALSE, eval=TRUE}
+glmmTMB(y ~ ar1(times + 0 | group))
+```
+
+### Increasing the sample size
+
+A single time series of 6 time points is not sufficient to identify
+the parameters. We could either increase the length of the time series
+or increase the number of groups. We'll try the latter:
+
+```{r echo=TRUE, eval=TRUE}
+simGroup <- function(g) {
+    x <- mvrnorm(mu = rep(0,n),
+             Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process
+    y <- x + rnorm(n)                               ## Add measurement noise
+    times <- factor(1:n)
+    group <- factor(rep(g,n))
+    data.frame(y, times, group)
+}
+simGroup(1)
+```
+
+A dataset with 1000 groups is generated:
+
+```{r echo=TRUE, eval=TRUE}
+dat <- do.call("rbind", lapply(1:1000, simGroup) )
+```
+
+And fitting the model on this larger dataset gives estimates close to
+the true values:
+
+```{r echo=TRUE, eval=TRUE}
+fit.ar1 <- glmmTMB(y ~ ar1(times + 0 | group), data=dat)
+fit.ar1
+```
+
+## The unstructured covariance
+
+We can try to fit an unstructured covariance to the previous dataset
+`dat`. For this case an unstructered covariance has `r (n*n-n)/2`
+correlation parameters and `r n` variance parameters. Adding
+$\sigma_0^2 I$ on top would cause a strict
+overparameterization. Hence, when fitting the model with `glmmTMB`, we
+have to disable the $\varepsilon$ term (the dispersion):
+
+```{r echo=TRUE, eval=TRUE}
+fit.us <- glmmTMB(y ~ us(times + 0 | group), data=dat, dispformula=~0)
+fit.us$sdr$pdHess ## Converged ?
+```
+
+The estimated variance and correlation parameters are:
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.us)
+```
+
+The estimated correlation is approximately constant along diagonals
+(apparent Toeplitz structure) and we note that the first off-diagonal
+is now ca. half the true value (0.7) because the disperison is
+effectively included in the estimated covariance matrix.
+
+## The Toeplitz structure
+
+The next natural step would be to reduce the number of parameters by
+collecting correlation parameters within the same off-diagonal. This
+amounts to `r n-1` correlation parameters and `r n` variance
+parameters. This time we do not have to disable the dispersion
+parameter.
+
+```{r echo=TRUE, eval=TRUE}
+fit.toep <- glmmTMB(y ~ toep(times + 0 | group), data=dat)
+fit.toep$sdr$pdHess ## Converged ?
+```
+
+The estimated variance and correlation parameters are:
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.toep)
+```
+
+The residual variance appears downward biased. REML estimation
+(currently not part of `glmmTMB`) would probably give a better
+estimate of the variance and thereby the correlation parameters.
+
+> FIXME: Add REML argument to glmmTMB
+
+## Compound symmetry
+
+The compund symmetry structure collects all off-diagonal elements of
+the correlation matrix to one common value.
+
+```{r echo=TRUE, eval=TRUE}
+fit.cs <- glmmTMB(y ~ cs(times + 0 | group), data=dat)
+fit.cs$sdr$pdHess ## Converged ?
+```
+
+The estimated variance and correlation parameters are:
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.cs)
+```
+
+## Anova tables
+
+The models ar1, toep, and us are nested so we can use:
+
+```{r echo=TRUE, eval=TRUE}
+anova(fit.ar1, fit.toep, fit.us)
+```
+
+The models cs is a sub-model of toep:
+
+```{r echo=TRUE, eval=TRUE}
+anova(fit.cs, fit.toep)
+```
+
+## Adding coordinate information
+
+Coordinate information can be added to a variable using the `glmmTMB`
+function `numFactor`. This is necessary in order to use those
+covariance structures that require coordinates. For example, if we
+have the numeric coordinates
+
+```{r echo=TRUE, eval=TRUE}
+x <- sample(1:2, 10, replace=TRUE)
+y <- sample(1:2, 10, replace=TRUE)
+```
+
+we can generate a factor representing $(x,y)$ coordinates by
+
+```{r echo=TRUE, eval=TRUE}
+pos <- numFactor(x,y)
+pos
+```
+
+Numeric coordinates can be recovered from the factor levels
+
+```{r echo=TRUE, eval=TRUE}
+parseNumLevels(levels(pos))
+```
+
+In order to try the remaining structures on our test data we
+re-interpret the time factor using `numFactor`:
+
+```{r echo=TRUE, eval=TRUE}
+dat$times <- numFactor(dat$times)
+levels(dat$times)
+```
+
+## Ornstein–Uhlenbeck
+
+Having the numeric times encoded in the factor levels we can now try
+the Ornstein–Uhlenbeck covariance structure.
+
+```{r echo=TRUE, eval=TRUE}
+fit.ou <- glmmTMB(y ~ ou(times + 0 | group), data=dat)
+fit.ou$sdr$pdHess ## Converged ?
+```
+
+It should give the exact same results as `ar1` in this case since the
+times are equidistant:
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.ou)
+```
+
+However, note the differences between `ou` and `ar1`:
+
+- `ou` can handle irregular time points.
+- `ou` only allows positive correlation between neighboring time points.
+
+## Spatial correlations
+
+The structures `exp`, `gau` and `mat` are meant to used for spatial
+data. They all require a Euclidian distance matrix which is calculated
+internally based on the coordinates. Here, we will try these models on
+the simulated time series data:
+
+> FIXME: Maybe try some spatial data instead ?
+
+### Matern
+
+```{r echo=TRUE, eval=TRUE}
+fit.mat <- glmmTMB(y ~ mat(times + 0 | group), data=dat, dispformula=~0)
+fit.mat$sdr$pdHess ## Converged ?
+```
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.mat)
+```
+
+### Gaussian
+
+```{r echo=TRUE, eval=TRUE}
+fit.gau <- glmmTMB(y ~ gau(times + 0 | group), data=dat, dispformula=~0)
+fit.gau$sdr$pdHess ## Converged ?
+```
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.gau)
+```
+
+### Exponential
+
+```{r echo=TRUE, eval=TRUE}
+fit.exp <- glmmTMB(y ~ exp(times + 0 | group), data=dat)
+fit.exp$sdr$pdHess ## Converged ?
+```
+
+```{r echo=TRUE, eval=TRUE}
+VarCorr(fit.exp)
+```

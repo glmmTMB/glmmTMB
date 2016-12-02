@@ -259,7 +259,7 @@ getReStruc <- function(reTrms, ss=NULL) {
                    "3" = 2,  # ar1
                    "4" = 2,  # ou
                    "5" = 2,  # exp
-                   "6" = 3,  # gau
+                   "6" = 2,  # gau
                    "7" = 3,  # mat
                    "8" = 2 * blksize - 1) # toep
         }
