@@ -426,10 +426,10 @@ print.glmmTMB <-
       }
   }
   cat(do.call(paste,c(gvec,list(sep=" / "))),fill=TRUE)
-  cat("\n")
 
-  printDispersion(x$modelInfo$familyStr,sigma(x))  
-   
+  if(trivialDisp(x)) {# if trivial print here, else below(~x) or none(~0)
+    printDispersion(x$modelInfo$familyStr,sigma(x))  
+  } 
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
