@@ -91,7 +91,13 @@ namespace glmmtmb{
   }
 
 }
-
+//Quantile functions needed to simulate from truncated distributions
+extern "C" {
+  double Rf_qnbinom(double p, double sz, double pb);
+}
+extern "C" {
+  double Rf_qpois(double p, double mu);
+}
 enum valid_family {
   gaussian_family = 0,
   binomial_family = 100,
@@ -550,7 +556,11 @@ Type objective_function<Type>::operator() ()
           s3 = logspace_add( Type(0), etad(i) );
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
-          SIMULATE{yobs(i) = 0;}//TODO: fill in later
+          SIMULATE{
+            s1 = mu(i)/phi(i);//sz
+            s2 = 1/(1+phi(i)); //pb
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2));
+          }
         }
         break;
       case nbinom2_family:
@@ -572,7 +582,11 @@ Type objective_function<Type>::operator() ()
           s3         = logspace_add( Type(0), s1 - etad(i) );
           log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
           tmp_loglik -= log_nzprob;
-          SIMULATE{yobs(i) = 0;}//TODO: fill in later
+          SIMULATE{
+            s1 = phi(i); //sz
+            s2 = phi(i)/(phi(i)+mu(i)); //pb
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2));
+          }
         }
         break;
       case truncated_poisson_family:
@@ -585,7 +599,9 @@ Type objective_function<Type>::operator() ()
         // log(nzprob) = log( 1 - exp(-mu(i)) )
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
-        SIMULATE{yobs(i) = 0;}//TODO: fill in later
+        SIMULATE{
+          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)));
+        }
         break;
       default:
         error("Family not implemented!");
