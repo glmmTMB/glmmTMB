@@ -532,7 +532,9 @@ glmmTMB <- function (
     } else {
         sdr <- NULL
     }
-
+    if(!sdr$pdHess) warning(paste0("Model convergence problem. Hessian is not positive definite.", 
+                             "This may indicate that a model is overparameterized."))
+	
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
                                 ## FIXME:apply condList -> cond earlier?
