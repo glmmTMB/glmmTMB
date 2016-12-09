@@ -623,11 +623,10 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object)
 }
 
-.noSimFamilies <- c("beta", "betabinomial", "truncated_poisson", 
-"truncated_nbinom1", "truncated_nbinom2")
+.noSimFamilies <- c("beta", "betabinomial")
 
 noSim <- function(x) {
-	!is.na(match(x, .noSimFamilies))
+    !is.na(match(x, .noSimFamilies))
 }
 
 ##' Simulate from a glmmTMB fitted model
@@ -643,15 +642,11 @@ noSim <- function(x) {
 ##' @importFrom stats simulate
 ##' @export
 simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
- if(noSim(object$modelInfo$family$family))
- {
- 	stop("Simulation code has not been implemented for this family")
- }
- ret <- list()
- if(!is.null(seed)) set.seed(seed)
- for (i in 1:nsim)
- {
-   ret[[i]] <- object$obj$simulate()$yobs
- }
- ret
+    if(noSim(object$modelInfo$family$family))
+    {
+    	stop("Simulation code has not been implemented for this family")
+    }
+    if(!is.null(seed)) set.seed(seed)
+    ret <- replicate(nsim, object$obj$simulate()$yobs, simplify=FALSE)
+    ret
 }
