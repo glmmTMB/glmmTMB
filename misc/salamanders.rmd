@@ -6,12 +6,13 @@ bibliography: misc.bib
 output: pdf_document
 ---
 In this appendix, we reanalyze counts of salamanders in streams. Repeated samples of salamanders were taken at 23 sites. Some of the sites were affected by mountian top removal coal mining.
-The data was originally published in @price_effects_2016.
+The data was originally published in @price_effects_2016 and was aquired from Dryad (@dryad_5m8f6).
+
 
 # Preliminaries
 ```{r setup, include=FALSE, message=FALSE}
 library(knitr)
-knitr::opts_chunk$set(echo = TRUE, cache=FALSE)
+knitr::opts_chunk$set(echo = TRUE, cache=FALSE, fig.width = 7)
 options(scipen = 1, digits = 2)
 ```
 
@@ -31,7 +32,15 @@ data(Salamanders)
 head(Salamanders)
 Salamanders = transform(Salamanders, present = as.numeric(count>0))
 ```
+
+```{r firstplot, echo=FALSE}
+ggplot(Salamanders, aes(x=count, fill=mined))+geom_histogram(position="identity" , alpha=.7, binwidth = 1)+facet_wrap(~spp, scale="free")+ylab(NULL)+xlab(NULL)
+```
+*Figure 1 -- Observed count data.* Histograms of count data split into separate panels for each species or life stage. Each panel contains two overlaid histograms in which color represents whether the site was mined or not.
+
 #Model fitting with glmmTMB
+
+These analyses are intended to be a simple demonstration of how to use some features of the `glmmTMB` package, so we do not attempt to fit all of the models that could be considered reasonable.
 
 ##Poisson Models
 The syntax for fitting Poisson models with `glmmTMB` is quite similar to using `glmer`. In the first model, the formula, `count~spp + (1|site)`, says that counts depend on species and vary randomly by site. We also pass it the data frame, `Salamanders`, and specify a Poisson distribution using the `family` argument. `glmmTMB` assumes that we want a log-link with the Poisson distribution because that's the standard.
@@ -43,22 +52,22 @@ pm2 = glmmTMB(count~spp * mined + (1|site), Salamanders, family="poisson")
 ```
 
 ##Zero-inflated Poisson
-To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will also recognize `zi` This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with any predictors. In this example, we might assume that absences will at least vary by species (`spp`), so we write `zi=~spp`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. The zero-inflation probability is always modeled with a logit-link to keep it between 0 and 1.
+To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will also recognize `zi` This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with any predictors. In this example, we might assume that absences will at least vary by species (`spp`) and vary randomly by site, so we write `zi=~spp + (1|site)`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. The zero-inflation probability is always modeled with a logit-link to keep it between 0 and 1.
 
 ```{r zipmodels}
-zipm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family="poisson")
-zipm1 = glmmTMB(count~spp + mined + (1|site), zi=~spp, Salamanders, family="poisson")
-zipm2 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family="poisson")
-zipm3 = glmmTMB(count~spp * mined + (1|site), zi=~spp * mined, Salamanders, family="poisson")
+zipm0 = glmmTMB(count~spp +(1|site), zi=~spp +(1|site), Salamanders, family="poisson")
+zipm1 = glmmTMB(count~spp + mined +(1|site), zi=~spp +(1|site), Salamanders, family="poisson")
+zipm2 = glmmTMB(count~spp + mined +(1|site), zi=~spp + mined +(1|site), Salamanders, family="poisson")
+zipm3 = glmmTMB(count~spp * mined +(1|site), zi=~spp * mined +(1|site), Salamanders, family="poisson")
 ```
 
 ##Poisson hurdle model
 We can also fit hurdle models. This is done in two parts: first by modelling the zeros versus non-zeros with a binomial distribution and then modelling the non-zeros with a truncated-Poisson distribution. In the salamander example, this means first modeling presence versus absence (`zm1` below) and then modeling the presence only data (`cm1` below). In `zm1`, it's important that the response `present` is numeric (`1` or `0`) instead of (`TRUE` or `FALSE`); that's why we wrote `present=as.numeric(count>0)` in the data organization code above.
 
 ```{r hurdle}
-zm0 = glmmTMB(present~spp, family="binomial", Salamanders)
-zm1 = glmmTMB(present~spp + mined, family="binomial", Salamanders)
-zm2 = glmmTMB(present~spp * mined, family="binomial", Salamanders)
+zm0 = glmmTMB(present~spp + (1|site), family="binomial", Salamanders)
+zm1 = glmmTMB(present~spp + mined + (1|site), family="binomial", Salamanders)
+zm2 = glmmTMB(present~spp * mined + (1|site), family="binomial", Salamanders)
 AICtab(zm0, zm1, zm2)
 ```
 
@@ -90,7 +99,12 @@ The zero-inflated Poisson model has a slightly lower AIC value than the hurdle m
 summary(zipm3)
 ```
 
+This summary can be broken down into four sections. The top section is a general overview containing a description of the model specification (`Family`, `Formula`, `Zero inflation`, `Dispersion`, `Data`) and resulting information criteria. The information criteria are only meaningful in comparison to other models fit by `glmmTMB`; this is because `glmmTMB` does not drop any constants from the likelihood while some other packages do. The second section describes the variability of the `Random effects`. In this model, we had random effects on both the conditional model and the zero-inflation model. The third section describes the coefficients of the `Conditional model` including Wald p-values. Besides the intercept, the estimates are all contrasts as is standard in regression models. This model has a log link as stated in the top line of the summary. The fourth section describes the `Zero-inflation model` similarly to the `Conditional model` except that this model has a logit-link. The zero-inflation model estimates the probability of an extra zero such that, a positive contrast indicates a higher chance of absence (e.g. `minedno` < 0 means fewer absences in sites unafected by mining); this is the opposite of the conditional model where a positive contrast indicates a higher abundance (e.g. `minedno` > 0 means higher abundances in sites unafected by mining).
+
 #Plotting model results
+
+As previously discussed in various places there are a whole bunch of decisions to make about marginalizing over or conditioning on the random effects. 
+See discussion [at this link](https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html).
 
 ##Quick and dirty plot
 It's easiest to see the pattern by using the `predict` function. To avoid marginalizing over or conditioning on random effects, we can refit the best model without the random effect of site; however, this is not ideal because it ignores the correlation within sites. We present a more rigorous version next.
@@ -113,42 +127,20 @@ ggplot(newdata, aes(spp, predFE, colour=mined))+geom_point()+
 
 ``` 
 
-Figure 1 -- Points represtent site-specific average counts. Error bars represent the 95% Wald-type confidence intervals for the predicted average count.
-
-<!-- We can also get predicted probability of a structural zero using the argument `zitype="zprob"`. -->
-<!-- ```{r zpred} -->
-<!-- temp2 = predict(zipm3FE, newdata, se.fit=TRUE, zitype="zprob") -->
-<!-- newdata$predZ = temp2$fit -->
-<!-- newdata$predZ.min = temp2$fit-1.98*temp2$se.fit -->
-<!-- newdata$predZ.max = temp2$fit+1.98*temp2$se.fit -->
-
-<!-- real = ddply(Salamanders, ~site+spp+mined, summarize, absence=mean(count==0)) -->
-
-<!-- ggplot(newdata, aes(spp, predZ, colour=mined))+geom_point()+ -->
-<!--   geom_errorbar(aes(ymin=pmax(predZ.min,0), ymax=pmin(predZ.max,1)))+ -->
-<!--   geom_point(data=real, aes(x=spp, y=absence) )+ -->
-<!--   ylab("Probability of a structural zero") -->
-<!-- ``` -->
+*Figure 2 -- Estimated abundance ignoring correlation.* Points represtent site-specific average counts. Error bars represent the 95% Wald-type confidence intervals for the predicted average count.
 
 ## Alternative prediction method
-
-As previously discussed in various places there are a whole bunch of decisions to make about marginalizing over or conditioning on the random effects. 
-See [here](https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html).
-
-We can predict at the population mode, which should be close to the population median, by setting the random effects to zero.
+We can predict at the population mode, by setting the random effects to zero.
 
 ```{r predmode}
 X.cond = model.matrix(lme4::nobars(formula(zipm3)[-2]), newdata0)
 beta.cond = fixef(zipm3)$cond
 pred.cond = X.cond %*% beta.cond
-predvar.cond = diag(X.cond %*% vcov(zipm3)$cond %*% t(X.cond))
-predse.cond = sqrt(predvar.cond)
+
 ziformula = zipm3$modelInfo$allForm$ziformula
 X.zi = model.matrix(lme4::nobars(ziformula), newdata0)
 beta.zi = fixef(zipm3)$zi
 pred.zi = X.zi %*% beta.zi
-predvar.zi = diag(X.zi %*% vcov(zipm3)$zi %*% t(X.zi))
-predse.zi = sqrt(predvar.zi)
 ```
 
 These are estimates of the linear predictors (i.e., predictions on the link scale: logit(prob) and log(cond)), not the predictions themselves.
@@ -159,7 +151,7 @@ pred.ucount = exp(pred.cond)*(1-plogis(pred.zi))
 pred.count = data.frame(newdata0, pred.ucount)
 ```
 
-For the standard errors/confidence intervals, we could use posterior predictive simulations (i.e. draw MVN samples from the parameter for the fixed effects) (this conditions on/ignores uncertainty in the random-effect parameters ...)
+For the standard errors/confidence intervals, we could use posterior predictive simulations (i.e. draw MVN samples from the parameter for the fixed effects). This conditions on/ignores uncertainty in the random-effect parameters.
 
 ```{r postpredsim}
 library(MASS)
@@ -185,9 +177,7 @@ ggplot(pred.count, aes(x=spp, y=pred.ucount, colour=mined))+geom_point(shape=1, 
   ylab("Abundance \n including presences and absences")+
   xlab("Species")
 ```
-Figure 2 -- Circles represent predicted unconditional counts at the mode (i.e., site effect = 0) and error bars represent the 95% confidence intervals for that mode. Squares represnet the observed median and diamonds represent observed means calculated across samples and sites.
-
-We could also use the Delta method for this.
+*Figure 3 -- Estimated abundance at mode.* Circles represent predicted unconditional counts at the mode (i.e., site effect = 0) and error bars represent the 95% confidence intervals for that mode. Squares represnet the observed median and diamonds represent observed means calculated across samples and sites. In this highly skewed data, the mode is closer to the mean than the median.
 
 #Simulating from a fitted model
 
@@ -203,22 +193,37 @@ simdatlist=lapply(sims, function(count){
   cbind(count, Salamanders[,c('site', 'mined', 'spp')])
 })
 simdatsums=lapply(simdatlist, function(x){
-  ddply(x, ~spp+mined, summarize, absence=mean(count==0))
+  ddply(x, ~spp+mined, summarize, 
+        absence=mean(count==0),
+        mu=mean(count))
 })
 ssd=do.call(rbind, simdatsums)
 ```
 
 Then we can plot them with the observations summarized in the same way.
 ```{r plotsims}
-real = ddply(Salamanders, ~spp+mined, summarize, absence=mean(count==0))
+real = ddply(Salamanders, ~spp+mined, summarize, 
+             absence=mean(count==0),
+             mu=mean(count))
 ggplot(ssd, aes(x=absence, color=mined))+
-  geom_density(adjust=2)+
+  geom_density(adjust=4)+
   facet_wrap(~spp)+
   geom_point(data=real, aes(x=absence, y=1, color=mined), size=2)+
-  xlab("Probability that salamanders are not observed")
+  xlab("Probability that salamanders are not observed")+ylab(NULL)
+
 ```
-Figure 3 -- Each panel represents a different species or life stage of a species. Densities are values from 1000 data sets simulated from our best fit model. Points represent the observed data.
+*Figure 4 -- Simulated zero counts.* Each panel represents a different species or life stage of a species. Densities are values from 1000 data sets simulated from our best fit model. Points represent the observed data.
 
 We can see that this model does a good job of capturing the observed zero counts.
+
+```{r plotsims mu}
+ggplot(ssd, aes(x=mu, color=mined))+
+  geom_density(adjust=4)+
+  facet_wrap(~spp)+
+  geom_point(data=real, aes(x=mu, y=.5, color=mined), size=2)+
+  xlab("Abundance including presences and absences")+ylab(NULL)
+```
+
+*Figure 5 -- Simulated unconditional abundances.* Each panel represents a different species or life stage of a species. Densities are values from 1000 data sets simulated from our best fit model. Points represent the observed data.
 
 #References
