@@ -651,7 +651,7 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                                  show.resids = FALSE, ...)
 {
     .prt.family(x)
-    .prt.call(x$call); cat("\n")
+    .prt.call.glmmTMB(x$call); cat("\n")
     .prt.aictab(x$AICtab); cat("\n")
     if (show.resids)
         .prt.resids(x$residuals, digits = digits)
