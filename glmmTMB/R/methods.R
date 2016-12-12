@@ -196,7 +196,10 @@ getME.glmmTMB <- function(object,
 ##' @importFrom stats logLik
 ##' @export
 logLik.glmmTMB <- function(object, ...) {
-  val <- if(object$sdr$pdHess){-object$fit$objective}else{NA}
+  if(!is.null(object$sdr)){
+    val <- if(object$sdr$pdHess){-object$fit$objective}else{NA}
+  }else val <- -object$fit$objective
+
   nobs <- nobs.glmmTMB(object)
   structure(val, nobs = nobs, nall = nobs, df = length(object$fit$par),
             class = "logLik")
