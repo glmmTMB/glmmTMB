@@ -196,7 +196,10 @@ getME.glmmTMB <- function(object,
 ##' @importFrom stats logLik
 ##' @export
 logLik.glmmTMB <- function(object, ...) {
-  val <- -object$fit$objective
+  if(!is.null(object$sdr)){
+    val <- if(object$sdr$pdHess){-object$fit$objective}else{NA}
+  }else val <- -object$fit$objective
+
   nobs <- nobs.glmmTMB(object)
   structure(val, nobs = nobs, nall = nobs, df = length(object$fit$par),
             class = "logLik")
@@ -315,22 +318,22 @@ cat.f <- function(...) cat(..., fill = TRUE)
         pass<-nchar(deparse(rhs))
     }
   }
-  if(!is.null(cc <- call$ziformula))
-    cat.f("Zero inflation:  ",rep(' ',pass+2),'~ ' ,deparse(cc[[2]]),sep='')
-  if(!is.null(cc <- call$dispformula))
-    cat.f("Dispersion:      ",rep(' ',pass+2),'~ ', deparse(cc[[2]]), sep='')
+  if(!identical(cc <- deparse(call$ziformula),"~0"))
+    cat.f("Zero inflation:  ",rep(' ',pass+2), cc, sep='')
+  if(!identical(cc <- deparse(call$dispformula),"~1"))
+    cat.f("Dispersion:      ",rep(' ',pass+2), cc, sep='')
   if (!is.null(cc <- call$data))
-    cat.f("   Data:", deparse(cc))
+    cat.f("Data:", deparse(cc))
   if (!is.null(cc <- call$weights))
     cat.f("Weights:", deparse(cc))
   if (!is.null(cc <- call$offset))
     cat.f(" Offset:", deparse(cc))
-  if (long && length(cc <- call$control) &&
-      !identical((dc <- deparse(cc)), "lmerControl()"))
+#  if (long && length(cc <- call$control) &&
+#      !identical((dc <- deparse(cc)), "lmerControl()"))
     ## && !identical(eval(cc), lmerControl()))
-    cat.f("Control:", dc)
-  if (!is.null(cc <- call$subset))
-    cat.f(" Subset:", deparse(cc))
+#    cat.f("Control:", dc)
+#  if (!is.null(cc <- call$subset))
+#    cat.f(" Subset:", deparse(cc))
 }
 
 

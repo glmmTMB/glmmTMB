@@ -532,7 +532,9 @@ glmmTMB <- function (
     } else {
         sdr <- NULL
     }
-
+    if(!is.null(sdr$pdHess))if(!sdr$pdHess) warning(paste0("Model convergence problem. Hessian is not positive definite. ", 
+                             "This may indicate that a model is overparameterized."))
+	
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
                                 ## FIXME:apply condList -> cond earlier?
@@ -649,7 +651,7 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                                  show.resids = FALSE, ...)
 {
     .prt.family(x)
-    .prt.call(x$call); cat("\n")
+    .prt.call.glmmTMB(x$call); cat("\n")
     .prt.aictab(x$AICtab); cat("\n")
     if (show.resids)
         .prt.resids(x$residuals, digits = digits)
