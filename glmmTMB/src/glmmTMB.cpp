@@ -250,7 +250,7 @@ struct terms_t : vector<per_term_info<Type> > {
 };
 
 template <class Type>
-Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term) {
+Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
   vector<int> dim(2);
   dim << term.blockSize, term.blockReps;
@@ -261,6 +261,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
+      if (do_simulate) {
+        U.col(i) = rnorm(Type(0), sd);
+      }
     }
     term.sd = sd; // For report
   }
@@ -274,6 +277,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
@@ -294,6 +300,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
@@ -314,6 +323,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
@@ -329,8 +341,14 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     Type sd = exp(logsd);
     for(int j = 0; j < term.blockReps; j++){
       ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+      if (do_simulate) {
+        U(0, j) = rnorm(Type(0), sd);
+      }
       for(int i=1; i<n; i++){
 	ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
+        if (do_simulate) {
+          U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
+        }
       }
     }
     // For consistency with output for other structs we report entire
@@ -357,9 +375,15 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     Type sd = exp(logsd);
     for(int j = 0; j < term.blockReps; j++){
       ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+      if (do_simulate) {
+        U(0, j) = rnorm(Type(0), sd);
+      }
       for(int i=1; i<n; i++){
 	Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
 	ans -= dnorm(U(i, j), rho * U(i-1, j), sd * sqrt(1 - rho*rho), true);
+        if (do_simulate) {
+          U(i, j) = rnorm( rho * U(i-1, j), sd * sqrt(1 - rho*rho));
+        }
       }
     }
     // For consistency with output for other structs we report entire
@@ -411,6 +435,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::SCALE_t<density::MVNORM_t<Type> > scnldens = density::SCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = corr;   // For report
     term.sd.resize(n);  // For report
