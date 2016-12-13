@@ -250,12 +250,8 @@ struct terms_t : vector<per_term_info<Type> > {
 };
 
 template <class Type>
-Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
+Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
-  vector<int> dim(2);
-  dim << term.blockSize, term.blockReps;
-  array<Type> U(u, dim); // Note: Fill columnwise
-  
   if (term.blockCode == diag_covstruct){
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
@@ -448,8 +444,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term,
 }
 
 template <class Type>
-Type allterms_nll(vector<Type> u, vector<Type> theta, 
-		  vector<per_term_info<Type> >& terms) {
+Type allterms_nll(vector<Type> &u, vector<Type> theta,
+		  vector<per_term_info<Type> >& terms,
+                  bool do_simulate = false) {
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
@@ -460,9 +457,11 @@ Type allterms_nll(vector<Type> u, vector<Type> theta,
     bool emptyTheta = ( terms(i).blockNumTheta == 0 );
     offset = ( emptyTheta ? -np : 0 );
     np     = ( emptyTheta ?  np : terms(i).blockNumTheta );
-    vector<Type> useg =     u.segment(upointer         , nr);
+    vector<int> dim(2);
+    dim << terms(i).blockSize, terms(i).blockReps;
+    array<Type> useg( &u(upointer), dim);
     vector<Type> tseg = theta.segment(tpointer + offset, np);
-    ans += termwise_nll(useg, tseg, terms(i));
+    ans += termwise_nll(useg, tseg, terms(i), do_simulate);
     upointer += nr;
     tpointer += terms(i).blockNumTheta;
   }
@@ -511,8 +510,8 @@ Type objective_function<Type>::operator() ()
   Type jnll = 0;
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms);
-  jnll += allterms_nll(bzi, thetazi, termszi);
+  jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b + offset;
