@@ -52,6 +52,7 @@ numFactor <- function(x, ...) {
 
 ##' @rdname numFactor
 ##' @param levels Character vector to parse into numeric values.
+##' @importFrom stats complete.cases
 ##' @export
 parseNumLevels <- function(levels) {
     ## Strip initial (irrelevant) characters:

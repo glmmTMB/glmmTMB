@@ -225,7 +225,7 @@ getGrpVar <- function(x)
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)
-##' @importFrom stats setNames
+##' @importFrom stats setNames dist
 ##' @export
 getReStruc <- function(reTrms, ss=NULL) {
 
