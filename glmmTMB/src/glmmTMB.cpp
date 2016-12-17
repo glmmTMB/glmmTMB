@@ -91,13 +91,13 @@ namespace glmmtmb{
   }
 
 }
-//Quantile functions needed to simulate from truncated distributions
+
+/* Quantile functions needed to simulate from truncated distributions */
 extern "C" {
-  double Rf_qnbinom(double p, double sz, double pb);
+  double Rf_qnbinom(double p, double size, double prob, int lower_tail, int log_p);
+  double Rf_qpois(double p, double lambda, int lower_tail, int log_p);
 }
-extern "C" {
-  double Rf_qpois(double p, double mu);
-}
+
 enum valid_family {
   gaussian_family = 0,
   binomial_family = 100,
@@ -585,7 +585,7 @@ Type objective_function<Type>::operator() ()
           SIMULATE{
             s1 = mu(i)/phi(i);//sz
             s2 = 1/(1+phi(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2));
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
           }
         }
         break;
@@ -611,7 +611,7 @@ Type objective_function<Type>::operator() ()
           SIMULATE{
             s1 = phi(i); //sz
             s2 = phi(i)/(phi(i)+mu(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2));
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
           }
         }
         break;
@@ -626,7 +626,7 @@ Type objective_function<Type>::operator() ()
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
         SIMULATE{
-          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)));
+          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
         }
         break;
       default:
