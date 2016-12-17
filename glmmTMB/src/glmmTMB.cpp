@@ -92,6 +92,12 @@ namespace glmmtmb{
 
 }
 
+/* Quantile functions needed to simulate from truncated distributions */
+extern "C" {
+  double Rf_qnbinom(double p, double size, double prob, int lower_tail, int log_p);
+  double Rf_qpois(double p, double lambda, int lower_tail, int log_p);
+}
+
 enum valid_family {
   gaussian_family = 0,
   binomial_family = 100,
@@ -244,17 +250,16 @@ struct terms_t : vector<per_term_info<Type> > {
 };
 
 template <class Type>
-Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term) {
+Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
-  vector<int> dim(2);
-  dim << term.blockSize, term.blockReps;
-  array<Type> U(u, dim); // Note: Fill columnwise
-  
   if (term.blockCode == diag_covstruct){
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
+      if (do_simulate) {
+        U.col(i) = rnorm(Type(0), sd);
+      }
     }
     term.sd = sd; // For report
   }
@@ -268,6 +273,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
@@ -288,6 +296,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
@@ -308,6 +319,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
@@ -323,8 +337,14 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     Type sd = exp(logsd);
     for(int j = 0; j < term.blockReps; j++){
       ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+      if (do_simulate) {
+        U(0, j) = rnorm(Type(0), sd);
+      }
       for(int i=1; i<n; i++){
 	ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
+        if (do_simulate) {
+          U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
+        }
       }
     }
     // For consistency with output for other structs we report entire
@@ -351,9 +371,15 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     Type sd = exp(logsd);
     for(int j = 0; j < term.blockReps; j++){
       ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+      if (do_simulate) {
+        U(0, j) = rnorm(Type(0), sd);
+      }
       for(int i=1; i<n; i++){
 	Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
 	ans -= dnorm(U(i, j), rho * U(i-1, j), sd * sqrt(1 - rho*rho), true);
+        if (do_simulate) {
+          U(i, j) = rnorm( rho * U(i-1, j), sd * sqrt(1 - rho*rho));
+        }
       }
     }
     // For consistency with output for other structs we report entire
@@ -405,6 +431,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
     density::SCALE_t<density::MVNORM_t<Type> > scnldens = density::SCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
     }
     term.corr = corr;   // For report
     term.sd.resize(n);  // For report
@@ -415,8 +444,9 @@ Type termwise_nll(vector<Type> u, vector<Type> theta, per_term_info<Type>& term)
 }
 
 template <class Type>
-Type allterms_nll(vector<Type> u, vector<Type> theta, 
-		  vector<per_term_info<Type> >& terms) {
+Type allterms_nll(vector<Type> &u, vector<Type> theta,
+		  vector<per_term_info<Type> >& terms,
+                  bool do_simulate = false) {
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
@@ -427,9 +457,11 @@ Type allterms_nll(vector<Type> u, vector<Type> theta,
     bool emptyTheta = ( terms(i).blockNumTheta == 0 );
     offset = ( emptyTheta ? -np : 0 );
     np     = ( emptyTheta ?  np : terms(i).blockNumTheta );
-    vector<Type> useg =     u.segment(upointer         , nr);
+    vector<int> dim(2);
+    dim << terms(i).blockSize, terms(i).blockReps;
+    array<Type> useg( &u(upointer), dim);
     vector<Type> tseg = theta.segment(tpointer + offset, np);
-    ans += termwise_nll(useg, tseg, terms(i));
+    ans += termwise_nll(useg, tseg, terms(i), do_simulate);
     upointer += nr;
     tpointer += terms(i).blockNumTheta;
   }
@@ -478,8 +510,8 @@ Type objective_function<Type>::operator() ()
   Type jnll = 0;
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms);
-  jnll += allterms_nll(bzi, thetazi, termszi);
+  jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b + offset;
@@ -550,7 +582,11 @@ Type objective_function<Type>::operator() ()
           s3 = logspace_add( Type(0), etad(i) );
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
-          SIMULATE{yobs(i) = 0;}//TODO: fill in later
+          SIMULATE{
+            s1 = mu(i)/phi(i);//sz
+            s2 = 1/(1+phi(i)); //pb
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+          }
         }
         break;
       case nbinom2_family:
@@ -572,7 +608,11 @@ Type objective_function<Type>::operator() ()
           s3         = logspace_add( Type(0), s1 - etad(i) );
           log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
           tmp_loglik -= log_nzprob;
-          SIMULATE{yobs(i) = 0;}//TODO: fill in later
+          SIMULATE{
+            s1 = phi(i); //sz
+            s2 = phi(i)/(phi(i)+mu(i)); //pb
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+          }
         }
         break;
       case truncated_poisson_family:
@@ -585,7 +625,9 @@ Type objective_function<Type>::operator() ()
         // log(nzprob) = log( 1 - exp(-mu(i)) )
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
-        SIMULATE{yobs(i) = 0;}//TODO: fill in later
+        SIMULATE{
+          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
+        }
         break;
       default:
         error("Family not implemented!");
