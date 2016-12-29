@@ -1,5 +1,5 @@
 ---
-title: "Salamander example comparing Poisson, Zero-inflated Poisson, and Hurdle models"
+title: "Salamander Example Comparing GLMMs, Zero-Inflated GLMMs, and Hurdle Models"
 author: "Mollie Brooks"
 date: "`r Sys.Date()`"
 bibliography: misc.bib
@@ -40,10 +40,10 @@ ggplot(Salamanders, aes(x=count, fill=mined))+geom_histogram(position="identity"
 
 #Model fitting with glmmTMB
 
-These analyses are intended to be a simple demonstration of how to use some features of the `glmmTMB` package, so we do not attempt to fit all of the models that could be considered reasonable.
+These analyses are intended to be a simple demonstration of how to use some features of the `glmmTMB` package, so we do not attempt to fit all of the models that could be reasonable to try with the covariates that were collected.
 
 ##Poisson Models
-The syntax for fitting Poisson models with `glmmTMB` is quite similar to using `glmer`. In the first model, the formula, `count~spp + (1|site)`, says that counts depend on species and vary randomly by site. We also pass it the data frame, `Salamanders`, and specify a Poisson distribution using the `family` argument. `glmmTMB` assumes that we want a log-link with the Poisson distribution because that's the standard.
+The syntax for fitting GLMMs with `glmmTMB` is quite similar to using `glmer`. In the first model, the formula, `count~spp + (1|site)`, says that counts depend on species and vary randomly by site. We also pass it the data frame, `Salamanders`, and specify a Poisson distribution using the `family` argument. `glmmTMB` assumes that we want a log-link with the Poisson distribution because that's the standard.
 
 ```{r pmodels}
 pm0 = glmmTMB(count~spp + (1|site), Salamanders, family="poisson")
@@ -51,68 +51,123 @@ pm1 = glmmTMB(count~spp + mined + (1|site), Salamanders, family="poisson")
 pm2 = glmmTMB(count~spp * mined + (1|site), Salamanders, family="poisson")
 ```
 
-##Zero-inflated Poisson
-To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will also recognize `zi` This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with any predictors. In this example, we might assume that absences will at least vary by species (`spp`) and vary randomly by site, so we write `zi=~spp + (1|site)`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. The zero-inflation probability is always modeled with a logit-link to keep it between 0 and 1.
+##Negative binomial models
 
-```{r zipmodels}
-zipm0 = glmmTMB(count~spp +(1|site), zi=~spp +(1|site), Salamanders, family="poisson")
-zipm1 = glmmTMB(count~spp + mined +(1|site), zi=~spp +(1|site), Salamanders, family="poisson")
-zipm2 = glmmTMB(count~spp + mined +(1|site), zi=~spp + mined +(1|site), Salamanders, family="poisson")
-zipm3 = glmmTMB(count~spp * mined +(1|site), zi=~spp * mined +(1|site), Salamanders, family="poisson")
+```{r nbmodels}
+nbm0 = glmmTMB(count~spp + (1|site), Salamanders, family="nbinom2")
+nbm1 = glmmTMB(count~spp + mined + (1|site), Salamanders, family="nbinom2")
+nbm2 = glmmTMB(count~spp * mined + (1|site), Salamanders, family="nbinom2")
 ```
 
-##Poisson hurdle model
-We can also fit hurdle models. This is done in two parts: first by modelling the zeros versus non-zeros with a binomial distribution and then modelling the non-zeros with a truncated-Poisson distribution. In the salamander example, this means first modeling presence versus absence (`zm1` below) and then modeling the presence only data (`cm1` below). In `zm1`, it's important that the response `present` is numeric (`1` or `0`) instead of (`TRUE` or `FALSE`); that's why we wrote `present=as.numeric(count>0)` in the data organization code above.
+Unlike the Poisson, the negative binomial distribution has a dispersion parameter. 
+If we expected the counts to become more dispersed (relative to the mean) as the year progresses, 
+then we could use the dispersion formula to model how the dispersion changes with the day of the year (`DOY`) using `disp=~DOY`.
+
+```{r disp nbmodels}
+nbdm0 = glmmTMB(count~spp + (1|site), disp=~DOY, Salamanders, family="nbinom2")
+nbdm1 = glmmTMB(count~spp + mined + (1|site), disp=~DOY, Salamanders, family="nbinom2")
+nbdm2 = glmmTMB(count~spp * mined + (1|site), disp=~DOY, Salamanders, family="nbinom2")
+```
+
+##Zero-inflated models
+To fit zero-inflated models, we use the `ziformula` argument, or `glmmTMB` will also recognize `zi`. This is a formula that describes how the probability of an extra zero (i.e. structural zero) will vary with predictors. In this example, we might assume that absences will at least vary by species (`spp`), so we write `zi=~spp`. This formula only has a right side because the left side is always the probability of having a structural zero in the response that was specified in the first formula. The zero-inflation probability is always modeled with a logit-link to keep it between 0 and 1.
+
+```{r zipmodels}
+zipm0 = glmmTMB(count~spp +(1|site), zi=~spp, Salamanders, family="poisson")
+zipm1 = glmmTMB(count~spp + mined +(1|site), zi=~spp, Salamanders, family="poisson")
+zipm2 = glmmTMB(count~spp + mined +(1|site), zi=~spp + mined, Salamanders, family="poisson")
+zipm3 = glmmTMB(count~spp * mined +(1|site), zi=~spp * mined, Salamanders, family="poisson")
+```
+
+```{r zinbmodels}
+zinbm0 = glmmTMB(count~spp +(1|site), zi=~spp, Salamanders, family="nbinom2")
+zinbm1 = glmmTMB(count~spp + mined +(1|site), zi=~spp, Salamanders, family="nbinom2")
+zinbm2 = glmmTMB(count~spp + mined +(1|site), zi=~spp + mined, Salamanders, family="nbinom2")
+zinbm3 = glmmTMB(count~spp * mined +(1|site), zi=~spp * mined, Salamanders, family="nbinom2")
+```
+
+The warning messages tell us that `zinbm0` and `zinbm1` did not converge. However, the models with `mined` as a predictor of zero-inflation did converege.
+
+##Hurdle models
+We can also fit hurdle models. This is done in two parts: first by modelling the zeros versus non-zeros with a binomial distribution and then modelling the non-zeros with a truncated distribution. In the salamander example, this means first modeling presence versus absence and then modeling the presence only data. It's important that the response `present` is numeric (`1` or `0`) instead of (`TRUE` or `FALSE`); that's why we wrote `present=as.numeric(count>0)` in the data organization code above.
 
 ```{r hurdle}
-zm0 = glmmTMB(present~spp + (1|site), family="binomial", Salamanders)
-zm1 = glmmTMB(present~spp + mined + (1|site), family="binomial", Salamanders)
-zm2 = glmmTMB(present~spp * mined + (1|site), family="binomial", Salamanders)
+zm0 = glmmTMB(present~spp, family="binomial", Salamanders)
+zm1 = glmmTMB(present~spp + mined, family="binomial", Salamanders)
+zm2 = glmmTMB(present~spp * mined, family="binomial", Salamanders)
 AICtab(zm0, zm1, zm2)
 ```
 
 For the second part of the hurdle model, we look at the presence data, `subset(Salamanders, present==1)`.
 ```{r counts}
-cm0 = glmmTMB(count~spp + (1|site), 
+cpm0 = glmmTMB(count~spp + (1|site), 
   family=list(family="truncated_poisson", link="log"), 
   data=subset(Salamanders, present==1))
-cm1 = glmmTMB(count~spp + mined + (1|site), 
+cpm1 = glmmTMB(count~spp + mined + (1|site), 
   family=list(family="truncated_poisson", link="log"), 
   data=subset(Salamanders, present==1))
-cm2 = glmmTMB(count~spp * mined + (1|site), 
+cpm2 = glmmTMB(count~spp * mined + (1|site), 
   family=list(family="truncated_poisson", link="log"), 
   data=subset(Salamanders, present==1))
-AICtab(cm0, cm1, cm2)
+cnbm0 = glmmTMB(count~spp + (1|site), 
+  family=list(family="truncated_nbinom2", link="log"), 
+  data=subset(Salamanders, present==1))
+cnbm1 = glmmTMB(count~spp + mined + (1|site), 
+  family=list(family="truncated_nbinom2", link="log"), 
+  data=subset(Salamanders, present==1))
+cnbm2 = glmmTMB(count~spp * mined + (1|site), 
+  family=list(family="truncated_nbinom2", link="log"), 
+  data=subset(Salamanders, present==1))
+AICtab(cpm0, cpm1, cpm2, 
+       cnbm0, cnbm1, cnbm2)
 ```
 
 #Model comparison using AIC
-We can use `AICtab` to compare the Poisson and zero-inflted Poisson models. To get the AIC value of hurdle models, we sum the AIC values of the two parts of the model. Then we can compare this AIC value to that of our best Poisson model.
-```{r hurdleAIC}
-AICtab(pm0, pm1, pm2, zipm0, zipm1, zipm2, zipm3)
-AIC(zm2)+AIC(cm2)
-AIC(zipm3)
+We can use `AICtab` to compare the GLMMs and zero-inflated GLMMs, but not hurdle models.
+```{r AIC}
+AICtab(pm0, pm1, pm2, 
+       nbm0, nbm1, nbm2, 
+       nbdm0, nbdm1, nbdm2, 
+       zipm0, zipm1, zipm2, zipm3,
+       zinbm0, zinbm1, zinbm2, zinbm3)
 ```
-The zero-inflated Poisson model has a slightly lower AIC value than the hurdle model.
+The log-likelihood of the unconverged models is reported as `NA` so that these models appear at the end of the AIC table. The negative log-likelihood could be extracted with `zipm0$fit$objective` if it was needed.
+
+To get the AIC value of hurdle models, we sum the AIC values of the two parts of the model. Then we can compare this AIC value to that of our best GLMM.
+```{r AIC2}
+AIC(zm2)+AIC(cnbm1)
+AIC(nbm2)
+```
+The negative binomial model has a slightly lower AIC value than the hurdle model.
 
 #Model summary
+The summary of the negative binomial GLMM is similar to the familiar output from glmer, so we also present the summary from a more complicated model below to demonstrate output from zero-inflation and dispersion models.
 ```{r summary}
-summary(zipm3)
+summary(nbm2)
 ```
 
-This summary can be broken down into four sections. The top section is a general overview containing a description of the model specification (`Family`, `Formula`, `Zero inflation`, `Dispersion`, `Data`) and resulting information criteria. The information criteria are only meaningful in comparison to other models fit by `glmmTMB`; this is because `glmmTMB` does not drop any constants from the likelihood while some other packages do. The second section describes the variability of the `Random effects`. In this model, we had random effects on both the conditional model and the zero-inflation model. The third section describes the coefficients of the `Conditional model` including Wald p-values. Besides the intercept, the estimates are all contrasts as is standard in regression models. This model has a log link as stated in the top line of the summary. The fourth section describes the `Zero-inflation model` similarly to the `Conditional model` except that this model has a logit-link. The zero-inflation model estimates the probability of an extra zero such that, a positive contrast indicates a higher chance of absence (e.g. `minedno` < 0 means fewer absences in sites unafected by mining); this is the opposite of the conditional model where a positive contrast indicates a higher abundance (e.g. `minedno` > 0 means higher abundances in sites unafected by mining).
+```{r summary2}
+summary(glmmTMB(count~spp+mined+(1|site), zi=~spp+mined , disp=~DOY, Salamanders, family="nbinom2"))
+```
+
+This summary can be broken down into five sections. The top section is a general overview containing a description of the model specification (`Family`, `Formula`, `Zero inflation`, `Dispersion`, `Data`) and resulting information criteria. The information criteria are only meaningful in comparison to other models fit by `glmmTMB`; this is because `glmmTMB` does not drop any constants from the likelihood while some other packages do. The second section describes the variability of the `Random effects`. In this model, we only had random effects on the conditional model, but random effects from the zero-inflation model could also appear here. The third section describes the coefficients of the `Conditional model` including Wald z statistics and p-values. Apart from the intercept, the estimates are all contrasts as is standard in regression models. This model has a log link as stated in the top line of the summary. The fourth section describes the `Zero-inflation model` similarly to the `Conditional model` except that this model has a logit-link. The zero-inflation model estimates the probability of an extra zero such that a positive contrast indicates a higher chance of absence (e.g. `minedno` < 0 means fewer absences in sites unafected by mining); this is the opposite of the conditional model where a positive contrast indicates a higher abundance (e.g. `minedno` > 0 means higher abundances in sites unafected by mining). The last section describes the `Dispersion model`, which uses a log link to keep the dispersion parameter positive. This is in contrast to the summary of `nbm2` above, where there is no dispersion model and the overdispersion parameter is reported on the natural (rather than log) scale.
 
 #Plotting model results
 
 As previously discussed in various places there are a whole bunch of decisions to make about marginalizing over or conditioning on the random effects. 
 See discussion [at this link](https://cran.r-project.org/web/packages/merTools/vignettes/Using_predictInterval.html).
 
+For demonstration purposes, we plot results from the top zero-inflated model `zinbm3`.
+
 ##Quick and dirty plot
 It's easiest to see the pattern by using the `predict` function. To avoid marginalizing over or conditioning on random effects, we can refit the best model without the random effect of site; however, this is not ideal because it ignores the correlation within sites. We present a more rigorous version next.
 
+The predict function has a parameter `zitype` that specifies whether you want predictions from the conditional model, the zero-inflation model, or the expected response that combines both parts of the model.
+
 ```{r estsFE}
-zipm3FE = glmmTMB(count~spp * mined, zi=~spp * mined, Salamanders, family="poisson")
+zinbm3FE = glmmTMB(count~spp * mined, zi=~spp * mined, Salamanders, family="nbinom2")
 newdata0 = newdata = unique(Salamanders[,c("mined","spp")])
-temp = predict(zipm3FE, newdata, se.fit=TRUE, zitype="response")
+temp = predict(zinbm3FE, newdata, se.fit=TRUE, zitype="response")
 newdata$predFE = temp$fit
 newdata$predFE.min = temp$fit-1.98*temp$se.fit
 newdata$predFE.max = temp$fit+1.98*temp$se.fit
@@ -133,22 +188,19 @@ ggplot(newdata, aes(spp, predFE, colour=mined))+geom_point()+
 We can predict at the population mode, by setting the random effects to zero.
 
 ```{r predmode}
-X.cond = model.matrix(lme4::nobars(formula(zipm3)[-2]), newdata0)
-beta.cond = fixef(zipm3)$cond
+X.cond = model.matrix(lme4::nobars(formula(zinbm3)[-2]), newdata0)
+beta.cond = fixef(zinbm3)$cond
 pred.cond = X.cond %*% beta.cond
 
-ziformula = zipm3$modelInfo$allForm$ziformula
+ziformula = zinbm3$modelInfo$allForm$ziformula
 X.zi = model.matrix(lme4::nobars(ziformula), newdata0)
-beta.zi = fixef(zipm3)$zi
+beta.zi = fixef(zinbm3)$zi
 pred.zi = X.zi %*% beta.zi
 ```
+These are estimates of the linear predictors (i.e., predictions on the link scale: logit(prob) and log(cond)), not the predictions themselves. The easiest thing to do for the point estimates of the unconditional count (ucount) is to transform to the response scale and multiply:
 
-These are estimates of the linear predictors (i.e., predictions on the link scale: logit(prob) and log(cond)), not the predictions themselves.
-The easiest thing to do for the point estimates of the unconditional count (`ucount`) is to transform to the response scale and multiply:
-
-```{r preducount}
+```{r pred}
 pred.ucount = exp(pred.cond)*(1-plogis(pred.zi))
-pred.count = data.frame(newdata0, pred.ucount)
 ```
 
 For the standard errors/confidence intervals, we could use posterior predictive simulations (i.e. draw MVN samples from the parameter for the fixed effects). This conditions on/ignores uncertainty in the random-effect parameters.
@@ -156,21 +208,21 @@ For the standard errors/confidence intervals, we could use posterior predictive 
 ```{r postpredsim}
 library(MASS)
 set.seed(101)
-pred.condpar.psim = mvrnorm(1000,mu=beta.cond,Sigma=vcov(zipm3)$cond)
-pred.zipar.psim = mvrnorm(1000,mu=beta.zi,Sigma=vcov(zipm3)$zi)
+pred.condpar.psim = mvrnorm(1000,mu=beta.cond,Sigma=vcov(zinbm3)$cond)
 pred.cond.psim = X.cond %*% t(pred.condpar.psim)
+pred.zipar.psim = mvrnorm(1000,mu=beta.zi,Sigma=vcov(zinbm3)$zi)
 pred.zi.psim = X.zi %*% t(pred.zipar.psim)
 pred.ucount.psim = exp(pred.cond.psim)*(1-plogis(pred.zi.psim))
 ci.ucount = t(apply(pred.ucount.psim,1,quantile,c(0.025,0.975)))
 ci.ucount = data.frame(ci.ucount)
 names(ci.ucount) = c("ucount.low","ucount.high")
-pred.count = data.frame(newdata0, pred.ucount, ci.ucount)
+pred.ucount = data.frame(newdata0, pred.ucount, ci.ucount)
 ```
 These predicted counts should be close to the median counts, so we plot them together to compare.
 
 ```{r MCMCplotCI}
 real.count = ddply(Salamanders, ~spp+mined, summarize, m=median(count), mu=mean(count))
-ggplot(pred.count, aes(x=spp, y=pred.ucount, colour=mined))+geom_point(shape=1, size=2)+
+ggplot(pred.ucount, aes(x=spp, y=pred.ucount, colour=mined))+geom_point(shape=1, size=2)+
   geom_errorbar(aes(ymin=ucount.low, ymax=ucount.high))+
   geom_point(data=real.count,  aes(x=spp, y=m, colour=mined), shape=0, size=2)+
   geom_point(data=real.count,  aes(x=spp, y=mu, colour=mined), shape=5, size=2)+
@@ -183,7 +235,7 @@ ggplot(pred.count, aes(x=spp, y=pred.ucount, colour=mined))+geom_point(shape=1, 
 
 We could also look at the distribution of simulated values from the best fitted model. For this we use the function `simulate.glmmTMB`.
 ```{r sims}
-sims=simulate(zipm3, seed = 1, nsim = 1000)
+sims=simulate(zinbm3, seed = 1, nsim = 1000)
 ```
 
 This function returns a list of vectors. The list has one element for each simulation (`nsim`) and the vectors are the same shape as our response variable. 
@@ -201,7 +253,7 @@ ssd=do.call(rbind, simdatsums)
 ```
 
 Then we can plot them with the observations summarized in the same way.
-```{r plotsims}
+```{r plotsimsE}
 real = ddply(Salamanders, ~spp+mined, summarize, 
              absence=mean(count==0),
              mu=mean(count))
