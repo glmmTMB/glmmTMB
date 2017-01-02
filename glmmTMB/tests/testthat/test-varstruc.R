@@ -19,6 +19,10 @@ fm4 <- glmmTMB(Reaction ~ Days + cs(Days| Subject), sleepstudy)
 fm3L <- lmer(Reaction ~ Days + ( Days  | Subject),
                sleepstudy, REML=FALSE)
 
+sleepstudy$row <- factor(seq(nrow(sleepstudy)))
+fm5 <- glmmTMB(Reaction ~ Days +
+                   ar1(row+0| Subject), sleepstudy)
+
 test_that("diag", {
    ## two formulations of diag and lme4 all give same log-lik
    expect_equal(logLik(fm1),logLik(fm2L))
@@ -31,3 +35,4 @@ test_that("cs_us", {
 expect_equal(logLik(fm3),logLik(fm4))
 expect_equal(logLik(fm3),logLik(fm3L))
 })
+
