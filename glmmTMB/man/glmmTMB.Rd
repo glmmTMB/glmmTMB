@@ -58,6 +58,22 @@ Fit models with TMB
 must be specified in the form \code{prob ~ ..., weights = N} rather than in
 the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
 \item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
+\item by default, vector-valued random effects are fitted with
+unstructured (general positive definite) variance-covariance matrices.
+Structured variance-covariance matrices can be specified in
+the form \code{struc(terms|group)}, where \code{struc} is one
+of
+\itemize{
+\item \code{diag} (diagonal, heterogeneous variance)
+\item \code{ar1} (autoregressive order-1, homogeneous variance)
+\item \code{cs} (compound symmetric, heterogeneous variance)
+\item \code{ou} (* Ornstein-Uhlenbeck, homogeneous variance)
+\item \code{exp} (* exponential autocorrelation)
+\item \code{gau} (* Gaussian autocorrelation)
+\item \code{mat} (* Matérn process correlation)
+\item \code{toeplitz} (* Toeplitz)
+}
+(note structures marked with * are experimental/untested)
 }
 }
 \examples{
