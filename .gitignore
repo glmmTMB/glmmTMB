@@ -17,3 +17,4 @@ glmmTMB/vignettes/cache
 glmmTMB/vignettes/*_cache
 glmmTMB/vignettes/*_files
 glmmTMB/vignettes/*_figure
+gh-pages
