@@ -626,7 +626,7 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object)
 }
 
-.noSimFamilies <- c("beta", "betabinomial")
+.noSimFamilies <- c("beta", "betabinomial", "genpois")
 
 noSim <- function(x) {
     !is.na(match(x, .noSimFamilies))
