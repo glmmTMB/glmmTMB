@@ -391,7 +391,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
 	term.sd(i) = sd;
 	for(int j=0; j<n; j++){
 	  term.corr(i,j) =
-	    exp(-exp(corr_transf) * abs(term.times(i) - term.times(j)));
+	    exp(-exp(corr_transf) * CppAD::abs(term.times(i) - term.times(j)));
 	}
       }
     }
