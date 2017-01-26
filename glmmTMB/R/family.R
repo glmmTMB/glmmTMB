@@ -57,7 +57,8 @@ genpois <- function(link="log") {
 compois <- function(link="log") {
     return(list(family="compois",link=link,
            variance=function(mu,disp) {
-               mu*disp #FIXME: need to call C++ calc_loglambda
+               stop("variance for compois family not yet implemented")
+               #mu*disp #FIXME: need to call C++ calc_loglambda
            }))
 }
 
