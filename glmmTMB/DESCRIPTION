@@ -21,7 +21,7 @@ Description: Fit linear and generalized linear mixed models with various
 License: AGPL-3
 Imports: methods, TMB (>= 1.7.5), lme4 (>= 1.1-10), Matrix, nlme
 LinkingTo: TMB, RcppEigen
-Suggests: knitr, testthat, MASS, lattice, ggplot2, mlmRev, bbmle, pscl
+Suggests: knitr, testthat, MASS, lattice, ggplot2, mlmRev, bbmle, pscl, MCMCpack, coda, reshape2
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
