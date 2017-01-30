@@ -18,6 +18,19 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
+  template<class Type>
+  Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
+  {
+    /*
+      f(y|\theta,\lambda) =
+      \frac{\theta(theta+\lambda y)^{y-1}e^{-\theta-\lambda y}}{y \!}
+    */
+    Type logres =
+      log(theta) + (y - 1) * log(theta + lambda * y) -
+      theta - lambda * y - lgamma(y + Type(1));
+    if(!give_log) return exp(logres);
+    else return logres;
+  }
 
   template<class Type>
   bool isNA(Type x){
@@ -106,6 +119,8 @@ enum valid_family {
   Gamma_family =300,
   poisson_family =400,
   truncated_poisson_family =401,
+  genpois_family =402,
+  compois_family =403,
   nbinom1_family =500,
   nbinom2_family =501,
   truncated_nbinom1_family =502,
@@ -628,6 +643,17 @@ Type objective_function<Type>::operator() ()
         SIMULATE{
           yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
         }
+        break;
+     case genpois_family:
+        s1 = mu(i) / sqrt(phi(i)); //theta
+        s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
+        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true);
+        break;
+      case compois_family:
+        s1 = mu(i); //mean
+        s2 = 1/phi(i); //nu
+        tmp_loglik = dcompois2(yobs(i), s1, s2, true);
+        SIMULATE{yobs(i)=rcompois2(mu(i), 1/phi(i));}
         break;
       default:
         error("Family not implemented!");

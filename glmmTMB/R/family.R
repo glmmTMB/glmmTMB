@@ -44,6 +44,24 @@ betar <- function(link="logit") {
 
 ## fixme: better name?
 
+
+##' @export
+genpois <- function(link="log") {
+    return(list(family="genpois",link=link,
+           variance=function(mu,disp) {
+               mu*disp
+           }))
+}
+
+##' @export
+compois <- function(link="log") {
+    return(list(family="compois",link=link,
+           variance=function(mu,disp) {
+               stop("variance for compois family not yet implemented")
+               #mu*disp #FIXME: need to call C++ calc_loglambda
+           }))
+}
+
 #' List model options that glmmTMB knows about
 #'
 #' @note these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)

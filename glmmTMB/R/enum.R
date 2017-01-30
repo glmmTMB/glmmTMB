@@ -15,6 +15,8 @@
   Gamma =300,
   poisson =400,
   truncated_poisson =401,
+  genpois =402,
+  compois =403,
   nbinom1 =500,
   nbinom2 =501,
   truncated_nbinom1 =502,
