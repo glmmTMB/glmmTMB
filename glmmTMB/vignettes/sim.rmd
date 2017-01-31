@@ -4,11 +4,11 @@ author: "Mollie Brooks"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{simulate}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
-The most recent version of TMB includes the ability to simulated model, so we have implemented that ability in glmmTMB. These simulations take all random effects into account.
+`glmmTMB` has the capability to simulate from a fitted model. These simulations resample random effects from their estimated distribution. In future versions of `glmmTMB`, it may be possible to condition on estimated random effects.
 
 ```{r setup, include=FALSE, message=FALSE}
 library(knitr)
@@ -29,7 +29,7 @@ owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                           ziformula = ~1, data=Owls)
 ```
 
-Then we can simulate from the fitted model with the `simulate.glmmTMB` function. It produces a list of simulated observation vectors, each of which is the same size as the original vector of observations. The default is to only simulate one vector (`nsim=1`) but we still return a list for consitency.
+Then we can simulate from the fitted model with the `simulate.glmmTMB` function. It produces a list of simulated observation vectors, each of which is the same size as the original vector of observations. The default is to only simulate one vector (`nsim=1`) but we still return a list for consistency.
 
 ```{r sim}
 simo=simulate(owls_nb1, seed=1)
@@ -42,11 +42,8 @@ Owls$type = "observed"
 Dat=rbind(Owls, Simdat)	
 ```
 
-Then we can plot the simulated data against the observed data to check if they are similar. Because the simulated data is conditional on the estimated random effects, the nest-specific observations should be similar to the nest-specific simulations.
+Then we can plot the simulated data against the observed data to check if they are similar. 
 ```{r plots,fig.width=7}
 
 ggplot(Dat,  aes(NegPerChick, colour=type))+geom_density()+facet_grid(FoodTreatment~SexParent)
-
-ggplot(Dat, aes(Nest, SiblingNegotiation, colour=type))+geom_boxplot()+
- theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
 ```
