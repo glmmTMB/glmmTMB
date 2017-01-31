@@ -1,3 +1,5 @@
+#define TMB_LIB_INIT R_init_glmmTMB
+#define LIB_UNLOAD R_unload_glmmTMB
 #include <TMB.hpp>
 
 namespace glmmtmb{
