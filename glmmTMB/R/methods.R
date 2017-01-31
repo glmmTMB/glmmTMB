@@ -638,8 +638,8 @@ noSim <- function(x) {
 ##' @param nsim number of response lists to simulate. Defaults to 1.
 ##' @param seed random number seed
 ##' @param ... extra arguments 
-##' @details Simulated values are conditional on estimated random effects. 
-##' Currently, it is not possible to marginalize over these or to simulate for new levels.  
+##' @details Random effects are also simulated from their estimated distribution. 
+##' Currently, it is not possible to condition on estimated random effects.  
 ##' @return returns a list of vectors. The list has length \code{nsim}. 
 ##' Each simulated vector of observations is the same size as the vector of response variables in the original data set.
 ##' @importFrom stats simulate
