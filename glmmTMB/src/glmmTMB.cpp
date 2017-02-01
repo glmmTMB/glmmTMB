@@ -1,3 +1,4 @@
+#define TMB_LIB_INIT R_init_glmmTMB
 #include <TMB.hpp>
 
 namespace glmmtmb{
@@ -541,7 +542,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etad);
 
   // Observation likelihood
-  Type s1, s2, s3, log_nzprob, nzprob, stmp;
+  Type s1, s2, s3, log_nzprob;
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
     if ( !glmmtmb::isNA(yobs(i)) ) {
