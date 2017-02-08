@@ -617,6 +617,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
         forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
         ziforms <- lapply(lapply(calls, `[[`, "ziformula"), deparse)
         dispforms <- lapply(lapply(calls, `[[`, "dispformula"), deparse)
+        #FIXME only output nontrivial ziforms and dispforms
         structure(val, heading = c(header, "Models:", 
             paste(paste(paste(rep(names(mods), times = lengths(forms)), unlist(forms), sep = ": "),
                 unlist(ziforms), sep=", zi="),
