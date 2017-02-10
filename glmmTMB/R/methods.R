@@ -615,8 +615,13 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
             check.names = FALSE)
         class(val) <- c("anova", class(val))
         forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
-        structure(val, heading = c(header, "Models:", paste(rep(names(mods), 
-            times = lengths(forms)), unlist(forms), sep = ": ")))
+        ziforms <- lapply(lapply(calls, `[[`, "ziformula"), deparse)
+        dispforms <- lapply(lapply(calls, `[[`, "dispformula"), deparse)
+        #FIXME only output nontrivial ziforms and dispforms
+        structure(val, heading = c(header, "Models:", 
+            paste(paste(paste(rep(names(mods), times = lengths(forms)), unlist(forms), sep = ": "),
+                unlist(ziforms), sep=", zi="),
+                unlist(dispforms), sep=", disp=")))
     } else stop("no single-model anova() method for glmmTMB")
 }
 

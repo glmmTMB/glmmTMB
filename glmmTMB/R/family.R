@@ -44,7 +44,8 @@ betar <- function(link="logit") {
 
 ## fixme: better name?
 
-
+##' Generalized Poisson distribution
+##' @param link (character) link function. Only "log" is impemented.
 ##' @export
 genpois <- function(link="log") {
     return(list(family="genpois",link=link,
@@ -53,12 +54,14 @@ genpois <- function(link="log") {
            }))
 }
 
+##' Conway-Maxwell Poisson distribution parameterized by exact mean
+##' @param link (character) link function. Only "log" is impemented.
 ##' @export
 compois <- function(link="log") {
     return(list(family="compois",link=link,
            variance=function(mu,disp) {
                stop("variance for compois family not yet implemented")
-               #mu*disp #FIXME: need to call C++ calc_loglambda
+               #mu*disp #FIXME: need to call C++ calc_loglambda using .Call
            }))
 }
 

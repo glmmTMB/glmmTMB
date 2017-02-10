@@ -23,7 +23,7 @@ Each simulated vector of observations is the same size as the vector of response
 Simulate from a glmmTMB fitted model
 }
 \details{
-Simulated values are conditional on estimated random effects. 
-Currently, it is not possible to marginalize over these or to simulate for new levels.
+Random effects are also simulated from their estimated distribution. 
+Currently, it is not possible to condition on estimated random effects.
 }
 
