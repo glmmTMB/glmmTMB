@@ -368,7 +368,7 @@ okWeights <- function(x) {
 ##'   zi=~spp + mined+ (1|site), 
 ##'   family=poisson, data=Salamanders))
 ##' summary(m1)
-##' ## Not run:
+##' \dontrun{
 ##' ## Negative binomial model
 ##' (m2 <- glmmTMB(count~spp + mined + (1|site), 
 ##'   zi=~spp + mined, 
@@ -395,11 +395,13 @@ okWeights <- function(x) {
 ##'   disp="five")
 ##' dat = rbind(d1, d2)
 ##' m0 = glmmTMB(x~disp+(1|t)+(1|fac), dispformula=~disp, dat)
+##' fixef(m0)$disp
+##' c(log(10^2), log(5^2)-log(10^2))
 ##' ## Binomial model
 ##' data(cbpp, package="lme4")
 ##' (tmbm1 <- glmmTMB(incidence/size ~ period + (1 | herd), weights=size,
 ##'                data=cbpp, family=binomial))
-##' ## End(Not run)
+##' }
 glmmTMB <- function (
     formula,
     data = NULL,
