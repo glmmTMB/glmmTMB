@@ -29,16 +29,16 @@ d2=transform(d2,
 
 ## global assignment for testthat
 dat <<- rbind(d1, d2)
-m0 <<- glmmTMB(x~disp+(1|t)+(1|fac), dispformula=~disp, dat)
+m0 <<- glmmTMB(x~disp+(1|fac), dispformula=~disp, dat)
 
 test_that("disp calc", {
     expect_equal(unname(fixef(m0)$disp), c(log(10^2), log(5^2)-log(10^2)), tol=1e-2)
 })
 
 dat2 <<- rbind(head(d1, 50), head(d2, 50)) #smaller for faster fitting when not checking estimates
-nbm0 <<- glmmTMB(round(x)~disp+(1|t)+(1|fac), ziformula=~0, dispformula=~disp, dat2, family=nbinom1)
+nbm0 <<- glmmTMB(round(x)~disp+(1|fac), ziformula=~0, dispformula=~disp, dat2, family=nbinom1, se=FALSE)
 pm0 <<- update(nbm0, family=poisson)
 nbm1 <<- update(pm0, family=nbinom1)
 test_that("update maintains dispformula in call", {
-	expect_equal(summary(nbm0), summary(nbm1))
+	expect_equal(getCall(nbm0), getCall(nbm1))
 })
