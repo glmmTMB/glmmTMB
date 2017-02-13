@@ -26,10 +26,10 @@ expect_equal(tail(capture.output(print(VarCorr(fm1),digits=3)),4),
 
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
-fmPix1 <- glmmTMB(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
-                  data = Pixel)
-fmPix1B <-   lmer(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog),
-                  data = Pixel)
+complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)
+expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
+               "convergence problem")
+fmPix1B <-   lmer(complex_form, data = Pixel)
 
 vPix1B <- unlist(lapply(VarCorr(fmPix1B),c))
 vPix1 <- unlist(lapply(VarCorr(fmPix1)[["cond"]],c))

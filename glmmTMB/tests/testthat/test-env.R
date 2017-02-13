@@ -22,4 +22,4 @@ test_that("basic example #1", {
         return(x)
     }
     expect_equal(uncall(f0),uncall(f1))
-}
+})
