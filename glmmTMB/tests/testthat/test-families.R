@@ -128,7 +128,7 @@ test_that("truncated", {
     expect_equal(unname(fixef(g1_tp)[[1]]),0.9778593,tol=1e-5)
     ## Truncated poisson with zeros => invalid:
     num_zeros <- 10
-    z_tp0 <- c(rep(0, num_zeros), z_tp)
+    z_tp0 <<- c(rep(0, num_zeros), z_tp)
     g1_tp0 <- glmmTMB(z_tp0~1,family=list(family="truncated_poisson",
                                           link="log"),
                       data=data.frame(z_tp0))
@@ -157,7 +157,7 @@ test_that("truncated", {
                  c(1.980207,1.892970),tol=1e-5)
     ## Truncated nbinom2 with zeros => invalid:
     num_zeros <- 10
-    z_nb0 <- c(rep(0, num_zeros), z_nb)
+    z_nb0 <<- c(rep(0, num_zeros), z_nb)
     g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom2",
                                           link="log"),
                       data=data.frame(z_nb0))
