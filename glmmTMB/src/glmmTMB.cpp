@@ -598,6 +598,7 @@ Type objective_function<Type>::operator() ()
           s3 = logspace_add( Type(0), etad(i) );
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
+          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
           SIMULATE{
             s1 = mu(i)/phi(i);//sz
             s2 = 1/(1+phi(i)); //pb
@@ -624,6 +625,7 @@ Type objective_function<Type>::operator() ()
           s3         = logspace_add( Type(0), s1 - etad(i) );
           log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
           tmp_loglik -= log_nzprob;
+          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
           SIMULATE{
             s1 = phi(i); //sz
             s2 = phi(i)/(phi(i)+mu(i)); //pb
@@ -641,6 +643,7 @@ Type objective_function<Type>::operator() ()
         // log(nzprob) = log( 1 - exp(-mu(i)) )
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
         SIMULATE{
           yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
         }
