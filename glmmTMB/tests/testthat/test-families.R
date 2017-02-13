@@ -183,6 +183,18 @@ test_that("truncated", {
             data=data.frame(z_nb))
     expect_equal(c(unname(fixef(g1_nb1)[[1]]),sigma(g1_nb1)),
                  c(1.980207,3.826909),tol=1e-5)
+    ## Truncated nbinom1 with zeros => invalid:
+    g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom1",
+                                          link="log"),
+                      data=data.frame(z_nb0))
+    expect_false( is.finite(logLik(g1_nb0)) )
+    ## Truncated nbinom2 with zeros and zero-inflation:
+    g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom1",
+                                          link="log"),
+                      ziformula=~1,
+                      data=data.frame(z_nb0))
+    expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
+    expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb1)$cond, tol=1e-6) ## Test conditional model
 })
 test_that("compois", {
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
