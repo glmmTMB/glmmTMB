@@ -364,8 +364,8 @@ okWeights <- function(x) {
 ##' @importFrom stats update
 ##' @export
 ##' @examples
-##' (m1 <- glmmTMB(count~spp + mined + (1|site), 
-##'   zi=~spp + mined+ (1|site), 
+##' (m1 <- glmmTMB(count~mined + (1|site), 
+##'   zi=~mined, 
 ##'   family=poisson, data=Salamanders))
 ##' summary(m1)
 ##' \dontrun{

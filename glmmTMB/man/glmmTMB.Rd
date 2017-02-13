@@ -61,8 +61,8 @@ the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
 }
 }
 \examples{
-(m1 <- glmmTMB(count~spp + mined + (1|site), 
-  zi=~spp + mined+ (1|site), 
+(m1 <- glmmTMB(count~mined + (1|site), 
+  zi=~mined, 
   family=poisson, data=Salamanders))
 summary(m1)
 \dontrun{
@@ -100,4 +100,3 @@ data(cbpp, package="lme4")
                data=cbpp, family=binomial))
 }
 }
-
