@@ -126,6 +126,20 @@ test_that("truncated", {
                             link="log"),
                   data=data.frame(z_tp))
     expect_equal(unname(fixef(g1_tp)[[1]]),0.9778593,tol=1e-5)
+    ## Truncated poisson with zeros => invalid:
+    num_zeros <- 10
+    z_tp0 <- c(rep(0, num_zeros), z_tp)
+    g1_tp0 <- glmmTMB(z_tp0~1,family=list(family="truncated_poisson",
+                                          link="log"),
+                      data=data.frame(z_tp0))
+    expect_false( is.finite(logLik(g1_tp0)) )
+    ## Truncated poisson with zeros and zero-inflation:
+    g1_tp0 <- glmmTMB(z_tp0~1,family=list(family="truncated_poisson",
+                                          link="log"),
+                      ziformula=~1,
+                      data=data.frame(z_tp0))
+    expect_equal( plogis(as.numeric(fixef(g1_tp0)$zi)), num_zeros/length(z_tp0), tol=1e-7 ) ## Test zero-prob
+    expect_equal(fixef(g1_tp0)$cond,  fixef(g1_tp)$cond, tol=1e-6) ## Test conditional model
     ## nbinom2
     set.seed(101)
     z_nb <<- rnbinom(1000,size=2,mu=exp(2))
