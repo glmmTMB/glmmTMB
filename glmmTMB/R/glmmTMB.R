@@ -364,15 +364,26 @@ okWeights <- function(x) {
 ##' @importFrom stats update
 ##' @export
 ##' @examples
-##' (m1 <- glmmTMB(count~mined + (1|site), 
+##' (m1 <- glmmTMB(count~ mined + (1|site), 
 ##'   zi=~mined, 
 ##'   family=poisson, data=Salamanders))
 ##' summary(m1)
-##' \dontrun{
-##' ## Negative binomial model
+##' \donttest{
+##' ## Zero-inflated negative binomial model
 ##' (m2 <- glmmTMB(count~spp + mined + (1|site), 
 ##'   zi=~spp + mined, 
 ##'   family=nbinom2, Salamanders))
+##' 
+##' ## Hurdle Poisson model
+##' (m3 <- glmmTMB(count~spp + mined + (1|site), 
+##'   zi=~spp + mined, 
+##'   family=list(family="truncated_poisson", link="log"), Salamanders))
+##' 
+##' ## Binomial model
+##' data(cbpp, package="lme4")
+##' (tmbm1 <- glmmTMB(incidence/size ~ period + (1 | herd), weights=size,
+##'                data=cbpp, family=binomial))
+##' 
 ##' ## Dispersion model
 ##' sim1=function(nfac=40, nt=100, facsd=.1, tsd=.15, mu=0, residsd=1)
 ##' {
@@ -383,7 +394,6 @@ okWeights <- function(x) {
 ##'   dat$x=rnorm(n, mean=mu, sd=residsd) + dat$REfac + dat$REt
 ##'   return(dat)
 ##' }
-##' 
 ##' set.seed(101)
 ##' d1 = sim1(mu=100, residsd =10)
 ##' d2 = sim1(mu=200, residsd =5)
@@ -396,11 +406,7 @@ okWeights <- function(x) {
 ##' dat = rbind(d1, d2)
 ##' m0 = glmmTMB(x~disp+(1|t)+(1|fac), dispformula=~disp, dat)
 ##' fixef(m0)$disp
-##' c(log(10^2), log(5^2)-log(10^2))
-##' ## Binomial model
-##' data(cbpp, package="lme4")
-##' (tmbm1 <- glmmTMB(incidence/size ~ period + (1 | herd), weights=size,
-##'                data=cbpp, family=binomial))
+##' c(log(10^2), log(5^2)-log(10^2)) #expected dispersion model coefficients
 ##' }
 glmmTMB <- function (
     formula,
