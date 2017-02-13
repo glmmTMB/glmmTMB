@@ -47,13 +47,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula <- ~0
     }
 
-    ## n.b. eval.parent() chain needs to be preserved because
-    ## we are going to try to eval(mf) at the next level down,
-    ## need to be able to find data etc.
-    condList  <- eval.parent(getXReTrms(formula, mf, fr))
-    ziList    <- eval.parent(getXReTrms(ziformula, mf, fr))
-    dispList  <- eval.parent(getXReTrms(dispformula, mf, fr,
-                                        ranOK=FALSE, "dispersion"))
+    condList  <- getXReTrms(formula, mf, fr)
+    ziList    <- getXReTrms(ziformula, mf, fr)
+    dispList  <- getXReTrms(dispformula, mf, fr,
+                                        ranOK=FALSE, "dispersion")
 
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -142,7 +139,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     } else {
         mf$formula <- fixedform
 
-        terms_fixed <- terms(eval.parent(mf))
+        terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(fixedform, fr, contrasts)
@@ -459,7 +456,15 @@ glmmTMB <- function (
 
     call$formula <- mc$formula <- formula <-
         as.formula(formula, env = parent.frame())
+
+    if (missing(ziformula)) {
+        environment(ziformula) <- environment(formula)
+    }
     call$ziformula <- as.formula(ziformula, env=parent.frame())
+    if (missing(dispformula)) {
+        environment(dispformula) <- environment(formula)
+    }
+    
     call$dispformula <- as.formula(dispformula, env=parent.frame())
 
     ## now work on evaluating model frame
@@ -493,7 +498,7 @@ glmmTMB <- function (
     }
 
     mf$formula <- combForm
-    fr <- eval.parent(mf)
+    fr <- eval(mf,envir=environment(formula))
     
     ## FIXME: throw an error *or* convert character to factor
     ## convert character vectors to factor (defensive)
@@ -534,12 +539,11 @@ glmmTMB <- function (
     y <- as.numeric(y)
     
 
-    ## eval.parent() necessary because we will try to eval(mf) down below
-    TMBStruc <- eval.parent(
+    TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
                    mf, fr,
                    yobs=y, offset, weights,
-                   familyStr, link))
+                   familyStr, link)
 
     ## short-circuit
     if(debug) return(TMBStruc)
