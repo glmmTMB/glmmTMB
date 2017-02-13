@@ -397,16 +397,12 @@ okWeights <- function(x) {
 ##' set.seed(101)
 ##' d1 = sim1(mu=100, residsd =10)
 ##' d2 = sim1(mu=200, residsd =5)
-##' d1 = transform(d1,
-##'   fac=paste0(fac, 1),
-##'   disp="ten")
-##' d2 = transform(d2,
-##'   fac=paste0(fac, 2),
-##'   disp="five")
+##' d1$sd="ten"
+##' d2$sd="five"
 ##' dat = rbind(d1, d2)
-##' m0 = glmmTMB(x~disp+(1|t)+(1|fac), dispformula=~disp, dat)
+##' m0 = glmmTMB(x~sd+(1|t), dispformula=~sd, dat)
 ##' fixef(m0)$disp
-##' c(log(10^2), log(5^2)-log(10^2)) #expected dispersion model coefficients
+##' c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
 ##' }
 glmmTMB <- function (
     formula,
