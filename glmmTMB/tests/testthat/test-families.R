@@ -155,6 +155,20 @@ test_that("truncated", {
             data=data.frame(z_nb))
     expect_equal(c(unname(fixef(g1_nb2)[[1]]),sigma(g1_nb2)),
                  c(1.980207,1.892970),tol=1e-5)
+    ## Truncated nbinom2 with zeros => invalid:
+    num_zeros <- 10
+    z_nb0 <- c(rep(0, num_zeros), z_nb)
+    g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom2",
+                                          link="log"),
+                      data=data.frame(z_nb0))
+    expect_false( is.finite(logLik(g1_nb0)) )
+    ## Truncated nbinom2 with zeros and zero-inflation:
+    g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom2",
+                                          link="log"),
+                      ziformula=~1,
+                      data=data.frame(z_nb0))
+    expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
+    expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb2)$cond, tol=1e-6) ## Test conditional model
     ## nbinom1: constant mean, so just a reparameterization of
     ##     nbinom2 (should have the same likelihood)
     ## phi=(1+mu/k)=1+exp(2)/2 = 4.69
