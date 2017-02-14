@@ -538,6 +538,9 @@ glmmTMB <- function (
     ##  may cause downstream problems, e.g. with predict()
     y <- as.numeric(y)
     
+   if (grepl("^truncated", family$family) & (any(y<1)) & (ziformula == ~0))
+        stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
+             "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
 
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
