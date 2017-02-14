@@ -573,8 +573,8 @@ glmmTMB <- function (
     } else {
         sdr <- NULL
     }
-    if(!is.null(sdr$pdHess))if(!sdr$pdHess) warning(paste0("Model convergence problem. Hessian is not positive definite. ", 
-                             "This may indicate that a model is overparameterized."))
+    if(!is.null(sdr$pdHess))if(!sdr$pdHess) warning(paste0("Model convergence problem; non-positive-definite Hessian matrix. ", 
+                             "See vignette('troubleshooting')".)
 	
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
