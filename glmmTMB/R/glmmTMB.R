@@ -573,9 +573,19 @@ glmmTMB <- function (
     } else {
         sdr <- NULL
     }
-    if(!is.null(sdr$pdHess))if(!sdr$pdHess) warning(paste0("Model convergence problem; non-positive-definite Hessian matrix. ", 
-                             "See vignette('troubleshooting')".)
-	
+    if(!is.null(sdr$pdHess)) {
+      if(!sdr$pdHess) {
+        warning(paste0("Model convergence problem; non-positive-definite Hessian matrix. ", 
+                       "See vignette('troubleshooting')"))
+      } else {
+        eigval <- 1/eigen(sdr$cov.fixed)$values
+        if(min(eigval) < .Machine$double.eps*10) {
+          warning(paste0("Model convergence problem; very small eigen values detected. ", 
+                       "See vignette('troubleshooting')"))
+        }
+      }
+    }
+
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
                                 ## FIXME:apply condList -> cond earlier?
