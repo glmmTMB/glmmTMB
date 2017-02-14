@@ -30,22 +30,28 @@ In some cases, scaling predictor variables may help.
 
 Models with non-positive definite Hessian matricies should be excluded from further consideration, in general.  
 
-##nlminb(start = par, objective = fn, gradient = gr): NA/NaN function evaluation
+##`nlminb(start = par, objective = fn, gradient = gr): NA/NaN function evaluation`
 This warning often occurs when the optimizer wanders into a region of parameter space that is invalid. 
 It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above. 
 
-##Cholmod warning 'matrix not positive definite'
-
 #Errors
 
-##nlminb(start = par, objective = fn, gradient = gr): gradient function must return a numeric
+##`nlminb(start = par, objective = fn, gradient = gr): gradient function must return a numeric vector of length`
 This error can occur when the data do not conform to the specified distribution. 
 
+#To be documented (preferably with repeatable examples)
+
+##`nlminb(start = par, objective = fn, gradient = gr) NA/NaN gradient evaluation`
+
+##`Cholmod warning 'matrix not positive definite'`
+
+##`Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length`
+?same as "nlminb(start = par, objective = fn, gradient = gr): gradient function must return a numeric vector of length" ?
 
 
 ```{r echo=FALSE, eval=FALSE}
 #FIXME
-#What's going on with this model?
+#What's going on with this model? (besides the genpois distribution being tempermental)
 #cov.fixed is full of NaN
 m1=glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family="genpois")
 ```
