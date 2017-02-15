@@ -538,6 +538,9 @@ glmmTMB <- function (
     ##  may cause downstream problems, e.g. with predict()
     y <- as.numeric(y)
     
+   if (grepl("^truncated", family$family) & (any(y<1)) & (ziformula == ~0))
+        stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
+             "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
 
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
@@ -570,9 +573,19 @@ glmmTMB <- function (
     } else {
         sdr <- NULL
     }
-    if(!is.null(sdr$pdHess))if(!sdr$pdHess) warning(paste0("Model convergence problem. Hessian is not positive definite. ", 
-                             "This may indicate that a model is overparameterized."))
-	
+    if(!is.null(sdr$pdHess)) {
+      if(!sdr$pdHess) {
+        warning(paste0("Model convergence problem; non-positive-definite Hessian matrix. ", 
+                       "See vignette('troubleshooting')"))
+      } else {
+        eigval <- 1/eigen(sdr$cov.fixed)$values
+        if(min(eigval) < .Machine$double.eps*10) {
+          warning(paste0("Model convergence problem; very small eigen values detected. ", 
+                       "See vignette('troubleshooting')"))
+        }
+      }
+    }
+
     modelInfo <- with(TMBStruc,
                       namedList(nobs, respCol, grpVar, familyStr, family, link,
                                 ## FIXME:apply condList -> cond earlier?
