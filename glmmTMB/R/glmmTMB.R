@@ -575,12 +575,14 @@ glmmTMB <- function (
     }
     if(!is.null(sdr$pdHess)) {
       if(!sdr$pdHess) {
-        warning(paste0("Model convergence problem; non-positive-definite Hessian matrix. ", 
+        warning(paste0("Model convergence problem; ",
+                       "non-positive-definite Hessian matrix. ", 
                        "See vignette('troubleshooting')"))
       } else {
-        eigval <- 1/eigen(sdr$cov.fixed)$values
-        if(min(eigval) < .Machine$double.eps*10) {
-          warning(paste0("Model convergence problem; very small eigen values detected. ", 
+        eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
+        if( is(eigval, "try-error") || ( min(eigval) < .Machine$double.eps*10 ) ) {
+          warning(paste0("Model convergence problem; ",
+                       "extreme or very small eigen values detected. ", 
                        "See vignette('troubleshooting')"))
         }
       }
