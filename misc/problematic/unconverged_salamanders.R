@@ -17,3 +17,6 @@ zinb1m3,
 zinb1m4,
 zinb1m5,
 zinb2m3)
+
+#Genpois (this distribution is known for poor convergence)
+m1=glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family="genpois")
