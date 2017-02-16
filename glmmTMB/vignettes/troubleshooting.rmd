@@ -63,6 +63,8 @@ m1 = glmmTMB(y~1, dat1, family="nbinom2")
 ```
 The error occurs here because the negative binomial distribution is not appropriate for data with negative values.
 
+If you see this error, check that the response variable meets the assumptions of the specified distribution.
+
 ## gradient length
 ```{r gradient length nlminb, eval=FALSE}
 Error in nlminb(start = par, objective = fn, gradient = gr) : 
