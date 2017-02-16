@@ -1,0 +1,80 @@
+---
+title: "Troubleshooting with glmmTMB"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{troubleshooting}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r echo=FALSE}
+library(glmmTMB)
+```
+
+This vignette covers common problems that occur while using `glmmTMB`. 
+The contents will expand with experience.
+
+If your problem is not covered below, try updating to the latest version of `glmmTMB` on GitHub. The developers might have solved the problem in a newer version. 
+
+#Warnings
+
+##Model convergence problem; non-positive-definite Hessian matrix
+You may see the same warning as in the following example:
+```{r non-pos-def}
+zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family="nbinom2")
+```
+This often occurs when a model is overparameterized (i.e. the data does not contain information to estimate the parameters).
+In the example above, the problem is that zero observations do not depend on species as in `zi=~spp`; rather, they depend on another covariate that is missing from the model `minded`. 
+Plotting the data against potential covariates should help to avoid fitting unreasonable models that don't converge.
+
+In some cases, scaling predictor variables may help.
+
+Models with non-positive definite Hessian matricies should be excluded from further consideration, in general.  
+
+##Model convergence problem; Eigen value problems
+```{r genpois NaN}
+m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family="genpois")
+```
+In this example, the fixed effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
+
+Models with convergence problems should be excluded from further consideration, in general.
+
+##NA/NaN function evaluation
+```{r NA function, eval=FALSE}
+Warning in nlminb(start = par, objective = fn, gradient = gr) :
+  NA/NaN function evaluation
+```
+This warning often occurs when the optimizer wanders into a region of parameter space that is invalid. It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above. 
+
+The following warnings can be treated in the same way as an NA/NaN function evaluation:
+```{r Cholmod, eval=FALSE}
+Cholmod warning 'matrix not positive definite'
+```
+```{r lgamma, eval=FALSE}
+Warning in f(par, order = order, ...) : value out of range in 'lgamma'
+```
+#Errors
+
+##NA/NaN gradient evaluation
+```{r NA gradient, error=TRUE, warning=FALSE}
+dat1 = expand.grid(y=-1:1, rep=1:10)
+m1 = glmmTMB(y~1, dat1, family="nbinom2")
+```
+The error occurs here because the negative binomial distribution is not appropriate for data with negative values.
+
+If you see this error, check that the response variable meets the assumptions of the specified distribution.
+
+## gradient length
+```{r gradient length nlminb, eval=FALSE}
+Error in nlminb(start = par, objective = fn, gradient = gr) : 
+  gradient function must return a numeric vector of length x
+```
+```{r gradient length optimhess, eval=FALSE}
+Error in optimHess(par.fixed, obj$fn, obj$gr): 
+  gradient in optim evaluated to length x
+```
+
+Try rescaling predictor variables. Try a simpler model and build up.
+
+
