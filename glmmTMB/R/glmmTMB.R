@@ -454,18 +454,14 @@ glmmTMB <- function (
     # substitute evaluated versions
     ## FIXME: denv leftover from lme4, not defined yet
 
-    call$formula <- mc$formula <- formula <-
-        as.formula(formula, env = parent.frame())
+    environment(formula) <- parent.frame()
+    call$formula <- mc$formula <- formula
 
-    if (missing(ziformula)) {
-        environment(ziformula) <- environment(formula)
-    }
-    call$ziformula <- as.formula(ziformula, env=parent.frame())
-    if (missing(dispformula)) {
-        environment(dispformula) <- environment(formula)
-    }
-    
-    call$dispformula <- as.formula(dispformula, env=parent.frame())
+    environment(ziformula) <- environment(formula)
+    call$ziformula <- ziformula
+
+    environment(dispformula) <- environment(formula)
+    call$dispformula <- dispformula
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -498,7 +494,7 @@ glmmTMB <- function (
     }
 
     mf$formula <- combForm
-    fr <- eval(mf,envir=environment(formula))
+    fr <- eval(mf,envir=environment(formula),enclos=parent.frame())
     
     ## FIXME: throw an error *or* convert character to factor
     ## convert character vectors to factor (defensive)

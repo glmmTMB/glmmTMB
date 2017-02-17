@@ -23,3 +23,19 @@ test_that("basic example #1", {
     }
     expect_equal(uncall(f0),uncall(f1))
 })
+
+test_that("paranoia", {
+    formFun <- function() {
+        return(Reaction ~ Days + (1|Subject))
+    }
+    fitFun <- function(f,dat){
+        glmmTMB(f, data=dat)
+    }
+    f0 <- glmmTMB(Reaction ~ Days + (1|Subject), data=sleepstudy)
+    f1 <- fitFun(formFun(),sleepstudy)
+    uncall <- function(x) {
+        x$call <- NULL
+        return(x)
+    }
+    expect_equal(uncall(f0),uncall(f1))
+})
