@@ -4,7 +4,7 @@
 \docType{data}
 \description{
   A dataset containing counts of salamanders with site covariates and sampling covariates. Each of 23 sites were sampled 4 times.
-  When using this data, please cite Price et al. (2016) as well as the the Dryad data package (Price et al. 2015). 
+  When using this data, please cite Price et al. (2016) as well as the Dryad data package (Price et al. 2015). 
 }
 \usage{data(Salamanders)}
 \format{
