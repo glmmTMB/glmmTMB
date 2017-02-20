@@ -113,7 +113,7 @@ library("bbmle")    ## for AICtab
 library("ggplot2")
 ## cosmetic
 theme_set(theme_bw()+
-  theme(panel.margin=grid::unit(0,"lines")))
+  theme(panel.spacing=grid::unit(0,"lines")))
 @ 
 
 The data, taken from \cite{zuur_mixed_2009} and ultimately
@@ -255,32 +255,18 @@ sampling zeros.
 
 \code{glmmTMB} includes truncated
 Poisson and negative binomial familes and hence can fit hurdle models.
-The two parts of the model have to be fitted separately, however.
-First we fit a truncated distribution to the non-zero outcomes:
 
 <<glmmTMBnbinomhfit,cache=TRUE>>=
-fit_hnbinom1A <- update(fit_zinbinom1_bs,
-                        ziformula=~0,
-                        data=subset(Owls,NCalls>0),
+fit_hnbinom1 <-  update(fit_zinbinom1_bs,
+                        ziformula=~.,
+                        data=Owls,
                         family=list(family="truncated_nbinom1",link="log"))
 @ 
 
-Then we fit a binomial distribution with a response based on whether the
-number of calls is greater than zero:
-<<glmmTMBnbinomhfit2,cache=TRUE>>=
-fit_hnbinom1B <- update(fit_zinbinom1_bs,
-                        ziformula=~0,
-                        (NCalls>0) ~ .,
-                        family=binomial)
-@
-
-Unfortunately we can't directly use the combined model (conditional model for positive counts together with the model for zero/non-zero) in summaries like \code{AICtab}, but both the log-likelihoods and the numbers of parameters are additive, so we can just add the AICs.
-Comparing them with the best model so far:
+Then we can use \code{AICtab} to compare all the models.
 <<hurdle_AIC>>=
-AIC(fit_hnbinom1A)+AIC(fit_hnbinom1B)
-AIC(fit_zinbinom1_bs)
+AICtab(fit_zipoisson,fit_zinbinom,fit_zinbinom1,fit_zinbinom1_bs,fit_hnbinom1)
 @
-\fixme{why do we get a warning here?}
 
 \section{Sample timings}
 
