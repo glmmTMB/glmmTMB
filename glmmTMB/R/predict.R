@@ -156,7 +156,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
       H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
       ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
       ##        call to fix memory issue (requires recent TMB version)
-      sdr <- sdreport(newObj,oldPar,hessian.fixed=H)
+      ## Fixed! (but do we want a flag to get it ? ...)
+      sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
       pred <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
       return(list(fit=pred[,"Estimate"],
                   se.fit=pred[,"Std. Error"]))
