@@ -1,3 +1,35 @@
+## Helper function for predict.
+## Assert that we can use old model (data.tmb0) as basis for
+## predictions using the new data (data.tmb1):
+assertIdenticalModels <- function(data.tmb1, data.tmb0)
+{
+    msg <- c("Failed to predict. ",
+             "Probably some factor levels in 'newdata' are invalid.")
+    ## Check terms. Only 'blockReps' is allowed to change - Nothing else:
+    ## Note that we allow e.g. spatial covariance matrices to change,
+    ## while e.g. an unstrucured covariance must remain the same.
+    checkTerms <- function(t1, t0) {
+        checkNm <- c("blockSize", "blockNumTheta", "blockCode")
+        ok <- unlist( Map( function(x,y)
+            identical(x[checkNm], y[checkNm]), t0, t1) )
+        if ( ! all(ok) ) {
+            print(names(t1)[!ok])
+            stop(msg)
+        }
+    }
+    checkTerms( data.tmb1$terms,   data.tmb0$terms )
+    checkTerms( data.tmb1$termszi, data.tmb0$termszi )
+    ## Fixed effect parameters must be identical
+    checkModelMatrix <- function(X1, X0) {
+        if( !identical(colnames(X1), colnames(X0)) ) {
+            stop(msg)
+        }
+    }
+    checkModelMatrix(data.tmb1$X,   data.tmb0$X)
+    checkModelMatrix(data.tmb1$Xzi, data.tmb0$Xzi)
+    NULL
+}
+
 ##' prediction
 ##' @param object a \code{glmmTMB} object
 ##' @param newdata new data for prediction
@@ -101,6 +133,9 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   ## short-circuit
   if(debug) return(TMBStruc)
+
+  ## Check that the model specification is unchanged:
+  assertIdenticalModels(TMBStruc$data.tmb, object$obj$env$data)
 
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
