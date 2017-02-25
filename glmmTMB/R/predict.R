@@ -59,11 +59,13 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' the mean of the conditional distribution ("conditional": mu),
 ##' or the probability of a structural zero ("zprob")?
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
-##' used internally for debuggin?
+##' used internally for debugging?
 ##' @param re.form (not yet implemented) specify which random effects to condition on when predicting
-##' @param allow.new.levels (not yet implemented) allow previously unobserved levels in random-effects grouping variables?
+##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
-
+##' @details
+##' Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
+##' However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
 ##' @examples
 ##' data(sleepstudy,package="lme4")
 ##' g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
