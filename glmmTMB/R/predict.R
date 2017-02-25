@@ -1,20 +1,37 @@
 ## Helper function for predict.
 ## Assert that we can use old model (data.tmb0) as basis for
 ## predictions using the new data (data.tmb1):
-assertIdenticalModels <- function(data.tmb1, data.tmb0)
+assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 {
-    msg <- c("Failed to predict. ",
-             "Probably some factor levels in 'newdata' are invalid.")
-    ## Check terms. Only 'blockReps' is allowed to change - Nothing else:
-    ## Note that we allow e.g. spatial covariance matrices to change,
-    ## while e.g. an unstrucured covariance must remain the same.
+    ## Check terms. Only 'blockReps' and 'blockSize' are allowed to
+    ## change.  Note that we allow e.g. spatial covariance matrices to
+    ## change, while e.g. an unstrucured covariance must remain the
+    ## same.
     checkTerms <- function(t1, t0) {
-        checkNm <- c("blockSize", "blockNumTheta", "blockCode")
-        ok <- unlist( Map( function(x,y)
-            identical(x[checkNm], y[checkNm]), t0, t1) )
+        ## Defensive check:
+        stopifnot(identical(names(t1), names(t0)))
+        ## *Never* allowed to differ:
+        testIdentical <- function(checkNm) {
+            unlist( Map( function(x,y)
+                identical(x[checkNm], y[checkNm]), t0, t1) )
+        }
+        ok <- testIdentical( c("blockNumTheta", "blockCode") )
         if ( ! all(ok) ) {
-            print(names(t1)[!ok])
+            msg <- c("Prediction is not possible for terms: ",
+                     paste(names(t1)[!ok], collapse=", "), "\n",
+                     "Probably some factor levels in 'newdata' require fitting a new model.")
             stop(msg)
+        }
+        ## Sometimes allowed to differ:
+        if ( ! allow.new.levels ) {
+            ok <- testIdentical( c( "blockReps", "blockSize") )
+            if ( ! all(ok) ) {
+                msg <- c("Predicting new random effect levels for terms: ",
+                         paste(names(t1)[!ok], collapse=", "), "\n",
+                         "Disable this warning with 'allow.new.levels=TRUE'")
+                ## FIXME: warning or error ?
+                warning(msg)
+            }
         }
     }
     checkTerms( data.tmb1$terms,   data.tmb0$terms )
@@ -22,6 +39,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0)
     ## Fixed effect parameters must be identical
     checkModelMatrix <- function(X1, X0) {
         if( !identical(colnames(X1), colnames(X0)) ) {
+            msg <- c("Prediction is not possible for unknown fixed effects: ",
+                     paste( setdiff(colnames(X1), colnames(X0)), collapse=", "), "\n",
+                     "Probably some factor levels in 'newdata' require fitting a new model.")
             stop(msg)
         }
     }
@@ -62,7 +82,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## FIXME: deal with napredict stuff ...
 
   if (!missing(re.form)) stop("re.form not yet implemented")
-  if (allow.new.levels) stop("allow.new.levels not yet implemented")
+  ##if (allow.new.levels) stop("allow.new.levels not yet implemented")
   mc <- mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
@@ -135,7 +155,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   if(debug) return(TMBStruc)
 
   ## Check that the model specification is unchanged:
-  assertIdenticalModels(TMBStruc$data.tmb, object$obj$env$data)
+  assertIdenticalModels(TMBStruc$data.tmb, object$obj$env$data, allow.new.levels)
 
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
