@@ -70,6 +70,10 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' data(sleepstudy,package="lme4")
 ##' g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
 ##' predict(g0, sleepstudy)
+##' ## Predict new Subject
+##' nd <- sleepstudy[1,]
+##' nd$Subject <- "new"
+##' predict(g0, newdata=nd, allow.new.levels=TRUE)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess
 ##' @export
