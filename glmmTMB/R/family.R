@@ -31,8 +31,9 @@ truncated_poisson <- function(link="log") {
 	return(list(family="truncated_poisson", link=link,
            variance=function(lambda) {
            (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
-	       	}))
+           }))
 }
+
 #' @rdname nbinom2
 #' @export	       	
 truncated_nbinom2 <- function(link="log") {
