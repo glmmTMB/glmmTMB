@@ -25,8 +25,31 @@ nbinom1 <- function(link="log") {
            }))
 }
 
-## FIXME: add truncated families (use unconditional variance?),
-## check for zeros on initialization
+#' @rdname nbinom2
+#' @export
+truncated_poisson <- function(link="log") {
+	return(list(family="truncated_poisson", link=link,
+	       variance=function(mu) {
+	       	   mu
+	       	}))
+
+#' @rdname nbinom2
+#' @export	       	
+truncated_nbinom2 <- function(link="log") {
+    return(list(family="truncated_nbinom2",link=link,
+           variance=function(mu,disp) {
+               mu*(1+mu/disp)
+           }))
+}
+
+#' @rdname nbinom2
+#' @export
+truncated_nbinom1 <- function(link="log") {
+    return(list(family="truncated_nbinom1",link=link,
+           variance=function(mu,disp) {
+               mu*disp
+           }))
+}
 
 ## similar to mgcv::betar(), but simplified (variance has two parameters
 ##  rather than retrieving a variable from the environment); initialize()
