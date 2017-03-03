@@ -29,16 +29,16 @@ nbinom1 <- function(link="log") {
 #' @export
 truncated_poisson <- function(link="log") {
 	return(list(family="truncated_poisson", link=link,
-	       variance=function(mu) {
-	       	   mu
+           variance=function(lambda) {
+           (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
 	       	}))
-
+}
 #' @rdname nbinom2
 #' @export	       	
 truncated_nbinom2 <- function(link="log") {
     return(list(family="truncated_nbinom2",link=link,
            variance=function(mu,disp) {
-               mu*(1+mu/disp)
+               stop("variance for truncated nbinom2 family not yet implemented")
            }))
 }
 
@@ -47,7 +47,7 @@ truncated_nbinom2 <- function(link="log") {
 truncated_nbinom1 <- function(link="log") {
     return(list(family="truncated_nbinom1",link=link,
            variance=function(mu,disp) {
-               mu*disp
+               stop("variance for truncated nbinom1 family not yet implemented")
            }))
 }
 
