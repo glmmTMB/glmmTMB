@@ -39,3 +39,15 @@ test_that("paranoia", {
     }
     expect_equal(uncall(f0),uncall(f1))
 })
+test_that("dispformula env", {
+	fitFun2 <- function(dat){
+        glmmTMB(count ~ 1, data=dat, family="poisson" )
+    }
+    m0 <- fitFun2(Salamanders)
+    m1 <- glmmTMB(count ~ 1, data= Salamanders, family="poisson")
+    uncall <- function(x) {
+        x$call <- NULL
+        return(x)
+    }
+    expect_equal(uncall(summary(m0)), uncall(summary(m1)))
+})

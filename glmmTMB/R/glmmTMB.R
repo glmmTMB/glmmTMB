@@ -32,7 +32,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         ## FIXME: Depending on the final estimates, we should somehow
         ## check that this fixed dispersion is small enough.
         betad_init <- log( sqrt( .Machine$double.eps ) )
-        dispformula <- ~1
+        dispformula[] <- ~1
         mapArg <- list(betad = factor(NA)) ## Fix betad
     } else {
         betad_init <- 0
@@ -44,7 +44,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         ##      dispformula != ~1 )
         ##     warning(sprintf("dispersion parameter ignored for family %s",
         ##                     sQuote(family)))
-        dispformula <- ~0
+        dispformula[] <- ~0
     }
 
     condList  <- getXReTrms(formula, mf, fr)
