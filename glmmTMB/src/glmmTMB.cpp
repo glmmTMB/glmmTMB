@@ -1,5 +1,5 @@
-#define TMB_LIB_INIT R_init_glmmTMB
 #include <TMB.hpp>
+#include "init.h"
 
 namespace glmmtmb{
   template<class Type>
