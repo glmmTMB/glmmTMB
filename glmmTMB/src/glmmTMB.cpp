@@ -120,6 +120,19 @@ namespace glmmtmb{
   }
 }
 
+/* Interface to compois variance */
+extern "C" {
+  SEXP compois_calc_var(SEXP mean, SEXP nu) {
+    if (LENGTH(mean) != LENGTH(nu))
+      error("'mean' and 'nu' must be vectors of same length.");
+    SEXP ans = PROTECT(allocVector(REALSXP, LENGTH(mean)));
+    for(int i=0; i<LENGTH(mean); i++)
+      REAL(ans)[i] = glmmtmb::compois_calc_var(REAL(mean)[i], REAL(nu)[i]);
+    UNPROTECT(1);
+    return ans;
+  }
+}
+
 /* Quantile functions needed to simulate from truncated distributions */
 extern "C" {
   double Rf_qnbinom(double p, double size, double prob, int lower_tail, int log_p);
