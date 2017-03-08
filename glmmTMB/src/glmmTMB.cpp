@@ -104,6 +104,20 @@ namespace glmmtmb{
     return logit_pnorm(tx)[0];
   }
 
+  /* Calculate variance in compois family using
+
+     V(X) = (logZ)''(loglambda)
+
+  */
+  double compois_calc_var(double mean, double nu){
+    using atomic::compois_utils::calc_loglambda;
+    using atomic::compois_utils::calc_logZ;
+    double loglambda = calc_loglambda(log(mean), nu);
+    typedef atomic::tiny_ad::variable<2, 1, double> ADdouble;
+    ADdouble loglambda_ (loglambda, 0);
+    ADdouble ans = calc_logZ<ADdouble>(loglambda_, nu);
+    return ans.getDeriv()[0];
+  }
 }
 
 /* Quantile functions needed to simulate from truncated distributions */
