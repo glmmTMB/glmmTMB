@@ -1,5 +1,5 @@
-#define TMB_LIB_INIT R_init_glmmTMB
 #include <TMB.hpp>
+#include "init.h"
 
 namespace glmmtmb{
   template<class Type>
@@ -104,6 +104,33 @@ namespace glmmtmb{
     return logit_pnorm(tx)[0];
   }
 
+  /* Calculate variance in compois family using
+
+     V(X) = (logZ)''(loglambda)
+
+  */
+  double compois_calc_var(double mean, double nu){
+    using atomic::compois_utils::calc_loglambda;
+    using atomic::compois_utils::calc_logZ;
+    double loglambda = calc_loglambda(log(mean), nu);
+    typedef atomic::tiny_ad::variable<2, 1, double> ADdouble;
+    ADdouble loglambda_ (loglambda, 0);
+    ADdouble ans = calc_logZ<ADdouble>(loglambda_, nu);
+    return ans.getDeriv()[0];
+  }
+}
+
+/* Interface to compois variance */
+extern "C" {
+  SEXP compois_calc_var(SEXP mean, SEXP nu) {
+    if (LENGTH(mean) != LENGTH(nu))
+      error("'mean' and 'nu' must be vectors of same length.");
+    SEXP ans = PROTECT(allocVector(REALSXP, LENGTH(mean)));
+    for(int i=0; i<LENGTH(mean); i++)
+      REAL(ans)[i] = glmmtmb::compois_calc_var(REAL(mean)[i], REAL(nu)[i]);
+    UNPROTECT(1);
+    return ans;
+  }
 }
 
 /* Quantile functions needed to simulate from truncated distributions */
