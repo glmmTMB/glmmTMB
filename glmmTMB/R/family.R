@@ -1,18 +1,33 @@
 ##' Family functions for glmmTMB
 ##' 
 ##' @aliases family_glmmTMB
-##' @param link (character) link function
+##' @param link (character) link function ("log", "logit", "probit", "inverse", "cloglog", or "identity")
 ##' @return returns a list with (at least) components
 ##' \item{family}{length-1 character vector giving the family name}
 ##' \item{link}{length-1 character vector specifying the link function}
 ##' \item{variance}{a function of either 1 (mean) or 2 (mean and dispersion
 ##' parameter) arguments giving the predicted variance}
-##' 
+##' @details 
+##'  \describe{
+##'      \item{nbinom2}{has a variance that increases quadratically with the mean (Hardin & Hilbe 2007)}
+##'      \item{nbinom1}{has a variance that increases linearly with the mean (Hardin & Hilbe 2007)}
+##'      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean
+##'        which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
+##'      \item{genpois}{is the generalized Poisson distribution}
+##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package}
+##' }
+##' @references
+##' \itemize{
+##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
+##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
+##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
+##' }
+
 ##' @export
 nbinom2 <- function(link="log") {
     return(list(family="nbinom2",link=link,
-           variance=function(mu,disp) {
-               mu*(1+mu/disp)
+           variance=function(mu,theta) {
+               mu*(1+mu/theta)
            }))
 }
 
@@ -20,8 +35,26 @@ nbinom2 <- function(link="log") {
 #' @export
 nbinom1 <- function(link="log") {
     return(list(family="nbinom1",link=link,
-           variance=function(mu,disp) {
-               mu*disp
+           variance=function(mu,alpha) {
+               mu*(1+alpha)
+           }))
+}
+
+#' @rdname nbinom2
+#' @export
+compois <- function(link="log") {
+    return(list(family="compois",link=link,
+           variance=function(mu,phi) {
+               compois_calc_var(mu, 1/phi)
+           }))
+}
+
+#' @rdname nbinom2
+#' @export
+genpois <- function(link="log") {
+    return(list(family="genpois",link=link,
+           variance=function(mu,phi) {
+               mu*phi
            }))
 }
 
@@ -38,7 +71,7 @@ truncated_poisson <- function(link="log") {
 #' @export	       	
 truncated_nbinom2 <- function(link="log") {
     return(list(family="truncated_nbinom2",link=link,
-           variance=function(mu,disp) {
+           variance=function(mu,theta) {
                stop("variance for truncated nbinom2 family not yet implemented")
            }))
 }
@@ -47,7 +80,7 @@ truncated_nbinom2 <- function(link="log") {
 #' @export
 truncated_nbinom1 <- function(link="log") {
     return(list(family="truncated_nbinom1",link=link,
-           variance=function(mu,disp) {
+           variance=function(mu,alpha) {
                stop("variance for truncated nbinom1 family not yet implemented")
            }))
 }
@@ -55,6 +88,8 @@ truncated_nbinom1 <- function(link="log") {
 ## similar to mgcv::betar(), but simplified (variance has two parameters
 ##  rather than retrieving a variable from the environment); initialize()
 ##  tests for legal response values
+#' @rdname nbinom2
+#' @export
 betar <- function(link="logit") {
     return(list(family="betar",link=link,
                 variance=function(mu,phi) {
@@ -65,27 +100,14 @@ betar <- function(link="logit") {
                         stop("y values must be 0 < y < 1")
                 })))
 }
-
 ## fixme: better name?
 
-##' Generalized Poisson distribution
-##' @param link (character) link function. Only "log" is impemented.
-##' @export
-genpois <- function(link="log") {
-    return(list(family="genpois",link=link,
-           variance=function(mu,disp) {
-               mu*disp
-           }))
-}
-
-##' Conway-Maxwell Poisson distribution parameterized by exact mean
-##' @param link (character) link function. Only "log" is impemented.
-##' @export
-compois <- function(link="log") {
-    return(list(family="compois",link=link,
-           variance=function(mu,disp) {
-               stop("variance for compois family not yet implemented")
-               #mu*disp #FIXME: need to call C++ calc_loglambda using .Call
+#' @rdname nbinom2
+#' @export
+betabinomial <- function(link="logit") {
+    return(list(family="betabinomial",link=link,
+           variance=function(mu,phi) {
+               stop("variance for betabinomial family not yet implemented")
            }))
 }
 
