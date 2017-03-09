@@ -17,7 +17,7 @@
 
 \item{re.form}{(not yet implemented) specify which random effects to condition on when predicting}
 
-\item{allow.new.levels}{(not yet implemented) allow previously unobserved levels in random-effects grouping variables?}
+\item{allow.new.levels}{allow previously unobserved levels in random-effects variables? see details.}
 
 \item{zitype}{for zero-inflated models,
 return expected value ("response": (mu*(1-p))),
@@ -25,16 +25,23 @@ the mean of the conditional distribution ("conditional": mu),
 or the probability of a structural zero ("zprob")?}
 
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
-used internally for debuggin?}
+used internally for debugging?}
 
 \item{\dots}{unused - for method compatibility}
 }
 \description{
 prediction
 }
+\details{
+Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
+However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
+}
 \examples{
 data(sleepstudy,package="lme4")
 g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
 predict(g0, sleepstudy)
+## Predict new Subject
+nd <- sleepstudy[1,]
+nd$Subject <- "new"
+predict(g0, newdata=nd, allow.new.levels=TRUE)
 }
-

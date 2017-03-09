@@ -15,12 +15,13 @@ syntax}
 \item{data}{data frame}
 
 \item{family}{family (variance/link function) information; see \code{\link{family}} for
-details.  As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
+generic family details or \code{\link{family_glmmTMB}} for details of \code{glmmTMB} specific families.  
+As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
 referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
 such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
 In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
 can be specified as (4) a list comprising the name of the distribution and the link function
-(\sQuote{list(family="binomial",link="logit")}). However, the first 3 options are preferable.}
+(\sQuote{list(family="binomial", link="logit")}). However, the first 3 options are preferable.}
 
 \item{ziformula}{a \emph{one-sided} (i.e., no response variable) formula for
     zero-inflation combining fixed and random effects:

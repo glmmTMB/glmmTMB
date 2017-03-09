@@ -45,7 +45,8 @@ nbinom1 <- function(link="log") {
 compois <- function(link="log") {
     return(list(family="compois",link=link,
            variance=function(mu,phi) {
-               compois_calc_var(mu, 1/phi)
+               if (length(phi)==1) phi <- rep(phi, length=length(mu))
+               .Call("compois_calc_var", mu, 1/phi, PACKAGE="glmmTMB")
            }))
 }
 
