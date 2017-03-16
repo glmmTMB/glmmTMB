@@ -320,12 +320,13 @@ okWeights <- function(x) {
 ##'     syntax
 ##' @param data data frame
 ##' @param family family (variance/link function) information; see \code{\link{family}} for
-##' details.  As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
+##' generic family details or \code{\link{family_glmmTMB}} for details of \code{glmmTMB} specific families.  
+##' As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
 ##' referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
 ##' such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
 ##' In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
 ##' can be specified as (4) a list comprising the name of the distribution and the link function
-##' (\sQuote{list(family="binomial",link="logit")}).
+##' (\sQuote{list(family="binomial", link="logit")}). However, the first 3 options are preferable.
 ##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for
 ##'     zero-inflation combining fixed and random effects:
 ##' the default \code{~0} specifies no zero-inflation.
@@ -339,7 +340,7 @@ okWeights <- function(x) {
 ##'     The argument is ignored for families that do not have a dispersion parameter.
 ##'     For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
 ##'     The dispersion model uses a log link. 
-##'     In Gaussian mixed models, \code{dispformula=~0} fixes the paramameter to be 0, forcing variance into the random effects.
+##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Only implemented for binomial and betabinomial families.
 ##' @param offset offset
 ##' @param se whether to return standard errors
@@ -374,7 +375,7 @@ okWeights <- function(x) {
 ##' ## Hurdle Poisson model
 ##' (m3 <- glmmTMB(count~spp + mined + (1|site), 
 ##'   zi=~spp + mined, 
-##'   family=list(family="truncated_poisson", link="log"), Salamanders))
+##'   family=truncated_poisson, Salamanders))
 ##' 
 ##' ## Binomial model
 ##' data(cbpp, package="lme4")

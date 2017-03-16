@@ -457,6 +457,9 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     type <- match.arg(type)
+    if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
+        stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
+    }
     r <- model.response(object$frame)-fitted(object)
     switch(type,
            response=r,
