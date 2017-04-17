@@ -123,7 +123,7 @@ $e^{-\theta}$ (First off-diagonal of "Corr") in the output:
 
 > FIXME: Try a longer time series when the print.VarCorr is fixed.
 
-```{r echo=FALSE, eval=TRUE}
+```{r ar0fit,echo=FALSE, eval=TRUE}
 glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 ```
 
@@ -188,12 +188,7 @@ effectively included in the estimated covariance matrix.
 The next natural step would be to reduce the number of parameters by
 collecting correlation parameters within the same off-diagonal. This
 amounts to $r(n-1)$ correlation parameters and $r n$ variance
-parameters. This time we do not have to disable the dispersion
-parameter.
-
-> FIXME: hangs (or very slow) with development TMB + development R?
-> `Error in optimHess(par.fixed, obj$fn, obj$gr) : gradient in optim evaluated to length 1 not 13`
-> (plus many `NA/NaN function evaluation` warnings from `nlminb`)
+parameters.
 
 > FIXME: Explain why dispformula=~1 causes over-parameterization
 
@@ -371,9 +366,13 @@ cc[lower.tri(cc)] <- cpars
 L <- tcrossprod(cc)
 D <- diag(1/sqrt(diag(L)))
 D %*% L %*% D
-## check against internal representation
-x <- fit.us
-all.equal(c(cov2cor(vv1)),c(x$obj$env$report(x$fit$parfull)$corr[[1]]))
+unname(attr(vv1,"correlation"))
+```
+
+> FIXME: why are these not quite the same? Not what I expected
+
+```{r other_check}
+all.equal(c(cov2cor(vv1)),c(fit.us$obj$env$report(x$fit$parfull)$corr[[1]]))
 ```
 
 Profiling (experimental/exploratory):
@@ -387,9 +386,11 @@ length(ppar)
 range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 ## only 1 fixed effect parameter
 tt <- tmbprofile(fit.us$obj,2,trace=FALSE)
-##
+```
+
+```{r fit.us.profile.plot}
 plot(tt)
-try(confint(tt))
+confint(tt)
 ```
 
 ```{r fit.cs.profile}
@@ -398,4 +399,8 @@ length(ppar)
 range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 ## only 1 fixed effect parameter, 1 dispersion parameter
 tt2 <- tmbprofile(fit.cs$obj,3,trace=FALSE)
+```
+
+```{r fit.cs.profile.plot}
+plot(tt2)
 ```
