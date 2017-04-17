@@ -372,13 +372,11 @@ unname(attr(vv1,"correlation"))
 > FIXME: why are these not quite the same? Not what I expected
 
 ```{r other_check}
-all.equal(c(cov2cor(vv1)),c(fit.us$obj$env$report(x$fit$parfull)$corr[[1]]))
+all.equal(c(cov2cor(vv1)),c(fit.us$obj$env$report(fit.us$fit$parfull)$corr[[1]]))
 ```
 
 Profiling (experimental/exploratory):
 
-> FIXME: odd results from `fit.us`
- 
 ```{r fit.us.profile}
 ## want $par, not $parfull: do NOT include conditional modes/'b' parameters
 ppar <- fit.us$fit$par
