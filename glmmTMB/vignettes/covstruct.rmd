@@ -124,7 +124,7 @@ $e^{-\theta}$ (First off-diagonal of "Corr") in the output:
 > FIXME: Try a longer time series when the print.VarCorr is fixed.
 
 ```{r echo=FALSE, eval=TRUE}
-glmmTMB(y ~ ar1(times + 0 | group), data=dd)
+glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 ```
 
 ### Increasing the sample size
@@ -195,14 +195,16 @@ parameter.
 > `Error in optimHess(par.fixed, obj$fn, obj$gr) : gradient in optim evaluated to length 1 not 13`
 > (plus many `NA/NaN function evaluation` warnings from `nlminb`)
 
-```{r fit.toep, eval=FALSE}
-fit.toep <- glmmTMB(y ~ toep(times + 0 | group), data=dat1)
+> FIXME: Explain why dispformula=~1 causes over-parameterization
+
+```{r fit.toep}
+fit.toep <- glmmTMB(y ~ toep(times + 0 | group), data=dat1, dispformula=~0)
 fit.toep$sdr$pdHess ## Converged ?
 ```
 
 The estimated variance and correlation parameters are:
 
-```{r fit.toep.vc, eval=FALSE}
+```{r fit.toep.vc}
 VarCorr(fit.toep)
 ```
 
@@ -217,8 +219,10 @@ estimate of the variance and thereby the correlation parameters.
 The compound symmetry structure collects all off-diagonal elements of
 the correlation matrix to one common value.
 
+> FIXME: Explain why dispformula=~1 causes over-parameterization
+
 ```{r fit.cs}
-fit.cs <- glmmTMB(y ~ cs(times + 0 | group), data=dat1)
+fit.cs <- glmmTMB(y ~ cs(times + 0 | group), data=dat1, dispformula=~0)
 fit.cs$sdr$pdHess ## Converged ?
 ```
 
@@ -270,8 +274,8 @@ In order to try the remaining structures on our test data we
 re-interpret the time factor using `numFactor`:
 
 ```{r numFactor2}
-dat$times <- numFactor(dat$times)
-levels(dat$times)
+dat1$times <- numFactor(dat1$times)
+levels(dat1$times)
 ```
 
 ## Ornstein–Uhlenbeck
@@ -368,6 +372,7 @@ L <- tcrossprod(cc)
 D <- diag(1/sqrt(diag(L)))
 D %*% L %*% D
 ## check against internal representation
+x <- fit.us
 all.equal(c(cov2cor(vv1)),c(x$obj$env$report(x$fit$parfull)$corr[[1]]))
 ```
 
@@ -383,7 +388,7 @@ range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 ## only 1 fixed effect parameter
 tt <- tmbprofile(fit.us$obj,2,trace=FALSE)
 ##
-plot(value~theta,data=tt)
+plot(tt)
 try(confint(tt))
 ```
 
