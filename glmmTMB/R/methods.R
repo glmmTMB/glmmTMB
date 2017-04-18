@@ -175,7 +175,7 @@ getME.glmmTMB <- function(object,
          "Z"     = oo.env$data$Z,
          "Zzi"   = oo.env$data$Zzi,
          "Xd"    = oo.env$data$Xd,
-         "theta" = oo.env$parList()$theta ,
+         "theta" = oo.env$parList(object$fit$par, object$fit$parfull)$theta ,
 
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
