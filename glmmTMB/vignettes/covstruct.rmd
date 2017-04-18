@@ -349,7 +349,7 @@ for variance parameters) and their order.
 
 ### Unstructured
 
-For an unstructured matrix of size `n` parameters `1:n` represent the log-standard deviations while the remaining `n(n-1)/2` (i.e. `(n+1):(n:(n*(n+1)/2))`) are the elements of the Cholesky factor of the correlation matrix, filled in column-wise order (see [TMB documentation](http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html))
+For an unstructured matrix of size `n` parameters `1:n` represent the log-standard deviations while the remaining `n(n-1)/2` (i.e. `(n+1):(n:(n*(n+1)/2))`) are the elements of the Cholesky factor of the correlation matrix, filled in row-wise order (see [TMB documentation](http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html))
 
 ```{r fit.us.2}
 vv0 <- VarCorr(fit.us)
@@ -362,8 +362,8 @@ all.equal(unname(diag(vv1)),exp(rpars[1:n])^2)
 cpars <- rpars[-(1:n)]
 length(cpars)==n*(n-1)/2      ## the expected number
 cc <- diag(n)
-cc[lower.tri(cc)] <- cpars
-L <- tcrossprod(cc)
+cc[upper.tri(cc)] <- cpars
+L <- crossprod(cc)
 D <- diag(1/sqrt(diag(L)))
 D %*% L %*% D
 unname(attr(vv1,"correlation"))
