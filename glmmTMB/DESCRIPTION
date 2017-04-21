@@ -19,23 +19,39 @@ Description: Fit linear and generalized linear mixed models with various
     out using the Laplace approximation. Gradients are calculated using automatic
     differentiation.
 License: AGPL-3
-Imports: methods, TMB (>= 1.7.6), lme4 (>= 1.1-10), Matrix, nlme
+Imports:
+    methods,
+    TMB (>= 1.7.6),
+    lme4 (>= 1.1-10),
+    Matrix,
+    nlme
 LinkingTo: TMB, RcppEigen
-Suggests: knitr, testthat, MASS, lattice, ggplot2, mlmRev, bbmle, pscl, MCMCpack, coda, reshape2
+Suggests:
+    knitr,
+    testthat,
+    MASS,
+    lattice,
+    ggplot2,
+    mlmRev,
+    bbmle (>=1.0.19),
+    pscl,
+    MCMCpack,
+    coda,
+    reshape2
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 6.0.1
+RoxygenNote: 5.0.1
 NeedsCompilation: yes
 Packaged: 2016-10-19 01:02:29 UTC; bolker
 Author: Arni Magnusson [aut],
-  Hans Skaug [aut],
-  Anders Nielsen [aut],
-  Casper Berg [aut],
-  Kasper Kristensen [aut],
-  Martin Maechler [aut],
-  Koen van Bentham [aut],
-  Ben Bolker [aut],
-  Mollie Brooks [aut, cre]
+    Hans Skaug [aut],
+    Anders Nielsen [aut],
+    Casper Berg [aut],
+    Kasper Kristensen [aut],
+    Martin Maechler [aut],
+    Koen van Bentham [aut],
+    Ben Bolker [aut],
+    Mollie Brooks [aut, cre]
 Maintainer: Mollie Brooks <mollieebrooks@gmail.com>
