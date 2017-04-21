@@ -187,7 +187,7 @@ effectively included in the estimated covariance matrix.
 
 The next natural step would be to reduce the number of parameters by
 collecting correlation parameters within the same off-diagonal. This
-amounts to $r(n-1)$ correlation parameters and $r n$ variance
+amounts to `r (n-1)` correlation parameters and `r n` variance
 parameters.
 
 > FIXME: Explain why dispformula=~1 causes over-parameterization
