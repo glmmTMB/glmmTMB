@@ -1,0 +1,47 @@
+---
+title: "Miscellaneous examples"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{examples}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r echo=FALSE}
+library(glmmTMB)
+```
+
+## Beta dispersion model
+
+```{r simbeta1}
+set.seed(1001)
+N <- 1000
+mean_pars <- c(1,2)
+disp_pars <- c(1,2)
+dd <- data.frame(x=rnorm(N))
+m <- plogis(mean_pars[1]+mean_pars[2]*dd$x)
+d <- exp(disp_pars[1]+disp_pars[2]*dd$x)
+dd$y <- rbeta(N,shape1=m*d,shape2=(1-m)*d)
+```
+
+Fit models:
+
+```{r modbeta1}
+## location only
+m1 <- glmmTMB(y~x,
+              family=list(family="beta",link="logit"),
+              data=dd)
+## add model for dispersion
+m2 <- update(m1,dispformula=~x)
+```
+
+Fixed effects look close to theoretical values:
+```{r coefbeta1}
+fixef(m2)
+```
+
+AIC is insanely much better for the model with dispersion varying:
+```{r AICbeta1}
+bbmle::AICtab(m1,m2)
+```
