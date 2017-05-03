@@ -3,9 +3,11 @@ library(ggplot2); theme_set(theme_bw())
 library(knitr)
 library(reshape)
 library(plyr)
+
+#Set up cluster
 library(parallel)
-no_cores <- detectCores() - 1
-cl <- makeCluster(no_cores)
+no_cores = detectCores() - 1
+cl = makeCluster(no_cores)
 clusterEvalQ(cl, {
   library(glmmTMB)
   library(glmmADMB)
@@ -15,7 +17,12 @@ clusterEvalQ(cl, {
   tfun = function(x) unname(system.time(capture.output(x))["elapsed"])
 })
 
+#The basic model to fit
 mod = glmmTMB(count~spp * mined + (1|site), Salamanders, family="nbinom2")
+
+########################################################
+#Benchmark with simulated data sets the same as the original
+
 sims1 = lapply(simulate(mod, nsim=100, seed=111), 
                function(count){ 
                  cbind(count, Salamanders[,c('site', 'mined', 'spp')])
@@ -45,7 +52,7 @@ simtimes = data.frame(time=c(times.tmb, times.admb, times.lme4, times.brms, time
 ggplot(simtimes)+geom_boxplot(aes(x=package, y=time))+scale_y_log10(breaks=c(5,10,50,100,500,1000))+
   ylab("estimation time (seconds)")
 
-  
+######################################################## 
 #Benchmark with data sets of increasing size
 
 n = nrow(Salamanders)
@@ -79,6 +86,7 @@ ggplot(bigtimes, aes(x=nobs, y=time, colour=package))+
   scale_y_log10(breaks=c(5,10,50,100,500,1000))+
   xlab("number of observations in data")+ylab("estimation time (seconds)")+scale_x_log10(breaks=unique(bigtimes$nobs))
 
+########################################################
 #Benchmark with data sets with more random effect levels
 
 sims1 = lapply(simulate(mod, nsim=512, seed=111), 
