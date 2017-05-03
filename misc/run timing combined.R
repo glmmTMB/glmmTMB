@@ -93,12 +93,13 @@ sims1 = lapply(simulate(mod, nsim=512, seed=111),
                function(count){ 
                  cbind(count, Salamanders[,c('site', 'mined', 'spp')])
                })
+               
 n = nrow(Salamanders)
 nRE=length(unique(Salamanders$site))
+
 reps = c(1,4,16,64,256,512)
 bigdat0 = lapply(reps, function(x) do.call(rbind, sims1[1:x]))
 bigdat =  lapply(1:length(reps), function(x)  data.frame(bigdat0[[x]], "grp"=paste0(bigdat0[[x]]$site, rep(1:reps[x], each=n)))) 
-
 
 times.tmb = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(glmmTMB(count~spp * mined + (1|grp), x, family="nbinom2"))}))
