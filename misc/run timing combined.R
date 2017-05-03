@@ -81,24 +81,35 @@ ggplot(bigtimes, aes(x=nobs, y=time, colour=package))+
 
 #Benchmark with data sets with more random effect levels
 
+sims1 = lapply(simulate(mod, nsim=512, seed=111), 
+               function(count){ 
+                 cbind(count, Salamanders[,c('site', 'mined', 'spp')])
+               })
 n = nrow(Salamanders)
-nRE=length(unique(Salamanders$site))
+reps = c(1,4,16,64,256,512)
+bigdat0 = lapply(reps, function(x) do.call(rbind, sims1[1:x]))
+bigdat =  lapply(1:length(reps), function(x)  data.frame(bigdat0[[x]], "grp"=paste0(bigdat0[[x]]$site, rep(1:reps[x], each=n)))) 
 
-rows = lapply(reps, function(x) rep(1:n, x))
-bigdat = lapply(rows, function(x) Salamanders[x,])
-bigdat2 = lapply(1:length(reps), function(x) data.frame(bigdat[[x]], "grp"=paste0(bigdat[[x]]$site, rep(1:reps[x], each=n)))) 
 
-times.tmb = do.call(c, parLapply(cl, bigdat2, function(x){
+times.tmb = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(glmmTMB(count~spp * mined + (1|grp), x, family="nbinom2"))}))
 
-times.inla = do.call(c, parLapply(cl, bigdat2, function(x){
+times.inla = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(inla(count~spp*mined+f(grp, model="iid"), family= "nbinomial", data = x))}))
 
+reps = c(1,4,16,64)
+bigdat0 = lapply(reps, function(x) do.call(rbind, sims1[1:x]))
+bigdat =  lapply(1:length(reps), function(x)  data.frame(bigdat0[[x]], "grp"=paste0(bigdat0[[x]]$site, rep(1:reps[x], each=n)))) 
+
 times.admb = do.call(c, parLapply(cl, bigdat, function(x){
-  tfun(glmmadmb(count~spp * mined + (1|grp), x, family="nbinom2"))}))
+  tfun(glmmadmb(count~spp * mined + (1|grp), x, family="nbinom2", extra.args="-ndi 100000"))}))
 
 times.lme4 = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(glmer.nb(count~spp * mined + (1| grp), x))}))
+
+reps = c(1,4,16)
+bigdat0 = lapply(reps, function(x) do.call(rbind, sims1[1:x]))
+bigdat =  lapply(1:length(reps), function(x)  data.frame(bigdat0[[x]], "grp"=paste0(bigdat0[[x]]$site, rep(1:reps[x], each=n)))) 
 
 times.brms = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(brm(count~spp * mined + (1| grp), x, family="negbinomial"))}))
