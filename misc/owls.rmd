@@ -1,8 +1,9 @@
 ---
-title: "Compare zero-inflated mixed models across R packages"
+title: "Appendix C: Compare zero-inflated mixed models across R packages"
 author: "Mollie Brooks and Ben Bolker"
 date: "`r Sys.Date()`"
-bibliography: misc.bib
+bibliography: zi.bib
+bst: model5-names.bst
 output: pdf_document
 ---
 
@@ -10,7 +11,7 @@ output: pdf_document
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE, cache=TRUE)
 ```
-In this appendix, we analyze counts of begging behavior by owl nestlings. This example previously appeared in @zuur_mixed_2009 and @bolker_strategies_2013 and was originally published by @roulin_nestling_2007. **More description...**
+In this appendix, we analyze counts of begging behavior by owl nestlings. This example previously appeared in @zuur_mixed_2009 and @bolker_strategies_2013 and was originally published by @roulin_nestling_2007. The response variable is the number of calls from chicks (`NCalls`) in a nest. Since this should directly scale with the number of chicks (i.e. brood size), `logBroodSize` is used as an offset term. Since nests were repeatedly measured, `Nest` is included as a random effect. Covariates of interest include the sex of the parent visiting the nest (`SexParent`), whether the chicks were satiatited or not (`FoodTreatment`), and the timing of the parent's arrival (`ArrivalTime`).
 
 #Preliminaries
 
@@ -21,6 +22,7 @@ library(glmmTMB)
 library(glmmADMB)
 library(MCMCglmm)
 library(brms)
+library(INLA)
 library(broom) #for tidy
 library(plyr)
 library(dplyr) #tidyverse
@@ -32,7 +34,7 @@ library(ggstance)#for position_dodgev
 
 ```{r data}
 data(Owls)
-Owls = rename(Owls, c(SiblingNegotiation="NCalls"))
+Owls = plyr::rename(Owls, c(SiblingNegotiation="NCalls"))
 Owls = transform(Owls, ArrivalTime=scale(ArrivalTime, center=TRUE, scale=FALSE))
 ```
 
@@ -52,6 +54,16 @@ tidy.brmsfit = function(x, effects=c("fixed"),...) {
         rename(term=.rownames,estimate=Estimate,std.error=Est.Error,
                conf.low=l.95..CI,conf.high=u.95..CI)
 }
+# broom tidy method for class "inla"
+
+tidy.inla <- function(x, effects=c("fixed"),...) {
+    ss <- summary(x)
+    tidy(ss$fixed) %>%
+        mutate(effect="fixed",group="fixed") %>%
+        select(effect,.rownames,mean,sd,X0.025quant,X0.975quant,group) %>%
+        rename(term=.rownames,estimate=mean,std.error=sd,
+               conf.low=X0.025quant,conf.high=X0.975quant)
+}
 ```
 
 # Constant zero-inflation
@@ -64,7 +76,7 @@ Here we fit the model with zero-inflation assumed to be constant across the data
 form = NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
 	offset(logBroodSize) + (1|Nest)
 time.tmb = tfun(m1.tmb <<- glmmTMB(form,
-                                  ziformula=~1, data = Owls, family="poisson"))
+                                  ziformula=~1, data = Owls, family=poisson))
 ```
 
 ## glmmADMB
@@ -113,13 +125,23 @@ time.brms = tfun(m1.brms <<- brm(form, data = Owls,
 time.brms2 = tfun(m1.brms2 <<- update(m1.brms))
 ```
 
+##INLA
+
+```{r inlafit}
+time.inla = tfun(m1.inla <<- inla(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+                                    f(Nest, model="iid"),
+                              offset = logBroodSize,
+                              family= "zeroinflatedpoisson1",
+                              data=Owls))
+```
+
 #Comparing the results
 
 ## Timings
 
 ```{r times}
-sort(c(TMB=time.tmb,ADMB=time.admb,MCMCglmm=time.mcmc,brms=time.brms,
-  brms2=time.brms2))
+sort(c(glmmTMB=time.tmb,glmmADMB=time.admb,MCMCglmm=time.mcmc,brms=time.brms,
+  brms2=time.brms2,INLA=time.inla))
 ```
 (Time is recorded in seconds.)
 
@@ -128,11 +150,12 @@ sort(c(TMB=time.tmb,ADMB=time.admb,MCMCglmm=time.mcmc,brms=time.brms,
 
 ## Estimated fixed-effect coefficients
 
-```{r arrange_coefs,echo=FALSE}
+```{r arrange_coefs,echo=FALSE, cache=FALSE}
 modList = list(glmmTMB=m1.tmb,
                 glmmADMB=m1.admb,
                 MCMCglmm=m1.mcmc,
-                brms=m1.brms)
+                brms=m1.brms,
+                INLA=m1.inla)
 coefs = ldply(modList,tidy,effect="fixed",conf.int=TRUE,
                   .id="model") %>%
     mutate(term=abbfun(term)) %>%
@@ -145,21 +168,23 @@ coefs = ldply(modList,tidy,effect="fixed",conf.int=TRUE,
     geom_pointrangeh(aes(xmax=conf.high, xmin=conf.low),
                      position = position_dodgev(height = 0.6))+
     scale_colour_brewer(palette="Set1")+
-    scale_shape_manual(values=15:18))
+    scale_shape_manual(values=15:19))
 ```
+
+*Figure C.1 -- Estimated fixed-effect coefficients* Estimates are from the same  zero-inflated Poisson model fit using functions `glmmTMB`, `glmmadmb`, `MCMCglmm`, `brm`, and `inla`.
 
 Because we ran `brms` with flat priors, the estimates are very close to the maximum likelihood estimates of `glmmTMB`. Maximum likelihood estimates from `glmmTMB` and `glmmADMB` differ slightly because `glmmADMB` uses some numerical tricks to increase robustness and these change the objective function by a small amount.
 
 # Complex zero-inflation
 
-Here we fit the model with zero-inflation depending on some of the predictor variables. We can no longer use `glmmADMB` ...
+Here we fit the model with zero-inflation depending on some of the predictor variables. We can no longer use `glmmADMB` and `INLA`.
 
 ## glmmTMB
 
 ```{r tmbfit_czi}
 ziform = ~FoodTreatment+(1|Nest)
 time.tmb_czi = tfun(m1.tmb_czi <<- glmmTMB(form,
-                            ziformula=ziform, data = Owls, family="poisson"))
+                            ziformula=ziform, data = Owls, family=poisson))
 ```
 
 ## MCMCglmm
@@ -190,7 +215,7 @@ time.mcmc_czi=tfun(m1.mcmc_czi <<- MCMCglmm(fixef3,
                                    verbose=FALSE))
 ```
 
-**to do**: don't know why we're getting the warning, we seem to be getting all of the fixed effects parameters we asked for?
+<!-- **to do**: don't know why we're getting the warning, we seem to be getting all of the fixed effects parameters we asked for? -->
 
 ## brms
 
@@ -232,5 +257,6 @@ coefs_czi = ldply(modList_czi,tidy,effect="fixed",conf.int=TRUE,
 ```{r coefplot_czi, fig.width=7, cache=FALSE, echo=FALSE}
 gg0 %+% coefs_czi
 ```
+*Figure C.2 -- Estimated fixed-effect coefficients* Estimates are from the same  zero-inflated Poisson model with predictors on zero-inflation fit using functions `glmmTMB`, `MCMCglmm`, and `brm`.
 
 # References
