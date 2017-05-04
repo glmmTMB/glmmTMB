@@ -24,6 +24,7 @@ clusterEvalQ(cl, {
   library(lme4)
   library(brms)
   library(INLA)
+  library(mgcv)
   tfun = function(x) unname(system.time(capture.output(x))["elapsed"])
 })
 
@@ -53,14 +54,19 @@ times.brms = do.call(c, parLapply(cl, sims1, function(x){
 times.inla = do.call(c, parLapply(cl, sims1, function(x){
   tfun(inla(count~spp*mined+f(site, model="iid"), family= "nbinomial", data = x))}))
 
-save(times.tmb, times.admb, times.lme4, times.brms, times.inla, file="simfit.RData")
+times.gam = do.call(c, parLapply(cl, sims1, function(x){
+  tfun(gam(count ~ spp * mined + s(site, bs = "re"), family = nb, method = "ML", data = x))}))
 
-simtimes = data.frame(time=c(times.tmb, times.admb, times.lme4, times.brms, times.inla),
-                      package=rep(c("glmmTMB", "glmmADMB", "lme4", "brms", "INLA"), each=length(times.tmb)),
-                      set=rep(1:length(times.tmb), 5))
+save(times.tmb, times.admb, times.lme4, times.brms, times.inla, times.gam, file="simfit.RData")
 
-ggplot(simtimes)+geom_boxplot(aes(x=package, y=time))+scale_y_log10(breaks=c(5,10,50,100,500,1000))+
+simtimes = data.frame(time=c(times.tmb, times.admb, times.lme4, times.brms, times.inla, times.gam),
+                      package=rep(c("glmmTMB", "glmmADMB", "lme4", "brms", "INLA", "mgcv"), each=length(times.tmb)),
+                      set=rep(1:length(times.tmb), 6))
+
+ggplot(simtimes)+geom_boxplot(aes(x=package, y=time))+scale_y_log10(breaks=c(1,5,10,50,100,500,1000))+
   ylab("estimation time (seconds)")
+
+ggsave("simfit.png", height=4, width=5)
 
 ######################################################## 
 #Benchmark with data sets of increasing size
@@ -85,16 +91,21 @@ times.brms = do.call(c, parLapply(cl, bigdat, function(x){
 times.inla = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(inla(count~spp*mined+f(site, model="iid"), family= "nbinomial", data = x, num.threads=1))}))
  
-save(times.tmb, times.admb, times.lme4, times.brms, times.inla, file="bigfit.RData")
+times.gam = do.call(c, parLapply(cl, bigdat, function(x){
+  tfun(gam(count ~ spp * mined + s(site, bs = "re"), family = nb, method = "ML", data = x))}))
 
-bigtimes = data.frame(time=c(times.tmb, times.admb, times.lme4, times.brms, times.inla),
-                      package=rep(c("glmmTMB", "glmmADMB", "lme4", "brms", "INLA"), each=length(times.tmb)),
-                      nobs=rep(reps*n, 5))
+save(times.tmb, times.admb, times.lme4, times.brms, times.inla, times.gam, file="bigfit.RData")
+
+bigtimes = data.frame(time=c(times.tmb, times.admb, times.lme4, times.brms, times.inla, times.gam),
+                      package=rep(c("glmmTMB", "glmmADMB", "lme4", "brms", "INLA", "mgcv"), each=length(times.tmb)),
+                      nobs=rep(reps*n, 6))
 
 ggplot(bigtimes, aes(x=nobs, y=time, colour=package))+
   geom_point()+geom_smooth(method="lm", se=FALSE)+
-  scale_y_log10(breaks=c(5,10,50,100,500,1000))+
+  scale_y_log10(breaks=c(1,5,10,50,100,500,1000))+
   xlab("number of observations in data")+ylab("estimation time (seconds)")+scale_x_log10(breaks=unique(bigtimes$nobs))
+
+ggsave("bigfit.png", height=4, width=5)
 
 ########################################################
 #Benchmark with data sets with more random effect levels
@@ -127,23 +138,29 @@ times.admb = do.call(c, parLapply(cl, bigdat, function(x){
 times.lme4 = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(glmer.nb(count~spp * mined + (1| grp), x))}))
 
+times.gam = do.call(c, parLapply(cl, bigdat, function(x){
+  tfun(gam(count ~ spp * mined + s(grp, bs = "re"), family = nb, method = "ML", data = x))}))
+
 reps = c(1,4,16)
 bigdat0 = lapply(reps, function(x) do.call(rbind, sims1[1:x]))
 bigdat =  lapply(1:length(reps), function(x)  data.frame(bigdat0[[x]], "grp"=paste0(bigdat0[[x]]$site, rep(1:reps[x], each=n)))) 
 
 times.brms = do.call(c, parLapply(cl, bigdat, function(x){
   tfun(brm(count~spp * mined + (1| grp), x, family="negbinomial"))}))
-  
-save(times.tmb, times.inla, times.admb, times.lme4, times.brms, file="bigfitRE.RData")
 
-bigtimes = data.frame(time=c(times.tmb, times.inla, times.admb, times.lme4, times.brms),
-                      package=rep(c("glmmTMB", "INLA", "glmmADMB", "lme4", "brms"),
-                                  times=c(length(times.tmb), length(times.inla), length(times.admb), length(times.lme4), length(times.brms))),
+
+save(times.tmb, times.inla, times.admb, times.lme4, times.brms, times.gam, file="bigfitRE.RData")
+
+bigtimes = data.frame(time=c(times.tmb, times.inla, times.admb, times.lme4, times.gam, times.brms),
+                      package=rep(c("glmmTMB", "INLA", "glmmADMB", "lme4", "mgcv", "brms"),
+                                  times=c(length(times.tmb), length(times.inla), length(times.admb), length(times.lme4), length(times.gam), length(times.brms))),
                       nRE=c(rep(c(1,4,16,64,256,512)*nRE, 2),
-                            rep(c(1,4,16,64)*nRE, 2),
-                            c(1,4,16)*nRE))
+                            rep(c(1,4,16,64)*nRE, 3),
+                            rep(c(1,4,16)*nRE,1)))
 
 ggplot(bigtimes, aes(x=nRE, y=time, colour=package))+
   geom_point()+geom_smooth(method="lm", se=FALSE)+
-  scale_y_log10(breaks=c(5,10,50,100,500,1000,5000,10000))+
+  scale_y_log10(breaks=c(1,5,10,50,100,500,1000,5000,10000))+
   xlab("number of random effect levels (sites)")+ylab("estimation time (seconds)")+scale_x_log10(breaks=unique(bigtimes$nRE))
+
+ggsave("bigfitRE.png", height=4, width=5.5)
