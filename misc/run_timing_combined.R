@@ -1,3 +1,13 @@
+## on CRAN: lme4, brms, helper packages
+## glmmTMB: need *development version* (>0.1.1) for Salamanders data
+## INLA: 
+##    install.packages("INLA", repos="https://www.math.ntnu.no/inla/R/stable")
+##  (may need to install sp from CRAN separately)
+## glmmADMB:
+##    devtools::install_github("bbolker/glmmadmb")
+## glmmTMB:
+##    devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
+
 library(glmmTMB)
 library(ggplot2); theme_set(theme_bw())
 library(knitr)
