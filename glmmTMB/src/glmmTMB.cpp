@@ -567,6 +567,9 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
 
+  // One-Step-Ahead (OSA) residuals
+  DATA_VECTOR_INDICATOR(keep, yobs);
+
   // Joint negative log-likelihood
   Type jnll = 0;
 
@@ -735,7 +738,7 @@ Type objective_function<Type>::operator() ()
       }
 
       // Add up
-      jnll -= tmp_loglik;
+      jnll -= keep(i) * tmp_loglik;
     }
   }
 
