@@ -207,3 +207,39 @@ test_that("genpois", {
 	expect_equal(unname(fixef(gen1)$cond), 2.251292, tol=1e-6)
 	expect_equal(sigma(gen1), 0.235309, tol=1e-6)
 })
+
+test_that("tweedie", {
+    ## Boiled down tweedie:::rtweedie :
+    rtweedie <- function (n, xi = power, mu, phi, power = NULL)
+    {
+        mu <- array(dim = n, mu)
+        if ((power > 1) & (power < 2)) {
+            rt <- array(dim = n, NA)
+            lambda <- mu^(2 - power)/(phi * (2 - power))
+            alpha <- (2 - power)/(1 - power)
+            gam <- phi * (power - 1) * mu^(power - 1)
+            N <- rpois(n, lambda = lambda)
+            for (i in (1:n)) {
+                rt[i] <- sum(rgamma(N[i], shape = -alpha, scale = gam[i]))
+            }
+        } else stop()
+        as.vector(rt)
+    }
+    ## Simulation experiment
+    nobs <- 2000; mu <- 4; phi <- 2; p <- 1.7
+    set.seed(101)
+    y <- rtweedie(nobs, mu=mu, phi=phi, power=p)
+    twm <- glmmTMB(y ~ 1, family=tweedie())
+    ## Check mu
+    expect_equal(unname( exp(fixef(twm)$cond) ),
+                 mu,
+                 tolerance = .1)
+    ## Check phi
+    expect_equal(unname( exp(fixef(twm)$disp) ),
+                 phi,
+                 tolerance = .1)
+    ## Check power
+    expect_equal(unname( plogis(twm$fit$par["thetaf"]) + 1 ),
+                 p,
+                 tolerance = .01)
+})
