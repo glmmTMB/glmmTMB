@@ -112,6 +112,15 @@ betabinomial <- function(link="logit") {
            }))
 }
 
+#' @rdname nbinom2
+#' @export
+tweedie <- function(link="log") {
+    return(list(family="tweedie",link=link,
+           variance=function(mu,phi,p) {
+               stop("variance for betabinomial family not yet implemented")
+           }))
+}
+
 #' List model options that glmmTMB knows about
 #'
 #' @note these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)
