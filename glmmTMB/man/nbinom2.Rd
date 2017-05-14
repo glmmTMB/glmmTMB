@@ -11,6 +11,7 @@
 \alias{truncated_nbinom1}
 \alias{truncated_nbinom2}
 \alias{truncated_poisson}
+\alias{tweedie}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
@@ -30,6 +31,8 @@ truncated_nbinom1(link = "log")
 betar(link = "logit")
 
 betabinomial(link = "logit")
+
+tweedie(link = "log")
 }
 \arguments{
 \item{link}{(character) link function ("log", "logit", "probit", "inverse", "cloglog", or "identity")}
