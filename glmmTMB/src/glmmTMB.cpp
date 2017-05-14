@@ -118,6 +118,21 @@ namespace glmmtmb{
     ADdouble ans = calc_logZ<ADdouble>(loglambda_, nu);
     return ans.getDeriv()[0];
   }
+
+  /* Simulate from tweedie distribution */
+  template<class Type>
+  Type rtweedie(Type mu_, Type phi_, Type p_) {
+    double mu = asDouble(mu_);
+    double phi = asDouble(phi_);
+    double p = asDouble(p_);
+    // Copied from R function tweedie::rtweedie
+    double lambda = pow(mu, 2. - p) / (phi * (2. - p));
+    double alpha  = (2. - p) / (1. - p);
+    double gam = phi * (p - 1.) * pow(mu, p - 1.);
+    int N = (int) rpois(lambda);
+    double ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
+    return ans;
+  }
 }
 
 /* Interface to compois variance */
@@ -540,6 +555,9 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(theta);
   PARAMETER_VECTOR(thetazi);
 
+  // Extra family specific parameters (e.g. tweedie)
+  PARAMETER_VECTOR(thetaf);
+
   DATA_INTEGER(family);
   DATA_INTEGER(link);
 
@@ -685,6 +703,15 @@ Type objective_function<Type>::operator() ()
         s2 = 1/phi(i); //nu
         tmp_loglik = dcompois2(yobs(i), s1, s2, true);
         SIMULATE{yobs(i)=rcompois2(mu(i), 1/phi(i));}
+        break;
+      case tweedie_family:
+        s1 = mu(i);  // mean
+        s2 = phi(i); // phi
+        s3 = invlogit(thetaf(0)) + Type(1); // p, 1<p<2
+        tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
+        SIMULATE {
+          yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
+        }
         break;
       default:
         error("Family not implemented!");
