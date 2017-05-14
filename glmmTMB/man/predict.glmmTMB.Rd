@@ -45,3 +45,4 @@ nd <- sleepstudy[1,]
 nd$Subject <- "new"
 predict(g0, newdata=nd, allow.new.levels=TRUE)
 }
+

@@ -103,3 +103,4 @@ fixef(m0)$disp
 c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
 }
 }
+

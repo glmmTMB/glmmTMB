@@ -94,6 +94,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ##  illegal predictions for certain families
   beta_init <-  if (link %in% c("identity","inverse")) 1 else 0
 
+  ## Extra family specific parameters
+  numThetaFamily <- (family == "tweedie")
+
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(beta_init, ncol(X)),
@@ -102,7 +105,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        bzi     = rep(0, ncol(Zzi)),
                        theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
                        thetazi = rep(0, sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       betad   = rep(betad_init, ncol(Xd))
+                       betad   = rep(betad_init, ncol(Xd)),
+                       thetaf  = rep(0, numThetaFamily)
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
