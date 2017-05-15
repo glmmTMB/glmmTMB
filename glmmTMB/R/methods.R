@@ -658,6 +658,6 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     	stop("Simulation code has not been implemented for this family")
     }
     if(!is.null(seed)) set.seed(seed)
-    ret <- replicate(nsim, object$obj$simulate()$yobs, simplify=FALSE)
+    ret <- replicate(nsim, object$obj$simulate(par = object$fit$parfull)$yobs, simplify=FALSE)
     ret
 }
