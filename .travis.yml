@@ -1,13 +1,15 @@
-## Sample .travis.yml file for use with metacran/r-builder
-## See https://github.com/metacran/r-builder for details.
+## See https://docs.travis-ci.com/user/languages/r/
 language: r 
+sudo: false
 r:
   - oldrel
   - release
   - devel
+
 cache: packages
 
 before_install:
+  - tlmgr install chicago
   - cd ./glmmTMB
 
 notifications:
