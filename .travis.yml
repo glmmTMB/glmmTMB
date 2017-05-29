@@ -2,6 +2,8 @@
 ## See https://github.com/metacran/r-builder for details.
 language: c
 sudo: required
+os: linux
+dist: trusty
 
 before_install:
   - curl -OL https://raw.githubusercontent.com/metacran/r-builder/master/pkg-build.sh
