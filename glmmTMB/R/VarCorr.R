@@ -272,12 +272,12 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
                 r <- r[, -maxlen, drop = FALSE]
         }
         covstruct <- getCovstruct(x)
-        if (covstruct=="ar1") {
+        if (covstruct %in% c("ar1","cs")) {
             r <- switch(type,
                         stddev=r[1],
                         ## select lag-1 correlation
                         ## upper tri has been erased in formatCor() ...
-                        correlation=paste(r[2,1],"(ar1)")
+                        correlation=paste(r[2,1],sprintf("(%s)",covstruct))
                         )
         }
         return(r)
