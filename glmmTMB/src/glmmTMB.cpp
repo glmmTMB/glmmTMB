@@ -766,7 +766,11 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
-  SIMULATE{ REPORT(yobs);}
+  SIMULATE {
+    REPORT(yobs);
+    REPORT(b);
+    REPORT(bzi);
+  }
   // For predict
   if(zi_flag) {
     switch(ziPredictCode){
