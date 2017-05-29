@@ -1,7 +1,8 @@
 ## EXPERIMENTAL (not yet exported)
+#' @importFrom stats delete.response model.frame na.pass
 recover.data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
-    recover.data(fcall,delete.response(terms(object)),
+    lsmeans::recover.data(fcall,delete.response(terms(object)),
                  attr(model.frame(object),"na.action"), ...)
 }
 lsm.basis.glmmTMB <- function (object, trms, xlev, grid, vcov.,
