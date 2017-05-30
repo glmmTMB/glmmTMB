@@ -15,7 +15,12 @@ library(glmmTMB)
 library(MASS)  ## for mvrnorm()
 library(TMB) ## for tmbprofile()
 ## devtools::install_github("kaskr/adcomp/TMB")  ## get development version
-knitr::opts_chunk$set(echo = TRUE, eval=TRUE, cache=TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval=TRUE)
+## turned off caching for now: got error in chunk 'fit.us.2'
+## Error in retape() : 
+##   Error when reading the variable: 'thetaf'. Please check data and parameters.
+## In addition: Warning message:
+## In retape() : Expected object. Got NULL.
 set.seed(1)
 ```
 
@@ -377,7 +382,7 @@ all.equal(c(cov2cor(vv1)),c(fit.us$obj$env$report(fit.us$fit$parfull)$corr[[1]])
 
 Profiling (experimental/exploratory):
 
-```{r fit.us.profile}
+```{r fit.us.profile,cache=TRUE}
 ## want $par, not $parfull: do NOT include conditional modes/'b' parameters
 ppar <- fit.us$fit$par
 length(ppar)
@@ -391,7 +396,7 @@ plot(tt)
 confint(tt)
 ```
 
-```{r fit.cs.profile}
+```{r fit.cs.profile,cache=TRUE}
 ppar <- fit.cs$fit$par
 length(ppar)
 range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters

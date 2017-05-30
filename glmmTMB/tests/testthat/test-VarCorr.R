@@ -16,13 +16,24 @@ gm1C <-  glmer(incidence/size ~ period + (1 | herd),
               weights=size,
               data = cbpp, family = binomial)
 
-expect_equal(VarCorr(fm1)[["cond"]],unclass(VarCorr(fm1C)),
+## make glmmTMB VarCorr look like lme4 VarCorr
+stripTMBVC <- function(x) {
+    r <- VarCorr(x)[["cond"]]
+    for (i in seq_along(r)) {
+        attr(r[[i]],"blockCode") <- NULL
+    }
+    return(r)
+}
+expect_equal(stripTMBVC(fm1),unclass(VarCorr(fm1C)),
              tol=1e-3)
-expect_equal(VarCorr(gm1)[["cond"]],unclass(VarCorr(gm1C)),
+expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
              tol=5e-3)
 ## have to take only last 4 lines
-expect_equal(tail(capture.output(print(VarCorr(fm1),digits=3)),4),
-             capture.output(print(VarCorr(fm1C),digits=3)))
+## some white space diffs introduced in fancy-corr-printing
+strip.white <- function(x) gsub("(^ +| +$)","",x)
+pfun <- function(x) strip.white(capture.output(print(VarCorr(x),digits=3)))
+expect_equal(tail(pfun(fm1),4),
+             pfun(fm1C))
 
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
@@ -88,8 +99,8 @@ test_that("weird variance structure", {
     mydata <- cbind(dd, test2)
     gm <- suppressWarnings(glmmTMB(sim_1 ~ 1+(b|a), zi = ~1+(b|a),
                                    data=mydata, family=poisson()))
-    ## FIXME: when printed gives
-    ##   Error: length(cnms) == (nc <- length(cor)) is not TRUE
+    cc2 <- capture.output(print(gm))
+    expect_equal(sum(grepl("Zero-inflation model:",cc2)),3)
 })
 
 ## eight updateCholesky() warnings .. which will suppress *unless* they are in the last iter.

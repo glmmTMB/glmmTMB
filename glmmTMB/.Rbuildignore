@@ -8,4 +8,4 @@ cache$
 .*\.log$
 .*\.out$
 .*misc/.*$
-gh-pages/*
+.*gh-pages/.*$
