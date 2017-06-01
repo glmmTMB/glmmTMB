@@ -398,6 +398,19 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+## Print family specific parameters
+## @param ff name of family (character)
+## @param object glmmTMB output
+printFamily <- function(ff, object) {
+    if (ff == "tweedie") {
+        power <- unname(plogis(object$fit$par["thetaf"]) + 1)
+        cat(sprintf("\nTweedie power parameter: %s",
+                    formatC(power, digits=3)), "\n")
+
+    }
+    NULL
+}
+
 ##' @importFrom lme4 .prt.aictab
 ##' @method print glmmTMB
 ##' @export
@@ -432,7 +445,9 @@ print.glmmTMB <-
 
   if(trivialDisp(x)) {# if trivial print here, else below(~x) or none(~0)
     printDispersion(x$modelInfo$familyStr,sigma(x))  
-  } 
+  }
+  ## Family specific parameters
+  printFamily(x$modelInfo$familyStr, x)
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
