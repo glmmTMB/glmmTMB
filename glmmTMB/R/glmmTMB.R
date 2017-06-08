@@ -545,9 +545,10 @@ glmmTMB <- function (
     y <- fr[,respCol]
     if (is.matrix(y)) {
         if (family$family=="binomial") {
-            stop("binomial models with N>1 must be specified as proportion~..., weights=N")
+            warning("binomial models with N>1 are preferably specified as proportion~..., weights=N")
+        } else {
+            stop("matrix-valued responses are not allowed")
         }
-        stop("matrix-valued responses are not allowed")
     }
     
     ## (1) transform 'y' appropriately for binomial models

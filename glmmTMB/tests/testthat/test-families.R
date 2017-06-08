@@ -25,7 +25,7 @@ test_that("binomial", {
     expect_equal(predict(mod1),predict(mod2))
 
     dd <- data.frame(success=1:10,failure=10)
-    expect_error(glmmTMB(cbind(success,failure)~1,family=binomial,data=dd),
+    expect_warning(glmmTMB(cbind(success,failure)~1,family=binomial,data=dd),
                  "binomial models with N>1")
 
 })
