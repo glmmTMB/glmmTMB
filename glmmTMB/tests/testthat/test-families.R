@@ -23,6 +23,11 @@ test_that("binomial", {
                     radinger_dat)
     mod2 <<- update(mod1,as.logical(presabs)~.)
     expect_equal(predict(mod1),predict(mod2))
+
+    dd <- data.frame(success=1:10,failure=10)
+    expect_error(glmmTMB(cbind(success,failure)~1,family=binomial,data=dd),
+                 "binomial models with N>1")
+
 })
 context("fitting exotic families")
 test_that("beta", {
@@ -89,6 +94,11 @@ test_that("nbinom", {
        disp = structure(1.71242627201796, .Names = "(Intercept)")),
        .Names = c("cond", "zi", "disp"), class = "fixef.glmmTMB"))
 
+
+    ## segfault (GH #248)
+    dd <- data.frame(success=1:10,failure=10)
+    expect_error(glmmTMB(cbind(success,failure)~1,family=nbinom2,data=dd),
+                 "matrix-valued responses are not allowed")
  })
 
 test_that("dbetabinom", {

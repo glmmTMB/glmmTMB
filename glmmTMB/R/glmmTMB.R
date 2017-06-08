@@ -543,7 +543,13 @@ glmmTMB <- function (
     ## extract response variable
     ## (name *must* be 'y' to match guts of family()$initialize
     y <- fr[,respCol]
-
+    if (is.matrix(y)) {
+        if (family$family=="binomial") {
+            stop("binomial models with N>1 must be specified as proportion~..., weights=N")
+        }
+        stop("matrix-valued responses are not allowed")
+    }
+    
     ## (1) transform 'y' appropriately for binomial models
     ##     (2-column matrix, factor, logical -> numeric)
     ## (2) warn on non-integer values
