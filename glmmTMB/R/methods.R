@@ -401,6 +401,7 @@ printDispersion <- function(ff,s) {
 ## Print family specific parameters
 ## @param ff name of family (character)
 ## @param object glmmTMB output
+#' @importFrom stats plogis
 printFamily <- function(ff, object) {
     if (ff == "tweedie") {
         power <- unname(plogis(object$fit$par["thetaf"]) + 1)
