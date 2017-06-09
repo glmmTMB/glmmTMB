@@ -80,7 +80,7 @@ getParList <- function(object) {
 ##' @export
 sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
-    ff <- object$modelInfo$familyStr
+    ff <- object$modelInfo$family$family
     if (!usesDispersion(ff)) return(1.)
     switch(family(object)$family,
            gaussian=exp(0.5*pl$betad),

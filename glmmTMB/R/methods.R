@@ -445,10 +445,10 @@ print.glmmTMB <-
   cat(do.call(paste,c(gvec,list(sep=" / "))),fill=TRUE)
 
   if(trivialDisp(x)) {# if trivial print here, else below(~x) or none(~0)
-    printDispersion(x$modelInfo$familyStr,sigma(x))  
+    printDispersion(x$modelInfo$family$family,sigma(x))  
   }
   ## Family specific parameters
-  printFamily(x$modelInfo$familyStr, x)
+  printFamily(x$modelInfo$family$family, x)
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")

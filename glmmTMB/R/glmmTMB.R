@@ -2,32 +2,43 @@
 ##' @param formula conditional formula
 ##' @param ziformula zero-inflation formula
 ##' @param dispformula dispersion formula
+##' @param combForm combined formula
 ##' @param mf call to model frame
 ##' @param fr frame
 ##' @param yobs observed y
+##' @param respCol response column
 ##' @param offset offset
 ##' @param weights weights
-##' @param family character
-##' @param link character
+##' @param family family object
+##' @param se (logical) compute standard error?
+##' @param call original \code{glmmTMB} call
+##' @param verbose verbosity setting from original \code{glmmTMB} call
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
 ##' @keywords internal
 ##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
+                       combForm,
                        mf, fr,
-                       yobs, offset, weights,
-                       family, link,
+                       yobs,
+                       respCol,
+                       offset, weights,
+                       family,
+                       se=NULL,
+                       call=NULL,
+                       verbose=NULL,
                        ziPredictCode="corrected",
                        doPredict=0,
                        whichPredict=integer(0)) {
 
     ## Handle ~0 dispersion for gaussian family.
     mapArg <- NULL
-    if ( usesDispersion(family) && (dispformula == ~0) ) {
+    # family$family contains the *name* of the family
+    if ( usesDispersion(family$family) && (dispformula == ~0) ) {
         if (family != "gaussian")
             stop("~0 dispersion not implemented for ",
-                 sQuote(family),
+                 sQuote(family$family),
                  " family")
         ## FIXME: Depending on the final estimates, we should somehow
         ## check that this fixed dispersion is small enough.
@@ -39,7 +50,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     ## Ignore 'dispformula' argument for non-dispersion families.
-    if ( ! usesDispersion(family) ) {
+    if ( ! usesDispersion(family$family) ) {
         ## if ( dispformula != ~0 &&
         ##      dispformula != ~1 )
         ##     warning(sprintf("dispersion parameter ignored for family %s",
@@ -76,13 +87,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     Xd = dispList$X,
     ## Zdisp=dispList$Z,
     yobs,
+    respCol,
     offset,
     weights,
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,
-    family = .valid_family[family],
-    link = .valid_link[link],
+    family = .valid_family[family$family],
+    link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict
@@ -92,10 +104,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## safer initialization for link functions that might give
   ##  illegal predictions for certain families
-  beta_init <-  if (link %in% c("identity","inverse")) 1 else 0
+  beta_init <-  if (family$link %in% c("identity","inverse")) 1 else 0
 
   ## Extra family specific parameters
-  numThetaFamily <- (family == "tweedie")
+  numThetaFamily <- (family$family == "tweedie")
 
   parameters <- with(data.tmb,
                      list(
@@ -110,8 +122,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
-  namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
-            condList, ziList, dispList, condReStruc, ziReStruc)
+  return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
+            condList, ziList, dispList, condReStruc, ziReStruc,
+            family, respCol,
+            allForm=namedList(combForm,formula,ziformula,dispformula),
+            fr, se, call, verbose))
 }
 
 ##' Create X and random effect terms from formula
@@ -349,7 +364,7 @@ okWeights <- function(x) {
 ##' @param offset offset
 ##' @param se whether to return standard errors
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
-##' @param debug whether to return the preprocessed data and parameter objects,
+##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
@@ -432,7 +447,7 @@ glmmTMB <- function (
     offset=NULL,
     se=TRUE,
     verbose=FALSE,
-    debug=FALSE
+    doFit=TRUE
     )
 {
 
@@ -463,7 +478,6 @@ glmmTMB <- function (
 
     ## extract family and link information from family object
     link <- family$link
-    familyStr <- family$family
 
     ## lme4 function for warning about unused arguments in ...
     ## ignoreArgs <- c("start","verbose","devFunOnly",
@@ -525,7 +539,7 @@ glmmTMB <- function (
     nobs <- nrow(fr)
     weights <- as.vector(model.weights(fr))
 
-    if(!is.null(weights) & !okWeights(familyStr)) {
+    if(!is.null(weights) & !okWeights(family$family)) {
       stop("'weights' are not available for this family. See `dispformula` instead.")
     }
 
@@ -568,13 +582,27 @@ glmmTMB <- function (
 
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
+                   combForm,
                    mf, fr,
-                   yobs=y, offset, weights,
-                   familyStr, link)
+                   yobs=y,
+                   respCol,
+                   offset,
+                   weights,
+                   family=family,
+                   se=se,
+                   call=call,
+                   verbose=verbose)
 
     ## short-circuit
-    if(debug) return(TMBStruc)
+    if (!doFit) return(TMBStruc)
 
+    ## pack all the bits we will need for fitTMB
+    res <- fitTMB(TMBStruc)
+    return(res)
+}
+
+fitTMB <- function(TMBStruc) {
+    
     obj <- with(TMBStruc,
                 MakeADFun(data.tmb,
                      parameters,
@@ -591,7 +619,7 @@ glmmTMB <- function (
 
     fitted <- NULL
 
-    if (se) {
+    if (TMBStruc$se) {
         sdr <- sdreport(obj)
         ## FIXME: assign original rownames to fitted?
     } else {
@@ -613,20 +641,23 @@ glmmTMB <- function (
     }
 
     modelInfo <- with(TMBStruc,
-                      namedList(nobs, respCol, grpVar, familyStr, family, link,
+                      namedList(nobs=nrow(data.tmb$X),
+                                respCol,
+                                grpVar,
+                                family,
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
-                                allForm = namedList(combForm, formula,
-                                                    ziformula, dispformula)))
+                                allForm))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    structure(namedList(obj, fit, sdr, call, frame=fr, modelInfo,
+    structure(namedList(obj, fit, sdr, call=TMBStruc$call,
+                        frame=TMBStruc$fr, modelInfo,
                         fitted),
               class = "glmmTMB")
 }
