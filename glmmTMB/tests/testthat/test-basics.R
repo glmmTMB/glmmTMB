@@ -199,7 +199,7 @@ test_that("basic zero inflation", {
 
 test_that("alternative binomial model specifications", {
     d <<- data.frame(y=1:10,N=20,x=1) ## n.b. global assignment for testthat
-    m0 <- glmmTMB(cbind(y,N-y) ~ 1, data=d, family=binomial())
+    m0 <- suppressWarnings(glmmTMB(cbind(y,N-y) ~ 1, data=d, family=binomial()))
     m3 <- glmmTMB(y/N ~ 1, weights=N, data=d, family=binomial())
     expect_equal(fixef(m0),fixef(m3))
     m1 <- glmmTMB((y>5)~1,data=d,family=binomial)

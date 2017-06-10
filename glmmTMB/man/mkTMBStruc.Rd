@@ -4,9 +4,9 @@
 \alias{mkTMBStruc}
 \title{Extract info from formulas, reTrms, etc., format for TMB}
 \usage{
-mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
-  family, link, ziPredictCode = "corrected", doPredict = 0,
-  whichPredict = integer(0))
+mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
+  offset, weights, family, se = NULL, call = NULL, verbose = NULL,
+  ziPredictCode = "corrected", doPredict = 0, whichPredict = integer(0))
 }
 \arguments{
 \item{formula}{conditional formula}
@@ -15,19 +15,27 @@ mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
 
 \item{dispformula}{dispersion formula}
 
+\item{combForm}{combined formula}
+
 \item{mf}{call to model frame}
 
 \item{fr}{frame}
 
 \item{yobs}{observed y}
 
+\item{respCol}{response column}
+
 \item{offset}{offset}
 
 \item{weights}{weights}
 
-\item{family}{character}
+\item{family}{family object}
 
-\item{link}{character}
+\item{se}{(logical) compute standard error?}
+
+\item{call}{original \code{glmmTMB} call}
+
+\item{verbose}{verbosity setting from original \code{glmmTMB} call}
 
 \item{ziPredictCode}{zero-inflation code}
 
@@ -39,4 +47,3 @@ mkTMBStruc(formula, ziformula, dispformula, mf, fr, yobs, offset, weights,
 Extract info from formulas, reTrms, etc., format for TMB
 }
 \keyword{internal}
-
