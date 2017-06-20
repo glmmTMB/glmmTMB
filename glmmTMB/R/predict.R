@@ -95,21 +95,21 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## do we want to re-do this part???
 
   ## need to 'fix' call to proper model.frame call whether or not
-  ## we have new data, because 
+  ## we have new data, because
   m <- match(c("subset", "weights", "na.action", "offset"),
              names(mf), 0L)
   mf <- mf[c(1L, m)]
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
-  mf$formula <- RHSForm(object$modelInfo$allForm$combForm,as.form=TRUE)
+  mf$formula <- RHSForm(object$modelInfo$allForm$combForm, as.form=TRUE)
   if (is.null(newdata)) {
-      mf$data <- mc$data ## restore original data
-      newFr <- object$fr
+    mf$data <- mc$data ## restore original data
+    newFr <- object$fr
   } else {
-      mf$data <- newdata
-      newFr <- eval.parent(mf)
+    mf$data <- newdata
+    newFr <- eval.parent(mf)
   }
-    
+
   omi <- object$modelInfo  ## shorthand
 
   respCol <- match(respNm <- names(omi$respCol),names(newFr))
@@ -133,14 +133,14 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   ## match zitype arg with internal name
   ziPredNm <- switch(match.arg(zitype),
-                       response="corrected",
-                       conditional="uncorrected",
-                         zprob="prob",
-                       stop("unknown zitype ",zitype))
+                     response   = "corrected",
+                     conditional= "uncorrected",
+                     zprob      = "prob",
+                     stop("unknown zitype ",zitype))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
   ## need eval.parent() because we will do eval(mf) down below ...
-  TMBStruc <- 
+  TMBStruc <-
         ## FIXME: make first arg of mkTMBStruc into a formula list
         ## with() interfering with eval.parent() ?
         eval.parent(mkTMBStruc(RHSForm(omi$allForm$formula,as.form=TRUE),
@@ -162,7 +162,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
   if(debug) return(TMBStruc)
 
   ## Check that the model specification is unchanged:
-  assertIdenticalModels(TMBStruc$data.tmb, object$obj$env$data, allow.new.levels)
+  assertIdenticalModels(TMBStruc$data.tmb,
+                        object$obj$env$data, allow.new.levels)
 
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
@@ -178,7 +179,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   lp <- newObj$env$last.par
 
   if (!se.fit) {
-      return(newObj$report(lp)$mu_predict)
+      newObj$report(lp)$mu_predict
   } else {
       H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
       ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
@@ -186,7 +187,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
       ## Fixed! (but do we want a flag to get it ? ...)
       sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
       pred <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
-      return(list(fit=pred[,"Estimate"],
-                  se.fit=pred[,"Std. Error"]))
+      list(fit    = pred[,"Estimate"],
+           se.fit = pred[,"Std. Error"])
   }
 }
