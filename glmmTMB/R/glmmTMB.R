@@ -16,6 +16,7 @@
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
+##' @param ... other options
 ##' @keywords internal
 ##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
@@ -30,7 +31,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        verbose=NULL,
                        ziPredictCode="corrected",
                        doPredict=0,
-                       whichPredict=integer(0)) {
+                       whichPredict=integer(0),
+                       ...) {
 
     ## Handle ~0 dispersion for gaussian family.
     mapArg <- NULL
@@ -126,7 +128,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose))
+            fr, se, call, verbose, ...))
 }
 
 ##' Create X and random effect terms from formula
@@ -366,6 +368,8 @@ okWeights <- function(x) {
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
+##' @param optControl control parameters passed to \code{nlminb}.
+##' @param profile Experimental option to improve speed and robustness when a model has many fixed effects
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -447,7 +451,9 @@ glmmTMB <- function (
     offset=NULL,
     se=TRUE,
     verbose=FALSE,
-    doFit=TRUE
+    doFit=TRUE,
+    optControl=list(),
+    profile=FALSE
     )
 {
 
@@ -591,7 +597,9 @@ glmmTMB <- function (
                    family=family,
                    se=se,
                    call=call,
-                   verbose=verbose)
+                   verbose=verbose,
+                   optControl=optControl,
+                   profile=profile)
 
     ## short-circuit
     if (!doFit) return(TMBStruc)
@@ -602,25 +610,86 @@ glmmTMB <- function (
 }
 
 fitTMB <- function(TMBStruc) {
-    
+
+    ## FIXME: Add heuristic to decide if 'profile' is beneficial.
+    ##        Something like this:
+    if(FALSE) {
+        profile <- profile && (TMBStruc$family$family != "tweedie")    ## TMB tweedie derivatives currently slow
+        profile <- profile && (length(TMBStruc$parameters$beta) >= 2)
+    }
+
+    if (TMBStruc $ profile) {
+        obj <- with(TMBStruc,
+                    MakeADFun(data.tmb,
+                              parameters,
+                              map = mapArg,
+                              random = randomArg,
+                              profile = "beta",
+                              silent = !verbose,
+                              DLL = "glmmTMB"))
+        optTime <- system.time(fit <- with(obj,
+                                           if( length(par) )
+                                               nlminb(start = par, objective = fn, gradient = gr,
+                                                      control = TMBStruc $ optControl)
+                                           else
+                                               list( par=par, objective=fn(par) )
+                                           ) )
+
+        sdr <- sdreport(obj, getJointPrecision=TRUE)
+        ## FIXME: pdHess can be FALSE
+        ##        * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
+        ##        * Option 1: Fall back to old method
+        ##        * Option 2: Skip Newton iterations
+        parnames <- names(obj$env$par)
+        Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
+        Qm <- GMRFmarginal(Q, which(parnames != "b"))
+        h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
+        TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
+        ## Build object
+        obj <- with(TMBStruc,
+                    MakeADFun(data.tmb,
+                              parameters,
+                              map = mapArg,
+                              random = randomArg,
+                              profile = NULL,
+                              silent = !verbose,
+                              DLL = "glmmTMB"))
+        ## Run up to 5 Newton iterations with fixed (off-mode) hessian
+        par <- obj$par; iter <- 0
+        if (sdr$pdHess) {
+            for (iter in seq_len(5)) { ## FIXME: Make configurable ?
+                g <- as.numeric( obj$gr(par) )
+                if (max(abs(g)) < 1e-10) break; ## FIXME: Make configurable ?
+                par <- par - solve(h, g)
+            }
+        }
+        fit$par <- par
+        fit$objective <- obj$fn(par)
+        fit$newton.steps <- iter
+    } else {
+
     obj <- with(TMBStruc,
                 MakeADFun(data.tmb,
                      parameters,
                      map = mapArg,
                      random = randomArg,
-                     profile = NULL, # TODO: Optionally "beta"
+                     profile = NULL,
                      silent = !verbose,
                      DLL = "glmmTMB"))
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
-                                                   gradient=gr)))
+                                                   gradient=gr, control=TMBStruc$optControl)))
+    }
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
     fitted <- NULL
 
     if (TMBStruc$se) {
-        sdr <- sdreport(obj)
+        if(TMBStruc$profile)
+            sdr <- sdreport(obj, hessian.fixed=h)
+        else
+            sdr <- sdreport(obj)
         ## FIXME: assign original rownames to fitted?
     } else {
         sdr <- NULL
@@ -639,6 +708,9 @@ fitTMB <- function(TMBStruc) {
         }
       }
     }
+
+    if (fit$convergence != 0)
+        warning("Model convergence problem; ", fit$message)
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs=nrow(data.tmb$X),
