@@ -6,7 +6,7 @@
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
   dispformula = ~1, weights = NULL, offset = NULL, se = TRUE,
-  verbose = FALSE, doFit = TRUE)
+  verbose = FALSE, doFit = TRUE, optControl = list(), profile = FALSE)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
@@ -49,6 +49,10 @@ In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, for
 
 \item{doFit}{whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 without fitting the model}
+
+\item{optControl}{control parameters passed to \code{nlminb}.}
+
+\item{profile}{Experimental option to improve speed and robustness when a model has many fixed effects}
 }
 \description{
 Fit models with TMB
@@ -119,3 +123,4 @@ fixef(m0)$disp
 c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
 }
 }
+
