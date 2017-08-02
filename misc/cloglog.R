@@ -57,18 +57,20 @@ logLik(fit1)
 range(fit1$sdr$gradient) ## Not converged
 
 ## 2. We can fix by increasing the number of interations
+con <- glmmTMBControl( optCtrl = list(iter.max=1e3, eval.max=1e3) )
 system.time(fit2 <- glmmTMB(Dead/(Alive+Dead) ~ (Trt + 0)/x + (x | Rep),
                             weights = Alive+Dead,
                             family=binomial(link="cloglog"),data=X,
-                            optControl=list(iter.max=1e3,eval.max=1e3)))
+                            control=con))
 logLik(fit2)
 range(fit2$sdr$gradient) ## Probably OK
 
 ## 3. OR we can set profile=TRUE
+con <- glmmTMBControl( profile = TRUE )
 system.time(fit3 <- glmmTMB(Dead/(Alive+Dead) ~ (Trt + 0)/x + (x | Rep),
                             weights = Alive+Dead,
                             family=binomial(link="cloglog"),data=X,
-                            profile=TRUE))
+                            control=con))
 logLik(fit3)
 range(fit3$sdr$gradient) ## OK
 logLik(fit3) > logLik(fit2)
