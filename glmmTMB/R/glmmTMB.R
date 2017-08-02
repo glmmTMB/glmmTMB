@@ -16,7 +16,6 @@
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
-##' @param ... other options
 ##' @keywords internal
 ##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
@@ -31,8 +30,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        verbose=NULL,
                        ziPredictCode="corrected",
                        doPredict=0,
-                       whichPredict=integer(0),
-                       ...) {
+                       whichPredict=integer(0)) {
 
     ## Handle ~0 dispersion for gaussian family.
     mapArg <- NULL
@@ -128,7 +126,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose, ...))
+            fr, se, call, verbose))
 }
 
 ##' Create X and random effect terms from formula
@@ -368,8 +366,7 @@ okWeights <- function(x) {
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
-##' @param optControl control parameters passed to \code{nlminb}.
-##' @param profile Experimental option to improve speed and robustness when a model has many fixed effects
+##' @param control contol parameters; see \code{\link{glmmTMBControl}}.
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -452,8 +449,7 @@ glmmTMB <- function (
     se=TRUE,
     verbose=FALSE,
     doFit=TRUE,
-    optControl=list(),
-    profile=FALSE
+    control=glmmTMBControl()
     )
 {
 
@@ -597,9 +593,10 @@ glmmTMB <- function (
                    family=family,
                    se=se,
                    call=call,
-                   verbose=verbose,
-                   optControl=optControl,
-                   profile=profile)
+                   verbose=verbose)
+
+    ## Allow for adaptive control parameters
+    TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
 
     ## short-circuit
     if (!doFit) return(TMBStruc)
@@ -609,16 +606,47 @@ glmmTMB <- function (
     return(res)
 }
 
+##' Control parameters for glmmTMB optimization
+##' @param optCtrl Passed as argument \code{control} to \code{nlminb}.
+##' @param profile Logical; Experimental option to improve speed and
+##'                robustness when a model has many fixed effects
+##' @details
+##' The general non-linear optimizer \code{nlminb} is used by
+##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
+##' necessary to tweak some tolerances in order to make a model
+##' converge. For instance, the warning \sQuote{iteration limit reached
+##' without convergence} may be fixed by increasing the number of
+##' iterations using something like
+##'
+##' \code{glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3))}.
+##'
+##' The argument \code{profile} allows \code{glmmTMB} to use some special
+##' properties of the optimization problem in order to speed up estimation
+##' in cases with many fixed effects. Enable this option using
+##'
+##' \code{glmmTMBControl(profile=TRUE)}.
+##'
+##' Control parameters may depend on the model specification as each
+##' control component is evaluated inside the \code{TMBStruc}, the output
+##' of \code{mkTMBStruc}.  To specify that \code{profile} should be
+##' enabled for more than 5 fixed effects one can use
+##'
+##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
+##' @export
+glmmTMBControl <- function(optCtrl=list(), profile=FALSE) {
+    ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
+    ##        Something like
+    ## profile = (length(parameters$beta) >= 2) &&
+    ##           (family$family != "tweedie")
+    ## (TMB tweedie derivatives currently slow)
+    namedList(optCtrl, profile)
+}
+
 fitTMB <- function(TMBStruc) {
 
-    ## FIXME: Add heuristic to decide if 'profile' is beneficial.
-    ##        Something like this:
-    if(FALSE) {
-        profile <- profile && (TMBStruc$family$family != "tweedie")    ## TMB tweedie derivatives currently slow
-        profile <- profile && (length(TMBStruc$parameters$beta) >= 2)
-    }
+    control <- TMBStruc$control
 
-    if (TMBStruc $ profile) {
+    if (control $ profile) {
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
                               parameters,
@@ -630,7 +658,7 @@ fitTMB <- function(TMBStruc) {
         optTime <- system.time(fit <- with(obj,
                                            if( length(par) )
                                                nlminb(start = par, objective = fn, gradient = gr,
-                                                      control = TMBStruc $ optControl)
+                                                      control = control $ optCtrl)
                                            else
                                                list( par=par, objective=fn(par) )
                                            ) )
@@ -678,7 +706,7 @@ fitTMB <- function(TMBStruc) {
                      DLL = "glmmTMB"))
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
-                                                   gradient=gr, control=TMBStruc$optControl)))
+                                                   gradient=gr, control=control$optCtrl)))
     }
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
@@ -686,7 +714,7 @@ fitTMB <- function(TMBStruc) {
     fitted <- NULL
 
     if (TMBStruc$se) {
-        if(TMBStruc$profile)
+        if(control$profile)
             sdr <- sdreport(obj, hessian.fixed=h)
         else
             sdr <- sdreport(obj)
