@@ -4,7 +4,8 @@
 \alias{glmmTMBControl}
 \title{Control parameters for glmmTMB optimization}
 \usage{
-glmmTMBControl(optCtrl = list(), profile = FALSE)
+glmmTMBControl(optCtrl = list(iter.max = 300, eval.max = 400),
+  profile = FALSE)
 }
 \arguments{
 \item{optCtrl}{Passed as argument \code{control} to \code{nlminb}.}

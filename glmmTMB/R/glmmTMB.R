@@ -633,7 +633,8 @@ glmmTMB <- function (
 ##'
 ##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
 ##' @export
-glmmTMBControl <- function(optCtrl=list(), profile=FALSE) {
+glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
+                           profile=FALSE) {
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
