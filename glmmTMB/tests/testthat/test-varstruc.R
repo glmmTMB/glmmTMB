@@ -67,22 +67,25 @@ get_vcout <- function(x,g="Subject") {
 
 test_that("varcorr_print", {
     ss <- get_vcout(fm_cs1)
-    expect_equal(length(ss),5)
+    expect_equal(length(ss),4)
     expect_equal(ss[length(ss)],"(cs)")
     ss2 <- get_vcout(fm_ar1)
-    expect_equal(length(ss2),5)
+    expect_equal(length(ss2),4)
     expect_equal(ss2[length(ss2)],"(ar1)")
 
     ## test case with two different size V-C
+    set.seed(101)
     dd <- data.frame(y=rnorm(1000),c=factor(rep(1:2,500)),
                  w=factor(rep(1:10,each=100)),
                  s=factor(rep(1:10,100)))
-    m1 <- glmmTMB(y~c+(c|w)+(1|s),data=dd,
-                  family=gaussian)
+    ## non-pos-def case (we don't care at the moment)
+    m1 <- suppressWarnings(glmmTMB(y~c+(c|w)+(1|s),data=dd,
+                  family=gaussian))
     cc <- capture.output(print(VarCorr(m1),digits=2))
     expect_equal(cc,
-      c("", "Conditional model:", " Groups   Name        Std.Dev. Corr ", 
-        " w        (Intercept) 0.075         ", "          c2          0.089    -0.98", 
-        " s        (Intercept) 0.044         ", " Residual             1.002         "))
-})
+    c("", "Conditional model:", " Groups   Name        Std.Dev. Corr", 
+" w        (Intercept) 3.1e-05      ", "          c2          4.9e-06  0.98", 
+" s        (Intercept) 3.4e-05      ", " Residual             9.6e-01      "
+))
+    })
 
