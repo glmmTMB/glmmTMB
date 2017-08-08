@@ -407,3 +407,18 @@ drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
   }
   update(proc(x), substitute(. ~ . - x,list(x=value)))
 }
+
+## Sparse Schur complement (Marginal of precision matrix)
+##' @importFrom Matrix Cholesky solve
+GMRFmarginal <- function(Q, i, ...) {
+    ind <- seq_len(nrow(Q))
+    i1 <- (ind)[i]
+    i0 <- setdiff(ind, i1)
+    if (length(i0) == 0)
+        return(Q)
+    Q0 <- as(Q[i0, i0, drop = FALSE], "symmetricMatrix")
+    L0 <- Cholesky(Q0, ...)
+    ans <- Q[i1, i1, drop = FALSE] - Q[i1, i0, drop = FALSE] %*%
+        solve(Q0, as.matrix(Q[i0, i1, drop = FALSE]))
+    ans
+}

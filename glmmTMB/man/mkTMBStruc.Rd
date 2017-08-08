@@ -47,3 +47,4 @@ mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
 Extract info from formulas, reTrms, etc., format for TMB
 }
 \keyword{internal}
+

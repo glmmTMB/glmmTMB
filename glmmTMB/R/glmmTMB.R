@@ -366,6 +366,7 @@ okWeights <- function(x) {
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
+##' @param control contol parameters; see \code{\link{glmmTMBControl}}.
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -447,7 +448,8 @@ glmmTMB <- function (
     offset=NULL,
     se=TRUE,
     verbose=FALSE,
-    doFit=TRUE
+    doFit=TRUE,
+    control=glmmTMBControl()
     )
 {
 
@@ -593,6 +595,9 @@ glmmTMB <- function (
                    call=call,
                    verbose=verbose)
 
+    ## Allow for adaptive control parameters
+    TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
+
     ## short-circuit
     if (!doFit) return(TMBStruc)
 
@@ -601,26 +606,119 @@ glmmTMB <- function (
     return(res)
 }
 
+##' Control parameters for glmmTMB optimization
+##' @param optCtrl Passed as argument \code{control} to \code{nlminb}.
+##' @param profile Logical; Experimental option to improve speed and
+##'                robustness when a model has many fixed effects
+##' @details
+##' The general non-linear optimizer \code{nlminb} is used by
+##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
+##' necessary to tweak some tolerances in order to make a model
+##' converge. For instance, the warning \sQuote{iteration limit reached
+##' without convergence} may be fixed by increasing the number of
+##' iterations using something like
+##'
+##' \code{glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3))}.
+##'
+##' The argument \code{profile} allows \code{glmmTMB} to use some special
+##' properties of the optimization problem in order to speed up estimation
+##' in cases with many fixed effects. Enable this option using
+##'
+##' \code{glmmTMBControl(profile=TRUE)}.
+##'
+##' Control parameters may depend on the model specification as each
+##' control component is evaluated inside the \code{TMBStruc}, the output
+##' of \code{mkTMBStruc}.  To specify that \code{profile} should be
+##' enabled for more than 5 fixed effects one can use
+##'
+##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
+##' @export
+glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
+                           profile=FALSE) {
+    ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
+    ##        Something like
+    ## profile = (length(parameters$beta) >= 2) &&
+    ##           (family$family != "tweedie")
+    ## (TMB tweedie derivatives currently slow)
+    namedList(optCtrl, profile)
+}
+
 fitTMB <- function(TMBStruc) {
-    
+
+    control <- TMBStruc$control
+
+    if (control $ profile) {
+        obj <- with(TMBStruc,
+                    MakeADFun(data.tmb,
+                              parameters,
+                              map = mapArg,
+                              random = randomArg,
+                              profile = "beta",
+                              silent = !verbose,
+                              DLL = "glmmTMB"))
+        optTime <- system.time(fit <- with(obj,
+                                           if( length(par) )
+                                               nlminb(start = par, objective = fn, gradient = gr,
+                                                      control = control $ optCtrl)
+                                           else
+                                               list( par=par, objective=fn(par) )
+                                           ) )
+
+        sdr <- sdreport(obj, getJointPrecision=TRUE)
+        ## FIXME: pdHess can be FALSE
+        ##        * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
+        ##        * Option 1: Fall back to old method
+        ##        * Option 2: Skip Newton iterations
+        parnames <- names(obj$env$par)
+        Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
+        Qm <- GMRFmarginal(Q, which(parnames != "b"))
+        h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
+        TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
+        ## Build object
+        obj <- with(TMBStruc,
+                    MakeADFun(data.tmb,
+                              parameters,
+                              map = mapArg,
+                              random = randomArg,
+                              profile = NULL,
+                              silent = !verbose,
+                              DLL = "glmmTMB"))
+        ## Run up to 5 Newton iterations with fixed (off-mode) hessian
+        par <- obj$par; iter <- 0
+        if (sdr$pdHess) {
+            for (iter in seq_len(5)) { ## FIXME: Make configurable ?
+                g <- as.numeric( obj$gr(par) )
+                if (max(abs(g)) < 1e-10) break; ## FIXME: Make configurable ?
+                par <- par - solve(h, g)
+            }
+        }
+        fit$par <- par
+        fit$objective <- obj$fn(par)
+        fit$newton.steps <- iter
+    } else {
+
     obj <- with(TMBStruc,
                 MakeADFun(data.tmb,
                      parameters,
                      map = mapArg,
                      random = randomArg,
-                     profile = NULL, # TODO: Optionally "beta"
+                     profile = NULL,
                      silent = !verbose,
                      DLL = "glmmTMB"))
 
     optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
-                                                   gradient=gr)))
+                                                   gradient=gr, control=control$optCtrl)))
+    }
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
     fitted <- NULL
 
     if (TMBStruc$se) {
-        sdr <- sdreport(obj)
+        if(control$profile)
+            sdr <- sdreport(obj, hessian.fixed=h)
+        else
+            sdr <- sdreport(obj)
         ## FIXME: assign original rownames to fitted?
     } else {
         sdr <- NULL
@@ -639,6 +737,9 @@ fitTMB <- function(TMBStruc) {
         }
       }
     }
+
+    if (fit$convergence != 0)
+        warning("Model convergence problem; ", fit$message)
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs=nrow(data.tmb$X),
