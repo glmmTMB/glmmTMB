@@ -58,9 +58,9 @@ test_that("ar1", {
                  cc[1,2]^(0:(nrow(cc)-1)))
 })
 
-get_vcout <- function(x) {
+get_vcout <- function(x,g="Subject") {
     cc <- capture.output(print(VarCorr(x)))
-    cc1 <- grep("Subject",cc,value=TRUE)
+    cc1 <- grep(g,cc,value=TRUE)
     ss <- strsplit(cc1,"[^[:alnum:][:punct:]]+")[[1]]
     return(ss[nchar(ss)>0])
 }
@@ -72,4 +72,17 @@ test_that("varcorr_print", {
     ss2 <- get_vcout(fm_ar1)
     expect_equal(length(ss2),5)
     expect_equal(ss2[length(ss2)],"(ar1)")
+
+    ## test case with two different size V-C
+    dd <- data.frame(y=rnorm(1000),c=factor(rep(1:2,500)),
+                 w=factor(rep(1:10,each=100)),
+                 s=factor(rep(1:10,100)))
+    m1 <- glmmTMB(y~c+(c|w)+(1|s),data=dd,
+                  family=gaussian)
+    cc <- capture.output(print(VarCorr(m1),digits=2))
+    expect_equal(cc,
+      c("", "Conditional model:", " Groups   Name        Std.Dev. Corr ", 
+        " w        (Intercept) 0.075         ", "          c2          0.089    -0.98", 
+        " s        (Intercept) 0.044         ", " Residual             1.002         "))
 })
+

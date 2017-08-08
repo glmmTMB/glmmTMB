@@ -216,6 +216,7 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 }
 
 ## original from lme4
+## had to be extended/modified to deal with glmmTMB special cases
 ##' "format()" the 'VarCorr' matrix of the random effects -- for
 ##' print()ing and show()ing
 ##'
@@ -308,10 +309,9 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     if (any(useCor)) {
         ## get corrs
 	maxlen <- max(reLens)
-
 	corr <-
 	    do.call(Matrix::rBind,lapply(varcor, getCorSD,
-                                         type="correlation"))
+                                         type="correlation", maxlen=maxlen))
         ## add blank values as necessary 
 	if (nrow(corr) < nrow(reMat))
 	    corr <- rbind(corr, matrix("", nrow(reMat) - nrow(corr), ncol(corr)))
