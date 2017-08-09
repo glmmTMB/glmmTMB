@@ -738,7 +738,7 @@ fitTMB <- function(TMBStruc) {
       }
     }
 
-    if (fit$convergence != 0)
+    if ( !is.null(fit$convergence) && fit$convergence != 0)
         warning("Model convergence problem; ", fit$message)
 
     modelInfo <- with(TMBStruc,
