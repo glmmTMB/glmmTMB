@@ -112,12 +112,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(beta_init, ncol(X)),
-                       b       = rep(beta_init, ncol(Z)),
                        betazi  = rep(0, ncol(Xzi)),
+                       b       = rep(beta_init, ncol(Z)),
                        bzi     = rep(0, ncol(Zzi)),
+                       betad   = rep(betad_init, ncol(Xd)),
                        theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
                        thetazi = rep(0, sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       betad   = rep(betad_init, ncol(Xd)),
                        thetaf  = rep(0, numThetaFamily)
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
