@@ -671,7 +671,8 @@ fitTMB <- function(TMBStruc) {
         ##        * Option 2: Skip Newton iterations
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
-        Qm <- GMRFmarginal(Q, which(parnames != "b"))
+        whichNotRandom <- which( ! parnames %in% c("b", "bzi") )
+        Qm <- GMRFmarginal(Q, whichNotRandom)
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
         TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
         ## Build object
