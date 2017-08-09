@@ -390,7 +390,7 @@ okWeights <- function(x) {
 ##' \item \code{exp} (* exponential autocorrelation)
 ##' \item \code{gau} (* Gaussian autocorrelation)
 ##' \item \code{mat} (* Matérn process correlation)
-##' \item \code{toeplitz} (* Toeplitz)
+##' \item \code{toep} (* Toeplitz)
 ##' }
 ##' (note structures marked with * are experimental/untested)
 ##' }
