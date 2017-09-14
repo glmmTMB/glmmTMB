@@ -32,6 +32,9 @@ extern "C" {
   {
     R_registerRoutines(dll, NULL, R_CallDef, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
+#ifdef TMB_CCALLABLES
+    TMB_CCALLABLES("glmmTMB");
+#endif
   }
 
 }
