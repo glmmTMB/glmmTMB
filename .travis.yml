@@ -2,7 +2,7 @@
 language: r 
 sudo: false
 r:
-  - oldrel
+##  - oldrel
   - release
   - devel
 
