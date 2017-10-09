@@ -366,7 +366,7 @@ okWeights <- function(x) {
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
-##' @param control contol parameters; see \code{\link{glmmTMBControl}}.
+##' @param control control parameters; see \code{\link{glmmTMBControl}}.
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -626,8 +626,8 @@ glmmTMB <- function (
 ##'
 ##' \code{glmmTMBControl(profile=TRUE)}.
 ##'
-##' Control parameters may depend on the model specification as each
-##' control component is evaluated inside the \code{TMBStruc}, the output
+##' Control parameters may depend on the model specification, because each
+##' control component is evaluated inside \code{TMBStruc}, the output
 ##' of \code{mkTMBStruc}.  To specify that \code{profile} should be
 ##' enabled for more than 5 fixed effects one can use
 ##'

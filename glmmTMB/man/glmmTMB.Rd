@@ -50,7 +50,7 @@ In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, for
 \item{doFit}{whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 without fitting the model}
 
-\item{control}{contol parameters; see \code{\link{glmmTMBControl}}.}
+\item{control}{control parameters; see \code{\link{glmmTMBControl}}.}
 }
 \description{
 Fit models with TMB
