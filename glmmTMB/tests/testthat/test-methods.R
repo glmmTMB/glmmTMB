@@ -36,6 +36,14 @@ test_that("Fitted and residuals", {
                  mean(residuals(fm2P,type="pearson")))
     expect_false(mean(residuals(fm2NB,type="response"))==
                  mean(residuals(fm2NB,type="pearson")))
+    rr2 <- function(x) sum(residuals(x,type="pearson")^2)
+    ## test Pearson resids for gaussian, Gamma vs. base-R versions
+    ss <- as.data.frame(state.x77)
+    expect_equal(rr2(glm(Murder~Population,ss,family=gaussian)),
+          rr2(glmmTMB(Murder~Population,ss,family=gaussian)))
+    expect_equal(rr2(glm(Murder~Population,ss,family=Gamma(link="log"))),
+                 rr2(glmmTMB(Murder~scale(Population),ss,
+                             family=Gamma(link="log"))),tol=1e-5)
 })
 
 test_that("Predict", {
