@@ -470,8 +470,9 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @param type (character) residual type
 ##' @param \dots ignored, for method compatibility
 ##' @importFrom stats fitted model.response residuals
+##' @importFrom TMB oneStepPredict
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "osa"), ...) {
     type <- match.arg(type)
     if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
         stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
@@ -489,6 +490,20 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
                             v(fitted(object),sigma(object)),
                             stop("variance function should take 1 or 2 arguments"))
                r/sqrt(vv)
+           },
+           osa={
+               switch(family(object)$family,
+                      poisson={ 
+                          maxyobs <- max(fit$obj$env$data$yobs)*2
+                          r=oneStepPredict(object$obj,method = "oneStepGeneric",
+                                           discrete = TRUE, observation.name = "yobs",
+                                           data.term.indicator = "keep", discreteSupport=c(0:maxyobs))
+                          r$residual
+                      },
+                      {
+                          stop("osa residuals are not implemented for this model family")
+                      }
+               )
            })
 }
 
