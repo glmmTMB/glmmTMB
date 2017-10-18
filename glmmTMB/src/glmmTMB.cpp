@@ -725,15 +725,14 @@ Type objective_function<Type>::operator() ()
         Type logit_pz = etazi(i) ;
         Type log_pz   = -logspace_add( Type(0) , -logit_pz );
         Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
-        if(yobs(i) == Type(0)){
-          // Was:
-          //   tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
-          tmp_loglik = logspace_add( log_pz, log_1mpz + tmp_loglik );
-        } else {
-          // Was:
-          //   tmp_loglik += log( 1.0 - pz(i) );
-          tmp_loglik += log_1mpz ;
-        }
+        tmp_loglik =
+          CppAD::CondExpEq( yobs(i),
+                            Type(0),
+                            // If yobs(i) == 0
+                            logspace_add( log_pz, log_1mpz + tmp_loglik ),
+                            // Otherwise
+                            tmp_loglik + log_1mpz
+                            );
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
 
