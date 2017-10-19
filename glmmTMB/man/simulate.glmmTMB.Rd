@@ -26,4 +26,3 @@ Simulate from a glmmTMB fitted model
 Random effects are also simulated from their estimated distribution. 
 Currently, it is not possible to condition on estimated random effects.
 }
-

@@ -21,4 +21,3 @@ List model options that glmmTMB knows about
 \note{
 these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)
 }
-

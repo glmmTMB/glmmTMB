@@ -32,11 +32,10 @@ in cases with many fixed effects. Enable this option using
 
 \code{glmmTMBControl(profile=TRUE)}.
 
-Control parameters may depend on the model specification as each
-control component is evaluated inside the \code{TMBStruc}, the output
+Control parameters may depend on the model specification, because each
+control component is evaluated inside \code{TMBStruc}, the output
 of \code{mkTMBStruc}.  To specify that \code{profile} should be
 enabled for more than 5 fixed effects one can use
 
 \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
 }
-

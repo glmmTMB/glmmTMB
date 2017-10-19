@@ -29,4 +29,3 @@ data(sleepstudy, package = "lme4")
 fixef(glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
 }
 \keyword{models}
-

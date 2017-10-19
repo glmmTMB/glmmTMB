@@ -36,4 +36,3 @@ rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
                     sleepstudy)$reTrms
 getReStruc(rt)
 }
-

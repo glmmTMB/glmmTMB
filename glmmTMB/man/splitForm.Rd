@@ -2,8 +2,8 @@
 % Please edit documentation in R/utils.R
 \name{addForm}
 \alias{addForm}
-\alias{noSpecials}
 \alias{splitForm}
+\alias{noSpecials}
 \title{Combine right-hand sides of an arbitrary number of formulas}
 \usage{
 addForm(...)
@@ -62,4 +62,3 @@ noSpecials(y~us(1|f))
 Steve Walker
 }
 \keyword{internal}
-

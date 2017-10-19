@@ -4,7 +4,8 @@
 \alias{residuals.glmmTMB}
 \title{Compute residuals for a glmmTMB object}
 \usage{
-\method{residuals}{glmmTMB}(object, type = c("response", "pearson"), ...)
+\method{residuals}{glmmTMB}(object, type = c("response", "pearson", "osa"),
+  ...)
 }
 \arguments{
 \item{object}{a \dQuote{glmmTMB} object}
@@ -16,4 +17,3 @@
 \description{
 Compute residuals for a glmmTMB object
 }
-
