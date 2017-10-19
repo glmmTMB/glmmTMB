@@ -494,7 +494,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "osa"), ...)
            osa={
                switch(family(object)$family,
                       poisson={ 
-                          maxyobs <- max(fit$obj$env$data$yobs)*2
+                          maxyobs <- max(object$obj$env$data$yobs)*2
                           r=oneStepPredict(object$obj,method = "oneStepGeneric",
                                            discrete = TRUE, observation.name = "yobs",
                                            data.term.indicator = "keep", discreteSupport=c(0:maxyobs))
