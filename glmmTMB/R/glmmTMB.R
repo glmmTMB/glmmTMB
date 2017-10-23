@@ -87,6 +87,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## Still NULL ?
   if (is.null(weights)) weights <- rep(1, nobs)
 
+  ## binomial family: At this point we know that (yobs, weights) are
+  ## (proportions, size) as output from binomial()$initialize.
+  ## On the C++ side 'yobs' must be the actual observations (counts).
+  if (family$family == "binomial") {
+    yobs <- weights * yobs
+  }
+
   data.tmb <- namedList(
     X = condList$X,
     Z = condList$Z,

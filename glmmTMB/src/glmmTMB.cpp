@@ -605,7 +605,7 @@ Type objective_function<Type>::operator() ()
         break;
       case binomial_family:
         s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
-        tmp_loglik = dbinom_robust(yobs(i) * weights(i), weights(i), s1, true);
+        tmp_loglik = dbinom_robust(yobs(i), weights(i), s1, true);
         SIMULATE{yobs(i) = rbinom(weights(i), mu(i));}
         break;
       case Gamma_family:
