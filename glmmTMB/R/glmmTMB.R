@@ -76,8 +76,16 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (is.null(offset <- model.offset(fr)))
       offset <- rep(0,nobs)
 
-  if (is.null(weights <- fr[["(weights)"]]))
-    weights <- rep(1,nobs)
+  ## FIXME (KK): I don't know why the original code looks for
+  ## 'weights' in 'fr':
+  ##
+  ##    if (is.null(weights <- fr[["(weights)"]]))
+  ##        weights <- rep(1, nobs)
+  ##
+  ## Just in case this is still relevant here's a workaround:
+  if (is.null(weights)) weights <- fr[["(weights)"]]
+  ## Still NULL ?
+  if (is.null(weights)) weights <- rep(1, nobs)
 
   data.tmb <- namedList(
     X = condList$X,
@@ -572,7 +580,7 @@ glmmTMB <- function (
     ## (2) warn on non-integer values
     etastart <- start <- mustart <- NULL
     if (!is.null(family$initialize)) {
-        eval(family$initialize)
+        eval(family$initialize)  ## <--- NOTE: Modifies 'y' and 'weights' !!!
     }
     ## binomial()$initialize does *not* coerce logical to numeric ...
     ##  may cause downstream problems, e.g. with predict()
