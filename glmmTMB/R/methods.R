@@ -666,6 +666,7 @@ noSim <- function(x) {
 ##' Currently, it is not possible to condition on estimated random effects.  
 ##' @return returns a list of vectors. The list has length \code{nsim}. 
 ##' Each simulated vector of observations is the same size as the vector of response variables in the original data set.
+##' In the binomial family case each simulation is a two-column matrix with success/failure.
 ##' @importFrom stats simulate
 ##' @export
 simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
