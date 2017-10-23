@@ -575,9 +575,7 @@ glmmTMB <- function (
     ## (name *must* be 'y' to match guts of family()$initialize
     y <- fr[,respCol]
     if (is.matrix(y)) {
-        if (family$family=="binomial") {
-            warning("binomial models with N>1 are preferably specified as proportion~..., weights=N")
-        } else {
+        if (family$family != "binomial") {
             stop("matrix-valued responses are not allowed")
         }
     }
