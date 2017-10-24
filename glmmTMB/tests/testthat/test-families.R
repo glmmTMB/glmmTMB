@@ -52,6 +52,12 @@ test_that("binomial", {
         as.numeric(unlist(fixef(m1))),
         as.numeric(coef(m2))
     )
+
+    ## Mis-specifications
+    prop <- c(.1, .2, .3)  ## weights=1 => prop * weights non integers
+    expect_warning( glmmTMB(prop~1, family=binomial()) )   ## Warning as glm
+    x <- c(1, 2, 3)        ## weights=1 => x > weights !
+    expect_error  ( glmmTMB(x~1, family=binomial()) )      ## Error as glm
 })
 context("fitting exotic families")
 test_that("beta", {
