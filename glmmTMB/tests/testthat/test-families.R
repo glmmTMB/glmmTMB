@@ -148,6 +148,11 @@ test_that("dbetabinom", {
                    sigma(m1)),
                  c(2.1482114,1.0574946,0.7016553,8.3768711),
                  tolerance=1e-5)
+    ## Two-column specification
+    m2 <- glmmTMB(cbind(y, N-y) ~ x + (1|f),
+                  family=betabinomial(),
+                  data=dd)
+    expect_identical(m1$fit, m2$fit)
 })
 
 test_that("truncated", {
