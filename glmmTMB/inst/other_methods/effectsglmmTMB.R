@@ -58,7 +58,7 @@ fixmod <- function (term)
 ## model as possible.  It is of class c("fakeglm", "glm", "lm")
 ## several items are added to the created objects. Do not export
 
-mer.to.glm <- function(mod, KR=FALSE) {
+glmmTMB.to.glm <- function(mod, KR=FALSE) {
   if (KR) { ##  && !requireNamespace("pbkrtest", quietly=TRUE)){
     KR <- FALSE
     ## warning("pbkrtest is not available, KR set to FALSE")
@@ -117,13 +117,13 @@ vcov.fakeglm <- function(object, ...) object$vcov
 ##The next six functions should be exported as S3 methods
 
 effect.glmmTMB <- function(term, mod, vcov.=vcov, KR=FALSE, ...) {
-  result <- effect(term, mer.to.glm(mod, KR=KR), vcov., ...)
+  result <- effect(term, glmmTMB.to.glm(mod, KR=KR), vcov., ...)
   result$formula <- as.formula(formula(mod))
   result
 }
 
 allEffects.glmmTMB <- function(mod, KR=FALSE,...){
-  allEffects(mer.to.glm(mod,KR=KR), ...)
+  allEffects(glmmTMB.to.glm(mod,KR=KR), ...)
 }
 
 ## testing
@@ -131,11 +131,11 @@ if (FALSE) {
     source("effectsglmmTMB.R")
     library(effects)
     gg1 <- glmmTMB(round(Reaction)~Days+(1|Subject),family=poisson,data=lme4::sleepstudy)
-    mer.to.glm(gg1)
+    glmmTMB.to.glm(gg1)
     allEffects(gg1)
     gg2 <- glmmTMB(y~1+(1|f),family=nbinom2,data=dd)
     glm(formula = y ~ 1, family = nbinom2, data = dd)
     ## Error in log(mu) : non-numeric argument to mathematical function
-    mer.to.glm(gg2)
+    glmmTMB.to.glm(gg2)
 
 }
