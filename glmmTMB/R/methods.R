@@ -650,7 +650,7 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object)
 }
 
-.noSimFamilies <- c("beta", "betabinomial", "genpois")
+.noSimFamilies <- c("beta", "genpois")
 
 noSim <- function(x) {
     !is.na(match(x, .noSimFamilies))
@@ -679,7 +679,7 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     ret <- replicate(nsim,
                      object$obj$simulate(par = object$fit$parfull)$yobs,
                      simplify=FALSE)
-    if (family == "binomial") {
+    if ( binomialType(family) ) {
         size <- object$obj$env$data$weights
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
     }
