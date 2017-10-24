@@ -90,7 +90,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## binomial family: At this point we know that (yobs, weights) are
   ## (proportions, size) as output from binomial()$initialize.
   ## On the C++ side 'yobs' must be the actual observations (counts).
-  if (family$family == "binomial") {
+  if ( binomialType(family$family) ) {
     yobs <- weights * yobs
   }
 
@@ -349,6 +349,12 @@ okWeights <- function(x) {
   ## x %in% .okWeightFamilies
 }	
 
+## Families for which binomial()$initialize is used
+.binomialFamilies <- c("binomial", "betabinomial")
+binomialType <- function(x) {
+  !is.na(match(x, .binomialFamilies))
+}
+
 ##' Fit models with TMB
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
@@ -575,7 +581,7 @@ glmmTMB <- function (
     ## (name *must* be 'y' to match guts of family()$initialize
     y <- fr[,respCol]
     if (is.matrix(y)) {
-        if (family$family != "binomial") {
+        if ( ! binomialType(family$family) ) {
             stop("matrix-valued responses are not allowed")
         }
     }

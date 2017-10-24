@@ -109,7 +109,8 @@ betabinomial <- function(link="logit") {
     return(list(family="betabinomial",link=link,
            variance=function(mu,phi) {
                stop("variance for betabinomial family not yet implemented")
-           }))
+           },
+           initialize = binomial()$initialize))
 }
 
 #' @rdname nbinom2
