@@ -39,6 +39,19 @@ test_that("binomial", {
     mod7 <- glmmTMB(prop~1,weights=size*w,family=binomial,data=dd)
     expect_equal( logLik(mod6)     , logLik(mod7) )
     expect_equal( fixef(mod6)$cond , fixef(mod7)$cond )
+
+    ## Test TRUE/FALSE specification
+    x <- c(TRUE, TRUE, FALSE)
+    m1 <- glmmTMB(x~1, family=binomial())
+    m2 <- glm    (x~1, family=binomial())
+    expect_equal(
+        as.numeric(logLik(m1)),
+        as.numeric(logLik(m2))
+    )
+    expect_equal(
+        as.numeric(unlist(fixef(m1))),
+        as.numeric(coef(m2))
+    )
 })
 context("fitting exotic families")
 test_that("beta", {
