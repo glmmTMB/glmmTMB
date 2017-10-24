@@ -76,8 +76,23 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (is.null(offset <- model.offset(fr)))
       offset <- rep(0,nobs)
 
-  if (is.null(weights <- fr[["(weights)"]]))
-    weights <- rep(1,nobs)
+  ## FIXME (KK): I don't know why the original code looks for
+  ## 'weights' in 'fr':
+  ##
+  ##    if (is.null(weights <- fr[["(weights)"]]))
+  ##        weights <- rep(1, nobs)
+  ##
+  ## Just in case this is still relevant here's a workaround:
+  if (is.null(weights)) weights <- fr[["(weights)"]]
+  ## Still NULL ?
+  if (is.null(weights)) weights <- rep(1, nobs)
+
+  ## binomial family: At this point we know that (yobs, weights) are
+  ## (proportions, size) as output from binomial()$initialize.
+  ## On the C++ side 'yobs' must be the actual observations (counts).
+  if ( binomialType(family$family) ) {
+    yobs <- weights * yobs
+  }
 
   data.tmb <- namedList(
     X = condList$X,
@@ -334,6 +349,12 @@ okWeights <- function(x) {
   ## x %in% .okWeightFamilies
 }	
 
+## Families for which binomial()$initialize is used
+.binomialFamilies <- c("binomial", "betabinomial")
+binomialType <- function(x) {
+  !is.na(match(x, .binomialFamilies))
+}
+
 ##' Fit models with TMB
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
@@ -374,7 +395,7 @@ okWeights <- function(x) {
 ##' @details
 ##' \itemize{
 ##' \item binomial models with more than one trial (i.e., not binary/Bernoulli)
-##' must be specified in the form \code{prob ~ ..., weights = N} rather than in
+##' can either be specified in the form \code{prob ~ ..., weights = N} or in
 ##' the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
 ##' \item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
 ##' \item by default, vector-valued random effects are fitted with
@@ -560,9 +581,7 @@ glmmTMB <- function (
     ## (name *must* be 'y' to match guts of family()$initialize
     y <- fr[,respCol]
     if (is.matrix(y)) {
-        if (family$family=="binomial") {
-            warning("binomial models with N>1 are preferably specified as proportion~..., weights=N")
-        } else {
+        if ( ! binomialType(family$family) ) {
             stop("matrix-valued responses are not allowed")
         }
     }
@@ -572,7 +591,7 @@ glmmTMB <- function (
     ## (2) warn on non-integer values
     etastart <- start <- mustart <- NULL
     if (!is.null(family$initialize)) {
-        eval(family$initialize)
+        eval(family$initialize)  ## <--- NOTE: Modifies 'y' and 'weights' !!!
     }
     ## binomial()$initialize does *not* coerce logical to numeric ...
     ##  may cause downstream problems, e.g. with predict()

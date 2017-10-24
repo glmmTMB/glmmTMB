@@ -605,7 +605,7 @@ Type objective_function<Type>::operator() ()
         break;
       case binomial_family:
         s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
-        tmp_loglik = dbinom_robust(yobs(i) * weights(i), weights(i), s1, true);
+        tmp_loglik = dbinom_robust(yobs(i), weights(i), s1, true);
         SIMULATE{yobs(i) = rbinom(weights(i), mu(i));}
         break;
       case Gamma_family:
@@ -624,8 +624,10 @@ Type objective_function<Type>::operator() ()
       case betabinomial_family:
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
         s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
-        SIMULATE{yobs(i) = 0;}//TODO: fill in when rbetabinomial is added to TMB
+        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, weights(i), true);
+        SIMULATE {
+          yobs(i) = rbinom(weights(i), rbeta(s1, s2) );
+        }
         break;
       case nbinom1_family:
       case truncated_nbinom1_family:

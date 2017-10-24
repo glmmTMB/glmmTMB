@@ -650,7 +650,7 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object)
 }
 
-.noSimFamilies <- c("beta", "betabinomial", "genpois")
+.noSimFamilies <- c("beta", "genpois")
 
 noSim <- function(x) {
     !is.na(match(x, .noSimFamilies))
@@ -666,6 +666,7 @@ noSim <- function(x) {
 ##' Currently, it is not possible to condition on estimated random effects.  
 ##' @return returns a list of vectors. The list has length \code{nsim}. 
 ##' Each simulated vector of observations is the same size as the vector of response variables in the original data set.
+##' In the binomial family case each simulation is a two-column matrix with success/failure.
 ##' @importFrom stats simulate
 ##' @export
 simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
@@ -674,6 +675,15 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     	stop("Simulation code has not been implemented for this family")
     }
     if(!is.null(seed)) set.seed(seed)
-    ret <- replicate(nsim, object$obj$simulate(par = object$fit$parfull)$yobs, simplify=FALSE)
+    family <- object$modelInfo$family$family
+    ret <- replicate(nsim,
+                     object$obj$simulate(par = object$fit$parfull)$yobs,
+                     simplify=FALSE)
+    if ( binomialType(family) ) {
+        size <- object$obj$env$data$weights
+        ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
+    }
+    names(ret) <- paste("sim", seq_len(nsim), sep="_")
+    ret <- as.data.frame(ret)
     ret
 }

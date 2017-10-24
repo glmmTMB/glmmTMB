@@ -156,3 +156,15 @@ test_that("simulate", {
 	expect_equal(sm2G, sleepstudy$Reaction, tol=20)
 	expect_equal(sm2NB, sleepstudy$Reaction, tol=20)
 })
+
+context("simulate consistency with glm/lm")
+test_that("binomial", {
+    y <- cbind(1:10,10)
+    f1 <- glmmTMB(y ~ 1, family=binomial())
+    f2 <- glm    (y ~ 1, family=binomial())
+    set.seed(1)
+    s1 <- simulate(f1, 5)
+    set.seed(1)
+    s2 <- simulate(f2, 5)
+    expect_equal(max(abs(as.matrix(s1) - as.matrix(s2))), 0)
+})

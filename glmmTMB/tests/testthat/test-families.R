@@ -24,10 +24,40 @@ test_that("binomial", {
     mod2 <<- update(mod1,as.logical(presabs)~.)
     expect_equal(predict(mod1),predict(mod2))
 
-    dd <- data.frame(success=1:10,failure=10)
-    expect_warning(glmmTMB(cbind(success,failure)~1,family=binomial,data=dd),
-                 "binomial models with N>1")
+    ## Compare 2-column and prop/size specification
+    dd <- data.frame(success=1:10, failure=11:20)
+    dd$size <- rowSums(dd)
+    dd$prop <- local( success / size, dd)
+    mod4 <- glmmTMB(cbind(success,failure)~1,family=binomial,data=dd)
+    mod5 <- glmmTMB(prop~1,weights=size,family=binomial,data=dd)
+    expect_equal( logLik(mod4)     , logLik(mod5) )
+    expect_equal( fixef(mod4)$cond , fixef(mod5)$cond )
 
+    ## Now with extra weights
+    dd$w <- 2
+    mod6 <- glmmTMB(cbind(success,failure)~1,family=binomial,data=dd,weights=w)
+    mod7 <- glmmTMB(prop~1,weights=size*w,family=binomial,data=dd)
+    expect_equal( logLik(mod6)     , logLik(mod7) )
+    expect_equal( fixef(mod6)$cond , fixef(mod7)$cond )
+
+    ## Test TRUE/FALSE specification
+    x <- c(TRUE, TRUE, FALSE)
+    m1 <- glmmTMB(x~1, family=binomial())
+    m2 <- glm    (x~1, family=binomial())
+    expect_equal(
+        as.numeric(logLik(m1)),
+        as.numeric(logLik(m2))
+    )
+    expect_equal(
+        as.numeric(unlist(fixef(m1))),
+        as.numeric(coef(m2))
+    )
+
+    ## Mis-specifications
+    prop <- c(.1, .2, .3)  ## weights=1 => prop * weights non integers
+    expect_warning( glmmTMB(prop~1, family=binomial()) )   ## Warning as glm
+    x <- c(1, 2, 3)        ## weights=1 => x > weights !
+    expect_error  ( glmmTMB(x~1, family=binomial()) )      ## Error as glm
 })
 context("fitting exotic families")
 test_that("beta", {
@@ -118,6 +148,11 @@ test_that("dbetabinom", {
                    sigma(m1)),
                  c(2.1482114,1.0574946,0.7016553,8.3768711),
                  tolerance=1e-5)
+    ## Two-column specification
+    m2 <- glmmTMB(cbind(y, N-y) ~ x + (1|f),
+                  family=betabinomial(),
+                  data=dd)
+    expect_identical(m1$fit, m2$fit)
 })
 
 test_that("truncated", {
