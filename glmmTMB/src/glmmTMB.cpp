@@ -625,7 +625,9 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
         s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
         tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, weights(i), true);
-        SIMULATE{yobs(i) = 0;}//TODO: fill in when rbetabinomial is added to TMB
+        SIMULATE {
+          yobs(i) = rbinom(weights(i), rbeta(s1, s2) );
+        }
         break;
       case nbinom1_family:
       case truncated_nbinom1_family:
