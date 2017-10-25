@@ -9,4 +9,3 @@ findReTrmClasses()
 \description{
 list of specials -- taken from enum.R
 }
-

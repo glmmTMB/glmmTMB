@@ -16,4 +16,3 @@
 \description{
 Compute residuals for a glmmTMB object
 }
-

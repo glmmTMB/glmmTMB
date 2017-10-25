@@ -26,4 +26,3 @@ a list composed of
 \description{
 Create X and random effect terms from formula
 }
-
