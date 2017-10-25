@@ -25,10 +25,26 @@
 
 ##' @export
 nbinom2 <- function(link="log") {
-    return(list(family="nbinom2",link=link,
-           variance=function(mu,theta) {
-               mu*(1+mu/theta)
-           }))
+    return(list(family="nbinom2",
+                link=link,
+                linkfun = function (mu)  { log(mu) },
+                mu.eta = function  (eta) { pmax(exp(eta), .Machine$double.eps) },
+                linkinv = function (eta) { pmax(exp(eta), .Machine$double.eps) },
+                variance=function(mu, theta) {  mu*(1+mu/theta) },
+                ## full versions needed for effects::mer.to.glm
+                ## (so we can evaluate a glm)
+                initialize = expression({
+                    if (any(y < 0)) 
+                        stop("negative values not allowed for the negative binomial family")
+                    n <- rep(1, nobs)
+                    mustart <- y + (y == 0)/6
+                }),
+                ## where is .Theta set??
+                dev.resids = function (y, mu, wt)  {
+        2 * wt * (y * log(pmax(1, y)/mu) - (y + .Theta) * log((y + .Theta)/(mu + .Theta)))
+    }
+     )
+)
 }
 
 #' @rdname nbinom2
