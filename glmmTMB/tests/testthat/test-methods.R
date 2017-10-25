@@ -123,7 +123,7 @@ test_that("sigma", {
 })
 
 test_that("confint", {
-    ci <- confint(fm2)
+    ci <- confint(fm2, 1:2, estimate=FALSE)
     expect_equal(ci,
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),

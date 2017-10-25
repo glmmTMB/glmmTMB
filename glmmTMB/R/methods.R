@@ -398,13 +398,17 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+.tweedie_power <- function(object) {
+    unname(plogis(object$fit$par["thetaf"]) + 1)
+}
+
 ## Print family specific parameters
 ## @param ff name of family (character)
 ## @param object glmmTMB output
 #' @importFrom stats plogis
 printFamily <- function(ff, object) {
     if (ff == "tweedie") {
-        power <- unname(plogis(object$fit$par["thetaf"]) + 1)
+        power <- .tweedie_power(object)
         cat(sprintf("\nTweedie power parameter: %s",
                     formatC(power, digits=3)), "\n")
 
@@ -492,6 +496,46 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
            })
 }
 
+## Helper to get CI of simple *univariate monotone* parameter
+## function, i.e. a function of 'fit$par' and/or 'fit$parfull'.
+## Examples: 'sigma.glmmTMB' and some parts of 'VarCorr.glmmTMB'.
+
+##' @importFrom stats qchisq
+.CI_univariate_monotone <- function(object, f, reduce=NULL,
+                                    level=0.95,
+                                    name.prepend=NULL,
+                                    estimate = TRUE) {
+    x <- object
+    par <- x$fit$par
+    i <- seq_along(x$fit$parfull) ## Pointers into long par vector
+    r <- x$obj$env$random
+    if(!is.null(r)) i <- i[-r]    ## Pointers into short par subset
+    sdr <- x$sdr
+    sdpar <- summary(sdr, "fixed")[,2]
+    q <- sqrt(qchisq(level, df=1))
+    ans <- list()
+    x$fit$parfull[i] <- x$fit$par <- par - q * sdpar
+    ans$lower <- f(x)
+    x$fit$parfull[i] <- x$fit$par <- par + q * sdpar
+    ans$upper <- f(x)
+    if (estimate) {
+        ans$Estimate <- f(object)
+    }
+    if(is.null(reduce)) reduce <- function(x) x
+    ans <- lapply(ans, reduce)
+    nm <- names(ans)
+    tmp <- cbind(ans$lower, ans$upper)
+    if (is.null(tmp) || nrow(tmp) == 0L) return (NULL)
+    sort2 <- function(x) if(any(is.nan(x))) x * NaN else sort(x)
+    ans <- cbind( t( apply(tmp, 1, sort2) ) , ans$Estimate )
+    colnames(ans) <- nm
+    if (!is.null(name.prepend))
+        name.prepend <- rep(name.prepend, length.out = nrow(ans))
+    rownames(ans) <- paste(name.prepend,
+                           rownames(ans), sep="")
+    ans
+}
+
 ## copied from 'stats'
 
 format.perc <- function (probs, digits) {
@@ -502,9 +546,10 @@ format.perc <- function (probs, digits) {
 ##' @importFrom stats qnorm confint
 ##' @export
 confint.glmmTMB <- function (object, parm, level = 0.95,
-                             method=c("Wald","wald",  ## ugh -- allow synonyms?
+                             method=c("wald",
                                       "profile"),
-                             component= "cond", ...) 
+                             component = c("all", "cond", "zi", "other"),
+                             estimate = TRUE,...)
 {
     dots <- list(...)
     if (length(dots)>0) {
@@ -516,23 +561,68 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         }
     }
     method <- match.arg(method)
-    cf <- unlist(fixef(object)[component])
-    pnames <- names(cf)
-    if (missing(parm)) 
-        parm <- pnames
-    else if (is.numeric(parm)) 
-        parm <- pnames[parm]
+    components <- match.arg(component, several.ok = TRUE)
+    components.has <- function(x)
+        any(match(c(x, "all"), components, nomatch=0L)) > 0L
     a <- (1 - level)/2
     a <- c(a, 1 - a)
     pct <- format.perc(a, 3)
     fac <- qnorm(a)
-    ci <- array(NA, dim = c(length(parm), 2L), dimnames = list(parm, 
-        pct))
+    estimate <- as.logical(estimate)
+    ci <- matrix(NA, 0, 2 + estimate,
+                 dimnames=list(NULL,
+                               c(pct, "Estimate")
+                               [c(TRUE, TRUE, estimate)] ))
     if (tolower(method)=="wald") {
-        vv <- vcov(object)[component]
-        ss <- unlist(lapply(vv,diag))
-        ses <- sqrt(ss)[parm]
-        ci[] <- cf[parm] + ses %o% fac
+        for (component in c("cond", "zi") ) {
+            if (components.has(component)) {
+                cf <- unlist(fixef(object)[component])
+                vv <- vcov(object)[component]
+                ss <- unlist(lapply(vv,diag))
+                ses <- sqrt(ss)
+                ci.tmp <- cf + ses %o% fac
+                if (estimate) ci.tmp <- cbind(ci.tmp, cf)
+                ci <- rbind(ci, ci.tmp)
+                ## VarCorr -> stddev
+                reduce <- function(VC) sapply(VC[[component]],
+                                              function(x)attr(x, "stddev"))
+                ci.sd <- .CI_univariate_monotone(object,
+                                                 VarCorr,
+                                                 reduce = reduce,
+                                                 level = level,
+                                                 name.prepend=paste(component,
+                                                                    "Std.Dev.",
+                                                                    sep="."),
+                                                 estimate = estimate)
+                ci <- rbind(ci, ci.sd)
+            }
+        }
+        if (components.has("other")) {
+            ## sigma
+            ff <- object$modelInfo$family$family
+            if (usesDispersion(ff)) {
+                ci.sigma <- .CI_univariate_monotone(object,
+                                                    sigma,
+                                                    reduce = NULL,
+                                                    level=level,
+                                                    name.prepend="sigma",
+                                                    estimate = estimate)
+                ci <- rbind(ci, ci.sigma)
+            }
+            ## Tweedie power
+            if (ff == "tweedie") {
+                ci.power <- .CI_univariate_monotone(object,
+                                                    .tweedie_power,
+                                                    reduce = NULL,
+                                                    level=level,
+                                                    name.prepend="Tweedie.power",
+                                                    estimate = estimate)
+                ci <- rbind(ci, ci.power)
+            }
+        }
+        ## Take subset
+        if (!missing(parm))
+            ci <- ci[parm, , drop=FALSE]
     } else {
         stop("profile CI not yet implemented")
         ## FIXME: compute profile(object)
