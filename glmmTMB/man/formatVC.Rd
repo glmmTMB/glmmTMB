@@ -34,4 +34,3 @@ a character matrix of formatted VarCorr entries from \code{varc}.
 "format()" the 'VarCorr' matrix of the random effects -- for
 print()ing and show()ing
 }
-
