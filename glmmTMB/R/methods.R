@@ -543,8 +543,32 @@ format.perc <- function (probs, digits) {
     "%")
 }
 
+##' Calculate confidence intervals
+##'
+##' @details
+##' Currently, all confidence intervals are calculated using the
+##' 'wald' method. These intervals are based on the standard errors
+##' calculated for parameters on the scale
+##' of their internal parameterization depending on the family. Derived
+##' quantities such as standard deviation parameters and dispersion
+##' parameters are backtransformed. It follows that confidence
+##' intervals for these derived quantities are asymmetric.
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
+##' @param object \code{glmmTMB} fitted object.
+##' @param parm Specification of a parameter subset \emph{after}
+##'     \code{component} subset has been applied.
+##' @param level Confidence level.
+##' @param method Currently only option is 'wald'.
+##' @param component Which of the three components 'cond', 'zi' or
+##'     'other' to select. Default is to select 'all'.
+##' @param estimate Logical; Add a 3rd column with estimate ?
+##' @param ... Not used
+##' @examples
+##' data(sleepstudy, package="lme4")
+##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
+##' confint(model)
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
                                       "profile"),
