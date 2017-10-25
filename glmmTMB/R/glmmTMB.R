@@ -36,7 +36,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     mapArg <- NULL
     # family$family contains the *name* of the family
     if ( usesDispersion(family$family) && (dispformula == ~0) ) {
-        if (family != "gaussian")
+        if (family$family != "gaussian")
             stop("~0 dispersion not implemented for ",
                  sQuote(family$family),
                  " family")
