@@ -492,6 +492,39 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
            })
 }
 
+## Helper to get CI of simple *univariate monotone* parameter
+## function, i.e. a function of 'fit$par' and/or 'fit$parfull'.
+## Examples: 'sigma.glmmTMB' and some parts of 'VarCorr.glmmTMB'.
+.CI_univariate_monotone <- function(object, f, reduce=NULL,
+                                    level=0.95,
+                                    name.prepend=NULL) {
+    x <- object
+    par <- x$fit$par
+    i <- seq_along(x$fit$parfull) ## Pointers into long par vector
+    r <- x$obj$env$random
+    if(!is.null(r)) i <- i[-r]    ## Pointers into short par subset
+    sdr <- x$sdr
+    sdpar <- summary(sdr, "fixed")[,2]
+    q <- sqrt(qchisq(level, df=1))
+    ans <- list()
+    x$fit$parfull[i] <- x$fit$par <- par - q * sdpar
+    ans$lower <- f(x)
+    x$fit$parfull[i] <- x$fit$par <- par + q * sdpar
+    ans$upper <- f(x)
+    if(is.null(reduce)) reduce <- function(x) x
+    ans <- lapply(ans, reduce)
+    nm <- names(ans)
+    tmp <- cbind(ans$lower, ans$upper)
+    if (is.null(tmp) || nrow(tmp) == 0L) return (NULL)
+    ans <- t( apply(tmp, 1, sort) )
+    colnames(ans) <- nm
+    if (!is.null(name.prepend))
+        name.prepend <- rep(name.prepend, length.out = nrow(ans))
+    rownames(ans) <- paste(name.prepend,
+                           rownames(ans), sep="")
+    ans
+}
+
 ## copied from 'stats'
 
 format.perc <- function (probs, digits) {
@@ -533,6 +566,25 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         ss <- unlist(lapply(vv,diag))
         ses <- sqrt(ss)[parm]
         ci[] <- cf[parm] + ses %o% fac
+        ## VarCorr -> stddev
+        reduce <- function(VC) sapply(VC[[component]],
+                                      function(x)attr(x, "stddev"))
+        ci.sd <- .CI_univariate_monotone(object,
+                                         VarCorr,
+                                         reduce = reduce,
+                                         level = level,
+                                         name.prepend="Std.Dev.")
+        ci <- rbind(ci, ci.sd)
+        ## sigma
+        ff <- object$modelInfo$family$family
+        if (usesDispersion(ff)) {
+            ci.sigma <- .CI_univariate_monotone(object,
+                                                sigma,
+                                                reduce = NULL,
+                                                level=level,
+                                                name.prepend="sigma")
+            ci <- rbind(ci, ci.sigma)
+        }
     } else {
         stop("profile CI not yet implemented")
         ## FIXME: compute profile(object)
