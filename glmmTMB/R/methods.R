@@ -398,13 +398,17 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+.tweedie_power <- function(object) {
+    unname(plogis(object$fit$par["thetaf"]) + 1)
+}
+
 ## Print family specific parameters
 ## @param ff name of family (character)
 ## @param object glmmTMB output
 #' @importFrom stats plogis
 printFamily <- function(ff, object) {
     if (ff == "tweedie") {
-        power <- unname(plogis(object$fit$par["thetaf"]) + 1)
+        power <- .tweedie_power(object)
         cat(sprintf("\nTweedie power parameter: %s",
                     formatC(power, digits=3)), "\n")
 
@@ -584,6 +588,15 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                                 level=level,
                                                 name.prepend="sigma")
             ci <- rbind(ci, ci.sigma)
+        }
+        ## Tweedie power
+        if (ff == "tweedie") {
+            ci.power <- .CI_univariate_monotone(object,
+                                                .tweedie_power,
+                                                reduce = NULL,
+                                                level=level,
+                                                name.prepend="Tweedie.power")
+            ci <- rbind(ci, ci.power)
         }
     } else {
         stop("profile CI not yet implemented")
