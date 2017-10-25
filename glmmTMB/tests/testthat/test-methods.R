@@ -124,7 +124,7 @@ test_that("sigma", {
 
 test_that("confint", {
     ci <- confint(fm2)
-    expect_equal(ci,
+    expect_equal(ci[1:2,],
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),
                   .Dim = c(2L, 2L),
