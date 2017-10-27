@@ -299,6 +299,7 @@ splitForm <- function(formula,
 
 ##' @param term language object
 ##' @rdname splitForm
+##' @param debug debugging mode (print stuff)?
 ##' @examples
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
