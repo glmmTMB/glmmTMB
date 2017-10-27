@@ -133,6 +133,27 @@ test_that("confint", {
         tolerance=1e-6)
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
+    ## Gamma test Std.Dev and sigma
+    ci <- confint(fm2G, estimate=FALSE)
+    ci.expect <- structure(c(5.481017, 0.024778, 0.06761,  0.011595, 0.072046,
+                             5.584018, 0.042922, 0.150456, 0.026438, 0.090737),
+                           .Dim = c(5L,  2L),
+                           .Dimnames = list(c("cond.(Intercept)", "cond.Days",
+                                              "cond.Std.Dev.(Intercept)",
+                                              "cond.Std.Dev.Days",
+                                              "sigma"),
+                                            c("2.5 %", "97.5 %")))
+    expect_equal(ci, ci.expect, tolerance=1e-6)
+    ## nbinom2 test Std.Dev and sigma
+    ci <- confint(fm2NB, estimate=FALSE)
+    ci.expect <- structure(c(5.480987, 0.024816, 0.066177, 0.011344, 183.810585,
+                             5.584226, 0.042899, 0.150918, 0.026355, 444.735666),
+                           .Dim = c(5L,  2L),
+                           .Dimnames = list(c("cond.(Intercept)", "cond.Days",
+                                              "cond.Std.Dev.(Intercept)",
+                                              "cond.Std.Dev.Days", "sigma"),
+                                            c("2.5 %", "97.5 %")))
+    expect_equal(ci, ci.expect, tolerance=1e-6)
 })
 
 test_that("vcov", {
