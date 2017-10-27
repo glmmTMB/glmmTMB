@@ -299,14 +299,16 @@ splitForm <- function(formula,
 
 ##' @param term language object
 ##' @rdname splitForm
+##' @param debug debugging mode (print stuff)?
 ##' @examples
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
 ##' noSpecials(y~us(1|f))
+##' noSpecials(y~us+1)  ## should *not* delete unless head of a function
 ##' @export
 ##' @keywords internal
-noSpecials <- function(term, delete=TRUE) {
-    nospec <- noSpecials_(term, delete=delete)
+noSpecials <- function(term, delete=TRUE, debug=FALSE) {
+    nospec <- noSpecials_(term, delete=delete, debug=debug)
     if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
@@ -318,8 +320,10 @@ noSpecials <- function(term, delete=TRUE) {
 
 
 ## noSpecials_(y~1+us(1|f))
-noSpecials_ <- function(term,delete=TRUE) {
+noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
+    if (debug) print(term)
     if (!anySpecial(term)) return(term)
+    if (length(term)==1) return(term)  ## 'naked' specials
     if (isSpecial(term)) {
         if(delete) {
             NULL
@@ -327,9 +331,9 @@ noSpecials_ <- function(term,delete=TRUE) {
             substitute((TERM), list(TERM = term[[2]]))
         }
     } else {
-        nb2 <- noSpecials(term[[2]],delete=delete)
+        nb2 <- noSpecials(term[[2]], delete=delete, debug=debug)
         nb3 <- if (length(term)==3) {
-                   noSpecials(term[[3]],delete=delete)
+                   noSpecials(term[[3]], delete=delete, debug=debug)
                } else NULL
         if (is.null(nb2))
             nb3
@@ -345,6 +349,7 @@ noSpecials_ <- function(term,delete=TRUE) {
 
 isSpecial <- function(term) {
     if(is.call(term)) {
+        ## %in% doesn't work (requires vector args)
         for(cls in findReTrmClasses()) {
             if(term[[1]] == cls) return(TRUE)
         }
@@ -358,8 +363,8 @@ isAnyArgSpecial <- function(term) {
     FALSE
 }
 
-## FIXME: this could be fooled by a term with a matching name
-## should really look for [special]\\(.+\\)
+## This could be in principle be fooled by a term with a matching name
+## but this case is caught in noSpecials_() where we test for length>1
 anySpecial <- function(term) {
     any(findReTrmClasses() %in% all.names(term))
 }
