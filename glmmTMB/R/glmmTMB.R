@@ -76,15 +76,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (is.null(offset <- model.offset(fr)))
       offset <- rep(0,nobs)
 
-  ## FIXME (KK): I don't know why the original code looks for
-  ## 'weights' in 'fr':
-  ##
-  ##    if (is.null(weights <- fr[["(weights)"]]))
-  ##        weights <- rep(1, nobs)
-  ##
-  ## Just in case this is still relevant here's a workaround:
-  if (is.null(weights)) weights <- fr[["(weights)"]]
-  ## Still NULL ?
   if (is.null(weights)) weights <- rep(1, nobs)
 
   ## binomial family: At this point we know that (yobs, weights) are
