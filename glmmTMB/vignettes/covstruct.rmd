@@ -305,9 +305,9 @@ However, note the differences between `ou` and `ar1`:
 The structures `exp`, `gau` and `mat` are meant to used for spatial
 data. They all require a Euclidean distance matrix which is calculated
 internally based on the coordinates. Here, we will try these models on
-the simulated time series data:
+the simulated time series data.
 
-> FIXME: Maybe try some spatial data instead ?
+An example with spatial data is presented in a later section.
 
 ### Matern
 
@@ -343,6 +343,103 @@ fit.exp$sdr$pdHess ## Converged ?
 
 ```{r fit.exp.vc}
 VarCorr(fit.exp)
+```
+
+### A spatial covariance example
+
+Starting out with the built in `volcano` dataset we reshape it to a
+`data.frame` with pixel intensity `z` and pixel position `x` and `y`:
+
+```{r spatial_data}
+d <- data.frame(z = as.vector(volcano),
+                x = as.vector(row(volcano)),
+                y = as.vector(col(volcano)))
+```
+
+Next, add random normal noise to the pixel intensities and extract a
+small subset of 100 pixels. This is our spatial dataset:
+
+```{r spatial_sub_sample}
+set.seed(1)
+d$z <- d$z + rnorm(length(volcano), sd=15)
+d <- d[sample(nrow(d), 100), ]
+```
+
+Display sampled noisy volcano data:
+
+```{r volcano_data_image}
+volcano.data <- array(NA, dim(volcano))
+volcano.data[cbind(d$x, d$y)] <- d$z
+image(volcano.data, main="Spatial data")
+```
+
+Based on this data, we'll attempt to re-construct the original image.
+
+As model, it is assumed that the original image `image(volcano)` is a
+realization of a random field with correlation decaying exponentially
+with distance between pixels.
+
+Denoting by $u(x,y)$ this random field the model for the observations is
+
+\[ z_{i} = \mu + u(x_i,y_i) + \varepsilon_i \]
+
+To fit the model, a `numFactor` and a dummy grouping variable must be
+added to the dataset:
+
+```{r spatial_add_pos_and_group}
+d$pos <- numFactor(d$x, d$y)
+d$group <- factor(rep(1, nrow(d)))
+```
+
+The model is fit by
+
+```{r fit_spatial_model}
+f <- glmmTMB(z ~ 1 + exp(pos + 0 | group), data=d)
+```
+
+Recall that a standard deviation `sd=15` was used to distort the
+image. A confidence interval for this parameter is
+
+```{r confint_sigma}
+confint(f, "sigma")
+```
+
+The glmmTMB `predict` method can predict unseen levels of the random
+effects. For instance to predict a 3-by-3 corner of the image one
+could construct the new data:
+
+```{r newdata_corner}
+newdata <- data.frame( pos=numFactor(expand.grid(x=1:3,y=1:3)) )
+newdata$group <- factor(rep(1, nrow(newdata)))
+newdata
+```
+
+and predict using
+
+```{r predict_corner}
+predict(f, newdata, allow.new.levels=TRUE)
+```
+
+A specific image column can thus be predicted using the function
+
+```{r predict_column}
+predict_col <- function(i) {
+    newdata <- data.frame( pos = numFactor(expand.grid(1:87,i)))
+    newdata$group <- factor(rep(1,nrow(newdata)))
+    predict(f, newdata=newdata, allow.new.levels=TRUE)
+}
+```
+
+Prediction of the entire image is carried out by (this takes a while...):
+
+```{r predict_all}
+pred <- sapply(1:61, predict_col)
+```
+
+Finally plot the re-constructed image by
+
+```{r image_results}
+image(pred, main="Reconstruction")
 ```
 
 ## Mappings
