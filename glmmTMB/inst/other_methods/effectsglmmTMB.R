@@ -96,7 +96,9 @@ glmmTMB.to.glm <- function(mod, KR=FALSE) {
   cl[[1L]] <- as.name("glm")
   cl$formula <- fixmod(as.formula(cl$formula))
   #    cl$data <- mod@frame # caused bug with a 'poly' in the formula
+  cl$family <- gaussian
   mod2 <- eval(cl)
+  cl$family <- family
   mod2$coefficients <- glmmTMB::fixef(mod)[["cond"]]
   ## mod2$vcov <- if (family == "gaussian" && link == "identity" && KR) as.matrix(pbkrtest::vcovAdj(mod)) else as.matrix(vcov(mod))
   mod2$vcov <- vcov(mod)[["cond"]]
@@ -128,14 +130,17 @@ allEffects.glmmTMB <- function(mod, KR=FALSE,...){
 
 ## testing
 if (FALSE) {
+    ## working directory: inst/other_methods/
     source("effectsglmmTMB.R")
     library(effects)
     gg1 <- glmmTMB(round(Reaction)~Days+(1|Subject),family=poisson,data=lme4::sleepstudy)
     glmmTMB.to.glm(gg1)
     allEffects(gg1)
-    gg2 <- glmmTMB(y~1+(1|f),family=nbinom2,data=dd)
-    glm(formula = y ~ 1, family = nbinom2, data = dd)
-    ## Error in log(mu) : non-numeric argument to mathematical function
-    glmmTMB.to.glm(gg2)
-
+    set.seed(101)
+    dd <- data.frame(y=rnbinom(1000,mu=4,size=1),
+                     x = rnorm(1000),
+                     f=factor(rep(LETTERS[1:20],each=50)))
+    gg2 <- glmmTMB(y~x+(1|f),family=nbinom2,data=dd)
+    ls(environment(gg2$modelInfo$family$dev.resids),all.names=TRUE)
+    allEffects(gg2)
 }

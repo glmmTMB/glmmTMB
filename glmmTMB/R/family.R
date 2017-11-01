@@ -1,4 +1,6 @@
 ##' Family functions for glmmTMB
+##'
+##'
 ##' 
 ##' @aliases family_glmmTMB
 ##' @param link (character) link function ("log", "logit", "probit", "inverse", "cloglog", or "identity")
@@ -22,7 +24,6 @@
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' }
-
 ##' @export
 nbinom2 <- function(link="log") {
     return(list(family="nbinom2",
@@ -30,7 +31,17 @@ nbinom2 <- function(link="log") {
                 linkfun = function (mu)  { log(mu) },
                 mu.eta = function  (eta) { pmax(exp(eta), .Machine$double.eps) },
                 linkinv = function (eta) { pmax(exp(eta), .Machine$double.eps) },
-                variance=function(mu, theta) {  mu*(1+mu/theta) },
+                variance=function(mu, theta) {
+                     if (missing(theta)) {
+                        ## look in environment
+                        if (!exists(".Theta")) {
+                            stop("theta neither passed as an argument nor stored in enviroment")
+                            theta <- .Theta
+                        }
+
+                    }
+                    return(mu*(1+mu/theta))
+                },
                 ## full versions needed for effects::mer.to.glm
                 ## (so we can evaluate a glm)
                 initialize = expression({
