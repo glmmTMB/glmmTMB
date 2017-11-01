@@ -694,7 +694,7 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
     }
     component <- match.arg(component)
     af <- x$modelInfo$allForm
-    ff <- if (component=="cond") af[["formula"]] else af[[paste(component,"formula")]]
+    ff <- if (component=="cond") af[["formula"]] else af[[paste0(component,"formula")]]
     if (fixed.only) {
         ff <- lme4::nobars(ff)
     }

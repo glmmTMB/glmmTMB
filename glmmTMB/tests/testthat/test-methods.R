@@ -156,3 +156,12 @@ test_that("simulate", {
 	expect_equal(sm2G, sleepstudy$Reaction, tol=20)
 	expect_equal(sm2NB, sleepstudy$Reaction, tol=20)
 })
+
+test_that("formula", {
+    expect_equal(formula(fm2),Reaction ~ Days + (Days | Subject))
+    expect_equal(formula(fm2, fixed.only=TRUE),Reaction ~ Days)
+    expect_equal(formula(fm2, component="disp"), ~1)
+    expect_equal(formula(fm2, component="disp", fixed.only=TRUE), ~1)
+    expect_equal(formula(fm2, component="zi"), ~0)
+    expect_equal(formula(fm2, component="zi", fixed.only=TRUE), ~0)
+})
