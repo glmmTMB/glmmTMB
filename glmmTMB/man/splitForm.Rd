@@ -34,8 +34,6 @@ a list containing elements \code{fixedFormula};
 \code{reTrmAddArgs} list of function+additional arguments, i.e. \code{list()} (non-special), \code{foo()} (no additional arguments), \code{foo(addArgs)} (additional arguments); \code{reTrmClasses} (vector of special functions/classes, as character)
 }
 \description{
-Combine right-hand sides of an arbitrary number of formulas
-
 Parse a formula into fixed formula and random effect terms,
 treating 'special' terms (of the form foo(x|g[,m])) appropriately
 }

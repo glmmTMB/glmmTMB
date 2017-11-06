@@ -15,9 +15,9 @@ arguments.}
 }
 \value{
 Object of class \code{ranef.glmmTMB} with two components:
-  \item{conditional_model}{a list of data frames, containing random effects
+  \item{cond}{a list of data frames, containing random effects
     for the conditional model.}
-  \item{zero_inflation}{a list of data frames, containing random effects for
+  \item{zi}{a list of data frames, containing random effects for
     the zero inflation.}
 }
 \description{
@@ -36,7 +36,7 @@ data(sleepstudy, package="lme4")
 model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
 ranef(model)
 print(ranef(model), simplify=FALSE)
-ranef(model)$conditional_model$Subject
+ranef(model)$cond$Subject
 
 }
 \seealso{
