@@ -267,7 +267,7 @@ template <class Type>
 struct per_term_info {
   // Input from R
   int blockCode;     // Code that defines structure
-  int blockSize;     // Size of one block 
+  int blockSize;     // Size of one block
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   matrix<Type> dist;
@@ -286,7 +286,7 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockCode = (int) REAL(getListElement(y, "blockCode", &isNumericScalar))[0];
       int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
-      int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];      
+      int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
@@ -738,7 +738,7 @@ Type objective_function<Type>::operator() ()
         }
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
-
+      tmp_loglik *= weights(i);
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }
