@@ -109,7 +109,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       }
     }
   }
-  if (is.null(size)) size <- rep(1, nobs)
+  if (is.null(size)) size <- numeric(0)
 
   data.tmb <- namedList(
     X = condList$X,
