@@ -39,7 +39,7 @@ For an explanation of the dispersion parameter for each family, see (\code{\link
 The dispersion model uses a log link. 
 In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.}
 
-\item{weights}{weights, as in \code{glm}. Only implemented for binomial and betabinomial families.}
+\item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
 
 \item{offset}{offset}
 
@@ -97,7 +97,7 @@ summary(m1)
 
 ## Binomial model
 data(cbpp, package="lme4")
-(tmbm1 <- glmmTMB(incidence/size ~ period + (1 | herd), weights=size,
+(tmbm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1 | herd),
                data=cbpp, family=binomial))
 
 ## Dispersion model

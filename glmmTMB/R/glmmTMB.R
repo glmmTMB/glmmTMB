@@ -9,6 +9,7 @@
 ##' @param respCol response column
 ##' @param offset offset
 ##' @param weights weights
+##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @param se (logical) compute standard error?
 ##' @param call original \code{glmmTMB} call

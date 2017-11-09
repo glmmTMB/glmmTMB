@@ -5,8 +5,9 @@
 \title{Extract info from formulas, reTrms, etc., format for TMB}
 \usage{
 mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
-  offset, weights, family, se = NULL, call = NULL, verbose = NULL,
-  ziPredictCode = "corrected", doPredict = 0, whichPredict = integer(0))
+  offset, weights, size = NULL, family, se = NULL, call = NULL,
+  verbose = NULL, ziPredictCode = "corrected", doPredict = 0,
+  whichPredict = integer(0))
 }
 \arguments{
 \item{formula}{conditional formula}
@@ -28,6 +29,8 @@ mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
 \item{offset}{offset}
 
 \item{weights}{weights}
+
+\item{size}{number of trials in binomial and betabinomial families}
 
 \item{family}{family object}
 
