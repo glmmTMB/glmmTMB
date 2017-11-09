@@ -794,7 +794,7 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
                      object$obj$simulate(par = object$fit$parfull)$yobs,
                      simplify=FALSE)
     if ( binomialType(family) ) {
-        size <- object$obj$env$data$weights
+        size <- object$obj$env$data$size
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
     }
     names(ret) <- paste("sim", seq_len(nsim), sep="_")

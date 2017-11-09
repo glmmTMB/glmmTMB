@@ -37,9 +37,12 @@ test_that("binomial", {
     dd$w <- 2
     mod6 <- glmmTMB(cbind(success,failure)~1,family=binomial,data=dd,weights=w)
     mod7 <- glmmTMB(prop~1,weights=size*w,family=binomial,data=dd)
-    expect_equal( logLik(mod6)     , logLik(mod7) )
+    mod6.glm <- glm(cbind(success,failure)~1,family=binomial,data=dd,weights=w)
+    mod7.glm <- glm(prop~1,weights=size*w,family=binomial,data=dd)
+    expect_equal( logLik(mod6)[[1]]     , logLik(mod6.glm)[[1]] )
+    expect_equal( logLik(mod7)[[1]]     , logLik(mod7.glm)[[1]] )
     expect_equal( fixef(mod6)$cond , fixef(mod7)$cond )
-
+		
     ## Test TRUE/FALSE specification
     x <- c(TRUE, TRUE, FALSE)
     m1 <- glmmTMB(x~1, family=binomial())
