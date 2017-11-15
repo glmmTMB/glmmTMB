@@ -5,13 +5,16 @@
 \title{Control parameters for glmmTMB optimization}
 \usage{
 glmmTMBControl(optCtrl = list(iter.max = 300, eval.max = 400),
-  profile = FALSE)
+  profile = FALSE, collect = FALSE)
 }
 \arguments{
 \item{optCtrl}{Passed as argument \code{control} to \code{nlminb}.}
 
 \item{profile}{Logical; Experimental option to improve speed and
 robustness when a model has many fixed effects}
+
+\item{collect}{Logical; Experimental option to improve speed by
+recognizing duplicated observations.}
 }
 \description{
 Control parameters for glmmTMB optimization
