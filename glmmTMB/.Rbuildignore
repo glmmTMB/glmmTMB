@@ -9,3 +9,4 @@ cache$
 .*\.out$
 .*misc/.*$
 .*gh-pages/.*$
+.RData
