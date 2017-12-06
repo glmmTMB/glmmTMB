@@ -164,6 +164,8 @@ test_that("vcov", {
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
           .Names = c("cond1", "cond2", "disp", "", "", "")))
+    ## vcov doesn't include dispersion for non-dispersion families ...
+    expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
 })
 
 set.seed(101)
