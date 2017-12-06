@@ -657,19 +657,6 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     return(ci)
 }
 
-confint.tmbprofile <- function(object, parm=NULL, level = 0.95, ...) {
-    ## find locations of top-level (fixed + VarCorr) parameters
-    ## fit splines?
-    ## invert splines
-}
-
-##' @importFrom TMB tmbprofile
-profile.glmmTMB <- function(fitted, trace=FALSE, ...) {
-    ## lower default spacing?
-    ## use Wald std err for initial stepsize guess?
-    tmbprofile(fitted$obj, trace=trace, ...)
-}
-
 ##' @export
 ## FIXME: establish separate 'terms' components for
 ##   each model component (conditional, random, zero-inflation, dispersion ...)

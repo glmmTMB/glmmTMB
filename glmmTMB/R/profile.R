@@ -93,4 +93,8 @@ profile.glmmTMB <- function(fitted, which=NULL,
     return(dd)
 }
 
-
+confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
+    ## find locations of top-level (fixed + VarCorr) parameters
+    ## fit splines?
+    ## invert splines
+}
