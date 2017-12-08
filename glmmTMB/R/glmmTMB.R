@@ -645,6 +645,8 @@ glmmTMB <- function (
 ##' @param optCtrl Passed as argument \code{control} to \code{nlminb}.
 ##' @param profile Logical; Experimental option to improve speed and
 ##'                robustness when a model has many fixed effects
+##' @param collect Logical; Experimental option to improve speed by
+##'                recognizing duplicated observations.
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
 ##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
@@ -669,18 +671,63 @@ glmmTMB <- function (
 ##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
 ##' @export
 glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
-                           profile=FALSE) {
+                           profile=FALSE,
+                           collect=FALSE) {
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile)
+    namedList(optCtrl, profile, collect)
+}
+
+##' @importFrom stats runif xtabs
+.collectDuplicates <- function(data.tmb) {
+    nm <- c("X", "Z", "Xzi", "Zzi", "Xd", "offset", "yobs",
+            "size"[length(data.tmb$size) > 0])
+    A <- do.call(cbind, data.tmb[nm])
+    ## Restore random seed on exit
+    ## FIXME: Simplify ?
+    seed <- .GlobalEnv$.Random.seed
+    on.exit({
+        if (is.null(seed))
+            rm(".Random.seed", envir=.GlobalEnv)
+        else
+            .GlobalEnv$.Random.seed <- seed
+    })
+    ## Generate hash code for data terms
+    hash <- as.vector(A %*% runif(ncol(A)))
+    hash <- format(hash, nsmall=20)
+    keep <- !duplicated(hash)
+    collect <- factor(hash, levels=hash[keep])
+    ## Check for collisions
+    rownames(A) <- NULL
+    A0 <- A[keep, , drop=FALSE]
+    if( ! identical (A,
+                     A0[unclass(collect), ]) )
+        stop("Hash code collision !")
+    ## Reduce
+    nm <- c("X", "Z", "Xzi", "Zzi", "Xd")
+    data.tmb[nm] <- lapply(data.tmb[nm],
+                           function(x) x[keep, , drop=FALSE])
+    nm <- c("offset", "yobs", "size")
+    data.tmb[nm] <- lapply(data.tmb[nm],
+                           function(x) x[keep])
+    ## Update weights
+    data.tmb$weights <- xtabs(data.tmb$weights ~ collect)
+    data.tmb
 }
 
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
+
+    if (control $ collect) {
+        ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
+        ## original data (with duplicates) after fitting.
+        data.tmb.old <- TMBStruc$data.tmb
+        TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
+    }
 
     if (control $ profile) {
         obj <- with(TMBStruc,
@@ -778,6 +825,13 @@ fitTMB <- function(TMBStruc) {
         warning("Model convergence problem; ",
                 fit$message, ". ",
                 "See vignette('troubleshooting')")
+
+    if (control $ collect) {
+        ## Undo changes made to the data
+        TMBStruc$data.tmb <- data.tmb.old
+        obj$env$data <- obj$env$dataSanitize(data.tmb.old)
+        obj$retape()
+    }
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs=nrow(data.tmb$X),

@@ -52,12 +52,14 @@ test_that("cs_homog", {
 })
 
 test_that("ar1", {
-    cc <- cov2cor(VarCorr(fm_ar1)[["cond"]][[1]])
+    vv <- VarCorr(fm_ar1)[["cond"]]
+    cc <- cov2cor(vv[[1]])
     expect_equal(cc[1,],cc[,1])
     expect_equal(unname(cc[1,]),
                  cc[1,2]^(0:(nrow(cc)-1)))
 })
 
+## FIXME: simpler to check formatVC() directly?
 get_vcout <- function(x,g="Subject") {
     cc <- capture.output(print(VarCorr(x)))
     cc1 <- grep(g,cc,value=TRUE)
@@ -67,11 +69,11 @@ get_vcout <- function(x,g="Subject") {
 
 test_that("varcorr_print", {
     ss <- get_vcout(fm_cs1)
-    expect_equal(length(ss),4)
-    expect_equal(ss[length(ss)],"(cs)")
+    expect_equal(length(ss),5)
+    expect_equal(ss[4:5],c("0.081","(cs)"))
     ss2 <- get_vcout(fm_ar1)
-    expect_equal(length(ss2),4)
-    expect_equal(ss2[length(ss2)],"(ar1)")
+    expect_equal(length(ss2),5)
+    expect_equal(ss2[4:5],c("0.853","(ar1)"))
 
     ## test case with two different size V-C
     set.seed(101)
