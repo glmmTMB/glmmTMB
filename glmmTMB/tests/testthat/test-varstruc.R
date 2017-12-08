@@ -52,10 +52,12 @@ test_that("cs_homog", {
 })
 
 test_that("ar1", {
-    cc <- cov2cor(VarCorr(fm_ar1)[["cond"]][[1]])
+    vv <- VarCorr(fm_ar1)[["cond"]]
+    cc <- cov2cor(vv[[1]])
     expect_equal(cc[1,],cc[,1])
     expect_equal(unname(cc[1,]),
                  cc[1,2]^(0:(nrow(cc)-1)))
+    expect_equal(formatVC(vv,digits=1)[1,4], "0.85 (ar1)")
 })
 
 get_vcout <- function(x,g="Subject") {
