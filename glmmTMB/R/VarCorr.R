@@ -248,11 +248,15 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     if(length(use.c) == 0)
 	stop("Must show either standard deviations or variances")
     formatCor <- function(x,maxlen=0) {
+        ## x: correlation matrix
+        ## maxlen: max number of RE std devs per term;
+        ##         really a *minimum* length here! pad to (maxlen)
+        ##         columns as necessary
         x <- as(x, "matrix")
         dig <- max(2, digits - 2) # use 'digits' !
         ## n.b. not using formatter() for correlations
         cc <- format(round(x, dig), nsmall = dig)
-        cc[!lower.tri(cc)] <- ""
+        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
         nr <- nrow(cc)
         if (nr < maxlen) {
             cc <- cbind(cc, matrix("", nr, maxlen-nr))
@@ -266,11 +270,13 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         return(n)
     }
     getCorSD <- function(x,type="stddev",maxlen=0) {
-        r <- attr(x,type)
+        r <- attr(x,type) ## extract stddev *or* correlation from x
         if (type=="correlation") {
+            ## transform to char matrix
             r <- formatCor(r,maxlen)
-            if (maxlen>0) 
-                r <- r[, -maxlen, drop = FALSE]
+            ## drop last column (will be blank since we blanked out
+            ##  the upper triangle + diagonal)
+            r <- r[, -ncol(r), drop = FALSE]
         }
         covstruct <- getCovstruct(x)
         if (covstruct %in% c("ar1","cs")) {
