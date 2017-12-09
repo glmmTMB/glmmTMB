@@ -93,8 +93,32 @@ profile.glmmTMB <- function(fitted, which=NULL,
     return(dd)
 }
 
+#' @importFrom splines interpSpline backSpline
 confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
-    ## find locations of top-level (fixed + VarCorr) parameters
-    ## fit splines?
-    ## invert splines
+    ## FIXME: lots of bulletproofing:
+    ##   non-monotonic values: error and/or linear interpolation
+    ##   non-monotonic spline,
+    ## find CIs for a single parameter
+    ci_fun <- function(dd) {
+        dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
+        dd$min <- min(dd$value)
+        halves <- with(dd,split(dd,.focal>.focal[which.min(value)]))
+        res <- vapply(halves,ci_fun_half,numeric(1))
+        names(res) <- c("lwr","upr")
+        return(res)
+    }
+    ## fit spline and invert for one half (lower, upper) of the profile
+    ci_fun_half <- function(hh) {
+        for_spl <- splines::interpSpline(value-min~.focal,hh)
+        bak_spl <- splines::backSpline(for_spl)
+        predict(bak_spl,c(1.96))$y
+    }
+    objList <- split(object,object$.par)
+    if (is.null(parm)) {
+        parm <- seq_along(objList)
+    } else {
+        stop("parameter selection not yet implemented")
+    }
+    ci_mat <- t(vapply(objList,ci_fun,numeric(2)))
+    return(ci_mat)
 }
