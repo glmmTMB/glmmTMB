@@ -4,14 +4,14 @@
 #' @param which which parameters to profile, specified by position
 #' @param level_max maximum confidence interval target for profile
 #' @param npts target number of points in the profile
-#' @param parallel method (if any) for parallel computation
-#' @param ncpus number of CPUs/cores to use for parallel computation
-#' @param cl cluster to use for parallel computation
+#' @param stepfac initial step factor (fraction of estimated standard deviation)
 #' @param trace print tracing information? If \code{trace=FALSE} or 0,
 #' no tracing; if \code{trace=1}, print names of parameters currently
 #' being profiled; if \code{trace>1}, turn on tracing for the
 #' underlying \code{\link{tmbprofile}} function
-#' @param stepfac initial step factor (fraction of estimated standard deviation)
+#' @param parallel method (if any) for parallel computation
+#' @param ncpus number of CPUs/cores to use for parallel computation
+#' @param cl cluster to use for parallel computation
 #' @param ... additional arguments passed to \code{\link{tmbprofile}}
 #' @return An object of class \code{profile.glmmTMB}, which is also a
 #' data frame, with columns \code{.par} (parameter being profiled),
@@ -32,7 +32,7 @@
 #' @export
 profile.glmmTMB <- function(fitted,
                             which=NULL,
-                            levelmax = 0.95,
+                            level_max = 0.95,
                             npts = 8,
                             stepfac = 1/4,
                             trace = FALSE,
@@ -52,7 +52,7 @@ profile.glmmTMB <- function(fitted,
         parallel <- "no"
     }
 
-    ytol <- qnorm((1+levelmax)/2)
+    ytol <- qnorm((1+level_max)/2)
     ystep <- ytol/npts
     
     ## get sds

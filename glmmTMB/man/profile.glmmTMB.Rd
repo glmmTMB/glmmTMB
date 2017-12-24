@@ -4,14 +4,17 @@
 \alias{profile.glmmTMB}
 \title{Compute likelihood profiles for a fitted model}
 \usage{
-\method{profile}{glmmTMB}(fitted, which = NULL, levelmax = 0.95, npts = 8,
-  stepfac = 1/4, trace = FALSE, parallel = c("no", "multicore", "snow"),
-  ncpus = getOption("profile.ncpus", 1L), cl = NULL, ...)
+\method{profile}{glmmTMB}(fitted, which = NULL, level_max = 0.95,
+  npts = 8, stepfac = 1/4, trace = FALSE, parallel = c("no",
+  "multicore", "snow"), ncpus = getOption("profile.ncpus", 1L), cl = NULL,
+  ...)
 }
 \arguments{
 \item{fitted}{a fitted \code{glmmTMB} object}
 
 \item{which}{which parameters to profile, specified by position}
+
+\item{level_max}{maximum confidence interval target for profile}
 
 \item{npts}{target number of points in the profile}
 
@@ -29,8 +32,6 @@ underlying \code{\link{tmbprofile}} function}
 \item{cl}{cluster to use for parallel computation}
 
 \item{...}{additional arguments passed to \code{\link{tmbprofile}}}
-
-\item{level_max}{maximum confidence interval target for profile}
 }
 \value{
 An object of class \code{profile.glmmTMB}, which is also a
