@@ -2,6 +2,8 @@
 #' 
 #' @param fitted a fitted \code{glmmTMB} object
 #' @param which which parameters to profile, specified by position
+#' @param level_max maximum confidence interval target for profile
+#' @param npts target number of points in the profile
 #' @param parallel method (if any) for parallel computation
 #' @param ncpus number of CPUs/cores to use for parallel computation
 #' @param cl cluster to use for parallel computation
@@ -15,11 +17,11 @@
 #' data frame, with columns \code{.par} (parameter being profiled),
 #' \code{.focal} (value of focal parameter), value (negative log-likelihood).
 #' @examples
+#' \dontrun{
 #' m1 <- glmmTMB(count~ mined + (1|site), 
 #'        zi=~mined, family=poisson, data=Salamanders)
-#' \dontrun{
-#' salamander_prof1 <- profile(m1,ytol=0.5, parallel="multicore",
-#'                             ncpus=2, trace=1)
+#' salamander_prof1 <- profile(m1, parallel="multicore",
+#'                             ncpus=2, trace=1, which=1)
 #' }
 #' salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
 #' if (require("ggplot2")) {
@@ -28,12 +30,15 @@
 #' }
 #' @importFrom TMB tmbprofile
 #' @export
-profile.glmmTMB <- function(fitted, which=NULL,
+profile.glmmTMB <- function(fitted,
+                            which=NULL,
+                            levelmax = 0.95,
+                            npts = 8,
+                            stepfac = 1/4,
+                            trace = FALSE,
                             parallel = c("no", "multicore", "snow"),
                             ncpus = getOption("profile.ncpus", 1L),
                             cl = NULL,
-                            trace = FALSE,
-                            stepfac = 1/4,
                             ...) {
 
     ## lots of boilerplate parallel-handling stuff, copied from lme4
@@ -47,24 +52,40 @@ profile.glmmTMB <- function(fitted, which=NULL,
         parallel <- "no"
     }
 
+    ytol <- qnorm((1+levelmax)/2)
+    ystep <- ytol/npts
+    
     ## get sds
     vv <- vcov(fitted,full=TRUE)
     sds <- sqrt(diag(vv))
 
-    ## get pars: for now, all of them
-    pars <- seq_along(sds)
-
-    stds <- sqrt
+    ## get pars: need to match up names with internal positions
+    if (is.null(which)) which <-  seq_along(sds)
+    if (FALSE) {
+        ## would like complete solution for assigning names to components
+        ## (cond (fix/theta), zi (fix/theta), disp (fix/theta))
+        ## and matching order of parameters in object ...
+        nn <- names(object$obj$par)
+        drop_null <- function(x) x[lengths(x)>0]
+        ff <- drop_null(fixef(object))
+        pn <- lapply(ff,names)
+        nm <- unlist(mapply(paste,names(ff),pn,MoreArgs=list(sep="_"),
+                  SIMPLIFY=FALSE))
+    }
     FUN <- local({
         function(p,s) {
             if (trace>0) cat("parameter",p,"\n")
-            return(tmbprofile(fitted$obj,name=p,h=s/4,
+            return(tmbprofile(fitted$obj,
+                              name=p,
+                              h=s/4,
+                              ytol=ytol,
+                              ystep=ystep,
                               trace=(trace>1),...))
         }
     })
     if (do_parallel) {
         if (parallel == "multicore") {
-            L <- parallel::mcmapply(FUN, pars, sds, mc.cores = ncpus,
+            L <- parallel::mcmapply(FUN, which, sds, mc.cores = ncpus,
                                     SIMPLIFY=FALSE)
         } else if (parallel=="snow") {
             if (is.null(cl)) {
@@ -73,13 +94,13 @@ profile.glmmTMB <- function(fitted, which=NULL,
                 cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
             }
             ## run
-            L <- parallel::clusterMap(cl, FUN, pars, sds)
+            L <- parallel::clusterMap(cl, FUN, which, sds)
             if (new_cl) {
                 ## stop cluster
                 parallel::stopCluster(cl)
             }
         } else {
-            L <- mapply(FUN, pars, sds)
+            L <- mapply(FUN, which, sds)
         }
     }
     dfun <- function(x,n) {
@@ -87,7 +108,7 @@ profile.glmmTMB <- function(fitted, which=NULL,
         names(dd0)[2] <- ".focal"
         return(dd0)
     }
-    dd <- Map(dfun, L, colnames(vv)[pars])
+    dd <- Map(dfun, L, colnames(vv)[which])
     dd <- do.call(rbind,dd)
     class(dd) <- c("profile.glmmTMB","data.frame")
     return(dd)
