@@ -4,14 +4,23 @@
 \alias{profile.glmmTMB}
 \title{Compute likelihood profiles for a fitted model}
 \usage{
-\method{profile}{glmmTMB}(fitted, which = NULL, parallel = c("no",
-  "multicore", "snow"), ncpus = getOption("profile.ncpus", 1L), cl = NULL,
-  trace = FALSE, stepfac = 1/4, ...)
+\method{profile}{glmmTMB}(fitted, which = NULL, levelmax = 0.95, npts = 8,
+  stepfac = 1/4, trace = FALSE, parallel = c("no", "multicore", "snow"),
+  ncpus = getOption("profile.ncpus", 1L), cl = NULL, ...)
 }
 \arguments{
 \item{fitted}{a fitted \code{glmmTMB} object}
 
 \item{which}{which parameters to profile, specified by position}
+
+\item{npts}{target number of points in the profile}
+
+\item{stepfac}{initial step factor (fraction of estimated standard deviation)}
+
+\item{trace}{print tracing information? If \code{trace=FALSE} or 0,
+no tracing; if \code{trace=1}, print names of parameters currently
+being profiled; if \code{trace>1}, turn on tracing for the
+underlying \code{\link{tmbprofile}} function}
 
 \item{parallel}{method (if any) for parallel computation}
 
@@ -19,14 +28,9 @@
 
 \item{cl}{cluster to use for parallel computation}
 
-\item{trace}{print tracing information? If \code{trace=FALSE} or 0,
-no tracing; if \code{trace=1}, print names of parameters currently
-being profiled; if \code{trace>1}, turn on tracing for the
-underlying \code{\link{tmbprofile}} function}
-
-\item{stepfac}{initial step factor (fraction of estimated standard deviation)}
-
 \item{...}{additional arguments passed to \code{\link{tmbprofile}}}
+
+\item{level_max}{maximum confidence interval target for profile}
 }
 \value{
 An object of class \code{profile.glmmTMB}, which is also a
@@ -37,11 +41,11 @@ data frame, with columns \code{.par} (parameter being profiled),
 Compute likelihood profiles for a fitted model
 }
 \examples{
+\dontrun{
 m1 <- glmmTMB(count~ mined + (1|site), 
        zi=~mined, family=poisson, data=Salamanders)
-\dontrun{
-salamander_prof1 <- profile(m1,ytol=0.5, parallel="multicore",
-                            ncpus=2, trace=1)
+salamander_prof1 <- profile(m1, parallel="multicore",
+                            ncpus=2, trace=1, which=1)
 }
 salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
 if (require("ggplot2")) {
