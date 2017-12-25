@@ -1,9 +1,9 @@
 #' Compute likelihood profiles for a fitted model
 #' 
 #' @param fitted a fitted \code{glmmTMB} object
-#' @param which which parameters to profile, specified by position
+#' @param parm which parameters to profile, specified by position
 #' @param level_max maximum confidence interval target for profile
-#' @param npts target number of points in the profile
+#' @param npts target number of points in (each half of) the profile (\emph{approximate})
 #' @param stepfac initial step factor (fraction of estimated standard deviation)
 #' @param trace print tracing information? If \code{trace=FALSE} or 0,
 #' no tracing; if \code{trace=1}, print names of parameters currently
@@ -21,18 +21,24 @@
 #' m1 <- glmmTMB(count~ mined + (1|site), 
 #'        zi=~mined, family=poisson, data=Salamanders)
 #' salamander_prof1 <- profile(m1, parallel="multicore",
-#'                             ncpus=2, trace=1, which=1)
+#'                             ncpus=2, trace=1)
+#' ## testing
+#' salamander_prof1 <- profile(m1, trace=1,parm=1)
+#' salamander_prof1M <- profile(m1, trace=1,parm=1, npts = 4)
+#' 
 #' }
 #' salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
 #' if (require("ggplot2")) {
-#'     ggplot(salamander_prof1,aes(.focal,value)) + geom_point() + geom_line()+
-#'         facet_wrap(~.par,scale="free_x")
+#'     ggplot(salamander_prof1,aes(.focal,sqrt(value))) +
+#'         geom_point() + geom_line()+
+#'         facet_wrap(~.par,scale="free_x")+
+#'     geom_hline(yintercept=1.96,linetype=2)
 #' }
 #' @importFrom TMB tmbprofile
 #' @export
 profile.glmmTMB <- function(fitted,
-                            which=NULL,
-                            level_max = 0.95,
+                            parm=NULL,
+                            level_max = 0.99,
                             npts = 8,
                             stepfac = 1/4,
                             trace = FALSE,
@@ -52,15 +58,14 @@ profile.glmmTMB <- function(fitted,
         parallel <- "no"
     }
 
-    ytol <- qnorm((1+level_max)/2)
+    ytol <- qchisq(level_max,1)
     ystep <- ytol/npts
-    
-    ## get sds
+
     vv <- vcov(fitted,full=TRUE)
     sds <- sqrt(diag(vv))
 
     ## get pars: need to match up names with internal positions
-    if (is.null(which)) which <-  seq_along(sds)
+    if (is.null(parm)) parm <-  seq_along(sds)
     if (FALSE) {
         ## would like complete solution for assigning names to components
         ## (cond (fix/theta), zi (fix/theta), disp (fix/theta))
@@ -72,6 +77,10 @@ profile.glmmTMB <- function(fitted,
         nm <- unlist(mapply(paste,names(ff),pn,MoreArgs=list(sep="_"),
                   SIMPLIFY=FALSE))
     }
+
+    ## only need selected SDs
+    sds <- sds[parm]
+
     FUN <- local({
         function(p,s) {
             if (trace>0) cat("parameter",p,"\n")
@@ -85,7 +94,7 @@ profile.glmmTMB <- function(fitted,
     })
     if (do_parallel) {
         if (parallel == "multicore") {
-            L <- parallel::mcmapply(FUN, which, sds, mc.cores = ncpus,
+            L <- parallel::mcmapply(FUN, parm, sds, mc.cores = ncpus,
                                     SIMPLIFY=FALSE)
         } else if (parallel=="snow") {
             if (is.null(cl)) {
@@ -94,32 +103,47 @@ profile.glmmTMB <- function(fitted,
                 cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
             }
             ## run
-            L <- parallel::clusterMap(cl, FUN, which, sds)
+            L <- parallel::clusterMap(cl, FUN, parm, sds)
             if (new_cl) {
                 ## stop cluster
                 parallel::stopCluster(cl)
             }
-        } else {
-            L <- mapply(FUN, which, sds)
         }
+    } else { ## non-parallel
+        L <- Map(FUN, parm, sds)
     }
     dfun <- function(x,n) {
-        dd0 <- data.frame(.par=n,x)
-        names(dd0)[2] <- ".focal"
+        dd0 <- data.frame(n,x)
+        names(dd0)[1:2] <- c(".par",".focal")
+        dd0$value <- dd0$value - min(dd0$value,na.rm=TRUE)
         return(dd0)
     }
-    dd <- Map(dfun, L, colnames(vv)[which])
+    dd <- Map(dfun, L, colnames(vv)[parm])
     dd <- do.call(rbind,dd)
     class(dd) <- c("profile.glmmTMB","data.frame")
     return(dd)
 }
 
+#' @param object a fitted profile (\code{profile.glmmTMB}) object
+#' @param parm parameter indices
+#' @param level confidence level
+#' @rdname profile.glmmTMB
+#' @details Fits natural splines separately to the points from each half of the profile for each
+#' specified parameter (i.e., values above and below the MLE), then finds the inverse functions
+#' to estimate the endpoints of the confidence interval
+#' @examples
+#' salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
+#' confint(salamander_prof1)
+#' confint(salamander_prof1,level=0.99)
 #' @importFrom splines interpSpline backSpline
+#' @export
 confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:
     ##   non-monotonic values: error and/or linear interpolation
     ##   non-monotonic spline,
     ## find CIs for a single parameter
+
+    qval <- qnorm((1+level)/2)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
         dd$min <- min(dd$value)
@@ -130,16 +154,21 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     }
     ## fit spline and invert for one half (lower, upper) of the profile
     ci_fun_half <- function(hh) {
-        for_spl <- splines::interpSpline(value-min~.focal,hh)
+        if (max(sqrt(hh$value),na.rm=TRUE)<qval) {
+            restr_prof_flag <- TRUE
+        }
+        for_spl <- splines::interpSpline(sqrt(value)~.focal,hh)
         bak_spl <- splines::backSpline(for_spl)
-        predict(bak_spl,c(1.96))$y
+        predict(bak_spl,qval)$y
     }
     objList <- split(object,object$.par)
     if (is.null(parm)) {
         parm <- seq_along(objList)
-    } else {
-        stop("parameter selection not yet implemented")
     }
-    ci_mat <- t(vapply(objList,ci_fun,numeric(2)))
+    restr_prof_flag <- FALSE
+    ci_mat <- t(vapply(objList[parm],ci_fun,numeric(2)))
+    if (restr_prof_flag) {
+        warning("max profile values less than target: consider increasing level_max when computing profiles")
+    }
     return(ci_mat)
 }

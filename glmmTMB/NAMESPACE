@@ -3,6 +3,7 @@
 S3method(VarCorr,glmmTMB)
 S3method(anova,glmmTMB)
 S3method(confint,glmmTMB)
+S3method(confint,profile.glmmTMB)
 S3method(df.residual,glmmTMB)
 S3method(extractAIC,glmmTMB)
 S3method(family,glmmTMB)
