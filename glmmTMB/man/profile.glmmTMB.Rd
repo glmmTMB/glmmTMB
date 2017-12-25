@@ -14,7 +14,7 @@
 \arguments{
 \item{fitted}{a fitted \code{glmmTMB} object}
 
-\item{parm}{which parameters to profile, specified by position}
+\item{parm}{which parameters to profile, specified by index (position)}
 
 \item{level_max}{maximum confidence interval target for profile}
 
@@ -38,8 +38,6 @@ underlying \code{\link{tmbprofile}} function}
 \item{object}{a fitted profile (\code{profile.glmmTMB}) object}
 
 \item{level}{confidence level}
-
-\item{parm}{parameter indices}
 }
 \value{
 An object of class \code{profile.glmmTMB}, which is also a

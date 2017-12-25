@@ -1,7 +1,7 @@
 #' Compute likelihood profiles for a fitted model
 #' 
 #' @param fitted a fitted \code{glmmTMB} object
-#' @param parm which parameters to profile, specified by position
+#' @param parm which parameters to profile, specified by index (position)
 #' @param level_max maximum confidence interval target for profile
 #' @param npts target number of points in (each half of) the profile (\emph{approximate})
 #' @param stepfac initial step factor (fraction of estimated standard deviation)
@@ -125,7 +125,6 @@ profile.glmmTMB <- function(fitted,
 }
 
 #' @param object a fitted profile (\code{profile.glmmTMB}) object
-#' @param parm parameter indices
 #' @param level confidence level
 #' @rdname profile.glmmTMB
 #' @details Fits natural splines separately to the points from each half of the profile for each
