@@ -244,10 +244,12 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
 
   mkNames <- function(tag) {
       X <- getME(object,paste0("X",tag))
-      if (trivialFixef(nn <- colnames(X),tag) &&
-          ## if 'full', keep disp even if trivial
-          !(full && tag =="d")) character(0)
-      else paste(tag,nn,sep="~")
+      if (trivialFixef(nn <- colnames(X),tag)
+          ## if 'full', keep disp even if trivial, if used by family
+          && !(full && tag =="d" && usesDispersion(family(object)$family))) {
+          return(character(0))
+      }
+      return(paste(tag,nn,sep="~"))
   }
 
   nameList <- setNames(list(colnames(getME(object,"X")),
@@ -653,19 +655,6 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         ## call confint.tmbprofile()
     }
     return(ci)
-}
-
-confint.tmbprofile <- function(object, parm=NULL, level = 0.95, ...) {
-    ## find locations of top-level (fixed + VarCorr) parameters
-    ## fit splines?
-    ## invert splines
-}
-
-##' @importFrom TMB tmbprofile
-profile.glmmTMB <- function(fitted, trace=FALSE, ...) {
-    ## lower default spacing?
-    ## use Wald std err for initial stepsize guess?
-    tmbprofile(fitted$obj, trace=trace, ...)
 }
 
 ##' @export
