@@ -613,7 +613,7 @@ glmmTMB <- function (
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
     
-   if (grepl("^truncated", family$family) & (any(y<1)) & (ziformula == ~0))
+   if (grepl("^truncated", family$family) & (!is.factor(y) && any(y<1)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
              "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
 
