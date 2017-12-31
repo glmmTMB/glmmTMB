@@ -23,7 +23,7 @@
 
 \item{estimate}{Logical; Add a 3rd column with estimate ?}
 
-\item{...}{Not used}
+\item{...}{arguments may be passed to \code{\link{profile.merMod}}}
 }
 \description{
 Calculate confidence intervals
@@ -41,4 +41,7 @@ intervals for these derived quantities are asymmetric.
 data(sleepstudy, package="lme4")
 model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
 confint(model)
+\dontrun{
+confint(model,parm=1,method="profile")
+}
 }
