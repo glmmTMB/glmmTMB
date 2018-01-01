@@ -3,6 +3,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
+    
 simfun0 <- function(beta=c(2,1),
                    sd.re=5,
                    ngrp=10,nobs=200,
@@ -77,6 +78,8 @@ test_that("beta", {
                  tol=1e-5)
     expect_equal(c(VarCorr(m1)[[1]][[1]]),
                  0.433230926800709, tol=1e-5)
+    m2 <- update(m1,family=beta_family())
+    expect_equal(coef(summary(m1)),coef(summary(m2)))
  })
 
 test_that("nbinom", {

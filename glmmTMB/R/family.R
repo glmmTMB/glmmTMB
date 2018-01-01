@@ -91,8 +91,10 @@ truncated_nbinom1 <- function(link="log") {
 ##  tests for legal response values
 #' @rdname nbinom2
 #' @export
-betar <- function(link="logit") {
-    return(list(family="betar",link=link,
+beta_family <- function(link="logit") {
+    ## note *internal* name must still be "beta",
+    ## unless/until it's changed in src/glmmTMB.cpp (and R/enum.R is rebuilt)
+    return(list(family="beta",link=link,
                 variance=function(mu,phi) {
                     mu*(1-mu)/(1+phi)
                 },
