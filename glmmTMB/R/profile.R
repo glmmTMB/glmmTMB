@@ -16,6 +16,7 @@
 #' @return An object of class \code{profile.glmmTMB}, which is also a
 #' data frame, with columns \code{.par} (parameter being profiled),
 #' \code{.focal} (value of focal parameter), value (negative log-likelihood).
+#' @importFrom stats profile
 #' @examples
 #' \dontrun{
 #' m1 <- glmmTMB(count~ mined + (1|site), 
