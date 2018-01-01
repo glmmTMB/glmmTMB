@@ -8,16 +8,20 @@
   \subsection{NEW FEATURES}{
     \itemize{
       \item likelihood profiles (via \code{profile}) and likelihood
-      profile confidence intervals (via \code{confint(profile(.))}) are now
-      available, albeit slightly experimental
+      profile confidence intervals (via \code{confint(profile(.))})
+      can now be computed;
+      \code{confint(fitted,method="profile")} also works
      }
    }
    \subsection{BUG FIXES}{
      \itemize{
+       \item built-in \code{betar()} family for Beta regression fixed
+       (and name changed to \code{beta_family()})
      }
    }
    \subsection{USER-VISIBLE CHANGES}{
      \itemize{
+       
      }
    }
  }
