@@ -9,7 +9,7 @@
 \alias{truncated_poisson}
 \alias{truncated_nbinom2}
 \alias{truncated_nbinom1}
-\alias{betar}
+\alias{beta_family}
 \alias{betabinomial}
 \alias{tweedie}
 \title{Family functions for glmmTMB}
@@ -28,7 +28,7 @@ truncated_nbinom2(link = "log")
 
 truncated_nbinom1(link = "log")
 
-betar(link = "logit")
+beta_family(link = "logit")
 
 betabinomial(link = "logit")
 

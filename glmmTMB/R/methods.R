@@ -566,27 +566,32 @@ format.perc <- function (probs, digits) {
 ##' @param component Which of the three components 'cond', 'zi' or
 ##'     'other' to select. Default is to select 'all'.
 ##' @param estimate Logical; Add a 3rd column with estimate ?
-##' @param ... Not used
+##' @param ... arguments may be passed to \code{\link{profile.merMod}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
 ##' confint(model)
+##' \dontrun{
+##' confint(model,parm=1,method="profile")
+##' }
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
                                       "profile"),
                              component = c("all", "cond", "zi", "other"),
-                             estimate = TRUE,...)
+                             estimate = TRUE, ...)
 {
-    dots <- list(...)
-    if (length(dots)>0) {
-        if (is.null(names(dots))) {
-            warning("extra (unnamed) arguments ignored")
-        } else {
-            warning(paste("extra arguments ignored: ",
-                          paste(names(dots),collapse=", ")))
+    method <- match.arg(method)
+    if (method!="profile") {
+        dots <- list(...)
+        if (length(dots)>0) {
+            if (is.null(names(dots))) {
+                warning("extra (unnamed) arguments ignored")
+            } else {
+                warning(paste("extra arguments ignored: ",
+                              paste(names(dots),collapse=", ")))
+            }
         }
     }
-    method <- match.arg(method)
     components <- match.arg(component, several.ok = TRUE)
     components.has <- function(x)
         any(match(c(x, "all"), components, nomatch=0L)) > 0L
@@ -649,10 +654,9 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         ## Take subset
         if (!missing(parm))
             ci <- ci[parm, , drop=FALSE]
-    } else {
-        stop("profile CI not yet implemented")
-        ## FIXME: compute profile(object)
-        ## call confint.tmbprofile()
+    } else {  ## profile CIs
+        pp <- profile(object, parm=parm, level_max=level, ...)
+        ci <- confint(pp)
     }
     return(ci)
 }

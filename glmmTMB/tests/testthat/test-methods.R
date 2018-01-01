@@ -154,6 +154,13 @@ test_that("confint", {
                                               "cond.Std.Dev.Days", "sigma"),
                                             c("2.5 %", "97.5 %")))
     expect_equal(ci, ci.expect, tolerance=1e-6)
+    ## profile CI
+    ci.prof <- confint(fm2,parm=1,method="profile", npts=3)
+    expect_equal(ci.prof,
+                 structure(c(230.846, 271.943),
+                           .Dim = 1:2, .Dimnames = list(
+                                           "(Intercept)", c("lwr", "upr"))),
+                 tolerance=1e-6)
 })
 
 test_that("vcov", {
