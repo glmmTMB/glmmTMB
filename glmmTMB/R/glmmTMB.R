@@ -495,10 +495,6 @@ glmmTMB <- function (
     ##                       subset, weights, na.action, offset,
     ##                       contrasts = NULL, mustart, etastart,
     ##                       control = glmerControl(), ...) {
-
-    
-    ## FIXME: check for offsets in ziformula/dispformula, throw an error
-
     call <- mf <- mc <- match.call()
 
     if (is.character(family))
