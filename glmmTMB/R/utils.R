@@ -427,3 +427,17 @@ GMRFmarginal <- function(Q, i, ...) {
         solve(Q0, as.matrix(Q[i0, i1, drop = FALSE]))
     ans
 }
+
+# test whether a target is found anywhere within an argument
+# FIXME: specify by position?
+# f <- ~ a + offset(x)
+# f2 <- z ~ a
+# in_formula(f,quote(offset))
+# in_formula(f2,quote(offset))
+in_formula <- function(x,target) {
+    if (length(x)==1) {
+        return(identical(x,target))
+    } else {
+        return(any(vapply(x,in_formula,target=target,logical(1))))
+    }
+}
