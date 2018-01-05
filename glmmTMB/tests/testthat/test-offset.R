@@ -33,8 +33,8 @@ test_that("LM with offset in formula", {
 
 test_that("LM with offset in zero-inflation formula", {
     expect_error(glmmTMB(y~x,zi=~1+offset(o), dat))
-}
+})
 
 test_that("LM with offset in dispersion formula", {
     expect_error(glmmTMB(y~x,disp=~1+offset(o), dat))
-}
+})
