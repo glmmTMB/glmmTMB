@@ -30,3 +30,11 @@ test_that("LM with offset in formula", {
     m4 <- glmmTMB(y~x+offset(o))
     expect_equal(fixef(m4)[[1]], coef(m.lm), tol=1e-6)
 })
+
+test_that("LM with offset in zero-inflation formula", {
+    expect_error(glmmTMB(y~x,zi=~1+offset(o), dat))
+})
+
+test_that("LM with offset in dispersion formula", {
+    expect_error(glmmTMB(y~x,disp=~1+offset(o), dat))
+})

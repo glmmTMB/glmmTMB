@@ -71,9 +71,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   grpVar <- with(condList, getGrpVar(reTrms$flist))
 
   nobs <- nrow(fr)
-  ## FIXME: deal with offset in formula
-  ##if (grepl("offset", safeDeparse(formula)))
-  ##  stop("Offsets within formulas not implemented. Use argument.")
 
   if (is.null(offset <- model.offset(fr)))
       offset <- rep(0,nobs)
@@ -498,9 +495,6 @@ glmmTMB <- function (
     ##                       subset, weights, na.action, offset,
     ##                       contrasts = NULL, mustart, etastart,
     ##                       control = glmerControl(), ...) {
-
-    ## FIXME: check for offsets in ziformula/dispformula, throw an error
-
     call <- mf <- mc <- match.call()
 
     if (is.character(family))
@@ -534,9 +528,15 @@ glmmTMB <- function (
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
 
+    if (in_formula(ziformula,quote(offset))) {
+        stop("offsets for zero-inflation not yet implemented")
+    }
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
 
+    if (in_formula(dispformula,quote(offset))) {
+        stop("offsets for dispersion not yet implemented")
+    }
     environment(dispformula) <- environment(formula)
     call$dispformula <- dispformula
 

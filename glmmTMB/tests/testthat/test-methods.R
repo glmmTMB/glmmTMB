@@ -95,7 +95,10 @@ test_that("terms", {
     m <- glmmTMB(y~ns(x,3),dd)
     ## if predvars is not properly attached to term, this will
     ## fail as it tries to construct a 3-knot spline from a single point
-    model.matrix(delete.response(terms(m)),data=data.frame(x=1))
+    expect_equal(model.matrix(delete.response(terms(m)),data=data.frame(x=1)),
+      structure(c(1, 0, 0, 0), .Dim = c(1L, 4L), .Dimnames = list("1", 
+    c("(Intercept)", "ns(x, 3)1", "ns(x, 3)2", "ns(x, 3)3")),
+    assign = c(0L, 1L, 1L, 1L)))
 })
 
 test_that("summary_print", {
