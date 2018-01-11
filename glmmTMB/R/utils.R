@@ -380,6 +380,21 @@ inForm <- function(form,value) {
     return(any(sapply(form,inForm,value)))
 }
 
+## test whether a target is found anywhere within an argument
+##  oops, wrote this twice! which is better, inForm or in_formula?
+## FIXME: specify by position?
+## f <- ~ a + offset(x)
+## f2 <- z ~ a
+## in_formula(f,quote(offset))
+## in_formula(f2,quote(offset))
+in_formula <- function(x,target) {
+    if (length(x)==1) {
+        return(identical(x,target))
+    } else {
+        return(any(vapply(x,in_formula,target=target,logical(1))))
+    }
+}
+
 # drop.special(x~a + b+ offset(z))
 drop.special <- function(term,value=quote(offset)) {
     if (length(term)==2 && identical(term[[1]],value)) return(NULL)
@@ -428,16 +443,3 @@ GMRFmarginal <- function(Q, i, ...) {
     ans
 }
 
-# test whether a target is found anywhere within an argument
-# FIXME: specify by position?
-# f <- ~ a + offset(x)
-# f2 <- z ~ a
-# in_formula(f,quote(offset))
-# in_formula(f2,quote(offset))
-in_formula <- function(x,target) {
-    if (length(x)==1) {
-        return(identical(x,target))
-    } else {
-        return(any(vapply(x,in_formula,target=target,logical(1))))
-    }
-}

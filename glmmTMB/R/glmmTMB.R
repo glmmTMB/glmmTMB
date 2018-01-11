@@ -7,7 +7,9 @@
 ##' @param fr frame
 ##' @param yobs observed y
 ##' @param respCol response column
-##' @param offset offset
+##' @param offset offset for conditional model
+##' @param offsetzi offset for zero-inflated model
+##' @param offsetd offset for dispersion model
 ##' @param weights weights
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
@@ -24,7 +26,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs,
                        respCol,
-                       offset, weights,
+                       offset, offsetzi, offsetd,
+                       weights,
                        size=NULL,
                        family,
                        se=NULL,
@@ -63,7 +66,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     condList  <- getXReTrms(formula, mf, fr)
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr,
-                                        ranOK=FALSE, "dispersion")
+                            ranOK=FALSE, "dispersion")
 
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -72,6 +75,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   nobs <- nrow(fr)
 
+  ## *conditional* offset has been previously stored in model
+  ## frame by 
   if (is.null(offset <- model.offset(fr)))
       offset <- rep(0,nobs)
 
@@ -118,6 +123,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     yobs,
     respCol,
     offset,
+    offsetzi,
+    offsetd,
     weights,
     size,
     ## information about random effects structure
@@ -169,6 +176,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+##' \item{offset}{offset vector, or vector of zeros if offset not specified}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -547,6 +555,7 @@ glmmTMB <- function (
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
 
+    ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
         ziformula <-
             update(RHSForm(drop.special2(formula),as.form=TRUE),
@@ -613,7 +622,8 @@ glmmTMB <- function (
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
     
-   if (grepl("^truncated", family$family) & (!is.factor(y) && any(y<1)) & (ziformula == ~0))
+   if (grepl("^truncated", family$family) &&
+       (!is.factor(y) && any(y<1)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
              "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
 
@@ -624,6 +634,8 @@ glmmTMB <- function (
                    yobs=y,
                    respCol,
                    offset,
+                   offsetzi,
+                   offsetd,
                    weights,
                    family=family,
                    se=se,
@@ -681,9 +693,11 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
     namedList(optCtrl, profile, collect)
 }
 
+##' collapse duplicated observations
 ##' @importFrom stats runif xtabs
 .collectDuplicates <- function(data.tmb) {
-    nm <- c("X", "Z", "Xzi", "Zzi", "Xd", "offset", "yobs",
+    nm <- c("X", "Z", "Xzi", "Zzi", "Xd", "offset",
+            "offsetzi", "offsetd", "yobs",
             "size"[length(data.tmb$size) > 0])
     A <- do.call(cbind, data.tmb[nm])
     ## Restore random seed on exit
@@ -710,7 +724,7 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
     nm <- c("X", "Z", "Xzi", "Zzi", "Xd")
     data.tmb[nm] <- lapply(data.tmb[nm],
                            function(x) x[keep, , drop=FALSE])
-    nm <- c("offset", "yobs", "size")
+    nm <- c("offset", "offsetzi", "offsetd", "yobs", "size")
     data.tmb[nm] <- lapply(data.tmb[nm],
                            function(x) x[keep])
     ## Update weights
