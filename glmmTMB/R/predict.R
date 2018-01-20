@@ -122,14 +122,14 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## append to existing model frame
   augFr <- rbind(object$fr,newFr)
 
-  w <- which(is.na(augFr[[respNm]]))
+  w <- nrow(object$fr) + seq_len(nrow(newFr))
 
   ## ugh. as.numeric() is to fix GH#178
   ## not sure if we need to be working harder to translate
   ##   the variety of possible binomial inputs in this column?
   ## binomial()$initialize (1) needs y, nobs, weights defined;
   ##   (2) can't handle NA values in y
-  yobs <- as.numeric(augFr[[names(omi$respCol)]])
+  yobs <- augFr[[names(omi$respCol)]]
 
   ## match zitype arg with internal name
   ziPredNm <- switch(match.arg(zitype),
