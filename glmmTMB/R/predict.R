@@ -122,13 +122,11 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## append to existing model frame
   augFr <- rbind(object$fr,newFr)
 
+  ## Pointers into 'new rows' of augmented data frame.
   w <- nrow(object$fr) + seq_len(nrow(newFr))
 
-  ## ugh. as.numeric() is to fix GH#178
-  ## not sure if we need to be working harder to translate
-  ##   the variety of possible binomial inputs in this column?
-  ## binomial()$initialize (1) needs y, nobs, weights defined;
-  ##   (2) can't handle NA values in y
+  ## Variety of possible binomial inputs are taken care of by
+  ## 'mkTMBStruc' further down.
   yobs <- augFr[[names(omi$respCol)]]
 
   ## match zitype arg with internal name
