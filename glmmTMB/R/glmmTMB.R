@@ -26,7 +26,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs,
                        respCol,
-                       offset, offsetzi, offsetd,
+                       offset=NULL, offsetzi=NULL, offsetd=NULL,
                        weights,
                        size=NULL,
                        family,
@@ -76,8 +76,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   nobs <- nrow(fr)
 
   ## *conditional* offset has been previously stored in model
-  ## frame by 
-  if (is.null(offset <- model.offset(fr)))
+  ## frame by model.frame()
+  if (is.null(model.offset(fr)))
       offset <- rep(0,nobs)
 
   if (is.null(weights)) weights <- rep(1, nobs)
