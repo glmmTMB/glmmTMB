@@ -1,6 +1,8 @@
 stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
+source(system.file("test_data/glmmTMB-test-funs.R",
+                   package="glmmTMB", mustWork=TRUE))
 
 data(sleepstudy, cbpp,
      package = "lme4")
@@ -93,11 +95,11 @@ test_that("varcorr_print", {
     ## non-pos-def case (we don't care at the moment)
     m1 <- suppressWarnings(glmmTMB(y~c+(c|w)+(1|s),data=dd,
                   family=gaussian))
-    cc <- capture.output(print(VarCorr(m1),digits=2))
+    cc <- squash_white(capture.output(print(VarCorr(m1),digits=2)))
     expect_equal(cc,
-    c("", "Conditional model:", " Groups   Name        Std.Dev. Corr", 
-" w        (Intercept) 3.1e-05      ", "          c2          4.9e-06  0.98", 
-" s        (Intercept) 3.4e-05      ", " Residual             9.6e-01      "
-))
-    })
-
+        c("Conditional model:", "Groups Name Std.Dev. Corr",
+          "w (Intercept) 3.1e-05", 
+          "c2 4.9e-06 0.98",
+          "s (Intercept) 3.4e-05",
+          "Residual 9.6e-01"))
+})
