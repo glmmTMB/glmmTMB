@@ -1,6 +1,8 @@
 stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
+source(system.file("test_data/glmmTMB-test-funs.R",
+                   package="glmmTMB", mustWork=TRUE))
 
 context("VarCorr")
 ##       ---------------
@@ -30,8 +32,7 @@ expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
              tol=5e-3)
 ## have to take only last 4 lines
 ## some white space diffs introduced in fancy-corr-printing
-strip.white <- function(x) gsub("(^ +| +$)","",x)
-pfun <- function(x) strip.white(capture.output(print(VarCorr(x),digits=3)))
+pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=3)))
 expect_equal(tail(pfun(fm1),4),
              pfun(fm1C))
 
