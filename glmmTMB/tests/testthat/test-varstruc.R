@@ -30,7 +30,7 @@ fm_nest_lmer <- lmer(Reaction ~ Days + (1|Subject/fDays), sleepstudy,
 
 ## model with ~ Days + ... gives non-pos-def Hessian
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
-                   ar1(row+0| Subject), sleepstudy)
+                      (1|Subject) + ar1(row+0| Subject), sleepstudy)
 
 test_that("diag", {
    ## two formulations of diag and lme4 all give same log-lik
@@ -51,12 +51,22 @@ test_that("cs_homog", {
 
 })
 
-test_that("ar1", {
+test_that("basic ar1", {
     vv <- VarCorr(fm_ar1)[["cond"]]
-    cc <- cov2cor(vv[[1]])
+    cc <- cov2cor(vv[[2]])
     expect_equal(cc[1,],cc[,1])
     expect_equal(unname(cc[1,]),
                  cc[1,2]^(0:(nrow(cc)-1)))
+})
+
+test_that("print ar1 (>1 RE)", {
+    cco <- gsub(" +"," ",
+                trimws(capture.output(print(summary(fm_ar1),digits=1))))
+    expect_equal(cco[12:14],
+                 c("Subject (Intercept) 4e-01 0.6",
+                   "Subject.1 row1 4e+03 60.8 0.87 (ar1)", 
+                   "Residual 8e+01 8.9"))
+
 })
 
 ## FIXME: simpler to check formatVC() directly?
