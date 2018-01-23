@@ -72,9 +72,9 @@ test_that("print ar1 (>1 RE)", {
 })
 
 ## FIXME: simpler to check formatVC() directly?
-get_vcout <- function(x,g="Subject") {
+get_vcout <- function(x,g="\\bSubject\\b") {
     cc <- capture.output(print(VarCorr(x)))
-    cc1 <- grep(g,cc,value=TRUE)
+    cc1 <- grep(g,cc,value=TRUE,perl=TRUE)
     ss <- strsplit(cc1,"[^[:alnum:][:punct:]]+")[[1]]
     return(ss[nchar(ss)>0])
 }
@@ -83,9 +83,9 @@ test_that("varcorr_print", {
     ss <- get_vcout(fm_cs1)
     expect_equal(length(ss),5)
     expect_equal(ss[4:5],c("0.081","(cs)"))
-    ss2 <- get_vcout(fm_ar1)
+    ss2 <- get_vcout(fm_ar1,g="\\bSubject.1\\b")
     expect_equal(length(ss2),5)
-    expect_equal(ss2[4:5],c("0.853","(ar1)"))
+    expect_equal(ss2[4:5],c("0.873","(ar1)"))
 
     ## test case with two different size V-C
     set.seed(101)
