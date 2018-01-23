@@ -16,7 +16,9 @@
    \subsection{BUG FIXES}{
      \itemize{
        \item built-in \code{betar()} family for Beta regression fixed
-       (and name changed to \code{beta_family()})
+       (and name changed to \code{beta_family()}) (GH #278)
+       \item fixed summary-printing bug when some random effects have
+       covariance terms and others don't (GH #291)
      }
    }
    \subsection{USER-VISIBLE CHANGES}{
