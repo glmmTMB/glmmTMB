@@ -17,6 +17,8 @@
      \itemize{
        \item built-in \code{betar()} family for Beta regression fixed
        (and name changed to \code{beta_family()}) (GH #278)
+       \item fixed segfault in predict method when response is specified
+       as two columns (GH #289)
        \item fixed summary-printing bug when some random effects have
        covariance terms and others don't (GH #291)
      }
