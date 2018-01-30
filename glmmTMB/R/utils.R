@@ -374,6 +374,7 @@ anySpecial <- function(term) {
 }
 
 ##' test formula: does it contain a particular element?
+##' @rdname formFuns
 ##' @examples
 ##' inForm(z~.,quote(.))
 ##' inForm(z~y,quote(.))
@@ -383,6 +384,7 @@ anySpecial <- function(term) {
 ##' f2 <- z ~ a
 ##' inForm(f,quote(offset))
 ##' inForm(f2,quote(offset))
+##' @export
 ##' @keywords internal
 inForm <- function(form,value) {
     if (any(sapply(form,identical,value))) return(TRUE)
@@ -391,6 +393,7 @@ inForm <- function(form,value) {
 }
 
 ##' extract terms with a given head from an expression/formula
+##' @rdname formFuns
 ##' @param term expression/formula
 ##' @param value head of terms to extract
 ##' @return a list of expressions
@@ -398,6 +401,7 @@ inForm <- function(form,value) {
 ##' extractForm(~a+offset(b),quote(offset))
 ##' extractForm(~c,quote(offset))
 ##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' @export
 ##' @keywords internal
 extractForm <- function(term,value) {
     if (!inForm(term,value)) return(NULL)
@@ -414,9 +418,11 @@ extractForm <- function(term,value) {
 
 ##' return a formula/expression with a given value stripped, where
 ##' it occurs as the head of a term
+##' @rdname formFuns
 ##' @examples 
 ##' dropHead(~a+offset(b),quote(offset))
 ##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
+##' @export
 ##' @keywords internal
 dropHead <- function(term,value) {
     if (!inForm(term,value)) return(term)
@@ -457,6 +463,7 @@ drop.special <- function(term,value=quote(offset)) {
 }
 
 ##' drop terms matching a particular value from an expression
+##' @rdname formFuns
 ## from Gabor Grothendieck: recursive solution
 ## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
 ##' @param x formula
