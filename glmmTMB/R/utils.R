@@ -384,13 +384,16 @@ anySpecial <- function(term) {
 ##' inForm(f,quote(offset))
 ##' inForm(f2,quote(offset))
 ##' @keywords internal
-##' 
 inForm <- function(form,value) {
     if (any(sapply(form,identical,value))) return(TRUE)
     if (all(sapply(form,length)==1)) return(FALSE)
     return(any(vapply(form,inForm,value,FUN.VALUE=logical(1))))
 }
 
+##' extract terms with a given head from an expression/formula
+##' @param term expression/formula
+##' @param value head of terms to extract
+##' @return a list of expressions
 ##' @examples
 ##' extractForm(~a+offset(b),quote(offset))
 ##' extractForm(~c,quote(offset))
@@ -409,9 +412,12 @@ extractForm <- function(term,value) {
              extractForm(term[[3]],value)))
 }
 
-##' @examples
+##' return a formula/expression with a given value stripped, where
+##' it occurs as the head of a term
+##' @examples 
 ##' dropHead(~a+offset(b),quote(offset))
 ##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
+##' @keywords internal
 dropHead <- function(term,value) {
     if (!inForm(term,value)) return(term)
     if (is.name(term) || !is.language(term)) return(term)
@@ -450,11 +456,13 @@ drop.special <- function(term,value=quote(offset)) {
     }
 }
 
+##' drop terms matching a particular value from an expression
 ## from Gabor Grothendieck: recursive solution
 ## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
 ##' @param x formula
 ##' @param value term to remove from formula
 ##' @param preserve (integer) retain the specified occurrence of "value"
+##' @keywords internal
 drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
   k <- 0
   proc <- function(x) {

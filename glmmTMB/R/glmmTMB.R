@@ -66,8 +66,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     condList  <- getXReTrms(formula, mf, fr)
     ## *conditional* offset has been previously stored in model
     ## frame by model.frame()
-    if (is.null(model.offset(fr))) {
-        condList$offset <- rep(0,nrow(condList$X))
+    if (!is.null(moff <- model.offset(fr))) {
+        condList$offset <- moff
     }
 
     ziList    <- getXReTrms(ziformula, mf, fr)
@@ -572,13 +572,20 @@ glmmTMB <- function (
     formList <- list(formula, ziformula, dispformula)
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
-        ## substitute "|" by "+"; drop special;
+        ## substitute "|" by "+"; drop specials
         f <- noSpecials(subbars(f),delete=FALSE)
         ## add 'naked' vars from offsets
         if (inForm(f,quote(offset))) {
+            ## get offset terms
+            ## need actual vars from offsets ... functions of offsets
+            ##  (e.g. log(x)) will get incorporated as is in the model
+            ##  frame, will break when we try to evaluate the offset
+            ##  terms within getXReTrms()
             offsetList <- extractForm(f,quote(offset))
-            offsetVars <- lapply(offsetList,dropHead,quote(offset))
-            f[[3]] <- sumTerms(c(list(f[[3]]),offsetVars))
+            offsetVars <- unlist(lapply(offsetList,all.vars))
+            ## convert back to symbols and append to the formula
+            f[[3]] <- sumTerms(c(list(f[[3]]),
+                                 lapply(offsetVars,as.name)))
         }
         formList[[i]] <- f
     }
@@ -704,6 +711,7 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
 }
 
 ##' collapse duplicated observations
+##' @keywords internal
 ##' @importFrom stats runif xtabs
 .collectDuplicates <- function(data.tmb) {
     nm <- c("X", "Z", "Xzi", "Zzi", "Xd", "offset",
