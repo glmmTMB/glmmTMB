@@ -67,7 +67,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## *conditional* offset has been previously stored in model
     ## frame by model.frame()
     if (is.null(model.offset(fr))) {
-        condList$offset <- rep(0,nobs)
+        condList$offset <- rep(0,nrow(condList$X))
     }
 
     ziList    <- getXReTrms(ziformula, mf, fr)
@@ -126,7 +126,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     respCol,
     offset = condList$offset,
     zioffset = ziList$offset,
-    offsetd = dispList$offset,
+    doffset = dispList$offset,
     weights,
     size,
     ## information about random effects structure
@@ -208,7 +208,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         terms <- list(fixed=terms(terms_fixed))
         if (inForm(fixedform,quote(offset))) {
             for (o in extractForm(fixedform,quote(offset))) {
-                offset <- offset + eval(o,envir=environment(fixedform))
+                offvar <- o[[2]] ## offset(var) -> var
+                offset <- offset + eval(offvar,envir=fr,
+                                        enclos=environment(fixedform))
             }
         }
     }
@@ -568,9 +570,18 @@ glmmTMB <- function (
     ## used in any of the terms
     ## combine all formulas
     formList <- list(formula, ziformula, dispformula)
-    formList <- lapply(formList,
-                   function(x) noSpecials(subbars(x), delete=FALSE))
-                       ## substitute "|" by "+"; drop special
+    for (i in seq_along(formList)) {
+        f <- formList[[i]] ## abbreviate
+        ## substitute "|" by "+"; drop special;
+        f <- noSpecials(subbars(f),delete=FALSE)
+        ## add 'naked' vars from offsets
+        if (inForm(f,quote(offset))) {
+            offsetList <- extractForm(f,quote(offset))
+            offsetVars <- lapply(offsetList,dropHead,quote(offset))
+            f[[3]] <- sumTerms(c(list(f[[3]]),offsetVars))
+        }
+        formList[[i]] <- f
+    }
     combForm <- do.call(addForm,formList)
     environment(combForm) <- environment(formula)
     ## model.frame.default looks for these objects in the environment
@@ -635,8 +646,6 @@ glmmTMB <- function (
                    mf, fr,
                    yobs=y,
                    respCol,
-                   zioffset,
-                   doffset,
                    weights,
                    family=family,
                    se=se,

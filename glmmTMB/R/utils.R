@@ -34,12 +34,16 @@ RHSForm <- function(form,as.form=FALSE) {
 ##                response=response)
 ## }
 
+sumTerms <- function(termList) {
+    Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),termList)
+}
+
 ## better version -- operates on language objects (no deparse())
 reOnly <- function(f,response=FALSE,bracket=TRUE) {
     ff <- f
     if (bracket)
         ff <- lapply(findbars(ff),makeOp,quote(`(`)) ## bracket-protect terms
-    ff <- Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),ff)
+    ff <- sumTerms(ff)
     if (response && length(f)==3) {
         form <- makeOp(f[[2]],ff,quote(`~`))
     } else {
@@ -403,6 +407,24 @@ extractForm <- function(term,value) {
     }
     return(c(extractForm(term[[2]],value),
              extractForm(term[[3]],value)))
+}
+
+##' @examples
+##' dropHead(~a+offset(b),quote(offset))
+##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
+dropHead <- function(term,value) {
+    if (!inForm(term,value)) return(term)
+    if (is.name(term) || !is.language(term)) return(term)
+    if (identical(head(term),value)) {
+        return(term[[2]])
+    }
+    if (length(term) == 2) {
+        return(dropHead(term[[2]],value))
+    } else  if (length(term) == 3) {
+        term[[2]] <- dropHead(term[[2]],value)
+        term[[3]] <- dropHead(term[[3]],value)
+        return(term)
+    } else stop("length(term)>3")
 }
 
 
