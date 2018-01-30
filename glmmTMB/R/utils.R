@@ -369,32 +369,44 @@ anySpecial <- function(term) {
     any(findReTrmClasses() %in% all.names(term))
 }
 
-## does the formula contain a particular value?
-## inForm(z~.,quote(.))
-## inForm(z~y,quote(.))
-## inForm(z~a+b+c,quote(c))
-## inForm(z~a+b+(d+e),quote(c))
+##' test formula: does it contain a particular element?
+##' @examples
+##' inForm(z~.,quote(.))
+##' inForm(z~y,quote(.))
+##' inForm(z~a+b+c,quote(c))
+##' inForm(z~a+b+(d+e),quote(c))
+##' f <- ~ a + offset(x)
+##' f2 <- z ~ a
+##' inForm(f,quote(offset))
+##' inForm(f2,quote(offset))
+##' @keywords internal
+##' 
 inForm <- function(form,value) {
     if (any(sapply(form,identical,value))) return(TRUE)
     if (all(sapply(form,length)==1)) return(FALSE)
-    return(any(sapply(form,inForm,value)))
+    return(any(vapply(form,inForm,value,FUN.VALUE=logical(1))))
 }
 
-## test whether a target is found anywhere within an argument
-##  oops, wrote this twice! which is better, inForm or in_formula?
-## FIXME: specify by position?
-## f <- ~ a + offset(x)
-## f2 <- z ~ a
-## in_formula(f,quote(offset))
-## in_formula(f2,quote(offset))
-in_formula <- function(x,target) {
-    if (length(x)==1) {
-        return(identical(x,target))
-    } else {
-        return(any(vapply(x,in_formula,target=target,logical(1))))
+##' @examples
+##' extractForm(~a+offset(b),quote(offset))
+##' extractForm(~c,quote(offset))
+##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' @keywords internal
+extractForm <- function(term,value) {
+    if (!inForm(term,value)) return(NULL)
+    if (is.name(term) || !is.language(term)) return(NULL)
+    if (identical(head(term),value)) {
+        return(term)
     }
+    if (length(term) == 2) {
+        return(extractForm(term[[2]],value))
+    }
+    return(c(extractForm(term[[2]],value),
+             extractForm(term[[3]],value)))
 }
 
+
+## UNUSED (same function as drop.special2?)
 # drop.special(x~a + b+ offset(z))
 drop.special <- function(term,value=quote(offset)) {
     if (length(term)==2 && identical(term[[1]],value)) return(NULL)
@@ -418,11 +430,14 @@ drop.special <- function(term,value=quote(offset)) {
 
 ## from Gabor Grothendieck: recursive solution
 ## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
+##' @param x formula
+##' @param value term to remove from formula
+##' @param preserve (integer) retain the specified occurrence of "value"
 drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
   k <- 0
   proc <- function(x) {
     if (length(x) == 1) return(x)
-    if (x[[1]] == value && !((k<<-k+1) %in% preserve)) return(x[[1]])
+    if (x[[1]] == value && !((k <<- k+1) %in% preserve)) return(x[[1]])
     replace(x, -1, lapply(x[-1], proc))
   }
   update(proc(x), substitute(. ~ . - x,list(x=value)))

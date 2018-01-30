@@ -7,9 +7,8 @@
 ##' @param fr frame
 ##' @param yobs observed y
 ##' @param respCol response column
-##' @param offset offset for conditional model
-##' @param offsetzi offset for zero-inflated model
-##' @param offsetd offset for dispersion model
+##' @param zioffset offset for zero-inflated model
+##' @param doffset offset for dispersion model
 ##' @param weights weights
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
@@ -26,7 +25,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        mf, fr,
                        yobs,
                        respCol,
-                       offset=NULL, offsetzi=NULL, offsetd=NULL,
+                       ## no conditional offset argument
+                       ##  (should be stored in model frame)
                        weights,
                        size=NULL,
                        family,
@@ -64,6 +64,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     condList  <- getXReTrms(formula, mf, fr)
+    ## *conditional* offset has been previously stored in model
+    ## frame by model.frame()
+    if (is.null(model.offset(fr))) {
+        condList$offset <- rep(0,nobs)
+    }
+
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, "dispersion")
@@ -75,10 +81,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   nobs <- nrow(fr)
 
-  ## *conditional* offset has been previously stored in model
-  ## frame by model.frame()
-  if (is.null(model.offset(fr)))
-      offset <- rep(0,nobs)
 
   if (is.null(weights)) weights <- rep(1, nobs)
 
@@ -122,9 +124,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## Zdisp=dispList$Z,
     yobs,
     respCol,
-    offset,
-    offsetzi,
-    offsetd,
+    offset = condList$offset,
+    zioffset = ziList$offset,
+    offsetd = dispList$offset,
     weights,
     size,
     ## information about random effects structure
@@ -202,9 +204,15 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         X <- model.matrix(fixedform, fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
 
+        offset <- rep(0,nrow(X))
         terms <- list(fixed=terms(terms_fixed))
-
+        if (inForm(fixedform,quote(offset))) {
+            for (o in extractForm(fixedform,quote(offset))) {
+                offset <- offset + eval(o,envir=environment(fixedform))
+            }
+        }
     }
+    
     ## ran-effects model frame (for predvars)
     ## important to COPY formula (and its environment)?
     ranform <- formula
@@ -237,7 +245,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss, terms)
+    namedList(X, Z, reTrms, ss, terms, offset)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -397,7 +405,7 @@ binomialType <- function(x) {
 ##' Specifying \code{~.} will set the right-hand side of the zero-inflation
 ##' formula identical to the right-hand side of the main (conditional effects)
 ##' formula; terms can also be added or subtracted. \strong{Offset terms
-##' will automatically be dropped from the conditional effects formula.}
+##' will automatically be dropped from the conditional effects formula when using \code{~.}}
 ##' The zero-inflation model uses a logit link.
 ##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the
 ##'     default \code{~1} specifies the standard dispersion given any family.
@@ -406,7 +414,7 @@ binomialType <- function(x) {
 ##'     The dispersion model uses a log link. 
 ##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
-##' @param offset offset
+##' @param offset offset for conditional model (only):
 ##' @param se whether to return standard errors
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
@@ -536,15 +544,9 @@ glmmTMB <- function (
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
 
-    if (in_formula(ziformula,quote(offset))) {
-        stop("offsets for zero-inflation not yet implemented")
-    }
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
 
-    if (in_formula(dispformula,quote(offset))) {
-        stop("offsets for dispersion not yet implemented")
-    }
     environment(dispformula) <- environment(formula)
     call$dispformula <- dispformula
 
@@ -633,9 +635,8 @@ glmmTMB <- function (
                    mf, fr,
                    yobs=y,
                    respCol,
-                   offset,
-                   offsetzi,
-                   offsetd,
+                   zioffset,
+                   doffset,
                    weights,
                    family=family,
                    se=se,
@@ -697,7 +698,7 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
 ##' @importFrom stats runif xtabs
 .collectDuplicates <- function(data.tmb) {
     nm <- c("X", "Z", "Xzi", "Zzi", "Xd", "offset",
-            "offsetzi", "offsetd", "yobs",
+            "zioffset", "doffset", "yobs",
             "size"[length(data.tmb$size) > 0])
     A <- do.call(cbind, data.tmb[nm])
     ## Restore random seed on exit
@@ -724,7 +725,7 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
     nm <- c("X", "Z", "Xzi", "Zzi", "Xd")
     data.tmb[nm] <- lapply(data.tmb[nm],
                            function(x) x[keep, , drop=FALSE])
-    nm <- c("offset", "offsetzi", "offsetd", "yobs", "size")
+    nm <- c("offset", "zioffset", "doffset", "yobs", "size")
     data.tmb[nm] <- lapply(data.tmb[nm],
                            function(x) x[keep])
     ## Update weights
