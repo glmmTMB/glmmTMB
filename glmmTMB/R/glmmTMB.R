@@ -66,6 +66,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     condList  <- getXReTrms(formula, mf, fr)
     ## *conditional* offset has been previously stored in model
     ## frame by model.frame()
+    ## this is redundant (but harmless) if offset was specified in formula, but
+    ##  necessary if it was specified as a separate argument
     if (!is.null(moff <- model.offset(fr))) {
         condList$offset <- moff
     }
