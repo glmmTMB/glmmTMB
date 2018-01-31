@@ -27,3 +27,9 @@ expect_error( predict(g2, nd) )   ## Error: Not OK due to new parameters
 
 g3 <- glmmTMB(Reaction ~ ar1(DaysFac + 0| Subject), sleepstudy)
 expect_warning( predict(g3, nd) ) ## OK: AR1 does not introduce new parameters
+
+context("Predict two-column response case")
+
+fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial, data=Salamanders)
+expect_equal(predict(fm),
+             c(0.05469247, 0.29269818)[Salamanders$mined] )
