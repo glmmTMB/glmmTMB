@@ -477,7 +477,13 @@ drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
     if (x[[1]] == value && !((k <<- k+1) %in% preserve)) return(x[[1]])
     replace(x, -1, lapply(x[-1], proc))
   }
-  update(proc(x), substitute(. ~ . - x,list(x=value)))
+  ## handle 1- and 2-sided formulas
+  if (length(x)==2) {
+      newform <- substitute(~ . -x, list(x=value))
+  } else {
+      newform <- substitute(. ~ . - x, list(x=value))
+  }
+  return(update(proc(x), newform))
 }
 
 ## Sparse Schur complement (Marginal of precision matrix)

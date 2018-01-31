@@ -203,7 +203,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
-        X <- model.matrix(fixedform, fr, contrasts)
+        X <- model.matrix(drop.special2(fixedform), fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
 
         offset <- rep(0,nrow(X))
@@ -584,9 +584,11 @@ glmmTMB <- function (
             ##  frame, will break when we try to evaluate the offset
             ##  terms within getXReTrms()
             offsetList <- extractForm(f,quote(offset))
+            ## now *drop* offsets in formula
+            f <- drop.special2(f)
             offsetVars <- unlist(lapply(offsetList,all.vars))
             ## convert back to symbols and append to the formula
-            f[[3]] <- sumTerms(c(list(f[[3]]),
+            f[[length(f)]] <- sumTerms(c(list(f[[length(f)]]),
                                  lapply(offsetVars,as.name)))
         }
         formList[[i]] <- f
