@@ -29,7 +29,7 @@
   than in the presence of their father.
   \emph{Animal Behaviour} \bold{74} 1099--1106.
   \url{http://www.sciencedirect.com/science/article/B6W9W-4PK8B6H-8/2/e43cfbaad4dc0bb2207adfc54a460c89};
-  \url{http://www.highstat.com/Book2/ZuurDataMixedModelling.zip}
+  \url{http://www.highstat.com/Books/Book2/ZuurDataMixedModelling.zip}
 }
 \references{
   Zuur, A. F., E. N. Ieno, N. J. Walker, A. A. Saveliev, and G. M. Smith (2009)

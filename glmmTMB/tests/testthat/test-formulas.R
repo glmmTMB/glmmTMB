@@ -42,4 +42,8 @@ test_that("noSpecial", {
     ff <- y~1+(((us(1|f))))
     expect_equal(noSpecials(ff,delete=FALSE),y~1+(1|f))
     expect_equal(noSpecials(ff),y~1)
+    ## 'naked' special - left alone: GH #261
+    ff2 <- y ~ us
+    expect_equal(noSpecials(ff2),ff2)
+
 })

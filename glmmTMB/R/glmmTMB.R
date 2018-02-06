@@ -4,11 +4,13 @@
 ##' @param dispformula dispersion formula
 ##' @param combForm combined formula
 ##' @param mf call to model frame
-##' @param fr frame
+##' @param fr model frame
 ##' @param yobs observed y
 ##' @param respCol response column
-##' @param offset offset
+##' @param zioffset offset for zero-inflated model
+##' @param doffset offset for dispersion model
 ##' @param weights weights
+##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @param se (logical) compute standard error?
 ##' @param call original \code{glmmTMB} call
@@ -17,13 +19,15 @@
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
 ##' @keywords internal
-##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
                        mf, fr,
                        yobs,
                        respCol,
-                       offset, weights,
+                       ## no conditional offset argument
+                       ##  (should be stored in model frame)
+                       weights,
+                       size=NULL,
                        family,
                        se=NULL,
                        call=NULL,
@@ -36,7 +40,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     mapArg <- NULL
     # family$family contains the *name* of the family
     if ( usesDispersion(family$family) && (dispformula == ~0) ) {
-        if (family != "gaussian")
+        if (family$family != "gaussian")
             stop("~0 dispersion not implemented for ",
                  sQuote(family$family),
                  " family")
@@ -61,7 +65,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     condList  <- getXReTrms(formula, mf, fr)
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr,
-                                        ranOK=FALSE, "dispersion")
+                            ranOK=FALSE, "dispersion")
 
   condReStruc <- with(condList, getReStruc(reTrms, ss))
   ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -69,15 +73,39 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   grpVar <- with(condList, getGrpVar(reTrms$flist))
 
   nobs <- nrow(fr)
-  ## FIXME: deal with offset in formula
-  ##if (grepl("offset", safeDeparse(formula)))
-  ##  stop("Offsets within formulas not implemented. Use argument.")
 
-  if (is.null(offset <- model.offset(fr)))
-      offset <- rep(0,nobs)
+  if (is.null(weights)) weights <- rep(1, nobs)
 
-  if (is.null(weights <- fr[["(weights)"]]))
-    weights <- rep(1,nobs)
+  ## binomial family:
+  ## binomial()$initialize was only executed locally  
+  ## yobs could be a factor -> treat as binary following glm
+  ## yobs could be cbind(success, failure)
+  ## yobs could be binary
+  ## (yobs, weights) could be (proportions, size)
+  ## On the C++ side 'yobs' must be the number of successes.
+  if ( binomialType(family$family) ) {
+    if (is.factor(yobs)) {
+      ## following glm, ‘success’ is interpreted as the factor not
+      ## having the first level (and hence usually of having the
+      ## second level).
+      yobs <- pmin(as.numeric(yobs)-1,1)
+      size <- rep(1, nobs)
+    } else {
+      if(is.matrix(yobs)) { # yobs=cbind(success, failure)
+        size <- yobs[,1] + yobs[,2]
+        yobs <- yobs[,1] #successes
+      } else {
+      if(all(yobs %in% c(0,1))) { #binary
+        size <- rep(1, nobs)
+      } else { #proportions
+          yobs <- weights * yobs
+          size <- weights
+          weights <- rep(1, nobs)
+        }
+      }
+    }
+  }
+  if (is.null(size)) size <- numeric(0)
 
   data.tmb <- namedList(
     X = condList$X,
@@ -88,8 +116,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## Zdisp=dispList$Z,
     yobs,
     respCol,
-    offset,
+    offset = condList$offset,
+    zioffset = ziList$offset,
+    doffset = dispList$offset,
     weights,
+    size,
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,
@@ -139,6 +170,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+##' \item{offset}{offset vector, or vector of zeros if offset not specified}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -157,16 +189,28 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         X <- NULL
     } else {
         mf$formula <- fixedform
-
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
-        
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
-        X <- model.matrix(fixedform, fr, contrasts)
+        X <- model.matrix(drop.special2(fixedform), fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
 
+        offset <- rep(0,nobs)
         terms <- list(fixed=terms(terms_fixed))
-
+        if (inForm(fixedform,quote(offset))) {
+            ## hate to match offset terms with model frame names
+            ##  via deparse, but since that what was presumably done
+            ##  internally to get the model frame names in the first place ...
+            for (o in extractForm(fixedform,quote(offset))) {
+                offset_nm <- deparse(o)
+                ## don't think this will happen, but ...
+                if (length(offset_nm)>1) {
+                    stop("trouble reconstructing offset name")
+                }
+                offset <- offset + fr[[offset_nm]]
+            }
+        }
     }
+    
     ## ran-effects model frame (for predvars)
     ## important to COPY formula (and its environment)?
     ranform <- formula
@@ -199,7 +243,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss, terms)
+    namedList(X, Z, reTrms, ss, terms, offset)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -327,12 +371,19 @@ stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
   c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
 }
 
-.okWeightFamilies <- c("binomial", "betabinomial")
+#.okWeightFamilies <- c("binomial", "betabinomial")
 
 okWeights <- function(x) {
-  !is.na(match(x, .okWeightFamilies))
+	TRUE
+  #!is.na(match(x, .okWeightFamilies))
   ## x %in% .okWeightFamilies
 }	
+
+## Families for which binomial()$initialize is used
+.binomialFamilies <- c("binomial", "betabinomial")
+binomialType <- function(x) {
+  !is.na(match(x, .binomialFamilies))
+}
 
 ##' Fit models with TMB
 ##' @param formula combined fixed and random effects formula, following lme4
@@ -352,7 +403,7 @@ okWeights <- function(x) {
 ##' Specifying \code{~.} will set the right-hand side of the zero-inflation
 ##' formula identical to the right-hand side of the main (conditional effects)
 ##' formula; terms can also be added or subtracted. \strong{Offset terms
-##' will automatically be dropped from the conditional effects formula.}
+##' will automatically be dropped from the conditional effects formula when using \code{~.}}
 ##' The zero-inflation model uses a logit link.
 ##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the
 ##'     default \code{~1} specifies the standard dispersion given any family.
@@ -360,8 +411,8 @@ okWeights <- function(x) {
 ##'     For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
 ##'     The dispersion model uses a log link. 
 ##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
-##' @param weights weights, as in \code{glm}. Only implemented for binomial and betabinomial families.
-##' @param offset offset
+##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
+##' @param offset offset for conditional model (only):
 ##' @param se whether to return standard errors
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
@@ -374,7 +425,7 @@ okWeights <- function(x) {
 ##' @details
 ##' \itemize{
 ##' \item binomial models with more than one trial (i.e., not binary/Bernoulli)
-##' must be specified in the form \code{prob ~ ..., weights = N} rather than in
+##' can either be specified in the form \code{prob ~ ..., weights = N} or in
 ##' the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
 ##' \item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
 ##' \item by default, vector-valued random effects are fitted with
@@ -415,7 +466,7 @@ okWeights <- function(x) {
 ##' 
 ##' ## Binomial model
 ##' data(cbpp, package="lme4")
-##' (tmbm1 <- glmmTMB(incidence/size ~ period + (1 | herd), weights=size,
+##' (tmbm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1 | herd),
 ##'                data=cbpp, family=binomial))
 ##' 
 ##' ## Dispersion model
@@ -458,9 +509,6 @@ glmmTMB <- function (
     ##                       subset, weights, na.action, offset,
     ##                       contrasts = NULL, mustart, etastart,
     ##                       control = glmerControl(), ...) {
-
-    ## FIXME: check for offsets in ziformula/dispformula, throw an error
-
     call <- mf <- mc <- match.call()
 
     if (is.character(family))
@@ -493,6 +541,10 @@ glmmTMB <- function (
 
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
+    ## add offset-specified-as-argument to formula as + offset(...)
+    if (!is.null(offset)) {
+        formula <- addForm0(formula,makeOp(substitute(offset),op=quote(offset)))
+    }
 
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
@@ -507,6 +559,7 @@ glmmTMB <- function (
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
 
+    ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
         ziformula <-
             update(RHSForm(drop.special2(formula),as.form=TRUE),
@@ -517,9 +570,12 @@ glmmTMB <- function (
     ## used in any of the terms
     ## combine all formulas
     formList <- list(formula, ziformula, dispformula)
-    formList <- lapply(formList,
-                   function(x) noSpecials(subbars(x), delete=FALSE))
-                       ## substitute "|" by "+"; drop special
+    for (i in seq_along(formList)) {
+        f <- formList[[i]] ## abbreviate
+        ## substitute "|" by "+"; drop specials
+        f <- noSpecials(subbars(f),delete=FALSE)
+        formList[[i]] <- f
+    }
     combForm <- do.call(addForm,formList)
     environment(combForm) <- environment(formula)
     ## model.frame.default looks for these objects in the environment
@@ -542,7 +598,7 @@ glmmTMB <- function (
     weights <- as.vector(model.weights(fr))
 
     if(!is.null(weights) & !okWeights(family$family)) {
-      stop("'weights' are not available for this family. See `dispformula` instead.")
+      stop("'weights' are not available for this family.")
     }
 
     if (is.null(weights)) weights <- rep(1,nobs)
@@ -560,9 +616,7 @@ glmmTMB <- function (
     ## (name *must* be 'y' to match guts of family()$initialize
     y <- fr[,respCol]
     if (is.matrix(y)) {
-        if (family$family=="binomial") {
-            warning("binomial models with N>1 are preferably specified as proportion~..., weights=N")
-        } else {
+        if ( ! binomialType(family$family) ) {
             stop("matrix-valued responses are not allowed")
         }
     }
@@ -572,13 +626,11 @@ glmmTMB <- function (
     ## (2) warn on non-integer values
     etastart <- start <- mustart <- NULL
     if (!is.null(family$initialize)) {
-        eval(family$initialize)
+        local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
-    ## binomial()$initialize does *not* coerce logical to numeric ...
-    ##  may cause downstream problems, e.g. with predict()
-    y <- as.numeric(y)
     
-   if (grepl("^truncated", family$family) & (any(y<1)) & (ziformula == ~0))
+   if (grepl("^truncated", family$family) &&
+       (!is.factor(y) && any(y<1)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
              "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
 
@@ -588,7 +640,6 @@ glmmTMB <- function (
                    mf, fr,
                    yobs=y,
                    respCol,
-                   offset,
                    weights,
                    family=family,
                    se=se,
@@ -610,6 +661,8 @@ glmmTMB <- function (
 ##' @param optCtrl Passed as argument \code{control} to \code{nlminb}.
 ##' @param profile Logical; Experimental option to improve speed and
 ##'                robustness when a model has many fixed effects
+##' @param collect Logical; Experimental option to improve speed by
+##'                recognizing duplicated observations.
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
 ##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
@@ -634,18 +687,66 @@ glmmTMB <- function (
 ##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
 ##' @export
 glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
-                           profile=FALSE) {
+                           profile=FALSE,
+                           collect=FALSE) {
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile)
+    namedList(optCtrl, profile, collect)
+}
+
+##' collapse duplicated observations
+##' @keywords internal
+##' @importFrom stats runif xtabs
+.collectDuplicates <- function(data.tmb) {
+    nm <- c("X", "Z", "Xzi", "Zzi", "Xd", "offset",
+            "zioffset", "doffset", "yobs",
+            "size"[length(data.tmb$size) > 0])
+    A <- do.call(cbind, data.tmb[nm])
+    ## Restore random seed on exit
+    ## FIXME: Simplify ?
+    seed <- .GlobalEnv$.Random.seed
+    on.exit({
+        if (is.null(seed))
+            rm(".Random.seed", envir=.GlobalEnv)
+        else
+            .GlobalEnv$.Random.seed <- seed
+    })
+    ## Generate hash code for data terms
+    hash <- as.vector(A %*% runif(ncol(A)))
+    hash <- format(hash, nsmall=20)
+    keep <- !duplicated(hash)
+    collect <- factor(hash, levels=hash[keep])
+    ## Check for collisions
+    rownames(A) <- NULL
+    A0 <- A[keep, , drop=FALSE]
+    if( ! identical (A,
+                     A0[unclass(collect), ]) )
+        stop("Hash code collision !")
+    ## Reduce
+    nm <- c("X", "Z", "Xzi", "Zzi", "Xd")
+    data.tmb[nm] <- lapply(data.tmb[nm],
+                           function(x) x[keep, , drop=FALSE])
+    nm <- c("offset", "zioffset", "doffset", "yobs", "size")
+    data.tmb[nm] <- lapply(data.tmb[nm],
+                           function(x) x[keep])
+    ## Update weights
+    data.tmb$weights <- xtabs(data.tmb$weights ~ collect)
+    data.tmb
 }
 
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
+
+    if (control $ collect) {
+        ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
+        ## original data (with duplicates) after fitting.
+        data.tmb.old <- TMBStruc$data.tmb
+        TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
+    }
 
     if (control $ profile) {
         obj <- with(TMBStruc,
@@ -743,6 +844,13 @@ fitTMB <- function(TMBStruc) {
         warning("Model convergence problem; ",
                 fit$message, ". ",
                 "See vignette('troubleshooting')")
+
+    if (control $ collect) {
+        ## Undo changes made to the data
+        TMBStruc$data.tmb <- data.tmb.old
+        obj$env$data <- obj$env$dataSanitize(data.tmb.old)
+        obj$retape()
+    }
 
     modelInfo <- with(TMBStruc,
                       namedList(nobs=nrow(data.tmb$X),

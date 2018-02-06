@@ -95,7 +95,10 @@ test_that("terms", {
     m <- glmmTMB(y~ns(x,3),dd)
     ## if predvars is not properly attached to term, this will
     ## fail as it tries to construct a 3-knot spline from a single point
-    model.matrix(delete.response(terms(m)),data=data.frame(x=1))
+    expect_equal(model.matrix(delete.response(terms(m)),data=data.frame(x=1)),
+      structure(c(1, 0, 0, 0), .Dim = c(1L, 4L), .Dimnames = list("1", 
+    c("(Intercept)", "ns(x, 3)1", "ns(x, 3)2", "ns(x, 3)3")),
+    assign = c(0L, 1L, 1L, 1L)))
 })
 
 test_that("summary_print", {
@@ -123,7 +126,7 @@ test_that("sigma", {
 })
 
 test_that("confint", {
-    ci <- confint(fm2)
+    ci <- confint(fm2, 1:2, estimate=FALSE)
     expect_equal(ci,
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),
@@ -133,6 +136,34 @@ test_that("confint", {
         tolerance=1e-6)
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
+    ## Gamma test Std.Dev and sigma
+    ci <- confint(fm2G, estimate=FALSE)
+    ci.expect <- structure(c(5.481017, 0.024778, 0.06761,  0.011595, 0.072046,
+                             5.584018, 0.042922, 0.150456, 0.026438, 0.090737),
+                           .Dim = c(5L,  2L),
+                           .Dimnames = list(c("cond.(Intercept)", "cond.Days",
+                                              "cond.Std.Dev.(Intercept)",
+                                              "cond.Std.Dev.Days",
+                                              "sigma"),
+                                            c("2.5 %", "97.5 %")))
+    expect_equal(ci, ci.expect, tolerance=1e-6)
+    ## nbinom2 test Std.Dev and sigma
+    ci <- confint(fm2NB, estimate=FALSE)
+    ci.expect <- structure(c(5.480987, 0.024816, 0.066177, 0.011344, 183.810585,
+                             5.584226, 0.042899, 0.150918, 0.026355, 444.735666),
+                           .Dim = c(5L,  2L),
+                           .Dimnames = list(c("cond.(Intercept)", "cond.Days",
+                                              "cond.Std.Dev.(Intercept)",
+                                              "cond.Std.Dev.Days", "sigma"),
+                                            c("2.5 %", "97.5 %")))
+    expect_equal(ci, ci.expect, tolerance=1e-6)
+    ## profile CI
+    ci.prof <- confint(fm2,parm=1,method="profile", npts=3)
+    expect_equal(ci.prof,
+                 structure(c(230.846, 271.943),
+                           .Dim = 1:2, .Dimnames = list(
+                                           "(Intercept)", c("lwr", "upr"))),
+                 tolerance=1e-6)
 })
 
 test_that("vcov", {
@@ -143,6 +174,8 @@ test_that("vcov", {
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
           .Names = c("cond1", "cond2", "disp", "", "", "")))
+    ## vcov doesn't include dispersion for non-dispersion families ...
+    expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
 })
 
 set.seed(101)
@@ -164,4 +197,16 @@ test_that("formula", {
     expect_equal(formula(fm2, component="disp", fixed.only=TRUE), ~1)
     expect_equal(formula(fm2, component="zi"), ~0)
     expect_equal(formula(fm2, component="zi", fixed.only=TRUE), ~0)
+})
+
+context("simulate consistency with glm/lm")
+test_that("binomial", {
+    y <- cbind(1:10,10)
+    f1 <- glmmTMB(y ~ 1, family=binomial())
+    f2 <- glm    (y ~ 1, family=binomial())
+    set.seed(1)
+    s1 <- simulate(f1, 5)
+    set.seed(1)
+    s2 <- simulate(f2, 5)
+    expect_equal(max(abs(as.matrix(s1) - as.matrix(s2))), 0)
 })

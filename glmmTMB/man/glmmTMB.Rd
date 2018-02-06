@@ -29,7 +29,7 @@ the default \code{~0} specifies no zero-inflation.
 Specifying \code{~.} will set the right-hand side of the zero-inflation
 formula identical to the right-hand side of the main (conditional effects)
 formula; terms can also be added or subtracted. \strong{Offset terms
-will automatically be dropped from the conditional effects formula.}
+will automatically be dropped from the conditional effects formula when using \code{~.}}
 The zero-inflation model uses a logit link.}
 
 \item{dispformula}{a \emph{one-sided} formula for dispersion containing only fixed effects: the
@@ -39,9 +39,9 @@ For an explanation of the dispersion parameter for each family, see (\code{\link
 The dispersion model uses a log link. 
 In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.}
 
-\item{weights}{weights, as in \code{glm}. Only implemented for binomial and betabinomial families.}
+\item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
 
-\item{offset}{offset}
+\item{offset}{offset for conditional model (only):}
 
 \item{se}{whether to return standard errors}
 
@@ -58,7 +58,7 @@ Fit models with TMB
 \details{
 \itemize{
 \item binomial models with more than one trial (i.e., not binary/Bernoulli)
-must be specified in the form \code{prob ~ ..., weights = N} rather than in
+can either be specified in the form \code{prob ~ ..., weights = N} or in
 the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
 \item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
 \item by default, vector-valued random effects are fitted with
@@ -74,7 +74,7 @@ of
 \item \code{exp} (* exponential autocorrelation)
 \item \code{gau} (* Gaussian autocorrelation)
 \item \code{mat} (* Matérn process correlation)
-\item \code{toeplitz} (* Toeplitz)
+\item \code{toep} (* Toeplitz)
 }
 (note structures marked with * are experimental/untested)
 }
@@ -97,7 +97,7 @@ summary(m1)
 
 ## Binomial model
 data(cbpp, package="lme4")
-(tmbm1 <- glmmTMB(incidence/size ~ period + (1 | herd), weights=size,
+(tmbm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1 | herd),
                data=cbpp, family=binomial))
 
 ## Dispersion model
@@ -121,4 +121,3 @@ fixef(m0)$disp
 c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
 }
 }
-

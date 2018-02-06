@@ -1,6 +1,8 @@
 stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
+source(system.file("test_data/glmmTMB-test-funs.R",
+                   package="glmmTMB", mustWork=TRUE))
 
 data(sleepstudy, cbpp,
      package = "lme4")
@@ -30,7 +32,7 @@ fm_nest_lmer <- lmer(Reaction ~ Days + (1|Subject/fDays), sleepstudy,
 
 ## model with ~ Days + ... gives non-pos-def Hessian
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
-                   ar1(row+0| Subject), sleepstudy)
+                      (1|Subject) + ar1(row+0| Subject), sleepstudy)
 
 test_that("diag", {
    ## two formulations of diag and lme4 all give same log-lik
@@ -51,27 +53,39 @@ test_that("cs_homog", {
 
 })
 
-test_that("ar1", {
-    cc <- cov2cor(VarCorr(fm_ar1)[["cond"]][[1]])
+test_that("basic ar1", {
+    vv <- VarCorr(fm_ar1)[["cond"]]
+    cc <- cov2cor(vv[[2]])
     expect_equal(cc[1,],cc[,1])
     expect_equal(unname(cc[1,]),
                  cc[1,2]^(0:(nrow(cc)-1)))
 })
 
-get_vcout <- function(x,g="Subject") {
+test_that("print ar1 (>1 RE)", {
+    cco <- gsub(" +"," ",
+                trimws(capture.output(print(summary(fm_ar1),digits=1))))
+    expect_equal(cco[12:14],
+                 c("Subject (Intercept) 4e-01 0.6",
+                   "Subject.1 row1 4e+03 60.8 0.87 (ar1)", 
+                   "Residual 8e+01 8.9"))
+
+})
+
+## FIXME: simpler to check formatVC() directly?
+get_vcout <- function(x,g="\\bSubject\\b") {
     cc <- capture.output(print(VarCorr(x)))
-    cc1 <- grep(g,cc,value=TRUE)
+    cc1 <- grep(g,cc,value=TRUE,perl=TRUE)
     ss <- strsplit(cc1,"[^[:alnum:][:punct:]]+")[[1]]
     return(ss[nchar(ss)>0])
 }
 
 test_that("varcorr_print", {
     ss <- get_vcout(fm_cs1)
-    expect_equal(length(ss),4)
-    expect_equal(ss[length(ss)],"(cs)")
-    ss2 <- get_vcout(fm_ar1)
-    expect_equal(length(ss2),4)
-    expect_equal(ss2[length(ss2)],"(ar1)")
+    expect_equal(length(ss),5)
+    expect_equal(ss[4:5],c("0.081","(cs)"))
+    ss2 <- get_vcout(fm_ar1,g="\\bSubject.1\\b")
+    expect_equal(length(ss2),5)
+    expect_equal(ss2[4:5],c("0.873","(ar1)"))
 
     ## test case with two different size V-C
     set.seed(101)
@@ -81,11 +95,11 @@ test_that("varcorr_print", {
     ## non-pos-def case (we don't care at the moment)
     m1 <- suppressWarnings(glmmTMB(y~c+(c|w)+(1|s),data=dd,
                   family=gaussian))
-    cc <- capture.output(print(VarCorr(m1),digits=2))
+    cc <- squash_white(capture.output(print(VarCorr(m1),digits=2)))
     expect_equal(cc,
-    c("", "Conditional model:", " Groups   Name        Std.Dev. Corr", 
-" w        (Intercept) 3.1e-05      ", "          c2          4.9e-06  0.98", 
-" s        (Intercept) 3.4e-05      ", " Residual             9.6e-01      "
-))
-    })
-
+        c("Conditional model:", "Groups Name Std.Dev. Corr",
+          "w (Intercept) 3.1e-05", 
+          "c2 4.9e-06 0.98",
+          "s (Intercept) 3.4e-05",
+          "Residual 9.6e-01"))
+})

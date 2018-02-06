@@ -267,7 +267,7 @@ template <class Type>
 struct per_term_info {
   // Input from R
   int blockCode;     // Code that defines structure
-  int blockSize;     // Size of one block 
+  int blockSize;     // Size of one block
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   matrix<Type> dist;
@@ -286,7 +286,7 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockCode = (int) REAL(getListElement(y, "blockCode", &isNumericScalar))[0];
       int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
-      int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];      
+      int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
@@ -535,8 +535,11 @@ Type objective_function<Type>::operator() ()
   DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
   DATA_VECTOR(yobs);
+  DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
   DATA_VECTOR(offset);
+  DATA_VECTOR(zioffset);
+  DATA_VECTOR(doffset);
 
   // Define covariance structure for the conditional model
   DATA_STRUCT(terms, terms_t);
@@ -579,8 +582,8 @@ Type objective_function<Type>::operator() ()
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b + offset;
-  vector<Type> etazi = Xzi * betazi + Zzi * bzi;
-  vector<Type> etad = Xd * betad;
+  vector<Type> etazi = Xzi * betazi + Zzi * bzi + zioffset;
+  vector<Type> etad = Xd * betad + doffset;
 
   // Apply link
   vector<Type> mu(eta.size());
@@ -605,8 +608,8 @@ Type objective_function<Type>::operator() ()
         break;
       case binomial_family:
         s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
-        tmp_loglik = dbinom_robust(yobs(i) * weights(i), weights(i), s1, true);
-        SIMULATE{yobs(i) = rbinom(weights(i), mu(i));}
+        tmp_loglik = dbinom_robust(yobs(i), size(i), s1, true);
+        SIMULATE{yobs(i) = rbinom(size(i), mu(i));}
         break;
       case Gamma_family:
         s1 = phi(i);           // shape
@@ -624,8 +627,10 @@ Type objective_function<Type>::operator() ()
       case betabinomial_family:
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
         s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i) * weights(i), s1, s2, weights(i), true);
-        SIMULATE{yobs(i) = 0;}//TODO: fill in when rbetabinomial is added to TMB
+        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
+        SIMULATE {
+          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
+        }
         break;
       case nbinom1_family:
       case truncated_nbinom1_family:
@@ -736,7 +741,7 @@ Type objective_function<Type>::operator() ()
         }
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
-
+      tmp_loglik *= weights(i);
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }

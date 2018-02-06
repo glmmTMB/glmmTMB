@@ -2,8 +2,8 @@
 % Please edit documentation in R/utils.R
 \name{addForm}
 \alias{addForm}
-\alias{noSpecials}
 \alias{splitForm}
+\alias{noSpecials}
 \title{Combine right-hand sides of an arbitrary number of formulas}
 \usage{
 addForm(...)
@@ -11,7 +11,7 @@ addForm(...)
 splitForm(formula, defaultTerm = "us", allowFixedOnly = TRUE,
   allowNoSpecials = TRUE, debug = FALSE)
 
-noSpecials(term, delete = TRUE)
+noSpecials(term, delete = TRUE, debug = FALSE)
 }
 \arguments{
 \item{...}{arguments to pass through to \code{addForm0}}
@@ -24,6 +24,8 @@ noSpecials(term, delete = TRUE)
 
 \item{allowNoSpecials}{(logical) are formulas with only standard RE terms OK?}
 
+\item{debug}{debugging mode (print stuff)?}
+
 \item{term}{language object}
 }
 \value{
@@ -32,8 +34,6 @@ a list containing elements \code{fixedFormula};
 \code{reTrmAddArgs} list of function+additional arguments, i.e. \code{list()} (non-special), \code{foo()} (no additional arguments), \code{foo(addArgs)} (additional arguments); \code{reTrmClasses} (vector of special functions/classes, as character)
 }
 \description{
-Combine right-hand sides of an arbitrary number of formulas
-
 Parse a formula into fixed formula and random effect terms,
 treating 'special' terms (of the form foo(x|g[,m])) appropriately
 }
@@ -57,9 +57,9 @@ splitForm(~(((x+y))))               ## lots of parentheses
 noSpecials(y~1+us(1|f))
 noSpecials(y~1+us(1|f),delete=FALSE)
 noSpecials(y~us(1|f))
+noSpecials(y~us+1)  ## should *not* delete unless head of a function
 }
 \author{
 Steve Walker
 }
 \keyword{internal}
-

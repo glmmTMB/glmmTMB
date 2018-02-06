@@ -3,20 +3,28 @@
 ##'
 ##' 
 ##' @aliases family_glmmTMB
-##' @param link (character) link function ("log", "logit", "probit", "inverse", "cloglog", or "identity")
+##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", or "identity")
 ##' @return returns a list with (at least) components
 ##' \item{family}{length-1 character vector giving the family name}
 ##' \item{link}{length-1 character vector specifying the link function}
 ##' \item{variance}{a function of either 1 (mean) or 2 (mean and dispersion
 ##' parameter) arguments giving the predicted variance}
-##' @details 
+##' @details
+##' If specified, the dispersion model uses a log link. Denoting the dispersion parameter
+##' as phi=exp(eta) (where eta is the linear predictor from the dispersion model)
+##' and the predicted mean as mu:
 ##'  \describe{
-##'      \item{nbinom2}{has a variance that increases quadratically with the mean (Hardin & Hilbe 2007)}
-##'      \item{nbinom1}{has a variance that increases linearly with the mean (Hardin & Hilbe 2007)}
+##'      \item{gaussian}{(from base R): constant variance=phi}
+##'      \item{Gamma}{(from base R) phi is the shape parameter, i.e variance=mu*phi}
+##'      \item{nbinom2}{variance increases quadratically with the mean (Hardin & Hilbe 2007),
+##' i.e. variance=mu*(1+mu/phi)}
+##'      \item{nbinom1}{variance increases linearly with the mean (Hardin & Hilbe 2007),
+##' i.e. variance=mu*(1+phi)}
 ##'      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean
-##'        which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
+##'           which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
 ##'      \item{genpois}{is the generalized Poisson distribution}
-##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package}
+##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
+##'     i.e. variance=mu*(1-mu)/(1+phi)}
 ##' }
 ##' @references
 ##' \itemize{
@@ -118,8 +126,10 @@ truncated_nbinom1 <- function(link="log") {
 ##  tests for legal response values
 #' @rdname nbinom2
 #' @export
-betar <- function(link="logit") {
-    return(list(family="betar",link=link,
+beta_family <- function(link="logit") {
+    ## note *internal* name must still be "beta",
+    ## unless/until it's changed in src/glmmTMB.cpp (and R/enum.R is rebuilt)
+    return(list(family="beta",link=link,
                 variance=function(mu,phi) {
                     mu*(1-mu)/(1+phi)
                 },
@@ -136,7 +146,8 @@ betabinomial <- function(link="logit") {
     return(list(family="betabinomial",link=link,
            variance=function(mu,phi) {
                stop("variance for betabinomial family not yet implemented")
-           }))
+           },
+           initialize = binomial()$initialize))
 }
 
 #' @rdname nbinom2

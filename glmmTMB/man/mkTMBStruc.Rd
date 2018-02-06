@@ -5,7 +5,7 @@
 \title{Extract info from formulas, reTrms, etc., format for TMB}
 \usage{
 mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
-  offset, weights, family, se = NULL, call = NULL, verbose = NULL,
+  weights, size = NULL, family, se = NULL, call = NULL, verbose = NULL,
   ziPredictCode = "corrected", doPredict = 0, whichPredict = integer(0))
 }
 \arguments{
@@ -25,9 +25,9 @@ mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
 
 \item{respCol}{response column}
 
-\item{offset}{offset}
-
 \item{weights}{weights}
+
+\item{size}{number of trials in binomial and betabinomial families}
 
 \item{family}{family object}
 
@@ -42,9 +42,12 @@ mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
 \item{doPredict}{flag to enable sds of predictions}
 
 \item{whichPredict}{which observations in model frame represent predictions}
+
+\item{zioffset}{offset for zero-inflated model}
+
+\item{doffset}{offset for dispersion model}
 }
 \description{
 Extract info from formulas, reTrms, etc., format for TMB
 }
 \keyword{internal}
-

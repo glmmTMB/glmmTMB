@@ -74,13 +74,15 @@ test_that("Variance structures", {
 })
 
 test_that("Sleepdata Variance components", {
-    ## TODO: Variance Components ("theta"s)
+    expect_equal(c(unlist(VarCorr(fm3))),
+                 c(cond.Subject = 584.247907378213, cond.Subject.1 = 33.6332741779585),
+                 tolerance=1e-5)
 })
 
-gm0 <<- glmmTMB(prop ~ 1 +      (1|herd),
-               weights = size, data = cbpp, family=binomial())
-gm1 <<- glmmTMB(prop ~ period + (1|herd),
-               weights = size, data = cbpp, family=binomial())
+gm0 <<- glmmTMB(cbind(incidence, size-incidence) ~ 1 +      (1|herd),
+               data = cbpp, family=binomial())
+gm1 <<- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd),
+               data = cbpp, family=binomial())
 
 test_that("Basic Binomial CBPP examples", {
 
@@ -98,10 +100,10 @@ test_that("Basic Binomial CBPP examples", {
 test_that("Multiple RE, reordering", {
     ### Multiple RE,  reordering
 
-    tmb1 <- glmmTMB(prop ~ period + (1|herd) + (1|obs),
-                    weights = size, data = cbpp, family=binomial())
-    tmb2 <- glmmTMB(prop ~ period + (1|obs) + (1|herd),
-                    weights = size, data = cbpp, family=binomial())
+    tmb1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd) + (1|obs),
+                    data = cbpp, family=binomial())
+    tmb2 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|obs) + (1|herd),
+                    data = cbpp, family=binomial())
     expect_equal(fixef(tmb1), fixef(tmb2),                   tolerance = 1e-13)
     expect_equal(getME(tmb1, "theta"), getME(tmb2, "theta"), tolerance = 1e-13)
 })
@@ -176,7 +178,8 @@ test_that("close to lme4 results", {
 context("trickier examples")
 
 data(Owls)
-Owls <<- transform(Owls,
+## is <<- necessary ... ?
+Owls <- transform(Owls,
                    ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE),
                    NCalls= SiblingNegotiation) 
 

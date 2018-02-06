@@ -47,4 +47,3 @@ model.matrix( ~f )
 ## Error: 'Failed to parse numeric levels: (Intercept)'
 parseNumLevels( colnames(model.matrix( ~ f-1 )) )
 }
-
