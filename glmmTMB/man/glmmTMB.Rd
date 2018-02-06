@@ -29,7 +29,7 @@ the default \code{~0} specifies no zero-inflation.
 Specifying \code{~.} will set the right-hand side of the zero-inflation
 formula identical to the right-hand side of the main (conditional effects)
 formula; terms can also be added or subtracted. \strong{Offset terms
-will automatically be dropped from the conditional effects formula.}
+will automatically be dropped from the conditional effects formula when using \code{~.}}
 The zero-inflation model uses a logit link.}
 
 \item{dispformula}{a \emph{one-sided} formula for dispersion containing only fixed effects: the
@@ -41,7 +41,7 @@ In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, for
 
 \item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
 
-\item{offset}{offset}
+\item{offset}{offset for conditional model (only):}
 
 \item{se}{whether to return standard errors}
 

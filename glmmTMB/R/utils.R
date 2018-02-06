@@ -34,12 +34,16 @@ RHSForm <- function(form,as.form=FALSE) {
 ##                response=response)
 ## }
 
+sumTerms <- function(termList) {
+    Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),termList)
+}
+
 ## better version -- operates on language objects (no deparse())
 reOnly <- function(f,response=FALSE,bracket=TRUE) {
     ff <- f
     if (bracket)
         ff <- lapply(findbars(ff),makeOp,quote(`(`)) ## bracket-protect terms
-    ff <- Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),ff)
+    ff <- sumTerms(ff)
     if (response && length(f)==3) {
         form <- makeOp(f[[2]],ff,quote(`~`))
     } else {
@@ -52,12 +56,16 @@ reOnly <- function(f,response=FALSE,bracket=TRUE) {
 ## FIXME: would be nice to have multiple dispatch, so
 ## (arg,op) gave unary, (arg,arg,op) gave binary operator
 makeOp <- function(x,y,op=NULL) {
-    if (is.null(op)) {  ## unary
-        substitute(OP(X),list(X=x,OP=y))
+    if (is.null(op) || missing(y)) {  ## unary
+        if (is.null(op)) {
+            substitute(OP(X),list(X=x,OP=y))
+        } else {
+            substitute(OP(X),list(X=x,OP=op))
+        }
     } else substitute(OP(X,Y), list(X=x,OP=op,Y=y))
 }
 
-## combines the right-hand sides of two formulas
+## combines the right-hand sides of two formulas, or a formula and a symbol
 ## @param f1 formula #1
 ## @param f2 formula #2
 ## @examples
@@ -66,10 +74,14 @@ makeOp <- function(x,y,op=NULL) {
 ## addForm0(~x,~y)
 ## }
 ## @keywords internal
-addForm0 <- function(f1,f2) {
-  if (length(f2)==3) warning("discarding LHS of second argument")
-  RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
-  return(f1)
+addForm0 <- function(f1,f2,naked=FALSE) {
+    tilde <- as.symbol("~")
+    if (!identical(head(f2),tilde)) {
+        f2 <- makeOp(f2,tilde)
+    }
+    if (length(f2)==3) warning("discarding LHS of second argument")
+    RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
+    return(f1)
 }
 
 ##' Combine right-hand sides of an arbitrary number of formulas
@@ -141,10 +153,13 @@ expandAllGrpVar <- function(bb) {
     }
 }
 
-## sugar -- ???? this returns '~'  ???
+## sugar: this returns the operator, whether ~ or something else
 head.formula <- head.call <- function(x, ...) {
     x[[1]]
 }
+
+## sugar: we can call head on a symbol and get back the symbol
+head.name <- function(x) { x }
 
 ##' (f)ind (b)ars e(x)tended: recursive
 ##'
@@ -369,17 +384,74 @@ anySpecial <- function(term) {
     any(findReTrmClasses() %in% all.names(term))
 }
 
-## does the formula contain a particular value?
-## inForm(z~.,quote(.))
-## inForm(z~y,quote(.))
-## inForm(z~a+b+c,quote(c))
-## inForm(z~a+b+(d+e),quote(c))
+##' test formula: does it contain a particular element?
+##' @rdname formFuns
+##' @examples
+##' inForm(z~.,quote(.))
+##' inForm(z~y,quote(.))
+##' inForm(z~a+b+c,quote(c))
+##' inForm(z~a+b+(d+e),quote(c))
+##' f <- ~ a + offset(x)
+##' f2 <- z ~ a
+##' inForm(f,quote(offset))
+##' inForm(f2,quote(offset))
+##' @export
+##' @keywords internal
 inForm <- function(form,value) {
     if (any(sapply(form,identical,value))) return(TRUE)
     if (all(sapply(form,length)==1)) return(FALSE)
-    return(any(sapply(form,inForm,value)))
+    return(any(vapply(form,inForm,value,FUN.VALUE=logical(1))))
 }
 
+##' extract terms with a given head from an expression/formula
+##' @rdname formFuns
+##' @param term expression/formula
+##' @param value head of terms to extract
+##' @return a list of expressions
+##' @examples
+##' extractForm(~a+offset(b),quote(offset))
+##' extractForm(~c,quote(offset))
+##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' @export
+##' @keywords internal
+extractForm <- function(term,value) {
+    if (!inForm(term,value)) return(NULL)
+    if (is.name(term) || !is.language(term)) return(NULL)
+    if (identical(head(term),value)) {
+        return(term)
+    }
+    if (length(term) == 2) {
+        return(extractForm(term[[2]],value))
+    }
+    return(c(extractForm(term[[2]],value),
+             extractForm(term[[3]],value)))
+}
+
+##' return a formula/expression with a given value stripped, where
+##' it occurs as the head of a term
+##' @rdname formFuns
+##' @examples 
+##' dropHead(~a+offset(b),quote(offset))
+##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
+##' @export
+##' @keywords internal
+dropHead <- function(term,value) {
+    if (!inForm(term,value)) return(term)
+    if (is.name(term) || !is.language(term)) return(term)
+    if (identical(head(term),value)) {
+        return(term[[2]])
+    }
+    if (length(term) == 2) {
+        return(dropHead(term[[2]],value))
+    } else  if (length(term) == 3) {
+        term[[2]] <- dropHead(term[[2]],value)
+        term[[3]] <- dropHead(term[[3]],value)
+        return(term)
+    } else stop("length(term)>3")
+}
+
+
+## UNUSED (same function as drop.special2?)
 # drop.special(x~a + b+ offset(z))
 drop.special <- function(term,value=quote(offset)) {
     if (length(term)==2 && identical(term[[1]],value)) return(NULL)
@@ -401,16 +473,28 @@ drop.special <- function(term,value=quote(offset)) {
     }
 }
 
+##' drop terms matching a particular value from an expression
+##' @rdname formFuns
 ## from Gabor Grothendieck: recursive solution
 ## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
+##' @param x formula
+##' @param value term to remove from formula
+##' @param preserve (integer) retain the specified occurrence of "value"
+##' @keywords internal
 drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
   k <- 0
   proc <- function(x) {
     if (length(x) == 1) return(x)
-    if (x[[1]] == value && !((k<<-k+1) %in% preserve)) return(x[[1]])
+    if (x[[1]] == value && !((k <<- k+1) %in% preserve)) return(x[[1]])
     replace(x, -1, lapply(x[-1], proc))
   }
-  update(proc(x), substitute(. ~ . - x,list(x=value)))
+  ## handle 1- and 2-sided formulas
+  if (length(x)==2) {
+      newform <- substitute(~ . -x, list(x=value))
+  } else {
+      newform <- substitute(. ~ . - x, list(x=value))
+  }
+  return(update(proc(x), newform))
 }
 
 ## Sparse Schur complement (Marginal of precision matrix)
@@ -428,16 +512,3 @@ GMRFmarginal <- function(Q, i, ...) {
     ans
 }
 
-# test whether a target is found anywhere within an argument
-# FIXME: specify by position?
-# f <- ~ a + offset(x)
-# f2 <- z ~ a
-# in_formula(f,quote(offset))
-# in_formula(f2,quote(offset))
-in_formula <- function(x,target) {
-    if (length(x)==1) {
-        return(identical(x,target))
-    } else {
-        return(any(vapply(x,in_formula,target=target,logical(1))))
-    }
-}

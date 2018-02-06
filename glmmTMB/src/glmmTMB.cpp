@@ -538,6 +538,8 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
   DATA_VECTOR(offset);
+  DATA_VECTOR(zioffset);
+  DATA_VECTOR(doffset);
 
   // Define covariance structure for the conditional model
   DATA_STRUCT(terms, terms_t);
@@ -580,8 +582,8 @@ Type objective_function<Type>::operator() ()
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b + offset;
-  vector<Type> etazi = Xzi * betazi + Zzi * bzi;
-  vector<Type> etad = Xd * betad;
+  vector<Type> etazi = Xzi * betazi + Zzi * bzi + zioffset;
+  vector<Type> etad = Xd * betad + doffset;
 
   // Apply link
   vector<Type> mu(eta.size());

@@ -178,7 +178,8 @@ test_that("close to lme4 results", {
 context("trickier examples")
 
 data(Owls)
-Owls <<- transform(Owls,
+## is <<- necessary ... ?
+Owls <- transform(Owls,
                    ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE),
                    NCalls= SiblingNegotiation) 
 

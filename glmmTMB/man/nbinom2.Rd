@@ -35,7 +35,7 @@ betabinomial(link = "logit")
 tweedie(link = "log")
 }
 \arguments{
-\item{link}{(character) link function ("log", "logit", "probit", "inverse", "cloglog", or "identity")}
+\item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", or "identity")}
 }
 \value{
 returns a list with (at least) components
@@ -48,13 +48,21 @@ parameter) arguments giving the predicted variance}
 Family functions for glmmTMB
 }
 \details{
-\describe{
-     \item{nbinom2}{has a variance that increases quadratically with the mean (Hardin & Hilbe 2007)}
-     \item{nbinom1}{has a variance that increases linearly with the mean (Hardin & Hilbe 2007)}
+If specified, the dispersion model uses a log link. Denoting the dispersion parameter
+as phi=exp(eta) (where eta is the linear predictor from the dispersion model)
+and the predicted mean as mu:
+ \describe{
+     \item{gaussian}{(from base R): constant variance=phi}
+     \item{Gamma}{(from base R) phi is the shape parameter, i.e variance=mu*phi}
+     \item{nbinom2}{variance increases quadratically with the mean (Hardin & Hilbe 2007),
+i.e. variance=mu*(1+mu/phi)}
+     \item{nbinom1}{variance increases linearly with the mean (Hardin & Hilbe 2007),
+i.e. variance=mu*(1+phi)}
      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean
-       which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
+          which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
      \item{genpois}{is the generalized Poisson distribution}
-     \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package}
+     \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
+    i.e. variance=mu*(1-mu)/(1+phi)}
 }
 }
 \references{

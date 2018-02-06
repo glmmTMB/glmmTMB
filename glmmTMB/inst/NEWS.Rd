@@ -11,7 +11,11 @@
       profile confidence intervals (via \code{confint(profile(.))})
       can now be computed;
       \code{confint(fitted,method="profile")} also works
-     }
+      \item offsets are now allowed in the zero-inflation and dispersion
+      formulas as well as in the main (conditional-mean) formula
+      (if \code{offset} is specified as a separate argument, it applies
+      only to the conditional mean)
+    }
    }
    \subsection{BUG FIXES}{
      \itemize{
