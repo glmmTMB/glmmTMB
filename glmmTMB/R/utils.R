@@ -56,12 +56,16 @@ reOnly <- function(f,response=FALSE,bracket=TRUE) {
 ## FIXME: would be nice to have multiple dispatch, so
 ## (arg,op) gave unary, (arg,arg,op) gave binary operator
 makeOp <- function(x,y,op=NULL) {
-    if (is.null(op)) {  ## unary
-        substitute(OP(X),list(X=x,OP=y))
+    if (is.null(op) || missing(y)) {  ## unary
+        if (is.null(op)) {
+            substitute(OP(X),list(X=x,OP=y))
+        } else {
+            substitute(OP(X),list(X=x,OP=op))
+        }
     } else substitute(OP(X,Y), list(X=x,OP=op,Y=y))
 }
 
-## combines the right-hand sides of two formulas
+## combines the right-hand sides of two formulas, or a formula and a symbol
 ## @param f1 formula #1
 ## @param f2 formula #2
 ## @examples
@@ -70,10 +74,14 @@ makeOp <- function(x,y,op=NULL) {
 ## addForm0(~x,~y)
 ## }
 ## @keywords internal
-addForm0 <- function(f1,f2) {
-  if (length(f2)==3) warning("discarding LHS of second argument")
-  RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
-  return(f1)
+addForm0 <- function(f1,f2,naked=FALSE) {
+    tilde <- as.symbol("~")
+    if (!identical(head(f2),tilde)) {
+        f2 <- makeOp(f2,tilde)
+    }
+    if (length(f2)==3) warning("discarding LHS of second argument")
+    RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
+    return(f1)
 }
 
 ##' Combine right-hand sides of an arbitrary number of formulas
@@ -145,10 +153,13 @@ expandAllGrpVar <- function(bb) {
     }
 }
 
-## sugar -- ???? this returns '~'  ???
+## sugar: this returns the operator, whether ~ or something else
 head.formula <- head.call <- function(x, ...) {
     x[[1]]
 }
+
+## sugar: we can call head on a symbol and get back the symbol
+head.name <- function(x) { x }
 
 ##' (f)ind (b)ars e(x)tended: recursive
 ##'

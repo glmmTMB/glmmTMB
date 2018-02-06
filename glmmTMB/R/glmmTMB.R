@@ -4,7 +4,7 @@
 ##' @param dispformula dispersion formula
 ##' @param combForm combined formula
 ##' @param mf call to model frame
-##' @param fr frame
+##' @param fr model frame
 ##' @param yobs observed y
 ##' @param respCol response column
 ##' @param zioffset offset for zero-inflated model
@@ -19,7 +19,6 @@
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
 ##' @keywords internal
-##' @importFrom stats model.offset
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
                        mf, fr,
@@ -64,14 +63,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     condList  <- getXReTrms(formula, mf, fr)
-    ## *conditional* offset has been previously stored in model
-    ## frame by model.frame()
-    ## this is redundant (but harmless) if offset was specified in formula, but
-    ##  necessary if it was specified as a separate argument
-    if (!is.null(moff <- model.offset(fr))) {
-        condList$offset <- moff
-    }
-
     ziList    <- getXReTrms(ziformula, mf, fr)
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, "dispersion")
@@ -82,7 +73,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   grpVar <- with(condList, getGrpVar(reTrms$flist))
 
   nobs <- nrow(fr)
-
 
   if (is.null(weights)) weights <- rep(1, nobs)
 
@@ -199,20 +189,24 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
         X <- NULL
     } else {
         mf$formula <- fixedform
-
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
-        
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(drop.special2(fixedform), fr, contrasts)
         ## will be 0-column matrix if fixed formula is empty
 
-        offset <- rep(0,nrow(X))
+        offset <- rep(0,nobs)
         terms <- list(fixed=terms(terms_fixed))
         if (inForm(fixedform,quote(offset))) {
+            ## hate to match offset terms with model frame names
+            ##  via deparse, but since that what was presumably done
+            ##  internally to get the model frame names in the first place ...
             for (o in extractForm(fixedform,quote(offset))) {
-                offvar <- o[[2]] ## offset(var) -> var
-                offset <- offset + eval(offvar,envir=fr,
-                                        enclos=environment(fixedform))
+                offset_nm <- deparse(o)
+                ## don't think this will happen, but ...
+                if (length(offset_nm)>1) {
+                    stop("trouble reconstructing offset name")
+                }
+                offset <- offset + fr[[offset_nm]]
             }
         }
     }
@@ -547,6 +541,10 @@ glmmTMB <- function (
 
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
+    ## add offset-specified-as-argument to formula as + offset(...)
+    if (!is.null(offset)) {
+        formula <- addForm0(formula,makeOp(substitute(offset),op=quote(offset)))
+    }
 
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
@@ -576,21 +574,6 @@ glmmTMB <- function (
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
         f <- noSpecials(subbars(f),delete=FALSE)
-        ## add 'naked' vars from offsets
-        if (inForm(f,quote(offset))) {
-            ## get offset terms
-            ## need actual vars from offsets ... functions of offsets
-            ##  (e.g. log(x)) will get incorporated as is in the model
-            ##  frame, will break when we try to evaluate the offset
-            ##  terms within getXReTrms()
-            offsetList <- extractForm(f,quote(offset))
-            ## now *drop* offsets in formula
-            f <- drop.special2(f)
-            offsetVars <- unlist(lapply(offsetList,all.vars))
-            ## convert back to symbols and append to the formula
-            f[[length(f)]] <- sumTerms(c(list(f[[length(f)]]),
-                                 lapply(offsetVars,as.name)))
-        }
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
