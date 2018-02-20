@@ -1,18 +1,31 @@
 bibentry(bibtype = "Article",
-  author = "Mollie E. Brooks and Kasper Kristensen and Koen J. van
-          Benthem and Arni Magnusson and Casper W. Berg and Anders
-          Nielsen and Hans J. Skaug and Martin Maechler and Benjamin M.
-          Bolker",
-  title = "glmmTMB Balances Speed and Flexibility Among Packages for
-          Zero-inflated Generalized Linear Mixed Modeling",
-  year = "2017",
-  journal = "The R Journal",
-  url = "https://journal.r-project.org/archive/2017/RJ-2017-066/index.html",
-  pages = "378--400",
-  volume = "9",
-  number = "2",
-  header = "To cite glmmTMB in publications use:",
-  textVersion = "Mollie E. Brooks, Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler and Benjamin M. Bolker (2017). glmmTMB Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling. The R Journal 9(2), pages 378-400."
+         author = c(person(given  = c("Mollie", "E."),
+                           family = "Brooks"),
+                    person(given  = "Kasper",
+                           family = "Kristensen"),
+                    person(given  = c("Koen", "J."),
+                           family = c("van", "Benthem")),
+                    person(given  = "Arni",
+                           family = "Magnusson"),
+                    person(given  = c("Casper", "W."),
+                           family = "Berg"),
+                    person(given  = "Anders",
+                           family = "Nielsen"),
+                    person(given  = c("Hans", "J."),
+                           family = "Skaug"),
+                    person(given  = "Martin",
+                           family = "Maechler"),
+                    person(given  = c("Benjamin", "M."),
+                           family = "Bolker") ),
+         title = "{glmmTMB} Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling",
+         year = "2017",
+         journal = "The R Journal",
+         url = "https://journal.r-project.org/archive/2017/RJ-2017-066/index.html",
+         pages = "378--400",
+         volume = "9",
+         number = "2",
+         header = "To cite glmmTMB in publications use:",
+         textVersion = "Mollie E. Brooks, Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler and Benjamin M. Bolker (2017). glmmTMB Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling. The R Journal, 9(2), 378-400."
 )
 
 ## bibentry(bibtype = "Article",
