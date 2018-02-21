@@ -28,59 +28,34 @@
 ## the function lm.wfit  gets the hessian wrong for mer's.  Get the variance
 ## from the vcov method applied to the mer object.
 
-
-fixmod <- function (term)
-{
-  if (!("|" %in% all.names(term)) && !("||" %in% all.names(term)))
-    return(term)
-  if ((is.call(term) && term[[1]] == as.name("|")) ||
-      (is.call(term) && term[[1]] == as.name("||")))
-    return(NULL)
-  if (length(term) == 2) {
-    nb <- fixmod(term[[2]])
-    if (is.null(nb))
-      return(NULL)
-    term[[2]] <- nb
-    return(term)
-  }
-  nb2 <- fixmod(term[[2]])
-  nb3 <- fixmod(term[[3]])
-  if (is.null(nb2))
-    return(nb3)
-  if (is.null(nb3))
-    return(nb2)
-  term[[2]] <- nb2
-  term[[3]] <- nb3
-  term
-}
-
 ## mer.to.glm evaluates a 'glm' model that is as similar to a given 'mer'
 ## model as possible.  It is of class c("fakeglm", "glm", "lm")
 ## several items are added to the created objects. Do not export
 
+#' @importFrom lme4 nobars
 glmmTMB.to.glm <- function(mod, KR=FALSE) {
-  if (KR) { ##  && !requireNamespace("pbkrtest", quietly=TRUE)){
-    KR <- FALSE
-    ## warning("pbkrtest is not available, KR set to FALSE")
-    warning("pbkrtest is not compatible with glmmTMB, KR set to FALSE")
-  }
-  # object$family$family doesn't work correctly with the negative binomial family because of the
+    if (KR) { ##  && !requireNamespace("pbkrtest", quietly=TRUE)){
+        KR <- FALSE
+        warning("pbkrtest is not compatible with glmmTMB, KR set to FALSE")
+    }
+    ## object$family$family doesn't work correctly with the negative binomial family because of the
   # argument in the family function, so the old line
   #   family <- family(mod)
   # returns an error message for these models.  The following kluge fixes this.
   # If this bug is fixed in lme4, this code may break because it expects resp$family$family
   # to return "Link Name(arg)" with ONE argument, and so spaces between Name and "(arg)"
   family1 <- function(object, ...){
-    famname <- family(object)$family
-    open.paren <- regexpr("\\(", famname)
-    if(open.paren==-1) {
-      name <- famname
-      arg <- list()
-    } else {
-      name <- sub(" ", ".", tolower(substr(famname, 1, -1 + open.paren)))
-      arg <- list(as.numeric(gsub("\\)", "", substr(famname, 1 + open.paren, 100))))
-    }
-    if(is.null(family(object)$initialize)) do.call(name, arg) else family(object)
+      famname <- family(object)$family
+      open.paren <- regexpr("\\(", famname)
+      if(open.paren==-1) {
+          name <- famname
+          arg <- list()
+      } else {
+          name <- sub(" ", ".", tolower(substr(famname, 1, -1 + open.paren)))
+          arg <- list(as.numeric(gsub("\\)", "", substr(famname, 1 + open.paren, 100))))
+      }
+      if(is.null(family(object)$initialize))
+          do.call(name, arg) else family(object)
   }
   family <- family1(mod)
   # end
@@ -94,7 +69,7 @@ glmmTMB.to.glm <- function(mod, KR=FALSE) {
                 "model", "contrasts"), names(cl), 0L)
   cl <- cl[c(1L, .m)]
   cl[[1L]] <- as.name("glm")
-  cl$formula <- fixmod(as.formula(cl$formula))
+  cl$formula <- lme4::nobars(as.formula(cl$formula))
   #    cl$data <- mod@frame # caused bug with a 'poly' in the formula
   cl$family <- gaussian
   mod2 <- eval(cl)
@@ -118,12 +93,14 @@ vcov.fakeglm <- function(object, ...) object$vcov
 
 ##The next six functions should be exported as S3 methods
 
+#' @export
 effect.glmmTMB <- function(term, mod, vcov.=vcov, KR=FALSE, ...) {
   result <- effect(term, glmmTMB.to.glm(mod, KR=KR), vcov., ...)
   result$formula <- as.formula(formula(mod))
   result
 }
 
+#' @export
 allEffects.glmmTMB <- function(mod, KR=FALSE,...){
   allEffects(glmmTMB.to.glm(mod,KR=KR), ...)
 }
