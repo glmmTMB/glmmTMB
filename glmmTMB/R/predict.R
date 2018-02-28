@@ -76,7 +76,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' nd$Subject <- "new"
 ##' predict(g0, newdata=nd, allow.new.levels=TRUE)
 ##' @importFrom TMB sdreport
-##' @importFrom stats optimHess
+##' @importFrom stats optimHess model.frame na.fail na.pass napredict
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,
                             se.fit=FALSE,
