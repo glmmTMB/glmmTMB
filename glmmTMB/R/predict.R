@@ -58,6 +58,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' return expected value ("response": (mu*(1-p))),
 ##' the mean of the conditional distribution ("conditional": mu),
 ##' or the probability of a structural zero ("zprob")?
+##' @param na.action how to handle missing values (see \code{\link{na.action}})
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
 ##' @param re.form (not yet implemented) specify which random effects to condition on when predicting
@@ -86,7 +87,6 @@ predict.glmmTMB <- function(object,newdata=NULL,
                             ...)
 {
   ## FIXME: add re.form, type, ...
-  ## FIXME: deal with napredict stuff ...
 
   if (!missing(re.form)) stop("re.form not yet implemented")
   ##if (allow.new.levels) stop("allow.new.levels not yet implemented")
