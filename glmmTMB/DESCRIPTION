@@ -27,6 +27,7 @@ Imports:
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
+    rmarkdown,
     testthat,
     MASS,
     lattice,
