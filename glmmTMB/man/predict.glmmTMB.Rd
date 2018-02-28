@@ -6,7 +6,7 @@
 \usage{
 \method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE, re.form,
   allow.new.levels = FALSE, zitype = c("response", "conditional", "zprob"),
-  debug = FALSE, ...)
+  na.action = na.pass, debug = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}

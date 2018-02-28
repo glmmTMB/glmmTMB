@@ -414,6 +414,7 @@ binomialType <- function(x) {
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only):
 ##' @param se whether to return standard errors
+##' @param na.action how to handle missing values (see \code{\link{na.action}})
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
@@ -497,6 +498,7 @@ glmmTMB <- function (
     dispformula= ~1,
     weights=NULL,
     offset=NULL,
+    na.action = getOption("na.action", default=na.fail),
     se=TRUE,
     verbose=FALSE,
     doFit=TRUE,

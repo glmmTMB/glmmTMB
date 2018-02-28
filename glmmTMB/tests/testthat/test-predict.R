@@ -4,6 +4,7 @@ stopifnot(require("testthat"),
 data(sleepstudy,
      package = "lme4")
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
+ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 
 ## 'newdata'
 nd <- subset(sleepstudy, Subject=="308", select=-1)
@@ -33,3 +34,15 @@ context("Predict two-column response case")
 fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial, data=Salamanders)
 expect_equal(predict(fm),
              c(0.05469247, 0.29269818)[Salamanders$mined] )
+
+context("handling NA values")
+ss <- sleepstudy
+
+g0_ex <- update(g0, data=ssNA, na.action=na.exclude)
+g0_om <- update(g0, data=ssNA, na.action=na.omit)
+pp_ex <- predict(g0_ex)
+pp_om <- predict(g0_om)
+expect_equal(length(pp_ex),nrow(ssNA))
+expect_true(all(is.na(pp_ex)==is.na(ssNA$Days)))
+expect_equal(length(pp_om),length(na.omit(ssNA$Days)))
+expect_true(!any(is.na(pp_om)))
