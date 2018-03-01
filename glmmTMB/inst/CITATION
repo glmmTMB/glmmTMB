@@ -1,19 +1,48 @@
-
 bibentry(bibtype = "Article",
- author = "Brooks, Mollie E. and Kristensen, Kasper and van Benthem, Koen J. and Magnusson, Arni and Berg, Casper W. and Nielsen, Anders and Skaug, Hans J. and Maechler, Martin and Bolker, Benjamin M.",
- title = "Modeling Zero-Inflated Count Data With glmmTMB",
- year = "2017",
- url = "http://biorxiv.org/content/early/2017/05/01/132753",
- eprint = "http://biorxiv.org/content/early/2017/05/01/132753.full.pdf",
- journal = "bioRxiv preprint bioRxiv:132753",
- archivePrefix = "bioRxiv",
- header = "To cite glmmTMB in publications use one or both of the following:",
- textVersion = "Mollie E. Brooks, Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler, Benjamin M. Bolker (2017). Modeling Zero-Inflated Count Data With glmmTMB. bioRxiv preprint bioRxiv:132753; doi: https://doi.org/10.1101/132753"
+         author = c(person(given  = c("Mollie", "E."),
+                           family = "Brooks"),
+                    person(given  = "Kasper",
+                           family = "Kristensen"),
+                    person(given  = c("Koen", "J."),
+                           family = c("van", "Benthem")),
+                    person(given  = "Arni",
+                           family = "Magnusson"),
+                    person(given  = c("Casper", "W."),
+                           family = "Berg"),
+                    person(given  = "Anders",
+                           family = "Nielsen"),
+                    person(given  = c("Hans", "J."),
+                           family = "Skaug"),
+                    person(given  = "Martin",
+                           family = "Maechler"),
+                    person(given  = c("Benjamin", "M."),
+                           family = "Bolker") ),
+         title = "{glmmTMB} Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling",
+         year = "2017",
+         journal = "The R Journal",
+         url = "https://journal.r-project.org/archive/2017/RJ-2017-066/index.html",
+         pages = "378--400",
+         volume = "9",
+         number = "2",
+         header = "To cite glmmTMB in publications use:",
+         textVersion = "Mollie E. Brooks, Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler and Benjamin M. Bolker (2017). glmmTMB Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling. The R Journal, 9(2), 378-400."
 )
 
-bibentry(bibtype = "Manual",
- title = "{glmmTMB}: Generalized Linear Mixed Models using Template Model Builder",
- author = "Arni Magnusson and Hans J. Skaug and Anders Nielsen and Casper W. Berg and Kasper Kristensen and Martin Maechler and Koen J. van Bentham and Benjamin M. Bolker and Mollie E. Brooks",
- year = "2017",
- textVersion = "Arni Magnusson, Hans J. Skaug, Anders Nielsen, Casper W. Berg, Kasper Kristensen, Martin Maechler, Koen J. van Bentham, Benjamin M.  Bolker and Mollie E. Brooks (2017). glmmTMB: Generalized Linear Mixed Models using Template Model Builder. R package version 0.1.3. https://github.com/glmmTMB"
-)
+## bibentry(bibtype = "Article",
+##  author = "Brooks, Mollie E. and Kristensen, Kasper and van Benthem, Koen J. and Magnusson, Arni and Berg, Casper W. and Nielsen, Anders and Skaug, Hans J. and Maechler, Martin and Bolker, Benjamin M.",
+##  title = "Modeling Zero-Inflated Count Data With glmmTMB",
+##  year = "2017",
+##  url = "http://biorxiv.org/content/early/2017/05/01/132753",
+##  eprint = "http://biorxiv.org/content/early/2017/05/01/132753.full.pdf",
+##  journal = "bioRxiv preprint bioRxiv:132753",
+##  archivePrefix = "bioRxiv",
+##  header = "To cite glmmTMB in publications use one or both of the following:",
+##  textVersion = "Mollie E. Brooks, Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler, Benjamin M. Bolker (2017). Modeling Zero-Inflated Count Data With glmmTMB. bioRxiv preprint bioRxiv:132753; doi: https://doi.org/10.1101/132753"
+## )
+
+## bibentry(bibtype = "Manual",
+##  title = "{glmmTMB}: Generalized Linear Mixed Models using Template Model Builder",
+##  author = "Arni Magnusson and Hans J. Skaug and Anders Nielsen and Casper W. Berg and Kasper Kristensen and Martin Maechler and Koen J. van Bentham and Benjamin M. Bolker and Mollie E. Brooks",
+##  year = "2017",
+##  textVersion = "Arni Magnusson, Hans J. Skaug, Anders Nielsen, Casper W. Berg, Kasper Kristensen, Martin Maechler, Koen J. van Bentham, Benjamin M.  Bolker and Mollie E. Brooks (2017). glmmTMB: Generalized Linear Mixed Models using Template Model Builder. R package version 0.1.3. https://github.com/glmmTMB"
+## )

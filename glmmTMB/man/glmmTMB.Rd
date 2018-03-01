@@ -5,7 +5,8 @@
 \title{Fit models with TMB}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = ~1, weights = NULL, offset = NULL, se = TRUE,
+  dispformula = ~1, weights = NULL, offset = NULL,
+  na.action = getOption("na.action", default = na.fail), se = TRUE,
   verbose = FALSE, doFit = TRUE, control = glmmTMBControl())
 }
 \arguments{
@@ -42,6 +43,8 @@ In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, for
 \item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
 
 \item{offset}{offset for conditional model (only):}
+
+\item{na.action}{how to handle missing values (see \code{\link{na.action}})}
 
 \item{se}{whether to return standard errors}
 

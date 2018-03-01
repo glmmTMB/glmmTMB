@@ -6,7 +6,7 @@
 \usage{
 \method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE, re.form,
   allow.new.levels = FALSE, zitype = c("response", "conditional", "zprob"),
-  debug = FALSE, ...)
+  na.action = na.pass, debug = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
@@ -23,6 +23,8 @@
 return expected value ("response": (mu*(1-p))),
 the mean of the conditional distribution ("conditional": mu),
 or the probability of a structural zero ("zprob")?}
+
+\item{na.action}{how to handle missing values (see \code{\link{na.action}})}
 
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
 used internally for debugging?}

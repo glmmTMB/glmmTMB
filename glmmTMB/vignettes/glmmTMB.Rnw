@@ -22,6 +22,8 @@
 \usepackage{natbib}
 \VerbatimFootnotes
 \bibliographystyle{chicago}
+%% need this for output of citation() below ...
+\newcommand{\bold}[1]{\textbf{#1}}
 
 \title{Getting started with the \code{glmmTMB} package}
 \author{Ben Bolker}
@@ -38,7 +40,6 @@ opts_chunk$set(fig.width=5,fig.height=5,
 Rver <- paste(R.version$major,R.version$minor,sep=".")
 used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 @ 
-
 
 \section{Introduction/quick start}
 

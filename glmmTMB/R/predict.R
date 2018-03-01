@@ -58,6 +58,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' return expected value ("response": (mu*(1-p))),
 ##' the mean of the conditional distribution ("conditional": mu),
 ##' or the probability of a structural zero ("zprob")?
+##' @param na.action how to handle missing values (see \code{\link{na.action}})
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
 ##' @param re.form (not yet implemented) specify which random effects to condition on when predicting
@@ -75,17 +76,17 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' nd$Subject <- "new"
 ##' predict(g0, newdata=nd, allow.new.levels=TRUE)
 ##' @importFrom TMB sdreport
-##' @importFrom stats optimHess
+##' @importFrom stats optimHess model.frame na.fail na.pass napredict
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,
                             se.fit=FALSE,
                             re.form, allow.new.levels=FALSE,
                             zitype = c("response","conditional","zprob"),
+                            na.action = na.pass,
                             debug=FALSE,
                             ...)
 {
   ## FIXME: add re.form, type, ...
-  ## FIXME: deal with napredict stuff ...
 
   if (!missing(re.form)) stop("re.form not yet implemented")
   ##if (allow.new.levels) stop("allow.new.levels not yet implemented")
@@ -175,8 +176,10 @@ predict.glmmTMB <- function(object,newdata=NULL,
   newObj$fn(oldPar)  ## call once to update internal structures
   lp <- newObj$env$last.par
 
+  na.act <- attr(model.frame(object),"na.action")
   if (!se.fit) {
-      newObj$report(lp)$mu_predict
+      r <- newObj$report(lp)$mu_predict
+      if (!is.null(na.act)) r <- napredict(na.act,r)
   } else {
       H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
       ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
@@ -184,7 +187,12 @@ predict.glmmTMB <- function(object,newdata=NULL,
       ## Fixed! (but do we want a flag to get it ? ...)
       sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
       pred <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
-      list(fit    = pred[,"Estimate"],
+      r <- list(fit    = pred[,"Estimate"],
            se.fit = pred[,"Std. Error"])
+      if (!is.null(na.act)) {
+          r$fit <- napredict(na.act,r$fit)
+          r$se.fit <- napredict(na.act,r$se.fit)
+      }
   }
+  return(r)
 }
