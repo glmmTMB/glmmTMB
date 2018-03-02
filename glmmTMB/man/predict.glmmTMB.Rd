@@ -24,9 +24,8 @@ return expected value ("response": (mu*(1-p))),
 the mean of the conditional distribution ("conditional": mu),
 or the probability of a structural zero ("zprob")?}
 
-\item{na.action}{how to handle missing values (see \code{\link{na.action}});
-if this is not specified \emph{and} \code{na.action} is explicitly
-set for the model fit, the value from the model fit will be used}
+\item{na.action}{how to handle missing values in \code{newdata} (see \code{\link{na.action}});
+the default (\code{na.pass}) is to predict \code{NA}}
 
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
 used internally for debugging?}

@@ -58,9 +58,8 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' return expected value ("response": (mu*(1-p))),
 ##' the mean of the conditional distribution ("conditional": mu),
 ##' or the probability of a structural zero ("zprob")?
-##' @param na.action how to handle missing values (see \code{\link{na.action}});
-##' if this is not specified \emph{and} \code{na.action} is explicitly
-##' set for the model fit, the value from the model fit will be used
+##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
+##' the default (\code{na.pass}) is to predict \code{NA}
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
 ##' @param re.form (not yet implemented) specify which random effects to condition on when predicting
@@ -98,22 +97,21 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## do we want to re-do this part???
 
   ## need to 'fix' call to proper model.frame call whether or not
-  ## we have new data, because
-  m <- match(c("subset", "weights", "na.action", "offset"),
+  ## we have new data, because ... (??)
+  m <- match(c("subset", "weights", "offset", "na.action"),
              names(mf), 0L)
   mf <- mf[c(1L, m)]
-  ## override na.action from original call, if specified
-  if (is.null(mf$na.action) || !missing(na.action)) {
-      mf$na.action <- na.action
-  }
+
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
   mf$formula <- RHSForm(object$modelInfo$allForm$combForm, as.form=TRUE)
+    
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
     newFr <- object$fr
   } else {
     mf$data <- newdata
+    mf$na.action <- na.action
     newFr <- eval.parent(mf)
   }
 
@@ -183,9 +181,10 @@ predict.glmmTMB <- function(object,newdata=NULL,
   lp <- newObj$env$last.par
 
   na.act <- attr(model.frame(object),"na.action")
+  do.napred <- missing(newdata) && !is.null(na.act)
   if (!se.fit) {
       r <- newObj$report(lp)$mu_predict
-      if (!is.null(na.act)) r <- napredict(na.act,r)
+      if (do.napred) r <- napredict(na.act,r)
   } else {
       H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
       ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
@@ -195,7 +194,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
       pred <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
       r <- list(fit    = pred[,"Estimate"],
            se.fit = pred[,"Std. Error"])
-      if (!is.null(na.act)) {
+      if (do.napred) {
           r$fit <- napredict(na.act,r$fit)
           r$se.fit <- napredict(na.act,r$se.fit)
       }

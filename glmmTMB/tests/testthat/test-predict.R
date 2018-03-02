@@ -5,6 +5,7 @@ data(sleepstudy,
      package = "lme4")
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
+ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
 
 ## 'newdata'
 nd <- subset(sleepstudy, Subject=="308", select=-1)
@@ -35,7 +36,7 @@ fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial, data=Salamanders)
 expect_equal(predict(fm),
              c(0.05469247, 0.29269818)[Salamanders$mined] )
 
-context("handling NA values")
+context("Handling NA values in predictions")
 ss <- sleepstudy
 
 g0_ex <- update(g0, data=ssNA, na.action=na.exclude)
@@ -50,6 +51,13 @@ expect_true(!any(is.na(pp_om)))
 ## na.pass
 pp_ndNA <- predict(g0,newdata=ssNA)
 expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)))
+pp_ndNA2 <- predict(g0,newdata=ssNA2)
+expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)))
+
 ## na.omit
 pp_ndNA_om <- predict(g0,newdata=ssNA,na.action=na.omit)
 expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
+
+
+
+
