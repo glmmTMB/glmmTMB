@@ -46,3 +46,10 @@ expect_equal(length(pp_ex),nrow(ssNA))
 expect_true(all(is.na(pp_ex)==is.na(ssNA$Days)))
 expect_equal(length(pp_om),length(na.omit(ssNA$Days)))
 expect_true(!any(is.na(pp_om)))
+
+## na.pass
+pp_ndNA <- predict(g0,newdata=ssNA)
+expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)))
+## na.omit
+pp_ndNA_om <- predict(g0,newdata=ssNA,na.action=na.omit)
+expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))

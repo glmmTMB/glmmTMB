@@ -58,7 +58,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' return expected value ("response": (mu*(1-p))),
 ##' the mean of the conditional distribution ("conditional": mu),
 ##' or the probability of a structural zero ("zprob")?
-##' @param na.action how to handle missing values (see \code{\link{na.action}})
+##' @param na.action how to handle missing values (see \code{\link{na.action}});
+##' if this is not specified \emph{and} \code{na.action} is explicitly
+##' set for the model fit, the value from the model fit will be used
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
 ##' @param re.form (not yet implemented) specify which random effects to condition on when predicting
@@ -100,6 +102,10 @@ predict.glmmTMB <- function(object,newdata=NULL,
   m <- match(c("subset", "weights", "na.action", "offset"),
              names(mf), 0L)
   mf <- mf[c(1L, m)]
+  ## override na.action from original call, if specified
+  if (is.null(mf$na.action) || !missing(na.action)) {
+      mf$na.action <- na.action
+  }
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
   mf$formula <- RHSForm(object$modelInfo$allForm$combForm, as.form=TRUE)
