@@ -19,7 +19,7 @@ mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs, respCol,
 
 \item{mf}{call to model frame}
 
-\item{fr}{frame}
+\item{fr}{model frame}
 
 \item{yobs}{observed y}
 
