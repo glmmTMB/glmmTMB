@@ -38,6 +38,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
     ## Handle ~0 dispersion for gaussian family.
     mapArg <- NULL
+    dispformula.orig <- dispformula ## Restore when done
     # family$family contains the *name* of the family
     if ( usesDispersion(family$family) && (dispformula == ~0) ) {
         if (family$family != "gaussian")
@@ -153,6 +154,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
+  dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, respCol,
