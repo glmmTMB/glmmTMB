@@ -36,6 +36,11 @@ fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial, data=Salamanders)
 expect_equal(predict(fm),
              c(0.05469247, 0.29269818)[Salamanders$mined] )
 
+context("Prediction with dispformula=~0")
+y <- 1:10
+f <- glmmTMB(y ~ 1, dispformula=~0)
+expect_equal(predict(f), rep(5.5, 10))
+
 context("Handling NA values in predictions")
 ss <- sleepstudy
 
