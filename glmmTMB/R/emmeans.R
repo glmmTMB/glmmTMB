@@ -8,6 +8,8 @@ recover_data.glmmTMB <- function(object, ...) {
 }
 
 #' @export
+## FIXME: ignore random effects in 'terms' to avoid warning about
+## grouping variables being absent/contrasts ignored
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
     if (component != "cond") warning("only tested for conditional component")
     V <- as.matrix(vcov(object)[[component]])
