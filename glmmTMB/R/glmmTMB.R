@@ -38,6 +38,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
     ## Handle ~0 dispersion for gaussian family.
     mapArg <- NULL
+    dispformula.orig <- dispformula ## Restore when done
     # family$family contains the *name* of the family
     if ( usesDispersion(family$family) && (dispformula == ~0) ) {
         if (family$family != "gaussian")
@@ -153,6 +154,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
+  dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, respCol,
@@ -414,6 +416,7 @@ binomialType <- function(x) {
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only):
 ##' @param se whether to return standard errors
+##' @param na.action how to handle missing values (see \code{\link{na.action}})
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
@@ -497,6 +500,7 @@ glmmTMB <- function (
     dispformula= ~1,
     weights=NULL,
     offset=NULL,
+    na.action = getOption("na.action", default=na.fail),
     se=TRUE,
     verbose=FALSE,
     doFit=TRUE,
