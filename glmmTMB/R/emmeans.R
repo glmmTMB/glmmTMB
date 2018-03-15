@@ -1,22 +1,17 @@
-## methods for extending lsmeans to handle glmmTMB objects
+## methods for extending emmeans to handle glmmTMB objects
 
-recover.data.glmmTMB <- function(object, ...) {
+#' @export
+recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
-    recover.data(fcall,delete.response(terms(object)),
+    recover_data(fcall,delete.response(terms(object)),
                  attr(model.frame(object),"na.action"), ...)
 }
 
-lsm.basis.glmmTMB <- function (object, trms, xlev, grid, vcov.,
-                               mode = "asymptotic", component="cond", ...) {
-    if (mode != "asymptotic") stop("only asymptotic mode is available")
+#' @export
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
     if (component != "cond") warning("only tested for conditional component")
-    if (missing(vcov.)) 
-        V <- as.matrix(vcov(object)[[component]])
-    else V <- as.matrix(.my.vcov(object, vcov.))
-    dfargs = misc = list()
-    if (mode == "asymptotic") {
-        dffun = function(k, dfargs) NA
-    }
+    V <- as.matrix(vcov(object)[[component]])
+    dfargs <- NA  ## FIXME: residual df?
     ## use this? misc = .std.link.labels(family(object), misc)
     ## (used to populate the reminder 
     contrasts = attr(model.matrix(object), "contrasts")
@@ -29,8 +24,10 @@ lsm.basis.glmmTMB <- function (object, trms, xlev, grid, vcov.,
         bhat[kept] = fixef(object)[[component]]
         modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
         nbasis = estimability::nonest.basis(modmat)
-    }
-    else nbasis = estimability::all.estble
+    }  else nbasis = estimability::all.estble
+    dfargs = list(df = df.residual(object))
+    dffun = function(k, dfargs) dfargs$df
+
     list(X = X, bhat = bhat, nbasis = nbasis, V = V, dffun = dffun, 
-        dfargs = dfargs, misc = misc)
+         dfargs = dfargs)
 }
