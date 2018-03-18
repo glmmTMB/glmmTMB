@@ -1,11 +1,12 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-data(sleepstudy,
-     package = "lme4")
+data(sleepstudy, package = "lme4")
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
+
+data(cbpp, package = "lme4")
 
 ## 'newdata'
 nd <- subset(sleepstudy, Subject=="308", select=-1)
@@ -63,6 +64,11 @@ expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)))
 pp_ndNA_om <- predict(g0,newdata=ssNA,na.action=na.omit)
 expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
 
+context("prediction with different binomial specs")
 
+tmbm1 <- glmmTMB(cbind(incidence, size - incidence) ~ period + (1 | herd),
+                  data = cbpp, family = binomial)
+tmbm2 <- update(tmbm1,incidence/size ~ . , weights = size)
+expect_equal(fitted(tmbm1),fitted(tmbm2))
 
 
