@@ -181,13 +181,16 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     qval <- qnorm((1+level)/2)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
-        halves <- with(dd,split(dd,.focal>.focal[which.min(value)]))
+        hf <- with(dd,factor(.focal>.focal[which.min(value)],
+                   levels=c("FALSE","TRUE")))
+        halves <- split(dd,hf)
         res <- vapply(halves,ci_fun_half,numeric(1))
         names(res) <- c("lwr","upr")
         return(res)
     }
     ## fit spline and invert for one half (lower, upper) of the profile
     ci_fun_half <- function(hh) {
+        if (nrow(hh)==0) return(NA_real_)
         if (max(sqrt(hh$value),na.rm=TRUE)<qval) {
             restr_prof_flag <- TRUE
         }
