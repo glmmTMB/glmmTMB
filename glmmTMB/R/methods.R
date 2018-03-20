@@ -571,7 +571,7 @@ format.perc <- function (probs, digits) {
 ##' @param parm Specification of a parameter subset \emph{after}
 ##'     \code{component} subset has been applied.
 ##' @param level Confidence level.
-##' @param method 'wald', 'profile', or 'uniroot': see \link{Details}
+##' @param method 'wald', 'profile', or 'uniroot': see Details
 ##' function)
 ##' @param component Which of the three components 'cond', 'zi' or
 ##'     'other' to select. Default is to select 'all'.

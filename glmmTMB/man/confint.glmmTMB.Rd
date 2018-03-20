@@ -17,7 +17,7 @@
 
 \item{level}{Confidence level.}
 
-\item{method}{'wald', 'profile', or 'uniroot': see \link{Details}
+\item{method}{'wald', 'profile', or 'uniroot': see Details
 function)}
 
 \item{component}{Which of the three components 'cond', 'zi' or
