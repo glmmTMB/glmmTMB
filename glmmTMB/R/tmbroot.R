@@ -17,7 +17,7 @@
 ##' @importFrom Matrix Diagonal
 ##' @keywords internal
 tmbroot <-
-function (obj, name, target=qchisq(0.95,df=1),
+function (obj, name, target=0.5*qchisq(0.95,df=1),
           lincomb, parm.range = c(NA,NA),
           sd.range = 7,
           trace = FALSE)

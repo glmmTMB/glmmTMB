@@ -171,7 +171,9 @@ test_that("confint", {
                         .Dim = c(1L, 3L),
         .Dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
                  tolerance=1e-6)
-
+    ## check against 'raw' tmbroot
+    ## (not exported (yet?) ...)
+    ## tmbr <- glmmTMB:::tmbroot(fm2$obj,name=1)
 })
 
 test_that("vcov", {
