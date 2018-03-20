@@ -44,6 +44,20 @@ test_that("Fitted and residuals", {
     expect_equal(rr2(glm(Murder~Population,ss,family=Gamma(link="log"))),
                  rr2(glmmTMB(Murder~scale(Population),ss,
                              family=Gamma(link="log"))),tol=1e-5)
+    ## weights are incorporated in Pearson residuals
+    ## GH 307
+    tmbm4 <- glm(incidence/size ~ period,
+             data = cbpp, family = binomial, weights = size)
+    tmbm5 <- glmmTMB(incidence/size ~ period,
+                     data = cbpp, family = binomial, weights = size)
+    expect_equal(residuals(tmbm4,type="pearson"),
+                 residuals(tmbm5,type="pearson"),tolerance=1e-6)
+    ## two-column responses give vector of residuals GH 307
+    tmbm6 <- glmmTMB(cbind(incidence,size-incidence) ~ period,
+                     data = cbpp, family = binomial)
+    expect_equal(residuals(tmbm4,type="pearson"),
+                 residuals(tmbm6,type="pearson"),tolerance=1e-6)
+
 })
 
 test_that("Predict", {

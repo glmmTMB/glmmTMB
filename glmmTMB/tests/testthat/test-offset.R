@@ -37,10 +37,10 @@ test_that("LM with offset in formula", {
     expect_equal(fixef(m4)[[1]], coef(m.lm), tol=1e-6)
 })
 
-test_that("LM with offset in zero-inflation formula", {
+## test_that("LM with offset in zero-inflation formula", {
     ## don't have anything sensible to try here yet ...
     ## glmmTMB(y~x,zi=~1+offset(o), dat)
-})
+## })
 
 test_that("LM with offset in dispersion formula", {
     expect_equal(sigma(glmmTMB(y1~x, dat)),

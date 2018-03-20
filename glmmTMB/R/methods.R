@@ -482,8 +482,15 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
         stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
-    r <- model.response(object$frame)-fitted(object)
-    switch(type,
+    mr <- model.response(object$frame)
+    wts <- model.weights(model.frame(object))
+    ## binomial model specified as (success,failure)
+    if (!is.null(dim(mr))) {
+        wts <- mr[,1]+mr[,2]
+        mr <- mr[,1]/wts
+    }
+    r <- mr - fitted(object)
+    res <- switch(type,
            response=r,
            pearson={
                if (is.null(v <- family(object)$variance))
@@ -494,8 +501,13 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
                             v(fitted(object)),
                             v(fitted(object),sigma(object)),
                             stop("variance function should take 1 or 2 arguments"))
-               r/sqrt(vv)
-           })
+               r <- r/sqrt(vv)
+               if (!is.null(wts)) {
+                   r <- r*sqrt(wts)
+               }
+               r
+    })
+    return(res)
 }
 
 ## Helper to get CI of simple *univariate monotone* parameter

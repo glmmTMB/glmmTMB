@@ -25,6 +25,7 @@
        as two columns (GH #289)
        \item fixed summary-printing bug when some random effects have
        covariance terms and others don't (GH #291)
+       \item fix bugs in binomial residuals and prediction (GH #307)
      }
    }
    \subsection{USER-VISIBLE CHANGES}{
