@@ -10,7 +10,9 @@
       \item likelihood profiles (via \code{profile}) and likelihood
       profile confidence intervals (via \code{confint(profile(.))})
       can now be computed;
-      \code{confint(fitted,method="profile")} also works
+      \code{confint(fitted,method="profile")} and
+      \code{confint(fitted,method="uniroot")} (find CIs by using
+      a root-finding algorithm on the likelihood profile)
       \item offsets are now allowed in the zero-inflation and dispersion
       formulas as well as in the main (conditional-mean) formula
       (if \code{offset} is specified as a separate argument, it applies

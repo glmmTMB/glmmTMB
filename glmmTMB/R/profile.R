@@ -1,5 +1,6 @@
 #' Compute likelihood profiles for a fitted model
-#' 
+#'
+#' @inheritParams confint.glmmTMB
 #' @param fitted a fitted \code{glmmTMB} object
 #' @param parm which parameters to profile, specified by index (position) or by name (matching the row/column names of \code{vcov(object,full=TRUE)})
 #' @param level_max maximum confidence interval target for profile
@@ -9,9 +10,6 @@
 #' no tracing; if \code{trace=1}, print names of parameters currently
 #' being profiled; if \code{trace>1}, turn on tracing for the
 #' underlying \code{\link{tmbprofile}} function
-#' @param parallel method (if any) for parallel computation
-#' @param ncpus number of CPUs/cores to use for parallel computation
-#' @param cl cluster to use for parallel computation
 #' @param stderr standard errors to use as a scaling factor when picking step
 #' sizes to compute the profile; by default (if \code{stderr} is
 #' \code{NULL}, or \code{NA} for a particular element),
@@ -53,16 +51,11 @@ profile.glmmTMB <- function(fitted,
                             cl = NULL,
                             ...) {
 
-    ## lots of boilerplate parallel-handling stuff, copied from lme4
-    if (missing(parallel)) parallel <- getOption("profile.parallel", "no")
-    parallel <- match.arg(parallel)
+    plist <- parallel_default(parallel,ncpus)
+    parallel <- plist$parallel
+    do_parallel <- plist$do_parallel
+    
     trace <- as.numeric(trace)
-    do_parallel <- (parallel != "no" && ncpus > 1L)
-    if (do_parallel && parallel == "multicore" &&
-        .Platform$OS.type == "windows") {
-        warning("no multicore on Windows, falling back to non-parallel")
-        parallel <- "no"
-    }
 
     ytol <- qchisq(level_max,1)
     ystep <- ytol/npts
@@ -176,8 +169,6 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:
     ##   non-monotonic values: error and/or linear interpolation
     ##   non-monotonic spline,
-    ## find CIs for a single parameter
-
     qval <- qnorm((1+level)/2)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??

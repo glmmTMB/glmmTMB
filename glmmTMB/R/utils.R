@@ -512,3 +512,16 @@ GMRFmarginal <- function(Q, i, ...) {
     ans
 }
 
+
+parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
+    ##  boilerplate parallel-handling stuff, copied from lme4
+    if (missing(parallel)) parallel <- getOption("profile.parallel", "no")
+    parallel <- match.arg(parallel)
+    do_parallel <- (parallel != "no" && ncpus > 1L)
+    if (do_parallel && parallel == "multicore" &&
+        .Platform$OS.type == "windows") {
+        warning("no multicore on Windows, falling back to non-parallel")
+        parallel <- "no"
+    }
+    return(list(parallel=parallel,do_parallel=do_parallel))
+}

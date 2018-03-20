@@ -164,6 +164,15 @@ test_that("confint", {
                            .Dim = 1:2, .Dimnames = list(
                                            "(Intercept)", c("lwr", "upr"))),
                  tolerance=1e-6)
+    ## uniroot CI
+    ci.uni <- confint(fm2,parm=1,method="uniroot")
+    expect_equal(ci.uni,
+                 structure(c(250.816887270877, 251.993322686307,
+                             251.405097999809
+                             ), .Dim = c(1L, 3L),
+        .Dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
+                 tolerance=1e-6)
+
 })
 
 test_that("vcov", {
