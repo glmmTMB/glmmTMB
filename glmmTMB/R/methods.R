@@ -682,7 +682,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
         FUN <- function(n) {
-            tmbroot(obj=object$obj, name=n, target=qchisq(1-level,df=1))
+            tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1))
         }
         if (do_parallel) {
             if (parallel == "multicore") {

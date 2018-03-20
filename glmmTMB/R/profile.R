@@ -169,23 +169,25 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:
     ##   non-monotonic values: error and/or linear interpolation
     ##   non-monotonic spline,
-    qval <- qnorm((1+level)/2)
+    qval <- 0.5*qchisq(level,df=1)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
         hf <- with(dd,factor(.focal>.focal[which.min(value)],
                    levels=c("FALSE","TRUE")))
         halves <- split(dd,hf)
         res <- vapply(halves,ci_fun_half,numeric(1))
-        names(res) <- c("lwr","upr")
+        a <- (1 - level)/2
+        a <- c(a, 1 - a)
+        names(res) <- format.perc(a, 3)
         return(res)
     }
     ## fit spline and invert for one half (lower, upper) of the profile
     ci_fun_half <- function(hh) {
         if (nrow(hh)==0) return(NA_real_)
-        if (max(sqrt(hh$value),na.rm=TRUE)<qval) {
+        if (max(hh$value,na.rm=TRUE)<qval) {
             restr_prof_flag <- TRUE
         }
-        for_spl <- splines::interpSpline(sqrt(value)~.focal,hh)
+        for_spl <- splines::interpSpline(value~.focal,hh)
         bak_spl <- splines::backSpline(for_spl)
         predict(bak_spl,qval)$y
     }
