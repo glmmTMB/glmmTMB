@@ -12,6 +12,7 @@
 ##' May be specified as a two-element vector for different ranges below and
 ##' above the parameter value.
 ##' @param trace report information?
+##' @param continuation use continuation method, i.e. set starting parameters for non-focal parameters to solutions from previous fits?
 ##' @return a two-element numeric vector containing the lower and upper limits (or \code{NA} if the target is not achieved in the range), with an attribute giving the total number of function iterations used
 ##' @importFrom stats uniroot qchisq nlminb
 ##' @importFrom Matrix Diagonal
@@ -20,8 +21,13 @@ tmbroot <-
 function (obj, name, target=0.5*qchisq(0.95,df=1),
           lincomb, parm.range = c(NA,NA),
           sd.range = 7,
-          trace = FALSE)
+          trace = FALSE,
+          continuation = FALSE)
 {
+    ## continuation method works well for profiling, where
+    ##  each fit starts "close" to previous values, but may be
+    ##  counterproductive for root-finding, when we are jumping back
+    ##  and forth ...
     restore.on.exit <- c("last.par.best", "random.start", "value.best", 
         "last.par", "inner.control", "tracemgc")
     oldvars <- sapply(restore.on.exit, get, envir = obj$env, 
@@ -76,7 +82,8 @@ function (obj, name, target=0.5*qchisq(0.95,df=1),
         obj$env$tracemgc <- FALSE
         control <- list(step.min = 0.001)
         ans <- nlminb(start, newfn, newgr, control = control)
-        start <<- ans$par
+        if (continuation) start <<- ans$par
+        conv <<- ans$convergence
         if (trace) 
             cat("Profile value:", ans$objective, "\n")
         ans$objective
@@ -99,6 +106,8 @@ function (obj, name, target=0.5*qchisq(0.95,df=1),
             c(-1,1)*sd0*sd.range[is.na(parm.range)]
     }
     ## need to set start in order for f() to work ...
+    ## FIXME: check convergence code ...
+    conv <- 0
     start <- rep(0, length(par) - 1)
     v.0 <- f(0) ## need to set v.0 for g() ...
     lwr.x <- g(parm.range[1])
@@ -108,6 +117,7 @@ function (obj, name, target=0.5*qchisq(0.95,df=1),
         lwr <- uniroot(g,interval=c(parm.range[1],0))
     }
     ## reset for upper root-finding
+    restore.oldvars()
     start <- rep(0, length(par) - 1)
     upr.x <- g(parm.range[2])
     if (is.na(upr.x) || upr.x<0) {

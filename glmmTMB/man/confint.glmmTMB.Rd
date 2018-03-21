@@ -31,7 +31,8 @@ function)}
 
 \item{cl}{cluster to use for parallel computation}
 
-\item{...}{arguments may be passed to \code{\link{profile.merMod}}}
+\item{...}{arguments may be passed to \code{\link{profile.merMod}} or
+\code{\link{tmbroot}}}
 }
 \description{
 Calculate confidence intervals

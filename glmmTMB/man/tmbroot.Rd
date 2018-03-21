@@ -4,8 +4,9 @@
 \alias{tmbroot}
 \title{generalized from TMB::tmbprofile}
 \usage{
-tmbroot(obj, name, target = qchisq(0.95, df = 1), lincomb,
-  parm.range = c(NA, NA), sd.range = 7, trace = FALSE)
+tmbroot(obj, name, target = 0.5 * qchisq(0.95, df = 1), lincomb,
+  parm.range = c(NA, NA), sd.range = 7, trace = FALSE,
+  continuation = FALSE)
 }
 \arguments{
 \item{obj}{a fitted glmmTMB object}
@@ -27,6 +28,8 @@ May be specified as a two-element vector for different ranges below and
 above the parameter value.}
 
 \item{trace}{report information?}
+
+\item{continuation}{use continuation method, i.e. set starting parameters for non-focal parameters to solutions from previous fits?}
 }
 \value{
 a two-element numeric vector containing the lower and upper limits (or \code{NA} if the target is not achieved in the range), with an attribute giving the total number of function iterations used
