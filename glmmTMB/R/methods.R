@@ -579,7 +579,8 @@ format.perc <- function (probs, digits) {
 ##' @param parallel method (if any) for parallel computation
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
-##' @param ... arguments may be passed to \code{\link{profile.merMod}}
+##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
+##' \code{\link{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
@@ -599,7 +600,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                              ...)
 {
     method <- match.arg(method)
-    if (method!="profile") {
+    if (method=="wald") {
         dots <- list(...)
         if (length(dots)>0) {
             if (is.null(names(dots))) {
@@ -682,7 +683,8 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
         FUN <- function(n) {
-            tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1))
+            tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
+                    ...)
         }
         if (do_parallel) {
             if (parallel == "multicore") {
