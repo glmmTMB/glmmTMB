@@ -5,8 +5,9 @@
 \title{Calculate confidence intervals}
 \usage{
 \method{confint}{glmmTMB}(object, parm, level = 0.95, method = c("wald",
-  "profile"), component = c("all", "cond", "zi", "other"), estimate = TRUE,
-  ...)
+  "profile", "uniroot"), component = c("all", "cond", "zi", "other"),
+  estimate = TRUE, parallel = c("no", "multicore", "snow"),
+  ncpus = getOption("profile.ncpus", 1L), cl = NULL, ...)
 }
 \arguments{
 \item{object}{\code{glmmTMB} fitted object.}
@@ -16,26 +17,43 @@
 
 \item{level}{Confidence level.}
 
-\item{method}{Currently only option is 'wald'.}
+\item{method}{'wald', 'profile', or 'uniroot': see Details
+function)}
 
 \item{component}{Which of the three components 'cond', 'zi' or
 'other' to select. Default is to select 'all'.}
 
-\item{estimate}{Logical; Add a 3rd column with estimate ?}
+\item{estimate}{(logical) add a third column with estimate ?}
 
-\item{...}{arguments may be passed to \code{\link{profile.merMod}}}
+\item{parallel}{method (if any) for parallel computation}
+
+\item{ncpus}{number of CPUs/cores to use for parallel computation}
+
+\item{cl}{cluster to use for parallel computation}
+
+\item{...}{arguments may be passed to \code{\link{profile.merMod}} or
+\code{\link{tmbroot}}}
 }
 \description{
 Calculate confidence intervals
 }
 \details{
-Currently, all confidence intervals are calculated using the
-'wald' method. These intervals are based on the standard errors
+Available methods are
+\describe{
+\item{wald}{These intervals are based on the standard errors
 calculated for parameters on the scale
 of their internal parameterization depending on the family. Derived
 quantities such as standard deviation parameters and dispersion
 parameters are backtransformed. It follows that confidence
-intervals for these derived quantities are asymmetric.
+intervals for these derived quantities are asymmetric.}
+\item{profile}{This method computes a likelihood profile
+for the specified parameter(s) using \code{profile.glmmTMB};
+fits a spline function to each half of the profile; and
+inverts the function to find the specified confidence interval.}
+\item{uniroot}{This method uses the \code{\link{uniroot}}
+function to find critical values of one-dimensional profile
+functions for each specified parameter.}
+}
 }
 \examples{
 data(sleepstudy, package="lme4")

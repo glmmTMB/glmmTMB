@@ -1,7 +1,8 @@
 #' Compute likelihood profiles for a fitted model
-#' 
+#'
+#' @inheritParams confint.glmmTMB
 #' @param fitted a fitted \code{glmmTMB} object
-#' @param parm which parameters to profile, specified by index (position)
+#' @param parm which parameters to profile, specified by index (position) or by name (matching the row/column names of \code{vcov(object,full=TRUE)})
 #' @param level_max maximum confidence interval target for profile
 #' @param npts target number of points in (each half of) the profile (\emph{approximate})
 #' @param stepfac initial step factor (fraction of estimated standard deviation)
@@ -9,9 +10,10 @@
 #' no tracing; if \code{trace=1}, print names of parameters currently
 #' being profiled; if \code{trace>1}, turn on tracing for the
 #' underlying \code{\link{tmbprofile}} function
-#' @param parallel method (if any) for parallel computation
-#' @param ncpus number of CPUs/cores to use for parallel computation
-#' @param cl cluster to use for parallel computation
+#' @param stderr standard errors to use as a scaling factor when picking step
+#' sizes to compute the profile; by default (if \code{stderr} is
+#' \code{NULL}, or \code{NA} for a particular element),
+#' uses the estimated (Wald) standard errors of the parameters
 #' @param ... additional arguments passed to \code{\link{tmbprofile}}
 #' @return An object of class \code{profile.glmmTMB}, which is also a
 #' data frame, with columns \code{.par} (parameter being profiled),
@@ -42,31 +44,59 @@ profile.glmmTMB <- function(fitted,
                             level_max = 0.99,
                             npts = 8,
                             stepfac = 1/4,
+                            stderr = NULL,
                             trace = FALSE,
                             parallel = c("no", "multicore", "snow"),
                             ncpus = getOption("profile.ncpus", 1L),
                             cl = NULL,
                             ...) {
 
-    ## lots of boilerplate parallel-handling stuff, copied from lme4
-    if (missing(parallel)) parallel <- getOption("profile.parallel", "no")
-    parallel <- match.arg(parallel)
+    plist <- parallel_default(parallel,ncpus)
+    parallel <- plist$parallel
+    do_parallel <- plist$do_parallel
+    
     trace <- as.numeric(trace)
-    do_parallel <- (parallel != "no" && ncpus > 1L)
-    if (do_parallel && parallel == "multicore" &&
-        .Platform$OS.type == "windows") {
-        warning("no multicore on Windows, falling back to non-parallel")
-        parallel <- "no"
-    }
 
     ytol <- qchisq(level_max,1)
     ystep <- ytol/npts
 
     vv <- vcov(fitted,full=TRUE)
     sds <- sqrt(diag(vv))
+    pnames <- names(sds) <- rownames(vv)
 
     ## get pars: need to match up names with internal positions
     if (is.null(parm)) parm <-  seq_along(sds)
+    if (is.character(parm)) {
+        nparm <- match(parm,pnames)
+        if (any(is.na(nparm))) {
+            stop("unrecognized parameter names: ",
+                 parm[is.na(nparm)])
+        }
+        parm <- nparm
+    }
+
+    ## only need selected SDs
+    sds <- sds[parm]
+
+    if (!is.null(stderr)) {
+        if (length(stderr) != length(sds)) {
+            if (length(stderr)==1) {
+                sds <- rep(stderr,length(sds))
+            } else {
+                stop(
+          sprintf("length(stderr) should equal 1 or number of parameters (%d)",
+                  length(parm)))
+            }
+        } else {
+            sds[!is.na(stderr)] <- stderr[!is.na(stderr)]
+        }
+    }
+
+    if (any(sds>1e3)) {
+        warning("very large standard errors for parameters: ",
+                names(sds)[sds>1e3])
+    }
+
     if (FALSE) {
         ## would like complete solution for assigning names to components
         ## (cond (fix/theta), zi (fix/theta), disp (fix/theta))
@@ -79,8 +109,6 @@ profile.glmmTMB <- function(fitted,
                   SIMPLIFY=FALSE))
     }
 
-    ## only need selected SDs
-    sds <- sds[parm]
 
     FUN <- local({
         function(p,s) {
@@ -141,23 +169,25 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:
     ##   non-monotonic values: error and/or linear interpolation
     ##   non-monotonic spline,
-    ## find CIs for a single parameter
-
-    qval <- qnorm((1+level)/2)
+    qval <- 0.5*qchisq(level,df=1)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
-        dd$min <- min(dd$value)
-        halves <- with(dd,split(dd,.focal>.focal[which.min(value)]))
+        hf <- with(dd,factor(.focal>.focal[which.min(value)],
+                   levels=c("FALSE","TRUE")))
+        halves <- split(dd,hf)
         res <- vapply(halves,ci_fun_half,numeric(1))
-        names(res) <- c("lwr","upr")
+        a <- (1 - level)/2
+        a <- c(a, 1 - a)
+        names(res) <- format.perc(a, 3)
         return(res)
     }
     ## fit spline and invert for one half (lower, upper) of the profile
     ci_fun_half <- function(hh) {
-        if (max(sqrt(hh$value),na.rm=TRUE)<qval) {
+        if (nrow(hh)==0) return(NA_real_)
+        if (max(hh$value,na.rm=TRUE)<qval) {
             restr_prof_flag <- TRUE
         }
-        for_spl <- splines::interpSpline(sqrt(value)~.focal,hh)
+        for_spl <- splines::interpSpline(value~.focal,hh)
         bak_spl <- splines::backSpline(for_spl)
         predict(bak_spl,qval)$y
     }
