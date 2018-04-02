@@ -482,7 +482,15 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
         stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
-    r <- model.response(object$frame)-fitted(object)
+    resp <- model.response(object$frame)
+    if (is.factor(resp)) {
+        ## ?binomial:
+        ## "‘success’ is interpreted as the factor not having the first level"
+        nn <- names(resp)
+        resp <- as.numeric(as.numeric(resp)>1)
+        names(resp) <- nn  ## restore stripped names
+    }
+    r <- resp-fitted(object)
     switch(type,
            response=r,
            pearson={

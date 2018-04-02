@@ -14,6 +14,11 @@ if (getRversion() < "3.3.0") {
 fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
 fm2diag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy)
 fm0   <- update(fm2, . ~ . -Days)
+## binomial, numeric response
+fm2Bn  <- update(fm2, as.numeric(Reaction>median(Reaction)) ~ .,
+                 family=binomial)
+## binomial, factor response
+fm2Bf  <- update(fm2, factor(Reaction>median(Reaction)) ~ ., family=binomial)
 fm2P  <- update(fm2, round(Reaction) ~ ., family=poisson)
 fm2G  <- update(fm2, family=Gamma(link="log"))
 fm2NB <- update(fm2P, family=nbinom2)
@@ -211,3 +216,8 @@ test_that("binomial", {
     s2 <- simulate(f2, 5)
     expect_equal(max(abs(as.matrix(s1) - as.matrix(s2))), 0)
 })
+
+test_that("residuals from binomial factor responses", {
+    expect_equal(residuals(fm2Bf),residuals(fm2Bn))
+})
+          
