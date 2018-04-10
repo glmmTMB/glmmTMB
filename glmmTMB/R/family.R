@@ -60,6 +60,15 @@ compois <- function(link="log") {
 
 #' @rdname nbinom2
 #' @export
+truncated_compois <- function(link="log") {
+    return(list(family="truncated_compois",link=link,
+           variance=function(mu,phi) {
+             stop("variance for truncated compois family not yet implemented")
+           }))
+}
+
+#' @rdname nbinom2
+#' @export
 genpois <- function(link="log") {
     return(list(family="genpois",link=link,
            variance=function(mu,phi) {
@@ -128,7 +137,7 @@ betabinomial <- function(link="logit") {
 tweedie <- function(link="log") {
     return(list(family="tweedie",link=link,
            variance=function(mu,phi,p) {
-               stop("variance for betabinomial family not yet implemented")
+               stop("variance for tweedie family not yet implemented")
            }))
 }
 
