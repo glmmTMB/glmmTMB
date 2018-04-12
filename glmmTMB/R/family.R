@@ -78,6 +78,15 @@ genpois <- function(link="log") {
 
 #' @rdname nbinom2
 #' @export
+truncated_genpois <- function(link="log") {
+    return(list(family="truncated_genpois",link=link,
+           variance=function(mu,phi) {
+             stop("variance for truncated genpois family not yet implemented")
+           }))
+}
+
+#' @rdname nbinom2
+#' @export
 truncated_poisson <- function(link="log") {
 	return(list(family="truncated_poisson", link=link,
            variance=function(lambda) {

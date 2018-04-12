@@ -19,6 +19,7 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
+	
   template<class Type>
   Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
   {
@@ -32,6 +33,34 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
+	
+  /* Simulate from generalized poisson distribution */
+  template<class Type>
+  Type rgenpois(Type theta, Type lambda) {
+    // Copied from R function HMMpa::rgenpois
+    Type ans = Type(0);
+    Type random_number = runif(Type(0), Type(1));
+    Type kum = dgenpois(Type(0), theta, lambda);
+    while (random_number > kum) {
+      ans = ans + Type(1);
+      kum += dgenpois(ans, theta, lambda);
+     }
+    return ans;
+  }
+	
+  /* Simulate from truncated generalized poisson distribution */
+  template<class Type>
+  Type rtruncated_genpois(Type theta, Type lambda) {
+    int nloop = 10000;
+    int counter = 0;
+    Type ans = rgenpois(theta, lambda);
+    while(ans < Type(1) && counter < nloop) {
+      ans = rgenpois(theta, lambda);
+      counter++;
+    }
+    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
+    return ans;
+	}
 
   template<class Type>
   bool isNA(Type x){
@@ -127,7 +156,7 @@ namespace glmmtmb{
     int nloop = 10000;
     int counter = 0;
     double ans = rcompois2(mean, nu);
-    while(ans < 1e-6 && counter < nloop) {
+    while(ans < 1. && counter < nloop) {
       ans = rcompois2(mean, nu);
       counter++;
     }
@@ -180,7 +209,8 @@ enum valid_family {
   truncated_poisson_family =401,
   genpois_family =402,
   compois_family =403,
-  truncated_compois_family =404,
+  truncated_genpois_family =404,
+  truncated_compois_family =405,
   nbinom1_family =500,
   nbinom2_family =501,
   truncated_nbinom1_family =502,
@@ -722,6 +752,15 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i) / sqrt(phi(i)); //theta
         s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
         tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true);
+        SIMULATE{yobs(i)=glmmtmb::rgenpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
+        break;
+      case truncated_genpois_family:
+        s1 = mu(i) / sqrt(phi(i)); //theta
+        s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
+        log_nzprob = logspace_sub(Type(0), -s1);
+        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob;
+        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+        SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
         break;
       case compois_family:
         s1 = mu(i); //mean
@@ -732,7 +771,7 @@ Type objective_function<Type>::operator() ()
       case truncated_compois_family:
         s1 = mu(i); //mean
         s2 = 1/phi(i); //nu
-        log_nzprob = logspace_sub(Type(0), -mu(i));
+        log_nzprob = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
         tmp_loglik = dcompois2(yobs(i), s1, s2, true) - log_nzprob;
         if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
         SIMULATE{yobs(i)=glmmtmb::rtruncated_compois2(mu(i), 1/phi(i));}
