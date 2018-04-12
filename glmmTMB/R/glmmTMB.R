@@ -882,7 +882,8 @@ fitTMB <- function(TMBStruc) {
     ## functions, if possible (for glm/effects compatibility)
     ff <- ret$modelInfo$family
     if (ff$family=="negative.binomial"  ||
-        length(formals(ff$variance))>1) {
+        (length(fv <- ff$variance)>0 &&  ## family has variance component
+         length(formals(fv))>1)) {       ## component has >1 element
         theta <- exp(fit$parfull["theta"]) ## log link
         for (fun in c("variance","dev.resids")) {
             assign(".Theta",
