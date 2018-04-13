@@ -44,7 +44,7 @@ namespace glmmtmb{
     while (random_number > kum) {
       ans = ans + Type(1);
       kum += dgenpois(ans, theta, lambda);
-     }
+    }
     return ans;
   }
 	
@@ -60,7 +60,7 @@ namespace glmmtmb{
     }
     if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
     return ans;
-	}
+  }
 
   template<class Type>
   bool isNA(Type x){
@@ -164,16 +164,13 @@ namespace glmmtmb{
 
   /* Simulate from tweedie distribution */
   template<class Type>
-  Type rtweedie(Type mu_, Type phi_, Type p_) {
-    double mu = asDouble(mu_);
-    double phi = asDouble(phi_);
-    double p = asDouble(p_);
+  Type rtweedie(Type mu, Type phi, Type p) {
     // Copied from R function tweedie::rtweedie
-    double lambda = pow(mu, 2. - p) / (phi * (2. - p));
-    double alpha  = (2. - p) / (1. - p);
-    double gam = phi * (p - 1.) * pow(mu, p - 1.);
-    int N = (int) rpois(lambda);
-    double ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
+    Type lambda = pow(mu, 2. - p) / (phi * (2. - p));
+    Type alpha  = (2. - p) / (1. - p);
+    Type gam = phi * (p - 1.) * pow(mu, p - 1.);
+    int N = (int) asDouble(rpois(lambda));
+    Type ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
     return ans;
   }
 }

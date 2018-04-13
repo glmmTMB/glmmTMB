@@ -315,4 +315,9 @@ test_that("tweedie", {
     expect_equal(unname( plogis(twm$fit$par["thetaf"]) + 1 ),
                  p,
                  tolerance = .01)
+    ## Check internal rtweedie used by simulate
+    y2 <- c(simulate(twm)[,1],simulate(twm)[,1])
+    twm2 <- glmmTMB(y2 ~ 1, family=tweedie())
+    expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
+    expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
 })
