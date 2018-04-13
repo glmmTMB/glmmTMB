@@ -48,7 +48,7 @@ namespace glmmtmb{
     return ans;
   }
 	
-  /* Simulate from truncated generalized poisson distribution */
+  /* Simulate from zero-truncated generalized poisson distribution */
   template<class Type>
   Type rtruncated_genpois(Type theta, Type lambda) {
     int nloop = 10000;
@@ -150,17 +150,15 @@ namespace glmmtmb{
 
   /* Simulate from zero-truncated Conway-Maxwell-Poisson distribution */
   template<class Type>
-  Type rtruncated_compois2(Type mean_, Type nu_) {
-    double mean = asDouble(mean_);
-    double nu = asDouble(nu_);
+  Type rtruncated_compois2(Type mean, Type nu) {
     int nloop = 10000;
     int counter = 0;
-    double ans = rcompois2(mean, nu);
+    Type ans = rcompois2(mean, nu);
     while(ans < 1. && counter < nloop) {
       ans = rcompois2(mean, nu);
       counter++;
     }
-    if(ans < 1e-6) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
+    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
     return ans;
   }
 
