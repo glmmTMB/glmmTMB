@@ -248,15 +248,19 @@ test_that("truncated", {
     tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_genpois")
     tgpdat <<- data.frame(y=simulate(tgp1)[,1])
     tgp2 <<- glmmTMB(y ~1, tgpdat, family="truncated_genpois")
+    expect_equal(sigma(tgp1), sigma(tgp2), tol=1e-1)
+    expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tol=1e-2)
     expect_lt(confint(tgp2)["sigma", "2.5 %"], sigma(tgp1))
     expect_lt(sigma(tgp1), confint(tgp2)["sigma", "97.5 %"])
     expect_lt(confint(tgp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
     expect_lt(unname(fixef(tgp1)$cond[1]), confint(tgp2)["cond.(Intercept)", "97.5 %"])
-    
+
     #Compois
-    tcp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_compois")
-    tcpdat <<- data.frame(y=simulate(tcp1)[,1])
-    tcp2 <<- glmmTMB(y ~1, tcpdat, family="truncated_compois")		
+    tcmp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_compois")
+    tcmpdat <<- data.frame(y=simulate(tcmp1)[,1])
+    tcmp2 <<- glmmTMB(y ~1, tcmpdat, family="truncated_compois")		
+    expect_equal(sigma(tcmp1), sigma(tcmp2), tol=1e-1)
+    expect_equal(fixef(tcmp1)$cond[1], fixef(tcmp2)$cond[1], tol=1e-2)
     expect_lt(confint(tcmp2)["sigma", "2.5 %"], sigma(tcmp1))
     expect_lt(sigma(tcmp1), confint(tcmp2)["sigma", "97.5 %"])
     expect_lt(confint(tcmp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tcmp1)$cond[1]))
