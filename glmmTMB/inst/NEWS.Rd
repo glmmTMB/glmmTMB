@@ -17,6 +17,8 @@
       formulas as well as in the main (conditional-mean) formula
       (if \code{offset} is specified as a separate argument, it applies
       only to the conditional mean)
+      \item zero-truncated generalized Poisson \code{family=truncated_genpois}
+      \item zero-truncated Conway-Maxwell-Poisson \code{family=truncated_compois}
     }
    }
    \subsection{BUG FIXES}{
