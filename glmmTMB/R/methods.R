@@ -602,6 +602,7 @@ format.perc <- function (probs, digits) {
 ##' }
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
+                                      "Wald",
                                       "profile",
                                       "uniroot"),
                              component = c("all", "cond", "zi", "other"),
@@ -611,7 +612,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                              cl = NULL,
                              ...)
 {
-    method <- match.arg(method)
+    method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
         if (length(dots)>0) {

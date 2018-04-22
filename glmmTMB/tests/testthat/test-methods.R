@@ -148,6 +148,7 @@ test_that("confint", {
                   .Dimnames = list(c("cond.(Intercept)", "cond.Days"),
                                    c("2.5 %", "97.5 %"))),
         tolerance=1e-6)
+    ciw <- confint(fm2, 1:2, method="Wald", estimate=FALSE)
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
