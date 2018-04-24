@@ -24,11 +24,15 @@ aggdat = ddply(inddat, ~i+x+y, summarize, freq=length(rep))
 
 test_that("Weights can be an argument", {
 	wei_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=aggdat, weight=freq, family="poisson")
+        expect_equal(unname(fixef(wei_glmmtmb)$cond),
+                            c(-0.00907013282660578, 0.944062427131668),
+                     tolerance=1e-6)
 })
+
 ind_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=inddat, family="poisson")
 
 test_that("Estimates are the same", {
-	expect_equal(summary(wei_glmmtmb)$coefficients$cond, summary(ind_glmmtmb)$coefficients$cond, tol=1e-6)
+	expect_equal(summary(wei_glmmtmb)$coefficients$cond, summary(ind_glmmtmb)$coefficients$cond, tolerance=1e-6)
 	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tol=1e-6)
 	expect_equal(AIC(wei_glmmtmb), AIC(ind_glmmtmb), tol=1e-6)
 })

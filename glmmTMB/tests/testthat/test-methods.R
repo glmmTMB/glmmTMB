@@ -44,6 +44,20 @@ test_that("Fitted and residuals", {
     expect_equal(rr2(glm(Murder~Population,ss,family=Gamma(link="log"))),
                  rr2(glmmTMB(Murder~scale(Population),ss,
                              family=Gamma(link="log"))),tol=1e-5)
+    ## weights are incorporated in Pearson residuals
+    ## GH 307
+    tmbm4 <- glm(incidence/size ~ period,
+             data = cbpp, family = binomial, weights = size)
+    tmbm5 <- glmmTMB(incidence/size ~ period,
+                     data = cbpp, family = binomial, weights = size)
+    expect_equal(residuals(tmbm4,type="pearson"),
+                 residuals(tmbm5,type="pearson"),tolerance=1e-6)
+    ## two-column responses give vector of residuals GH 307
+    tmbm6 <- glmmTMB(cbind(incidence,size-incidence) ~ period,
+                     data = cbpp, family = binomial)
+    expect_equal(residuals(tmbm4,type="pearson"),
+                 residuals(tmbm6,type="pearson"),tolerance=1e-6)
+
 })
 
 test_that("Predict", {
@@ -134,6 +148,7 @@ test_that("confint", {
                   .Dimnames = list(c("cond.(Intercept)", "cond.Days"),
                                    c("2.5 %", "97.5 %"))),
         tolerance=1e-6)
+    ciw <- confint(fm2, 1:2, method="Wald", estimate=FALSE)
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
@@ -160,10 +175,20 @@ test_that("confint", {
     ## profile CI
     ci.prof <- confint(fm2,parm=1,method="profile", npts=3)
     expect_equal(ci.prof,
-                 structure(c(230.846, 271.943),
+                 structure(c(237.27249, 265.13383),
                            .Dim = 1:2, .Dimnames = list(
-                                           "(Intercept)", c("lwr", "upr"))),
+                                "(Intercept)", c("2.5 %", "97.5 %"))),
                  tolerance=1e-6)
+    ## uniroot CI
+    ci.uni <- confint(fm2,parm=1,method="uniroot")
+    expect_equal(ci.uni,
+                 structure(c(237.68071,265.12949,251.4050979),
+                        .Dim = c(1L, 3L),
+        .Dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
+                 tolerance=1e-6)
+    ## check against 'raw' tmbroot
+    ## (not exported (yet?) ...)
+    ## tmbr <- glmmTMB:::tmbroot(fm2$obj,name=1)
 })
 
 test_that("vcov", {

@@ -243,12 +243,34 @@ test_that("truncated", {
                       data=data.frame(z_nb0))
     expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
     expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb1)$cond, tol=1e-6) ## Test conditional model
+
+    #Genpois
+    tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_genpois")
+    tgpdat <<- data.frame(y=simulate(tgp1)[,1])
+    tgp2 <<- glmmTMB(y ~1, tgpdat, family="truncated_genpois")
+    expect_equal(sigma(tgp1), sigma(tgp2), tol=1e-1)
+    expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tol=1e-2)
+    expect_lt(confint(tgp2)["sigma", "2.5 %"], sigma(tgp1))
+    expect_lt(sigma(tgp1), confint(tgp2)["sigma", "97.5 %"])
+    expect_lt(confint(tgp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
+    expect_lt(unname(fixef(tgp1)$cond[1]), confint(tgp2)["cond.(Intercept)", "97.5 %"])
+
+    #Compois
+    tcmp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_compois")
+    tcmpdat <<- data.frame(y=simulate(tcmp1)[,1])
+    tcmp2 <<- glmmTMB(y ~1, tcmpdat, family="truncated_compois")		
+    expect_equal(sigma(tcmp1), sigma(tcmp2), tol=1e-1)
+    expect_equal(fixef(tcmp1)$cond[1], fixef(tcmp2)$cond[1], tol=1e-2)
+    expect_lt(confint(tcmp2)["sigma", "2.5 %"], sigma(tcmp1))
+    expect_lt(sigma(tcmp1), confint(tcmp2)["sigma", "97.5 %"])
+    expect_lt(confint(tcmp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tcmp1)$cond[1]))
+    expect_lt(unname(fixef(tcmp1)$cond[1]), confint(tcmp2)["cond.(Intercept)", "97.5 %"])
 })
 test_that("compois", {
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	cmp1 <<- glmmTMB(y~f, cmpdat, family="compois")
-	expect_equal(unname(fixef(cmp1)$cond), c(2.9652731, -0.9773987), tol=1e-6)
+	expect_equal(unname(fixef(cmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
 	expect_equal(sigma(cmp1), 0.1833339, tol=1e-6)
 	expect_equal(predict(cmp1)[1:2], c(19.4, 7.3), tol=1e-6)
 })
@@ -293,4 +315,9 @@ test_that("tweedie", {
     expect_equal(unname( plogis(twm$fit$par["thetaf"]) + 1 ),
                  p,
                  tolerance = .01)
+    ## Check internal rtweedie used by simulate
+    y2 <- c(simulate(twm)[,1],simulate(twm)[,1])
+    twm2 <- glmmTMB(y2 ~ 1, family=tweedie())
+    expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
+    expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
 })

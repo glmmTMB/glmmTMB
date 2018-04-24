@@ -6,21 +6,27 @@
 \title{Compute likelihood profiles for a fitted model}
 \usage{
 \method{profile}{glmmTMB}(fitted, parm = NULL, level_max = 0.99, npts = 8,
-  stepfac = 1/4, trace = FALSE, parallel = c("no", "multicore", "snow"),
-  ncpus = getOption("profile.ncpus", 1L), cl = NULL, ...)
+  stepfac = 1/4, stderr = NULL, trace = FALSE, parallel = c("no",
+  "multicore", "snow"), ncpus = getOption("profile.ncpus", 1L), cl = NULL,
+  ...)
 
 \method{confint}{profile.glmmTMB}(object, parm = NULL, level = 0.95, ...)
 }
 \arguments{
 \item{fitted}{a fitted \code{glmmTMB} object}
 
-\item{parm}{which parameters to profile, specified by index (position)}
+\item{parm}{which parameters to profile, specified by index (position) or by name (matching the row/column names of \code{vcov(object,full=TRUE)})}
 
 \item{level_max}{maximum confidence interval target for profile}
 
 \item{npts}{target number of points in (each half of) the profile (\emph{approximate})}
 
 \item{stepfac}{initial step factor (fraction of estimated standard deviation)}
+
+\item{stderr}{standard errors to use as a scaling factor when picking step
+sizes to compute the profile; by default (if \code{stderr} is
+\code{NULL}, or \code{NA} for a particular element),
+uses the estimated (Wald) standard errors of the parameters}
 
 \item{trace}{print tracing information? If \code{trace=FALSE} or 0,
 no tracing; if \code{trace=1}, print names of parameters currently

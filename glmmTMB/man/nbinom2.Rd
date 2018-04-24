@@ -5,7 +5,9 @@
 \alias{family_glmmTMB}
 \alias{nbinom1}
 \alias{compois}
+\alias{truncated_compois}
 \alias{genpois}
+\alias{truncated_genpois}
 \alias{truncated_poisson}
 \alias{truncated_nbinom2}
 \alias{truncated_nbinom1}
@@ -20,7 +22,11 @@ nbinom1(link = "log")
 
 compois(link = "log")
 
+truncated_compois(link = "log")
+
 genpois(link = "log")
+
+truncated_genpois(link = "log")
 
 truncated_poisson(link = "log")
 

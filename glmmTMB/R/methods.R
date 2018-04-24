@@ -31,7 +31,7 @@ cNames <- list(cond = "Conditional model",
                disp = "Dispersion model")
 
 ## FIXME: this is a bit ugly. On the other hand, a single-parameter
-## dispersion model without a
+## dispersion model without a (... ?)
 trivialDisp <- function(object) {
     ## This version works on summary object or fitted model object
     ## FIXME: is there a better way to strip the environment before
@@ -482,8 +482,15 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
         stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
-    r <- model.response(object$frame)-fitted(object)
-    switch(type,
+    mr <- model.response(object$frame)
+    wts <- model.weights(model.frame(object))
+    ## binomial model specified as (success,failure)
+    if (!is.null(dim(mr))) {
+        wts <- mr[,1]+mr[,2]
+        mr <- mr[,1]/wts
+    }
+    r <- mr - fitted(object)
+    res <- switch(type,
            response=r,
            pearson={
                if (is.null(v <- family(object)$variance))
@@ -494,8 +501,13 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
                             v(fitted(object)),
                             v(fitted(object),sigma(object)),
                             stop("variance function should take 1 or 2 arguments"))
-               r/sqrt(vv)
-           })
+               r <- r/sqrt(vv)
+               if (!is.null(wts)) {
+                   r <- r*sqrt(wts)
+               }
+               r
+    })
+    return(res)
 }
 
 ## Helper to get CI of simple *univariate monotone* parameter
@@ -548,13 +560,22 @@ format.perc <- function (probs, digits) {
 ##' Calculate confidence intervals
 ##'
 ##' @details
-##' Currently, all confidence intervals are calculated using the
-##' 'wald' method. These intervals are based on the standard errors
+##' Available methods are
+##' \describe{
+##' \item{wald}{These intervals are based on the standard errors
 ##' calculated for parameters on the scale
 ##' of their internal parameterization depending on the family. Derived
 ##' quantities such as standard deviation parameters and dispersion
 ##' parameters are backtransformed. It follows that confidence
-##' intervals for these derived quantities are asymmetric.
+##' intervals for these derived quantities are asymmetric.}
+##' \item{profile}{This method computes a likelihood profile
+##' for the specified parameter(s) using \code{profile.glmmTMB};
+##' fits a spline function to each half of the profile; and
+##' inverts the function to find the specified confidence interval.}
+##' \item{uniroot}{This method uses the \code{\link{uniroot}}
+##' function to find critical values of one-dimensional profile
+##' functions for each specified parameter.}
+##' }
 ##'
 ##' @importFrom stats qnorm confint
 ##' @export
@@ -562,11 +583,16 @@ format.perc <- function (probs, digits) {
 ##' @param parm Specification of a parameter subset \emph{after}
 ##'     \code{component} subset has been applied.
 ##' @param level Confidence level.
-##' @param method Currently only option is 'wald'.
+##' @param method 'wald', 'profile', or 'uniroot': see Details
+##' function)
 ##' @param component Which of the three components 'cond', 'zi' or
 ##'     'other' to select. Default is to select 'all'.
-##' @param estimate Logical; Add a 3rd column with estimate ?
-##' @param ... arguments may be passed to \code{\link{profile.merMod}}
+##' @param estimate (logical) add a third column with estimate ?
+##' @param parallel method (if any) for parallel computation
+##' @param ncpus number of CPUs/cores to use for parallel computation
+##' @param cl cluster to use for parallel computation
+##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
+##' \code{\link{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
@@ -576,12 +602,18 @@ format.perc <- function (probs, digits) {
 ##' }
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
-                                      "profile"),
+                                      "Wald",
+                                      "profile",
+                                      "uniroot"),
                              component = c("all", "cond", "zi", "other"),
-                             estimate = TRUE, ...)
+                             estimate = TRUE,
+                             parallel = c("no", "multicore", "snow"),
+                             ncpus = getOption("profile.ncpus", 1L),
+                             cl = NULL,
+                             ...)
 {
-    method <- match.arg(method)
-    if (method!="profile") {
+    method <- tolower(match.arg(method))
+    if (method=="wald") {
         dots <- list(...)
         if (length(dots)>0) {
             if (is.null(names(dots))) {
@@ -654,8 +686,54 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         ## Take subset
         if (!missing(parm))
             ci <- ci[parm, , drop=FALSE]
-    } else {  ## profile CIs
-        pp <- profile(object, parm=parm, level_max=level, ...)
+    } else if (tolower(method=="uniroot")) {
+        ## FIXME: allow greater flexibility in specifying different
+        ##  ranges, etc. for different parameters
+        if (missing(parm)) {
+            parm <- seq_along(names(object$obj$par))
+        }
+        plist <- parallel_default(parallel,ncpus)
+        parallel <- plist$parallel
+        do_parallel <- plist$do_parallel
+        FUN <- function(n) {
+            tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
+                    ...)
+        }
+        if (do_parallel) {
+            if (parallel == "multicore") {
+                L <- parallel::mclapply(parm, FUN, mc.cores = ncpus)
+            } else if (parallel=="snow") {
+                if (is.null(cl)) {
+                    ## start cluster
+                    new_cl <- TRUE
+                    cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
+                }
+                ## run
+                L <- parallel::clusterApply(cl, parm, FUN)
+                if (new_cl) {
+                    ## stop cluster
+                    parallel::stopCluster(cl)
+                }
+            }
+        } else { ## non-parallel
+            L <- lapply(as.list(parm), FUN)
+        }
+        L <- do.call(rbind,L)
+        rownames(L) <- rownames(vcov(object,full=TRUE))[parm]
+        if (estimate) {
+            ee <- object$obj$env
+            par <- ee$last.par.best
+            if (!is.null(ee$random)) 
+                par <- par[-ee$random]
+            par <- par[parm]
+            L <- cbind(L,par)
+        }
+        ci <- rbind(ci,L) ## really just adding column names!
+    }
+    else {  ## profile CIs
+        pp <- profile(object, parm=parm, level_max=level,
+                      parallel=parallel,
+                      ...)
         ci <- confint(pp)
     }
     return(ci)
@@ -687,7 +765,6 @@ abbrDeparse <- function(x, width=60) {
     r <- deparse(x, width)
     if(length(r) > 1) paste(r[1], "...") else r
 }
-
 
 
 ##' @importFrom methods is
