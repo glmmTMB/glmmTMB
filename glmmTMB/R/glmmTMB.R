@@ -872,10 +872,28 @@ fitTMB <- function(TMBStruc) {
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    structure(namedList(obj, fit, sdr, call=TMBStruc$call,
+
+    ret <- structure(namedList(obj, fit, sdr, call=TMBStruc$call,
                         frame=TMBStruc$fr, modelInfo,
                         fitted),
               class = "glmmTMB")
+
+    ## fill in dispersion parameters in environments of family variance
+    ## functions, if possible (for glm/effects compatibility)
+    ff <- ret$modelInfo$family
+    if (ff$family=="negative.binomial"  ||
+        (length(fv <- ff$variance)>0 &&  ## family has variance component
+         length(formals(fv))>1)) {       ## component has >1 element
+        theta <- exp(fit$parfull["theta"]) ## log link
+        for (fun in c("variance","dev.resids")) {
+            assign(".Theta",
+                   theta,
+                   environment(ret[["modelInfo"]][["family"]][[fun]]))
+        }
+    }
+    
+    return(ret)
+
 }
 
 ##' @importFrom stats AIC BIC

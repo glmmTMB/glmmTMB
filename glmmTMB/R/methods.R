@@ -95,6 +95,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ranef.glmmTMB <- function(object, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
+  ## FIXME: add condVar, make sure format matches lme4
   arrange <- function(x, listname)
   {
     cnms <- object$modelInfo$reTrms[[listname]]$cnms
@@ -831,7 +832,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 #' @importFrom stats predict
 #' @export
 fitted.glmmTMB <- function(object, ...) {
-    predict(object)
+    predict(object,type="response")
 }
 
 .noSimFamilies <- c("beta", "genpois")
@@ -871,3 +872,27 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     ret <- as.data.frame(ret)
     ret
 }
+
+#' Extract the formula of a glmmTMB object
+#' 
+#' @param component formula for which component of the model to return (conditional, zero-inflation, or dispersion)
+#' @param fixed.only (logical) drop random effects, returning only the fixed-effect component of the formula?
+#' @param ... unused, for generic consistency
+#' @importFrom lme4 nobars
+#' @export
+formula.glmmTMB <- function(x, fixed.only=FALSE,
+                            component=c("cond", "zi", "disp"),
+                            ...) {
+    if (!fixed.only && missing(component)) {
+        ## stats::formula.default extracts formula from call
+        return(NextMethod(x, ...))
+    }
+    component <- match.arg(component)
+    af <- x$modelInfo$allForm
+    ff <- if (component=="cond") af[["formula"]] else af[[paste0(component,"formula")]]
+    if (fixed.only) {
+        ff <- lme4::nobars(ff)
+    }
+    return(ff)
+}
+    

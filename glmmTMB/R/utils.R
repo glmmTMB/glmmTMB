@@ -512,6 +512,21 @@ GMRFmarginal <- function(Q, i, ...) {
     ans
 }
 
+#' n.b. won't work for terms with more than 2 args ...
+#' @examples
+#' replaceForm(quote(a(b+x*c(y,z))),quote(y),quote(R))
+#' ss <- ~(1 | cask:batch) + (1 | batch)
+#' replaceForm(ss,quote(cask:batch),quote(batch:cask))
+replaceForm <- function(term,target,repl) {
+    if (identical(term,target)) return(repl)
+    if (!inForm(term,target)) return(term)
+    if (length(term) == 2) {
+        return(substitute(OP(x),list(OP=term[[1]],x=replaceForm(term[[2]],target,repl))))
+    }
+    return(substitute(OP(x,y),list(OP=term[[1]],
+                                   x=replaceForm(term[[2]],target,repl),
+                                   y=replaceForm(term[[3]],target,repl))))
+}
 
 parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
     ##  boilerplate parallel-handling stuff, copied from lme4
