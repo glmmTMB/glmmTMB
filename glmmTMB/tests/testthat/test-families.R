@@ -272,7 +272,7 @@ test_that("compois", {
 	cmp1 <<- glmmTMB(y~f, cmpdat, family="compois")
 	expect_equal(unname(fixef(cmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
 	expect_equal(sigma(cmp1), 0.1833339, tol=1e-6)
-	expect_equal(predict(cmp1)[1:2], c(19.4, 7.3), tol=1e-6)
+	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
 })
 test_that("genpois", {
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
