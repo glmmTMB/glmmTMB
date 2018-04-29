@@ -417,7 +417,7 @@ newdata
 and predict using
 
 ```{r predict_corner}
-predict(f, newdata, allow.new.levels=TRUE)
+predict(f, newdata, type="response", allow.new.levels=TRUE)
 ```
 
 A specific image column can thus be predicted using the function
@@ -426,7 +426,7 @@ A specific image column can thus be predicted using the function
 predict_col <- function(i) {
     newdata <- data.frame( pos = numFactor(expand.grid(1:87,i)))
     newdata$group <- factor(rep(1,nrow(newdata)))
-    predict(f, newdata=newdata, allow.new.levels=TRUE)
+    predict(f, newdata=newdata, type="response", allow.new.levels=TRUE)
 }
 ```
 
