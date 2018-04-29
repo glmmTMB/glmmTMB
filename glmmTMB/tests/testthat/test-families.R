@@ -321,3 +321,13 @@ test_that("tweedie", {
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
 })
+
+context("link function info available")
+
+fam1 <- c("poisson","nbinom1","nbinom2","compois")
+fam2 <- c("binomial","beta_family","betabinomial","tweedie")
+for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
+    ## print(f)
+    expect_true("linkinv" %in% names(get(f)()))
+}
+

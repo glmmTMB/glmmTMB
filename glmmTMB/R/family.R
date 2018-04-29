@@ -31,14 +31,6 @@
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' }
 
-##' @export
-nbinom2 <- function(link="log") {
-    return(list(family="nbinom2",link=link,
-           variance=function(mu,theta) {
-               mu*(1+mu/theta)
-           }))
-}
-
 ## FIXME: I would like to use the following function instead of repeating
 ## the pattern, but I'm worried that lazy evaluation of arguments will
 ## cause all kinds of trouble
@@ -53,7 +45,16 @@ family_factory <- function(default_link,family,variance) {
 ## even better (?) would be to have a standalone list including
 ## name, default link, variance function, (optionally) initialize
 ## for each family
-        
+
+##' @export
+nbinom2 <- function(link="log") {
+   r <- list(family="nbinom2",link=link,
+           variance=function(mu,theta) {
+               mu*(1+mu/theta)
+       })
+       return(c(r,make.link(link)))
+}
+
 #' @rdname nbinom2
 #' @export
 nbinom1 <- function(link="log") {
