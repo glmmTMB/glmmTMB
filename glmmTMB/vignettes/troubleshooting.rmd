@@ -8,7 +8,7 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-```{r echo=FALSE}
+```{r load_lib,echo=FALSE}
 library(glmmTMB)
 ```
 
@@ -19,44 +19,139 @@ If your problem is not covered below, try updating to the latest version of `glm
 
 #Warnings
 
-##Model convergence problem; non-positive-definite Hessian matrix
+## Model convergence problem; non-positive-definite Hessian matrix
+
 You may see the same warning as in the following example:
-```{r non-pos-def}
+```{r non-pos-def,cache=TRUE}
 zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family="nbinom2")
 ```
-This often occurs when a model is overparameterized (i.e. the data does not contain information to estimate the parameters).
-In the example above, the problem is that zero observations do not depend on species as in `zi=~spp`; rather, they depend on another covariate that is missing from the model `minded`. 
-Plotting the data against potential covariates should help to avoid fitting unreasonable models that don't converge.
+
+This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the curvature of the log-likelihood surface does not seem to be consistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
+
+It can occur:
+
+- when a model is overparameterized (i.e. the data does not contain information to estimate the parameters)
+- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)
+- when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
+
+How do we diagnose the problem?
+First, look at the estimated coefficients and see if any of them are extreme. If you're using a non-identity
+link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for logit link, this
+implies probabilities very close to 0 or 1; for log link, this implies mean counts that are
+close to 0 or gigantic).
+
+Inspecting the fixed-effect estimates for this model:
+
+```{r fixef_zinbm0}
+fixef(zinbm0)
+```
+
+The zero-inflation intercept parameter is tiny (-17): since the parameters
+are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
+
+```{r f_zi2}
+ff <- fixef(zinbm0)$zi
+round(plogis(c(sppGP=unname(ff[1]),ff[-1]+ff[1])),3)
+```
+
+Since the baseline probability is already effectively zero,
+making the intercept parameter larger or smaller will have very little effect - the likelihood is flat,
+which leads to the non-positive-definite warning.
+
+Now that we suspect the problem is in the zero-inflation component,
+we can try to come up with ways of simplifying the model:
+for example, we could use a model that compared the first species ("GP") to the rest:
+
+```{r salfit2,cache=TRUE}
+Salamanders <- transform(Salamanders, GP=as.numeric(spp=="GP"))
+zinbm0_A = update(zinbm0, ziformula=~GP)
+```
+
+This fits without a warning, although the GP zero-inflation parameter is still extreme:
+
+```{r salfit2_coef,cache=TRUE}
+fixef(zinbm0_A)[["zi"]]
+```
+
+Another possibility would be to fit the variation among species in the zero-inflation parameter
+as a random effect, rather than a fixed effect: this is slightly more parsimonious.
+This again fits without an error, although both the average level of
+zero-inflation and the among-species variation are estimated as very small:
+
+```{r salfit3,cache=TRUE}
+zinbm0_B = update(zinbm0, ziformula=~(1|spp))
+fixef(zinbm0_B)[["zi"]]
+VarCorr(zinbm0_B)
+```
+
+<!-- FIXME: updating here does weird things
+zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family="nbinom2")
+-->
+
+The original analysis considered variation in zero-inflation by site status
+(mined or not mined) rather than by species - this simpler model only tries
+to estimate two parameters (mined + difference between mined and no-mining)
+rather than 7 (one per species) for the zero-inflation model.
+
+```{r zinbm1,cache=TRUE}
+zinbm1 = glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family="nbinom2")
+fixef(zinbm1)[["zi"]]
+```
+
+This again fits without a warning, but we see that the zero-inflation is effectively
+zero in the unmined ("minedno") condition (`plogis(0.38-17.5)` is
+approximately $$4 \times 10^{-8}$$). We can estimate the confidence interval, but
+it takes some extra work: the default Wald standard errors and confidence intervals
+are useless in this case.
+
+```{r zinbm1_confint,cache=TRUE}
+## at present we need to specify the parameter by number; for
+##  extreme cases need to specify the parameter range
+## (not sure why the upper bound needs to be so high ... ?)
+cc = confint(zinbm1,method="uniroot",parm=9, parm.range=c(-20,20))
+print(cc)
+```
+
+The lower CI is not defined; the upper CI is -2.08, i.e. we can state
+that the zero-inflation probability is less than `plogis(-2.08)` = 0.11.
+
+More broadly, general inspection of the data (e.g., plotting the response against potential covariates)
+should help to diagnose overly complex models.
 
 In some cases, scaling predictor variables may help.
 
-Models with non-positive definite Hessian matricies should be excluded from further consideration, in general.  
+In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 
-##Model convergence problem; Eigen value problems
-```{r genpois NaN}
+##Model convergence problem:  eigenvalue problems
+
+```{r genpois_NaN,cache=TRUE}
 m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family="genpois")
 ```
-In this example, the fixed effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
+
+In this example, the fixed-effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
 
 Models with convergence problems should be excluded from further consideration, in general.
 
-##NA/NaN function evaluation
-```{r NA function, eval=FALSE}
-Warning in nlminb(start = par, objective = fn, gradient = gr) :
-  NA/NaN function evaluation
-```
-This warning often occurs when the optimizer wanders into a region of parameter space that is invalid. It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above. 
+In some cases, extreme eigenvalues may be caused by having predictor variables that are on very different scales: try rescaling, and centering, continuous predictors in the model.
 
-The following warnings can be treated in the same way as an NA/NaN function evaluation:
+##NA/NaN function evaluation
+
+> Warning in nlminb(start = par, objective = fn, gradient = gr) : NA/NaN function evaluation
+
+This warning occurs when the optimizer visits a region of parameter space that is invalid. It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above. 
+
+The following warnings indicate possibly-transient numerical problems with the fit, and can be treated in the same way (i.e. ignored if there are no errors or convergence warnings about the final fitted model).
+
 ```{r Cholmod, eval=FALSE}
 Cholmod warning 'matrix not positive definite'
 ```
 ```{r lgamma, eval=FALSE}
 Warning in f(par, order = order, ...) : value out of range in 'lgamma'
 ```
-#Errors
+# Errors
 
-##NA/NaN gradient evaluation
+## NA/NaN gradient evaluation
+
 ```{r NA gradient, error=TRUE, warning=FALSE}
 dat1 = expand.grid(y=-1:1, rep=1:10)
 m1 = glmmTMB(y~1, dat1, family="nbinom2")
@@ -66,14 +161,11 @@ The error occurs here because the negative binomial distribution is not appropri
 If you see this error, check that the response variable meets the assumptions of the specified distribution.
 
 ## gradient length
-```{r gradient length nlminb, eval=FALSE}
-Error in nlminb(start = par, objective = fn, gradient = gr) : 
-  gradient function must return a numeric vector of length x
-```
-```{r gradient length optimhess, eval=FALSE}
-Error in optimHess(par.fixed, obj$fn, obj$gr): 
-  gradient in optim evaluated to length x
-```
+
+
+> Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x
+
+> Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x
 
 Try rescaling predictor variables. Try a simpler model and build up.
 
