@@ -54,6 +54,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' @param object a \code{glmmTMB} object
 ##' @param newdata new data for prediction
 ##' @param se.fit return the standard errors of the predicted values?
+##' @param zitype deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}
 ##' @param type Denoting \eqn{mu} as the mean of the conditional distribution and
 ##' \code{p} as the zero-inflation probability,
 ##' the possible choices are:
@@ -95,12 +96,17 @@ predict.glmmTMB <- function(object,newdata=NULL,
                             re.form, allow.new.levels=FALSE,
                             type = c("link", "response",
                                      "conditional","zprob","zlink"),
+                            zitype = NULL,
                             na.action = na.pass,
                             debug=FALSE,
                             ...)
 {
   ## FIXME: add re.form
 
+  if (!is.null(zitype)) {
+     warning("zitype is deprecated: please use type instead")
+     type <- zitype
+  }
   type <- match.arg(type)
   if (!missing(re.form)) stop("re.form not yet implemented")
   ##if (allow.new.levels) stop("allow.new.levels not yet implemented")

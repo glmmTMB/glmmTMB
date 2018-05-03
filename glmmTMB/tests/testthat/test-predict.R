@@ -112,7 +112,7 @@ zlink_pred <- mypred(~period,dd,fixef(g0_zi)$zi,vcov(g0_zi)$zi)
 expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="zlink")),
              zlink_pred)
 
-
-    
+context("deprecated zitype parameter")
+expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
     
     

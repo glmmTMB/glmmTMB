@@ -1,3 +1,18 @@
+## FIXME: I would like to use the following function instead of repeating
+## the pattern, but I'm worried that lazy evaluation of arguments will
+## cause all kinds of trouble
+family_factory <- function(default_link,family,variance) {
+    f <- function(link=default_link) {
+        r <- list(family=family,link=link,variance=variance)
+        r <- c(r,make.link(link))
+        return(r)
+    }
+    return(f)
+}
+## even better (?) would be to have a standalone list including
+## name, default link, variance function, (optionally) initialize
+## for each family
+
 ##' Family functions for glmmTMB
 ##' 
 ##' @aliases family_glmmTMB
@@ -27,25 +42,9 @@
 ##' @references
 ##' \itemize{
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
-##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
+##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' }
-
-## FIXME: I would like to use the following function instead of repeating
-## the pattern, but I'm worried that lazy evaluation of arguments will
-## cause all kinds of trouble
-family_factory <- function(default_link,family,variance) {
-    f <- function(link=default_link) {
-        r <- list(family=family,link=link,variance=variance)
-        r <- c(r,make.link(link))
-        return(r)
-    }
-    return(f)
-}
-## even better (?) would be to have a standalone list including
-## name, default link, variance function, (optionally) initialize
-## for each family
-
 ##' @export
 nbinom2 <- function(link="log") {
    r <- list(family="nbinom2",link=link,

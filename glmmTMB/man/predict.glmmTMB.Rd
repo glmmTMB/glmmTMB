@@ -6,7 +6,8 @@
 \usage{
 \method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE, re.form,
   allow.new.levels = FALSE, type = c("link", "response", "conditional",
-  "zprob", "zlink"), na.action = na.pass, debug = FALSE, ...)
+  "zprob", "zlink"), zitype = NULL, na.action = na.pass, debug = FALSE,
+  ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
@@ -34,6 +35,8 @@ for non-zero-inflated models)}
 ##' \item{"zilink"}{predicted zero-inflation probability on the scale of
 the logit link function}
 }}
+
+\item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}
 
 \item{na.action}{how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 the default (\code{na.pass}) is to predict \code{NA}}
