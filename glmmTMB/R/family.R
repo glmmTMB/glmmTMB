@@ -45,6 +45,7 @@ family_factory <- function(default_link,family,variance) {
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' }
+##' @importFrom stats make.link
 ##' @export
 nbinom2 <- function(link="log") {
    r <- list(family="nbinom2",link=link,
