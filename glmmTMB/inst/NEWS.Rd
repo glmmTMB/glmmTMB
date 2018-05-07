@@ -18,7 +18,10 @@
       (if \code{offset} is specified as a separate argument, it applies
       only to the conditional mean)
       \item zero-truncated generalized Poisson \code{family=truncated_genpois}
-      \item zero-truncated Conway-Maxwell-Poisson \code{family=truncated_compois}
+      \item zero-truncated Conway-Maxwell-Poisson
+      \code{family=truncated_compois}
+      \item \code{predict} now allows \code{type} ("link", "response",
+      "conditional", "zprob", "zlink")
     }
    }
    \subsection{BUG FIXES}{
@@ -34,7 +37,10 @@
    }
    \subsection{USER-VISIBLE CHANGES}{
      \itemize{
-       
+       \item in \code{predict.glmmTMB},
+       the \code{zitype} argument has been rolled into the new
+       \code{type} argument: \strong{default prediction type is now
+	 "link" instead of "response", in order to match \code{glm()} default}
      }
    }
  }
