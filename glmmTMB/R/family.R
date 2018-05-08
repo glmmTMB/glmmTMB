@@ -1,3 +1,18 @@
+## FIXME: I would like to use the following function instead of repeating
+## the pattern, but I'm worried that lazy evaluation of arguments will
+## cause all kinds of trouble
+family_factory <- function(default_link,family,variance) {
+    f <- function(link=default_link) {
+        r <- list(family=family,link=link,variance=variance)
+        r <- c(r,make.link(link))
+        return(r)
+    }
+    return(f)
+}
+## even better (?) would be to have a standalone list including
+## name, default link, variance function, (optionally) initialize
+## for each family
+
 ##' Family functions for glmmTMB
 ##'
 ##'
@@ -29,114 +44,123 @@
 ##' @references
 ##' \itemize{
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
-##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
+##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' }
 ##' @export
+##' @importFrom stats make.link
 nbinom2 <- function(link="log") {
-    return(list(family="nbinom2",
-                link=link,
-                linkfun = function (mu)  { log(mu) },
-                mu.eta = function  (eta) { pmax(exp(eta), .Machine$double.eps) },
-                linkinv = function (eta) { pmax(exp(eta), .Machine$double.eps) },
-                variance=function(mu, theta) {
-                     if (missing(theta)) {
-                        ## look in environment
-                        if (!exists(".Theta")) {
-                            stop("theta neither passed as an argument nor stored in enviroment")
-                            theta <- .Theta
-                        }
-
+    theta_errstr <- "theta (nbinom parameter) neither passed as an argument nor stored in enviroment"
+    r <- list(family="nbinom2",
+              variance=function(mu, theta) {
+                if (missing(theta)) {
+                    ## look in environment
+                    if (!exists(".Theta")) {
+                        stop(theta_errstr)
+                        theta <- .Theta
                     }
-                    return(mu*(1+mu/theta))
-                },
-                ## full versions needed for effects::mer.to.glm
-                ## (so we can evaluate a glm)
-                initialize = expression({
-                    if (any(y < 0)) 
-                        stop("negative values not allowed for the negative binomial family")
-                    n <- rep(1, nobs)
-                    mustart <- y + (y == 0)/6
-                }),
-                ## where is .Theta set??
-                dev.resids = function (y, mu, wt)  {
-        2 * wt * (y * log(pmax(1, y)/mu) - (y + .Theta) * log((y + .Theta)/(mu + .Theta)))
-    }
-     )
-)
+                }
+                return(mu*(1+mu/theta))
+               },  ## variance function
+              ## full versions needed for effects::mer.to.glm
+              ## (so we can evaluate a glm)
+              initialize = expression({
+                  if (any(y < 0)) 
+                      stop("negative values not allowed for the negative binomial family")
+                  n <- rep(1, nobs)
+                  mustart <- y + (y == 0)/6
+              }),
+              dev.resids = function (y, mu, wt)  {
+        if (missing(theta)) {
+            if (!exists(".Theta")) {
+                stop(theta_errstr)
+                theta <- .Theta
+            }
+        }
+        return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
+    })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 nbinom1 <- function(link="log") {
-    return(list(family="nbinom1",link=link,
-           variance=function(mu,alpha) {
-               mu*(1+alpha)
-           }))
+    r <- list(family="nbinom1",link=link,
+              variance=function(mu,alpha) {
+                  mu*(1+alpha)
+              })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 compois <- function(link="log") {
-    return(list(family="compois",link=link,
+    r <- list(family="compois",link=link,
            variance=function(mu,phi) {
                if (length(phi)==1) phi <- rep(phi, length=length(mu))
                .Call("compois_calc_var", mu, 1/phi, PACKAGE="glmmTMB")
-           }))
+          })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 truncated_compois <- function(link="log") {
-    return(list(family="truncated_compois",link=link,
+    r <- list(family="truncated_compois",link=link,
            variance=function(mu,phi) {
              stop("variance for truncated compois family not yet implemented")
-           }))
+           })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 genpois <- function(link="log") {
-    return(list(family="genpois",link=link,
+    r <- list(family="genpois",link=link,
            variance=function(mu,phi) {
                mu*phi
-           }))
+           })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 truncated_genpois <- function(link="log") {
-    return(list(family="truncated_genpois",link=link,
+    r <- list(family="truncated_genpois",link=link,
            variance=function(mu,phi) {
              stop("variance for truncated genpois family not yet implemented")
-           }))
+          })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 truncated_poisson <- function(link="log") {
-	return(list(family="truncated_poisson", link=link,
+	r <- list(family="truncated_poisson", link=link,
            variance=function(lambda) {
            (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
-           }))
+           })
+        return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export	       	
 truncated_nbinom2 <- function(link="log") {
-    return(list(family="truncated_nbinom2",link=link,
+    r <- list(family="truncated_nbinom2",link=link,
            variance=function(mu,theta) {
                stop("variance for truncated nbinom2 family not yet implemented")
-           }))
+         })
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 truncated_nbinom1 <- function(link="log") {
-    return(list(family="truncated_nbinom1",link=link,
+    r <- list(family="truncated_nbinom1",link=link,
            variance=function(mu,alpha) {
                stop("variance for truncated nbinom1 family not yet implemented")
-           }))
+           })
+    return(c(r,make.link(link)))
 }
 
 ## similar to mgcv::betar(), but simplified (variance has two parameters
@@ -147,34 +171,38 @@ truncated_nbinom1 <- function(link="log") {
 beta_family <- function(link="logit") {
     ## note *internal* name must still be "beta",
     ## unless/until it's changed in src/glmmTMB.cpp (and R/enum.R is rebuilt)
-    return(list(family="beta",link=link,
+    r <- list(family="beta",link=link,
                 variance=function(mu,phi) {
                     mu*(1-mu)/(1+phi)
                 },
                 initialize=expression({
                     if (any(y <= 0 | y >= 1)) 
                         stop("y values must be 0 < y < 1")
-                })))
+                }))
+    return(c(r,make.link(link)))
 }
 ## fixme: better name?
 
 #' @rdname nbinom2
 #' @export
 betabinomial <- function(link="logit") {
-    return(list(family="betabinomial",link=link,
-           variance=function(mu,phi) {
-               stop("variance for betabinomial family not yet implemented")
-           },
-           initialize = binomial()$initialize))
+    r <- list(family="betabinomial",
+                link=link,
+                variance=function(mu,phi) {
+        stop("variance for betabinomial family not yet implemented")
+    },
+    initialize = binomial()$initialize)
+    return(c(r,make.link(link)))
 }
 
 #' @rdname nbinom2
 #' @export
 tweedie <- function(link="log") {
-    return(list(family="tweedie",link=link,
+    r <- list(family="tweedie",link=link,
            variance=function(mu,phi,p) {
                stop("variance for tweedie family not yet implemented")
-           }))
+         })
+    return(c(r,make.link(link)))
 }
 
 #' List model options that glmmTMB knows about

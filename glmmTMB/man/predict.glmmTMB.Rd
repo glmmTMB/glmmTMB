@@ -5,8 +5,9 @@
 \title{prediction}
 \usage{
 \method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE, re.form,
-  allow.new.levels = FALSE, zitype = c("response", "conditional", "zprob"),
-  na.action = na.pass, debug = FALSE, ...)
+  allow.new.levels = FALSE, type = c("link", "response", "conditional",
+  "zprob", "zlink"), zitype = NULL, na.action = na.pass, debug = FALSE,
+  ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
@@ -19,10 +20,23 @@
 
 \item{allow.new.levels}{allow previously unobserved levels in random-effects variables? see details.}
 
-\item{zitype}{for zero-inflated models,
-return expected value ("response": (mu*(1-p))),
-the mean of the conditional distribution ("conditional": mu),
-or the probability of a structural zero ("zprob")?}
+\item{type}{Denoting \eqn{mu} as the mean of the conditional distribution and
+\code{p} as the zero-inflation probability,
+the possible choices are:
+\describe{
+\item{"link"}{conditional mean on the scale of the link function,
+or equivalently the linear predictor of the conditional model}
+\item{"response"}{expected value; this is \eqn{mu*(1-p)} for zero-inflated models
+and \code{mu} otherwise}
+\item{"conditional"}{mean of the conditional response; \code{mu} for all models
+(i.e., synonymous with \code{"response"} in the absence of zero-inflation}
+\item{"zprob"}{the probability of a structural zero (gives an error
+for non-zero-inflated models)}
+##' \item{"zilink"}{predicted zero-inflation probability on the scale of
+the logit link function}
+}}
+
+\item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}
 
 \item{na.action}{how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 the default (\code{na.pass}) is to predict \code{NA}}

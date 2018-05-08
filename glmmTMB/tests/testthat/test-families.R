@@ -272,7 +272,7 @@ test_that("compois", {
 	cmp1 <<- glmmTMB(y~f, cmpdat, family="compois")
 	expect_equal(unname(fixef(cmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
 	expect_equal(sigma(cmp1), 0.1833339, tol=1e-6)
-	expect_equal(predict(cmp1)[1:2], c(19.4, 7.3), tol=1e-6)
+	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
 })
 test_that("genpois", {
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
@@ -321,3 +321,13 @@ test_that("tweedie", {
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
 })
+
+context("link function info available")
+
+fam1 <- c("poisson","nbinom1","nbinom2","compois")
+fam2 <- c("binomial","beta_family","betabinomial","tweedie")
+for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
+    ## print(f)
+    expect_true("linkinv" %in% names(get(f)()))
+}
+

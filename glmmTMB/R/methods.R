@@ -95,6 +95,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ranef.glmmTMB <- function(object, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
+  ## FIXME: add condVar, make sure format matches lme4
   arrange <- function(x, listname)
   {
     cnms <- object$modelInfo$reTrms[[listname]]$cnms
@@ -831,7 +832,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 #' @importFrom stats predict
 #' @export
 fitted.glmmTMB <- function(object, ...) {
-    predict(object)
+    predict(object,type="response")
 }
 
 .noSimFamilies <- c("beta", "genpois")
