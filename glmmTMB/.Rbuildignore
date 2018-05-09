@@ -10,3 +10,5 @@ cache$
 .*misc/.*$
 .*gh-pages/.*$
 .RData
+.*_files/.*$
+.*_cache/.*$
