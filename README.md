@@ -23,9 +23,9 @@ When loading `glmmTMB` you may encounter this message:
 > Current Matrix version is [yyyy]<br>
 > Please re-install 'TMB' from source or restore original 'Matrix' package
 
-This occurs because you've updated the `Matrix` package to a newer version. Installing a new *binary* version of `TMB` probably won't help, because the binary package on CRAN have been built with the older version.
+This occurs because you've updated the `Matrix` package to a newer version. Installing a new *binary* version of `TMB` from CRAN (i.e., via `update.packages()` or `install.packages("TMB")` on Windows or MacOS) probably won't help, because the binary package on CRAN will have been built with the older version.
 
-To re-install `TMB`, or to restore an older version of `Matrix`, you will need to have developer tools (compilers etc.) installed; these are not R packages, but additional packages and libraries for your operating system. You can try `devtools::dr_devtools()` to see if you have them already; if not, see the [RStudio devtools docs](https://www.rstudio.com/products/rpackages/devtools/) for links to download and install them.
+To re-install `TMB` from source, or to restore an older version of `Matrix`, you will need to have developer tools (compilers etc.) installed; these are not R packages, but additional packages and libraries for your operating system. You can try `devtools::dr_devtools()` to see if you have them already; if not, see the [RStudio devtools docs](https://www.rstudio.com/products/rpackages/devtools/) for links to download and install them.
 
 At this point, if you're lucky, `install.packages("TMB",type="source")` will take care of everything.
 
