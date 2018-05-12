@@ -19,8 +19,8 @@
 When loading `glmmTMB` you may encounter this message:
 
 > Package version inconsistency detected.<br>
-> TMB was built with Matrix version <xxxx>
-> Current Matrix version is <yyyy>
+> TMB was built with Matrix version [xxxx]<br>
+> Current Matrix version is [yyyy]<br>
 > Please re-install 'TMB' from source or restore original 'Matrix' package
 
 This occurs because you've updated the `Matrix` package to a newer version. Installing a new *binary* version of `TMB` probably won't help, because the binary package on CRAN have been built with the older version.
@@ -31,12 +31,12 @@ At this point, if you're lucky, `install.packages("TMB",type="source")` will tak
 
 If you're unlucky (e.g. you're using MacOS and originally installed R from a binary package), you may have some more work to do.
 
-1. if you get errors about `library not found for -lgfortran` or `library not found for -lquadmath` you need to follow [these instructions](https://thecoatlessprofessor.com/programming/rcpp-rcpparmadillo-and-os-x-mavericks--lgfortran-and--lquadmath-error/) to update your Fortran compilers
+1. if you get errors about `library not found for -lgfortran` or `library not found for -lquadmath` you need to follow [these instructions](https://thecoatlessprofessor.com/programming/rcpp-rcpparmadillo-and-os-x-mavericks--lgfortran-and--lquadmath-error/) to update your Fortran compilers.
 2. if you get errors about `unsupported option '-fopenmp'`you need to turn off OpenMP compilation by adding the line `SHLIB_OPENMP_CFLAGS=` to your `~/.R/Makevars` file. If you've already done step #1 this file will already exist; use a text editor to add the line above. Otherwise, you need to create it.
 
 After updating your compilers (if necessary) and turning off OpenMP compilation, re-try the installation from source.
 
-If you opt to restore an older version of `Matrix`, try `devtools::install_version("Matrix","<xxxx>")` (where `<xxxx>` is the version of `Matrix` shown in the original error message). This will also require installation from source.
+If you opt to restore an older version of `Matrix`, try `devtools::install_version("Matrix","[xxxx]")`, where `[xxxx]` is the version of `Matrix` shown in the original error message. This will also require installation from source.
 
 If all else fails you can ask a maintainer to provide a binary version of the `TMB` package that works for your OS and `Matrix` version.
 
