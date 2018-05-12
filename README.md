@@ -22,3 +22,9 @@ devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
 ```
 (this string denotes "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`"). If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. Alternatively you can use `install_github()` from the `ghit` package, which has fewer dependencies. You'll need to have development tools (compilers etc.) installed first: `devtools::setup_rtools()` might help with that. Installing the source version will ensure that you get the very latest version of the package: since the package is in rapid development, that's a good idea. 
 
+## Where to ask questions
+
+- `r-sig-mixed-models@r-project.org` for general questions about `glmmTMB` usage and mixed models
+- https://github.com/glmmTMB/glmmTMB/issues for bug, infelicity, and wishlist reporting
+- https://groups.google.com/forum/#!forum/tmb-users for TMB-specific questions
+- maintainer e-mail only for urgent/private communications
