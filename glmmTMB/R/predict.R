@@ -103,6 +103,20 @@ predict.glmmTMB <- function(object,newdata=NULL,
 {
   ## FIXME: add re.form
 
+  if (missing(type)) {
+      if (is.null(dr <- getOption("glmmTMB.default.response"))) {
+          warning('default ',sQuote('type'),' value for predict() has ',
+                  'changed from ',sQuote('response'),' to ',
+                  sQuote('link'),'. To avoid this warning, either ',
+                  'specify ',sQuote('type'),' explicitly or ',
+                  'use ',
+                  sQuote('options(glmmTMB.default.response="response")'),
+                  ' (for backward compatibility) or ',
+                  sQuote('options(glmmTMB.default.response="link")'),'.')
+      } else {
+          type <- dr
+      }
+  } ## if missing(type)
   if (!is.null(zitype)) {
      warning("zitype is deprecated: please use type instead")
      type <- zitype

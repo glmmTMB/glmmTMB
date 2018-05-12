@@ -11,6 +11,12 @@ set.seed(101)
 cbpp_zi <- cbpp
 cbpp_zi[sample(nrow(cbpp),size=15,replace=FALSE),"incidence"] <- 0
 
+tmbm1 <- glmmTMB(cbind(incidence, size - incidence) ~ period + (1 | herd),
+                  data = cbpp, family = binomial)
+tmbm2 <- update(tmbm1,incidence/size ~ . , weights = size)
+dd <- data.frame(unique(cbpp["period"]),size=1,herd=NA)
+g0_zi <- update(tmbm2, ziformula = ~period)
+
 ## 'newdata'
 nd <- subset(sleepstudy, Subject=="308", select=-1)
 nd$Subject <- "new"
@@ -69,15 +75,11 @@ expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
 
 context("prediction with different binomial specs")
 
-tmbm1 <- glmmTMB(cbind(incidence, size - incidence) ~ period + (1 | herd),
-                  data = cbpp, family = binomial)
-tmbm2 <- update(tmbm1,incidence/size ~ . , weights = size)
 expect_equal(fitted(tmbm1),fitted(tmbm2))
 expect_equal(predict(tmbm1),predict(tmbm2))
 
 context("zero-inflation prediction")
 
-g0_zi <- update(tmbm2, ziformula = ~period)
 un <- function(x) lapply(x,unname)
 mypred <- function(form,dd,cc,vv,linkinv=identity,mu.eta=NULL) {
     X <- model.matrix(form,dd)
@@ -88,7 +90,7 @@ mypred <- function(form,dd,cc,vv,linkinv=identity,mu.eta=NULL) {
     return(un(list(fit=pred,se.fit=se)))
 }
 ## FIXME: predictions should have row names of data
-dd <- data.frame(unique(cbpp["period"]),size=1,herd=NA)
+
 ff <- make.link("logit")
 ## type="link"
 link_pred <- mypred(~period,dd,fixef(g0_zi)$cond,vcov(g0_zi)$cond)
@@ -113,6 +115,10 @@ expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="zlink")),
              zlink_pred)
 
 context("deprecated zitype parameter")
-expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
-    
-    
+test_that("warnings", {
+    expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
+    expect_warning(predict(g0_zi,newdata=dd),"default.*value.*has changed")
+    op <- options(warn=2,glmmTMB.default.response="link")
+    expect_is(predict(g0_zi,newdata=dd),"numeric")
+    options(op)
+})
