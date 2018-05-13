@@ -1,10 +1,14 @@
 ## EXPERIMENTAL (not working, not yet exported)
 ## modified from car::Anova.default
+## examples:
+##   data(sleepstudy,package="lme4")
+##   fm1 <- glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
+##   library(car)
+##   Anova(fm1)
 Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                            test.statistic = c("Chisq", "F"),
                            vcov. = vcov(mod)[["cond"]], singular.ok, ...) 
 {
-    stop("not finished yet")
     if (is.function(vcov.)) 
         vcov. <- vcov.(mod)
     type <- as.character(type)

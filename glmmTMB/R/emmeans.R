@@ -1,5 +1,11 @@
 ## methods for extending emmeans to handle glmmTMB objects
 
+#' @rdname emmeans.glmmTMB
+#' @examples
+#' if (require(emmeans)) {
+#'    warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+#'    emmeans (warp.lm, poly ~ tension | wool)
+#' }
 #' @export
 recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
@@ -7,6 +13,7 @@ recover_data.glmmTMB <- function(object, ...) {
                  attr(model.frame(object),"na.action"), ...)
 }
 
+#' @rdname emmeans.glmmTMB
 #' @export
 ## FIXME: ignore random effects in 'terms' to avoid warning about
 ## grouping variables being absent/contrasts ignored
