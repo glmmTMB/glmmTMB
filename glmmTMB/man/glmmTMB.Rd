@@ -5,9 +5,8 @@
 \title{Fit models with TMB}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = ~1, weights = NULL, offset = NULL,
-  na.action = getOption("na.action", default = na.fail), se = TRUE,
-  verbose = FALSE, doFit = TRUE, control = glmmTMBControl())
+  dispformula = ~1, weights = NULL, offset = NULL, na.action = na.fail,
+  se = TRUE, verbose = FALSE, doFit = TRUE, control = glmmTMBControl())
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
@@ -44,7 +43,7 @@ In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, for
 
 \item{offset}{offset for conditional model (only):}
 
-\item{na.action}{how to handle missing values (see \code{\link{na.action}})}
+\item{na.action}{how to handle missing values (see \code{\link{na.action}} and \code{\link{model.frame}}); from \code{\link{lm}}, \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset.  The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}}
 
 \item{se}{whether to return standard errors}
 

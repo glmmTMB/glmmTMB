@@ -220,6 +220,23 @@ test_that("formula expansion", {
             fixed=TRUE),1)
 })
 
+test_that("NA handling", {
+    data(sleepstudy,package="lme4")
+    ss <- sleepstudy
+    ss$Days[c(2,20,30)] <- NA
+    op <- options(na.action=NULL)
+    expect_error(glmmTMB(Reaction~Days,ss),"missing values in object")
+    op <- options(na.action=na.fail)
+    expect_error(glmmTMB(Reaction~Days,ss),"missing values in object")
+    expect_equal(unname(fixef(glmmTMB(Reaction~Days,ss,na.action=na.omit))[[1]]),
+                 c(249.70505,11.11263),
+                 tolerance=1e-6)
+    op <- options(na.action=na.omit)
+    expect_equal(unname(fixef(glmmTMB(Reaction~Days,ss))[[1]]),
+                 c(249.70505,11.11263),
+                 tolerance=1e-6)
+})
+
 quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
 quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,
                      family=list(family="nbinom2",link="log"))
