@@ -546,9 +546,12 @@ glmmTMB <- function (
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)
-    if (!is.null(offset)) {
+    ## need evaluate offset within envi
+    if (!is.null(eval(substitute(offset),data,
+                      enclos=environment(formula)))) {
         formula <- addForm0(formula,makeOp(substitute(offset),op=quote(offset)))
     }
+
 
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
