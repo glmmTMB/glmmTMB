@@ -15,7 +15,12 @@
 \arguments{
 \item{fitted}{a fitted \code{glmmTMB} object}
 
-\item{parm}{which parameters to profile, specified by index (position) or by name (matching the row/column names of \code{vcov(object,full=TRUE)})}
+\item{parm}{which parameters to profile, specified
+\itemize{
+\item by index (position)
+\item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+\item as \code{"theta_"} (random-effects variance-covariance parameters) or \code{"beta_"} (conditional and zero-inflation parameters)
+}}
 
 \item{level_max}{maximum confidence interval target for profile}
 
@@ -67,6 +72,7 @@ salamander_prof1 <- profile(m1, parallel="multicore",
 ## testing
 salamander_prof1 <- profile(m1, trace=1,parm=1)
 salamander_prof1M <- profile(m1, trace=1,parm=1, npts = 4)
+salamander_prof2 <- profile(m1, parm="theta_")
 
 }
 salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))

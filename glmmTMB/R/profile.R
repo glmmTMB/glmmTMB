@@ -2,7 +2,12 @@
 #'
 #' @inheritParams confint.glmmTMB
 #' @param fitted a fitted \code{glmmTMB} object
-#' @param parm which parameters to profile, specified by index (position) or by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' @param parm which parameters to profile, specified
+#' \itemize{
+#' \item by index (position)
+#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' \item as \code{"theta_"} (random-effects variance-covariance parameters) or \code{"beta_"} (conditional and zero-inflation parameters)
+#' }
 #' @param level_max maximum confidence interval target for profile
 #' @param npts target number of points in (each half of) the profile (\emph{approximate})
 #' @param stepfac initial step factor (fraction of estimated standard deviation)
@@ -28,6 +33,7 @@
 #' ## testing
 #' salamander_prof1 <- profile(m1, trace=1,parm=1)
 #' salamander_prof1M <- profile(m1, trace=1,parm=1, npts = 4)
+#' salamander_prof2 <- profile(m1, parm="theta_")
 #' 
 #' }
 #' salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
@@ -63,16 +69,27 @@ profile.glmmTMB <- function(fitted,
     vv <- vcov(fitted,full=TRUE)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)
+    intnames <- names(fitted$obj$env$last.par)
+    random <- fitted$obj$env$random
+    intnames <- intnames[-random]
 
     ## get pars: need to match up names with internal positions
     if (is.null(parm)) parm <-  seq_along(sds)
     if (is.character(parm)) {
-        nparm <- match(parm,pnames)
-        if (any(is.na(nparm))) {
-            stop("unrecognized parameter names: ",
-                 parm[is.na(nparm)])
+        if (parm=="theta_") {
+            parm <- which(intnames=="theta")
+        } else if (parm=="beta_") {
+            ## include both conditional and zi params
+            ##   but not dispersion params
+            parm <- grep("^beta(zi)?$",intnames)
+        } else {
+            nparm <- match(parm,pnames)
+            if (any(is.na(nparm))) {
+                stop("unrecognized parameter names: ",
+                     parm[is.na(nparm)])
+            }
+            parm <- nparm
         }
-        parm <- nparm
     }
 
     ## only need selected SDs

@@ -20,8 +20,9 @@ y1 <- a*x+b+o+r1
 y2 <- a*x+b+r2
 y3 <- a*x + b + o + r2
 ## global assignment for testthat
-dat <<- data.frame(y0, y1, y2, y3, x, o, o2)
+dat <<- data.frame(y0, y1, y2, y3, x, o, o2, o3=o)
 m.lm <- lm(y1~x, offset=o, dat)
+m.lm0 <- lm(y1~x, dat)
 
 test_that("LM with offset as argument", {
     m1 <- glmmTMB(y1~x, offset=o, dat) 
@@ -41,6 +42,14 @@ test_that("LM with offset in formula", {
     ## don't have anything sensible to try here yet ...
     ## glmmTMB(y~x,zi=~1+offset(o), dat)
 ## })
+
+test_that("LM with offset in formula - variable not in environment", {
+    m5 <- glmmTMB(y1~x,offset=o3, dat)
+    expect_equal(fixef(m5)[[1]],coef(m.lm), tol=1e-6)
+    nullvalue <- NULL
+    m6 <- glmmTMB(y1~x,offset=nullvalue, dat)
+    expect_equal(fixef(m6)[[1]],coef(m.lm0), tol=1e-6)
+})
 
 test_that("LM with offset in dispersion formula", {
     expect_equal(sigma(glmmTMB(y1~x, dat)),

@@ -416,7 +416,7 @@ binomialType <- function(x) {
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only):
 ##' @param se whether to return standard errors
-##' @param na.action how to handle missing values (see \code{\link{na.action}})
+##' @param na.action how to handle missing values (see \code{\link{na.action}} and \code{\link{model.frame}}); from \code{\link{lm}}, \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset.  The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
@@ -500,7 +500,7 @@ glmmTMB <- function (
     dispformula= ~1,
     weights=NULL,
     offset=NULL,
-    na.action = getOption("na.action", default=na.fail),
+    na.action=na.fail,
     se=TRUE,
     verbose=FALSE,
     doFit=TRUE,
@@ -546,9 +546,12 @@ glmmTMB <- function (
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)
-    if (!is.null(offset)) {
+    ## need evaluate offset within envi
+    if (!is.null(eval(substitute(offset),data,
+                      enclos=environment(formula)))) {
         formula <- addForm0(formula,makeOp(substitute(offset),op=quote(offset)))
     }
+
 
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
