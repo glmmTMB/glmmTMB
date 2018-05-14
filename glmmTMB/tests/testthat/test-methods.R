@@ -11,6 +11,7 @@ if (getRversion() < "3.3.0") {
 }
 
 ## FIXME: fit these centrally and restore, to save time
+fm1   <- glmmTMB(Reaction ~ Days + (1| Subject), sleepstudy)
 fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
 fm2diag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy)
 fm0   <- update(fm2, . ~ . -Days)
@@ -189,6 +190,14 @@ test_that("confint", {
     ## check against 'raw' tmbroot
     ## (not exported (yet?) ...)
     ## tmbr <- glmmTMB:::tmbroot(fm2$obj,name=1)
+})
+
+test_that("profile", {
+    p1_th <- profile(fm1,parm="theta_",npts=4)
+    expect_true(all(p1_th$.par=="theta_1|Subject.1"))
+    p1_b <- profile(fm1,parm="beta_",npts=4)
+    expect_equal(unique(as.character(p1_b$.par)),
+                 c("(Intercept)","Days"))
 })
 
 test_that("vcov", {
