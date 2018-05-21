@@ -1,6 +1,5 @@
 stopifnot(require("testthat"),
           require("glmmTMB"),
-          require("plyr"),
           require("MASS"))
 
 context("weight")
@@ -19,11 +18,23 @@ dat = expand.grid(i=1:ni, rep=1:nrep , x=c(0 ,.2, .4))
 RE = mvrnorm(n = ni, mu =c(0, 0), 
 		Sigma = matrix(c(sdi*sdi, rho*sdi*sdii, rho*sdi*sdii ,sdii*sdii),2,2)) 
 inddat = transform(dat, y=rpois(n=nrow(dat), 
-		lambda = exp(RE[i,1] + x*(slope + RE[i,2])))) 
-aggdat = ddply(inddat, ~i+x+y, summarize, freq=length(rep))
+                                lambda = exp(RE[i,1] + x*(slope + RE[i,2]))))
+
+## aggdat = ddply(inddat, ~i+x+y, summarize, freq=length(rep))
+
+aggdat = with(inddat,as.data.frame(table(i,x,y),
+                                   stringsAsFactors=FALSE))
+aggdat = aggdat[with(aggdat,order(i,x,y)),] ## cosmetic/match previous
+aggdat = subset(aggdat,Freq>0)              ## drop zero categories
+aggdat = transform(aggdat,
+                   i=as.integer(i),
+                   x=as.numeric(x),
+                   y=as.numeric(y))
+## only difference from previous is name of weights arg (Freq vs freq)
 
 test_that("Weights can be an argument", {
-	wei_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=aggdat, weight=freq, family="poisson")
+    wei_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=aggdat, weight=Freq,
+                            family="poisson")
         expect_equal(unname(fixef(wei_glmmtmb)$cond),
                             c(-0.00907013282660578, 0.944062427131668),
                      tolerance=1e-6)

@@ -489,6 +489,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     if (!is.null(dim(mr))) {
         wts <- mr[,1]+mr[,2]
         mr <- mr[,1]/wts
+    } else if (is.factor(mr)) {
+        ## ?binomial:
+        ## "‘success’ is interpreted as the factor not having the first level"
+        nn <- names(mr)
+        mr <- as.numeric(as.numeric(mr)>1)
+        names(mr) <- nn  ## restore stripped names
     }
     r <- mr - fitted(object)
     res <- switch(type,
