@@ -11,6 +11,7 @@ if (getRversion() < "3.3.0") {
 }
 
 ## FIXME: fit these centrally and restore, to save time
+fm1   <- glmmTMB(Reaction ~ Days + (1| Subject), sleepstudy)
 fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
 fm2diag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy)
 fm0   <- update(fm2, . ~ . -Days)
@@ -49,6 +50,20 @@ test_that("Fitted and residuals", {
     expect_equal(rr2(glm(Murder~Population,ss,family=Gamma(link="log"))),
                  rr2(glmmTMB(Murder~scale(Population),ss,
                              family=Gamma(link="log"))),tol=1e-5)
+    ## weights are incorporated in Pearson residuals
+    ## GH 307
+    tmbm4 <- glm(incidence/size ~ period,
+             data = cbpp, family = binomial, weights = size)
+    tmbm5 <- glmmTMB(incidence/size ~ period,
+                     data = cbpp, family = binomial, weights = size)
+    expect_equal(residuals(tmbm4,type="pearson"),
+                 residuals(tmbm5,type="pearson"),tolerance=1e-6)
+    ## two-column responses give vector of residuals GH 307
+    tmbm6 <- glmmTMB(cbind(incidence,size-incidence) ~ period,
+                     data = cbpp, family = binomial)
+    expect_equal(residuals(tmbm4,type="pearson"),
+                 residuals(tmbm6,type="pearson"),tolerance=1e-6)
+
 })
 
 test_that("Predict", {
@@ -139,6 +154,7 @@ test_that("confint", {
                   .Dimnames = list(c("cond.(Intercept)", "cond.Days"),
                                    c("2.5 %", "97.5 %"))),
         tolerance=1e-6)
+    ciw <- confint(fm2, 1:2, method="Wald", estimate=FALSE)
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
@@ -179,6 +195,14 @@ test_that("confint", {
     ## check against 'raw' tmbroot
     ## (not exported (yet?) ...)
     ## tmbr <- glmmTMB:::tmbroot(fm2$obj,name=1)
+})
+
+test_that("profile", {
+    p1_th <- profile(fm1,parm="theta_",npts=4)
+    expect_true(all(p1_th$.par=="theta_1|Subject.1"))
+    p1_b <- profile(fm1,parm="beta_",npts=4)
+    expect_equal(unique(as.character(p1_b$.par)),
+                 c("(Intercept)","Days"))
 })
 
 test_that("vcov", {

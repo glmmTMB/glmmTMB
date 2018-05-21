@@ -5,7 +5,9 @@
 \alias{family_glmmTMB}
 \alias{nbinom1}
 \alias{compois}
+\alias{truncated_compois}
 \alias{genpois}
+\alias{truncated_genpois}
 \alias{truncated_poisson}
 \alias{truncated_nbinom2}
 \alias{truncated_nbinom1}
@@ -20,7 +22,11 @@ nbinom1(link = "log")
 
 compois(link = "log")
 
+truncated_compois(link = "log")
+
 genpois(link = "log")
+
+truncated_genpois(link = "log")
 
 truncated_poisson(link = "log")
 
@@ -68,7 +74,7 @@ i.e. variance=mu*(1+phi)}
 \references{
 \itemize{
 \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
-\item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
+\item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 }
 }

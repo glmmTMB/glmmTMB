@@ -317,7 +317,7 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         ## get corrs
 	maxlen <- max(reLens)
 	corr <-
-	    do.call(Matrix::rBind,lapply(varcor, getCorSD,
+	    do.call(rbind,lapply(varcor, getCorSD,
                                          type="correlation", maxlen=maxlen))
         ## add blank values as necessary 
 	if (nrow(corr) < nrow(reMat))

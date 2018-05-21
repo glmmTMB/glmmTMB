@@ -2,7 +2,8 @@
 % Please edit documentation in R/tmbroot.R
 \name{tmbroot}
 \alias{tmbroot}
-\title{generalized from TMB::tmbprofile}
+\title{Compute likelihood profile confidence intervals of a TMB object by root-finding
+(generalized from TMB::tmbprofile)}
 \usage{
 tmbroot(obj, name, target = 0.5 * qchisq(0.95, df = 1), lincomb,
   parm.range = c(NA, NA), sd.range = 7, trace = FALSE,
@@ -35,6 +36,6 @@ above the parameter value.}
 a two-element numeric vector containing the lower and upper limits (or \code{NA} if the target is not achieved in the range), with an attribute giving the total number of function iterations used
 }
 \description{
-generalized from TMB::tmbprofile
+Compute likelihood profile confidence intervals of a TMB object by root-finding
+(generalized from TMB::tmbprofile)
 }
-\keyword{internal}

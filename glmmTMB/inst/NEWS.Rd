@@ -17,6 +17,11 @@
       formulas as well as in the main (conditional-mean) formula
       (if \code{offset} is specified as a separate argument, it applies
       only to the conditional mean)
+      \item zero-truncated generalized Poisson \code{family=truncated_genpois}
+      \item zero-truncated Conway-Maxwell-Poisson
+      \code{family=truncated_compois}
+      \item \code{predict} now allows \code{type} ("link", "response",
+      "conditional", "zprob", "zlink")
     }
    }
    \subsection{BUG FIXES}{
@@ -27,11 +32,15 @@
        as two columns (GH #289)
        \item fixed summary-printing bug when some random effects have
        covariance terms and others don't (GH #291)
+       \item fix bugs in binomial residuals and prediction (GH #307)
      }
    }
    \subsection{USER-VISIBLE CHANGES}{
      \itemize{
-       
+       \item in \code{predict.glmmTMB},
+       the \code{zitype} argument has been rolled into the new
+       \code{type} argument: \strong{default prediction type is now
+	 "link" instead of "response", in order to match \code{glm()} default}
      }
    }
  }

@@ -95,6 +95,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ranef.glmmTMB <- function(object, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
+  ## FIXME: add condVar, make sure format matches lme4
   arrange <- function(x, listname)
   {
     cnms <- object$modelInfo$reTrms[[listname]]$cnms
@@ -482,16 +483,21 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
         stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
-    resp <- model.response(object$frame)
-    if (is.factor(resp)) {
+    mr <- model.response(object$frame)
+    wts <- model.weights(model.frame(object))
+    ## binomial model specified as (success,failure)
+    if (!is.null(dim(mr))) {
+        wts <- mr[,1]+mr[,2]
+        mr <- mr[,1]/wts
+    } else if (is.factor(mr)) {
         ## ?binomial:
         ## "‘success’ is interpreted as the factor not having the first level"
-        nn <- names(resp)
-        resp <- as.numeric(as.numeric(resp)>1)
-        names(resp) <- nn  ## restore stripped names
+        nn <- names(mr)
+        mr <- as.numeric(as.numeric(mr)>1)
+        names(mr) <- nn  ## restore stripped names
     }
-    r <- resp-fitted(object)
-    switch(type,
+    r <- mr - fitted(object)
+    res <- switch(type,
            response=r,
            pearson={
                if (is.null(v <- family(object)$variance))
@@ -502,8 +508,13 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
                             v(fitted(object)),
                             v(fitted(object),sigma(object)),
                             stop("variance function should take 1 or 2 arguments"))
-               r/sqrt(vv)
-           })
+               r <- r/sqrt(vv)
+               if (!is.null(wts)) {
+                   r <- r*sqrt(wts)
+               }
+               r
+    })
+    return(res)
 }
 
 ## Helper to get CI of simple *univariate monotone* parameter
@@ -598,6 +609,7 @@ format.perc <- function (probs, digits) {
 ##' }
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
+                                      "Wald",
                                       "profile",
                                       "uniroot"),
                              component = c("all", "cond", "zi", "other"),
@@ -607,7 +619,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                              cl = NULL,
                              ...)
 {
-    method <- match.arg(method)
+    method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
         if (length(dots)>0) {
@@ -826,7 +838,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 #' @importFrom stats predict
 #' @export
 fitted.glmmTMB <- function(object, ...) {
-    predict(object)
+    predict(object,type="response")
 }
 
 .noSimFamilies <- c("beta", "genpois")

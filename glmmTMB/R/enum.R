@@ -17,6 +17,8 @@
   truncated_poisson =401,
   genpois =402,
   compois =403,
+  truncated_genpois =404,
+  truncated_compois =405,
   nbinom1 =500,
   nbinom2 =501,
   truncated_nbinom1 =502,

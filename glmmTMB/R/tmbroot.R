@@ -1,4 +1,6 @@
-##' generalized from TMB::tmbprofile
+##' Compute likelihood profile confidence intervals of a TMB object by root-finding
+##' (generalized from TMB::tmbprofile)
+##' 
 ##' @param obj a fitted glmmTMB object
 ##' @param name parameter index/name
 ##' @param target desired deviation from minimum log-likelihood. Default
@@ -16,7 +18,8 @@
 ##' @return a two-element numeric vector containing the lower and upper limits (or \code{NA} if the target is not achieved in the range), with an attribute giving the total number of function iterations used
 ##' @importFrom stats uniroot qchisq nlminb
 ##' @importFrom Matrix Diagonal
-##' @keywords internal
+##' @importFrom TMB sdreport
+##' @export
 tmbroot <-
 function (obj, name, target=0.5*qchisq(0.95,df=1),
           lincomb, parm.range = c(NA,NA),
