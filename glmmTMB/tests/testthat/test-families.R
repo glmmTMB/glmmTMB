@@ -338,8 +338,13 @@ d.AD <- data.frame(counts=c(18,17,15,20,10,20,25,13,12),
                    treatment=gl(3,3))
 glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(),
                    d.AD)
-glm.D93B <- update(glm.D93,
-                    family = list(family="poisson", link="log"))
+glm.D93B <- glmmTMB(counts ~ outcome + treatment,
+                    family = list(family="poisson", link="log"),
+                    d.AD)
+## note update(..., family= ...) is only equal up to tolerance=5e-5 ...
+glm.D93C <- glmmTMB(counts ~ outcome + treatment,
+                    family = "poisson",
+                    d.AD)
 expect_equal(predict(glm.D93),predict(glm.D93B))
-## glm.D93B$modelinfo$family doesn't have all the bits, but has
-##  the link bits ...
+expect_equal(predict(glm.D93),predict(glm.D93C))
+
