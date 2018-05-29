@@ -5,10 +5,18 @@ family_factory <- function(default_link,family,variance) {
     f <- function(link=default_link) {
         r <- list(family=family,link=link,variance=variance)
         r <- c(r,make.link(link))
+        class(r) <- "family"
         return(r)
     }
     return(f)
 }
+
+make_family <- function(x,link) {
+    x <- c(x,make.link(link))
+    class(x) <- "family"
+    return(x)
+}
+
 ## even better (?) would be to have a standalone list including
 ## name, default link, variance function, (optionally) initialize
 ## for each family
@@ -52,7 +60,7 @@ nbinom2 <- function(link="log") {
            variance=function(mu,theta) {
                mu*(1+mu/theta)
        })
-       return(c(r,make.link(link)))
+       return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -62,7 +70,7 @@ nbinom1 <- function(link="log") {
               variance=function(mu,alpha) {
                   mu*(1+alpha)
               })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -73,7 +81,7 @@ compois <- function(link="log") {
                if (length(phi)==1) phi <- rep(phi, length=length(mu))
                .Call("compois_calc_var", mu, 1/phi, PACKAGE="glmmTMB")
           })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -83,7 +91,7 @@ truncated_compois <- function(link="log") {
            variance=function(mu,phi) {
              stop("variance for truncated compois family not yet implemented")
            })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -93,7 +101,7 @@ genpois <- function(link="log") {
            variance=function(mu,phi) {
                mu*phi
            })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -103,7 +111,7 @@ truncated_genpois <- function(link="log") {
            variance=function(mu,phi) {
              stop("variance for truncated genpois family not yet implemented")
           })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -113,7 +121,7 @@ truncated_poisson <- function(link="log") {
            variance=function(lambda) {
            (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
            })
-        return(c(r,make.link(link)))
+        return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -123,7 +131,7 @@ truncated_nbinom2 <- function(link="log") {
            variance=function(mu,theta) {
                stop("variance for truncated nbinom2 family not yet implemented")
          })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -133,7 +141,7 @@ truncated_nbinom1 <- function(link="log") {
            variance=function(mu,alpha) {
                stop("variance for truncated nbinom1 family not yet implemented")
            })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 ## similar to mgcv::betar(), but simplified (variance has two parameters
@@ -152,7 +160,7 @@ beta_family <- function(link="logit") {
                     if (any(y <= 0 | y >= 1)) 
                         stop("y values must be 0 < y < 1")
                 }))
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 ## fixme: better name?
 
@@ -165,7 +173,7 @@ betabinomial <- function(link="logit") {
         stop("variance for betabinomial family not yet implemented")
     },
     initialize = binomial()$initialize)
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' @rdname nbinom2
@@ -175,7 +183,7 @@ tweedie <- function(link="log") {
            variance=function(mu,phi,p) {
                stop("variance for tweedie family not yet implemented")
          })
-    return(c(r,make.link(link)))
+    return(make_family(r,link))
 }
 
 #' List model options that glmmTMB knows about
