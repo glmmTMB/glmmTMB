@@ -68,12 +68,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, "dispersion")
 
-  condReStruc <- with(condList, getReStruc(reTrms, ss))
-  ziReStruc <- with(ziList, getReStruc(reTrms, ss))
+    condReStruc <- with(condList, getReStruc(reTrms, ss))
+    ziReStruc <- with(ziList, getReStruc(reTrms, ss))
 
-  grpVar <- with(condList, getGrpVar(reTrms$flist))
+    grpVar <- with(condList, getGrpVar(reTrms$flist))
 
-  nobs <- nrow(fr)
+    nobs <- nrow(fr)
 
   if (is.null(weights)) weights <- rep(1, nobs)
 
@@ -108,6 +108,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
   if (is.null(size)) size <- numeric(0)
 
+  ## add link information to family if necessary
+  if (is.null(family$linkfun)) {
+      family <- c(family,make.link(family$link))
+  }
+    
   data.tmb <- namedList(
     X = condList$X,
     Z = condList$Z,
