@@ -4,6 +4,17 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 0.2.1.9000}{
+  \subsection{USER-VISIBLE CHANGES}
+  \itemize{
+    \item Because family functions are now available for all
+    families that have been implemented in the underlying TMB
+    code, specifying the \code{family} argument as a raw list (rather than as a family
+    function, the name of a family function, or the output of such a
+    function) is now deprecated.
+  }
+}
+
 \section{CHANGES IN VERSION 0.2.1}{
   \subsection{NEW FEATURES}{
     \itemize{

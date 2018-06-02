@@ -36,7 +36,7 @@
 epil2$subject <- factor(epil2$subject)
 op <- options(digits=3)
 (fm <- glmmTMB(y ~ Base*trt + Age + Visit + (Visit|subject),
-              data=epil2, family=list(family="nbinom2",link="log")))
+              data=epil2, family=nbinom2))
 meths <- methods(class = class(fm))
 if((Rv <- getRversion()) > "3.1.3") {
     (funs <- attr(meths, "info")[, "generic"])

@@ -48,6 +48,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (!is(family,"family")) {
       ## if family specified as list, not result of function ...
       ## special case for beta models
+      if (is.list(family)) {
+          warning("specifying ",sQuote("family")," as a plain list is deprecated")
+      }
       if (is.character(family)) {
           fname <- family
           args <- NULL
@@ -56,7 +59,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
           args <- family["link"]
       }
       if (fname=="beta") fname <- "beta_family"
-      ff <- try(do.call(fname,args))
+      ff <- try(do.call(fname,args),silent=TRUE)
       if (!inherits(ff,"try-error")) {
           family <- ff
       } else {
@@ -423,14 +426,7 @@ binomialType <- function(x) {
 ##' @param formula combined fixed and random effects formula, following lme4
 ##'     syntax
 ##' @param data data frame
-##' @param family family (variance/link function) information; see \code{\link{family}} for
-##' generic family details or \code{\link{family_glmmTMB}} for details of \code{glmmTMB} specific families.  
-##' As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
-##' referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
-##' such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
-##' In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
-##' can be specified as (4) a list comprising the name of the distribution and the link function
-##' (\sQuote{list(family="binomial", link="logit")}). However, the first 3 options are preferable.
+##' @param family a family function, a character string naming a family function, or the result of a call to a family function family (variance/link function) information; see \code{\link{family}} for generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.
 ##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for
 ##'     zero-inflation combining fixed and random effects:
 ##' the default \code{~0} specifies no zero-inflation.
@@ -479,6 +475,7 @@ binomialType <- function(x) {
 ##' \item \code{toep} (* Toeplitz)
 ##' }
 ##' (note structures marked with * are experimental/untested)
+##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternatives is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
 ##' }
 ##' @useDynLib glmmTMB
 ##' @importFrom stats update

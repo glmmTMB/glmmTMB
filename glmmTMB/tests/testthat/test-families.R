@@ -70,7 +70,7 @@ test_that("beta", {
     dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
     y <- with(dd0,rbeta(nobs,shape1=mu/phi,shape2=(1-mu)/phi))
     dd <<- data.frame(dd0,y=pmin(1-eps,pmax(eps,y)))
-    m1 <- glmmTMB(y~x+(1|f),family=list(family="beta",link="logit"),
+    m1 <- glmmTMB(y~x+(1|f),family=beta_family(),
                   data=dd)
     expect_equal(fixef(m1)[[1]],
                  structure(c(1.98250567574413, 0.843382531038295),
@@ -88,7 +88,7 @@ test_that("nbinom", {
     dd0 <- simfun0(nobs=nobs)
     ## global assignment for testthat (??)
     dd <- data.frame(dd0,y=rnbinom(nobs,size=phi,mu=dd0$mu))
-    m1 <- glmmTMB(y~x+(1|f),family=list(family="nbinom2",link="log"),
+    m1 <- glmmTMB(y~x+(1|f),family=nbinom2(),
                   data=dd)
     expect_equal(fixef(m1)[[1]],
                  structure(c(2.09866748794435, 1.12703589660625),
@@ -107,7 +107,7 @@ test_that("nbinom", {
      k <- with(dd0,mu/(nbvar/mu - 1))
      y <- rnbinom(nobs,size=k,mu=dd$mu)
      dd <- data.frame(dd0,y=y) ## global assignment for testthat
-     m1 <- glmmTMB(y~x+(1|f),family=list(family="nbinom1",link="log"),
+     m1 <- glmmTMB(y~x+(1|f),family=nbinom1(),
                    data=dd)
      expect_equal(c(unname(c(fixef(m1)[[1]])),
                     c(VarCorr(m1)[[1]][[1]]),
@@ -123,8 +123,7 @@ test_that("nbinom", {
     dat <<- data.frame(obs=rnbinom(length(y), mu=y, size=5), x=x)
     ## with(dat, plot(x, obs))
     ## coef(mod1 <- MASS::glm.nb(obs~x,link="identity",dat))
-    expect_equal(fixef(glmmTMB(obs~x, family=list(family="nbinom2",
-                                             link="identity"), dat)),
+    expect_equal(fixef(glmmTMB(obs~x, family=nbinom2(link="identity"), dat)),
        structure(list(cond = structure(c(115.092240041138, 1.74390840106971),
        .Names = c("(Intercept)", "x")), zi = numeric(0),
        disp = structure(1.71242627201796, .Names = "(Intercept)")),
@@ -147,7 +146,7 @@ test_that("dbetabinom", {
     dd <<- data.frame(dd0,y=b,N=5)
     m1 <- glmmTMB(y/N~x+(1|f),
                   weights=N,
-                  family=list(family="betabinomial",link="logit"),
+                  family=betabinomial(),
                   data=dd)
     expect_equal(c(unname(c(fixef(m1)[[1]])),
                    c(VarCorr(m1)[[1]][[1]]),
@@ -173,19 +172,16 @@ test_that("truncated", {
         g0_tp <- glmmadmb(z_tp~1,family="truncpoiss",link="log")
         fixef(g0) ## 0.9778591
     }
-    g1_tp <- glmmTMB(z_tp~1,family=list(family="truncated_poisson",
-                            link="log"),
+    g1_tp <- glmmTMB(z_tp~1,family=truncated_poisson(),
                   data=data.frame(z_tp))
     expect_equal(unname(fixef(g1_tp)[[1]]),0.9778593,tol=1e-5)
     ## Truncated poisson with zeros => invalid:
     num_zeros <- 10
     z_tp0 <<- c(rep(0, num_zeros), z_tp)
-    expect_error(g1_tp0 <- glmmTMB(z_tp0~1,family=list(family="truncated_poisson",
-                                          link="log"),
+    expect_error(g1_tp0 <- glmmTMB(z_tp0~1,family=truncated_poisson(),
                       data=data.frame(z_tp0)))
     ## Truncated poisson with zeros and zero-inflation:
-    g1_tp0 <- glmmTMB(z_tp0~1,family=list(family="truncated_poisson",
-                                          link="log"),
+    g1_tp0 <- glmmTMB(z_tp0~1,family=truncated_poisson(),
                       ziformula=~1,
                       data=data.frame(z_tp0))
     expect_equal( plogis(as.numeric(fixef(g1_tp0)$zi)), num_zeros/length(z_tp0), tol=1e-7 ) ## Test zero-prob
@@ -200,20 +196,17 @@ test_that("truncated", {
         fixef(g0_nb2) ## 1.980207
         g0_nb2$alpha ## 1.893
     }
-    g1_nb2 <- glmmTMB(z_nb~1,family=list(family="truncated_nbinom2",
-                            link="log"),
+    g1_nb2 <- glmmTMB(z_nb~1,family=truncated_nbinom2(),
             data=data.frame(z_nb))
     expect_equal(c(unname(fixef(g1_nb2)[[1]]),sigma(g1_nb2)),
                  c(1.980207,1.892970),tol=1e-5)
     ## Truncated nbinom2 with zeros => invalid:
     num_zeros <- 10
     z_nb0 <<- c(rep(0, num_zeros), z_nb)
-    expect_error(g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom2",
-                                          link="log"),
+    expect_error(g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom2(),
                       data=data.frame(z_nb0)))
     ## Truncated nbinom2 with zeros and zero-inflation:
-    g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom2",
-                                          link="log"),
+    g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom2(),
                       ziformula=~1,
                       data=data.frame(z_nb0))
     expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
@@ -227,27 +220,24 @@ test_that("truncated", {
         fixef(g0_nb1) ## 2.00112
         g0_nb1$alpha ## 3.784
     }
-    g1_nb1 <- glmmTMB(z_nb~1,family=list(family="truncated_nbinom1",
-                            link="log"),
+    g1_nb1 <- glmmTMB(z_nb~1,family=truncated_nbinom1(),
             data=data.frame(z_nb))
     expect_equal(c(unname(fixef(g1_nb1)[[1]]),sigma(g1_nb1)),
                  c(1.980207,3.826909),tol=1e-5)
     ## Truncated nbinom1 with zeros => invalid:
-    expect_error(g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom1",
-                                          link="log"),
+    expect_error(g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom1(),
                       data=data.frame(z_nb0)))
     ## Truncated nbinom2 with zeros and zero-inflation:
-    g1_nb0 <- glmmTMB(z_nb0~1,family=list(family="truncated_nbinom1",
-                                          link="log"),
+    g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom1(),
                       ziformula=~1,
                       data=data.frame(z_nb0))
     expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
     expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb1)$cond, tol=1e-6) ## Test conditional model
 
     #Genpois
-    tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_genpois")
+    tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_genpois())
     tgpdat <<- data.frame(y=simulate(tgp1)[,1])
-    tgp2 <<- glmmTMB(y ~1, tgpdat, family="truncated_genpois")
+    tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
     expect_equal(sigma(tgp1), sigma(tgp2), tol=1e-1)
     expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tol=1e-2)
     expect_lt(confint(tgp2)["sigma", "2.5 %"], sigma(tgp1))
@@ -256,9 +246,9 @@ test_that("truncated", {
     expect_lt(unname(fixef(tgp1)$cond[1]), confint(tgp2)["cond.(Intercept)", "97.5 %"])
 
     #Compois
-    tcmp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family="truncated_compois")
+    tcmp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_compois())
     tcmpdat <<- data.frame(y=simulate(tcmp1)[,1])
-    tcmp2 <<- glmmTMB(y ~1, tcmpdat, family="truncated_compois")		
+    tcmp2 <<- glmmTMB(y ~1, tcmpdat, family=truncated_compois())		
     expect_equal(sigma(tcmp1), sigma(tcmp2), tol=1e-1)
     expect_equal(fixef(tcmp1)$cond[1], fixef(tcmp2)$cond[1], tol=1e-2)
     expect_lt(confint(tcmp2)["sigma", "2.5 %"], sigma(tcmp1))
@@ -269,14 +259,14 @@ test_that("truncated", {
 test_that("compois", {
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
-	cmp1 <<- glmmTMB(y~f, cmpdat, family="compois")
+	cmp1 <<- glmmTMB(y~f, cmpdat, family=compois())
 	expect_equal(unname(fixef(cmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
 	expect_equal(sigma(cmp1), 0.1833339, tol=1e-6)
 	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
 })
 test_that("genpois", {
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
-	gen1 <<- glmmTMB(y~1, family="genpois", gendat)
+	gen1 <<- glmmTMB(y~1, family=genpois(), gendat)
 	expect_equal(unname(fixef(gen1)$cond), 2.251292, tol=1e-6)
 	expect_equal(sigma(gen1), 0.235309, tol=1e-6)
 })
@@ -338,9 +328,9 @@ d.AD <- data.frame(counts=c(18,17,15,20,10,20,25,13,12),
                    treatment=gl(3,3))
 glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(),
                    d.AD)
-glm.D93B <- glmmTMB(counts ~ outcome + treatment,
+expect_warning(glm.D93B <- glmmTMB(counts ~ outcome + treatment,
                     family = list(family="poisson", link="log"),
-                    d.AD)
+                    d.AD))
 ## note update(..., family= ...) is only equal up to tolerance=5e-5 ...
 glm.D93C <- glmmTMB(counts ~ outcome + treatment,
                     family = "poisson",

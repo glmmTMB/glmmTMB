@@ -186,6 +186,16 @@ tweedie <- function(link="log") {
     return(make_family(r,link))
 }
 
+## t not yet implemented in 
+## t_family <- function(link="identity") {
+##     ## FIXME: right now t behaves just like gaussian(); variance()
+##     ## returns a value *proportional* to the variance
+##     r <- list(family="t",link=link,
+##               variance=function(mu) {
+##         rep.int(1,length(mu))
+##     })
+## }
+
 #' List model options that glmmTMB knows about
 #'
 #' @note these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)
