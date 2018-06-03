@@ -36,6 +36,37 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        doPredict=0,
                        whichPredict=integer(0)) {
 
+  ## handle different ways to specify family (as name,
+  ##  list, or result of function call)  
+    
+  ## FIXME: (1) should use proper tryCatch below
+  ##  (2) do we provide a 'family' function for every
+  ##      family that's available in TMB code?  If so,
+  ##      then the fallback code should never be needed
+  ##  (3) warn on fallback? check for variance component
+  ##      and warn?  
+  if (!is(family,"family")) {
+      ## if family specified as list, not result of function ...
+      ## special case for beta models
+      if (is.character(family)) {
+          fname <- family
+          args <- NULL
+      } else {
+          fname <- family$family
+          args <- family["link"]
+      }
+      if (fname=="beta") fname <- "beta_family"
+      ff <- try(do.call(fname,args))
+      if (!inherits(ff,"try-error")) {
+          family <- ff
+      } else {
+          ## fallback: add link information to family
+          if (is.null(family$linkfun)) {
+              family <- c(family,make.link(family$link))
+          }
+      }
+  }
+
     ## Handle ~0 dispersion for gaussian family.
     mapArg <- NULL
     dispformula.orig <- dispformula ## Restore when done
@@ -68,12 +99,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, "dispersion")
 
-  condReStruc <- with(condList, getReStruc(reTrms, ss))
-  ziReStruc <- with(ziList, getReStruc(reTrms, ss))
+    condReStruc <- with(condList, getReStruc(reTrms, ss))
+    ziReStruc <- with(ziList, getReStruc(reTrms, ss))
 
-  grpVar <- with(condList, getGrpVar(reTrms$flist))
+    grpVar <- with(condList, getGrpVar(reTrms$flist))
 
-  nobs <- nrow(fr)
+    nobs <- nrow(fr)
 
   if (is.null(weights)) weights <- rep(1, nobs)
 
@@ -108,6 +139,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
   if (is.null(size)) size <- numeric(0)
 
+    
   data.tmb <- namedList(
     X = condList$X,
     Z = condList$Z,

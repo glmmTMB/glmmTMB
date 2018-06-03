@@ -331,3 +331,20 @@ for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
     expect_true("linkinv" %in% names(get(f)()))
 }
 
+context("link info added to family")
+
+d.AD <- data.frame(counts=c(18,17,15,20,10,20,25,13,12),
+                   outcome=gl(3,1,9),
+                   treatment=gl(3,3))
+glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(),
+                   d.AD)
+glm.D93B <- glmmTMB(counts ~ outcome + treatment,
+                    family = list(family="poisson", link="log"),
+                    d.AD)
+## note update(..., family= ...) is only equal up to tolerance=5e-5 ...
+glm.D93C <- glmmTMB(counts ~ outcome + treatment,
+                    family = "poisson",
+                    d.AD)
+expect_equal(predict(glm.D93),predict(glm.D93B))
+expect_equal(predict(glm.D93),predict(glm.D93C))
+
