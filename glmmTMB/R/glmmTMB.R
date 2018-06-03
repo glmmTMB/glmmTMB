@@ -917,18 +917,17 @@ fitTMB <- function(TMBStruc) {
     ## functions, if possible (for glm/effects compatibility)
     ff <- ret$modelInfo$family
     if (ff$family=="negative.binomial"  ||
+        grepl("nbinom",ff$family) ||
         (length(fv <- ff$variance)>0 &&  ## family has variance component
          length(formals(fv))>1)) {       ## component has >1 element
         theta <- exp(fit$parfull["theta"]) ## log link
-        for (fun in c("variance","dev.resids")) {
-            assign(".Theta",
-                   theta,
-                   environment(ret[["modelInfo"]][["family"]][[fun]]))
-        }
+        ## variance() and dev.resids() share an environment
+        assign(".Theta",
+               theta,
+               environment(ret[["modelInfo"]][["family"]][["variance"]]))
     }
     
     return(ret)
-
 }
 
 ##' @importFrom stats AIC BIC
@@ -1003,7 +1002,7 @@ summary.glmmTMB <- function(object,...)
     varcor <- VarCorr(object)
 					# use S3 class for now
     structure(list(logLik = llAIC[["logLik"]],
-                   family = famL$fami, link = famL$link,
+                   family = famL$family, link = famL$link,
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
 		   coefficients = coefs, sigma = sig,
