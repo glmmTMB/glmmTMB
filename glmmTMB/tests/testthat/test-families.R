@@ -78,8 +78,11 @@ test_that("beta", {
                  tol=1e-5)
     expect_equal(c(VarCorr(m1)[[1]][[1]]),
                  0.433230926800709, tol=1e-5)
-    m2 <- update(m1,family=beta_family())
+    ## allow family="beta", but with warning
+    expect_warning(m2 <- glmmTMB(y~x+(1|f),family="beta",
+                  data=dd),"please use")
     expect_equal(coef(summary(m1)),coef(summary(m2)))
+    
  })
 
 test_that("nbinom", {

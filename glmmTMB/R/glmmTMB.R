@@ -36,34 +36,24 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        doPredict=0,
                        whichPredict=integer(0)) {
 
-  ## handle different ways to specify family (as name,
-  ##  list, or result of function call)  
+  ## handle family specified as naked list
+  ## if specified as character or function, should have been converted
+  ## to a list with class "family" above ...
     
   ## FIXME: (1) should use proper tryCatch below
-  ##  (2) do we provide a 'family' function for every
-  ##      family that's available in TMB code?  If so,
-  ##      then the fallback code should never be needed
-  ##  (3) warn on fallback? check for variance component
-  ##      and warn?  
   if (!is(family,"family")) {
-      ## if family specified as list, not result of function ...
-      ## special case for beta models
+      ## if family specified as list 
       if (is.list(family)) {
           warning("specifying ",sQuote("family")," as a plain list is deprecated")
       }
-      if (is.character(family)) {
-          fname <- family
-          args <- NULL
-      } else {
-          fname <- family$family
-          args <- family["link"]
-      }
-      if (fname=="beta") fname <- "beta_family"
+      fname <- family$family
+      args <- family["link"]
       ff <- try(do.call(fname,args),silent=TRUE)
       if (!inherits(ff,"try-error")) {
           family <- ff
       } else {
           ## fallback: add link information to family
+          ## FIXME: is this ever used?
           if (is.null(family$linkfun)) {
               family <- c(family,make.link(family$link))
           }
@@ -544,18 +534,31 @@ glmmTMB <- function (
     ##                       control = glmerControl(), ...) {
     call <- mf <- mc <- match.call()
 
-    if (is.character(family))
-      family <- get(family, mode = "function", envir = parent.frame())
-    if (is.function(family))
-      family <- family()
+    if (is.character(family)) {
+        if (family=="beta") {
+            family <- "beta_family"
+            warning("please use ",sQuote("beta_family()")," rather than ",
+                    sQuote("\"beta\"")," to specify a Beta-distributed response")
+        }
+        family <- get(family, mode = "function", envir = parent.frame())
+    }
+    if (is.function(family)) {
+        ## call family with no arguments
+        family <- family()
+    }
+    ## FIXME: what is this doing? call to a function that's not really
+    ##  a family creation function?
     if (is.null(family$family)) {
       print(family)
       stop("'family' not recognized")
     }
-    if (!all(c("family","link") %in% names(family)))
+    fnames <- names(family)
+    if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
-    ## FIXME: warning/message if 'family' doesn't contain 'variance' ?
-
+    if (length(miss_comp <- setdiff(c("linkfun","variance"),fnames))>0) {
+        warning("some components missing from ",sQuote("family"),
+                ": downstream methods may fail")
+    }
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmTMB')
 
