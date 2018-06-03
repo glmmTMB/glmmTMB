@@ -13,6 +13,25 @@ recover_data.glmmTMB <- function(object, ...) {
                  attr(model.frame(object),"na.action"), ...)
 }
 
+## copied from emmeans (not exported)
+.std.link.labels <- function (fam, misc) 
+{
+    if (is.null(fam) || !is.list(fam)) 
+        return(misc)
+    if (fam$link == "identity") 
+        return(misc)
+    misc$tran = fam$link
+    misc$inv.lbl = "response"
+    if (grepl("binomial", fam$family))  {
+        misc$inv.lbl = "prob"
+    } else if (fam$family=="beta") {
+        misc$inv.lbl = "prop"
+    } else if (grepl("(pois|nbinom|tweedie|Gamma)", fam$family)) {
+        misc$inv.lbl = "rate"
+    }
+    misc
+}
+
 #' @rdname emmeans.glmmTMB
 #' @export
 ## FIXME: ignore random effects in 'terms' to avoid warning about
@@ -20,10 +39,22 @@ recover_data.glmmTMB <- function(object, ...) {
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
     if (component != "cond") warning("only tested for conditional component")
     V <- as.matrix(vcov(object)[[component]])
-    dfargs <- NA  ## FIXME: residual df?
+    misc = list()
+    if (family(object)$family=="gaussian") {
+        dfargs = list(df = df.residual(object))
+        dffun = function(k, dfargs) dfargs$df
+    } else {
+
+        dffun = function(k, dfargs) Inf
+        dfargs = list()
+
+    }
+    
     ## use this? misc = .std.link.labels(family(object), misc)
-    ## (used to populate the reminder 
+    ## (used to populate the reminder of response scale)
     contrasts = attr(model.matrix(object), "contrasts")
+    ## keep only variables found in conditional fixed effects
+    contrasts = contrasts[names(contrasts) %in% all.vars(terms(object))]
     m = model.frame(trms, grid, na.action = na.pass, xlev = xlev)
     X = model.matrix(trms, m, contrasts.arg = contrasts)
     bhat = fixef(object)[[component]]
