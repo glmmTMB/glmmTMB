@@ -14,7 +14,7 @@
       function) is now deprecated.
     }
   }
-}x
+}
 
 \section{CHANGES IN VERSION 0.2.1}{
   \subsection{NEW FEATURES}{
