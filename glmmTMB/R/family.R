@@ -13,6 +13,10 @@ family_factory <- function(default_link,family,variance) {
 
 make_family <- function(x,link) {
     x <- c(x,list(link=link),make.link(link))
+    if (is.null(x$aic)) {
+        ## stub aic(), needed by effects/Effect.default/glm.fit
+        x <- c(x,list(aic=function(...) NA))
+    }
     class(x) <- "family"
     return(x)
 }
