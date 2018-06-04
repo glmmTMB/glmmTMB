@@ -76,4 +76,9 @@ if (FALSE) {
     ls(environment(gg2$modelInfo$family$dev.resids),all.names=TRUE)
     ## debug(gg2$modelInfo$family$dev.resids)
     allEffects(gg2)
+    gg3 <- glmmTMB(y~x,family=nbinom2,data=dd)
+    gg3.glmnb <- MASS::glm.nb(y~x,data=dd)
+    allEffects(gg3.glmnb)
+    allEffects(gg3)
 }
+
