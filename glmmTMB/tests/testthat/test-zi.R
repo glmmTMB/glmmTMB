@@ -12,7 +12,7 @@ test_that("zi", {
     ## Fit negative binomial model with "constant" Zero Inflation :
     owls_nb1 <<- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                              (1|Nest)+offset(log(BroodSize)),
-                         family = list(family="nbinom1",link="log"),
+                         family = nbinom1(),
                          ziformula = ~1, data=Owls)
     owls_nb2 <<- update(owls_nb1,
                         ziformula = ~ FoodTreatment*SexParent + (1|Nest))

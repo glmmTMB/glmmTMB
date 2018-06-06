@@ -1,7 +1,7 @@
 
 ## run model & extract elapsed time
 form0 <- use ~ urban+age+livch+(urban|district)
-tt <- function(fun,data,form=form0,family="binomial",debug=FALSE) {
+tt <- function(fun,data,form=form0,family=binomial,debug=FALSE) {
     argList <- list(form,data)
     if (!is.null(family)) argList <- c(argList,list(family=family))
     unname(system.time(do.call(fun,argList))["elapsed"])
@@ -11,7 +11,7 @@ tt <- function(fun,data,form=form0,family="binomial",debug=FALSE) {
 ## of the data
 getTimes <- function(n=1,which=c("glmmTMB","glmer"),
                      basedata=Contraception,form=form0,
-                     family="binomial",
+                     family=binomial,
                      debug=FALSE) {
   if (n>1) {
     if (!n==round(n)) stop("only integer magnification allowed")
