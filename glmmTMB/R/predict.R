@@ -180,7 +180,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                family=omi$family,
                                ziPredictCode=ziPredNm,
                                doPredict=as.integer(se.fit),
-                               whichPredict=w))
+                               whichPredict=w,
+                               REML=omi$REML))
 
   ## short-circuit
   if(debug) return(TMBStruc)

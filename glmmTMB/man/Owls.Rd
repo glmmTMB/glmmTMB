@@ -47,8 +47,7 @@ dotplot(reorder(Nest,NegPerChick) ~ NegPerChick| FoodTreatment:SexParent,
 ## Fit negative binomial model with "constant" Zero Inflation :
 owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                                     (1|Nest)+offset(log(BroodSize)),
-              family = list(family="nbinom1",link="log"),
-              zi = ~1, data=Owls)
+              family = nbinom1(), zi = ~1, data=Owls)
 owls_nb1_bs <- update(owls_nb1,
                       . ~ . - offset(log(BroodSize)) + log(BroodSize))
 fixef(owls_nb1_bs)

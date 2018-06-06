@@ -85,6 +85,7 @@ In order to fit a model in \code{glmmTMB} you need to:
   of nested random effects (block within site) would be
   \code{1|site/block}; a model of crossed random effects
   (block and year) would be \code{(1|block)+(1|year)}.
+  \item choose the error distribution by specifying the family (\code{family} argument). In general, you can specify the function (\code{binomial}, \code{gaussian}, \code{poisson}, \code{Gamma} from base R, or one of the options listed at \code{family\_glmmTMB} [\code{nbinom2}, \code{beta\_family()}, \code{betabinomial}, \ldots])).
 \item choose the error distribution by specifying the family (\code{family} argument). For standard GLM families implemented in R, you can use the function name (\code{binomial}, \code{gaussian}, \code{poisson}, \code{Gamma}). Otherwise, you should specify the family argument as a list containing (at least) the (character) elements \code{family} and \code{link}, e.g. \code{family=list(family="nbinom2",link="log")}.
 \item optionally specify a zero-inflation model (via the \code{ziformula} argument) with fixed and/or random effects
 \item optionally specify a dispersion model with fixed effects

@@ -23,7 +23,7 @@ If your problem is not covered below, try updating to the latest version of `glm
 
 You may see the same warning as in the following example:
 ```{r non-pos-def,cache=TRUE}
-zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family="nbinom2")
+zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
 This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the curvature of the log-likelihood surface does not seem to be consistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
@@ -85,7 +85,7 @@ VarCorr(zinbm0_B)
 ```
 
 <!-- FIXME: updating here does weird things
-zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family="nbinom2")
+zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 -->
 
 The original analysis considered variation in zero-inflation by site status
@@ -94,7 +94,7 @@ to estimate two parameters (mined + difference between mined and no-mining)
 rather than 7 (one per species) for the zero-inflation model.
 
 ```{r zinbm1,cache=TRUE}
-zinbm1 = glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family="nbinom2")
+zinbm1 = glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family=nbinom2)
 fixef(zinbm1)[["zi"]]
 ```
 
@@ -125,7 +125,7 @@ In general models with non-positive definite Hessian matrices should be excluded
 ##Model convergence problem:  eigenvalue problems
 
 ```{r genpois_NaN,cache=TRUE}
-m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family="genpois")
+m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
 ```
 
 In this example, the fixed-effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
@@ -154,7 +154,7 @@ Warning in f(par, order = order, ...) : value out of range in 'lgamma'
 
 ```{r NA gradient, error=TRUE, warning=FALSE}
 dat1 = expand.grid(y=-1:1, rep=1:10)
-m1 = glmmTMB(y~1, dat1, family="nbinom2")
+m1 = glmmTMB(y~1, dat1, family=nbinom2)
 ```
 The error occurs here because the negative binomial distribution is not appropriate for data with negative values.
 

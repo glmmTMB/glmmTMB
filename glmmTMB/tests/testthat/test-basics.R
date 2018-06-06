@@ -110,12 +110,14 @@ test_that("Multiple RE, reordering", {
 
 test_that("Alternative family specifications [via update(.)]", {
     ## intercept-only fixed effect
-    
-    expect_equal(gm0, matchForm(gm0, update(gm0, family= "binomial")))
+
+    res_chr <- matchForm(gm0, update(gm0, family= "binomial"))
+    expect_equal(gm0, res_chr)
     expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial())))
-    expect_equal(gm0, matchForm(gm0, update(gm0, family= list(family = "binomial",
+    expect_warning(res_list <- matchForm(gm0, update(gm0, family= list(family = "binomial",
                                                        link = "logit")),
-                              family=TRUE))
+                                         family=TRUE))
+    expect_equal(gm0, res_list)
 })
 
 test_that("Update Binomial", {
@@ -239,8 +241,8 @@ test_that("NA handling", {
 
 quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
 quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,
-                     family=list(family="nbinom2",link="log"))
+                     family=nbinom2())
 quine.nb3 <- glmmTMB(Days ~ Sex + (1|Age), data = quine,
-                     family=list(family="nbinom2",link="log"))
+                     family=nbinom2())
 
 ## FIX ME: need to actually test these things!
