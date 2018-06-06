@@ -1,14 +1,73 @@
 ## methods for extending emmeans to handle glmmTMB objects
 
-#' @rdname emmeans.glmmTMB
-#' @examples
-#' if (require(emmeans)) {
-#'    warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
-#'    emmeans (warp.lm, poly ~ tension | wool)
-#' }
-#' @export
+## FIXME:
+## I don't know a good way to export methods
+## conditionally defining a generic as described in this thread
+## <https://stat.ethz.ch/pipermail/r-package-devel/2018q2/002764.html>
+## seems like a good idea, but loading the other package masks the
+## generic!
+## so: fully export methods
+
+globalVariables("recover_data")
+
+##' @rdname downstream_methods
+##' @title Downstream methods for glmmTMB objects
+##' 
+##' Methods have been written that allow \code{glmmTMB} objects to be used with
+##' several downstream packages that enable different forms of inference.
+##' In particular,
+##' \itemize{
+##' \item \code{car::Anova} constructs type-II and type-III Anova tables
+##' for the fixed effect parameters of the conditional model (this might work with the
+##' fixed effects of the zero-inflation or dispersion models, but has not been tested)
+##' \item the \code{effects} package computes graphical tabular effect displays
+##' (again, for the fixed effects of the conditional component)
+##' \item the \code{emmeans} package computes estimated marginal means (aka least-squares means)
+##' for the fixed effects of the conditional component
+##' }
+##'
+##' @param mod a glmmTMB model
+##' @param object a glmmTMB model
+##' @param trms The \code{terms} component of \code{object} (typically with the
+##' response deleted, e.g. via \code{\link{delete.response}}
+##' @param xlev Named list of factor levels (\emph{excluding} ones coerced to
+##' factors in the model formula)
+##' @param \dots Additional parameters that may be supported by the method.
+##' @param grid A \code{data.frame} (provided by \code{ref_grid}) containing the
+##' predictor settings needed in the reference grid
+##' @examples
+##' warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+##' if (require(emmeans)) {
+##'     emmeans (warp.lm, poly ~ tension | wool)
+##' }
+##' if (require(car)) {
+##'     Anova(warp.lm,type="III")
+##' }
+##' if (require(effects)) {
+##'     plot(allEffects(warp.lm))
+##' }
+
+
+## recover_data <- function(mod, ...) {
+##    if (requireNamespace("emmeans", quietly = TRUE)) {
+##        emmeans::recover_data(object, ...)
+##    } else UseMethod("recover_data")
+## }
+
+## ##' rdname downstream_methods
+## ##' export 
+## emm_basis <-  function(object, trms, xlev, grid, ...) {
+##     if (requireNamespace("emmeans", quietly = TRUE)) {
+##         emmeans::emm_basis(object, trms, xlev, grid, ...)
+##     } else UseMethod("emm_basis")
+## }
+
+#' @importFrom stats delete.response
+#' @export recover_data.glmmTMB
 recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
+    if (!requireNamespace("emmeans"))
+        stop("please install (if necessary) and load the emmeans package")
     recover_data(fcall,delete.response(terms(object)),
                  attr(model.frame(object),"na.action"), ...)
 }
@@ -32,10 +91,11 @@ recover_data.glmmTMB <- function(object, ...) {
     misc
 }
 
-#' @rdname emmeans.glmmTMB
-#' @export
-## FIXME: ignore random effects in 'terms' to avoid warning about
-## grouping variables being absent/contrasts ignored
+#' @rdname downstream_methods
+#' @aliases downstream_methods
+#' @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
+
+#' @export emm_basis.glmmTMB
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
     if (component != "cond") warning("only tested for conditional component")
     V <- as.matrix(vcov(object)[[component]])
@@ -59,12 +119,16 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
     X = model.matrix(trms, m, contrasts.arg = contrasts)
     bhat = fixef(object)[[component]]
     if (length(bhat) < ncol(X)) {
-        kept = match(names(bhat), dimnames(X)[[2]])
-        bhat = NA * X[1, ]
-        bhat[kept] = fixef(object)[[component]]
-        modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
-        nbasis = estimability::nonest.basis(modmat)
-    }  else nbasis = estimability::all.estble
+        stop("can't handle non-estimability at present")
+    }
+    ##     kept = match(names(bhat), dimnames(X)[[2]])
+    ##     bhat = NA * X[1, ]
+    ##     bhat[kept] = fixef(object)[[component]]
+    ##     modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
+    ##     nbasis = estimability::nonest.basis(modmat)
+        ## }  else nbasis = estimability::all.estble
+    ## equivalent of estimability::all.estble (avoid estimability import)
+    nbasis <- matrix(NA_real_, 1, 1)
     dfargs = list(df = df.residual(object))
     dffun = function(k, dfargs) dfargs$df
 

@@ -8,6 +8,8 @@
   "disp"), ...)
 }
 \arguments{
+\item{x}{a \code{glmmTMB} object}
+
 \item{fixed.only}{(logical) drop random effects, returning only the fixed-effect component of the formula?}
 
 \item{component}{formula for which component of the model to return (conditional, zero-inflation, or dispersion)}

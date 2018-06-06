@@ -39,7 +39,12 @@ Suggests:
     MCMCpack,
     coda,
     reshape2,
-    emmeans
+    car,
+    emmeans,
+    DHARMa,
+    multcomp,
+    MuMIn,
+    effects
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE

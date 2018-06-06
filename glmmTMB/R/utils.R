@@ -512,11 +512,11 @@ GMRFmarginal <- function(Q, i, ...) {
     ans
 }
 
-#' n.b. won't work for terms with more than 2 args ...
-#' @examples
-#' replaceForm(quote(a(b+x*c(y,z))),quote(y),quote(R))
-#' ss <- ~(1 | cask:batch) + (1 | batch)
-#' replaceForm(ss,quote(cask:batch),quote(batch:cask))
+# n.b. won't work for terms with more than 2 args ...
+# @examples
+# replaceForm(quote(a(b+x*c(y,z))),quote(y),quote(R))
+# ss <- ~(1 | cask:batch) + (1 | batch)
+# replaceForm(ss,quote(cask:batch),quote(batch:cask))
 replaceForm <- function(term,target,repl) {
     if (identical(term,target)) return(repl)
     if (!inForm(term,target)) return(term)

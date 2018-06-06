@@ -11,6 +11,9 @@ family_factory <- function(default_link,family,variance) {
     return(f)
 }
 
+## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
+globalVariables(".Theta") 
+
 make_family <- function(x,link) {
     x <- c(x,list(link=link),make.link(link))
     if (is.null(x$aic)) {

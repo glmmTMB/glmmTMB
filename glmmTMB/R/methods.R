@@ -880,7 +880,8 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
 }
 
 #' Extract the formula of a glmmTMB object
-#' 
+#'
+#' @param x a \code{glmmTMB} object
 #' @param component formula for which component of the model to return (conditional, zero-inflation, or dispersion)
 #' @param fixed.only (logical) drop random effects, returning only the fixed-effect component of the formula?
 #' @param ... unused, for generic consistency
