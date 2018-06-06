@@ -202,7 +202,8 @@ logLik.glmmTMB <- function(object, ...) {
   }else val <- -object$fit$objective
 
   nobs <- nobs.glmmTMB(object)
-  structure(val, nobs = nobs, nall = nobs, df = length(object$fit$par),
+  df <- sum( ! names(object$fit$parfull) %in% c("b", "bzi") )
+  structure(val, nobs = nobs, nall = nobs, df = df,
             class = "logLik")
 }
 
@@ -233,15 +234,26 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
+  REML <- object$modelInfo$REML
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
-    sdr <- sdreport(object$obj)
+    sdr <- sdreport(object$obj, getJointPrecision=REML)
+  }
+  if (REML) {
+      ## NOTE: This code would also work in non-REML case provided
+      ## that jointPrecision is present in the object.
+      Q <- sdr$jointPrecision
+      whichNotRandom <- which( ! rownames(Q) %in% c("b", "bzi") )
+      Qm <- GMRFmarginal(Q, whichNotRandom)
+      cov.all.parms <- solve(as.matrix(Qm))
+  } else {
+      cov.all.parms <- sdr$cov.fixed
   }
   keepTag <- if (full) { "."
              } else if (!trivialDisp(object)) { "beta*"
              } else "beta($|[^d])"
-  to_keep <- grep(keepTag,colnames(sdr$cov.fixed)) # only keep betas
-  covF <- sdr$cov.fixed[to_keep,to_keep,drop=FALSE]
+  to_keep <- grep(keepTag,colnames(cov.all.parms)) # only keep betas
+  covF <- cov.all.parms[to_keep,to_keep,drop=FALSE]
 
   mkNames <- function(tag) {
       X <- getME(object,paste0("X",tag))

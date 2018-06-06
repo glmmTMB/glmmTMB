@@ -18,6 +18,7 @@
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
+##' @param REML Logical; Use REML estimation rather than maximum likelihood.
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -34,7 +35,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        verbose=NULL,
                        ziPredictCode="corrected",
                        doPredict=0,
-                       whichPredict=integer(0)) {
+                       whichPredict=integer(0),
+                       REML=FALSE) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
@@ -179,12 +181,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
+  ## REML
+  if (REML) randomArg <- c(randomArg, "beta")
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose))
+            fr, se, call, verbose, REML))
 }
 
 ##' Create X and random effect terms from formula
@@ -439,6 +443,7 @@ binomialType <- function(x) {
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
 ##'     without fitting the model
 ##' @param control control parameters; see \code{\link{glmmTMBControl}}.
+##' @param REML Logical; Use REML estimation rather than maximum likelihood.
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -523,7 +528,8 @@ glmmTMB <- function (
     se=TRUE,
     verbose=FALSE,
     doFit=TRUE,
-    control=glmmTMBControl()
+    control=glmmTMBControl(),
+    REML=FALSE
     )
 {
 
@@ -683,7 +689,8 @@ glmmTMB <- function (
                    family=family,
                    se=se,
                    call=call,
-                   verbose=verbose)
+                   verbose=verbose,
+                   REML=REML)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
@@ -859,7 +866,7 @@ fitTMB <- function(TMBStruc) {
         if(control$profile)
             sdr <- sdreport(obj, hessian.fixed=h)
         else
-            sdr <- sdreport(obj)
+            sdr <- sdreport(obj, getJointPrecision=TMBStruc$REML)
         ## FIXME: assign original rownames to fitted?
     } else {
         sdr <- NULL
@@ -900,7 +907,8 @@ fitTMB <- function(TMBStruc) {
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
-                                allForm))
+                                allForm,
+                                REML))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out

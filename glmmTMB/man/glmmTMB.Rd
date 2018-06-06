@@ -6,7 +6,8 @@
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
   dispformula = ~1, weights = NULL, offset = NULL, na.action = na.fail,
-  se = TRUE, verbose = FALSE, doFit = TRUE, control = glmmTMBControl())
+  se = TRUE, verbose = FALSE, doFit = TRUE, control = glmmTMBControl(),
+  REML = FALSE)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
@@ -53,6 +54,8 @@ In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, for
 without fitting the model}
 
 \item{control}{control parameters; see \code{\link{glmmTMBControl}}.}
+
+\item{REML}{Logical; Use REML estimation rather than maximum likelihood.}
 }
 \description{
 Fit models with TMB
