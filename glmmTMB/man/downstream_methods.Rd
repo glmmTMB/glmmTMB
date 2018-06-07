@@ -6,17 +6,17 @@
 \alias{recover_data.glmmTMB}
 \alias{emm_basis.glmmTMB}
 \alias{downstream_methods}
-\title{Downstream methods for {glmmTMB} objects}
+\title{Downstream methods for glmmTMB objects}
 \usage{
-Anova.glmmTMB(mod, type = c("II", "III", 2, 3), test.statistic = c("Chisq",
-  "F"), component = "cond", vcov. = vcov(mod)[[component]], singular.ok,
-  ...)
+\method{Anova}{glmmTMB}(mod, type = c("II", "III", 2, 3),
+  test.statistic = c("Chisq", "F"), component = "cond",
+  vcov. = vcov(mod)[[component]], singular.ok, ...)
 
-Effect.glmmTMB(focal.predictors, mod, ..., component = "cond")
+\method{Effect}{glmmTMB}(focal.predictors, mod, ..., component = "cond")
 
-recover_data.glmmTMB(object, ...)
+\method{recover_data}{glmmTMB}(object, ...)
 
-emm_basis.glmmTMB(object, trms, xlev, grid, component = "cond", ...)
+\method{emm_basis}{glmmTMB}(object, trms, xlev, grid, component = "cond", ...)
 }
 \arguments{
 \item{mod}{a glmmTMB model}
