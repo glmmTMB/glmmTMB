@@ -1,13 +1,21 @@
 ## See https://docs.travis-ci.com/user/languages/r/
-language: r 
-sudo: false
+language: r
+## set 'required' rather than 'false' to install binary packages from c2d4u repo
+sudo: required
 r:
 ##  - oldrel
   - release
   - devel
 
+## recursive dependencies for emmeans
+r_binary_packages: r-cran-rstan r-cran-brms
+   
 cache: packages
 
+script:
+  - |
+    R CMD build .
+    travis_wait 30 
 before_install:
   - tlmgr install chicago
   - cd ./glmmTMB
