@@ -8,8 +8,6 @@
 ## generic!
 ## so: fully export methods
 
-globalVariables("recover_data")
-
 ##' @rdname downstream_methods
 ##' @title Downstream methods for glmmTMB objects
 ##' 
@@ -68,11 +66,12 @@ recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
     if (!requireNamespace("emmeans"))
         stop("please install (if necessary) and load the emmeans package")
-    recover_data(fcall,delete.response(terms(object)),
+    emmeans::recover_data(fcall,delete.response(terms(object)),
                  attr(model.frame(object),"na.action"), ...)
 }
 
 ## copied from emmeans (not exported)
+## (will be exported in next release of emmeans)
 .std.link.labels <- function (fam, misc) 
 {
     if (is.null(fam) || !is.list(fam)) 
@@ -119,19 +118,16 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
     X = model.matrix(trms, m, contrasts.arg = contrasts)
     bhat = fixef(object)[[component]]
     if (length(bhat) < ncol(X)) {
-        stop("can't handle non-estimability at present")
+        kept = match(names(bhat), dimnames(X)[[2]])
+        bhat = NA * X[1, ]
+        bhat[kept] = fixef(object)[[component]]
+        modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
+        nbasis = estimability::nonest.basis(modmat)
+    }  else {
+        nbasis = estimability::all.estble
     }
-    ##     kept = match(names(bhat), dimnames(X)[[2]])
-    ##     bhat = NA * X[1, ]
-    ##     bhat[kept] = fixef(object)[[component]]
-    ##     modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
-    ##     nbasis = estimability::nonest.basis(modmat)
-        ## }  else nbasis = estimability::all.estble
-    ## equivalent of estimability::all.estble (avoid estimability import)
-    nbasis <- matrix(NA_real_, 1, 1)
     dfargs = list(df = df.residual(object))
     dffun = function(k, dfargs) dfargs$df
-
     list(X = X, bhat = bhat, nbasis = nbasis, V = V, dffun = dffun, 
          dfargs = dfargs, misc = misc)
 }

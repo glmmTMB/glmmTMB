@@ -41,6 +41,7 @@ Suggests:
     reshape2,
     car,
     emmeans,
+    estimability,
     DHARMa,
     multcomp,
     MuMIn,

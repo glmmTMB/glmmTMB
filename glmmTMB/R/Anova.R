@@ -3,8 +3,6 @@
 ## main changes are (1) absence of F-test (K-R, Satterthwaite df) capability;
 ## (2) use of [[component]] to pick out relevant fixed effect parameters/v-cov matrix
 
-globalVariables("linearHypothesis")
-
 ## copied unchanged (?); unexported utilities from car
 responseName.default <- function (model, ...) deparse(attr(terms(model), "variables")[[2]])
 
@@ -87,7 +85,7 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
     ## call linearHypothesis.default (not exported)
     if (!requireNamespace("car"))
         stop("please install (if necessary) and load the car package")
-    linearHypothesis(model=model,
+    car::linearHypothesis(model=model,
              hypothesis.matrix=hypothesis.matrix,
              rhs=rhs,
              test=test,
@@ -98,8 +96,6 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
              ...)
 }                  
     
-
-
 Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
                              component="cond", ...){
 
