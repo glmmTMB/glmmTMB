@@ -4,12 +4,16 @@ language: r
 sudo: required
 r:
 ##  - oldrel
-  - release
+##  - release  ## doesn't have r-cran-rstan, r-cran-brms deps?
   - devel
 
 ## recursive dependencies for emmeans
 ## not sure about syntax here ... first element gets automatic r-cran- prefix, but subsequent elements don't
 ## is there a better/different way to specify the list?
+
+apt_packages:
+  - r-api-3
+
 r_binary_packages:
   - mgcv
   - rstan
