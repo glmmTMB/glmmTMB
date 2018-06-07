@@ -16,10 +16,21 @@ globalVariables(".Theta")
 
 make_family <- function(x,link) {
     x <- c(x,list(link=link),make.link(link))
+    ## stubs for Effect.default/glm.fit
     if (is.null(x$aic)) {
-        ## stub aic(), needed by effects/Effect.default/glm.fit
-        x <- c(x,list(aic=function(...) NA))
+        x <- c(x,list(aic=function(...) NA_real_))
     }
+    if (is.null(x$initialize)) {
+        ## should handle log-links adequately
+        x <- c(x,list(initialize=expression({mustart <- y+0.1})))
+    }
+    if (is.null(x$dev.resids)) {
+        ## can't return NA, glm.fit is unhappy
+        x <- c(x,list(dev.resids=function(y,mu,wt)  {
+                     rep(0,length(y))
+                 }))
+    }
+
     class(x) <- "family"
     return(x)
 }
@@ -111,6 +122,9 @@ nbinom2 <- function(link="log") {
 nbinom1 <- function(link="log") {
     r <- list(family="nbinom1",
               variance=function(mu,alpha) {
+        ## Effect stub (can't return 0 or NA or glm.fit will complain)
+        ## FIXME: retrieve dispersion in environment?
+        if (missing(alpha)) return(rep(1e-16,length(mu)))
         mu*(1+alpha)
     })
     return(make_family(r,link))

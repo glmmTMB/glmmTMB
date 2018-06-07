@@ -189,7 +189,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc,
-            family, respCol,
+            family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
             fr, se, call, verbose, REML))
 }
@@ -910,6 +910,7 @@ fitTMB <- function(TMBStruc) {
                                 respCol,
                                 grpVar,
                                 family,
+                                contrasts,
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
