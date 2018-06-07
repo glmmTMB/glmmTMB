@@ -239,10 +239,25 @@ test_that("NA handling", {
                  tolerance=1e-6)
 })
 
-quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
-quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,
-                     family=nbinom2())
-quine.nb3 <- glmmTMB(Days ~ Sex + (1|Age), data = quine,
-                     family=nbinom2())
+test_that("quine NB fit", {
+    quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
+    quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,
+                         family=nbinom2())
+    expect_equal(coef(quine.nb1),fixef(quine.nb2)[["cond"]],
+                 tolerance=1e-4)
+})
+## quine.nb3 <- glmmTMB(Days ~ Sex + (1|Age), data = quine,
+##                     family=nbinom2())
 
-## FIX ME: need to actually test these things!
+test_that("contrasts arg", {
+    quine.nb1 <- MASS::glm.nb(Days ~ Sex*Age, data = quine,
+                              contrasts=list(Sex="contr.sum",Age="contr.sum"))
+    quine.nb2 <- glmmTMB(Days ~ Sex*Age, data = quine,
+                         family=nbinom2(),
+                         contrasts=list(Sex="contr.sum",Age="contr.sum"))
+    expect_equal(coef(quine.nb1),fixef(quine.nb2)[["cond"]],
+                 tolerance=1e-4)
+})
+
+
+

@@ -10,6 +10,7 @@
 ##' @param zioffset offset for zero-inflated model
 ##' @param doffset offset for dispersion model
 ##' @param weights weights
+##' @param contrasts contrasts
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @param se (logical) compute standard error?
@@ -28,6 +29,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        ## no conditional offset argument
                        ##  (should be stored in model frame)
                        weights,
+                       contrasts,
                        size=NULL,
                        family,
                        se=NULL,
@@ -89,10 +91,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr)
-    ziList    <- getXReTrms(ziformula, mf, fr)
+    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts)
+    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts)
     dispList  <- getXReTrms(dispformula, mf, fr,
-                            ranOK=FALSE, "dispersion")
+                            ranOK=FALSE, type="dispersion",
+                            contrasts=contrasts)
 
     condReStruc <- with(condList, getReStruc(reTrms, ss))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -197,6 +200,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param fr full model frame
 ##' @param ranOK random effects allowed here?
 ##' @param type label for model type
+##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
@@ -206,7 +210,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -436,7 +440,8 @@ binomialType <- function(x) {
 ##'     The dispersion model uses a log link. 
 ##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
-##' @param offset offset for conditional model (only):
+##' @param offset offset for conditional model (only)
+##' @param contrasts an optional list, e.g. \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
 ##' @param se whether to return standard errors
 ##' @param na.action how to handle missing values (see \code{\link{na.action}} and \code{\link{model.frame}}); from \code{\link{lm}}, \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset.  The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
@@ -524,6 +529,7 @@ glmmTMB <- function (
     dispformula= ~1,
     weights=NULL,
     offset=NULL,
+    contrasts=NULL,
     na.action=na.fail,
     se=TRUE,
     verbose=FALSE,
@@ -686,6 +692,7 @@ glmmTMB <- function (
                    yobs=y,
                    respCol,
                    weights,
+                   contrasts=contrasts,
                    family=family,
                    se=se,
                    call=call,
