@@ -7,24 +7,24 @@ r:
 ##  - release  ## doesn't have r-cran-rstan, r-cran-brms deps?
   - devel
 
-## recursive dependencies for emmeans
-## not sure about syntax here ... first element gets automatic r-cran- prefix, but subsequent elements don't
-## is there a better/different way to specify the list?
+## timeout installing emmeans; tried to resolve via binary installs
 
-apt_packages:
-  - r-api-3
+## FAILS: not provided
+## "Package r-api-3 is a virtual package provided by:
+##   r-base-core 3.4.4-1trusty0 [Not candidate version]
+##   ... has no installation candidate."
+##  
+## apt_packages:
+##  - r-api-3 ## added to make mgcv happy (why not resolved automatically?)
 
-r_binary_packages:
-  - mgcv
-  - rstan
-  - brms
+
+## r_binary_packages:
+##   - mgcv  ## added to make brms happy (why not resolved automatically?)
+##   - rstan
+##   - brms
    
 cache: packages
 
-script:
-  - |
-    R CMD build .
-    travis_wait 30 
 before_install:
   - tlmgr install chicago
   - cd ./glmmTMB
@@ -33,4 +33,3 @@ notifications:
   email:
     on_success: change
     on_failure: change
-
