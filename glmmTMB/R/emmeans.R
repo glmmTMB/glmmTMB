@@ -8,8 +8,7 @@
 ## generic!
 ## so: fully export methods
 
-##' @rdname downstream_methods
-##' @title Downstream methods for glmmTMB objects
+##' Downstream methods for glmmTMB objects
 ##' 
 ##' Methods have been written that allow \code{glmmTMB} objects to be used with
 ##' several downstream packages that enable different forms of inference.
@@ -23,7 +22,7 @@
 ##' \item the \code{emmeans} package computes estimated marginal means (aka least-squares means)
 ##' for the fixed effects of the conditional component
 ##' }
-##'
+##' @rdname downstream_methods
 ##' @param mod a glmmTMB model
 ##' @param object a glmmTMB model
 ##' @param trms The \code{terms} component of \code{object} (typically with the

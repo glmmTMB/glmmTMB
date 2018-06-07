@@ -6,20 +6,7 @@
 \alias{recover_data.glmmTMB}
 \alias{emm_basis.glmmTMB}
 \alias{downstream_methods}
-\title{Downstream methods for glmmTMB objects
-
-Methods have been written that allow \code{glmmTMB} objects to be used with
-several downstream packages that enable different forms of inference.
-In particular,
-\itemize{
-\item \code{car::Anova} constructs type-II and type-III Anova tables
-for the fixed effect parameters of the conditional model (this might work with the
-fixed effects of the zero-inflation or dispersion models, but has not been tested)
-\item the \code{effects} package computes graphical tabular effect displays
-(again, for the fixed effects of the conditional component)
-\item the \code{emmeans} package computes estimated marginal means (aka least-squares means)
-for the fixed effects of the conditional component
-}}
+\title{Downstream methods for {glmmTMB} objects}
 \usage{
 Anova.glmmTMB(mod, type = c("II", "III", 2, 3), test.statistic = c("Chisq",
   "F"), component = "cond", vcov. = vcov(mod)[[component]], singular.ok,
@@ -61,8 +48,6 @@ factors in the model formula)}
 predictor settings needed in the reference grid}
 }
 \description{
-Downstream methods for glmmTMB objects
-
 Methods have been written that allow \code{glmmTMB} objects to be used with
 several downstream packages that enable different forms of inference.
 In particular,
