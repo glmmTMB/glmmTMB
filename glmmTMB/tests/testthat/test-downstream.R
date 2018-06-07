@@ -9,7 +9,12 @@ if (require(emmeans)) {
                 (1|Nest)+offset(log(BroodSize)),
                 family = nbinom1(), zi = ~1, data=Owls)
     em1 <- emmeans(m1, poly ~ FoodTreatment | SexParent)
+    em2 <- emmeans(m1, poly ~ FoodTreatment | SexParent, type = "response")
     expect_is(em1,"emm_list")
+    expect_true(any(grepl("given on the log (not the response) scale",
+                    capture.output(print(em1)),fixed=TRUE)))
+    expect_true(any(grepl("back-transformed from the log scale",
+                    capture.output(print(em2)))))
     ## FIXME: need a real comparison here!
 }
 
@@ -24,7 +29,8 @@ if (require(car)) {
 
 if (require(effects)) {
     context("effects")
-    f <- function(x) {
+    ## pass dd: some kind of scoping issue in testthat context
+    f <- function(x,dd) {
         sapply(allEffects(x),
                function(y) {
             y$transformation$inverse(y$fit)
@@ -35,10 +41,10 @@ if (require(effects)) {
     expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
     ## 
     set.seed(101)
-    dd <- data.frame(y=rnbinom(1000,mu=4,size=1),
+    dd <<- data.frame(y=rnbinom(1000,mu=4,size=1),
                      x = rnorm(1000),
                      f=factor(rep(LETTERS[1:20],each=50)))
     fm3_tmb <- glmmTMB(y~x,family=nbinom2,data=dd)
     fm3_MASS <- MASS::glm.nb(y~x,data=dd)
-    expect_equal(f(fm3_tmb),f(fm3_MASS),tolerance=2e-5)
+    expect_equal(f(fm3_tmb,dd),f(fm3_MASS,dd),tolerance=2e-5)
 }

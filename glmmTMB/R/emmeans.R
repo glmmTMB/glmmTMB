@@ -110,7 +110,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
 
     }
     
-    ## use this? misc = .std.link.labels(family(object), misc)
+    misc = .std.link.labels(family(object), misc)
     ## (used to populate the reminder of response scale)
     contrasts = attr(model.matrix(object), "contrasts")
     ## keep only variables found in conditional fixed effects
@@ -133,5 +133,5 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
     dffun = function(k, dfargs) dfargs$df
 
     list(X = X, bhat = bhat, nbasis = nbasis, V = V, dffun = dffun, 
-         dfargs = dfargs)
+         dfargs = dfargs, misc = misc)
 }
