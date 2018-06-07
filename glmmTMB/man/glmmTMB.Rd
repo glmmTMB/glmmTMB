@@ -15,14 +15,7 @@ syntax}
 
 \item{data}{data frame}
 
-\item{family}{family (variance/link function) information; see \code{\link{family}} for
-generic family details or \code{\link{family_glmmTMB}} for details of \code{glmmTMB} specific families.  
-As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
-referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
-such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
-In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
-can be specified as (4) a list comprising the name of the distribution and the link function
-(\sQuote{list(family="binomial", link="logit")}). However, the first 3 options are preferable.}
+\item{family}{a family function, a character string naming a family function, or the result of a call to a family function family (variance/link function) information; see \code{\link{family}} for generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.}
 
 \item{ziformula}{a \emph{one-sided} (i.e., no response variable) formula for
     zero-inflation combining fixed and random effects:
@@ -84,6 +77,7 @@ of
 \item \code{toep} (* Toeplitz)
 }
 (note structures marked with * are experimental/untested)
+\item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternatives is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
 }
 }
 \examples{
