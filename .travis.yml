@@ -8,7 +8,7 @@ r:
   - devel
 
 ## recursive dependencies for emmeans
-r_binary_packages: rstan brms
+r_binary_packages: rstan r-cran-brms
    
 cache: packages
 
