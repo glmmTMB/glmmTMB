@@ -8,7 +8,12 @@ r:
   - devel
 
 ## recursive dependencies for emmeans
-r_binary_packages: rstan r-cran-brms
+## not sure about syntax here ... first element gets automatic r-cran- prefix, but subsequent elements don't
+## is there a better/different way to specify the list?
+r_binary_packages:
+  - mgcv
+  - rstan
+  - brms
    
 cache: packages
 
