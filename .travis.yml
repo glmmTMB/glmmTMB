@@ -38,5 +38,5 @@ after_script:
 
 after_success:
   - travis_wait 40 tar -C .. -xf $PKG_TARBALL
-  - travis_wait 40 Rscript -e 'covr::coveralls()'
+##  - travis_wait 40 Rscript -e 'covr::coveralls()'
 
