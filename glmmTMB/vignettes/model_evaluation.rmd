@@ -1,0 +1,165 @@
+---
+title: "Post-fitting inference, etc. with glmmTMB models"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{model_evaluation}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+The purpose of this vignette is to describe (and test) the
+functions in various downstream packages that are available for summarizing
+and otherwise interpreting `glmmTMB` fits. Hopefully this will
+eventually extend to:
+
+- `car::Anova()`
+- `multcomp::glht()`
+- the `effects` package
+- the `emmeans` package
+- the `MuMIn` package
+- the `broom`/`broom.mixed`/`dotwhisker` packages
+- the `DHARMa` package
+
+Some of these packages/functions may
+not be suitable for inference on parameters of
+the zero-inflation or dispersion
+models, but will be restricted to the conditional-mean model.
+
+```{r pkgs,message=FALSE}
+library(glmmTMB)
+library(car)
+library(emmeans)
+library(effects)
+library(multcomp)
+library(MuMIn)
+library(DHARMa)
+library(broom)
+library(broom.mixed)
+library(dotwhisker)
+## retrieve slow stuff
+load(system.file("vignette_data","model_evaluation.rda",package="glmmTMB"))
+```
+
+A couple of example models:
+
+```{r fit_model,cache=TRUE}
+owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
+                        (1|Nest)+offset(log(BroodSize)),
+                    contrasts=list(FoodTreatment="contr.sum",
+                                   SexParent="contr.sum"),
+                    family = nbinom1,
+                    zi = ~1, data=Owls)
+data("cbpp",package="lme4")
+cbpp_b1 <- glmmTMB(incidence/size~period+(1|herd),
+                   weights=size,family=binomial,
+                   data=cbpp)
+```
+
+## model checking and diagnostics
+
+### DHARMa (extended diagnostics)
+
+The `DHARMa` package provides diagnostics for hierarchical models.
+
+After running
+```{r dharma_fake,eval=FALSE}
+owls_nb1_simres <- simulateResiduals(owls_nb1)
+```
+```{r dharma,cache=TRUE}
+system.time(sr <- simulateResiduals(owls_nb1))
+```
+
+```{r dharmaplot,fig.width=8,fig.height=4}
+plot(sr)
+```
+
+## Inference
+
+### car::Anova
+
+We can use `car::Anova()` to get traditional ANOVA-style tables from `glmmTMB` fits. A few limitations/reminders:
+
+- these tables are using Wald $\chi^2$ statistics for comparisons (neither likelihood ratio tests nor $F$ tests)
+- they apply to the fixed effects of the conditional component of the model only (other components *might* work, but haven't been tested at all)
+- as always, if you want to do type 3 tests, you should probably set sum-to-zero contrasts on factors and center numerical covariates (see `contrasts` argument above)
+
+```{r Anova}
+Anova(owls_nb1)  ## default type II
+Anova(owls_nb1,type="III")
+```
+
+### effects
+
+```{r effects,fig.width=8,fig.height=4}
+(ae <- allEffects(owls_nb1))
+plot(ae)
+```
+
+### emmeans
+
+```{r emmeans}
+emmeans(owls_nb1, poly ~ FoodTreatment | SexParent)
+```
+
+### MuMIn
+
+Model selection and averaging.
+
+We can run `MuMIn::dredge(owls_nb1)` on the model to fit all possible submodels.
+Since this takes a little while (45 seconds or so), we'll instead load the results:
+
+```{r dredge1}
+owls_nb1_dredge
+```
+
+```{r plot_dredge1,fig.width=8,fig.height=8}
+op <- par(mar=c(2,5,14,3))
+plot(owls_nb1_dredge)
+par(op)
+```
+
+Model averaging:
+
+```{r model_avg}
+model.avg(owls_nb1_dredge)
+```
+
+### multcomp
+
+Multiple comparisons and *post hoc* tests.
+
+It is possible to make `multcomp` work in a way that (1) actually
+uses the S3 method structure and (2) doesn't need access to
+private `multcomp` methods (i.e. accessed by `multcomp:::`) ? Not sure,
+but both of the following hacks should work.
+
+```{r glht_def}
+glht_glmmTMB <- function (model, ..., component="cond") {
+    glht(model, ...,
+         coef. = function(x) fixef(x)[[component]],
+         vcov. = function(x) vcov(x)[[component]],
+         df = NULL)
+}
+modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
+                               vcov. = function(x) vcov(x)[[component]],
+                               df = NULL, component="cond", ...) {
+    multcomp:::modelparm.default(model, coef. = coef., vcov. = vcov.,
+                        df = df, ...)
+}
+```
+
+```{r glht_ex}
+g1 <- glht(cbpp_b1, linfct = mcp(period = "Tukey"))
+summary(g1)
+```
+
+```{r save_output,echo=FALSE,eval=FALSE}
+## store time-consuming stuff
+save("owls_nb1_simres","owls_nb1_dredge",file="../inst/vignette_data/model_evaluation.rda")
+```
+
+### broom etc.
+
+```{r}
+dwplot(list(owls_nb1))
