@@ -615,7 +615,10 @@ format.perc <- function (probs, digits) {
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
-##' confint(model)
+##' model2 <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy,
+##'     dispformula= ~I(Days>8))
+##' confint(model)  ## Wald/delta-method CIs
+##' confint(model,parm="theta_")  ## Wald/delta-method CIs
 ##' \dontrun{
 ##' confint(model,parm=1,method="profile")
 ##' }
@@ -703,8 +706,21 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
             }
         }
         ## Take subset
-        if (!missing(parm))
+        if (!missing(parm)) {
+            ## FIXME: beta_ not well defined; sigma parameters not
+            ## distinguishable (all called "sigma")
+            ## for non-trivial dispersion model
+            theta_parms <- grep("\\.(Std\\.Dev|Cor)\\.",rownames(ci))
+            ## if non-trivial disp, keep disp parms for "beta_"
+            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
+            if (parm=="theta_") {
+                parm <- theta_parms
+            } else if (parm=="beta_") {
+                parm <- seq(nrow(ci))[-c(theta_parms,disp_parms)]
+            }
             ci <- ci[parm, , drop=FALSE]
+        }
+        ## end Wald method
     } else if (tolower(method=="uniroot")) {
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
