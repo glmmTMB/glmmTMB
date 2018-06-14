@@ -234,7 +234,10 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
-  REML <- object$modelInfo$REML
+  if (is.null(REML <- object$modelInfo$REML)) {
+     ## let vcov work with old (pre-REML option) stored objects   
+     REML <- FALSE   
+  }
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
@@ -707,15 +710,16 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         }
         ## Take subset
         if (!missing(parm)) {
+            ## FIXME: DRY/refactor with confint.profile
             ## FIXME: beta_ not well defined; sigma parameters not
             ## distinguishable (all called "sigma")
             ## for non-trivial dispersion model
             theta_parms <- grep("\\.(Std\\.Dev|Cor)\\.",rownames(ci))
             ## if non-trivial disp, keep disp parms for "beta_"
             disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
-            if (parm=="theta_") {
+            if (identical(parm,"theta_")) {
                 parm <- theta_parms
-            } else if (parm=="beta_") {
+            } else if (identical(parm,"beta_")) {
                 parm <- seq(nrow(ci))[-c(theta_parms,disp_parms)]
             }
             ci <- ci[parm, , drop=FALSE]
