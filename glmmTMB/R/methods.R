@@ -751,7 +751,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     }
     else {  ## profile CIs
         pp <- profile(object, parm=parm, level_max=level,
-                      parallel=parallel,
+                      parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
     }
