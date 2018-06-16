@@ -934,4 +934,20 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
     }
     return(ff)
 }
-    
+
+## need this so we can get contrasts carried through properly to model.matrix
+
+#' @export
+
+model.matrix.glmmTMB <- function (object, ...) 
+{
+    ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
+    ## if (n_match <- match("x", names(object), 0L)) 
+    ##    object[[n_match]]
+    ## else {
+    ## data <- model.frame(object, xlev = object$xlevels, ...)
+
+    data <- model.frame(object, ...)
+    NextMethod("model.matrix", data = data,
+               contrasts.arg = object$modelInfo$contrasts)
+}
