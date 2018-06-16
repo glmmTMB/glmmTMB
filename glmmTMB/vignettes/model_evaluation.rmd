@@ -1,7 +1,10 @@
 ---
 title: "Post-fitting inference, etc. with glmmTMB models"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
 vignette: >
   %\VignetteIndexEntry{model_evaluation}
   %\VignetteEngine{knitr::rmarkdown}
@@ -10,18 +13,8 @@ vignette: >
 
 The purpose of this vignette is to describe (and test) the
 functions in various downstream packages that are available for summarizing
-and otherwise interpreting `glmmTMB` fits. Hopefully this will
-eventually extend to:
-
-- `car::Anova()`
-- `multcomp::glht()`
-- the `effects` package
-- the `emmeans` package
-- the `MuMIn` package
-- the `broom`/`broom.mixed`/`dotwhisker` packages
-- the `DHARMa` package
-
-Some of these packages/functions may
+and otherwise interpreting `glmmTMB` fits.
+Some of the packages/functions discussed below may
 not be suitable for inference on parameters of
 the zero-inflation or dispersion
 models, but will be restricted to the conditional-mean model.
@@ -37,8 +30,9 @@ library(DHARMa)
 library(broom)
 library(broom.mixed)
 library(dotwhisker)
+library(ggplot2); theme_set(theme_bw())
 ## retrieve slow stuff
-load(system.file("vignette_data","model_evaluation.rda",package="glmmTMB"))
+L <- load(system.file("vignette_data","model_evaluation.rda",package="glmmTMB"))
 ```
 
 A couple of example models:
@@ -58,7 +52,7 @@ cbpp_b1 <- glmmTMB(incidence/size~period+(1|herd),
 
 ## model checking and diagnostics
 
-### DHARMa (extended diagnostics)
+### DHARMa
 
 The `DHARMa` package provides diagnostics for hierarchical models.
 
@@ -73,6 +67,10 @@ system.time(sr <- simulateResiduals(owls_nb1))
 ```{r dharmaplot,fig.width=8,fig.height=4}
 plot(sr)
 ```
+
+#### issues
+
+See warning. `DHARMa` Will only work for models using families for which a `simulate` method has been implemented (in `TMB`, and appropriately reflected in `glmmTMB`).
 
 ## Inference
 
@@ -102,12 +100,30 @@ plot(ae)
 emmeans(owls_nb1, poly ~ FoodTreatment | SexParent)
 ```
 
+### drop1
+
+`stats::drop1` is a built-in R function that refits the model with various terms dropped. In its default mode it respects marginality (i.e., it will only drop the top-level interactions, not the main effects):
+
+```{r drop1,cache=TRUE}
+system.time(owls_nb1_d1 <- drop1(owls_nb1,test="Chisq"))
+```
+
+```{r print_drop1}
+print(owls_nb1_d1)
+```
+
+In principle, using `scope = . ~ . - (1|Nest)` should work to execute a "type-3-like" series of tests, dropping the main effects one at a time while leaving the interaction in (we have to use `- (1|Nest)` to exclude the random effects because `drop1` can't handle them). However, due to the way that R handles formulas, dropping main effects from an interaction of *factors* has no effect on the overall model. (It would work if we were testing the interaction of continuous variables.)
+
+#### issues
+
+The `mixed` package implements a "true" type-3-like parameter-dropping mechanism for `[g]lmer` models. Something like that could in principle be applied here.
+
 ### MuMIn
 
 Model selection and averaging.
 
 We can run `MuMIn::dredge(owls_nb1)` on the model to fit all possible submodels.
-Since this takes a little while (45 seconds or so), we'll instead load the results:
+Since this takes a little while (45 seconds or so), we'll instead load some previously computed results:
 
 ```{r dredge1}
 owls_nb1_dredge
@@ -116,7 +132,7 @@ owls_nb1_dredge
 ```{r plot_dredge1,fig.width=8,fig.height=8}
 op <- par(mar=c(2,5,14,3))
 plot(owls_nb1_dredge)
-par(op)
+par(op) ## restore graphics parameters
 ```
 
 Model averaging:
@@ -125,14 +141,14 @@ Model averaging:
 model.avg(owls_nb1_dredge)
 ```
 
+#### issues
+
+- may not work for Beta models because the `$family` component ("beta") is not identical to the name of the family function (`beta_family()`)?
+(Kamil Bartoń, pers. comm.)
+
 ### multcomp
 
 Multiple comparisons and *post hoc* tests.
-
-It is possible to make `multcomp` work in a way that (1) actually
-uses the S3 method structure and (2) doesn't need access to
-private `multcomp` methods (i.e. accessed by `multcomp:::`) ? Not sure,
-but both of the following hacks should work.
 
 ```{r glht_def}
 glht_glmmTMB <- function (model, ..., component="cond") {
@@ -154,12 +170,40 @@ g1 <- glht(cbpp_b1, linfct = mcp(period = "Tukey"))
 summary(g1)
 ```
 
+#### issues
+
+It is possible to make `multcomp` work in a way that (1) actually
+uses the S3 method structure and (2) doesn't need access to
+private `multcomp` methods (i.e. accessed by `multcomp:::`) ? Not sure,
+but both of the following hacks should work. (The `glht_glmmTMB` solution below is clunky because it isn't a real S3 method; the `model.parm.glmmTMB` solution can't be included in the package source code as-is because `:::` is not allowed in CRAN package code.)
+
+### broom etc.
+
+The `broom`, `broom.mixed` packages are designed to extract information from a broad range of models in a convenient (tidy) format; the `dotwhisker` package builds on this platform to draw elegant coefficient plots.
+
+```{r dwplot,fig.width=8}
+(t1 <- broom::tidy(owls_nb1, conf.int = TRUE))
+if (packageVersion("dotwhisker")>"0.4.1") {
+    ## to get this version (which fixes various dotwhisker problems)
+    ## use devtools::install_github("bbolker/broom.mixed") or
+    ## wait for pull request acceptance/submission to CRAN/etc.
+    dwplot(owls_nb1)+geom_vline(xintercept=0,lty=2)
+} else {
+    owls_nb1$coefficients <- TRUE  ## hack!
+    dwplot(owls_nb1,by_2sd=FALSE)+geom_vline(xintercept=0,lty=2)
+}
+```
+
+#### issues
+
+(these are more general `dwplot` issues)
+
+- use black rather than color(1) when there's only a single model, i.e. only add `aes(colour=model)` conditionally?
+- draw points even if std err / confint are `NA` (draw `geom_point()` as well as `geom_pointrange()`? need to apply all aesthetics, dodging, etc. to both ...)
+- for `glmmTMB` models, allow labeling by component? or should this be done by manipulating the tidied frame first? (i.e. `tidy(.) %>% tidyr::unite(term,c(component,term))`)
+
 ```{r save_output,echo=FALSE,eval=FALSE}
 ## store time-consuming stuff
 save("owls_nb1_simres","owls_nb1_dredge",file="../inst/vignette_data/model_evaluation.rda")
 ```
 
-### broom etc.
-
-```{r}
-dwplot(list(owls_nb1))
