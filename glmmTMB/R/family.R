@@ -201,24 +201,25 @@ truncated_nbinom1 <- function(link="log") {
     return(make_family(r,link))
 }
 
-## similar to mgcv::betar(), but simplified (variance has two parameters
-##  rather than retrieving a variable from the environment); initialize()
-##  tests for legal response values
+## similar to mgcv::betar(), but simplified.
+## variance has only one parameter; full variance is mu*(1-mu)/(1+phi) =
+## sigma(.)*family(.)$variance(mu)
+## initialize() tests for legal response values and sets trivial mustart
 #' @rdname nbinom2
 #' @export
 beta_family <- function(link="logit") {
     ## note *internal* name must still be "beta",
     ## unless/until it's changed in src/glmmTMB.cpp (and R/enum.R is rebuilt)
     r <- list(family="beta",
-                variance=function(mu,phi) {
-                    mu*(1-mu)/(1+phi)
-                },
-                initialize=expression({
-                    if (any(y <= 0 | y >= 1)) 
-                        stop("y values must be 0 < y < 1")
-                }))
+              variance=function(mu) { mu*(1-mu) },
+              initialize=expression({
+                  if (any(y <= 0 | y >= 1)) 
+                      stop("y values must be 0 < y < 1")
+                  mustart <- y
+              }))
     return(make_family(r,link))
 }
+
 ## fixme: better name?
 
 #' @rdname nbinom2

@@ -932,17 +932,17 @@ fitTMB <- function(TMBStruc) {
     ## fill in dispersion parameters in environments of family variance
     ## functions, if possible (for glm/effects compatibility)
     ff <- ret$modelInfo$family
-    if (ff$family=="negative.binomial"  ||
-        grepl("nbinom",ff$family) ||
-        (length(fv <- ff$variance)>0 &&  ## family has variance component
-         length(formals(fv))>1)) {       ## component has >1 element
+    ## family has variance component with extra parameters
+    xvarpars <- (length(fv <- ff$variance)>0 &&  
+                 length(formals(fv))>1)
+    nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
+    if (nbfam || xvarpars) {
         theta <- exp(fit$parfull["theta"]) ## log link
         ## variance() and dev.resids() share an environment
         assign(".Theta",
                theta,
                environment(ret[["modelInfo"]][["family"]][["variance"]]))
     }
-    
     return(ret)
 }
 

@@ -48,6 +48,11 @@ data("cbpp",package="lme4")
 cbpp_b1 <- glmmTMB(incidence/size~period+(1|herd),
                    weights=size,family=binomial,
                    data=cbpp)
+## simulated three-term Beta example
+set.seed(1001)
+dd <- data.frame(z=rbeta(1000,shape1=2,shape2=3),
+                 a=rnorm(1000),b=rnorm(1000),c=rnorm(1000))
+simex_b1 <- glmmTMB(z~a*b*c,family=beta_family,data=dd)
 ```
 
 ## model checking and diagnostics
@@ -92,6 +97,7 @@ Anova(owls_nb1,type="III")
 ```{r effects,fig.width=8,fig.height=4}
 (ae <- allEffects(owls_nb1))
 plot(ae)
+plot(allEffects(simex_b1))
 ```
 
 ### emmeans
