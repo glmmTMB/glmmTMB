@@ -14,6 +14,12 @@ family_factory <- function(default_link,family,variance) {
 ## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
 globalVariables(".Theta") 
 
+## attempt to guess whether calling function has been called from glm.fit ...
+in_glm_fit <- function() {
+    vars <- ls(envir=parent.frame(2))
+    all(c("coefold","control","EMPTY","good","nvars") %in% vars)
+}
+
 make_family <- function(x,link) {
     x <- c(x,list(link=link),make.link(link))
     ## stubs for Effect.default/glm.fit
@@ -49,7 +55,9 @@ make_family <- function(x,link) {
 ##' \item{family}{length-1 character vector giving the family name}
 ##' \item{link}{length-1 character vector specifying the link function}
 ##' \item{variance}{a function of either 1 (mean) or 2 (mean and dispersion
-##' parameter) arguments giving the predicted variance}
+##' parameter) arguments giving a value proportional to the
+##' predicted variance (scaled by \code{sigma(.)})
+##' }
 ##' @details
 ##' If specified, the dispersion model uses a log link. Denoting the dispersion parameter
 ##' as phi=exp(eta) (where eta is the linear predictor from the dispersion model)
@@ -65,7 +73,7 @@ make_family <- function(x,link) {
 ##'           which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
 ##'      \item{genpois}{is the generalized Poisson distribution}
 ##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
-##'     i.e. variance=mu*(1-mu)/(1+phi)}
+##'     i.e. variance=mu*(1-mu)}
 ##' }
 ##' @references
 ##' \itemize{
