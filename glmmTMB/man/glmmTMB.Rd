@@ -15,14 +15,7 @@ syntax}
 
 \item{data}{data frame}
 
-\item{family}{family (variance/link function) information; see \code{\link{family}} for
-generic family details or \code{\link{family_glmmTMB}} for details of \code{glmmTMB} specific families.  
-As in \code{\link{glm}}, \code{family} can be specified as (1) a character string
-referencing an existing family-construction function (e.g. \sQuote{"binomial"}); (2) a symbol referencing
-such a function (\sQuote{binomial}); or (3) the output of such a function (\sQuote{binomial()}).
-In addition, for families such as \code{betabinomial} that are special to \code{glmmTMB}, family
-can be specified as (4) a list comprising the name of the distribution and the link function
-(\sQuote{list(family="binomial", link="logit")}). However, the first 3 options are preferable.}
+\item{family}{a family function, a character string naming a family function, or the result of a call to a family function family (variance/link function) information; see \code{\link{family}} for generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.}
 
 \item{ziformula}{a \emph{one-sided} (i.e., no response variable) formula for
     zero-inflation combining fixed and random effects:
@@ -65,7 +58,8 @@ Fit models with TMB
 \item binomial models with more than one trial (i.e., not binary/Bernoulli)
 can either be specified in the form \code{prob ~ ..., weights = N} or in
 the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
-\item in all cases \code{glmmTMB} returns maximum likelihood estimates - random effects variance-covariance matrices are not REML (so use \code{REML=FALSE} when comparing with \code{lme4::lmer}), and residual standard deviations (\code{\link{sigma}}) are not bias-corrected. Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
+\item Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}). It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify. 
+\item Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
 \item by default, vector-valued random effects are fitted with
 unstructured (general positive definite) variance-covariance matrices.
 Structured variance-covariance matrices can be specified in
@@ -82,6 +76,7 @@ of
 \item \code{toep} (* Toeplitz)
 }
 (note structures marked with * are experimental/untested)
+\item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternatives is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
 }
 }
 \examples{
@@ -124,5 +119,10 @@ dat = rbind(d1, d2)
 m0 = glmmTMB(x~sd+(1|t), dispformula=~sd, dat)
 fixef(m0)$disp
 c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
+}
+}
+\references{
+\itemize{
+\item Millar, Russell B. Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB. John Wiley & Sons, 2011.
 }
 }
