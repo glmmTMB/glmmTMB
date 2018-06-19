@@ -664,7 +664,7 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i)*phi(i);
         s2 = (Type(1)-mu(i))*phi(i);
         tmp_loglik = dbeta(yobs(i), s1, s2, true);
-        SIMULATE{yobs(i) = 0;}//TODO: fill in when rbeta is added to TMB
+        SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case betabinomial_family:
         s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);

@@ -771,7 +771,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     }
     else {  ## profile CIs
         pp <- profile(object, parm=parm, level_max=level,
-                      parallel=parallel,
+                      parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
     }
@@ -873,7 +873,7 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object,type="response")
 }
 
-.noSimFamilies <- c("beta", "genpois")
+.noSimFamilies <- c("genpois")
 
 noSim <- function(x) {
     !is.na(match(x, .noSimFamilies))
