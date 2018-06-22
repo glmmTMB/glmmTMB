@@ -471,15 +471,13 @@ D %*% L %*% D
 unname(attr(vv1,"correlation"))
 ```
 
-> FIXME: why are these not quite the same? Not what I expected
-
 ```{r other_check}
 all.equal(c(cov2cor(vv1)),c(fit.us$obj$env$report(fit.us$fit$parfull)$corr[[1]]))
 ```
 
 Profiling (experimental/exploratory):
 
-```{r fit.us.profile,cache=TRUE}
+```{r fit.us.profile, eval=FALSE}
 ## want $par, not $parfull: do NOT include conditional modes/'b' parameters
 ppar <- fit.us$fit$par
 length(ppar)
@@ -488,12 +486,12 @@ range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 tt <- tmbprofile(fit.us$obj,2,trace=FALSE)
 ```
 
-```{r fit.us.profile.plot}
+```{r fit.us.profile.plot, eval=FALSE}
 plot(tt)
 confint(tt)
 ```
 
-```{r fit.cs.profile,cache=TRUE}
+```{r fit.cs.profile, eval=FALSE}
 ppar <- fit.cs$fit$par
 length(ppar)
 range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
@@ -501,6 +499,6 @@ range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 tt2 <- tmbprofile(fit.cs$obj,3,trace=FALSE)
 ```
 
-```{r fit.cs.profile.plot}
+```{r fit.cs.profile.plot, eval=FALSE}
 plot(tt2)
 ```
