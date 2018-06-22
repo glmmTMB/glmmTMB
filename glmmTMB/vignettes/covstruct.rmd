@@ -432,7 +432,11 @@ predict_col <- function(i) {
 
 Prediction of the entire image is carried out by (this takes a while...):
 
-```{r predict_all}
+```{r predict_all_cache, include=FALSE}
+load("covstruct.rda") ## Cached object 'pred'
+```
+
+```{r predict_all, eval=FALSE}
 pred <- sapply(1:61, predict_col)
 ```
 
