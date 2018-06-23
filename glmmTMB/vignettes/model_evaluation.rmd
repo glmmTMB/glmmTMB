@@ -213,3 +213,6 @@ if (packageVersion("dotwhisker")>"0.4.1") {
 save("owls_nb1_simres","owls_nb1_dredge",file="../inst/vignette_data/model_evaluation.rda")
 ```
 
+## to do
+
+- add: `texreg` (regression tables)? `sjPlot` ? `memisc`, `huxtable`, ... ?
