@@ -37,13 +37,16 @@ L <- load(system.file("vignette_data","model_evaluation.rda",package="glmmTMB"))
 
 A couple of example models:
 
-```{r fit_model,cache=TRUE}
+```{r fit_model,eval=FALSE}
 owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                         (1|Nest)+offset(log(BroodSize)),
                     contrasts=list(FoodTreatment="contr.sum",
                                    SexParent="contr.sum"),
                     family = nbinom1,
                     zi = ~1, data=Owls)
+```
+
+```{r fit_model2,cache=TRUE}
 data("cbpp",package="lme4")
 cbpp_b1 <- glmmTMB(incidence/size~period+(1|herd),
                    weights=size,family=binomial,
@@ -210,7 +213,10 @@ if (packageVersion("dotwhisker")>"0.4.1") {
 
 ```{r save_output,echo=FALSE,eval=FALSE}
 ## store time-consuming stuff
-save("owls_nb1_simres","owls_nb1_dredge",file="../inst/vignette_data/model_evaluation.rda")
+save("owls_nb1",
+     "owls_nb1_simres",
+     "owls_nb1_dredge",
+     file="../inst/vignette_data/model_evaluation.rda")
 ```
 
 ## to do
