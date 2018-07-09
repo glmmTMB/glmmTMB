@@ -45,7 +45,9 @@ Suggests:
     DHARMa,
     multcomp,
     MuMIn,
-    effects
+    effects,
+    dotwhisker,
+    broom
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
