@@ -60,7 +60,7 @@ Fit models with TMB
 \item binomial models with more than one trial (i.e., not binary/Bernoulli)
 can either be specified in the form \code{prob ~ ..., weights = N} or in
 the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
-\item Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}). It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify. 
+\item Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify. 
 \item Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
 \item by default, vector-valued random effects are fitted with
 unstructured (general positive definite) variance-covariance matrices.
