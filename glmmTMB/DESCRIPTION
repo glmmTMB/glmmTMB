@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 0.2.1.1
+Version: 0.2.2.0
 Authors@R: c(person("Arni","Magnusson",role="aut"),
 	    person("Hans","Skaug",role="aut"),
 	    person("Anders","Nielsen",role="aut"),
@@ -47,7 +47,8 @@ Suggests:
     MuMIn,
     effects,
     dotwhisker,
-    broom
+    broom,
+    plyr
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
