@@ -48,7 +48,9 @@ returns a list with (at least) components
 \item{family}{length-1 character vector giving the family name}
 \item{link}{length-1 character vector specifying the link function}
 \item{variance}{a function of either 1 (mean) or 2 (mean and dispersion
-parameter) arguments giving the predicted variance}
+parameter) arguments giving a value proportional to the
+predicted variance (scaled by \code{sigma(.)})
+}
 }
 \description{
 Family functions for glmmTMB
@@ -68,7 +70,7 @@ i.e. variance=mu*(1+phi)}
           which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
      \item{genpois}{is the generalized Poisson distribution}
      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
-    i.e. variance=mu*(1-mu)/(1+phi)}
+    i.e. variance=mu*(1-mu)}
 }
 }
 \references{

@@ -39,6 +39,15 @@ Suggests:
     MCMCpack,
     coda,
     reshape2,
+    car,
+    emmeans,
+    estimability,
+    DHARMa,
+    multcomp,
+    MuMIn,
+    effects,
+    dotwhisker,
+    broom,
     plyr
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB

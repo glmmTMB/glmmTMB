@@ -234,7 +234,10 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
-  REML <- object$modelInfo$REML
+  if (is.null(REML <- object$modelInfo$REML)) {
+     ## let vcov work with old (pre-REML option) stored objects   
+     REML <- FALSE   
+  }
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
@@ -615,7 +618,10 @@ format.perc <- function (probs, digits) {
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
-##' confint(model)
+##' model2 <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy,
+##'     dispformula= ~I(Days>8))
+##' confint(model)  ## Wald/delta-method CIs
+##' confint(model,parm="theta_")  ## Wald/delta-method CIs
 ##' \dontrun{
 ##' confint(model,parm=1,method="profile")
 ##' }
@@ -703,8 +709,22 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
             }
         }
         ## Take subset
-        if (!missing(parm))
+        if (!missing(parm)) {
+            ## FIXME: DRY/refactor with confint.profile
+            ## FIXME: beta_ not well defined; sigma parameters not
+            ## distinguishable (all called "sigma")
+            ## for non-trivial dispersion model
+            theta_parms <- grep("\\.(Std\\.Dev|Cor)\\.",rownames(ci))
+            ## if non-trivial disp, keep disp parms for "beta_"
+            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
+            if (identical(parm,"theta_")) {
+                parm <- theta_parms
+            } else if (identical(parm,"beta_")) {
+                parm <- seq(nrow(ci))[-c(theta_parms,disp_parms)]
+            }
             ci <- ci[parm, , drop=FALSE]
+        }
+        ## end Wald method
     } else if (tolower(method=="uniroot")) {
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
@@ -889,4 +909,45 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     names(ret) <- paste("sim", seq_len(nsim), sep="_")
     ret <- as.data.frame(ret)
     ret
+}
+
+#' Extract the formula of a glmmTMB object
+#'
+#' @param x a \code{glmmTMB} object
+#' @param component formula for which component of the model to return (conditional, zero-inflation, or dispersion)
+#' @param fixed.only (logical) drop random effects, returning only the fixed-effect component of the formula?
+#' @param ... unused, for generic consistency
+#' @importFrom lme4 nobars
+#' @export
+formula.glmmTMB <- function(x, fixed.only=FALSE,
+                            component=c("cond", "zi", "disp"),
+                            ...) {
+    if (!fixed.only && missing(component)) {
+        ## stats::formula.default extracts formula from call
+        return(NextMethod(x, ...))
+    }
+    component <- match.arg(component)
+    af <- x$modelInfo$allForm
+    ff <- if (component=="cond") af[["formula"]] else af[[paste0(component,"formula")]]
+    if (fixed.only) {
+        ff <- lme4::nobars(ff)
+    }
+    return(ff)
+}
+
+## need this so we can get contrasts carried through properly to model.matrix
+
+#' @export
+
+model.matrix.glmmTMB <- function (object, ...) 
+{
+    ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
+    ## if (n_match <- match("x", names(object), 0L)) 
+    ##    object[[n_match]]
+    ## else {
+    ## data <- model.frame(object, xlev = object$xlevels, ...)
+
+    data <- model.frame(object, ...)
+    NextMethod("model.matrix", data = data,
+               contrasts.arg = object$modelInfo$contrasts)
 }

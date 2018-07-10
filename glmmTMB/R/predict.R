@@ -134,7 +134,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
     newFr <- eval.parent(mf)
   }
 
-  omi <- object$modelInfo  ## shorthand
+  omi <- object$modelInfo  ## shorthand ("**o**bject$**m**odel**I**nfo")
 
   respCol <- match(respNm <- names(omi$respCol),names(newFr))
   ## create *or* overwrite response column for prediction data with NA
@@ -177,6 +177,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                yobs=yobs,
                                respCol=respCol,
                                weights=model.weights(augFr),
+                               contrasts=omi$contrasts,
                                family=omi$family,
                                ziPredictCode=ziPredNm,
                                doPredict=as.integer(se.fit),

@@ -58,7 +58,10 @@ functions for each specified parameter.}
 \examples{
 data(sleepstudy, package="lme4")
 model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
-confint(model)
+model2 <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy,
+    dispformula= ~I(Days>8))
+confint(model)  ## Wald/delta-method CIs
+confint(model,parm="theta_")  ## Wald/delta-method CIs
 \dontrun{
 confint(model,parm=1,method="profile")
 }

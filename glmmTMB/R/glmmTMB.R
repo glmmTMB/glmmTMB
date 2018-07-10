@@ -10,6 +10,7 @@
 ##' @param zioffset offset for zero-inflated model
 ##' @param doffset offset for dispersion model
 ##' @param weights weights
+##' @param contrasts contrasts
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @param se (logical) compute standard error?
@@ -28,6 +29,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        ## no conditional offset argument
                        ##  (should be stored in model frame)
                        weights,
+                       contrasts,
                        size=NULL,
                        family,
                        se=NULL,
@@ -89,10 +91,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr)
-    ziList    <- getXReTrms(ziformula, mf, fr)
+    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts)
+    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts)
     dispList  <- getXReTrms(dispformula, mf, fr,
-                            ranOK=FALSE, "dispersion")
+                            ranOK=FALSE, type="dispersion",
+                            contrasts=contrasts)
 
     condReStruc <- with(condList, getReStruc(reTrms, ss))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -186,7 +189,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc,
-            family, respCol,
+            family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
             fr, se, call, verbose, REML))
 }
@@ -197,6 +200,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param fr full model frame
 ##' @param ranOK random effects allowed here?
 ##' @param type label for model type
+##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
@@ -206,7 +210,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="") {
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -436,7 +440,8 @@ binomialType <- function(x) {
 ##'     The dispersion model uses a log link. 
 ##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
-##' @param offset offset for conditional model (only):
+##' @param offset offset for conditional model (only)
+##' @param contrasts an optional list, e.g. \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
 ##' @param se whether to return standard errors
 ##' @param na.action how to handle missing values (see \code{\link{na.action}} and \code{\link{model.frame}}); from \code{\link{lm}}, \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset.  The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}
 ##' @param verbose logical indicating if some progress indication should be printed to the console.
@@ -529,6 +534,7 @@ glmmTMB <- function (
     dispformula= ~1,
     weights=NULL,
     offset=NULL,
+    contrasts=NULL,
     na.action=na.fail,
     se=TRUE,
     verbose=FALSE,
@@ -691,6 +697,7 @@ glmmTMB <- function (
                    yobs=y,
                    respCol,
                    weights,
+                   contrasts=contrasts,
                    family=family,
                    se=se,
                    call=call,
@@ -908,6 +915,7 @@ fitTMB <- function(TMBStruc) {
                                 respCol,
                                 grpVar,
                                 family,
+                                contrasts,
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
@@ -920,10 +928,27 @@ fitTMB <- function(TMBStruc) {
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
-    structure(namedList(obj, fit, sdr, call=TMBStruc$call,
+
+    ret <- structure(namedList(obj, fit, sdr, call=TMBStruc$call,
                         frame=TMBStruc$fr, modelInfo,
                         fitted),
               class = "glmmTMB")
+
+    ## fill in dispersion parameters in environments of family variance
+    ## functions, if possible (for glm/effects compatibility)
+    ff <- ret$modelInfo$family
+    ## family has variance component with extra parameters
+    xvarpars <- (length(fv <- ff$variance)>0 &&  
+                 length(formals(fv))>1)
+    nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
+    if (nbfam || xvarpars) {
+        theta <- exp(fit$parfull["theta"]) ## log link
+        ## variance() and dev.resids() share an environment
+        assign(".Theta",
+               theta,
+               environment(ret[["modelInfo"]][["family"]][["variance"]]))
+    }
+    return(ret)
 }
 
 ##' @importFrom stats AIC BIC
@@ -998,7 +1023,7 @@ summary.glmmTMB <- function(object,...)
     varcor <- VarCorr(object)
 					# use S3 class for now
     structure(list(logLik = llAIC[["logLik"]],
-                   family = famL$fami, link = famL$link,
+                   family = famL$family, link = famL$link,
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
 		   coefficients = coefs, sigma = sig,

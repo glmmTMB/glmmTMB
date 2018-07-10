@@ -4,7 +4,7 @@
 \alias{getXReTrms}
 \title{Create X and random effect terms from formula}
 \usage{
-getXReTrms(formula, mf, fr, ranOK = TRUE, type = "")
+getXReTrms(formula, mf, fr, ranOK = TRUE, type = "", contrasts)
 }
 \arguments{
 \item{formula}{current formula, containing both fixed & random effects}
@@ -16,6 +16,8 @@ getXReTrms(formula, mf, fr, ranOK = TRUE, type = "")
 \item{ranOK}{random effects allowed here?}
 
 \item{type}{label for model type}
+
+\item{contrasts}{a list of contrasts (see ?glmmTMB)}
 }
 \value{
 a list composed of
