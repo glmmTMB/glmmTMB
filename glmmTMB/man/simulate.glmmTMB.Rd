@@ -16,7 +16,7 @@
 \item{...}{extra arguments}
 }
 \value{
-returns a list of vectors. The list has length \code{nsim}. 
+returns a list of vectors. The list has length \code{nsim}.
 Each simulated vector of observations is the same size as the vector of response variables in the original data set.
 In the binomial family case each simulation is a two-column matrix with success/failure.
 }
@@ -24,6 +24,6 @@ In the binomial family case each simulation is a two-column matrix with success/
 Simulate from a glmmTMB fitted model
 }
 \details{
-Random effects are also simulated from their estimated distribution. 
+Random effects are also simulated from their estimated distribution.
 Currently, it is not possible to condition on estimated random effects.
 }

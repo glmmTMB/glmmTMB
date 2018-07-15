@@ -956,14 +956,14 @@ model.matrix.glmmTMB <- function (object, ...)
 
 ## support methods to allow lme4::bootMer to work
 
-@export
+#' @export
 
 isLMM.glmmTMB <- function(object) {
    fam <- family(object)
    fam$family=="gaussian" && fam$link=="identity"
 }
 
-@export
+#' @export
 
 ## hackish/fragile but ...
 refit.glmmTMB <- function(object, newresp, ...) {
