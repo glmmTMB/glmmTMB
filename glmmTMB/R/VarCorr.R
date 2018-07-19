@@ -184,7 +184,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     if(length(cn <- reT$zi$cnms)) {
         vc.zi <- mkVC(cor = xrep$corrzi, sd = xrep$sdzi, cnms = cn,
                         sc = sigma, useSc = useSc)
-        for (i in seq_along(vc.cond)) {
+        for (i in seq_along(vc.zi)) {
             attr(vc.zi,"blockCode") <- reS$ziReStruc[[i]]$blockCode
         }
     }
