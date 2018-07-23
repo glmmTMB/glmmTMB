@@ -842,7 +842,7 @@ Type objective_function<Type>::operator() ()
       mu *= (Type(1) - pz); // Account for zi in prediction
       break;
     case uncorrected_zipredictcode:
-      mu = mu; // Predict mean of 'family'
+      //mu = mu; // Predict mean of 'family' //comented out for clang 7.0.0. with no effect
       break;
     case prob_zipredictcode:
       mu = pz; // Predict zi probability
