@@ -20,10 +20,8 @@ syntax}
 \item{ziformula}{a \emph{one-sided} (i.e., no response variable) formula for
     zero-inflation combining fixed and random effects:
 the default \code{~0} specifies no zero-inflation.
-Specifying \code{~.} will set the right-hand side of the zero-inflation
-formula identical to the right-hand side of the main (conditional effects)
-formula; terms can also be added or subtracted. \strong{Offset terms
-will automatically be dropped from the conditional effects formula when using \code{~.}}
+Specifying \code{~.} sets the zero-inflation
+formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}.
 The zero-inflation model uses a logit link.}
 
 \item{dispformula}{a \emph{one-sided} formula for dispersion containing only fixed effects: the
@@ -78,7 +76,7 @@ of
 \item \code{toep} (* Toeplitz)
 }
 (note structures marked with * are experimental/untested)
-\item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternatives is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
+\item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
 }
 }
 \examples{
