@@ -67,7 +67,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' (i.e., synonymous with \code{"response"} in the absence of zero-inflation}
 ##' \item{"zprob"}{the probability of a structural zero (gives an error
 ##' for non-zero-inflated models)}
-##' \item{"zilink"}{predicted zero-inflation probability on the scale of
+##' \item{"zlink"}{predicted zero-inflation probability on the scale of
 ##' the logit link function}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
