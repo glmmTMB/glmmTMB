@@ -4,10 +4,10 @@
 \alias{predict.glmmTMB}
 \title{prediction}
 \usage{
-\method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE, re.form,
-  allow.new.levels = FALSE, type = c("link", "response", "conditional",
-  "zprob", "zlink"), zitype = NULL, na.action = na.pass, debug = FALSE,
-  ...)
+\method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE,
+  re.form, allow.new.levels = FALSE, type = c("link", "response",
+  "conditional", "zprob", "zlink"), zitype = NULL, na.action = na.pass,
+  debug = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
@@ -32,7 +32,7 @@ and \code{mu} otherwise}
 (i.e., synonymous with \code{"response"} in the absence of zero-inflation}
 \item{"zprob"}{the probability of a structural zero (gives an error
 for non-zero-inflated models)}
-##' \item{"zilink"}{predicted zero-inflation probability on the scale of
+\item{"zlink"}{predicted zero-inflation probability on the scale of
 the logit link function}
 }}
 
