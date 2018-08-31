@@ -3,7 +3,22 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-
+\section{CHANGES IN VERSION 0.2.3}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+    	\item models with multiple types of RE (e.g. ar1 and us) 
+    	may have failed previously (GH #329)
+    }
+  }
+}    	
 \section{CHANGES IN VERSION 0.2.2}{
   \subsection{NEW FEATURES}{
     \itemize{
