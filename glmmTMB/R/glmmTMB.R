@@ -267,6 +267,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
         order.ss <- sapply(ss$reTrmFormulas,deparse)
         ss <- unlist(ss$reTrmClasses)
 
+        ## Example: ar1(1|Block) + us(1|Block) would return
+        ## order.ss = c("1|Block", "1|Block") which would break the match.
+        if (length(unique(order.ss)) != length(order.ss))
+            stop("Random effect terms arguments must be unique")
+
         ss <- ss[match(order.ss, order.reTrms)]
         Z <- t(reTrms$Zt)   ## still sparse ...
     }
