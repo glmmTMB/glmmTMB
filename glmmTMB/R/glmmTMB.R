@@ -261,10 +261,13 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
 
         mf$formula <- ranform
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
+        order.reTrms <- names(reTrms$Ztlist)
 
         ss <- splitForm(formula)
+        order.ss <- sapply(ss$reTrmFormulas,deparse)
         ss <- unlist(ss$reTrmClasses)
 
+        ss <- ss[match(order.ss, order.reTrms)]
         Z <- t(reTrms$Zt)   ## still sparse ...
     }
 
