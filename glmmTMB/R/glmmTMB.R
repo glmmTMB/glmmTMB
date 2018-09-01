@@ -261,10 +261,20 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
 
         mf$formula <- ranform
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
+        order.reTrms <- names(reTrms$Ztlist)
 
         ss <- splitForm(formula)
+        order.ss <- sapply(ss$reTrmFormulas,deparse)
         ss <- unlist(ss$reTrmClasses)
 
+        ## Example: ar1(1|Block) + us(1|Block) would return
+        ## order.ss = c("1|Block", "1|Block") which would break the match.
+        if (length(unique(order.ss)) != length(order.ss))
+            stop("Random effect terms arguments must be unique")
+
+        perm <- match(order.reTrms, order.ss)
+        stopifnot( identical(order.ss[perm], order.reTrms) )
+        ss <- ss[perm]
         Z <- t(reTrms$Zt)   ## still sparse ...
     }
 

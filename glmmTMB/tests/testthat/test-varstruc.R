@@ -103,3 +103,24 @@ test_that("varcorr_print", {
           "s (Intercept) 3.4e-05",
           "Residual 9.6e-01"))
 })
+
+test_that("cov_struct_order", {
+	set.seed(101)
+	nb <- 10
+	ns <- nb*3
+	nt <- 100
+	cor <- .7
+	dat  <-  data.frame(Block = factor(rep(1:nb, each = ns/nb*nt)),
+                 Stand = factor(rep(1:ns, each = nt)),
+                 Time = rep(1:nt, times = ns),
+                 blockeff = rep(rnorm(nb), each = ns/nb*nt),
+                 standeff = rep(rnorm(ns), each = nt),
+                 resid = c(t(MASS::mvrnorm(ns, mu = rep(0, nt), 
+                 	Sigma = 1*cor^abs(outer(0:(nt-1),0:(nt-1),"-"))))))
+
+	dat$y  <-  with(dat, 5 + blockeff + standeff + resid)+rnorm(nrow(dat))
+	dat$Time  <-  factor(dat$Time)
+	fit1  <-  glmmTMB(y ~ (1|Block) + (1|Stand)+ ar1(Time +0|Stand), data = dat)
+	expect_equal(unname(fit1$fit$par), 
+		c(5.15374514,0.02503722,-0.04251865,0.96059949,0.03906343,-1.07568001), tol=1e-3)
+})
