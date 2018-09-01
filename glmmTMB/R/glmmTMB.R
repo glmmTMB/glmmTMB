@@ -272,7 +272,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
         if (length(unique(order.ss)) != length(order.ss))
             stop("Random effect terms arguments must be unique")
 
-        ss <- ss[match(order.ss, order.reTrms)]
+        perm <- match(order.reTrms, order.ss)
+        stopifnot( identical(order.ss[perm], order.reTrms) )
+        ss <- ss[perm]
         Z <- t(reTrms$Zt)   ## still sparse ...
     }
 
