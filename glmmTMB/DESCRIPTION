@@ -36,7 +36,6 @@ Suggests:
     mlmRev,
     bbmle (>= 1.0.19),
     pscl,
-    MCMCpack,
     coda,
     reshape2,
     car,
@@ -48,12 +47,13 @@ Suggests:
     effects,
     dotwhisker,
     broom,
-    plyr
+    plyr,
+    png
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 6.0.1.9000
+RoxygenNote: 6.1.0
 NeedsCompilation: yes
 Author: Arni Magnusson [aut],
     Hans Skaug [aut],
@@ -66,4 +66,3 @@ Author: Arni Magnusson [aut],
     Mollie Brooks [aut, cre]
 Maintainer: Mollie Brooks <mollieebrooks@gmail.com>
 Encoding: UTF-8
-
