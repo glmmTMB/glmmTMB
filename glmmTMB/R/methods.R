@@ -92,38 +92,71 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' @importFrom nlme ranef
 ##' @export ranef
 ##' @export
-ranef.glmmTMB <- function(object, ...) {
+ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
   ## FIXME: add condVar, make sure format matches lme4
-  arrange <- function(x, listname)
+  arrange <- function(x, sd, listname)
   {
     cnms <- object$modelInfo$reTrms[[listname]]$cnms
     flist <- object$modelInfo$reTrms[[listname]]$flist
     if (!is.null(cnms)) {
       levs <- lapply(fl <- flist, levels)
       asgn <- attr(fl, "assign")
-      nc <- vapply(cnms, length, 1L)
-      nb <- nc * vapply(levs, length, 1L)[asgn]
-      nbseq <- rep.int(seq_along(nb), nb)
+      nc <- vapply(cnms, length, 1L)     ## number of columns (terms) per RE
+      nb <- nc * vapply(levs, length, 1L)[asgn] ## number of elements per RE
+      nbseq <- rep.int(seq_along(nb), nb)       ## splitting vector
       ml <- split(x, nbseq)
-      for (i in seq_along(ml))
-        ml[[i]] <- matrix(ml[[i]], ncol=nc[i], byrow=TRUE,
-                          dimnames=list(NULL, cnms[[i]]))
-      x <- lapply(seq_along(fl), function(i)
-        data.frame(do.call(cbind, ml[asgn==i]), row.names=levs[[i]],
-                   check.names=FALSE))
+      for (i in seq_along(ml)) {
+          ml[[i]] <- matrix(ml[[i]], ncol=nc[i], byrow=TRUE,
+                            dimnames=list(NULL, cnms[[i]]))
+      }
+      if (!is.null(sd)) {
+          sd <- split(sd,nbseq)
+          for (i in seq_along(sd)) {
+              nr <- length(levs[[asgn[i]]])
+              a <- array(NA,dim=c(nc,nc,nr))
+              ## fill in diagonals: off-diagonals will stay NA (!)
+              ## unless we bother to retrieve conditional covariance info
+              ## from the fit
+              ## when nc>1, what order is the sd vector in?
+              ## guessing, level-wise
+              for (j in seq(nr[[asgn[i]]])) {
+                  a[cbind(seq(nc),seq(nc),j)] <- (sd[[i]][nc*(j-1)+seq(nc)])^2
+              }
+              sd[[i]] <- a
+          }
+      }
+      ## combine RE matrices from all terms with the same grouping factor
+      x <- lapply(seq_along(fl), function(i) {
+          d <- data.frame(do.call(cbind, ml[asgn==i]), row.names=levs[[i]],
+                          check.names=FALSE)
+          if (!is.null(sd)) {
+              ## attach conditional variance info
+              ## called "condVar", *not* "postVar" (contrast to lme4)
+              attr(d, "condVar") <- if (sum(w <- (asgn==i))>1) {
+                                        ## FIXME: set names?
+                                        sd[w]  ## if more than one term, list
+                                  } else sd[[w]]  ## else just the array
+          }
+          return(d)
+      })      
       names(x) <- names(fl)
-      x
+      return(x)
     }
     else {
       list()
     }
   }
 
-  pl <- getParList(object)
-  structure(list(cond = arrange(pl$b, "cond"),
-                 zi    = arrange(pl$bzi, "zi")),
+  pl <- getParList(object)  ## see VarCorr.R
+  if (condVar)  {
+      ss <- summary(object$sdr,"random")
+      sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
+                  bzi=ss[rownames(ss)=="bzi","Std. Error"])
+  }  else sdl <- NULL
+  structure(list(cond = arrange(pl$b, sdl$b, "cond"),
+                 zi    = arrange(pl$bzi, sdl$bzi, "zi")),
             class = "ranef.glmmTMB")
 }
 
@@ -951,3 +984,27 @@ model.matrix.glmmTMB <- function (object, ...)
     NextMethod("model.matrix", data = data,
                contrasts.arg = object$modelInfo$contrasts)
 }
+
+## convert ranef object to a long-format data frame, e.g. suitable
+##  for ggplot2 (or homemade lattice plots)
+## FIXME: have some gymnastics to do if terms, levels are different
+##  for different grouping variables - want to maintain ordering
+##  but still allow rbind()ing
+as.data.frame.ranef.glmmTMB <- function(x,
+                ...,
+                stringsAsFactors = default.stringsAsFactors()) {
+    tmpf <- function(x) do.call(rbind,lapply(names(x),asDf0,x=x,id=TRUE))
+    x0 <- lapply(x,tmpf)
+    x1 <- Map(function(x,n) {
+        if (!is.null(x)) x$component <- n; x }, x0, names(x))
+    xD <- do.call(rbind,x1)
+    ## rename ...
+    oldnames <- c("values","ind",".nn","se","id","component")
+    newnames <- c("condval","term","grp","condsd","grpvar","component")
+    names(xD) <- newnames[match(names(xD),oldnames)]
+    ## reorder ...
+    neworder <- c("component","grpvar","term","grp","condval")
+    if ("condsd" %in% names(xD)) neworder <- c(neworder,"condsd")
+    return(xD[neworder])
+}
+
