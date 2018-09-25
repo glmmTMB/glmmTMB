@@ -3,15 +3,25 @@
 \name{ranef.glmmTMB}
 \alias{ranef.glmmTMB}
 \alias{ranef}
+\alias{as.data.frame.ranef.glmmTMB}
 \title{Extract Random Effects}
 \usage{
-\method{ranef}{glmmTMB}(object, ...)
+\method{ranef}{glmmTMB}(object, condVar = TRUE, ...)
+
+\method{as.data.frame}{ranef.glmmTMB}(x, ...,
+  stringsAsFactors = default.stringsAsFactors())
 }
 \arguments{
 \item{object}{a \code{glmmTMB} model.}
 
+\item{condVar}{include conditional variances in result?}
+
 \item{...}{some methods for this generic function require additional
 arguments.}
+
+\item{x}{a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)}
+
+\item{stringsAsFactors}{see \code{\link{data.frame}}}
 }
 \value{
 Object of class \code{ranef.glmmTMB} with two components:
@@ -19,6 +29,15 @@ Object of class \code{ranef.glmmTMB} with two components:
     for the conditional model.}
   \item{zi}{a list of data frames, containing random effects for
     the zero inflation.}
+
+If \code{condVar=TRUE}, the individual list elements within the
+\code{cond} and \code{zi} components (corresponding to individual
+random effects terms) will have associated \code{condVar} attributes
+giving the conditional variances of the random effects values.
+These are in the form of three-dimensional arrays: see
+\code{\link{ranef.merMod}} for details (the only difference between
+the packages is that the attributes are called \sQuote{"postVar"}
+in \code{lme4}, vs. \sQuote{"condVar"} in \code{glmmTMB}.
 }
 \description{
 Generic function to extract random effects from \code{glmmTMB} models, both

@@ -1004,6 +1004,7 @@ model.matrix.glmmTMB <- function (object, ...)
 ##  but still allow rbind()ing
 ##' @export
 ##' @rdname ranef.glmmTMB
+##' @param x a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)
 ##' @param stringsAsFactors see \code{\link{data.frame}}
 as.data.frame.ranef.glmmTMB <- function(x,
                 ...,
