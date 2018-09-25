@@ -9,7 +9,7 @@
     \itemize{
       \item REML is now an option (GH #352). It is typically only for 
       Gaussian response variables, but can also be useful 
-      for some non-Gaussian response variabes if used with caution 
+      for some non-Gaussian response variables if used with caution 
       (i.e. simulate a test case first).
     }
   }
