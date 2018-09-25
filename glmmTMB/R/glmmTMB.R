@@ -940,7 +940,7 @@ fitTMB <- function(TMBStruc) {
                  length(formals(fv))>1)
     nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
     if (nbfam || xvarpars) {
-        theta <- exp(fit$parfull["theta"]) ## log link
+        theta <- exp(fit$parfull["betad"]) ## log link
         ## variance() and dev.resids() share an environment
         assign(".Theta",
                theta,
