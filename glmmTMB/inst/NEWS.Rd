@@ -4,6 +4,15 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 0.2.2.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{ranef} now returns information about conditional variances (as
+      attributes of the individual random effects terms) by default;
+      this information can easily be retrieved by \code{as.data.frame(ranef(.))}.
+    }
+  }
+}
 \section{CHANGES IN VERSION 0.2.2}{
   \subsection{NEW FEATURES}{
     \itemize{
