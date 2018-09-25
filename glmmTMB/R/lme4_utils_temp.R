@@ -2,9 +2,9 @@
 
 asDf0 <- function(x,nx,id=FALSE) {
     xt <- x[[nx]]
-    ss <- stack(xt)
+    ss <- utils::stack(xt)
     ss$ind <- factor(as.character(ss$ind), levels = colnames(xt))
-    ss$.nn <- rep.int(reorder(factor(rownames(xt)), xt[[1]],
+    ss$.nn <- rep.int(stats::reorder(factor(rownames(xt)), xt[[1]],
                               FUN = mean,sort = sort), ncol(xt))
     ## allow 'postVar' *or* 'condVar' names
     pv <- attr(xt,"postVar")

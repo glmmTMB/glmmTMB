@@ -64,6 +64,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' for the conditional model and zero inflation.
 ##'
 ##' @param object a \code{glmmTMB} model.
+##' @param condVar include conditional variances in result?
 ##' @param ... some methods for this generic function require additional
 ##'   arguments.
 ##'
@@ -72,7 +73,16 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##'     for the conditional model.}
 ##'   \item{zi}{a list of data frames, containing random effects for
 ##'     the zero inflation.}
-##'
+##' 
+##' If \code{condVar=TRUE}, the individual list elements within the
+##' \code{cond} and \code{zi} components (corresponding to individual
+##' random effects terms) will have associated \code{condVar} attributes
+##' giving the conditional variances of the random effects values.
+##' These are in the form of three-dimensional arrays: see
+##' \code{\link{ranef.merMod}} for details (the only difference between
+##' the packages is that the attributes are called \sQuote{"postVar"}
+##' in \code{lme4}, vs. \sQuote{"condVar"} in \code{glmmTMB}.
+##' 
 ##' @note When a model has no zero inflation, the default behavior of
 ##'   \code{ranef} is to simplify the printed format of the random effects. To
 ##'   show the full list structure, run \code{print(ranef(model),
@@ -114,15 +124,17 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
       if (!is.null(sd)) {
           sd <- split(sd,nbseq)
           for (i in seq_along(sd)) {
-              nr <- length(levs[[asgn[i]]])
-              a <- array(NA,dim=c(nc,nc,nr))
+              ii <- asgn[i]
+              nr <- length(levs[[ii]])
+              a <- array(NA,dim=c(nc[i],nc[i],nr))
               ## fill in diagonals: off-diagonals will stay NA (!)
               ## unless we bother to retrieve conditional covariance info
               ## from the fit
               ## when nc>1, what order is the sd vector in?
               ## guessing, level-wise
-              for (j in seq(nr[[asgn[i]]])) {
-                  a[cbind(seq(nc),seq(nc),j)] <- (sd[[i]][nc*(j-1)+seq(nc)])^2
+              for (j in seq(nr)) {
+                  a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
+                      (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
               }
               sd[[i]] <- a
           }
@@ -990,6 +1002,9 @@ model.matrix.glmmTMB <- function (object, ...)
 ## FIXME: have some gymnastics to do if terms, levels are different
 ##  for different grouping variables - want to maintain ordering
 ##  but still allow rbind()ing
+##' @export
+##' @rdname ranef.glmmTMB
+##' @param stringsAsFactors see \code{\link{data.frame}}
 as.data.frame.ranef.glmmTMB <- function(x,
                 ...,
                 stringsAsFactors = default.stringsAsFactors()) {
