@@ -106,21 +106,21 @@ test_that("varcorr_print", {
 
 test_that("cov_struct_order", {
 	set.seed(101)
-	nb <- 10
+	nb <- 100
 	ns <- nb*3
 	nt <- 100
 	cor <- .7
 	dat  <-  data.frame(Block = factor(rep(1:nb, each = ns/nb*nt)),
                  Stand = factor(rep(1:ns, each = nt)),
                  Time = rep(1:nt, times = ns),
-                 blockeff = rep(rnorm(nb), each = ns/nb*nt),
-                 standeff = rep(rnorm(ns), each = nt),
+                 blockeff = rep(rnorm(nb, 0, .5), each = ns/nb*nt),
+                 standeff = rep(rnorm(ns, 0, .8), each = nt),
                  resid = c(t(MASS::mvrnorm(ns, mu = rep(0, nt), 
-                 	Sigma = 1*cor^abs(outer(0:(nt-1),0:(nt-1),"-"))))))
+                 	Sigma = 1.2*cor^abs(outer(0:(nt-1),0:(nt-1),"-"))))))
 
-	dat$y  <-  with(dat, 5 + blockeff + standeff + resid)+rnorm(nrow(dat))
+	dat$y  <-  with(dat, 5 + blockeff + standeff + resid)+rnorm(nrow(dat), 0, .1)
 	dat$Time  <-  factor(dat$Time)
 	fit1  <-  glmmTMB(y ~ (1|Block) + (1|Stand)+ ar1(Time +0|Stand), data = dat)
 	expect_equal(unname(fit1$fit$par), 
-		c(5.15374514,0.02503722,-0.04251865,0.96059949,0.03906343,-1.07568001), tol=1e-3)
+		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
 })
