@@ -5,12 +5,13 @@
 \alias{confint.profile.glmmTMB}
 \title{Compute likelihood profiles for a fitted model}
 \usage{
-\method{profile}{glmmTMB}(fitted, parm = NULL, level_max = 0.99, npts = 8,
-  stepfac = 1/4, stderr = NULL, trace = FALSE, parallel = c("no",
-  "multicore", "snow"), ncpus = getOption("profile.ncpus", 1L), cl = NULL,
-  ...)
+\method{profile}{glmmTMB}(fitted, parm = NULL, level_max = 0.99,
+  npts = 8, stepfac = 1/4, stderr = NULL, trace = FALSE,
+  parallel = c("no", "multicore", "snow"),
+  ncpus = getOption("profile.ncpus", 1L), cl = NULL, ...)
 
-\method{confint}{profile.glmmTMB}(object, parm = NULL, level = 0.95, ...)
+\method{confint}{profile.glmmTMB}(object, parm = NULL, level = 0.95,
+  ...)
 }
 \arguments{
 \item{fitted}{a fitted \code{glmmTMB} object}

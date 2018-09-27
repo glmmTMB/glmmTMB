@@ -2,6 +2,7 @@
 
 S3method(VarCorr,glmmTMB)
 S3method(anova,glmmTMB)
+S3method(as.data.frame,ranef.glmmTMB)
 S3method(confint,glmmTMB)
 S3method(confint,profile.glmmTMB)
 S3method(df.residual,glmmTMB)
