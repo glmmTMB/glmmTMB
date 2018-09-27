@@ -540,3 +540,23 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
     }
     return(list(parallel=parallel,do_parallel=do_parallel))
 }
+
+##' translate vector of correlation parameters to correlation values,
+##' following the definition at \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}.
+##' @param theta vector of internal correlation parameters
+##' @return a vector of correlation values
+##' @examples
+##' th0 <- 0.5
+##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
+##' get_cor(c(0.5,0.2,0.5))
+##' @export
+get_cor <- function(theta) {
+    n <- round((1  + sqrt(1+8*length(theta)))/2) ## dim of cor matrix
+    L <- diag(n)
+    L[lower.tri(L)] <- theta
+    cL <- tcrossprod(L)
+    Dh <- diag(1/sqrt(diag(cL)))
+    cc <- Dh %*% cL %*% Dh
+    return(cc[lower.tri(cc)])
+}

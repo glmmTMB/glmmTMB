@@ -27,7 +27,11 @@ fm2NB <- update(fm2P, family=nbinom2)
 fm3   <- update(fm2, . ~ Days)
 fm3G <-  update(fm3, family=Gamma(link="log"))
 fm3NB <- update(fm3, round(Reaction) ~ ., family=nbinom2)
-
+## z-i model
+fm3ZIP <- update(fm2, round(Reaction) ~ ., family=poisson,
+                 ziformula=~(1|Subject))
+## separate-terms model
+fm2diag2   <- update(fm2, . ~ Days + (1| Subject)+ (0+Days|Subject))
 context("basic methods")
 
 test_that("Fitted and residuals", {
@@ -253,4 +257,36 @@ test_that("binomial", {
 test_that("residuals from binomial factor responses", {
     expect_equal(residuals(fm2Bf),residuals(fm2Bn))
 })
-          
+
+mkstr <- function(dd) {
+    ff <- which(vapply(dd,is.factor,logical(1)))
+    for (i in ff) {
+        dd[[i]] <- as.character(dd[[i]])
+    }
+    return(dd)
+}
+rr <- function(txt) {
+    read.table(header=TRUE,stringsAsFactors=FALSE,text=txt,
+               colClasses=rep(c("character","numeric"),c(5,2)))
+}
+context("Ranef etc.")
+test_that("as.data.frame(ranef(.)) works",
+  {
+      expect_equal(
+          mkstr(as.data.frame(ranef(fm3ZIP))[c("cond.1","cond.19","zi.1"),]),
+          rr(
+"        component  grpvar        term grp       condval      condsd
+cond.1       cond Subject (Intercept) 308  1.066599e-02 0.040430751
+cond.19      cond Subject        Days 308  2.752424e-02 0.007036958
+zi.1           zi Subject (Intercept) 308 -2.850238e-07 0.127106817
+"),
+tolerance=1e-5)
+      expect_equal(
+          mkstr(as.data.frame(ranef(fm2diag2))[c("cond.1","cond.19"),]),
+          rr(
+"        component  grpvar        term grp  condval    condsd
+cond.1       cond Subject (Intercept) 308 1.854597 13.294388
+cond.19      cond Subject        Days 308 9.236420  2.699692
+"),
+tolerance=1e-5)
+  })

@@ -15,7 +15,7 @@ slope = .8
 ni=100
 
 dat = expand.grid(i=1:ni, rep=1:nrep , x=c(0 ,.2, .4))
-RE = mvrnorm(n = ni, mu =c(0, 0), 
+RE = MASS::mvrnorm(n = ni, mu =c(0, 0), 
 		Sigma = matrix(c(sdi*sdi, rho*sdi*sdii, rho*sdi*sdii ,sdii*sdii),2,2)) 
 inddat = transform(dat, y=rpois(n=nrow(dat), 
                                 lambda = exp(RE[i,1] + x*(slope + RE[i,2]))))
@@ -44,6 +44,6 @@ ind_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=inddat, family="poisson")
 
 test_that("Estimates are the same", {
 	expect_equal(summary(wei_glmmtmb)$coefficients$cond, summary(ind_glmmtmb)$coefficients$cond, tolerance=1e-6)
-	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tol=1e-6)
-	expect_equal(AIC(wei_glmmtmb), AIC(ind_glmmtmb), tol=1e-6)
+	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tolerance=1e-5)
+	expect_equal(AIC(wei_glmmtmb), AIC(ind_glmmtmb), tolerance=1e-5)
 })

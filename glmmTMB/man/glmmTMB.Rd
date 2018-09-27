@@ -5,9 +5,10 @@
 \title{Fit models with TMB}
 \usage{
 glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = ~1, weights = NULL, offset = NULL, contrasts = NULL,
-  na.action = na.fail, se = TRUE, verbose = FALSE, doFit = TRUE,
-  control = glmmTMBControl(), REML = FALSE)
+  dispformula = ~1, weights = NULL, offset = NULL,
+  contrasts = NULL, na.action = na.fail, se = TRUE,
+  verbose = FALSE, doFit = TRUE, control = glmmTMBControl(),
+  REML = FALSE)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
