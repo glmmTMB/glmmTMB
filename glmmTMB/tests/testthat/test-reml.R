@@ -12,9 +12,9 @@ test_that("REML check against lmer", {
                            sleepstudy, REML=TRUE)
     expect_equal( logLik(fm1.lmer) , logLik(fm1.glmmTMB) )
     expect_equal(as.vector(predict(fm1.lmer)) ,
-                 predict(fm1.glmmTMB), tol=1e-6)
+                 predict(fm1.glmmTMB), tolerance=2e-3)
     expect_equal(vcov(fm1.glmmTMB)$cond,
-                 as.matrix(vcov(fm1.lmer)) , tol=1e-4)
+                 as.matrix(vcov(fm1.lmer)) , tolerance=1e-3)
     ## Example 2: Compare results with lmer
     data(Orthodont,package="nlme")
     Orthodont$nsex <- as.numeric(Orthodont$Sex=="Male")
@@ -23,9 +23,9 @@ test_that("REML check against lmer", {
                          (0 + nsexage|Subject), data=Orthodont, REML=TRUE)
     fm2.glmmTMB <- glmmTMB(distance ~ age + (age|Subject) + (0+nsex|Subject) +
                                (0 + nsexage|Subject), data=Orthodont, REML=TRUE)
-    expect_equal( logLik(fm2.lmer) , logLik(fm2.glmmTMB) )
+    expect_equal( logLik(fm2.lmer) , logLik(fm2.glmmTMB), tolerance=1e-5 )
     expect_equal(as.vector(predict(fm2.lmer)) ,
-                 predict(fm2.glmmTMB), tol=1e-6)
+                 predict(fm2.glmmTMB), tolerance=1e-4)
     expect_equal(vcov(fm2.glmmTMB)$cond,
-                 as.matrix(vcov(fm2.lmer)) , tol=1e-4)
+                 as.matrix(vcov(fm2.lmer)) , tolerance=1e-3)
 })
