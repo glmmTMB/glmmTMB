@@ -252,7 +252,7 @@ test_that("genpois",{
 })
 
 
-context("compois/genpois/tweedie")
+context("trunc compois")
 ##Compois
 test_that("trunc compois",{
     tcmp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_compois())
@@ -265,6 +265,8 @@ test_that("trunc compois",{
     expect_lt(confint(tcmp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tcmp1)$cond[1]))
     expect_lt(unname(fixef(tcmp1)$cond[1]), confint(tcmp2)["cond.(Intercept)", "97.5 %"])
 })
+
+context("compois")
 test_that("compois", {
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
@@ -273,6 +275,8 @@ test_that("compois", {
 	expect_equal(sigma(cmp1), 0.1833339, tol=1e-6)
 	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
 })
+
+context("genpois")
 test_that("genpois", {
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
 	gen1 <<- glmmTMB(y~1, family=genpois(), gendat)
@@ -280,6 +284,7 @@ test_that("genpois", {
 	expect_equal(sigma(gen1), 0.235309, tol=1e-6)
 })
 
+context("tweedie")
 test_that("tweedie", {
     ## Boiled down tweedie:::rtweedie :
     rtweedie <- function (n, xi = power, mu, phi, power = NULL)
