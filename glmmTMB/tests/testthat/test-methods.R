@@ -1,7 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-data(sleepstudy, cbpp,
+data(sleepstudy, cbpp, Pastes,
      package = "lme4")
 
 if (getRversion() < "3.3.0") {
@@ -32,6 +32,10 @@ fm3ZIP <- update(fm2, round(Reaction) ~ ., family=poisson,
                  ziformula=~(1|Subject))
 ## separate-terms model
 fm2diag2   <- update(fm2, . ~ Days + (1| Subject)+ (0+Days|Subject))
+
+## model with two different grouping variables
+fmP <- glmmTMB(strength ~ cask + (1|batch) + (1|sample), data=Pastes)
+
 context("basic methods")
 
 test_that("Fitted and residuals", {
@@ -290,3 +294,9 @@ cond.19      cond Subject        Days 308 9.236420  2.699692
 "),
 tolerance=1e-5)
   })
+
+test_that("ranef(.) works with more than one grouping factor",
+{
+    expect_equal(names(ranef(fmP)[["cond"]]), c("sample","batch"))
+    expect_equal(dim(as.data.frame(ranef(fmP))), c(40,6))
+})
