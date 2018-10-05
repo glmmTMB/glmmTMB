@@ -236,8 +236,10 @@ test_that("truncated", {
                       data=data.frame(z_nb0))
     expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
     expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb1)$cond, tol=1e-6) ## Test conditional model
+})
 
-    #Genpois
+##Genpois
+test_that("genpois",{
     tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_genpois())
     tgpdat <<- data.frame(y=simulate(tgp1)[,1])
     tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
@@ -247,8 +249,12 @@ test_that("truncated", {
     expect_lt(sigma(tgp1), confint(tgp2)["sigma", "97.5 %"])
     expect_lt(confint(tgp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
     expect_lt(unname(fixef(tgp1)$cond[1]), confint(tgp2)["cond.(Intercept)", "97.5 %"])
+})
 
-    #Compois
+
+context("compois/genpois/tweedie")
+##Compois
+test_that("trunc compois",{
     tcmp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_compois())
     tcmpdat <<- data.frame(y=simulate(tcmp1)[,1])
     tcmp2 <<- glmmTMB(y ~1, tcmpdat, family=truncated_compois())		

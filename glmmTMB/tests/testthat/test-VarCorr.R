@@ -27,12 +27,12 @@ stripTMBVC <- function(x) {
     return(r)
 }
 expect_equal(stripTMBVC(fm1),unclass(VarCorr(fm1C)),
-             tol=1e-3)
+             tol=2e-3)
 expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
              tol=5e-3)
 ## have to take only last 4 lines
 ## some white space diffs introduced in fancy-corr-printing
-pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=3)))
+pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=2)))
 expect_equal(tail(pfun(fm1),4),
              pfun(fm1C))
 
