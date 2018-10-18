@@ -223,7 +223,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
         identical(RHSForm(fixedform), ~ -1)) {
         X <- NULL
     } else {
-        mf$formula <- fixedform
+        tt <- terms(fixedform)
+        pv <- attr(mf$formula,"predvars")
+        attr(tt, "predvars") <- fix_predvars(pv,tt)
+        mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(drop.special2(fixedform), fr, contrasts)

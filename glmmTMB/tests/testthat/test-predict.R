@@ -116,3 +116,23 @@ context("deprecated zitype parameter")
 expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
     
     
+context("complex bases")
+data("sleepstudy",package="lme4")
+
+
+test_that("poly", {
+    g1 <- glmmTMB(Reaction~poly(Days,3), sleepstudy)
+    expect_equal(predict(g1, newdata=data.frame(Days=0)),
+                 255.7690496, tolerance=1e-5)
+})
+test_that("splines", {
+    g2 <- glmmTMB(Reaction~splines::ns(Days,5), sleepstudy)
+    expect_equal(predict(g2, newdata=data.frame(Days=0)),257.42672,
+                 tolerance=1e-5)
+})
+
+test_that("scale", {
+    g3 <- glmmTMB(Reaction~scale(Days), sleepstudy)
+    expect_equal(predict(g3, newdata=data.frame(Days=0)),
+                 251.40507651, tolerance=1e-5)
+})

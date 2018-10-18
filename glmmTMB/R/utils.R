@@ -560,3 +560,27 @@ get_cor <- function(theta) {
     cc <- Dh %*% cL %*% Dh
     return(cc[lower.tri(cc)])
 }
+
+## drop unnecessary/add missing predvars
+fix_predvars <- function(pv,tt) {
+    if (is.null(pv)) return(NULL)
+    dropvars <- numeric(0)
+    if (length(pv)>1) {
+        for (i in 2:length(pv)) {
+            if (!all(all.vars(pv[[i]]) %in% all.vars(tt))) {
+                dropvars <- c(dropvars,i)
+            }
+        }
+    }
+    if (length(dropvars)>0) {
+        pv <- pv[-dropvars]
+    }
+    if (length(miss_vars <- setdiff(all.vars(tt), all.vars(pv)))>0) {
+        i <- length(pv)
+        for (m in miss_vars) {
+            pv[[i+1]] <- as.symbol(m)
+            i <- i+1
+        }
+    }
+    return(pv)
+}
