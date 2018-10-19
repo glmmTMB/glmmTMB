@@ -20,7 +20,8 @@ test_that("REML check against lmer", {
     Orthodont$nsex <- as.numeric(Orthodont$Sex=="Male")
     Orthodont$nsexage <- with(Orthodont, nsex*age)
     fm2.lmer <- lmer(distance ~ age + (age|Subject) + (0+nsex|Subject) +
-                         (0 + nsexage|Subject), data=Orthodont, REML=TRUE)
+                         (0 + nsexage|Subject), data=Orthodont, REML=TRUE,
+          control=lmerControl(check.conv.grad = .makeCC("warning", tol = 5e-3)))
     fm2.glmmTMB <- glmmTMB(distance ~ age + (age|Subject) + (0+nsex|Subject) +
                                (0 + nsexage|Subject), data=Orthodont, REML=TRUE)
     expect_equal( logLik(fm2.lmer) , logLik(fm2.glmmTMB), tolerance=1e-5 )
