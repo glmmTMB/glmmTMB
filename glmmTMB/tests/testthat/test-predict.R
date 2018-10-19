@@ -118,7 +118,8 @@ expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
     
 context("complex bases")
 data("sleepstudy",package="lme4")
-
+nd <- data.frame(Days=0,
+                 Subject=factor("309", levels=levels(sleepstudy$Subject)))
 
 test_that("poly", {
     g1 <- glmmTMB(Reaction~poly(Days,3), sleepstudy)
@@ -135,4 +136,20 @@ test_that("scale", {
     g3 <- glmmTMB(Reaction~scale(Days), sleepstudy)
     expect_equal(predict(g3, newdata=data.frame(Days=0)),
                  251.40507651, tolerance=1e-5)
+})
+test_that("poly_RE", {
+    g1 <- glmmTMB(Reaction~(1|Subject) + poly(Days,3), sleepstudy)
+    expect_equal(predict(g1, newdata=nd, allow.new.levels=TRUE),
+                 178.1629812, tolerance=1e-5)
+})
+test_that("splines_RE", {
+    g2 <- glmmTMB(Reaction~(1|Subject) + splines::ns(Days,5), sleepstudy)
+    expect_equal(predict(g2, newdata=nd, allow.new.levels=TRUE),
+                 179.7784754, tolerance=1e-5)
+})
+
+test_that("scale_RE", {
+    g3 <- glmmTMB(Reaction~(1|Subject) + scale(Days), sleepstudy)
+    expect_equal(predict(g3, newdata=nd, allow.new.levels=TRUE),
+                 173.83923026, tolerance=1e-5)
 })

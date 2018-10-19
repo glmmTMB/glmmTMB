@@ -171,16 +171,19 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## Extra family specific parameters
   numThetaFamily <- (family$family == "tweedie")
 
+  rr0 <- function(n) {
+       if (is.null(n)) numeric(0) else rep(0, n)
+  }
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(beta_init, ncol(X)),
-                       betazi  = rep(0, ncol(Xzi)),
+                       betazi  = rr0(ncol(Xzi)),
                        b       = rep(beta_init, ncol(Z)),
-                       bzi     = rep(0, ncol(Zzi)),
+                       bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, ncol(Xd)),
-                       theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
-                       thetazi = rep(0, sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       thetaf  = rep(0, numThetaFamily)
+                       theta   = rr0(sum(getVal(condReStruc,"blockNumTheta"))),
+                       thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
+                       thetaf  = rr0(numThetaFamily)
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
@@ -217,11 +220,20 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
     nobs <- nrow(fr)
+    
     ## check for empty fixed form
-
-    if (identical(RHSForm(fixedform), ~  0) ||
-        identical(RHSForm(fixedform), ~ -1)) {
-        X <- NULL
+    ## need to ignore environments when checking!
+    ##  ignore.environment= arg only works with closures
+    idfun <- function(x,y) {
+        environment(x) <- emptyenv()
+        environment(y) <- emptyenv()
+        return(identical(x,y))
+    }
+        
+    if (idfun(RHSForm(fixedform, as.form=TRUE), ~ 0) ||
+        idfun(RHSForm(fixedform, as.form=TRUE), ~ -1)) {
+        X <- matrix(ncol=0, nrow=nobs)
+        offset <- rep(0,nobs)
     } else {
         tt <- terms(fixedform)
         pv <- attr(mf$formula,"predvars")

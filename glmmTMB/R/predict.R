@@ -123,10 +123,10 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
-  tt <- terms(RHSForm(object$modelInfo$allForm$combForm, as.form=TRUE))
+  tt <- terms(object$modelInfo$allForm$combForm)
   pv <- attr(terms(object),"predvars")
   attr(tt,"predvars") <- fix_predvars(pv,tt)
-  mf$formula <- tt
+  mf$formula <- RHSForm(tt, as.form=TRUE)
     
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
