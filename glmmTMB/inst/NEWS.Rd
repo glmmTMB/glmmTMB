@@ -12,6 +12,11 @@
       this information can easily be retrieved by \code{as.data.frame(ranef(.))}.
     }
   }
+  \subsection{BUG FIXES}{
+    \itemize{
+       \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
+    }
+  }
 }
 \section{CHANGES IN VERSION 0.2.2}{
   \subsection{NEW FEATURES}{
