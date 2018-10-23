@@ -16,7 +16,7 @@
 
 \item{se.fit}{return the standard errors of the predicted values?}
 
-\item{re.form}{(not yet implemented) specify which random effects to condition on when predicting}
+\item{re.form}{(not yet implemented) specify which random effects to condition on when predicting. To compute population-level predictions for a given grouping variable (i.e., setting \emph{all} random effects for that grouping variable to zero), set the group value to \code{NA}.}
 
 \item{allow.new.levels}{allow previously unobserved levels in random-effects variables? see details.}
 
@@ -61,4 +61,8 @@ predict(g0, sleepstudy)
 nd <- sleepstudy[1,]
 nd$Subject <- "new"
 predict(g0, newdata=nd, allow.new.levels=TRUE)
+## population-level prediction
+nd_pop <- data.frame(Days=unique(sleepstudy$Days),
+                     Subject=NA)
+predict(g0, newdata=nd_pop)
 }
