@@ -19,20 +19,33 @@ nd$DaysFac <- "new"
 context("Predicting new levels")
 
 g0 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
-prnd <- predict(g0, newdata=nd, allow.new.levels=TRUE)
-expect_equal( as.numeric(prnd),
-              fixef(g0)$cond[1] + fixef(g0)$cond[2] * nd$Days , tol=1e-10)
+
+test_that("manual prediction of pop level pred", {
+    prnd <- predict(g0, newdata=nd, allow.new.levels=TRUE)
+    expect_equal( as.numeric(prnd),
+                 fixef(g0)$cond[1] + fixef(g0)$cond[2] * nd$Days , tol=1e-10)
+})
 
 context("Catch invalid predictions")
 
-g1 <- glmmTMB(Reaction ~ Days + Subject, sleepstudy)
-expect_error( predict(g1, nd) )   ## Error: Requires unknown fixed effect 'Subjectnew'
+test_that("new levels of fixed effect factor", {
+    g1 <- glmmTMB(Reaction ~ Days + Subject, sleepstudy)
+    expect_error( predict(g1, nd),
+                 "Prediction is not possible for unknown fixed effects")
+})
 
-g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
-expect_error( predict(g2, nd) )   ## Error: Not OK due to new parameters
+test_that("new levels in RE term", {
+    g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
+    expect_error( predict(g2, nd),
+                 "Prediction is not possible for terms")
+})
 
-g3 <- glmmTMB(Reaction ~ ar1(DaysFac + 0| Subject), sleepstudy)
-expect_warning( predict(g3, nd) ) ## OK: AR1 does not introduce new parameters
+test_that("new levels in AR1 (OK)", {
+    g3 <- glmmTMB(Reaction ~ ar1(DaysFac + 0| Subject), sleepstudy)
+    expect_warning( predict(g3, nd),
+                   ## OK: AR1 does not introduce new parameters
+                   "Predicting new random effect levels")
+})
 
 context("Predict two-column response case")
 
@@ -116,3 +129,40 @@ context("deprecated zitype parameter")
 expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
     
     
+context("complex bases")
+data("sleepstudy",package="lme4")
+nd <- data.frame(Days=0,
+                 Subject=factor("309", levels=levels(sleepstudy$Subject)))
+
+test_that("poly", {
+    g1 <- glmmTMB(Reaction~poly(Days,3), sleepstudy)
+    expect_equal(predict(g1, newdata=data.frame(Days=0)),
+                 255.7690496, tolerance=1e-5)
+})
+test_that("splines", {
+    g2 <- glmmTMB(Reaction~splines::ns(Days,5), sleepstudy)
+    expect_equal(predict(g2, newdata=data.frame(Days=0)),257.42672,
+                 tolerance=1e-5)
+})
+
+test_that("scale", {
+    g3 <- glmmTMB(Reaction~scale(Days), sleepstudy)
+    expect_equal(predict(g3, newdata=data.frame(Days=0)),
+                 251.40507651, tolerance=1e-5)
+})
+test_that("poly_RE", {
+    g1 <- glmmTMB(Reaction~(1|Subject) + poly(Days,3), sleepstudy)
+    expect_equal(predict(g1, newdata=nd, allow.new.levels=TRUE),
+                 178.1629812, tolerance=1e-5)
+})
+test_that("splines_RE", {
+    g2 <- glmmTMB(Reaction~(1|Subject) + splines::ns(Days,5), sleepstudy)
+    expect_equal(predict(g2, newdata=nd, allow.new.levels=TRUE),
+                 179.7784754, tolerance=1e-5)
+})
+
+test_that("scale_RE", {
+    g3 <- glmmTMB(Reaction~(1|Subject) + scale(Days), sleepstudy)
+    expect_equal(predict(g3, newdata=nd, allow.new.levels=TRUE),
+                 173.83923026, tolerance=1e-5)
+})

@@ -164,7 +164,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
           if (!is.null(sd)) {
               ## attach conditional variance info
               ## called "condVar", *not* "postVar" (contrast to lme4)
-              attr(d, "condVar") <- if (sum(w <- (asgn==i))>1) {
+              attr(d, "condVar") <- if (length(w <- which(asgn==i))>1) {
                                         ## FIXME: set names?
                                         sd[w]  ## if more than one term, list
                                   } else sd[[w]]  ## else just the array

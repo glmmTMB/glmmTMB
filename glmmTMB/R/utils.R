@@ -15,11 +15,23 @@ namedList <- function (...) {
     setNames(L, nm)
 }
 
-##' @importFrom stats reformulate
 RHSForm <- function(form,as.form=FALSE) {
-    rhsf <- form[[length(form)]]
-    if (as.form) as.formula(substitute(~F,list(F=rhsf)),
-                            env=environment(form)) else rhsf
+    if (!as.form) return(form[[length(form)]])
+    if (length(form)==2) return(form)  ## already RHS-only
+    ## by operating on RHS in situ rather than making a new formula
+    ## object, we avoid messing up existing attributes/environments etc.
+    form[[2]] <- NULL
+    ## assumes response is *first* variable (I think this is safe ...)
+    if (length(vars <- attr(form,"variables"))>0) {
+        attr(form,"variables") <- vars[-2]
+    }
+    if (is.null(attr(form,"response"))) {
+        attr(form,"response") <- 0
+    }
+    if (length(facs <- attr(form,"factors"))>0) {
+        attr(form,"factors") <- facs[-1,]
+    }
+    return(form)
 }
 
 `RHSForm<-` <- function(formula,value) {
@@ -559,4 +571,32 @@ get_cor <- function(theta) {
     Dh <- diag(1/sqrt(diag(cL)))
     cc <- Dh %*% cL %*% Dh
     return(cc[lower.tri(cc)])
+}
+
+match_which <- function(x,y) {
+    which(sapply(y,function(z) x %in% z))
+}
+
+## reassign predvars to have term vars in the right order,
+##  but with 'predvars' values inserted where appropriate
+fix_predvars <- function(pv,tt) {
+    if (length(tt)==3) {
+        ## convert two-sided to one-sided formula
+        tt <- RHSForm(tt, as.form=TRUE)
+    }
+    tt_vars <- all.vars(tt)
+    if (is.null(pv) || length(tt_vars)==0) return(NULL)
+    new_pv <- quote(list())
+    ## maybe multiple variables per pv term ...
+    pv_vars <- lapply(pv[-1],all.vars)
+    for (i in seq_along(tt_vars)) {
+        if (tt_vars[[i]] %in% unlist(pv_vars)) {
+            ## insert value from predvars
+            new_pv[[i+1]] <- pv[[match_which(tt_vars[[i]],pv_vars)+1]]
+        } else {
+            ## insert symbol from term vars
+            new_pv[[i+1]] <- as.symbol(tt_vars[[i]])
+        }
+    }
+    return(new_pv)
 }
