@@ -577,6 +577,7 @@ Type objective_function<Type>::operator() ()
   DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
   DATA_VECTOR(yobs);
+  DATA_UPDATE(yobs);
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
   DATA_VECTOR(offset);
