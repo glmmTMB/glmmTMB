@@ -1,7 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-context("Very basic glmmTMB fitting")
+context("test edge cases")
 
 test_that("profiling failure", {
     ## data from https://github.com/glmmTMB/glmmTMB/issues/399
