@@ -21,6 +21,15 @@
 
 `glmmTMB` is [on CRAN](https://CRAN.R-project.org/package=glmmTMB), so you can install the latest release version in the usual way, i.e. `install.packages("glmmTMB")` .
 
+### From Github (source)
+
+To get the very latest (development) version of `glmmTMB`, you can install it 
+directly from the GitHub repository via
+```
+devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
+```
+(or using `remotes::install_github()` with the same argument); this string denotes "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`"). If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. You will need to have development tools (compilers etc.) installed: `devtools::dr_devtools()` and the [RStudio devtools docs](https://www.rstudio.com/products/rpackages/devtools/) should help with that step. (Note of course that as well as being more up-to-date, the development version may contain new bugs or untested features.)
+
 ### Handling TMB/Matrix/glmmTMB mismatches
 
 When loading `glmmTMB` you may encounter this message:
@@ -49,11 +58,4 @@ If you opt to restore an older version of `Matrix`, try `devtools::install_versi
 
 If all else fails you can ask a maintainer to provide a binary version of the `TMB` package that works for your OS and `Matrix` version.
 
-### From Github (source)
-
-You can install the most recent development version of `glmmTMB` via
-```
-devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
-```
-(this string denotes "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`"). If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. You'll need to have development tools (compilers etc.) installed: `devtools::dr_devtools()` and the [RStudio devtools docs](https://www.rstudio.com/products/rpackages/devtools/) should help. Installing the source version will ensure that you get the very latest version of the package.
 
