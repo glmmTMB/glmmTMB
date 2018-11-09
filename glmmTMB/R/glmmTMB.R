@@ -837,10 +837,6 @@ fitTMB <- function(TMBStruc) {
                                            ) )
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
-        ## FIXME: pdHess can be FALSE
-        ##        * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
-        ##        * Option 1: Fall back to old method
-        ##        * Option 2: Skip Newton iterations
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
         whichNotRandom <- which( ! parnames %in% c("b", "bzi") )
@@ -857,13 +853,24 @@ fitTMB <- function(TMBStruc) {
                               silent = !verbose,
                               DLL = "glmmTMB"))
         ## Run up to 5 Newton iterations with fixed (off-mode) hessian
-        par <- obj$par; iter <- 0
+        oldpar <- par <- obj$par; iter <- 0
+        ## FIXME: Make configurable ?
+        max.newton.steps <- 5
+        newton.tol <- 1e-10
         if (sdr$pdHess) {
-            for (iter in seq_len(5)) { ## FIXME: Make configurable ?
+            ## pdHess can be FALSE
+            ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
+            ##    * Option 1: Fall back to old method
+            ##    * Option 2: Skip Newton iterations
+            for (iter in seq_len(max.newton.steps)) {
                 g <- as.numeric( obj$gr(par) )
-                if (max(abs(g)) < 1e-10) break; ## FIXME: Make configurable ?
+                if (any(is.na(g)) || max(abs(g)) < newton.tol) break
                 par <- par - solve(h, g)
             }
+        }
+        if (any(is.na(g))) {
+            warning("a Newton step failed in profiling")
+            par <- oldpar
         }
         fit$par <- par
         fit$objective <- obj$fn(par)
