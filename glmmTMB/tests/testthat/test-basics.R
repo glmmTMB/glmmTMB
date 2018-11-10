@@ -105,7 +105,7 @@ test_that("Multiple RE, reordering", {
     tmb2 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|obs) + (1|herd),
                     data = cbpp, family=binomial())
     expect_equal(fixef(tmb1), fixef(tmb2),                   tolerance = 1e-13)
-    expect_equal(getME(tmb1, "theta"), getME(tmb2, "theta"), tolerance = 1e-13)
+    expect_equal(getME(tmb1, "theta"), getME(tmb2, "theta")[c(2,1)], tolerance = 1e-13)
 })
 
 test_that("Alternative family specifications [via update(.)]", {

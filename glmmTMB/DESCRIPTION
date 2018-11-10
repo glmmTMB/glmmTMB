@@ -22,7 +22,7 @@ Depends: R (>= 3.2.0)
 Imports:
     methods,
     TMB (>= 1.7.13),
-    lme4 (>= 1.1-10),
+    lme4 (>= 1.1-18.9000),
     Matrix,
     nlme
 LinkingTo: TMB, RcppEigen

@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 0.2.2.9000}{
+\section{CHANGES IN VERSION 0.2.3}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{ranef} now returns information about conditional variances (as
@@ -14,6 +14,8 @@
   }
   \subsection{BUG FIXES}{
     \itemize{
+    	\item models with multiple types of RE (e.g. ar1 and us) 
+    	may have failed previously (GH #329)
        \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
     }
   }
