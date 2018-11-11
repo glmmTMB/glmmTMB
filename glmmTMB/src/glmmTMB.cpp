@@ -807,7 +807,7 @@ Type objective_function<Type>::operator() ()
       }
       tmp_loglik *= weights(i);
       // Add up
-      jnll -= keep(i) * tmp_loglik;		
+      jnll -= keep(i) * tmp_loglik;
     }
   }
 
