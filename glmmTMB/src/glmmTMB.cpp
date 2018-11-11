@@ -571,6 +571,10 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
+
+  // Set max number of OpenMP threads to help us optimize faster
+  max_parallel_regions = omp_get_max_threads();
+  
   DATA_MATRIX(X);
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
@@ -619,8 +623,8 @@ Type objective_function<Type>::operator() ()
   Type jnll = 0;
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms, this->do_simulate);
-  jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b + offset;
@@ -802,7 +806,7 @@ Type objective_function<Type>::operator() ()
       }
       tmp_loglik *= weights(i);
       // Add up
-      jnll -= keep(i) * tmp_loglik;
+      PARALLEL_REGION jnll -= keep(i) * tmp_loglik;
     }
   }
 
