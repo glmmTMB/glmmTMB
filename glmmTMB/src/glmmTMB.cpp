@@ -627,7 +627,7 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR_INDICATOR(keep, yobs);
 
   // Joint negative log-likelihood
-  Type jnll = 0;
+  parallel_accumulator<Type> jnll(this);
 
   // Random effects
   PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
@@ -814,7 +814,7 @@ Type objective_function<Type>::operator() ()
 	      }
 	      tmp_loglik *= weights(i);
 	      // Add up
-	      jnll -= keep(i) * tmp_loglik;
+	      PARALLEL_REGION jnll -= keep(i) * tmp_loglik;
   		}
     }
   }
