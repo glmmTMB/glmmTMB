@@ -2,9 +2,8 @@
 #include "init.h"
 #include <Eigen/Sparse>
 #include <vector>
-# include <R.h>
-# include <Rinternals.h>
-# ifdef _OPENMP
+#include <R.h>
+#include <Rinternals.h>
 #include <omp.h>
 using namespace density;
 using Eigen::SparseMatrix;
