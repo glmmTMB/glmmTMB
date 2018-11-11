@@ -624,8 +624,8 @@ Type objective_function<Type>::operator() ()
   parallel_accumulator<Type> jnll(this); 
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms, this->do_simulate);
-  jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = X * beta + Z * b + offset;
@@ -807,7 +807,7 @@ Type objective_function<Type>::operator() ()
       }
       tmp_loglik *= weights(i);
       // Add up
-      jnll -= keep(i) * tmp_loglik;
+      PARALLEL_REGION jnll -= keep(i) * tmp_loglik;
     }
   }
 
