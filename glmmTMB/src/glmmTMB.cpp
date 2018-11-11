@@ -643,170 +643,172 @@ Type objective_function<Type>::operator() ()
   Type tmp_loglik;
   for (int i=0; i < yobs.size(); i++){
     if ( !glmmtmb::isNA(yobs(i)) ) {
-      switch (family) {
-      case gaussian_family:
-        tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-        SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
-        break;
-      case poisson_family:
-        tmp_loglik = dpois(yobs(i), mu(i), true);
-        SIMULATE{yobs(i) = rpois(mu(i));}
-        break;
-      case binomial_family:
-        s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
-        tmp_loglik = dbinom_robust(yobs(i), size(i), s1, true);
-        SIMULATE{yobs(i) = rbinom(size(i), mu(i));}
-        break;
-      case Gamma_family:
-        s1 = phi(i);           // shape
-        s2 = mu(i) / phi(i);   // scale
-        tmp_loglik = dgamma(yobs(i), s1, s2, true);
-        SIMULATE{yobs(i) = rgamma(s1, s2);}
-        break;
-      case beta_family:
-        // parameterization after Ferrari and Cribari-Neto 2004, betareg package
-        s1 = mu(i)*phi(i);
-        s2 = (Type(1)-mu(i))*phi(i);
-        tmp_loglik = dbeta(yobs(i), s1, s2, true);
-        SIMULATE{yobs(i) = rbeta(s1, s2);}
-        break;
-      case betabinomial_family:
-        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
-        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
-        SIMULATE {
-          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
-        }
-        break;
-      case nbinom1_family:
-      case truncated_nbinom1_family:
-        // Was:
-        //   s1 = mu(i);
-        //   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
-        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
-        s2 = s1 + etad(i) ;                              // log(var - mu)
-        tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
-        SIMULATE {
-          s1 = mu(i);
-          s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-          yobs(i) = rnbinom2(s1, s2);
-        }
-        if( family == truncated_nbinom1_family ) {
-          // s3 := log( 1. + phi(i) )
-          s3 = logspace_add( Type(0), etad(i) );
-          log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
-          tmp_loglik -= log_nzprob;
-          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
-          SIMULATE{
-            s1 = mu(i)/phi(i);//sz
-            s2 = 1/(1+phi(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
-          }
-        }
-        break;
-      case nbinom2_family:
-      case truncated_nbinom2_family:
-        // Was:
-        //   s1 = mu(i);
-        //   s2 = mu(i) * (Type(1) + mu(i) / phi(i));
-        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
-        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
-        s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
-        tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
-        SIMULATE {
-          s1 = mu(i);
-          s2 = mu(i) * (Type(1) + mu(i) / phi(i));
-          yobs(i) = rnbinom2(s1, s2);
-        }
-        if (family == truncated_nbinom2_family) {
-          // s3 := log( 1. + mu(i) / phi(i) )
-          s3         = logspace_add( Type(0), s1 - etad(i) );
-          log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
-          tmp_loglik -= log_nzprob;
-          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
-          SIMULATE{
-            s1 = phi(i); //sz
-            s2 = phi(i)/(phi(i)+mu(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
-          }
-        }
-        break;
-      case truncated_poisson_family:
-        // Was:
-        //   if (mu(i)<1e-6) {
-        //     nzprob = mu(i)*(1-mu(i)/2);
-        //   } else {
-        //     nzprob = 1-exp(-mu(i));
-        //   }
-        // log(nzprob) = log( 1 - exp(-mu(i)) )
-        log_nzprob = logspace_sub(Type(0), -mu(i));
-        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
-        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
-        SIMULATE{
-          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
-        }
-        break;
-     case genpois_family:
-        s1 = mu(i) / sqrt(phi(i)); //theta
-        s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
-        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true);
-        SIMULATE{yobs(i)=glmmtmb::rgenpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
-        break;
-      case truncated_genpois_family:
-        s1 = mu(i) / sqrt(phi(i)); //theta
-        s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
-        log_nzprob = logspace_sub(Type(0), -s1);
-        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob;
-        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
-        SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
-        break;
-      case compois_family:
-        s1 = mu(i); //mean
-        s2 = 1/phi(i); //nu
-        tmp_loglik = dcompois2(yobs(i), s1, s2, true);
-        SIMULATE{yobs(i)=rcompois2(mu(i), 1/phi(i));}
-        break;
-      case truncated_compois_family:
-        s1 = mu(i); //mean
-        s2 = 1/phi(i); //nu
-        log_nzprob = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
-        tmp_loglik = dcompois2(yobs(i), s1, s2, true) - log_nzprob;
-        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
-        SIMULATE{yobs(i)=glmmtmb::rtruncated_compois2(mu(i), 1/phi(i));}
-        break;
-      case tweedie_family:
-        s1 = mu(i);  // mean
-        s2 = phi(i); // phi
-        s3 = invlogit(thetaf(0)) + Type(1); // p, 1<p<2
-        tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
-        SIMULATE {
-          yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
-        }
-        break;
-      default:
-        error("Family not implemented!");
-      } // End switch
+    	PARALLEL_REGION {
+	      switch (family) {
+	      case gaussian_family:
+	        tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
+	        SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
+	        break;
+	      case poisson_family:
+	        tmp_loglik = dpois(yobs(i), mu(i), true);
+	        SIMULATE{yobs(i) = rpois(mu(i));}
+	        break;
+	      case binomial_family:
+	        s1 = logit_inverse_linkfun(eta(i), link); // logit(p)
+	        tmp_loglik = dbinom_robust(yobs(i), size(i), s1, true);
+	        SIMULATE{yobs(i) = rbinom(size(i), mu(i));}
+	        break;
+	      case Gamma_family:
+	        s1 = phi(i);           // shape
+	        s2 = mu(i) / phi(i);   // scale
+	        tmp_loglik = dgamma(yobs(i), s1, s2, true);
+	        SIMULATE{yobs(i) = rgamma(s1, s2);}
+	        break;
+	      case beta_family:
+	        // parameterization after Ferrari and Cribari-Neto 2004, betareg package
+	        s1 = mu(i)*phi(i);
+	        s2 = (Type(1)-mu(i))*phi(i);
+	        tmp_loglik = dbeta(yobs(i), s1, s2, true);
+	        SIMULATE{yobs(i) = rbeta(s1, s2);}
+	        break;
+	      case betabinomial_family:
+	        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
+	        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
+	        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
+	        SIMULATE {
+	          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
+	        }
+	        break;
+	      case nbinom1_family:
+	      case truncated_nbinom1_family:
+	        // Was:
+	        //   s1 = mu(i);
+	        //   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+	        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+	        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+	        s2 = s1 + etad(i) ;                              // log(var - mu)
+	        tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+	        SIMULATE {
+	          s1 = mu(i);
+	          s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+	          yobs(i) = rnbinom2(s1, s2);
+	        }
+	        if( family == truncated_nbinom1_family ) {
+	          // s3 := log( 1. + phi(i) )
+	          s3 = logspace_add( Type(0), etad(i) );
+	          log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
+	          tmp_loglik -= log_nzprob;
+	          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+	          SIMULATE{
+	            s1 = mu(i)/phi(i);//sz
+	            s2 = 1/(1+phi(i)); //pb
+	            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+	          }
+	        }
+	        break;
+	      case nbinom2_family:
+	      case truncated_nbinom2_family:
+	        // Was:
+	        //   s1 = mu(i);
+	        //   s2 = mu(i) * (Type(1) + mu(i) / phi(i));
+	        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
+	        s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+	        s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
+	        tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+	        SIMULATE {
+	          s1 = mu(i);
+	          s2 = mu(i) * (Type(1) + mu(i) / phi(i));
+	          yobs(i) = rnbinom2(s1, s2);
+	        }
+	        if (family == truncated_nbinom2_family) {
+	          // s3 := log( 1. + mu(i) / phi(i) )
+	          s3         = logspace_add( Type(0), s1 - etad(i) );
+	          log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
+	          tmp_loglik -= log_nzprob;
+	          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+	          SIMULATE{
+	            s1 = phi(i); //sz
+	            s2 = phi(i)/(phi(i)+mu(i)); //pb
+	            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+	          }
+	        }
+	        break;
+	      case truncated_poisson_family:
+	        // Was:
+	        //   if (mu(i)<1e-6) {
+	        //     nzprob = mu(i)*(1-mu(i)/2);
+	        //   } else {
+	        //     nzprob = 1-exp(-mu(i));
+	        //   }
+	        // log(nzprob) = log( 1 - exp(-mu(i)) )
+	        log_nzprob = logspace_sub(Type(0), -mu(i));
+	        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+	        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+	        SIMULATE{
+	          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
+	        }
+	        break;
+	     case genpois_family:
+	        s1 = mu(i) / sqrt(phi(i)); //theta
+	        s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
+	        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true);
+	        SIMULATE{yobs(i)=glmmtmb::rgenpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
+	        break;
+	      case truncated_genpois_family:
+	        s1 = mu(i) / sqrt(phi(i)); //theta
+	        s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
+	        log_nzprob = logspace_sub(Type(0), -s1);
+	        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob;
+	        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+	        SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
+	        break;
+	      case compois_family:
+	        s1 = mu(i); //mean
+	        s2 = 1/phi(i); //nu
+	        tmp_loglik = dcompois2(yobs(i), s1, s2, true);
+	        SIMULATE{yobs(i)=rcompois2(mu(i), 1/phi(i));}
+	        break;
+	      case truncated_compois_family:
+	        s1 = mu(i); //mean
+	        s2 = 1/phi(i); //nu
+	        log_nzprob = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
+	        tmp_loglik = dcompois2(yobs(i), s1, s2, true) - log_nzprob;
+	        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+	        SIMULATE{yobs(i)=glmmtmb::rtruncated_compois2(mu(i), 1/phi(i));}
+	        break;
+	      case tweedie_family:
+	        s1 = mu(i);  // mean
+	        s2 = phi(i); // phi
+	        s3 = invlogit(thetaf(0)) + Type(1); // p, 1<p<2
+	        tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
+	        SIMULATE {
+	          yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
+	        }
+	        break;
+	      default:
+	        error("Family not implemented!");
+	      } // End switch
 
-      // Add zero inflation
-      if(zi_flag){
-        Type logit_pz = etazi(i) ;
-        Type log_pz   = -logspace_add( Type(0) , -logit_pz );
-        Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
-        if(yobs(i) == Type(0)){
-          // Was:
-          //   tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
-          tmp_loglik = logspace_add( log_pz, log_1mpz + tmp_loglik );
-        } else {
-          // Was:
-          //   tmp_loglik += log( 1.0 - pz(i) );
-          tmp_loglik += log_1mpz ;
-        }
-        SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
-      }
-      tmp_loglik *= weights(i);
-      // Add up
-      PARALLEL_REGION jnll -= keep(i) * tmp_loglik;
+	      // Add zero inflation
+	      if(zi_flag){
+	        Type logit_pz = etazi(i) ;
+	        Type log_pz   = -logspace_add( Type(0) , -logit_pz );
+	        Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
+	        if(yobs(i) == Type(0)){
+	          // Was:
+	          //   tmp_loglik = log( pz(i) + (1.0 - pz(i)) * exp(tmp_loglik) );
+	          tmp_loglik = logspace_add( log_pz, log_1mpz + tmp_loglik );
+	        } else {
+	          // Was:
+	          //   tmp_loglik += log( 1.0 - pz(i) );
+	          tmp_loglik += log_1mpz ;
+	        }
+	        SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
+	      }
+	      tmp_loglik *= weights(i);
+	      // Add up
+	      jnll -= keep(i) * tmp_loglik;
+  		}
     }
   }
 
