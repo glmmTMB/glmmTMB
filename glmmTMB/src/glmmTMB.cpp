@@ -2,9 +2,12 @@
 #include "init.h"
 #include <Eigen/Sparse>
 #include <vector>
+# include <R.h>
+# include <Rinternals.h>
+# ifdef _OPENMP
+#include <omp.h>
 using namespace density;
 using Eigen::SparseMatrix;
-
 
 namespace glmmtmb{
   template<class Type>
