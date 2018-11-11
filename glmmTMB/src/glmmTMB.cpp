@@ -1,12 +1,6 @@
 #include <TMB.hpp>
 #include "init.h"
-#include <Eigen/Sparse>
-#include <vector>
-#include <R.h>
-#include <Rinternals.h>
 #include <omp.h>
-using namespace density;
-using Eigen::SparseMatrix;
 
 namespace glmmtmb{
   template<class Type>
