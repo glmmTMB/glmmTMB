@@ -1,5 +1,10 @@
 #include <TMB.hpp>
 #include "init.h"
+#include <Eigen/Sparse>
+#include <vector>
+using namespace density;
+using Eigen::SparseMatrix;
+
 
 namespace glmmtmb{
   template<class Type>
