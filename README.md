@@ -43,9 +43,22 @@ This may happen because you have installed a new version of `glmmTMB` from CRAN 
 
 Alternately (slightly more problematically), this may happen because you've updated the `Matrix` package to a newer version that was published on CRAN more recently than the latest CRAN version of `TMB`. Installing a new *binary* version of `TMB` from CRAN (i.e., via `update.packages()` or `install.packages("TMB")` on Windows or MacOS) probably won't help, because the binary package on CRAN will have been built with the older version.
 
-To re-install `TMB` from source, or to restore an older version of `Matrix`, you will need to have developer tools (compilers etc.) installed; these are not R packages, but additional packages and libraries for your operating system. You can try `devtools::dr_devtools()` to see if you have them already; if not, see the [RStudio devtools docs](https://www.rstudio.com/products/rpackages/devtools/) for links to download and install them.
+**The easiest way to fix this problem** is to use the [checkpoint package]( https://CRAN.R-project.org/package=checkpoint) to revert your version of Matrix to the one that was available the last time the TMB package was updated on CRAN.
 
-At this point, if you're lucky, `install.packages("TMB",type="source")` will take care of everything.
+```
+## load (installing if necessary) the checkpoint package
+while (!require("checkpoint")) install.packages("checkpoint")
+## retrieve build date of installed version of TMB
+bd <- as.character(asDateBuilt(packageDescription("TMB",fields="Built")))
+oldrepo <- getOption("repos")
+setSnapshot(bd)
+install.packages("Matrix")
+options(repos=oldrepo) ## restore original repo
+```
+
+The only disadvantage to this approach is that your version of the `Matrix` package will be behind the version on CRAN; you might be missing out on some bug fixes or improvements, and eventually you may find that updates of other packages require the newest version of `Matrix`. (Also, if you accidentally update the `Matrix` package to the newest version, you'll have to redo this step.)
+
+Alternatively, if you have development tools (compilers etc.) installed (see "installing from GitHub" above), `install.packages("TMB",type="source")` will take care of the problem, *if it works*.
 
 If you're unlucky (e.g. you're using MacOS and originally installed R from a binary package), you may have some more work to do.
 
