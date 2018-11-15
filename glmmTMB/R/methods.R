@@ -746,6 +746,26 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                                                     sep="."),
                                                  estimate = estimate)
                 ci <- rbind(ci, ci.sd)
+                ## VarCorr -> correlation
+                getCorrelation <- TRUE ## FIXME: Make 'getCorrelation' a function argument ???
+                if (getCorrelation) {
+                    mat2vec <- function(m) {
+                        ans <- structure(as.vector(m),
+                                         names=do.call(paste,c(expand.grid(dimnames(m)),sep=":")))
+                        ans[lower.tri(m)]
+                    }
+                    reduce <- function(VC) unlist(lapply(VC[[component]],
+                                                         function(x)mat2vec(attr(x, "correlation"))))
+                    ci.corr <- .CI_univariate_monotone(object,
+                                                       VarCorr,
+                                                       reduce = reduce,
+                                                       level = level,
+                                                       name.prepend=paste(component,
+                                                                          "Corr.",
+                                                                          sep="."),
+                                                       estimate = estimate)
+                    ci <- rbind(ci, ci.corr)
+                }
             }
         }
         if (components.has("other")) {
