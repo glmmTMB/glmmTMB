@@ -735,8 +735,8 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                 if (estimate) ci.tmp <- cbind(ci.tmp, cf)
                 ci <- rbind(ci, ci.tmp)
                 ## VarCorr -> stddev
-                reduce <- function(VC) sapply(VC[[component]],
-                                              function(x)attr(x, "stddev"))
+                reduce <- function(VC) unlist(lapply(VC[[component]],
+                                                     function(x)attr(x, "stddev")))
                 ci.sd <- .CI_univariate_monotone(object,
                                                  VarCorr,
                                                  reduce = reduce,
