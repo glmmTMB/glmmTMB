@@ -1055,6 +1055,7 @@ isLMM.glmmTMB <- function(object) {
 
 #' @export
 
+#' @importFrom stats formula
 ## hackish/fragile but ...
 ## should use rcol <- attr(attr(model.frame(object), "terms"), "response")
 refit.glmmTMB <- function(object, newresp, ...) {
