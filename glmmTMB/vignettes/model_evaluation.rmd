@@ -27,8 +27,8 @@ library(effects)
 library(multcomp)
 library(MuMIn)
 library(DHARMa)
-library(broom)
-library(broom.mixed)
+## library(broom)
+## library(broom.mixed)
 library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 ## retrieve slow stuff
@@ -190,8 +190,8 @@ but both of the following hacks should work. (The `glht_glmmTMB` solution below 
 
 The `broom`, `broom.mixed` packages are designed to extract information from a broad range of models in a convenient (tidy) format; the `dotwhisker` package builds on this platform to draw elegant coefficient plots.
 
-```{r dwplot,fig.width=8}
-(t1 <- broom::tidy(owls_nb1, conf.int = TRUE))
+```{r dwplot,fig.width=8, eval=FALSE}
+(t1 <- broom.mixed::tidy(owls_nb1, conf.int = TRUE))
 if (packageVersion("dotwhisker")>"0.4.1") {
     ## to get this version (which fixes various dotwhisker problems)
     ## use devtools::install_github("bbolker/broom.mixed") or

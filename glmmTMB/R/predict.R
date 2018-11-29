@@ -67,14 +67,14 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' (i.e., synonymous with \code{"response"} in the absence of zero-inflation}
 ##' \item{"zprob"}{the probability of a structural zero (gives an error
 ##' for non-zero-inflated models)}
-##' ##' \item{"zilink"}{predicted zero-inflation probability on the scale of
+##' \item{"zlink"}{predicted zero-inflation probability on the scale of
 ##' the logit link function}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 ##' the default (\code{na.pass}) is to predict \code{NA}
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
-##' @param re.form (not yet implemented) specify which random effects to condition on when predicting
+##' @param re.form (not yet implemented) specify which random effects to condition on when predicting. To compute population-level predictions for a given grouping variable (i.e., setting \emph{all} random effects for that grouping variable to zero), set the group value to \code{NA}.
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
 ##' @details
@@ -88,6 +88,10 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' nd <- sleepstudy[1,]
 ##' nd$Subject <- "new"
 ##' predict(g0, newdata=nd, allow.new.levels=TRUE)
+##' ## population-level prediction
+##' nd_pop <- data.frame(Days=unique(sleepstudy$Days),
+##'                      Subject=NA)
+##' predict(g0, newdata=nd_pop)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict
 ##' @export
@@ -123,11 +127,14 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
-  mf$formula <- RHSForm(object$modelInfo$allForm$combForm, as.form=TRUE)
+  tt <- terms(object$modelInfo$allForm$combForm)
+  pv <- attr(terms(object),"predvars")
+  attr(tt,"predvars") <- fix_predvars(pv,tt)
+  mf$formula <- RHSForm(tt, as.form=TRUE)
     
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
-    newFr <- object$fr
+    newFr <- object$frame
   } else {
     mf$data <- newdata
     mf$na.action <- na.action

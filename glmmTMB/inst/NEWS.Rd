@@ -4,12 +4,28 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 0.2.3}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{ranef} now returns information about conditional variances (as
+      attributes of the individual random effects terms) by default;
+      this information can easily be retrieved by \code{as.data.frame(ranef(.))}.
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+    	\item models with multiple types of RE (e.g. ar1 and us) 
+    	may have failed previously (GH #329)
+       \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
+    }
+  }
+}
 \section{CHANGES IN VERSION 0.2.2}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item REML is now an option (GH #352). It is typically only for 
       Gaussian response variables, but can also be useful 
-      for some non-Gaussian response variabes if used with caution 
+      for some non-Gaussian response variables if used with caution 
       (i.e. simulate a test case first).
     }
   }

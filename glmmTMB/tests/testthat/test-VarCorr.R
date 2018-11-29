@@ -10,7 +10,8 @@ context("VarCorr")
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
 fm1C <-   lmer(distance ~ age + (age|Subject), data = Orthodont,
-               REML=FALSE) # to compare
+               REML=FALSE,
+       control=lmerControl(check.conv.grad = .makeCC("warning", tol = 2e-2)))
 gm1 <- glmmTMB(incidence/size ~ period + (1 | herd),
                weights=size,
                data = cbpp, family = binomial)
@@ -27,12 +28,12 @@ stripTMBVC <- function(x) {
     return(r)
 }
 expect_equal(stripTMBVC(fm1),unclass(VarCorr(fm1C)),
-             tol=1e-3)
+             tol=2e-3)
 expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
              tol=5e-3)
 ## have to take only last 4 lines
 ## some white space diffs introduced in fancy-corr-printing
-pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=3)))
+pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=2)))
 expect_equal(tail(pfun(fm1),4),
              pfun(fm1C))
 
@@ -41,7 +42,8 @@ data("Pixel", package="nlme")
 complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)
 expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
                "convergence problem")
-fmPix1B <-   lmer(complex_form, data = Pixel)
+fmPix1B <-   lmer(complex_form, data = Pixel,
+      control=lmerControl(check.conv.grad = .makeCC("warning", tol = 5e-3)))
 
 vPix1B <- unlist(lapply(VarCorr(fmPix1B),c))
 vPix1 <- unlist(lapply(VarCorr(fmPix1)[["cond"]],c))

@@ -5,8 +5,8 @@
 \title{Format the 'VarCorr' Matrix of Random Effects}
 \usage{
 formatVC(varcor, digits = max(3, getOption("digits") - 2),
-  comp = "Std.Dev.", formatter = format, useScale = attr(varcor, "useSc"),
-  ...)
+  comp = "Std.Dev.", formatter = format, useScale = attr(varcor,
+  "useSc"), ...)
 }
 \arguments{
 \item{varcor}{a \code{\link{VarCorr}} (-like) matrix with attributes.}

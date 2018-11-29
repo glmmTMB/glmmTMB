@@ -171,16 +171,19 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## Extra family specific parameters
   numThetaFamily <- (family$family == "tweedie")
 
+  rr0 <- function(n) {
+       if (is.null(n)) numeric(0) else rep(0, n)
+  }
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(beta_init, ncol(X)),
-                       betazi  = rep(0, ncol(Xzi)),
+                       betazi  = rr0(ncol(Xzi)),
                        b       = rep(beta_init, ncol(Z)),
-                       bzi     = rep(0, ncol(Zzi)),
+                       bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, ncol(Xd)),
-                       theta   = rep(0, sum(getVal(condReStruc,"blockNumTheta"))),
-                       thetazi = rep(0, sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       thetaf  = rep(0, numThetaFamily)
+                       theta   = rr0(sum(getVal(condReStruc,"blockNumTheta"))),
+                       thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
+                       thetaf  = rr0(numThetaFamily)
                      ))
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
@@ -217,13 +220,25 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
     nobs <- nrow(fr)
+    
     ## check for empty fixed form
-
-    if (identical(RHSForm(fixedform), ~  0) ||
-        identical(RHSForm(fixedform), ~ -1)) {
-        X <- NULL
+    ## need to ignore environments when checking!
+    ##  ignore.environment= arg only works with closures
+    idfun <- function(x,y) {
+        environment(x) <- emptyenv()
+        environment(y) <- emptyenv()
+        return(identical(x,y))
+    }
+        
+    if (idfun(RHSForm(fixedform, as.form=TRUE), ~ 0) ||
+        idfun(RHSForm(fixedform, as.form=TRUE), ~ -1)) {
+        X <- matrix(ncol=0, nrow=nobs)
+        offset <- rep(0,nobs)
     } else {
-        mf$formula <- fixedform
+        tt <- terms(fixedform)
+        pv <- attr(mf$formula,"predvars")
+        attr(tt, "predvars") <- fix_predvars(pv,tt)
+        mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
         X <- model.matrix(drop.special2(fixedform), fr, contrasts)
@@ -260,7 +275,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
         mf$formula <- ranform
-        reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
+        reTrms <- mkReTrms(findbars(RHSForm(formula)), fr, reorder.terms=FALSE)
 
         ss <- splitForm(formula)
         ss <- unlist(ss$reTrmClasses)
@@ -428,10 +443,8 @@ binomialType <- function(x) {
 ##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for
 ##'     zero-inflation combining fixed and random effects:
 ##' the default \code{~0} specifies no zero-inflation.
-##' Specifying \code{~.} will set the right-hand side of the zero-inflation
-##' formula identical to the right-hand side of the main (conditional effects)
-##' formula; terms can also be added or subtracted. \strong{Offset terms
-##' will automatically be dropped from the conditional effects formula when using \code{~.}}
+##' Specifying \code{~.} sets the zero-inflation
+##' formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}.
 ##' The zero-inflation model uses a logit link.
 ##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the
 ##'     default \code{~1} specifies the standard dispersion given any family.
@@ -476,7 +489,7 @@ binomialType <- function(x) {
 ##' \item \code{toep} (* Toeplitz)
 ##' }
 ##' (note structures marked with * are experimental/untested)
-##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternatives is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
+##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
 ##' }
 ##' @references
 ##' \itemize{
@@ -824,10 +837,6 @@ fitTMB <- function(TMBStruc) {
                                            ) )
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
-        ## FIXME: pdHess can be FALSE
-        ##        * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
-        ##        * Option 1: Fall back to old method
-        ##        * Option 2: Skip Newton iterations
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
         whichNotRandom <- which( ! parnames %in% c("b", "bzi") )
@@ -844,13 +853,24 @@ fitTMB <- function(TMBStruc) {
                               silent = !verbose,
                               DLL = "glmmTMB"))
         ## Run up to 5 Newton iterations with fixed (off-mode) hessian
-        par <- obj$par; iter <- 0
+        oldpar <- par <- obj$par; iter <- 0
+        ## FIXME: Make configurable ?
+        max.newton.steps <- 5
+        newton.tol <- 1e-10
         if (sdr$pdHess) {
-            for (iter in seq_len(5)) { ## FIXME: Make configurable ?
+            ## pdHess can be FALSE
+            ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
+            ##    * Option 1: Fall back to old method
+            ##    * Option 2: Skip Newton iterations
+            for (iter in seq_len(max.newton.steps)) {
                 g <- as.numeric( obj$gr(par) )
-                if (max(abs(g)) < 1e-10) break; ## FIXME: Make configurable ?
+                if (any(is.na(g)) || max(abs(g)) < newton.tol) break
                 par <- par - solve(h, g)
             }
+        }
+        if (any(is.na(g))) {
+            warning("a Newton step failed in profiling")
+            par <- oldpar
         }
         fit$par <- par
         fit$objective <- obj$fn(par)
@@ -942,7 +962,7 @@ fitTMB <- function(TMBStruc) {
                  length(formals(fv))>1)
     nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
     if (nbfam || xvarpars) {
-        theta <- exp(fit$parfull["theta"]) ## log link
+        theta <- exp(fit$parfull["betad"]) ## log link
         ## variance() and dev.resids() share an environment
         assign(".Theta",
                theta,
