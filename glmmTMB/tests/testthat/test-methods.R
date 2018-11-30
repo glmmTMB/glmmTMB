@@ -297,6 +297,6 @@ tolerance=1e-5)
 
 test_that("ranef(.) works with more than one grouping factor",
 {
-    expect_equal(names(ranef(fmP)[["cond"]]), c("sample","batch"))
+    expect_equal(sort(names(ranef(fmP)[["cond"]])), c("batch","sample"))
     expect_equal(dim(as.data.frame(ranef(fmP))), c(40,6))
 })

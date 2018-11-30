@@ -53,7 +53,7 @@ VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
 Author: Arni Magnusson [aut],
     Hans Skaug [aut],

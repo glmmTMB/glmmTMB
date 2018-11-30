@@ -1044,10 +1044,12 @@ as.data.frame.ranef.glmmTMB <- function(x,
     return(xD[neworder])
 }
 
-## support methods to allow lme4::bootMer to work
-
+#' @rdname bootmer_methods
+#' @title support methods for parametric bootstrapping
+#' @param object a fitted glmmTMB object
+#' @param newresp a new response vector
 #' @export
-
+#' @description see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
 isLMM.glmmTMB <- function(object) {
    fam <- family(object)
    fam$family=="gaussian" && fam$link=="identity"
@@ -1055,7 +1057,9 @@ isLMM.glmmTMB <- function(object) {
 
 #' @export
 
+#' @rdname bootmer_methods
 #' @importFrom stats formula
+#' @param ... other 
 ## hackish/fragile but ...
 ## should use rcol <- attr(attr(model.frame(object), "terms"), "response")
 refit.glmmTMB <- function(object, newresp, ...) {

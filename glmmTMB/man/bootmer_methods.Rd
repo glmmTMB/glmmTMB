@@ -3,11 +3,11 @@
 \name{isLMM.glmmTMB}
 \alias{isLMM.glmmTMB}
 \alias{refit.glmmTMB}
-\title{support methods for parametric bootstrapping: see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details}
+\title{support methods for parametric bootstrapping}
 \usage{
-\method{isLMM}{glmmTMB}(object)
+isLMM.glmmTMB(object)
 
-\method{refit}{glmmTMB}(object, newresp, ...)
+refit.glmmTMB(object, newresp, ...)
 }
 \arguments{
 \item{object}{a fitted glmmTMB object}
@@ -17,5 +17,5 @@
 \item{...}{other}
 }
 \description{
-support methods for parametric bootstrapping: see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
+see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
 }
