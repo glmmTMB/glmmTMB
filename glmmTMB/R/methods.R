@@ -962,7 +962,17 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     {
     	stop("Simulation code has not been implemented for this family")
     }
-    if(!is.null(seed)) set.seed(seed)
+    ## copied from stats::simulate.lm
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) 
+        runif(1)
+    if (is.null(seed)) 
+        RNGstate <- get(".Random.seed", envir = .GlobalEnv)
+    else {
+        R.seed <- get(".Random.seed", envir = .GlobalEnv)
+        set.seed(seed)
+        RNGstate <- structure(seed, kind = as.list(RNGkind()))
+        on.exit(assign(".Random.seed", R.seed, envir = .GlobalEnv))
+    }
     family <- object$modelInfo$family$family
     ret <- replicate(nsim,
                      object$obj$simulate(par = object$fit$parfull)$yobs,
@@ -970,9 +980,13 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     if ( binomialType(family) ) {
         size <- object$obj$env$data$size
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
+        class(ret) <- "data.frame"
+        rownames(ret) <- as.character(seq_len(nrow(ret[[1]])))
+    } else {
+        ret <- as.data.frame(ret)
     }
-    names(ret) <- paste("sim", seq_len(nsim), sep="_")
-    ret <- as.data.frame(ret)
+    names(ret) <- paste0("sim_", seq_len(nsim))
+    attr(ret, "seed") <- RNGstate
     ret
 }
 
@@ -1061,12 +1075,40 @@ isLMM.glmmTMB <- function(object) {
 #' @importFrom stats formula
 #' @param ... other 
 ## hackish/fragile but ...
-## should use rcol <- attr(attr(model.frame(object), "terms"), "response")
 refit.glmmTMB <- function(object, newresp, ...) {
   cc <- getCall(object)
   newdata <- eval(cc$data)
-  respvar <- deparse(formula(object)[[2]])
-  newdata[[respvar]] <- newresp
+  if (is.null(newdata)) stop("can't locate original 'data' value")
+  fresp <- formula(object)[[2]]
+  mf0 <- model.frame(object)
+  rcol <- attr(attr(mf0, "terms"), "response")
+  rnm <- deparse(fresp)
+  if (binomialType(family(object)$family)) {
+      ## FIXME: check for factor column?
+      if ("(weights)" %in% names(mf0)) {
+          if (!rnm %in% names(newdata)) stop("can't find response in data")
+          w <- rowSums(newresp)
+          newdata[[rnm]] <- newresp[,1]/w
+          newdata[["(weights)"]] <- w
+      } else if (is.matrix(mf0[[rnm]])) {
+          if (is.symbol(fresp)) {
+              if (!rnm %in% names(newdata)) stop("can't find response in data")
+              newdata[[rnm]] <- newresp
+          }
+          ## matrix response
+          else if (identical(quote(cbind),fresp[[1]])) {
+              rnm1 <- deparse(fresp[[2]])
+              rnm2 <- deparse(fresp[[3]])
+              if (!all(c(rnm1,rnm2) %in% names(newdata)))
+                  stop("can't find response in data")
+              newdata[[rnm1]] <- newresp[,1]
+              newdata[[rnm2]] <- newresp[,2]
+          } else {
+              stop("can't handle this data format, sorry ...")
+          }
+      }
+  } else newdata[[deparse(fresp)]] <- newresp
+      
   cc$data <- quote(newdata)
   return(eval(cc))
 }

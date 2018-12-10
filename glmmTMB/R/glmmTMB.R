@@ -145,13 +145,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     Zzi = ziList$Z,
     Xd = dispList$X,
     ## Zdisp=dispList$Z,
-    yobs,
+    ## use c() on yobs, size to strip attributes such as 'AsIs'
+    ##  (which confuse MakeADFun)
+    yobs = c(yobs),
     respCol,
     offset = condList$offset,
     zioffset = ziList$offset,
     doffset = dispList$offset,
     weights,
-    size,
+    size = c(size),
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,

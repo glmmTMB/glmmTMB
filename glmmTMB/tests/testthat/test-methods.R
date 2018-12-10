@@ -36,6 +36,19 @@ fm2diag2   <- update(fm2, . ~ Days + (1| Subject)+ (0+Days|Subject))
 ## model with two different grouping variables
 fmP <- glmmTMB(strength ~ cask + (1|batch) + (1|sample), data=Pastes)
 
+yb <- cbind(1:10,10)
+ddb <- data.frame(y=I(yb))
+f1b <- glmmTMB(y ~ 1, family=binomial(), data=ddb)
+f2b <- glm    (y ~ 1, family=binomial(), data=ddb)
+ddb <- within(ddb, {
+    w <- rowSums(yb)
+    prop <- y[,1]/w
+})
+f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
+                  data=ddb)
+f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
+                  data=ddb)
+
 context("basic methods")
 
 test_that("Fitted and residuals", {
@@ -248,14 +261,11 @@ test_that("formula", {
 
 context("simulate consistency with glm/lm")
 test_that("binomial", {
-    y <- cbind(1:10,10)
-    f1 <- glmmTMB(y ~ 1, family=binomial())
-    f2 <- glm    (y ~ 1, family=binomial())
-    set.seed(1)
-    s1 <- simulate(f1, 5)
-    set.seed(1)
-    s2 <- simulate(f2, 5)
+    s1 <- simulate(f1b, 5, seed=1)
+    s2 <- simulate(f2b, 5, seed=1)
+    s3 <- simulate(f3b, 5, seed=1)
     expect_equal(max(abs(as.matrix(s1) - as.matrix(s2))), 0)
+    expect_equal(max(abs(as.matrix(s1) - as.matrix(s3))), 0)
 })
 
 test_that("residuals from binomial factor responses", {
@@ -299,4 +309,17 @@ test_that("ranef(.) works with more than one grouping factor",
 {
     expect_equal(sort(names(ranef(fmP)[["cond"]])), c("batch","sample"))
     expect_equal(dim(as.data.frame(ranef(fmP))), c(40,6))
+})
+
+context("refit")
+
+test_that("various binomial response types work", {
+    ## FIXME: test for factors
+    s1 <- simulate(f1b, 1, seed=1)
+    f1 <- fixef(lme4::refit(f1b,s1[[1]]))
+    s3 <- simulate(f3b, 1, seed=1)
+    f3 <- fixef(lme4::refit(f3b,s3[[1]]))
+    expect_equal(f1,f3)
+    expect_error(lme4::refit(f4b,s3[[1]]),
+                 "can't find response in data")
 })
