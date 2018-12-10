@@ -11,6 +11,8 @@
       attributes of the individual random effects terms) by default;
       this information can easily be retrieved by \code{as.data.frame(ranef(.))}.
       \item simulate works for models with genpois family
+      \item parametric bootstrapping should work, using
+  \code{\link[lme4]{bootMer}} from the \code{lme4} package as a front end.
     }
   }
   \subsection{BUG FIXES}{
@@ -19,6 +21,13 @@
     	may have failed previously (GH #329)
        \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
     }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item The value returned from \code{simulate} for binomial models
+  is now a non-standard data frame where each element contains a
+  two-column matrix (as in the base-R \code{\link{simulate}} method for
+  binomial GLMS).
   }
 }
 \section{CHANGES IN VERSION 0.2.2}{
