@@ -38,12 +38,12 @@ fmP <- glmmTMB(strength ~ cask + (1|batch) + (1|sample), data=Pastes)
 
 yb <- cbind(1:10,10)
 ddb <- data.frame(y=I(yb))
-f1b <- glmmTMB(y ~ 1, family=binomial(), data=ddb)
-f2b <- glm    (y ~ 1, family=binomial(), data=ddb)
 ddb <- within(ddb, {
     w <- rowSums(yb)
     prop <- y[,1]/w
 })
+f1b <- glmmTMB(y ~ 1, family=binomial(), data=ddb)
+f2b <- glm    (y ~ 1, family=binomial(), data=ddb)
 f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
                   data=ddb)
 f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
@@ -314,7 +314,14 @@ test_that("ranef(.) works with more than one grouping factor",
 context("refit")
 
 test_that("various binomial response types work", {
-    ## FIXME: test for factors
+    ## FIXME: test for factors, explicit cbind(.,.)
+    ## ugh, not sure why we have to repeat this?
+    ddb <- data.frame(y=I(yb))
+    ddb <- within(ddb, {
+        w <- rowSums(yb)
+        prop <- y[,1]/w
+    })
+    ddb <<- ddb
     s1 <- simulate(f1b, 1, seed=1)
     f1 <- fixef(lme4::refit(f1b,s1[[1]]))
     s3 <- simulate(f3b, 1, seed=1)
