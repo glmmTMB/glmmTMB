@@ -48,7 +48,8 @@ Suggests:
     dotwhisker,
     broom,
     plyr,
-    png
+    png,
+    boot
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
