@@ -938,7 +938,7 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object,type="response")
 }
 
-.noSimFamilies <- c("genpois")
+.noSimFamilies <- NULL
 
 noSim <- function(x) {
     !is.na(match(x, .noSimFamilies))
@@ -1063,6 +1063,7 @@ as.data.frame.ranef.glmmTMB <- function(x,
 #' @param object a fitted glmmTMB object
 #' @param newresp a new response vector
 #' @export
+#' @importFrom lme4 isLMM
 #' @description see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
 isLMM.glmmTMB <- function(object) {
    fam <- family(object)
