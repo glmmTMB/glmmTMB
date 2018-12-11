@@ -12,24 +12,25 @@
       this information can easily be retrieved by \code{as.data.frame(ranef(.))}.
       \item simulate works for models with genpois family
       \item parametric bootstrapping should work, using
-  \code{\link[lme4]{bootMer}} from the \code{lme4} package as a front end.
-    }
-  }
+      \code{\link[lme4]{bootMer}} from the \code{lme4} package as a front end.
+    } % itemize
+  } % new features
   \subsection{BUG FIXES}{
     \itemize{
-    	\item models with multiple types of RE (e.g. ar1 and us) 
-    	may have failed previously (GH #329)
-       \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
+      \item models with multiple types of RE (e.g. ar1 and us) 
+      may have failed previously (GH #329)
+      \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
     }
-  }
+  } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item The value returned from \code{simulate} for binomial models
-  is now a non-standard data frame where each element contains a
-  two-column matrix (as in the base-R \code{\link{simulate}} method for
-  binomial GLMS).
-  }
-}
+      is now a non-standard data frame where each element contains a
+      two-column matrix (as in the base-R \code{\link{simulate}} method for
+      binomial GLMS).
+    } % itemize
+  } % user-visible
+} % version 0.2.3
 \section{CHANGES IN VERSION 0.2.2}{
   \subsection{NEW FEATURES}{
     \itemize{
