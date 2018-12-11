@@ -36,18 +36,18 @@ fm2diag2   <- update(fm2, . ~ Days + (1| Subject)+ (0+Days|Subject))
 ## model with two different grouping variables
 fmP <- glmmTMB(strength ~ cask + (1|batch) + (1|sample), data=Pastes)
 
-## yb <- cbind(1:10,10)
-## ddb <- data.frame(y=I(yb))
-## ddb <- within(ddb, {
-##     w <- rowSums(yb)
-##     prop <- y[,1]/w
-## })
-## f1b <- glmmTMB(y ~ 1, family=binomial(), data=ddb)
-## f2b <- glm    (y ~ 1, family=binomial(), data=ddb)
-## f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
-##                   data=ddb)
-## f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
-##                   data=ddb)
+yb <- cbind(1:10,10)
+ddb <- data.frame(y=I(yb))
+ddb <- within(ddb, {
+     w <- rowSums(yb)
+     prop <- y[,1]/w
+})
+f1b <- glmmTMB(y ~ 1, family=binomial(), data=ddb)
+f2b <- glm    (y ~ 1, family=binomial(), data=ddb)
+f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
+                   data=ddb)
+f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
+                   data=ddb)
 
 context("basic methods")
 
@@ -315,17 +315,17 @@ context("refit")
 
 test_that("various binomial response types work", {
     ## FIXME: test for factors, explicit cbind(.,.)
-    ## ugh, not sure why we have to repeat this?
+    ## do we need to define this within this scope?
     ## ddb <- data.frame(y=I(yb))
     ## ddb <- within(ddb, {
-    ##     w <- rowSums(yb)
-    ##     prop <- y[,1]/w
+    ## w <- rowSums(yb)
+    ## prop <- y[,1]/w
     ## })
-    ## s1 <- simulate(f1b, 1, seed=1)
-    ## f1 <- fixef(lme4::refit(f1b,s1[[1]]))
-    ## s3 <- simulate(f3b, 1, seed=1)
-    ## f3 <- fixef(lme4::refit(f3b,s3[[1]]))
-    ## expect_equal(f1,f3)
-    ## expect_error(lme4::refit(f4b,s3[[1]]),
-    ##              "can't find response in data")
+    s1 <- simulate(f1b, 1, seed=1)
+    f1 <- fixef(lme4::refit(f1b,s1[[1]]))
+    s3 <- simulate(f3b, 1, seed=1)
+    f3 <- fixef(lme4::refit(f3b,s3[[1]]))
+    expect_equal(f1,f3)
+    expect_error(lme4::refit(f4b,s3[[1]]),
+                  "can't find response in data")
 })
