@@ -215,7 +215,8 @@ print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
 ##' @method getME glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
-                          name = c("X", "Xzi","Z", "Zzi", "Xd", "theta"),
+                          name = c("X", "Xzi","Z", "Zzi",
+                                   "Xd", "theta", "beta"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -233,14 +234,15 @@ getME.glmmTMB <- function(object,
 
   oo.env <- object$obj$env
   ### Start of the switch
+  allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
   switch(name,
          "X"     = oo.env$data$X,
          "Xzi"   = oo.env$data$Xzi,
          "Z"     = oo.env$data$Z,
          "Zzi"   = oo.env$data$Zzi,
          "Xd"    = oo.env$data$Xd,
-         "theta" = oo.env$parList(object$fit$par, object$fit$parfull)$theta ,
-
+         "theta" = allpars$theta ,
+         "beta"  = unlist(allpars[c("beta","betazi","betad")]),
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -298,8 +300,8 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
   if (is.null(REML <- object$modelInfo$REML)) {
-     ## let vcov work with old (pre-REML option) stored objects   
-     REML <- FALSE   
+     ## let vcov work with old (pre-REML option) stored objects
+     REML <- FALSE
   }
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
@@ -335,7 +337,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
                        mkNames("zi"),
                        mkNames("d")),
                 names(cNames))
-                
+
   if(full) {
       ## FIXME: haven't really decided if we should drop the
       ##   trivial variance-covariance dispersion parameter ??
@@ -471,7 +473,7 @@ printDispersion <- function(ff,s) {
             dname <- "Overdispersion parameter"
             sname <- ""
             sval <- s
-        }            
+        }
         cat(sprintf("\n%s for %s family (%s): %s",
                     dname,ff,sname,
                     formatC(sval,digits=3)),"\n")
@@ -530,7 +532,7 @@ print.glmmTMB <-
   cat(do.call(paste,c(gvec,list(sep=" / "))),fill=TRUE)
 
   if(trivialDisp(x)) {# if trivial print here, else below(~x) or none(~0)
-    printDispersion(x$modelInfo$family$family,sigma(x))  
+    printDispersion(x$modelInfo$family$family,sigma(x))
   }
   ## Family specific parameters
   printFamily(x$modelInfo$family$family, x)
@@ -548,7 +550,7 @@ model.frame.glmmTMB <- function(formula, ...) {
     formula$frame
 }
 
-    
+
 ##' Compute residuals for a glmmTMB object
 ##'
 ##' @param object a \dQuote{glmmTMB} object
@@ -638,7 +640,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
 ## copied from 'stats'
 
 format.perc <- function (probs, digits) {
-    paste(format(100 * probs, trim = TRUE, scientific = FALSE, digits = digits), 
+    paste(format(100 * probs, trim = TRUE, scientific = FALSE, digits = digits),
     "%")
 }
 
@@ -825,7 +827,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         if (estimate) {
             ee <- object$obj$env
             par <- ee$last.par.best
-            if (!is.null(ee$random)) 
+            if (!is.null(ee$random))
                 par <- par[-ee$random]
             par <- par[parm]
             L <- cbind(L,par)
@@ -872,7 +874,7 @@ abbrDeparse <- function(x, width=60) {
 ##' @importFrom methods is
 ##' @importFrom stats var getCall pchisq anova
 ##' @export
-anova.glmmTMB <- function (object, ..., model.names = NULL) 
+anova.glmmTMB <- function (object, ..., model.names = NULL)
 {
     mCall <- match.call(expand.dots = TRUE)
     dots <- list(...)
@@ -882,48 +884,48 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
     if (any(modp)) {
         mods <- c(list(object), dots[modp])
         nobs.vec <- vapply(mods, nobs, 1L)
-        if (var(nobs.vec) > 0) 
+        if (var(nobs.vec) > 0)
             stop("models were not all fitted to the same size of dataset")
-        if (is.null(mNms <- model.names)) 
-            mNms <- vapply(as.list(mCall)[c(FALSE, TRUE, modp)], 
+        if (is.null(mNms <- model.names))
+            mNms <- vapply(as.list(mCall)[c(FALSE, TRUE, modp)],
                            safeDeparse, "")
         if (any(duplicated(mNms))) {
             warning("failed to find unique model names, assigning generic names")
             mNms <- paste0("MODEL", seq_along(mNms))
         }
-        if (length(mNms) != length(mods)) 
+        if (length(mNms) != length(mods))
             stop("model names vector and model list have different lengths")
         names(mods) <- sub("@env$", "", mNms)
         llks <- lapply(mods, logLik)
-        ii <- order(Df <- vapply(llks, attr, FUN.VALUE = numeric(1), 
+        ii <- order(Df <- vapply(llks, attr, FUN.VALUE = numeric(1),
             "df"))
         mods <- mods[ii]
         llks <- llks[ii]
         Df <- Df[ii]
         calls <- lapply(mods, getCall)
         data <- lapply(calls, `[[`, "data")
-        if (!all(vapply(data, identical, NA, data[[1]]))) 
+        if (!all(vapply(data, identical, NA, data[[1]])))
             stop("all models must be fit to the same data object")
         header <- paste("Data:", abbrDeparse(data[[1]]))
         subset <- lapply(calls, `[[`, "subset")
-        if (!all(vapply(subset, identical, NA, subset[[1]]))) 
+        if (!all(vapply(subset, identical, NA, subset[[1]])))
             stop("all models must use the same subset")
-        if (!is.null(subset[[1]])) 
+        if (!is.null(subset[[1]]))
             header <- c(header, paste("Subset:", abbrDeparse(subset[[1]])))
         llk <- unlist(llks)
         chisq <- 2 * pmax(0, c(NA, diff(llk)))
         dfChisq <- c(NA, diff(Df))
-        val <- data.frame(Df = Df, AIC = .sapply(llks, AIC), 
-            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 * 
-                llk, Chisq = chisq, `Chi Df` = dfChisq, `Pr(>Chisq)` = pchisq(chisq, 
-                dfChisq, lower.tail = FALSE), row.names = names(mods), 
+        val <- data.frame(Df = Df, AIC = .sapply(llks, AIC),
+            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 *
+                llk, Chisq = chisq, `Chi Df` = dfChisq, `Pr(>Chisq)` = pchisq(chisq,
+                dfChisq, lower.tail = FALSE), row.names = names(mods),
             check.names = FALSE)
         class(val) <- c("anova", class(val))
         forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
         ziforms <- lapply(lapply(calls, `[[`, "ziformula"), deparse)
         dispforms <- lapply(lapply(calls, `[[`, "dispformula"), deparse)
         #FIXME only output nontrivial ziforms and dispforms
-        structure(val, heading = c(header, "Models:", 
+        structure(val, heading = c(header, "Models:",
             paste(paste(paste(rep(names(mods), times = lengths(forms)), unlist(forms), sep = ": "),
                 unlist(ziforms), sep=", zi="),
                 unlist(dispforms), sep=", disp=")))
@@ -936,21 +938,21 @@ fitted.glmmTMB <- function(object, ...) {
     predict(object,type="response")
 }
 
-.noSimFamilies <- c("genpois")
+.noSimFamilies <- NULL
 
 noSim <- function(x) {
     !is.na(match(x, .noSimFamilies))
 }
 
 ##' Simulate from a glmmTMB fitted model
-##' @method simulate glmmTMB 
+##' @method simulate glmmTMB
 ##' @param object glmmTMB fitted model
 ##' @param nsim number of response lists to simulate. Defaults to 1.
 ##' @param seed random number seed
-##' @param ... extra arguments 
-##' @details Random effects are also simulated from their estimated distribution. 
-##' Currently, it is not possible to condition on estimated random effects.  
-##' @return returns a list of vectors. The list has length \code{nsim}. 
+##' @param ... extra arguments
+##' @details Random effects are also simulated from their estimated distribution.
+##' Currently, it is not possible to condition on estimated random effects.
+##' @return returns a list of vectors. The list has length \code{nsim}.
 ##' Each simulated vector of observations is the same size as the vector of response variables in the original data set.
 ##' In the binomial family case each simulation is a two-column matrix with success/failure.
 ##' @importFrom stats simulate
@@ -960,7 +962,17 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     {
     	stop("Simulation code has not been implemented for this family")
     }
-    if(!is.null(seed)) set.seed(seed)
+    ## copied from stats::simulate.lm
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) 
+        runif(1)
+    if (is.null(seed)) 
+        RNGstate <- get(".Random.seed", envir = .GlobalEnv)
+    else {
+        R.seed <- get(".Random.seed", envir = .GlobalEnv)
+        set.seed(seed)
+        RNGstate <- structure(seed, kind = as.list(RNGkind()))
+        on.exit(assign(".Random.seed", R.seed, envir = .GlobalEnv))
+    }
     family <- object$modelInfo$family$family
     ret <- replicate(nsim,
                      object$obj$simulate(par = object$fit$parfull)$yobs,
@@ -968,9 +980,13 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     if ( binomialType(family) ) {
         size <- object$obj$env$data$size
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
+        class(ret) <- "data.frame"
+        rownames(ret) <- as.character(seq_len(nrow(ret[[1]])))
+    } else {
+        ret <- as.data.frame(ret)
     }
-    names(ret) <- paste("sim", seq_len(nsim), sep="_")
-    ret <- as.data.frame(ret)
+    names(ret) <- paste0("sim_", seq_len(nsim))
+    attr(ret, "seed") <- RNGstate
     ret
 }
 
@@ -1002,10 +1018,10 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
 
 #' @export
 
-model.matrix.glmmTMB <- function (object, ...) 
+model.matrix.glmmTMB <- function (object, ...)
 {
     ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
-    ## if (n_match <- match("x", names(object), 0L)) 
+    ## if (n_match <- match("x", names(object), 0L))
     ##    object[[n_match]]
     ## else {
     ## data <- model.frame(object, xlev = object$xlevels, ...)
@@ -1040,5 +1056,76 @@ as.data.frame.ranef.glmmTMB <- function(x,
     neworder <- c("component","grpvar","term","grp","condval")
     if ("condsd" %in% names(xD)) neworder <- c(neworder,"condsd")
     return(xD[neworder])
+}
+
+#' @rdname bootmer_methods
+#' @title support methods for parametric bootstrapping
+#' @param object a fitted glmmTMB object
+#' @param newresp a new response vector
+#' @export
+#' @importFrom lme4 isLMM
+#' @description see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
+isLMM.glmmTMB <- function(object) {
+   fam <- family(object)
+   fam$family=="gaussian" && fam$link=="identity"
+}
+
+#' @export
+
+#' @rdname bootmer_methods
+#' @importFrom stats formula
+#' @param ... additional arguments (for generic consistency; ignored)
+#' @examples
+#' if (requireNamespace("lme4")) {
+#' \dontrun{
+#'    fm1 <- glmmTMB(count~mined+(1|spp),
+#'                   ziformula=~mined,
+#'                   data=Salamanders,
+#'                   family=nbinom1)
+#'    b1 <- lme4::bootMer(fm1, FUN=function(x) fixef(x)$zi, nsim=20, .progress="txt")
+#'    if (requireNamespace("boot")) {
+#'       boot.ci(b1,type="perc")
+#'     }
+#' }
+#' }
+#' @details 
+#' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
+#' 
+refit.glmmTMB <- function(object, newresp, ...) {
+  cc <- getCall(object)
+  newdata <- eval(cc$data)
+  if (is.null(newdata)) stop("can't locate original 'data' value")
+  fresp <- formula(object)[[2]]
+  mf0 <- model.frame(object)
+  rcol <- attr(attr(mf0, "terms"), "response")
+  rnm <- deparse(fresp)
+  if (binomialType(family(object)$family)) {
+      ## FIXME: check for factor column?
+      if ("(weights)" %in% names(mf0)) {
+          if (!rnm %in% names(newdata)) stop("can't find response in data")
+          w <- rowSums(newresp)
+          newdata[[rnm]] <- newresp[,1]/w
+          newdata[["(weights)"]] <- w
+      } else if (is.matrix(mf0[[rnm]])) {
+          if (is.symbol(fresp)) {
+              if (!rnm %in% names(newdata)) stop("can't find response in data")
+              newdata[[rnm]] <- newresp
+          }
+          ## matrix response
+          else if (identical(quote(cbind),fresp[[1]])) {
+              rnm1 <- deparse(fresp[[2]])
+              rnm2 <- deparse(fresp[[3]])
+              if (!all(c(rnm1,rnm2) %in% names(newdata)))
+                  stop("can't find response in data")
+              newdata[[rnm1]] <- newresp[,1]
+              newdata[[rnm2]] <- newresp[,2]
+          } else {
+              stop("can't handle this data format, sorry ...")
+          }
+      }
+  } else newdata[[deparse(fresp)]] <- newresp
+      
+  cc$data <- quote(newdata)
+  return(eval(cc))
 }
 
