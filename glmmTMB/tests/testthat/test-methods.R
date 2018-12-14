@@ -316,11 +316,11 @@ context("refit")
 test_that("various binomial response types work", {
     ## FIXME: test for factors, explicit cbind(.,.)
     ## do we need to define this within this scope?
-    ## ddb <- data.frame(y=I(yb))
-    ## ddb <- within(ddb, {
-    ## w <- rowSums(yb)
-    ## prop <- y[,1]/w
-    ## })
+    ddb <<- data.frame(y=I(yb))
+    ddb <<- within(ddb, {
+        w <- rowSums(yb)
+        prop <- y[,1]/w
+    })
     s1 <- simulate(f1b, 1, seed=1)
     f1 <- fixef(lme4::refit(f1b,s1[[1]]))
     s3 <- simulate(f3b, 1, seed=1)
