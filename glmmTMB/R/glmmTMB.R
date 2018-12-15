@@ -731,11 +731,14 @@ glmmTMB <- function (
 }
 
 ##' Control parameters for glmmTMB optimization
-##' @param optCtrl Passed as argument \code{control} to \code{nlminb}.
-##' @param profile Logical; Experimental option to improve speed and
-##'                robustness when a model has many fixed effects
-##' @param collect Logical; Experimental option to improve speed by
-##'                recognizing duplicated observations.
+##' @param optCtrl   Passed as argument \code{control} to \code{nlminb}.
+##' @param profile   Logical; Experimental option to improve speed and
+##'                  robustness when a model has many fixed effects
+##' @param collect   Logical; Experimental option to improve speed by
+##'                  recognizing duplicated observations.
+##' @param parallel  Numeric; Setting number of OpenMP threads to evaluate
+##'                  the negative log-likelihood in parallel. Default: 1
+##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
 ##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
@@ -761,13 +764,21 @@ glmmTMB <- function (
 ##' @export
 glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
                            profile=FALSE,
-                           collect=FALSE) {
+                           collect=FALSE,
+                           parallel = 1) {
+    
+    ## Make sure that we specify at least one thread
+    if (is.na(parallel) | is.null(parallel) | parallel < 1) {
+      stop("Number of parallel threads must be a numeric >= 1")
+    }
+    parallel <- as.integer(parallel)
+  
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile, collect)
+    namedList(optCtrl, profile, collect, parallel)
 }
 
 ##' collapse duplicated observations
@@ -813,6 +824,9 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
+    
+    ## Assign OpenMP threads
+    TMB::openmp(n = control$parallel)
 
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
