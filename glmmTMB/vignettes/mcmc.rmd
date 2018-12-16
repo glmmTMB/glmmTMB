@@ -53,13 +53,13 @@ Run the chain:
 ```
 
 ```{r load_MCMC, echo=FALSE}
-load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
+L <- load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
 ```
 (running this chain takes `r round(t1["elapsed"],1)` seconds)
 
 Add more informative names and transform correlation parameter (see vignette on covariance structures and parameters):
 
-```{r}
+```{r add_names}
 colnames(m1) <- c(names(fixef(fm1)[[1]]),
                   "log(sigma)",
                   c("log(sd_Intercept)","log(sd_Days)","cor"))
