@@ -20,8 +20,8 @@ One commonly requested feature is to be able to run a *post hoc* Markov chain Mo
 ```{r knitr_setup, include=FALSE, message=FALSE}
 library(knitr)
 opts_chunk$set(echo = TRUE)
-mcscript <- system.file("vignette_data","mcmc.R",package="glmmTMB")
-read_chunk(mcscript)
+rc <- knitr::read_chunk
+rc(system.file("vignette_data","mcmc.R",package="glmmTMB"))
 ```
 
 Load packages:
