@@ -50,8 +50,11 @@ used internally for debugging?}
 prediction
 }
 \details{
-Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
+\itemize{
+\item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
 However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
+\item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
+}
 }
 \examples{
 data(sleepstudy,package="lme4")

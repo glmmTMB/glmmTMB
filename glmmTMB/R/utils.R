@@ -584,15 +584,25 @@ fix_predvars <- function(pv,tt) {
         ## convert two-sided to one-sided formula
         tt <- RHSForm(tt, as.form=TRUE)
     }
-    tt_vars <- all.vars(tt)
+    ## ugh, deparsing again ...
+    tt_vars <- vapply(attr(tt,"variables"),deparse,character(1))[-1]
+    ## remove terminal paren - e.g. match term poly(x, 2) to
+    ##   predvar poly(x, 2, <stuff>)
+    ## beginning of string, including open-paren, colon
+    ##  and *first* comma but not arg ... 
+    init_regexp <- "^([(:_.[:alnum:]]+).*"
+    tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())
-    ## maybe multiple variables per pv term ...
-    pv_vars <- lapply(pv[-1],all.vars)
+    ## maybe multiple variables per pv term ... [[-1]] ignores head
+    ## FIXME: test for really long predvar strings ????
+    pv_strings <- vapply(pv,deparse,FUN.VALUE=character(1),
+                         width.cutoff=500)[-1]
+    pv_strings <- gsub(init_regexp,"\\1",pv_strings)
     for (i in seq_along(tt_vars)) {
-        if (tt_vars[[i]] %in% unlist(pv_vars)) {
-            ## insert value from predvars
-            new_pv[[i+1]] <- pv[[match_which(tt_vars[[i]],pv_vars)+1]]
+        w <- match(tt_vars_short[[i]],pv_strings)
+        if (!is.na(w)) {
+            new_pv[[i+1]] <- pv[[w+1]]
         } else {
             ## insert symbol from term vars
             new_pv[[i+1]] <- as.symbol(tt_vars[[i]])

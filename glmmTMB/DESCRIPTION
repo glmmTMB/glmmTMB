@@ -1,16 +1,21 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
 Version: 0.2.3
-Authors@R: c(person("Arni","Magnusson",role="aut"),
+Authors@R: c(person("Arni","Magnusson",role="aut",
+	   	   comment=c(ORCID="0000-0003-2769-6741")),
 	    person("Hans","Skaug",role="aut"),
-	    person("Anders","Nielsen",role="aut"),
+	    person("Anders","Nielsen",role="aut",
+	    	    comment=c(ORCID="0000-0001-9683-9262")),
 	    person("Casper","Berg",role="aut"),
             person("Kasper","Kristensen",role="aut"),
-            person("Martin","Maechler",role="aut"),
+            person("Martin","Maechler",role="aut",
+	        comment=c(ORCID="0000-0002-8685-9910")),
             person("Koen","van Bentham",role="aut"),
-            person("Ben","Bolker",role="aut"),
+            person("Ben","Bolker",role="aut",
+	        comment=c(ORCID="0000-0002-2127-0443")),
             person("Mollie","Brooks",role=c("aut","cre"),
-                   email="mollieebrooks@gmail.com"))
+                   email="mollieebrooks@gmail.com",
+		   comment=c(ORCID="0000-0001-6963-8326")))
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
     likelihood estimation via 'TMB' (Template Model Builder). Random effects are
@@ -56,14 +61,4 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Author: Arni Magnusson [aut],
-    Hans Skaug [aut],
-    Anders Nielsen [aut],
-    Casper Berg [aut],
-    Kasper Kristensen [aut],
-    Martin Maechler [aut],
-    Koen van Bentham [aut],
-    Ben Bolker [aut],
-    Mollie Brooks [aut, cre]
-Maintainer: Mollie Brooks <mollieebrooks@gmail.com>
 Encoding: UTF-8
