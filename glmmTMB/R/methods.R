@@ -1093,7 +1093,7 @@ isLMM.glmmTMB <- function(object) {
 #' 
 refit.glmmTMB <- function(object, newresp, ...) {
   cc <- getCall(object)
-  newdata <- eval(cc$data)
+  newdata <- eval.parent(cc$data)
   if (is.null(newdata)) stop("can't locate original 'data' value")
   fresp <- formula(object)[[2]]
   mf0 <- model.frame(object)
