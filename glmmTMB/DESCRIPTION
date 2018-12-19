@@ -14,7 +14,7 @@ Authors@R: c(person("Arni","Magnusson",role="aut",
             person("Nafis","Sadat",role="ctb",
                 comment=c(ORCID="0000-0001-5715-616X")),
             person("Ben","Bolker",role="aut",
-	        comment=c(ORCID="0000-0002-2127-0443")),
+	           comment=c(ORCID="0000-0002-2127-0443")),
             person("Mollie","Brooks",role=c("aut","cre"),
                    email="mollieebrooks@gmail.com",
 		   comment=c(ORCID="0000-0001-6963-8326")))
