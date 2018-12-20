@@ -71,7 +71,7 @@ profile.glmmTMB <- function(fitted,
     pnames <- names(sds) <- rownames(vv)
     intnames <- names(fitted$obj$env$last.par)
     random <- fitted$obj$env$random
-    intnames <- intnames[-random]
+    intnames <- intnames[setdiff(seq_len(length(intnames)),random)]
 
     ## get pars: need to match up names with internal positions
     if (is.null(parm)) parm <-  seq_along(sds)

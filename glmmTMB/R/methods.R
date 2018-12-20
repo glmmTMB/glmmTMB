@@ -726,7 +726,25 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                  dimnames=list(NULL,
                                c(pct, "Estimate")
                                [c(TRUE, TRUE, estimate)] ))
-    if (tolower(method)=="wald") {
+    pnm <- names(object$obj$par)
+    pvec <- seq_along(pnm)
+    if (!missing(parm)) {
+            ## FIXME: DRY/refactor with confint.profile
+            ## FIXME: beta_ not well defined; sigma parameters not
+            ## distinguishable (all called "sigma")
+            ## for non-trivial dispersion model
+            theta_parms <- which(pnm=="theta")
+            ## if non-trivial disp, keep disp parms for "beta_"
+            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
+            if (identical(parm,"theta_")) {
+                parm <- theta_parms
+            } else if (identical(parm,"beta_")) {
+                parm <- seq(nrow(ci))[setdiff(pvec,c(theta_parms,disp_parms))]
+            }
+    } else {
+        parm <- pvec
+    }
+    if (method=="wald") {
         for (component in c("cond", "zi") ) {
             if (components.has(component)) {
                 cf <- unlist(fixef(object)[component])
@@ -738,14 +756,23 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                 ci <- rbind(ci, ci.tmp)
                 ## VarCorr -> stddev
                 reduce <- function(VC) sapply(VC[[component]],
-                                              function(x)attr(x, "stddev"))
+                                              function(x) {
+                                           ss <- attr(x, "stddev")
+                                           names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
+                                           cc <- attr(x,"correlation")
+                                           nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                                           cc <- cc[lower.tri(cc)]
+                                           nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                                           names(cc) <- nn
+                                           c(ss,cc)
+                                            })
                 ci.sd <- .CI_univariate_monotone(object,
                                                  VarCorr,
                                                  reduce = reduce,
                                                  level = level,
-                                                 name.prepend=paste(component,
-                                                                    "Std.Dev.",
-                                                                    sep="."),
+                                                 ## name.prepend=paste(component,
+                                                 ## "Std.Dev.",
+                                                 ## sep="."),
                                                  estimate = estimate)
                 ci <- rbind(ci, ci.sd)
             }
@@ -771,31 +798,14 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                                     name.prepend="Tweedie.power",
                                                     estimate = estimate)
                 ci <- rbind(ci, ci.power)
-            }
-        }
+            } ## tweedie
+        }  ## model has 'other' component
         ## Take subset
-        if (!missing(parm)) {
-            ## FIXME: DRY/refactor with confint.profile
-            ## FIXME: beta_ not well defined; sigma parameters not
-            ## distinguishable (all called "sigma")
-            ## for non-trivial dispersion model
-            theta_parms <- grep("\\.(Std\\.Dev|Cor)\\.",rownames(ci))
-            ## if non-trivial disp, keep disp parms for "beta_"
-            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
-            if (identical(parm,"theta_")) {
-                parm <- theta_parms
-            } else if (identical(parm,"beta_")) {
-                parm <- seq(nrow(ci))[-c(theta_parms,disp_parms)]
-            }
-            ci <- ci[parm, , drop=FALSE]
-        }
+        ci <- ci[parm, , drop=FALSE]
         ## end Wald method
-    } else if (tolower(method=="uniroot")) {
+    } else if (method=="uniroot") {
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
-        if (missing(parm)) {
-            parm <- seq_along(names(object$obj$par))
-        }
         plist <- parallel_default(parallel,ncpus)
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
