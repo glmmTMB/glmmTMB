@@ -687,9 +687,7 @@ format.perc <- function (probs, digits) {
 ##'     dispformula= ~I(Days>8))
 ##' confint(model)  ## Wald/delta-method CIs
 ##' confint(model,parm="theta_")  ## Wald/delta-method CIs
-##' \dontrun{
 ##' confint(model,parm=1,method="profile")
-##' }
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
                                       "Wald",
@@ -755,17 +753,20 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                 if (estimate) ci.tmp <- cbind(ci.tmp, cf)
                 ci <- rbind(ci, ci.tmp)
                 ## VarCorr -> stddev
-                reduce <- function(VC) sapply(VC[[component]],
-                                              function(x) {
-                                           ss <- attr(x, "stddev")
-                                           names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
-                                           cc <- attr(x,"correlation")
-                                           nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
-                                           cc <- cc[lower.tri(cc)]
-                                           nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
-                                           names(cc) <- nn
-                                           c(ss,cc)
-                                            })
+                cfun <- function(x) {
+                    ss <- attr(x, "stddev")
+                    names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
+                    cc <- attr(x,"correlation")
+                    if (length(cc)>1) {
+                        nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                        cc <- cc[lower.tri(cc)]
+                        nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                        names(cc) <- nn
+                        ss <- c(ss,cc)
+                    }
+                    return(ss)
+                }
+                reduce <- function(VC) sapply(VC[[component]], cfun)
                 ci.sd <- .CI_univariate_monotone(object,
                                                  VarCorr,
                                                  reduce = reduce,
