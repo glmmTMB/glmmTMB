@@ -679,7 +679,7 @@ format.perc <- function (probs, digits) {
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
 ##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
-##' \code{\link{tmbroot}}
+##' \code{\link[TMB]{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' model <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy)
@@ -800,7 +800,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
         FUN <- function(n) {
-            tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
+            TMB::tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
                     ...)
         }
         if (do_parallel) {
@@ -1093,7 +1093,7 @@ isLMM.glmmTMB <- function(object) {
 #' 
 refit.glmmTMB <- function(object, newresp, ...) {
   cc <- getCall(object)
-  newdata <- eval(cc$data)
+  newdata <- eval.parent(cc$data)
   if (is.null(newdata)) stop("can't locate original 'data' value")
   fresp <- formula(object)[[2]]
   mf0 <- model.frame(object)

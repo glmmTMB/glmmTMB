@@ -313,11 +313,12 @@ test_that("ranef(.) works with more than one grouping factor",
 
 context("refit")
 
+## weird stuff here with environments, testing ...
 test_that("various binomial response types work", {
     ## FIXME: test for factors, explicit cbind(.,.)
     ## do we need to define this within this scope?
-    ddb <<- data.frame(y=I(yb))
-    ddb <<- within(ddb, {
+    ddb <- data.frame(y=I(yb))
+    ddb <- within(ddb, {
         w <- rowSums(yb)
         prop <- y[,1]/w
     })
@@ -328,4 +329,12 @@ test_that("various binomial response types work", {
     expect_equal(f1,f3)
     expect_error(lme4::refit(f4b,s3[[1]]),
                   "can't find response in data")
+})
+
+test_that("binomial response types work with data in external scope", {
+    s1 <- simulate(f1b, 1, seed=1)
+    f1 <- fixef(lme4::refit(f1b,s1[[1]]))
+    s3 <- simulate(f3b, 1, seed=1)
+    f3 <- fixef(lme4::refit(f3b,s3[[1]]))
+    expect_equal(f1,f3)
 })
