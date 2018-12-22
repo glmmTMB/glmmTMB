@@ -43,3 +43,37 @@ test_that("profile method", {
 
     expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ) )
 })
+
+
+
+
+test_that("parallel regions", {
+
+
+  myfit <- function(...) {
+    glmmTMB(count ~ mined * spp + (1|site),
+            family = poisson,
+            data = Salamanders,
+            verbose = T,
+            control = glmmTMBControl(...))
+  }
+
+  # Record time and model
+  capture_time_model <- function(...) {
+    start_time <- Sys.time()
+    model <- myfit(...)
+    end_time <- Sys.time()
+    return(list(model = model,
+                elapsed_time = end_time - start_time  ))
+  }
+
+
+  m1 <- capture_time_model( parallel = 1 )
+  m2 <- capture_time_model( parallel = 5  )
+
+  expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ) )
+
+  expect_true( m1[[2]] <= m2[[2]])
+
+
+})
