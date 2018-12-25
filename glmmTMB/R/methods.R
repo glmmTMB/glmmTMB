@@ -1075,6 +1075,8 @@ as.data.frame.ranef.glmmTMB <- function(x,
 #' @param newresp a new response vector
 #' @export
 #' @importFrom lme4 isLMM
+#' @importFrom lme4 refit
+## don't export refit ...
 #' @description see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
 isLMM.glmmTMB <- function(object) {
    fam <- family(object)
@@ -1140,3 +1142,62 @@ refit.glmmTMB <- function(object, newresp, ...) {
   return(eval(cc))
 }
 
+
+## copied from lme4, with addition of 'component' argument
+## FIXME: migrate back to lme4? component is NULL for back-compat.
+## FIXME:
+## coef() method for all kinds of "mer", "*merMod", ... objects
+## ------  should work with fixef() + ranef()  alone
+coefMer <- function(object, component=NULL, ...)
+{
+    if (length(list(...)))
+        warning('arguments named "', paste(names(list(...)), collapse = ", "),
+                '" ignored')
+    fef <- fixef(object)
+    if (!is.null(component)) fef <- fef[[component]]
+    fef <- data.frame(rbind(fef), check.names = FALSE)
+    ref <- ranef(object)
+    if (!is.null(component)) ref <- ref[[component]]
+    ## check for variables in RE but missing from FE, fill in zeros in FE accordingly
+    refnames <- unlist(lapply(ref,colnames))
+    nmiss <- length(missnames <- setdiff(refnames,names(fef)))
+    if (nmiss > 0) {
+        fillvars <- setNames(data.frame(rbind(rep(0,nmiss))),missnames)
+        fef <- cbind(fillvars,fef)
+    }
+    val <- lapply(ref, function(x)
+                  fef[rep.int(1L, nrow(x)),,drop = FALSE])
+    for (i in seq(a = val)) {
+        refi <- ref[[i]]
+        row.names(val[[i]]) <- row.names(refi)
+        nmsi <- colnames(refi)
+        if (!all(nmsi %in% names(fef)))
+            stop("unable to align random and fixed effects")
+        for (nm in nmsi) val[[i]][[nm]] <- val[[i]][[nm]] + refi[,nm]
+    }
+    class(val) <- "coef.mer"
+    val
+} ##  {coefMer}
+
+#' @export
+coef.glmmTMB <- function(object,
+                         component=c("all","cond","zi"),
+                         condVar=FALSE, ...) {
+    ## FIXME: should return list of coef() for all
+    components <- match.arg(component, several.ok = TRUE)
+    components.has <- function(x)
+        any(match(c(x, "all"), components, nomatch=0L)) > 0L
+    res <- list()
+    for (component in c("cond", "zi") ) {
+        if (components.has(component)) {
+            res[[component]] <- coefMer(object, component=component, ...)
+        }
+    }
+    if (condVar) {
+        stop("condVar not (yet) available for coefficients")
+        sdr <- TMB::sdreport(object$obj, getJointPrecision=TRUE)
+        v <- solve(sdr$jointPrecision)
+        ## sort out variance calculation, using Z and X
+    }
+    return(res)
+}

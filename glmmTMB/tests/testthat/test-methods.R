@@ -330,6 +330,18 @@ test_that("ranef(.) works with more than one grouping factor",
     expect_equal(dim(as.data.frame(ranef(fmP))), c(40,6))
 })
 
+test_that("coef(.) works", {
+          cc <- coef(fm3ZIP)
+          expect_equal(cc[["cond"]][[1]][1,],
+                       structure(list(`(Intercept)` = 5.54291514202372,
+                                      Days = 0.0613847280572168),
+                                 row.names = "308", class = "data.frame"),
+                       tolerance=1e-5)
+          expect_equal(cc[["zi"]][[1]][1,,drop=FALSE],
+                       structure(list(`(Intercept)` = -13.2478200379555), row.names = "308", class = "data.frame"),
+                       tolerance=1e-5)
+})
+
 context("refit")
 
 ## weird stuff here with environments, testing ...
