@@ -180,7 +180,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   }
 
   pl <- getParList(object)  ## see VarCorr.R
-  if (condVar)  {
+  if (condVar && has.random(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
                   bzi=ss[rownames(ss)=="bzi","Std. Error"])
