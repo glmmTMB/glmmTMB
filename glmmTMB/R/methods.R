@@ -85,6 +85,11 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' \code{\link{ranef.merMod}} for details (the only difference between
 ##' the packages is that the attributes are called \sQuote{"postVar"}
 ##' in \pkg{lme4}, vs. \sQuote{"condVar"} in \pkg{glmmTMB}.
+##' \item For \code{coef.glmmTMB}: a similar list, but containing
+##' the overall coefficient value for each level (i.e., the sum of
+##' the fixed effect estimate and the random effect value for that
+##' level). \emph{Conditional variances are not yet available as
+##' an option for \code{coef.glmmTMB}.}
 ##' \item For \code{as.data.frame}: a data frame with components
 ##' \describe{
 ##' \item{component}{part of the model to which the random effects apply (conditional or zero-inflation)}
@@ -96,12 +101,12 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' }
 ##' }
 ##' 
-##' 
-##' 
-##' @note When a model has no zero inflation, the default behavior of
-##'   \code{ranef} is to simplify the printed format of the random effects. To
-##'   show the full list structure, run \code{print(ranef(model),
-##'   simplify=FALSE)}. In all cases, the full list structure is used to access
+##' @note When a model has no zero inflation, the
+##'   the \code{ranef} and \code{coef} print methods simplify the
+##'   structure shown, by default. To show the full list structure, use
+##'   \code{print(ranef(model),simplify=FALSE)} (or the analogous
+##' code for \code{coef}).
+##' In all cases, the full list structure is used to access
 ##'   the data frames (see example).
 ##'
 ##' @seealso \code{\link{fixef.glmmTMB}}.
@@ -173,11 +178,11 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
       })      
       names(x) <- names(fl)
       return(x)
-    }
+    } ## if !is.null(cnms)
     else {
       list()
     }
-  }
+  } ## arrange()
 
   pl <- getParList(object)  ## see VarCorr.R
   if (condVar && has.random(object))  {
@@ -199,6 +204,9 @@ print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
     invisible(x)
 }
 
+##' @method print coef.glmmTMB
+##' @export
+print.coef.glmmTMB <- print.ranef.glmmTMB
 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##'
@@ -1179,25 +1187,27 @@ coefMer <- function(object, component=NULL, ...)
     val
 } ##  {coefMer}
 
+#' @rdname ranef.glmmTMB
 #' @export
 coef.glmmTMB <- function(object,
-                         component=c("all","cond","zi"),
                          condVar=FALSE, ...) {
-    ## FIXME: should return list of coef() for all
-    components <- match.arg(component, several.ok = TRUE)
-    components.has <- function(x)
-        any(match(c(x, "all"), components, nomatch=0L)) > 0L
-    res <- list()
-    for (component in c("cond", "zi") ) {
-        if (components.has(component)) {
-            res[[component]] <- coefMer(object, component=component, ...)
-        }
+    model.has.component <- function(x) {
+        !is.null(object$modelInfo$reTrms[[x]]$cnms)
     }
+    get.coef <- function(x) {
+        if (!model.has.component(x)) return(list())
+        return(coefMer(object, component=x))
+    }
+    res <- list(
+        cond = get.coef("cond"),
+        zi = get.coef("zi")
+    )
     if (condVar) {
         stop("condVar not (yet) available for coefficients")
         sdr <- TMB::sdreport(object$obj, getJointPrecision=TRUE)
         v <- solve(sdr$jointPrecision)
-        ## sort out variance calculation, using Z and X
+        ## FIXME:: sort out variance calculation, using Z and X
     }
+    class(res) <- "coef.glmmTMB"
     return(res)
 }

@@ -342,6 +342,13 @@ test_that("coef(.) works", {
                        tolerance=1e-5)
 })
 
+test_that("simplified coef(.) printing", {
+    op <- options(digits=2)
+    cc <- capture.output(print(coef(fm0)))          
+    expect_equal(cc[1:3],c("$Subject", "    Days (Intercept)", "308 20.6         249"))
+    options(op)
+})
+
 context("refit")
 
 ## weird stuff here with environments, testing ...
