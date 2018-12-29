@@ -9,7 +9,11 @@
     \itemize{
       \item \code{ranef} now returns information about conditional variances (as
       attributes of the individual random effects terms) by default;
-      this information can easily be retrieved by \code{as.data.frame(ranef(.))}.
+      this information can easily be retrieved by
+      \code{as.data.frame(ranef(.))}.
+      \item \code{coef} method now available: as in \code{lme4}, returns
+      sum of fixed + random effects for each random-effects
+      level. (Conditional variances for \code{coef} \emph{not} yet available.)
       \item simulate works for models with genpois family
       \item parametric bootstrapping should work, using
       \code{\link[lme4]{bootMer}} from the \code{lme4} package as a front end.
