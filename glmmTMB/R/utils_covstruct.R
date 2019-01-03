@@ -32,7 +32,7 @@
 ##' @export
 numFactor <- function(x, ...) {
     y <- data.frame(x, ...)
-    if( !all( sapply(y, is.numeric) ||
+    if( !all( sapply(y, is.numeric) |
               sapply(y, is.factor)) )
         stop("All arguments to 'numFactor' must be numeric or factor.")
     asChar <- function(y) {
