@@ -6,10 +6,13 @@ vignette: >
   %\VignetteIndexEntry{troubleshooting}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
 ---
 
 ```{r load_lib,echo=FALSE}
 library(glmmTMB)
+knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
 ```
 
 This vignette covers common problems that occur while using `glmmTMB`. 
