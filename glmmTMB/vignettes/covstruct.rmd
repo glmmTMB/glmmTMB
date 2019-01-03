@@ -7,6 +7,8 @@ vignette: >
   %\VignetteIndexEntry{random effect structures}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
@@ -15,7 +17,7 @@ library(glmmTMB)
 library(MASS)  ## for mvrnorm()
 library(TMB) ## for tmbprofile()
 ## devtools::install_github("kaskr/adcomp/TMB")  ## get development version
-knitr::opts_chunk$set(echo = TRUE, eval=TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval=if (isTRUE(exists("params"))) params$EVAL else FALSE)
 ## turned off caching for now: got error in chunk 'fit.us.2'
 ## Error in retape() : 
 ##   Error when reading the variable: 'thetaf'. Please check data and parameters.
@@ -75,7 +77,7 @@ The following R-code draws a simulation based on these parameter
 values.  For illustration purposes we consider a very short time
 series.
 
-```{r sim1}
+```{r sim1, eval=TRUE}
 n <- 6                                              ## Number of time points
 x <- mvrnorm(mu = rep(0,n),
              Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process using the MASS package
@@ -128,7 +130,7 @@ $e^{-\theta}$ (First off-diagonal of "Corr") in the output:
 
 > FIXME: Try a longer time series when the print.VarCorr is fixed.
 
-```{r ar0fit,echo=FALSE, eval=TRUE}
+```{r ar0fit,echo=FALSE}
 glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 ```
 
