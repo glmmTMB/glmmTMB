@@ -24,6 +24,7 @@
       \item models with multiple types of RE (e.g. ar1 and us) 
       may have failed previously (GH #329)
       \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
+      \item \code{profile} now works for models without random effects
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
