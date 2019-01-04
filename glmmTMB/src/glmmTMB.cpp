@@ -1,5 +1,7 @@
 #include <TMB.hpp>
 #include "init.h"
+#include <omp.h>
+
 
 namespace glmmtmb{
   template<class Type>
