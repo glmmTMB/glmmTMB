@@ -574,6 +574,10 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
+  // Set max number of OpenMP threads to help us optimize faster
+  max_parallel_regions = omp_get_max_threads();	
+
+
   DATA_MATRIX(X);
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
