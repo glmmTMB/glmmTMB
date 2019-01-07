@@ -610,3 +610,8 @@ fix_predvars <- function(pv,tt) {
     }
     return(new_pv)
 }
+
+has.random <- function(x) {
+    pl <- getParList(x)
+    return(length(unlist(pl[grep("^theta",names(pl))]))>0)
+}

@@ -4,12 +4,15 @@
 \alias{ranef.glmmTMB}
 \alias{ranef}
 \alias{as.data.frame.ranef.glmmTMB}
+\alias{coef.glmmTMB}
 \title{Extract Random Effects}
 \usage{
 \method{ranef}{glmmTMB}(object, condVar = TRUE, ...)
 
 \method{as.data.frame}{ranef.glmmTMB}(x, ...,
   stringsAsFactors = default.stringsAsFactors())
+
+\method{coef}{glmmTMB}(object, condVar = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} model.}
@@ -40,6 +43,11 @@ These are in the form of three-dimensional arrays: see
 \code{\link{ranef.merMod}} for details (the only difference between
 the packages is that the attributes are called \sQuote{"postVar"}
 in \pkg{lme4}, vs. \sQuote{"condVar"} in \pkg{glmmTMB}.
+\item For \code{coef.glmmTMB}: a similar list, but containing
+the overall coefficient value for each level (i.e., the sum of
+the fixed effect estimate and the random effect value for that
+level). \emph{Conditional variances are not yet available as
+an option for \code{coef.glmmTMB}.}
 \item For \code{as.data.frame}: a data frame with components
 \describe{
 \item{component}{part of the model to which the random effects apply (conditional or zero-inflation)}
@@ -56,10 +64,12 @@ Generic function to extract random effects from \code{glmmTMB} models, both
 for the conditional model and zero inflation.
 }
 \note{
-When a model has no zero inflation, the default behavior of
-  \code{ranef} is to simplify the printed format of the random effects. To
-  show the full list structure, run \code{print(ranef(model),
-  simplify=FALSE)}. In all cases, the full list structure is used to access
+When a model has no zero inflation, the
+  the \code{ranef} and \code{coef} print methods simplify the
+  structure shown, by default. To show the full list structure, use
+  \code{print(ranef(model),simplify=FALSE)} (or the analogous
+code for \code{coef}).
+In all cases, the full list structure is used to access
   the data frames (see example).
 }
 \examples{

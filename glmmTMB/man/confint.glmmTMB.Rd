@@ -33,7 +33,7 @@ function)}
 \item{cl}{cluster to use for parallel computation}
 
 \item{...}{arguments may be passed to \code{\link{profile.merMod}} or
-\code{\link{tmbroot}}}
+\code{\link[TMB]{tmbroot}}}
 }
 \description{
 Calculate confidence intervals
@@ -63,7 +63,5 @@ model2 <- glmmTMB(Reaction ~ Days + (1|Subject), sleepstudy,
     dispformula= ~I(Days>8))
 confint(model)  ## Wald/delta-method CIs
 confint(model,parm="theta_")  ## Wald/delta-method CIs
-\dontrun{
 confint(model,parm=1,method="profile")
-}
 }
