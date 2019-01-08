@@ -82,6 +82,7 @@ check: $(TARBALL)
 	$(R) CMD check $(TARBALL)
 
 check-cran: $(TARBALL)
+	export R_S3_METHOD_LOOKUP_BASEENV_AFTER_GLOBALENV=TRUE
 	$(R) CMD check --as-cran $(TARBALL)
 
 ## *NOT* using 'R --vanilla' : then cannot find testthat, TMB, etc they are installed into R's "system" library

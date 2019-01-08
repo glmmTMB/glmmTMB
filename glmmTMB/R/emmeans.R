@@ -60,7 +60,11 @@
 ## }
 
 #' @importFrom stats delete.response
-#' @export recover_data.glmmTMB
+#' @rawNamespace if(getRversion() >= "3.6.0") {
+#'   S3method(emmeans::recover_data, glmmTMB)
+#' } else {
+#'   export(recover_data.glmmTMB)
+#' }
 recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
     if (!requireNamespace("emmeans"))
@@ -93,7 +97,11 @@ recover_data.glmmTMB <- function(object, ...) {
 #' @aliases downstream_methods
 #' @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
 
-#' @export emm_basis.glmmTMB
+#' @rawNamespace if(getRversion() >= "3.6.0") {
+#'   S3method(emmeans::emm_basis, glmmTMB)
+#' } else {
+#'   export(emm_basis.glmmTMB)
+#' }
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
     if (component != "cond") warning("only tested for conditional component")
     V <- as.matrix(vcov(object)[[component]])

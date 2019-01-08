@@ -44,7 +44,12 @@ has.intercept.glmmTMB <- function (model, component="cond", ...) {
 }
 
 ##' @rdname downstream_methods
-##' @export Anova.glmmTMB
+##' @rawNamespace if(getRversion() >= "3.6.0") {
+##'      S3method(car::Anova, glmmTMB)
+##' } else {
+##'   export(Anova.glmmTMB)
+##' }
+
 ##' @param vcov. variance-covariance matrix (usually extracted automatically)
 ##' @param test.statistic unused: only valid choice is "Chisq" (i.e., Wald chi-squared test)
 ##' @param singular.ok OK to do ANOVA with singular models (unused) ?
