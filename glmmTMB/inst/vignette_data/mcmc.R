@@ -85,13 +85,39 @@ t1 <- system.time(m1 <- run_MCMC(start=rawcoef,
 library(tmbstan)
 t2 <- system.time(m2 <- tmbstan(fm1$obj))
 
+## @knitr stanhacks
+
+## functions to reduce the size of stored Stan-type objects
+hack_size <- function(x, ...) {
+    UseMethod("hack_size")
+}
+
+hack_size.stanfit <- function(x) {
+    x@stanmodel <- structure(numeric(0), class="stanmodel")
+    x@.MISC <- new.env()
+    return(x)
+}
+
+hack_size.brmsfit <- function(x) {
+    x$fit <- hack_size(x$fit)
+    return(x)
+}
+
+hack_size.stanreg <- function(x) {
+    x$stanfit <- hack_size(x$stanfit)
+    return(x)
+}
+m2 <- hack_size(m2)
+
 ## @knitr tmbstan_traceplot
 
 png("tmbstan_traceplot.png")
-rstan::traceplot(m2,pars=c("beta","betad","theta"))
+rstan::traceplot(m2, pars=c("beta","betad","theta"))
 dev.off()
 
 ## @knitr save_all
 
 ## use version=2 to allow compatibility pre-3.5.0
-save("m1","m2","t1","t2", file="mcmc.rda", version=2)
+## DON'T save m2; even with size-hacking, not small enough.
+## since PNG file is saved, we don't really need it
+save("m1","t1","t2", file="mcmc.rda", version=2)
