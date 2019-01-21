@@ -732,7 +732,11 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                  dimnames=list(NULL,
                                c(pct, "Estimate")
                                [c(TRUE, TRUE, estimate)] ))
-    pnm <- names(object$obj$par)
+    if (is.null(REML <- object$modelInfo$REML) || !REML) {
+        pnm <- names(object$obj$par)
+    } else {
+        pnm <- names(object$fit$parfull)
+    }
     pvec <- seq_along(pnm)
     if (!missing(parm)) {
             ## FIXME: DRY/refactor with confint.profile
