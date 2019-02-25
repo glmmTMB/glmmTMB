@@ -40,7 +40,7 @@ Suggests:
     testthat,
     MASS,
     lattice,
-    ggplot2,
+    ggplot2 (>= 2.2.1),
     mlmRev,
     bbmle (>= 1.0.19),
     pscl,
