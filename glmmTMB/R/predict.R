@@ -215,7 +215,18 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## Check that the model specification is unchanged:
   assertIdenticalModels(TMBStruc$data.tmb,
                         object$obj$env$data, allow.new.levels)
-
+                        
+  ## Check that the neccessary predictor variables are finite (not NA nor NaN)
+  if(se.fit) {
+    with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
+                             any(!is.finite(Z@x)) |
+                             any(!is.finite(Xzi)) |
+                             any(!is.finite(Zzi@x)) |
+                             any(!is.finite(Xd))
+    ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
+           This is currently incompatible with se.fit=TRUE."))
+  }
+  
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
