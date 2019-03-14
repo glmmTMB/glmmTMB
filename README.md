@@ -10,9 +10,9 @@
 
 ## Where to ask questions
 
-- `r-sig-mixed-models@r-project.org` for general questions about `glmmTMB` usage and mixed models
-- https://github.com/glmmTMB/glmmTMB/issues for bug, infelicity, and wishlist reporting
-- https://groups.google.com/forum/#!forum/tmb-users for TMB-specific questions
+- the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) for general questions about `glmmTMB` usage and mixed models
+- the [glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues) for bug, infelicity, and wishlist reporting
+- the [TMB users forum](https://groups.google.com/forum/#!forum/tmb-users) for TMB-specific questions
 - maintainer e-mail only for urgent/private communications
 
 ## Installation 
