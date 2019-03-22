@@ -74,6 +74,7 @@ make_family <- function(x,link) {
 ##'      \item{genpois}{is the generalized Poisson distribution}
 ##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
 ##'     i.e. variance=mu*(1-mu)}
+##'      \item{tweedie}{is the Tweedie distribution i.e. variance=phi*mu^p. The power parameter is restricted to the interval 1<p<2}
 ##' }
 ##' @references
 ##' \itemize{
