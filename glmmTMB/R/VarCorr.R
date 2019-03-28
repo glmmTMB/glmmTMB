@@ -175,7 +175,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         ## *only* report residual variance for Gaussian family ...
         ## *not* usesDispersion(familyStr)
         sigma <- sigma(x)
-        familyStr=="gaussian"
+        familyStr=="gaussian" && !zeroDisp(x)
     } else TRUE
     vc.cond <- vc.zi <- NULL
     if(length(cn <- reT$cond$cnms)) {
