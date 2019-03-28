@@ -147,7 +147,13 @@ test_that("poly", {
                  255.7690496, tolerance=1e-5)
 })
 test_that("splines", {
-    g2 <- glmmTMB(Reaction~splines::ns(Days,5), sleepstudy)
+    if (getRversion()>="3.5.1") {
+        ## work around predict/predvars bug in 3.5.0 & previous versions
+        g2 <- glmmTMB(Reaction~splines::ns(Days,5), sleepstudy)
+    } else {
+        library(splines)
+        g2 <- glmmTMB(Reaction~ns(Days,5), sleepstudy)
+    }
     expect_equal(predict(g2, newdata=data.frame(Days=0)),257.42672,
                  tolerance=1e-5)
 })
@@ -163,7 +169,12 @@ test_that("poly_RE", {
                  178.1629812, tolerance=1e-5)
 })
 test_that("splines_RE", {
-    g2 <- glmmTMB(Reaction~(1|Subject) + splines::ns(Days,5), sleepstudy)
+    if (getRversion()>="3.5.1") {
+        g2 <- glmmTMB(Reaction~(1|Subject) + splines::ns(Days,5), sleepstudy)
+    } else {
+        library(splines)
+        g2 <- glmmTMB(Reaction~(1|Subject) + ns(Days,5), sleepstudy)
+    }
     expect_equal(predict(g2, newdata=nd, allow.new.levels=TRUE),
                  179.7784754, tolerance=1e-5)
 })

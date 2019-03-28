@@ -6,16 +6,19 @@ vignette: >
   %\VignetteIndexEntry{troubleshooting}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
 ---
 
 ```{r load_lib,echo=FALSE}
 library(glmmTMB)
+knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
 ```
 
 This vignette covers common problems that occur while using `glmmTMB`. 
 The contents will expand with experience.
 
-If your problem is not covered below, try updating to the latest version of `glmmTMB` on GitHub. The developers might have solved the problem in a newer version. 
+If your problem is not covered below, there's a chance it has been solved in the development version; try updating to the latest version of `glmmTMB` on GitHub.
 
 #Warnings
 
@@ -26,17 +29,16 @@ You may see the same warning as in the following example:
 zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
-This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the curvature of the log-likelihood surface does not seem to be consistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
+This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the estimated curvature of the log-likelihood surface is inconsistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
 
 It can occur:
 
-- when a model is overparameterized (i.e. the data does not contain information to estimate the parameters)
+- when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)
 - when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
 
 How do we diagnose the problem?
-First, look at the estimated coefficients and see if any of them are extreme. If you're using a non-identity
-link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for logit link, this
+First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for logit link, this
 implies probabilities very close to 0 or 1; for log link, this implies mean counts that are
 close to 0 or gigantic).
 
@@ -46,7 +48,7 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
-The zero-inflation intercept parameter is tiny (-17): since the parameters
+The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
 are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
 
 ```{r f_zi2}
@@ -100,7 +102,7 @@ fixef(zinbm1)[["zi"]]
 
 This again fits without a warning, but we see that the zero-inflation is effectively
 zero in the unmined ("minedno") condition (`plogis(0.38-17.5)` is
-approximately $$4 \times 10^{-8}$$). We can estimate the confidence interval, but
+approximately $4 \times 10^{-8}$). We can estimate the confidence interval, but
 it takes some extra work: the default Wald standard errors and confidence intervals
 are useless in this case.
 
@@ -122,7 +124,7 @@ In some cases, scaling predictor variables may help.
 
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 
-##Model convergence problem:  eigenvalue problems
+## Model convergence problem:  eigenvalue problems
 
 ```{r genpois_NaN,cache=TRUE}
 m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
@@ -134,7 +136,7 @@ Models with convergence problems should be excluded from further consideration, 
 
 In some cases, extreme eigenvalues may be caused by having predictor variables that are on very different scales: try rescaling, and centering, continuous predictors in the model.
 
-##NA/NaN function evaluation
+## NA/NaN function evaluation
 
 > Warning in nlminb(start = par, objective = fn, gradient = gr) : NA/NaN function evaluation
 
@@ -145,9 +147,13 @@ The following warnings indicate possibly-transient numerical problems with the f
 ```{r Cholmod, eval=FALSE}
 Cholmod warning 'matrix not positive definite'
 ```
+
 ```{r lgamma, eval=FALSE}
 Warning in f(par, order = order, ...) : value out of range in 'lgamma'
 ```
+
+The last of these warnings will be eliminated from R itself at some point in the future (based on [this change](https://github.com/wch/r-source/commit/891224cbd653de69cb2a0ce0136b8eab51a2d227)).
+
 # Errors
 
 ## NA/NaN gradient evaluation
@@ -156,7 +162,8 @@ Warning in f(par, order = order, ...) : value out of range in 'lgamma'
 dat1 = expand.grid(y=-1:1, rep=1:10)
 m1 = glmmTMB(y~1, dat1, family=nbinom2)
 ```
-The error occurs here because the negative binomial distribution is not appropriate for data with negative values.
+
+The error occurs here because the negative binomial distribution is inappropriate for data with negative values.
 
 If you see this error, check that the response variable meets the assumptions of the specified distribution.
 
@@ -165,8 +172,7 @@ If you see this error, check that the response variable meets the assumptions of
 
 > Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x
 
-> Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x
+> Error in optimHess(par.fixed, obj\$fn, obj\$gr): gradient in optim evaluated to length x
 
 Try rescaling predictor variables. Try a simpler model and build up.
-
 

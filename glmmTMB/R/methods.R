@@ -85,6 +85,11 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' \code{\link{ranef.merMod}} for details (the only difference between
 ##' the packages is that the attributes are called \sQuote{"postVar"}
 ##' in \pkg{lme4}, vs. \sQuote{"condVar"} in \pkg{glmmTMB}.
+##' \item For \code{coef.glmmTMB}: a similar list, but containing
+##' the overall coefficient value for each level (i.e., the sum of
+##' the fixed effect estimate and the random effect value for that
+##' level). \emph{Conditional variances are not yet available as
+##' an option for \code{coef.glmmTMB}.}
 ##' \item For \code{as.data.frame}: a data frame with components
 ##' \describe{
 ##' \item{component}{part of the model to which the random effects apply (conditional or zero-inflation)}
@@ -96,12 +101,12 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' }
 ##' }
 ##' 
-##' 
-##' 
-##' @note When a model has no zero inflation, the default behavior of
-##'   \code{ranef} is to simplify the printed format of the random effects. To
-##'   show the full list structure, run \code{print(ranef(model),
-##'   simplify=FALSE)}. In all cases, the full list structure is used to access
+##' @note When a model has no zero inflation, the
+##'   the \code{ranef} and \code{coef} print methods simplify the
+##'   structure shown, by default. To show the full list structure, use
+##'   \code{print(ranef(model),simplify=FALSE)} (or the analogous
+##' code for \code{coef}).
+##' In all cases, the full list structure is used to access
 ##'   the data frames (see example).
 ##'
 ##' @seealso \code{\link{fixef.glmmTMB}}.
@@ -173,14 +178,14 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
       })      
       names(x) <- names(fl)
       return(x)
-    }
+    } ## if !is.null(cnms)
     else {
       list()
     }
-  }
+  } ## arrange()
 
   pl <- getParList(object)  ## see VarCorr.R
-  if (condVar)  {
+  if (condVar && has.random(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
                   bzi=ss[rownames(ss)=="bzi","Std. Error"])
@@ -199,6 +204,9 @@ print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
     invisible(x)
 }
 
+##' @method print coef.glmmTMB
+##' @export
+print.coef.glmmTMB <- print.ranef.glmmTMB
 
 ##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
 ##'
@@ -687,9 +695,7 @@ format.perc <- function (probs, digits) {
 ##'     dispformula= ~I(Days>8))
 ##' confint(model)  ## Wald/delta-method CIs
 ##' confint(model,parm="theta_")  ## Wald/delta-method CIs
-##' \dontrun{
 ##' confint(model,parm=1,method="profile")
-##' }
 confint.glmmTMB <- function (object, parm, level = 0.95,
                              method=c("wald",
                                       "Wald",
@@ -726,7 +732,25 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                  dimnames=list(NULL,
                                c(pct, "Estimate")
                                [c(TRUE, TRUE, estimate)] ))
-    if (tolower(method)=="wald") {
+    pnm <- names(object$obj$par)
+    pvec <- seq_along(pnm)
+    if (!missing(parm)) {
+            ## FIXME: DRY/refactor with confint.profile
+            ## FIXME: beta_ not well defined; sigma parameters not
+            ## distinguishable (all called "sigma")
+            ## for non-trivial dispersion model
+            theta_parms <- which(pnm=="theta")
+            ## if non-trivial disp, keep disp parms for "beta_"
+            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
+            if (identical(parm,"theta_")) {
+                parm <- theta_parms
+            } else if (identical(parm,"beta_")) {
+                parm <- seq(nrow(ci))[setdiff(pvec,c(theta_parms,disp_parms))]
+            }
+    } else {
+        parm <- pvec
+    }
+    if (method=="wald") {
         for (component in c("cond", "zi") ) {
             if (components.has(component)) {
                 cf <- unlist(fixef(object)[component])
@@ -737,15 +761,27 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                 if (estimate) ci.tmp <- cbind(ci.tmp, cf)
                 ci <- rbind(ci, ci.tmp)
                 ## VarCorr -> stddev
-                reduce <- function(VC) sapply(VC[[component]],
-                                              function(x)attr(x, "stddev"))
+                cfun <- function(x) {
+                    ss <- attr(x, "stddev")
+                    names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
+                    cc <- attr(x,"correlation")
+                    if (length(cc)>1) {
+                        nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                        cc <- cc[lower.tri(cc)]
+                        nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                        names(cc) <- nn
+                        ss <- c(ss,cc)
+                    }
+                    return(ss)
+                }
+                reduce <- function(VC) sapply(VC[[component]], cfun)
                 ci.sd <- .CI_univariate_monotone(object,
                                                  VarCorr,
                                                  reduce = reduce,
                                                  level = level,
-                                                 name.prepend=paste(component,
-                                                                    "Std.Dev.",
-                                                                    sep="."),
+                                                 ## name.prepend=paste(component,
+                                                 ## "Std.Dev.",
+                                                 ## sep="."),
                                                  estimate = estimate)
                 ci <- rbind(ci, ci.sd)
             }
@@ -771,31 +807,14 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                                     name.prepend="Tweedie.power",
                                                     estimate = estimate)
                 ci <- rbind(ci, ci.power)
-            }
-        }
+            } ## tweedie
+        }  ## model has 'other' component
         ## Take subset
-        if (!missing(parm)) {
-            ## FIXME: DRY/refactor with confint.profile
-            ## FIXME: beta_ not well defined; sigma parameters not
-            ## distinguishable (all called "sigma")
-            ## for non-trivial dispersion model
-            theta_parms <- grep("\\.(Std\\.Dev|Cor)\\.",rownames(ci))
-            ## if non-trivial disp, keep disp parms for "beta_"
-            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
-            if (identical(parm,"theta_")) {
-                parm <- theta_parms
-            } else if (identical(parm,"beta_")) {
-                parm <- seq(nrow(ci))[-c(theta_parms,disp_parms)]
-            }
-            ci <- ci[parm, , drop=FALSE]
-        }
+        ci <- ci[parm, , drop=FALSE]
         ## end Wald method
-    } else if (tolower(method=="uniroot")) {
+    } else if (method=="uniroot") {
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
-        if (missing(parm)) {
-            parm <- seq_along(names(object$obj$par))
-        }
         plist <- parallel_default(parallel,ncpus)
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
@@ -1064,6 +1083,8 @@ as.data.frame.ranef.glmmTMB <- function(x,
 #' @param newresp a new response vector
 #' @export
 #' @importFrom lme4 isLMM
+#' @importFrom lme4 refit
+## don't export refit ...
 #' @description see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
 isLMM.glmmTMB <- function(object) {
    fam <- family(object)
@@ -1129,3 +1150,64 @@ refit.glmmTMB <- function(object, newresp, ...) {
   return(eval(cc))
 }
 
+
+## copied from lme4, with addition of 'component' argument
+## FIXME: migrate back to lme4? component is NULL for back-compat.
+## FIXME:
+## coef() method for all kinds of "mer", "*merMod", ... objects
+## ------  should work with fixef() + ranef()  alone
+coefMer <- function(object, component=NULL, ...)
+{
+    if (length(list(...)))
+        warning('arguments named "', paste(names(list(...)), collapse = ", "),
+                '" ignored')
+    fef <- fixef(object)
+    if (!is.null(component)) fef <- fef[[component]]
+    fef <- data.frame(rbind(fef), check.names = FALSE)
+    ref <- ranef(object)
+    if (!is.null(component)) ref <- ref[[component]]
+    ## check for variables in RE but missing from FE, fill in zeros in FE accordingly
+    refnames <- unlist(lapply(ref,colnames))
+    nmiss <- length(missnames <- setdiff(refnames,names(fef)))
+    if (nmiss > 0) {
+        fillvars <- setNames(data.frame(rbind(rep(0,nmiss))),missnames)
+        fef <- cbind(fillvars,fef)
+    }
+    val <- lapply(ref, function(x)
+                  fef[rep.int(1L, nrow(x)),,drop = FALSE])
+    for (i in seq(a = val)) {
+        refi <- ref[[i]]
+        row.names(val[[i]]) <- row.names(refi)
+        nmsi <- colnames(refi)
+        if (!all(nmsi %in% names(fef)))
+            stop("unable to align random and fixed effects")
+        for (nm in nmsi) val[[i]][[nm]] <- val[[i]][[nm]] + refi[,nm]
+    }
+    class(val) <- "coef.mer"
+    val
+} ##  {coefMer}
+
+#' @rdname ranef.glmmTMB
+#' @export
+coef.glmmTMB <- function(object,
+                         condVar=FALSE, ...) {
+    model.has.component <- function(x) {
+        !is.null(object$modelInfo$reTrms[[x]]$cnms)
+    }
+    get.coef <- function(x) {
+        if (!model.has.component(x)) return(list())
+        return(coefMer(object, component=x))
+    }
+    res <- list(
+        cond = get.coef("cond"),
+        zi = get.coef("zi")
+    )
+    if (condVar) {
+        stop("condVar not (yet) available for coefficients")
+        sdr <- TMB::sdreport(object$obj, getJointPrecision=TRUE)
+        v <- solve(sdr$jointPrecision)
+        ## FIXME:: sort out variance calculation, using Z and X
+    }
+    class(res) <- "coef.glmmTMB"
+    return(res)
+}

@@ -7,7 +7,7 @@
 \usage{
 \method{isLMM}{glmmTMB}(object)
 
-refit.glmmTMB(object, newresp, ...)
+\method{refit}{glmmTMB}(object, newresp, ...)
 }
 \arguments{
 \item{object}{a fitted glmmTMB object}

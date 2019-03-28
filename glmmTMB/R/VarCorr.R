@@ -53,6 +53,10 @@ getParList <- function(object) {
 ##'           and approximately oversidpersed when \eqn{1/\nu >1}.
 ##'           In this implementation, \eqn{\mu} is excatly the mean, which
 ##'           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
+##'      \item{tweedie}{returns the value of \eqn{\phi},
+##'           where the variance is \eqn{\phi\mu^p}.
+##'           The value of \eqn{p} can be extracted using the internal
+##'           function \code{glmmTMB:::.tweedie_power}.}
 ##' }
 ##' 
 ##'  The most commonly used GLM families 
