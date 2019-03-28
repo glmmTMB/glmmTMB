@@ -343,7 +343,8 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
       X <- getME(object,paste0("X",tag))
       if (trivialFixef(nn <- colnames(X),tag)
           ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" && usesDispersion(family(object)$family))) {
+          && !(full && tag =="d" &&
+               (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
       return(paste(tag,nn,sep="~"))
