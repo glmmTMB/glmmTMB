@@ -319,7 +319,7 @@ getGrpVar <- function(x)
 
 ##' Calculate random effect structure
 ##' Calculates number of random effects, number of parameters,
-##' blocksize and number of blocks.  Mostly for internal use.
+##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
 ##' @param ss a character string indicating a valid covariance structure. 
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
@@ -703,7 +703,7 @@ glmmTMB <- function (
    if (grepl("^truncated", family$family) &&
        (!is.factor(y) && any(y<1)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
-             "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
+             "Zeros are compatible with a truncated distribution only when zero-inflation is added."))
 
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,

@@ -4,7 +4,7 @@
 \alias{getReStruc}
 \title{Calculate random effect structure
 Calculates number of random effects, number of parameters,
-blocksize and number of blocks.  Mostly for internal use.}
+block size and number of blocks.  Mostly for internal use.}
 \usage{
 getReStruc(reTrms, ss = NULL)
 }
@@ -26,7 +26,7 @@ a list
 \description{
 Calculate random effect structure
 Calculates number of random effects, number of parameters,
-blocksize and number of blocks.  Mostly for internal use.
+block size and number of blocks.  Mostly for internal use.
 }
 \examples{
 data(sleepstudy, package="lme4")
