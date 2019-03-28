@@ -52,7 +52,7 @@ Suggests:
     DHARMa,
     multcomp,
     MuMIn,
-    effects,
+    effects (>= 4.0-1),
     dotwhisker,
     broom,
     plyr,
