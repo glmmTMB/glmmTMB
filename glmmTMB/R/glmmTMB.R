@@ -184,8 +184,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                      ))
     
   for (p in names(start)) {
+      if (!(p %in% names(parameters))) {
+          stop(sprintf("unrecognized vector '%s' in %s",p,sQuote("start")),
+               call. = FALSE)
+      }
       if ((Lp <- length(parameters[[p]])) !=  (Ls <- length(start[[p]]))) {
-          stop(sprintf("parameter vector length mismatch: length(%s) is %d, should be %d", Lp, p, Ls))
+          stop(sprintf("parameter vector length mismatch: in %s, length(%s)==%d, should be %d", sQuote("start"), p, Ls, Lp),
+               call. = FALSE)
       }
       parameters[[p]] <- start[[p]]
   }
