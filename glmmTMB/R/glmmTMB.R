@@ -185,7 +185,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     
   for (p in names(start)) {
       if ((Lp <- length(parameters[[p]])) !=  (Ls <- length(start[[p]]))) {
-          stop(sprintf("parameter vector length mismatch: length(%s) is %d, should be %d", p, Lp, Ls))
+          stop(sprintf("parameter vector length mismatch: length(%s) is %d, should be %d", Lp, p, Ls))
       }
       parameters[[p]] <- start[[p]]
   }
