@@ -8,7 +8,7 @@ glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
   dispformula = ~1, weights = NULL, offset = NULL,
   contrasts = NULL, na.action = na.fail, se = TRUE,
   verbose = FALSE, doFit = TRUE, control = glmmTMBControl(),
-  REML = FALSE)
+  REML = FALSE, start = NULL)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
@@ -50,6 +50,14 @@ without fitting the model}
 \item{control}{control parameters; see \code{\link{glmmTMBControl}}.}
 
 \item{REML}{Logical; Use REML estimation rather than maximum likelihood.}
+
+\item{start}{starting values, expressed as a list with possible components
+\code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for
+conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}
+(conditional modes for conditional and zero-inflation models);
+\code{theta}, \code{thetazi} (random-effect parameters, on the
+standard deviation/Cholesky scale, for conditional and z-i models);
+\code{thetaf} (extra family parameters, e.g. shape for Tweedie models)}
 }
 \description{
 Fit models with TMB
