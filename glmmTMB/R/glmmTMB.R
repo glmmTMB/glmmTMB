@@ -327,7 +327,7 @@ getGrpVar <- function(x)
 
 ##' Calculate random effect structure
 ##' Calculates number of random effects, number of parameters,
-##' blocksize and number of blocks.  Mostly for internal use.
+##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
 ##' @param ss a character string indicating a valid covariance structure. 
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
@@ -461,7 +461,7 @@ binomialType <- function(x) {
 ##'     The argument is ignored for families that do not have a dispersion parameter.
 ##'     For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
 ##'     The dispersion model uses a log link. 
-##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
+##'     In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value: at present it is set to \code{sqrt(.Machine$double.eps)}), forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only)
 ##' @param contrasts an optional list, e.g. \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
@@ -724,7 +724,7 @@ glmmTMB <- function (
    if (grepl("^truncated", family$family) &&
        (!is.factor(y) && any(y<1)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
-             "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
+             "Zeros are compatible with a truncated distribution only when zero-inflation is added."))
 
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,

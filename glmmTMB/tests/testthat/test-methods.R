@@ -134,7 +134,8 @@ test_that("terms", {
     ## model prediction etc. with complex bases
     dd <<- data.frame(x=1:10,y=1:10)
     require("splines")
-    m <- glmmTMB(y~ns(x,3),dd)
+    ## suppress convergence warnings(we know this is a trivial example)
+    suppressWarnings(m <- glmmTMB(y~ns(x,3),dd))
     ## if predvars is not properly attached to term, this will
     ## fail as it tries to construct a 3-knot spline from a single point
     expect_equal(model.matrix(delete.response(terms(m)),data=data.frame(x=1)),

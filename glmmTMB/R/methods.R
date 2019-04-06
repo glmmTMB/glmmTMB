@@ -32,12 +32,20 @@ cNames <- list(cond = "Conditional model",
 
 ## FIXME: this is a bit ugly. On the other hand, a single-parameter
 ## dispersion model without a (... ?)
-trivialDisp <- function(object) {
-    ## This version works on summary object or fitted model object
-    ## FIXME: is there a better way to strip the environment before
-    ## comparing?
-    identical(deparse(object$call$dispformula),"~1")
+
+formComp <- function(object,type="dispformula",target) {
+    isTRUE(all.equal(object$modelInfo$allForm[[type]],target)) ||
+        isTRUE(all.equal(object$call[[type]],target))
 }
+
+trivialDisp <- function(object) {
+    formComp(object,"dispformula",~1)
+}
+
+zeroDisp <- function(object) {
+    formComp(object,"dispformula",~0)
+}
+
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
@@ -335,7 +343,8 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
       X <- getME(object,paste0("X",tag))
       if (trivialFixef(nn <- colnames(X),tag)
           ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" && usesDispersion(family(object)$family))) {
+          && !(full && tag =="d" &&
+               (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
       return(paste(tag,nn,sep="~"))

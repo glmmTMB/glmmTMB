@@ -30,7 +30,7 @@ default \code{~1} specifies the standard dispersion given any family.
 The argument is ignored for families that do not have a dispersion parameter.
 For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
 The dispersion model uses a log link. 
-In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.}
+In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value: at present it is set to \code{sqrt(.Machine$double.eps)}), forcing variance into the random effects.}
 
 \item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
 
