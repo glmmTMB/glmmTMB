@@ -8,6 +8,7 @@
    \subsection{BUG FIXES}{
       \itemize{
          \item \code{vcov(., full=TRUE)} (and hence profiling) now work for models with \code{dispformula=~0}
+         \item Documentation fix only: when \code{family=genpois}, the index of dispersion is known as phi^2.
       }
    } % bug fixes
    \subsection{USER-VISIBLE CHANGES}{
