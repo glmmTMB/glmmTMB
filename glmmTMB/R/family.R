@@ -69,19 +69,23 @@ make_family <- function(x,link) {
 ##' i.e. variance=mu*(1+mu/phi)}
 ##'      \item{nbinom1}{variance increases linearly with the mean (Hardin & Hilbe 2007),
 ##' i.e. variance=mu*(1+phi)}
-##'      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean (Huang 2017)
-##'           which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
+##'      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015)}
 ##'      \item{genpois}{is the generalized Poisson distribution}
-##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
-##'     i.e. variance=mu*(1-mu)}
+##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004)
+##' and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); variance=mu*(1-mu)}
+##'     \item{betabinomial}{a beta-binomial distribution parameterized according to Morris 1997, i.e. variance=mu*(1-mu)*(n*(phi+n)/(phi+1))}
 ##'      \item{tweedie}{is the Tweedie distribution i.e. variance=phi*mu^p. The power parameter is restricted to the interval 1<p<2}
 ##' }
 ##' @references
 ##' \itemize{
+##'
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
-##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts. " \emph{Statistical Modelling} 17(6), 1-22. 
+##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts." \emph{Statistical Modelling} 17(6), 1-22.
+##' \item Morris  W (1997). "Disentangling Effects of Induced Plant Defenses and Food Quantity on Herbivores by Fitting Nonlinear Models." \emph{American Naturalist} 150:299-327.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
+##' \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. https://doi.org/10.1214/09-AOAS306.
+
 ##' }
 ##' @export
 ##' @importFrom stats make.link
@@ -234,12 +238,20 @@ beta_family <- function(link="logit") {
 
 #' @rdname nbinom2
 #' @export
+## variance= (Wikipedia)
+## n*alpha*beta*( alpha + beta + n )/ ((alpha+beta)^2*(alpha+beta+1))
+## alpha = p*theta
+## beta = (1-p)*theta
+## -> n*p*(1-p)*theta^2*(theta+n)/(theta^2*(theta+1))
+## =  n*p*(1-p)*(theta+n)/(theta+1)
+##  *scaled* variance (dependence on mu only) is still just mu*(1-mu);
+##  scaling is n*(theta+n)/(theta+1) (vs. simply n for the binomial)
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
               variance=function(mu,phi) {
-        stop("variance for betabinomial family not yet implemented")
-    },
-    initialize = binomial()$initialize)
+                  mu*(1-mu)
+              },
+              initialize = binomial()$initialize)
     return(make_family(r,link))
 }
 
