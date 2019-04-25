@@ -51,7 +51,7 @@ getParList <- function(object) {
 ##'           There is no closed form equation for the variance, but 
 ##'           it is approximately undersidpersed when \eqn{1/\nu <1}
 ##'           and approximately oversidpersed when \eqn{1/\nu >1}.
-##'           In this implementation, \eqn{\mu} is excatly the mean, which
+##'           In this implementation, \eqn{\mu} is excatly the mean (Huang 2017), which
 ##'           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
 ##'      \item{tweedie}{returns the value of \eqn{\phi},
 ##'           where the variance is \eqn{\phi\mu^p}.
@@ -67,6 +67,7 @@ getParList <- function(object) {
 ##' \itemize{
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
+##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts. " \emph{Statistical Modelling} 17(6), 1-22.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' }
 ##' @aliases sigma
