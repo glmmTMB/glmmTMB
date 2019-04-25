@@ -44,8 +44,8 @@ getParList <- function(object) {
 ##'          (and the \code{betareg} package):}
 ##'      \item{betabinomial}{This family uses the same parameterization (governing
 ##'           the Beta distribution that underlies the binomial probabilities) as \code{beta}.}
-##'      \item{genpois}{returns the value of \eqn{\phi},
-##'           where the variance is \eqn{\mu\phi}}
+##'      \item{genpois}{returns the index of dispersion \eqn{\phi^2},
+##'           where the variance is \eqn{\mu\phi^2} (Consul & Famoye 1992)}
 ##'      \item{compois}{returns the value of \eqn{1/\nu},
 ##'           When \eqn{\nu=1}, compois is equivalent to the Poisson distribution.
 ##'           There is no closed form equation for the variance, but 
@@ -65,6 +65,7 @@ getParList <- function(object) {
 ##' 
 ##' @references
 ##' \itemize{
+##' \item Consul PC, and Famoye F (1992). Generalized Poisson regression model. Communications in Statistics: Theory and Methods 21:89–109.
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
 ##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts. " \emph{Statistical Modelling} 17(6), 1-22.

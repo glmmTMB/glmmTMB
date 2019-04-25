@@ -67,8 +67,11 @@ i.e. variance=mu*(1+mu/phi)}
      \item{nbinom1}{variance increases linearly with the mean (Hardin & Hilbe 2007),
 i.e. variance=mu*(1+phi)}
      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean (Huang 2017)
-          which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
-     \item{genpois}{is the generalized Poisson distribution}
+          which differs from the COMPoissonReg package (Sellers & Lotze 2015).
+          The dispersion model gives the relationship variance=mu*phi.}
+     \item{genpois}{is the generalized Poisson distribution(Consul & Famoye 1992).
+          The dispersion model gives the relationship variance=mu*exp(eta).
+          (Here we avoid using "phi" with a different meaning from the above citation.)}
      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
     i.e. variance=mu*(1-mu)}
      \item{tweedie}{is the Tweedie distribution i.e. variance=phi*mu^p. The power parameter is restricted to the interval 1<p<2}
@@ -76,6 +79,7 @@ i.e. variance=mu*(1+phi)}
 }
 \references{
 \itemize{
+\item Consul P. C., and Famoye F. (1992). Generalized Poisson regression model. Communications in Statistics: Theory and Methods 21:89–109.
 \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts. " \emph{Statistical Modelling} 17(6), 1-22. 
