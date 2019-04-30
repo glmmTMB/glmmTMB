@@ -54,7 +54,6 @@ Here's an example where we have an IID Gaussian random effect. We first simulate
 xdata <- rnorm(N, 1, 2)
 groups <- 200
 data_use <- data.table(obs = 1:N)
-data_use[, group_var:= c(1:groups)]
 data_use[, group_var:= rep(c(1:groups), times = nrow(data_use) / groups)]
 data_use[, xdata:= xdata]
 data_use[, ydata:= 0.3 + group_intercept + 0.5*xdata + rnorm(.N, 0, 0.25)]
