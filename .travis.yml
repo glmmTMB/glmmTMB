@@ -55,8 +55,8 @@ before_install:
 
 script:
   - |
-    travis_wait 70 R CMD build .
-    travis_wait 70 R CMD check glmmTMB*tar.gz
+    travis_wait 100 R CMD build .
+    travis_wait 100 R CMD check glmmTMB*tar.gz
 
 after_script:
   - tar -ztvf glmmTMB_*.tar.gz
