@@ -1,5 +1,7 @@
 #include <TMB.hpp>
 #include "init.h"
+#include <omp.h>
+
 
 namespace glmmtmb{
   template<class Type>
@@ -571,6 +573,11 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
+
+  // Set max number of OpenMP threads to help us optimize faster
+  max_parallel_regions = omp_get_max_threads();	
+
+
   DATA_MATRIX(X);
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
@@ -616,7 +623,7 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR_INDICATOR(keep, yobs);
 
   // Joint negative log-likelihood
-  Type jnll = 0;
+  parallel_accumulator<Type> jnll(this);
 
   // Random effects
   jnll += allterms_nll(b, theta, terms, this->do_simulate);
