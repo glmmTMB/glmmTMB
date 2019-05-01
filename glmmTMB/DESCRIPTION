@@ -58,6 +58,7 @@ Suggests:
     plyr,
     png,
     boot
+SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
