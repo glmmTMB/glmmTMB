@@ -4,6 +4,20 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 0.2.3-9000}{
+   \subsection{BUG FIXES}{
+      \itemize{
+         \item \code{vcov(., full=TRUE)} (and hence profiling) now work for models with \code{dispformula=~0}
+         \item Documentation fix only: when \code{family=genpois}, the index of dispersion is known as phi^2.
+      }
+   } % bug fixes
+   \subsection{USER-VISIBLE CHANGES}{
+      \itemize{
+         \item \code{VarCorr} no longer prints residual variances for models with \code{dispformula=~0}
+      }
+   } % user-visible changes
+} % version 0.2.3-9000
+
 \section{CHANGES IN VERSION 0.2.3}{
   \subsection{NEW FEATURES}{
     \itemize{

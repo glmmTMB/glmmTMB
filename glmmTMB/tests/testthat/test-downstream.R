@@ -46,5 +46,6 @@ if (require(effects)) {
                      f=factor(rep(LETTERS[1:20],each=50)))
     fm3_tmb <- glmmTMB(y~x,family=nbinom2,data=dd)
     fm3_MASS <- MASS::glm.nb(y~x,data=dd)
-    expect_equal(f(fm3_tmb,dd),f(fm3_MASS,dd),tolerance=2e-5)
+    ## suppressing "overriding variance function for effects: computed variances may be incorrect" warning here
+    expect_equal(suppressWarnings(f(fm3_tmb,dd)),f(fm3_MASS,dd),tolerance=2e-5)
 }

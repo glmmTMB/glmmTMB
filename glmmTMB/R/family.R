@@ -59,27 +59,31 @@ make_family <- function(x,link) {
 ##' predicted variance (scaled by \code{sigma(.)})
 ##' }
 ##' @details
-##' If specified, the dispersion model uses a log link. Denoting the dispersion parameter
-##' as phi=exp(eta) (where eta is the linear predictor from the dispersion model)
-##' and the predicted mean as mu:
+##' If specified, the dispersion model uses a log link. Denoting the variance as \eqn{V}, the dispersion parameter
+##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model), 
+##' and the predicted mean as \eqn{\mu}{mu}:
 ##'  \describe{
-##'      \item{gaussian}{(from base R): constant variance=phi}
-##'      \item{Gamma}{(from base R) phi is the shape parameter, i.e variance=mu*phi}
-##'      \item{nbinom2}{variance increases quadratically with the mean (Hardin & Hilbe 2007),
-##' i.e. variance=mu*(1+mu/phi)}
-##'      \item{nbinom1}{variance increases linearly with the mean (Hardin & Hilbe 2007),
-##' i.e. variance=mu*(1+phi)}
-##'      \item{compois}{is the Conway-Maxwell Poisson parameterized with the exact mean
-##'           which differs from the COMPoissonReg package (Sellers & Lotze 2015)}
-##'      \item{genpois}{is the generalized Poisson distribution}
-##'      \item{beta}{follows the parameterization of Ferrari and Cribari-Neto (2004) and the \code{betareg} package,
-##'     i.e. variance=mu*(1-mu)}
+##'      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
+##'      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu\phi}{V=mu*phi}}
+##'      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
+##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
+##'      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
+##'      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.)}
+##'      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
+##' and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)\phi}{V=mu*(1-mu)*phi}}
+##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
+##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}}
 ##' }
 ##' @references
 ##' \itemize{
+##' \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
+##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts." \emph{Statistical Modelling} 17(6), 1-22.
+##' \item Morris  W (1997). "Disentangling Effects of Induced Plant Defenses and Food Quantity on Herbivores by Fitting Nonlinear Models." \emph{American Naturalist} 150:299-327.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
+##' \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. https://doi.org/10.1214/09-AOAS306.
+
 ##' }
 ##' @export
 ##' @importFrom stats make.link
@@ -232,12 +236,20 @@ beta_family <- function(link="logit") {
 
 #' @rdname nbinom2
 #' @export
+## variance= (Wikipedia)
+## n*alpha*beta*( alpha + beta + n )/ ((alpha+beta)^2*(alpha+beta+1))
+## alpha = p*theta
+## beta = (1-p)*theta
+## -> n*p*(1-p)*theta^2*(theta+n)/(theta^2*(theta+1))
+## =  n*p*(1-p)*(theta+n)/(theta+1)
+##  *scaled* variance (dependence on mu only) is still just mu*(1-mu);
+##  scaling is n*(theta+n)/(theta+1) (vs. simply n for the binomial)
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
               variance=function(mu,phi) {
-        stop("variance for betabinomial family not yet implemented")
-    },
-    initialize = binomial()$initialize)
+                  mu*(1-mu)
+              },
+              initialize = binomial()$initialize)
     return(make_family(r,link))
 }
 

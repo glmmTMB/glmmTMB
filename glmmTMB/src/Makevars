@@ -1,0 +1,3 @@
+## Add OpenMP flags for compiling the model
+PKG_CPPFLAGS += $(SHLIB_OPENMP_CXXFLAGS)
+PKG_CXXFLAGS += $(SHLIB_OPENMP_CXXFLAGS)
