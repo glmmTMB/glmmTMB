@@ -57,7 +57,8 @@ Suggests:
     broom,
     plyr,
     png,
-    boot
+    boot,
+    texreg
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB

@@ -27,10 +27,12 @@ library(effects)
 library(multcomp)
 library(MuMIn)
 library(DHARMa)
-## library(broom)
-## library(broom.mixed)
+library(broom)
+library(broom.mixed)
 library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
+library(texreg)
+library(xtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",package="glmmTMB"))
 ```
@@ -186,6 +188,8 @@ uses the S3 method structure and (2) doesn't need access to
 private `multcomp` methods (i.e. accessed by `multcomp:::`) ? Not sure,
 but both of the following hacks should work. (The `glht_glmmTMB` solution below is clunky because it isn't a real S3 method; the `model.parm.glmmTMB` solution can't be included in the package source code as-is because `:::` is not allowed in CRAN package code.)
 
+## Extracting coefficients, coefficient plots and tables
+
 ### broom etc.
 
 The `broom`, `broom.mixed` packages are designed to extract information from a broad range of models in a convenient (tidy) format; the `dotwhisker` package builds on this platform to draw elegant coefficient plots.
@@ -211,6 +215,36 @@ if (packageVersion("dotwhisker")>"0.4.1") {
 - draw points even if std err / confint are `NA` (draw `geom_point()` as well as `geom_pointrange()`? need to apply all aesthetics, dodging, etc. to both ...)
 - for `glmmTMB` models, allow labeling by component? or should this be done by manipulating the tidied frame first? (i.e. `tidy(.) %>% tidyr::unite(term,c(component,term))`)
 
+```{r results="asis"}
+ss <- summary(owls_nb1)
+xtable(lme4::formatVC(ss$varcor$cond))
+xtable(coef(ss)$cond)
+xtable(coef(ss)$zi)
+```
+
+### texreg
+
+```{r texreg_def}
+if (suppressMessages(require("texreg"))) {
+  have_texreg <- TRUE
+  source(system.file("other_methods","extract.R",package="glmmTMB"))
+} 
+```
+
+then `texreg(owls_nb1)` produces:
+
+```{r texreg_show, results="asis", echo=FALSE}
+if (!have_texreg) {
+  cat("\text{texreg package isn't installed, can't illustrate}\n")
+} else {
+  texreg(owls_nb1)
+}
+```
+
+## to do
+
+- add: `texreg` (regression tables)? `sjPlot` ? `memisc`, `huxtable`, ... ?
+
 ```{r save_output,echo=FALSE,eval=FALSE}
 ## store time-consuming stuff
 save("owls_nb1",
@@ -218,7 +252,3 @@ save("owls_nb1",
      "owls_nb1_dredge",
      file="../inst/vignette_data/model_evaluation.rda")
 ```
-
-## to do
-
-- add: `texreg` (regression tables)? `sjPlot` ? `memisc`, `huxtable`, ... ?
