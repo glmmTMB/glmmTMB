@@ -58,7 +58,9 @@ Suggests:
     plyr,
     png,
     boot,
-    texreg
+    texreg,
+    xtable,
+    huxtable
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB

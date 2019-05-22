@@ -66,8 +66,8 @@
 
 %\linenumbers
 
-<<setopts,echo=FALSE>>=
-require("knitr")
+<<setopts,echo=FALSE,message=FALSE>>=
+library("knitr")
 opts_chunk$set(fig.width=5,fig.height=5,
                out.width="0.8\\textwidth",echo=TRUE)
 ## https://tex.stackexchange.com/questions/148188/knitr-xcolor-incompatible-color-definition/254482
@@ -98,6 +98,7 @@ library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)
+library(huxtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",
                       package="glmmTMB"))
@@ -139,7 +140,7 @@ owls_nb1_simres <- simulateResiduals(owls_nb1)
 you can plot the results:
 
 <<dharma_plotfig,fig.width=8,fig.height=4>>=
-plot(owls_nb_1_simres)
+plot(owls_nb1_simres)
 @
 
 \subsubsection{issues}
@@ -157,7 +158,7 @@ We can use \code{car::Anova()} to get traditional ANOVA-style tables from glmmTM
 
 \begin{itemize}
 \item these tables use Wald $\chi^2$ statistics for comparisons (neither likelihood ratio tests nor $F$ tests)
-\item they apply to the fixed effects of the conditional component of the model only (other components *might* work, but haven't been tested at all)
+\item they apply to the fixed effects of the conditional component of the model only (other components \emph{might} work, but haven't been tested at all)
 \item as always, if you want to do type 3 tests, you should probably set sum-to-zero contrasts on factors and center numerical covariates (see contrasts argument above)
 \end{itemize}
 
@@ -173,6 +174,8 @@ Anova(owls_nb1,type="III")
 (ae <- allEffects(owls_nb1))
 plot(ae)
 @
+
+(the error can probably be ignored)
 
 <<effects2, fig.width=12,fig.height=12>>=
 plot(allEffects(simex_b1))
@@ -321,14 +324,10 @@ if (requireNamespace("xtable")) {
 
 \subsection{coefficient tables with \tcode{texreg}}
 
-<<texreg1,eval=FALSE>>=
+<<texreg1,results="asis">>=
 source(system.file("other_methods","extract.R",package="glmmTMB"))
 texreg(owls_nb1,caption="Owls model", label="tab:owls")
 @
-
-<<texreg2,results="asis",echo=FALSE>>=
-texreg(owls_nb1, caption="Owls model", label="tab:owls")
-@ 
 
 See output in Table~\ref{tab:owls}.
 
@@ -357,7 +356,7 @@ cat(to_latex(h1,tabular_only=TRUE))
 \subsubsection{issues}
 
 \begin{itemize}
-  \item \code{huxtable} needs quite a few additional \LaTeX\ packages: use \code{huxtable::report_latex_dependencies()} to see what they are.
+  \item \code{huxtable} needs quite a few additional \LaTeX\ packages: use \code{report_latex_dependencies()} to see what they are.
 \end{itemize}
 
 \section{to do}
