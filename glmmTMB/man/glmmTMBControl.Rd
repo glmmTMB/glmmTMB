@@ -44,12 +44,4 @@ of \code{mkTMBStruc}.  To specify that \code{profile} should be
 enabled for more than 5 fixed effects one can use
 
 \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
-
-The \code{parallel} argument declares the number of OpenMP threads 
-using \code{TMB::openmp(n = parallel)}, given that the negative 
-log-likelihood is collected using a \code{parallel_accumulator}. It 
-requires that there's at least one thread set (serialized setup).
-
-Details on the \code{parallel_accumlator} structure can be found 
-\href{https://kaskr.github.io/adcomp/structparallel__accumulator.html}{here}.
 }
