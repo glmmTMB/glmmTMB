@@ -372,7 +372,9 @@ cat(to_latex(h1,tabular_only=TRUE))
 save("owls_nb1",
      "owls_nb1_simres",
      "owls_nb1_dredge",
-     file="../inst/vignette_data/model_evaluation.rda")
+     file="../inst/vignette_data/model_evaluation.rda",
+     version=2 ## for compatibility with R < 3.6.0
+     )
 @
 
 \end{document}
