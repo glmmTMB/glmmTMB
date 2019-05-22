@@ -152,9 +152,9 @@ plot(owls_nb1_simres)
 
 \section{Inference}
 
-\subsection{car::Anova}
+\subsection{\tcode{car::Anova}}
 
-We can use \code{car::Anova()} to get traditional ANOVA-style tables from glmmTMB fits. A few limitations/reminders:
+We can use \code{car::Anova()} to get traditional ANOVA-style tables from \code{glmmTMB} fits. A few limitations/reminders:
 
 \begin{itemize}
 \item these tables use Wald $\chi^2$ statistics for comparisons (neither likelihood ratio tests nor $F$ tests)
