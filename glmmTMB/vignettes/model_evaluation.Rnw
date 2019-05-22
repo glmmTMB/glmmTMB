@@ -269,15 +269,17 @@ but both of the following hacks should work. (The \code{glht_glmmTMB} solution b
 The \code{broom} and \code{broom.mixed} packages are designed to extract information from a broad range of models in a convenient (tidy) format; the dotwhisker package builds on this platform to draw elegant coefficient plots.
 
 <<broom_mixed,fig.height=3,fig.width=5>>=
-(t1 <- broom.mixed::tidy(owls_nb1, conf.int = TRUE))
-if (packageVersion("dotwhisker")>"0.4.1") {
+if (requireNamespace("broom.mixed") && requireNamespace("dotwhisker")) {
+  (t1 <- broom.mixed::tidy(owls_nb1, conf.int = TRUE))
+  if (packageVersion("dotwhisker")>"0.4.1") {
     ## to get this version (which fixes various dotwhisker problems)
     ## use devtools::install_github("bbolker/broom.mixed") or
     ## wait for pull request acceptance/submission to CRAN/etc.
     dwplot(owls_nb1)+geom_vline(xintercept=0,lty=2)
-} else {
+  } else {
     owls_nb1$coefficients <- TRUE  ## hack!
     dwplot(owls_nb1,by_2sd=FALSE)+geom_vline(xintercept=0,lty=2)
+  }
 }
 @
 

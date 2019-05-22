@@ -55,6 +55,7 @@ Suggests:
     effects (>= 4.0-1),
     dotwhisker,
     broom,
+    broom.mixed,
     plyr,
     png,
     boot,
