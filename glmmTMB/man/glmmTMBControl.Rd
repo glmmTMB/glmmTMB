@@ -4,11 +4,15 @@
 \alias{glmmTMBControl}
 \title{Control parameters for glmmTMB optimization}
 \usage{
-glmmTMBControl(optCtrl = list(iter.max = 300, eval.max = 400),
+glmmTMBControl(optCtrl = NULL, optArgs = list(), optimizer = nlminb,
   profile = FALSE, collect = FALSE, parallel = 1)
 }
 \arguments{
-\item{optCtrl}{Passed as argument \code{control} to \code{nlminb}.}
+\item{optCtrl}{Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}}
+
+\item{optArgs}{additional arguments to be passed to optimizer function (e.g.: \code{list(method="BFGS")} when \code{optimizer=optim})}
+
+\item{optimizer}{Function to use in model fitting. See \code{Details} for required properties of this function.}
 
 \item{profile}{Logical; Experimental option to improve speed and
 robustness when a model has many fixed effects}
@@ -17,7 +21,7 @@ robustness when a model has many fixed effects}
 recognizing duplicated observations.}
 
 \item{parallel}{Numeric; Setting number of OpenMP threads to evaluate
-the negative log-likelihood in parallel. Default: 1}
+the negative log-likelihood in parallel}
 }
 \description{
 Control parameters for glmmTMB optimization
@@ -44,4 +48,19 @@ of \code{mkTMBStruc}.  To specify that \code{profile} should be
 enabled for more than 5 fixed effects one can use
 
 \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
+
+The \code{optimizer} argument can be any optimization (minimizing) function, provided that:
+\itemize{
+\item the first three arguments, in order, are the starting values, objective function, and gradient function;
+\item it also takes a \code{control} argument;
+\item it returns a list with elements (at least) \code{convergence} (0 if convergence is successful) and \code{message}
+}
+}
+\examples{
+## fit with default (nlminb) and alternative (optim/BFGS) optimizer
+m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders)
+m1B <- update(m1, control=glmmTMBControl(optimizer=optim,
+               optArgs=list(method="BFGS")))
+## estimates are *nearly* identical:
+all.equal(fixef(m1), fixef(m1B))
 }
