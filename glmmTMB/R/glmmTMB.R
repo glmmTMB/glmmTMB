@@ -33,7 +33,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        doPredict=0,
                        whichPredict=integer(0),
                        REML=FALSE,
-                       start=NULL) {
+                       start=NULL,
+                       map=NULL) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
@@ -60,7 +61,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
     ## Handle ~0 dispersion for gaussian family.
-    mapArg <- NULL
+    mapArg <- map
     dispformula.orig <- dispformula ## Restore when done
     # family$family contains the *name* of the family
     if ( usesDispersion(family$family) && (dispformula == ~0) ) {
@@ -72,7 +73,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         ## check that this fixed dispersion is small enough.
         betad_init <- log( sqrt( .Machine$double.eps ) )
         dispformula[] <- ~1
-        mapArg <- list(betad = factor(NA)) ## Fix betad
+        mapArg <- c(mapArg,list(betad = factor(NA))) ## Fix betad
     } else {
         betad_init <- 0
     }
@@ -204,7 +205,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose, REML))
+            fr, se, call, verbose, REML, map))
 }
 
 ##' Create X and random effect terms from formula
@@ -479,6 +480,7 @@ binomialType <- function(x) {
 ##' \code{theta}, \code{thetazi} (random-effect parameters, on the
 ##' standard deviation/Cholesky scale, for conditional and z-i models);
 ##' \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)
+##' @param map mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -571,7 +573,8 @@ glmmTMB <- function (
     doFit=TRUE,
     control=glmmTMBControl(),
     REML=FALSE,
-    start=NULL
+    start=NULL,
+    map=NULL
     )
 {
 
@@ -739,7 +742,8 @@ glmmTMB <- function (
                    call=call,
                    verbose=verbose,
                    REML=REML,
-                   start=start)
+                   start=start,
+                   map=map)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
@@ -979,7 +983,8 @@ fitTMB <- function(TMBStruc) {
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm,
-                                REML))
+                                REML,
+                                map))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out

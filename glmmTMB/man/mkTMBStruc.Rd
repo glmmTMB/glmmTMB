@@ -8,7 +8,7 @@ mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs,
   respCol, weights, contrasts, size = NULL, family, se = NULL,
   call = NULL, verbose = NULL, ziPredictCode = "corrected",
   doPredict = 0, whichPredict = integer(0), REML = FALSE,
-  start = NULL)
+  start = NULL, map = NULL)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
@@ -67,6 +67,8 @@ conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}
 \code{theta}, \code{thetazi} (random-effect parameters, on the
 standard deviation/Cholesky scale, for conditional and z-i models);
 \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)}
+
+\item{map}{mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}}
 
 \item{zioffset}{offset for zero-inflated model}
 

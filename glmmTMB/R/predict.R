@@ -207,7 +207,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                ziPredictCode=ziPredNm,
                                doPredict=as.integer(se.fit),
                                whichPredict=w,
-                               REML=omi$REML))
+                               REML=omi$REML,
+                               map=omi$map))
 
   ## short-circuit
   if(debug) return(TMBStruc)
