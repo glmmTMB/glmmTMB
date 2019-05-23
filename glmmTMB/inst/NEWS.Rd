@@ -7,8 +7,11 @@
 \section{CHANGES IN VERSION 0.2.3-9000}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item new \code{map} argument allows for parameters to be fixed
+      \item \code{glmmTMB} has a new \code{map} to allow for some
+      parameter values to be fixed
       (see \code{?TMB::MakeADFun} for details)
+      \item \code{glmmTMBControl} has new \code{optimizer} and
+      \code{optArgs} arguments to allow use of an optimizer other than \code{nlminb}
     }
   } % new features
   \subsection{BUG FIXES}{
