@@ -83,10 +83,13 @@ expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
 context("prediction with different binomial specs")
 
 tmbm1 <- glmmTMB(cbind(incidence, size - incidence) ~ period + (1 | herd),
-                  data = cbpp, family = binomial)
+                 data = cbpp, family = binomial)
 tmbm2 <- update(tmbm1,incidence/size ~ . , weights = size)
-expect_equal(fitted(tmbm1),fitted(tmbm2))
-expect_equal(predict(tmbm1),predict(tmbm2))
+
+test_that("fitted & predicted agree", {
+    expect_equal(fitted(tmbm1),fitted(tmbm2))
+    expect_equal(predict(tmbm1),predict(tmbm2))
+})
 
 context("zero-inflation prediction")
 
@@ -103,27 +106,31 @@ mypred <- function(form,dd,cc,vv,linkinv=identity,mu.eta=NULL) {
 ## FIXME: predictions should have row names of data
 dd <- data.frame(unique(cbpp["period"]),size=1,herd=NA)
 ff <- make.link("logit")
-## type="link"
-link_pred <- mypred(~period,dd,fixef(g0_zi)$cond,vcov(g0_zi)$cond)
-expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE)),
-             link_pred)
-## type="conditional"
-cond_pred <- mypred(~period,dd,fixef(g0_zi)$cond,vcov(g0_zi)$cond,
-                    ff$linkinv,ff$mu.eta)
-expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="conditional")),
-             cond_pred)
-## type="zprob"
-zprob_pred <- mypred(~period,dd,fixef(g0_zi)$zi,vcov(g0_zi)$zi,
-                    ff$linkinv,ff$mu.eta)
-expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="zprob")),
-             zprob_pred)
-## type="response"  (checking fit only)
-expect_equal(unname(predict(g0_zi,newdata=dd,se.fit=TRUE,type="response")$fit),
-             cond_pred$fit*(1-zprob_pred$fit))
-## type="zlink"
-zlink_pred <- mypred(~period,dd,fixef(g0_zi)$zi,vcov(g0_zi)$zi)
-expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="zlink")),
-             zlink_pred)
+
+test_that("type='link'", {
+    link_pred <- mypred(~period,dd,fixef(g0_zi)$cond,vcov(g0_zi)$cond)
+    expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE)),
+                 link_pred)
+})
+
+test_that("various types", {
+    cond_pred <- mypred(~period,dd,fixef(g0_zi)$cond,vcov(g0_zi)$cond,
+                        ff$linkinv,ff$mu.eta)
+    expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="conditional")),
+                 cond_pred)
+    zprob_pred <- mypred(~period,dd,fixef(g0_zi)$zi,vcov(g0_zi)$zi,
+                         ff$linkinv,ff$mu.eta)
+    expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="zprob")),
+                 zprob_pred)
+    expect_equal(unname(predict(g0_zi,newdata=dd,se.fit=TRUE,type="response")$fit),
+                 cond_pred$fit*(1-zprob_pred$fit))
+})
+
+test_that("type='zlink'", {
+    zlink_pred <- mypred(~period,dd,fixef(g0_zi)$zi,vcov(g0_zi)$zi)
+    expect_equal(un(predict(g0_zi,newdata=dd,se.fit=TRUE,type="zlink")),
+                 zlink_pred)
+})
 
 context("deprecated zitype parameter")
 expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
@@ -140,7 +147,13 @@ test_that("poly", {
                  255.7690496, tolerance=1e-5)
 })
 test_that("splines", {
-    g2 <- glmmTMB(Reaction~splines::ns(Days,5), sleepstudy)
+    if (getRversion()>="3.5.1") {
+        ## work around predict/predvars bug in 3.5.0 & previous versions
+        g2 <- glmmTMB(Reaction~splines::ns(Days,5), sleepstudy)
+    } else {
+        library(splines)
+        g2 <- glmmTMB(Reaction~ns(Days,5), sleepstudy)
+    }
     expect_equal(predict(g2, newdata=data.frame(Days=0)),257.42672,
                  tolerance=1e-5)
 })
@@ -156,7 +169,12 @@ test_that("poly_RE", {
                  178.1629812, tolerance=1e-5)
 })
 test_that("splines_RE", {
-    g2 <- glmmTMB(Reaction~(1|Subject) + splines::ns(Days,5), sleepstudy)
+    if (getRversion()>="3.5.1") {
+        g2 <- glmmTMB(Reaction~(1|Subject) + splines::ns(Days,5), sleepstudy)
+    } else {
+        library(splines)
+        g2 <- glmmTMB(Reaction~(1|Subject) + ns(Days,5), sleepstudy)
+    }
     expect_equal(predict(g2, newdata=nd, allow.new.levels=TRUE),
                  179.7784754, tolerance=1e-5)
 })
@@ -165,4 +183,15 @@ test_that("scale_RE", {
     g3 <- glmmTMB(Reaction~(1|Subject) + scale(Days), sleepstudy)
     expect_equal(predict(g3, newdata=nd, allow.new.levels=TRUE),
                  173.83923026, tolerance=1e-5)
+})
+
+test_that("complex bases in dispformula", {
+    g4A <- glmmTMB(Reaction~1, sleepstudy)
+    g4B <- glmmTMB(Reaction~1,
+                   disp=~poly(Days,2), sleepstudy)
+    expect_equal(predict(g4A, newdata=nd, se.fit=TRUE),
+                 list(fit = 298.507945749154, se.fit = 4.18682101029576),
+                 tolerance=1e-5)
+    expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
+                 list(fit = 283.656705454758, se.fit = 4.74204256781178))
 })

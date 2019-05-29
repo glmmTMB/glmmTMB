@@ -1,16 +1,24 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 0.2.2.9000
-Authors@R: c(person("Arni","Magnusson",role="aut"),
+Version: 0.2.3
+Authors@R: c(person("Arni","Magnusson",role="aut",
+	   	   comment=c(ORCID="0000-0003-2769-6741")),
 	    person("Hans","Skaug",role="aut"),
-	    person("Anders","Nielsen",role="aut"),
-	    person("Casper","Berg",role="aut"),
+	    person("Anders","Nielsen",role="aut",
+	    	    comment=c(ORCID="0000-0001-9683-9262")),
+	    person("Casper","Berg",role="aut",
+                    comment=c(ORCID="0000-0002-3812-5269")),
             person("Kasper","Kristensen",role="aut"),
-            person("Martin","Maechler",role="aut"),
+            person("Martin","Maechler",role="aut",
+	        comment=c(ORCID="0000-0002-8685-9910")),
             person("Koen","van Bentham",role="aut"),
-            person("Ben","Bolker",role="aut"),
+            person("Nafis","Sadat",role="ctb",
+                comment=c(ORCID="0000-0001-5715-616X")),
+            person("Ben","Bolker",role="aut",
+	           comment=c(ORCID="0000-0002-2127-0443")),
             person("Mollie","Brooks",role=c("aut","cre"),
-                   email="mollieebrooks@gmail.com"))
+                   email="mollieebrooks@gmail.com",
+		   comment=c(ORCID="0000-0001-6963-8326")))
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
     likelihood estimation via 'TMB' (Template Model Builder). Random effects are
@@ -21,7 +29,7 @@ License: AGPL-3
 Depends: R (>= 3.2.0)
 Imports:
     methods,
-    TMB (>= 1.7.13),
+    TMB (>= 1.7.14),
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme
@@ -32,7 +40,7 @@ Suggests:
     testthat,
     MASS,
     lattice,
-    ggplot2,
+    ggplot2 (>= 2.2.1),
     mlmRev,
     bbmle (>= 1.0.19),
     pscl,
@@ -44,25 +52,17 @@ Suggests:
     DHARMa,
     multcomp,
     MuMIn,
-    effects,
+    effects (>= 4.0-1),
     dotwhisker,
     broom,
     plyr,
-    png
+    png,
+    boot
+SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1
 NeedsCompilation: yes
-Author: Arni Magnusson [aut],
-    Hans Skaug [aut],
-    Anders Nielsen [aut],
-    Casper Berg [aut],
-    Kasper Kristensen [aut],
-    Martin Maechler [aut],
-    Koen van Bentham [aut],
-    Ben Bolker [aut],
-    Mollie Brooks [aut, cre]
-Maintainer: Mollie Brooks <mollieebrooks@gmail.com>
 Encoding: UTF-8

@@ -3,22 +3,22 @@
 \alias{Salamanders}
 \docType{data}
 \description{
-  A dataset containing counts of salamanders with site covariates and sampling covariates. Each of 23 sites were sampled 4 times.
-  When using this data, please cite Price et al. (2016) as well as the Dryad data package (Price et al. 2015). 
+  A data set containing counts of salamanders with site covariates and sampling covariates. Each of 23 sites was sampled 4 times.
+  When using this data set, please cite Price et al. (2016) as well as the Dryad data package (Price et al. 2015). 
 }
 \usage{data(Salamanders)}
 \format{
   A data frame with 644 observations on the following 10 variables:
   \describe{
 	\item{site}{name of a location where repeated samples were taken}
-	\item{mined}{factor indicating whether the site was affected by mountian top removal coal mining} 
+	\item{mined}{factor indicating whether the site was affected by mountain top removal coal mining} 
 	\item{cover}{amount of cover objects in the stream (scaled)} 
 	\item{sample}{repeated sample}
 	\item{DOP}{Days since precipitation (scaled)}
 	\item{Wtemp}{water temperature (scaled)}
 	\item{DOY}{day of year (scaled)}
-	\item{spp}{abreviated species name, possibly also life stage}
-	\item{count}{number of observed salamanders}  
+	\item{spp}{abbreviated species name, possibly also life stage}
+	\item{count}{number of salamanders observed}
 }
 }
 \references{

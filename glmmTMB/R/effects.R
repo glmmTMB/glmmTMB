@@ -4,7 +4,12 @@
 ##' @param focal.predictors a character vector of one or more predictors in the
 ##'  model in any order.
 
-##' @export Effect.glmmTMB
+##'
+##' @rawNamespace if(getRversion() >= "3.6.0") {
+##'   S3method(effects::Effect, glmmTMB)
+##' } else {
+##'   export(Effect.glmmTMB)
+##' }
 Effect.glmmTMB <- function (focal.predictors, mod, ...) {
     fam <- family(mod)
     ## code to make the 'truncated_*' families work

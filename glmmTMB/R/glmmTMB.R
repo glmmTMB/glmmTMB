@@ -1,7 +1,5 @@
 ##' Extract info from formulas, reTrms, etc., format for TMB
-##' @param formula conditional formula
-##' @param ziformula zero-inflation formula
-##' @param dispformula dispersion formula
+##' @inheritParams glmmTMB
 ##' @param combForm combined formula
 ##' @param mf call to model frame
 ##' @param fr model frame
@@ -9,17 +7,13 @@
 ##' @param respCol response column
 ##' @param zioffset offset for zero-inflated model
 ##' @param doffset offset for dispersion model
-##' @param weights weights
-##' @param contrasts contrasts
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @param se (logical) compute standard error?
 ##' @param call original \code{glmmTMB} call
-##' @param verbose verbosity setting from original \code{glmmTMB} call
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
-##' @param REML Logical; Use REML estimation rather than maximum likelihood.
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -38,7 +32,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        ziPredictCode="corrected",
                        doPredict=0,
                        whichPredict=integer(0),
-                       REML=FALSE) {
+                       REML=FALSE,
+                       start=NULL) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
@@ -145,13 +140,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     Zzi = ziList$Z,
     Xd = dispList$X,
     ## Zdisp=dispList$Z,
-    yobs,
+    ## use c() on yobs, size to strip attributes such as 'AsIs'
+    ##  (which confuse MakeADFun)
+    yobs = c(yobs),
     respCol,
     offset = condList$offset,
     zioffset = ziList$offset,
     doffset = dispList$offset,
     weights,
-    size,
+    size = c(size),
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,
@@ -185,6 +182,19 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
                        thetaf  = rr0(numThetaFamily)
                      ))
+    
+  for (p in names(start)) {
+      if (!(p %in% names(parameters))) {
+          stop(sprintf("unrecognized vector '%s' in %s",p,sQuote("start")),
+               call. = FALSE)
+      }
+      if ((Lp <- length(parameters[[p]])) !=  (Ls <- length(start[[p]]))) {
+          stop(sprintf("parameter vector length mismatch: in %s, length(%s)==%d, should be %d", sQuote("start"), p, Ls, Lp),
+               call. = FALSE)
+      }
+      parameters[[p]] <- start[[p]]
+  }
+    
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
   ## REML
@@ -317,7 +327,7 @@ getGrpVar <- function(x)
 
 ##' Calculate random effect structure
 ##' Calculates number of random effects, number of parameters,
-##' blocksize and number of blocks.  Mostly for internal use.
+##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
 ##' @param ss a character string indicating a valid covariance structure. 
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
@@ -451,7 +461,7 @@ binomialType <- function(x) {
 ##'     The argument is ignored for families that do not have a dispersion parameter.
 ##'     For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
 ##'     The dispersion model uses a log link. 
-##'     In Gaussian mixed models, \code{dispformula=~0} fixes the parameter to be 0, forcing variance into the random effects.
+##'     In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value: at present it is set to \code{sqrt(.Machine$double.eps)}), forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only)
 ##' @param contrasts an optional list, e.g. \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
@@ -462,6 +472,13 @@ binomialType <- function(x) {
 ##'     without fitting the model
 ##' @param control control parameters; see \code{\link{glmmTMBControl}}.
 ##' @param REML Logical; Use REML estimation rather than maximum likelihood.
+##' @param start starting values, expressed as a list with possible components
+##' \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for
+##' conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}
+##' (conditional modes for conditional and zero-inflation models);
+##' \code{theta}, \code{thetazi} (random-effect parameters, on the
+##' standard deviation/Cholesky scale, for conditional and z-i models);
+##' \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -553,7 +570,8 @@ glmmTMB <- function (
     verbose=FALSE,
     doFit=TRUE,
     control=glmmTMBControl(),
-    REML=FALSE
+    REML=FALSE,
+    start=NULL
     )
 {
 
@@ -693,7 +711,12 @@ glmmTMB <- function (
     ## (1) transform 'y' appropriately for binomial models
     ##     (2-column matrix, factor, logical -> numeric)
     ## (2) warn on non-integer values
-    etastart <- start <- mustart <- NULL
+    ## 'start' should *not* be (reset) to NULL here
+    ## as far as we know (i.e. searching src/library/stats/R/family.R
+    ##  in the R source), 'start' is only referred to when family="gaussian"
+    ##  AND (inverse-link  & any(y==0)) OR (log-link & any(y<=0))
+    ##  and then only to check whether it's NULL or not ...
+    etastart <- mustart <- NULL
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
@@ -701,7 +724,7 @@ glmmTMB <- function (
    if (grepl("^truncated", family$family) &&
        (!is.factor(y) && any(y<1)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
-             "Zeros are compatible with a trucated distribution only when zero-inflation is added."))
+             "Zeros are compatible with a truncated distribution only when zero-inflation is added."))
 
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
@@ -715,7 +738,8 @@ glmmTMB <- function (
                    se=se,
                    call=call,
                    verbose=verbose,
-                   REML=REML)
+                   REML=REML,
+                   start=start)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
@@ -729,11 +753,14 @@ glmmTMB <- function (
 }
 
 ##' Control parameters for glmmTMB optimization
-##' @param optCtrl Passed as argument \code{control} to \code{nlminb}.
-##' @param profile Logical; Experimental option to improve speed and
-##'                robustness when a model has many fixed effects
-##' @param collect Logical; Experimental option to improve speed by
-##'                recognizing duplicated observations.
+##' @param optCtrl   Passed as argument \code{control} to \code{nlminb}.
+##' @param profile   Logical; Experimental option to improve speed and
+##'                  robustness when a model has many fixed effects
+##' @param collect   Logical; Experimental option to improve speed by
+##'                  recognizing duplicated observations.
+##' @param parallel  Numeric; Setting number of OpenMP threads to evaluate
+##'                  the negative log-likelihood in parallel. Default: 1
+##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
 ##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
@@ -759,13 +786,21 @@ glmmTMB <- function (
 ##' @export
 glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
                            profile=FALSE,
-                           collect=FALSE) {
+                           collect=FALSE,
+                           parallel = 1) {
+    
+    ## Make sure that we specify at least one thread
+    if (is.na(parallel) | is.null(parallel) | parallel < 1) {
+      stop("Number of parallel threads must be a numeric >= 1")
+    }
+    parallel <- as.integer(parallel)
+  
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile, collect)
+    namedList(optCtrl, profile, collect, parallel)
 }
 
 ##' collapse duplicated observations
@@ -811,6 +846,9 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
+    
+    ## Assign OpenMP threads
+    TMB::openmp(n = control$parallel)
 
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore

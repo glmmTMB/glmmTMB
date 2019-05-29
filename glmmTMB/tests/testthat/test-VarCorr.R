@@ -174,3 +174,17 @@ if (FALSE) {  ## not yet ...
     as.data.frame(vc,order="lower.tri")
 }
 
+Orthodont$units <- factor(seq(nrow(Orthodont)))
+fm0 <- glmmTMB(distance ~ age + (1|Subject) + (1|units),
+               dispformula=~0,
+               data = Orthodont)
+
+test_that("VarCorr omits resid when dispformula=~0", {
+    expect_false(attr(VarCorr(fm0)$cond,"useSc"))
+    ## Residual vars not printed
+    expect_false(any(grepl("Residual",capture.output(print(VarCorr(fm0))))))
+})
+
+test_that("vcov(.,full=TRUE) works for zero-disp models", {
+    expect_equal(dim(vcov(fm0,full=TRUE)),c(4,4))
+})

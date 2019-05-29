@@ -25,32 +25,36 @@ The value returned varies by family:
          of the standard deviation (i.e., smaller than the results of
                                  \code{sigma(lm(...))} by a factor of (n-1)/n)}
      \item{nbinom1}{returns an overdispersion parameter
-         (usually denoted \eqn{\alpha} as in Hardin and Hilbe (2007)):
-         such that the variance equals \eqn{\mu(1+\alpha)}.}
+         (usually denoted \eqn{\alpha}{alpha} as in Hardin and Hilbe (2007)):
+         such that the variance equals \eqn{\mu(1+\alpha)}{mu(1+alpha)}.}
      \item{nbinom2}{returns an overdispersion parameter
-         (usually denoted \eqn{\theta} or \eqn{k}); in contrast to
-         most other families, larger \eqn{\theta} corresponds to a \emph{lower}
-         variance which is \eqn{\mu(1+\mu/\theta)}.}
+         (usually denoted \eqn{\theta}{theta} or \eqn{k}); in contrast to
+         most other families, larger \eqn{\theta}{theta} corresponds to a \emph{lower}
+         variance which is \eqn{\mu(1+\mu/\theta)}{mu(1+mu/theta)}.}
      \item{Gamma}{Internally, glmmTMB fits Gamma responses by fitting a mean
          and a shape parameter; sigma is estimated as (1/sqrt(shape)),
          which will typically be close (but not identical to) that estimated
          by \code{stats:::sigma.default}, which uses sqrt(deviance/df.residual)}
-     \item{beta}{returns the value of \eqn{\phi}, 
-         where the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)} 
-         (i.e., increasing \eqn{\phi} decreases the variance.) 
+     \item{beta}{returns the value of \eqn{\phi}{phi}, 
+         where the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)}{mu*(1-mu)/(1+phi)}
+         (i.e., increasing \eqn{\phi}{phi} decreases the variance.) 
          This parameterization follows Ferrari and Cribari-Neto (2004)
          (and the \code{betareg} package):}
      \item{betabinomial}{This family uses the same parameterization (governing
           the Beta distribution that underlies the binomial probabilities) as \code{beta}.}
-     \item{genpois}{returns the value of \eqn{\phi},
-          where the variance is \eqn{\mu\phi}}
-     \item{compois}{returns the value of \eqn{1/\nu},
-          When \eqn{\nu=1}, compois is equivalent to the Poisson distribution.
+     \item{genpois}{returns the index of dispersion \eqn{\phi^2}{phi^2},
+          where the variance is \eqn{\mu\phi^2}{mu*phi^2} (Consul & Famoye 1992)}
+     \item{compois}{returns the value of \eqn{1/\nu}{1/nu},
+          When \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
           There is no closed form equation for the variance, but 
-          it is approximately undersidpersed when \eqn{1/\nu <1}
-          and approximately oversidpersed when \eqn{1/\nu >1}.
-          In this implementation, \eqn{\mu} is excatly the mean, which
+          it is approximately undersidpersed when \eqn{1/\nu <1}{1/nu <1}
+          and approximately oversidpersed when \eqn{1/\nu >1}{1/nu>1}.
+          In this implementation, \eqn{\mu}{mu} is exactly the mean (Huang 2017), which
           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
+     \item{tweedie}{returns the value of \eqn{\phi}{phi},
+          where the variance is \eqn{\phi\mu^p}{phi*mu^p}.
+          The value of \eqn{p} can be extracted using the internal
+          function \code{glmmTMB:::.tweedie_power}.}
 }
 
  The most commonly used GLM families 
@@ -59,8 +63,10 @@ The value returned varies by family:
 }
 \references{
 \itemize{
+\item Consul PC, and Famoye F (1992). "Generalized Poisson regression model. Communications in Statistics: Theory and Methods" 21:89–109.
 \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata press.
+\item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts. " \emph{Statistical Modelling} 17(6), 1-22.
 \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 }
 }
