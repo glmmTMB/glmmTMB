@@ -182,15 +182,14 @@ test_that("confint", {
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
     ci.2G <- confint(fm2G, estimate=FALSE)
-    ci.2G.expect <- structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788, 
-                             0.0115949839191128, -0.518916570291726, 0.0720456818399729, 5.58401849115119, 
-                             0.0429217639222305, 0.150456372618643, 0.0264376535768207, 0.481694558481224, 
-                             0.0907365112123184),
-                           .Dim = c(6L, 2L),
-                           .Dimnames = list(c("cond.(Intercept)", 
-                                              "cond.Days", "cond.Std.Dev.(Intercept)",
-                                              "cond.Std.Dev.Days", "cond.Cor.Days.(Intercept)", "sigma"),
-                                            c("2.5 %", "97.5 %")))
+    ci.2G.expect <-
+structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788, 
+0.0115949839191128, -0.518916570291726, -0.518916570291726, 5.58401849115119, 
+0.0429217639222305, 0.150456372618643, 0.0264376535768207, 0.481694558481224, 
+0.481694558481224), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)", 
+"cond.Days", "Subject.cond.Std.Dev.(Intercept)", "Subject.cond.Std.Dev.Days", 
+"Subject.cond.Cor.Days.(Intercept)", "cond.Corr.Subject.Days:(Intercept)"
+), c("2.5 %", "97.5 %")))
     expect_equal(ci.2G, ci.2G.expect, tolerance=1e-6)
     ## nbinom2 test Std.Dev and sigma
     ci.2NB <- confint(fm2NB, estimate=FALSE)
