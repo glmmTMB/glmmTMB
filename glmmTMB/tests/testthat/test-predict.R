@@ -72,9 +72,11 @@ expect_true(!any(is.na(pp_om)))
 
 ## na.pass
 pp_ndNA <- predict(g0,newdata=ssNA)
-expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)))
+expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)),
+       failure_message="NAs don't match with na.pass+predict")
 pp_ndNA2 <- predict(g0,newdata=ssNA2)
-expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)))
+expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)),
+       failure_message="NAs don't match with na.pass+predict+newdata")
 
 ## na.omit
 pp_ndNA_om <- predict(g0,newdata=ssNA,na.action=na.omit)
