@@ -367,7 +367,7 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
                  names(re),
                  sapply(re,"[[","blockNumTheta"))
           if (length(nn)==0) return(nn)
-          return(paste("theta",gsub(" ","",nn),sep="_"))
+          return(paste("theta",gsub(" ","",unlist(nn)),sep="_"))
       }
       nameList <- c(nameList,list(reNames("cond"),reNames("zi")))
 
