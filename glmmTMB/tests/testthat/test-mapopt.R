@@ -9,11 +9,17 @@ m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders,
               start=list(beta=c(0,2)),
               map=list(beta=factor(c(1,NA))))
 
+m2 <- glmmTMB(count~ mined + (1|site), family=poisson, data=Salamanders,
+              start=list(theta=log(2)),
+              map=list(theta=factor(NA)))
+
 m1optim <- update(m1, control=glmmTMBControl(optimizer=optim,
                                              optArgs=list(method="BFGS")))
 
-test_that("basic mapping works",
-          expect_equal(fixef(m1)$cond[[2]], 2.0))
+test_that("basic mapping works", {
+    expect_equal(fixef(m1)$cond[[2]], 2.0)
+    expect_equal(exp(getME(m2,"theta")), 2.0)
+})
 
 test_that("predict works with mapped params",
           expect_equal(vapply(predict(m1,se.fit=TRUE),unique,numeric(1)),
