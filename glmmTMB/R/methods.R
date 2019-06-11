@@ -108,7 +108,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' \item{condsd}{conditional standard deviation}
 ##' }
 ##' }
-##'
+##' 
 ##' @note When a model has no zero inflation, the
 ##'   the \code{ranef} and \code{coef} print methods simplify the
 ##'   structure shown, by default. To show the full list structure, use
@@ -183,7 +183,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
                                   } else sd[[w]]  ## else just the array
           }
           return(d)
-      })
+      })      
       names(x) <- names(fl)
       return(x)
     } ## if !is.null(cnms)
@@ -991,9 +991,9 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     	stop("Simulation code has not been implemented for this family")
     }
     ## copied from stats::simulate.lm
-    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) 
         runif(1)
-    if (is.null(seed))
+    if (is.null(seed)) 
         RNGstate <- get(".Random.seed", envir = .GlobalEnv)
     else {
         R.seed <- get(".Random.seed", envir = .GlobalEnv)
@@ -1118,9 +1118,9 @@ isLMM.glmmTMB <- function(object) {
 #'     }
 #' }
 #' }
-#' @details
+#' @details 
 #' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
-#'
+#' 
 refit.glmmTMB <- function(object, newresp, ...) {
   cc <- getCall(object)
   newdata <- eval.parent(cc$data)
@@ -1154,7 +1154,7 @@ refit.glmmTMB <- function(object, newresp, ...) {
           }
       }
   } else newdata[[deparse(fresp)]] <- newresp
-
+      
   cc$data <- quote(newdata)
   return(eval(cc))
 }
