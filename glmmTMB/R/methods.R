@@ -1226,5 +1226,9 @@ coef.glmmTMB <- function(object,
 ##' @importFrom stats model.frame
 ##' @export
 weights.glmmTMB <- function(object, ...) {
+  type.arg <- match.call(expand.dots = FALSE)[["..."]][["type"]]
+  if (!is.null(type.arg) && !type.arg %in% c("p", "prior")) {
+    warning("Only the initially supplied weights ('prior weights') are available. Returning prior weights now.")
+  }
   stats::model.frame(object)[["(weights)"]]
 }
