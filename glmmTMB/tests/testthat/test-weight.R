@@ -46,6 +46,8 @@ test_that("Return weights", {
   ## partial matching  
   expect_equal(weights(wei_glmmtmb, type="prio"), aggdat$Freq)
   expect_error(weights(wei_glmmtmb, type = "working"),"should be one of")
+  expect_warning(weights(wei_glmmtmb, junk = "abc"),
+                 "unused arguments ignored")
 })
 
 

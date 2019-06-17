@@ -1237,8 +1237,17 @@ coef.glmmTMB <- function(object,
 ##' weighted least squares, \code{working weights} (see \code{\link[stats]{weights.glm}}) are unavailable.
 ##' }
 ##' @importFrom stats model.frame
+##' @importFrom stats weights
+##' @param object a fitted \code{glmmTMB} object
+##' @param type weights type
+##' @param ... additional arguments (not used; for methods compatibility)
 ##' @export
 weights.glmmTMB <- function(object, type="prior", ...) {
     type <- match.arg(type)  ## other types are *not* OK
+    l... <- list(...)
+    if (!is.null(l...)) {
+        warning("unused arguments ignored: ",
+             paste(shQuote(names(l...)),collapse=","))
+    }
     stats::model.frame(object)[["(weights)"]]
 }

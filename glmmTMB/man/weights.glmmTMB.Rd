@@ -6,6 +6,13 @@
 \usage{
 \method{weights}{glmmTMB}(object, type = "prior", ...)
 }
+\arguments{
+\item{object}{a fitted \code{glmmTMB} object}
+
+\item{type}{weights type}
+
+\item{...}{additional arguments (not used; for methods compatibility)}
+}
 \description{
 Extract weights from a glmmTMB object
 }
