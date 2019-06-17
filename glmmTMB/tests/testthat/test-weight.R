@@ -43,6 +43,7 @@ test_that("Weights can be an argument", {
 
 test_that("Return weights", {
   expect_equal(weights(wei_glmmtmb), aggdat$Freq)
+  expect_equal(expect_warning(weights(wei_glmmtmb, type = "working"), aggdat$Freq))
 })
 
 
