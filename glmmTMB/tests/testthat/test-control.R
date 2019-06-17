@@ -54,7 +54,7 @@ test_that("parallel regions", {
     glmmTMB(count ~ mined * spp + (1|site),
             family = poisson,
             data = Salamanders,
-            verbose = T,
+            verbose = FALSE,
             control = glmmTMBControl(...))
   }
 
