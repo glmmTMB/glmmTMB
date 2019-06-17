@@ -1,3 +1,6 @@
 ## Add OpenMP flags for compiling the model
-PKG_CPPFLAGS += $(SHLIB_OPENMP_CXXFLAGS)
+## From https://cran.r-project.org/doc/manuals/r-release/R-exts.html#OpenMP-support:
+## > Note that the macro SHLIB_OPENMP_CXXFLAGS applies to the default C++ compiler and not necessarily to the C++11/14/17 compiler: users of the latter should do their own configure checks. If you do use your own checks, make sure that OpenMP support is complete by compiling and linking an OpenMP-using program: on some platforms the runtime library is optional and on others that library depends on other optional libraries.
+## > Packages which include C++ code should use SHLIB_OPENMP_CXXFLAGS in PKG_LIBS
 PKG_CXXFLAGS += $(SHLIB_OPENMP_CXXFLAGS)
+PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS)
