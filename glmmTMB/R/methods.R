@@ -1222,13 +1222,23 @@ coef.glmmTMB <- function(object,
 }
 
 
-
+##' Extract weights from a glmmTMB object
+##'
+##' @details
+##' At present only explicitly specified
+##' \emph{prior weights} (i.e., weights specified
+##' in the \code{weights} argument) can be extracted from a fitted model.
+##' \itemize{
+##' \item Unlike other GLM-type models such as \code{\link{glm}} or
+##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
+##' the total number of trials when binomial responses are specified
+##' as a two-column matrix.
+##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' weighted least squares, \code{working weights} (see \code{\link[stats]{weights.glm}}) are unavailable.
+##' }
 ##' @importFrom stats model.frame
 ##' @export
-weights.glmmTMB <- function(object, ...) {
-  type.arg <- match.call(expand.dots = FALSE)[["..."]][["type"]]
-  if (!is.null(type.arg) && !type.arg %in% c("p", "prior")) {
-    warning("Only the initially supplied weights ('prior weights') are available. Returning prior weights now.")
-  }
-  stats::model.frame(object)[["(weights)"]]
+weights.glmmTMB <- function(object, type="prior", ...) {
+    type <- match.arg(type)  ## other types are *not* OK
+    stats::model.frame(object)[["(weights)"]]
 }

@@ -4,29 +4,28 @@ stopifnot(require("testthat"),
 
 context("weight")
 
-
 set.seed(1) 
-nrep = 20
-nsim = 5
-sdi = .1
-sdii = .2
-rho = -.1
-slope = .8 
-ni=100
+nrep <- 20
+nsim <- 5
+sdi <- .1
+sdii <- .2
+rho <- -.1
+slope <- .8 
+ni<-100
 
-dat = expand.grid(i=1:ni, rep=1:nrep , x=c(0 ,.2, .4))
-RE = MASS::mvrnorm(n = ni, mu =c(0, 0), 
+dat <- expand.grid(i=1:ni, rep=1:nrep , x=c(0 ,.2, .4))
+RE <- MASS::mvrnorm(n = ni, mu =c(0, 0), 
 		Sigma = matrix(c(sdi*sdi, rho*sdi*sdii, rho*sdi*sdii ,sdii*sdii),2,2)) 
-inddat = transform(dat, y=rpois(n=nrow(dat), 
+inddat <- transform(dat, y=rpois(n=nrow(dat), 
                                 lambda = exp(RE[i,1] + x*(slope + RE[i,2]))))
 
 ## aggdat = ddply(inddat, ~i+x+y, summarize, freq=length(rep))
 
-aggdat = with(inddat,as.data.frame(table(i,x,y),
+aggdat <- with(inddat,as.data.frame(table(i,x,y),
                                    stringsAsFactors=FALSE))
-aggdat = aggdat[with(aggdat,order(i,x,y)),] ## cosmetic/match previous
-aggdat = subset(aggdat,Freq>0)              ## drop zero categories
-aggdat = transform(aggdat,
+aggdat <- aggdat[with(aggdat,order(i,x,y)),] ## cosmetic/match previous
+aggdat <- subset(aggdat,Freq>0)              ## drop zero categories
+aggdat <- transform(aggdat,
                    i=as.integer(i),
                    x=as.numeric(x),
                    y=as.numeric(y))
@@ -43,7 +42,10 @@ test_that("Weights can be an argument", {
 
 test_that("Return weights", {
   expect_equal(weights(wei_glmmtmb), aggdat$Freq)
-  expect_equal(expect_warning(weights(wei_glmmtmb, type = "working")), aggdat$Freq)
+  expect_equal(weights(wei_glmmtmb, type="prior"), aggdat$Freq)
+  ## partial matching  
+  expect_equal(weights(wei_glmmtmb, type="prio"), aggdat$Freq)
+  expect_error(weights(wei_glmmtmb, type = "working"),"should be one of")
 })
 
 
