@@ -1244,10 +1244,9 @@ coef.glmmTMB <- function(object,
 ##' @export
 weights.glmmTMB <- function(object, type="prior", ...) {
     type <- match.arg(type)  ## other types are *not* OK
-    l... <- list(...)
-    if (!is.null(l...)) {
+    if (length(list(...)>0)) {
         warning("unused arguments ignored: ",
-             paste(shQuote(names(l...)),collapse=","))
+             paste(shQuote(names(list(...))),collapse=","))
     }
     stats::model.frame(object)[["(weights)"]]
 }
