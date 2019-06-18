@@ -12,7 +12,7 @@ family_factory <- function(default_link,family,variance) {
 }
 
 ## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
-globalVariables(".Theta") 
+utils::globalVariables(".Theta") 
 
 ## attempt to guess whether calling function has been called from glm.fit ...
 in_glm_fit <- function() {

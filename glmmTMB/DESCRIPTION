@@ -55,9 +55,13 @@ Suggests:
     effects (>= 4.0-1),
     dotwhisker,
     broom,
+    broom.mixed,
     plyr,
     png,
-    boot
+    boot,
+    texreg,
+    xtable,
+    huxtable
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
