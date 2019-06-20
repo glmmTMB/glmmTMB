@@ -74,7 +74,8 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
     afun <- switch(type,
                    `2` = , II = Anova.II.glmmTMB,
                    `3` = , III = Anova.III.glmmTMB)
-    afun(mod, vcov., test=test.statistic, singular.ok = singular.ok)
+    afun(mod, vcov., test=test.statistic, singular.ok = singular.ok,
+         component = component)
 }
 
 ## defined as a function, not a method, so we can hand the object
