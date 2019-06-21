@@ -25,10 +25,14 @@
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item \code{VarCorr} no longer prints residual variances for models with \code{dispformula=~0}
+      \item \code{VarCorr} no longer prints residual variances for
+      models with \code{dispformula=~0}
+      \item the \code{model.matrix()} and \code{terms()} methods
+      for \code{glmmTMB} objects have been slightly modified
+      (hopefully in a 99.9\% back-compatible way)
     }
   } % user-visible changes
-} % version 0.2.3-9000
+} % version 0.2.3-9xxx
 
 \section{CHANGES IN VERSION 0.2.3}{
   \subsection{NEW FEATURES}{
