@@ -225,8 +225,14 @@ beta_family <- function(link="logit") {
     r <- list(family="beta",
               variance=function(mu) { mu*(1-mu) },
               initialize=expression({
-                  if (any(y <= 0 | y >= 1)) 
-                      stop("y values must be 0 < y < 1")
+                  if (exists("ziformula") && !ident(ziformula, ~0)) {
+                      if (any(y < 0 | y >= 1)) {
+                          stop("y values must be 0 <= y < 1")
+                      }
+                  } else {
+                      if (any(y <= 0 | y >= 1)) 
+                          stop("y values must be 0 < y < 1")
+                  }
                   mustart <- y
               }))
     return(make_family(r,link))
