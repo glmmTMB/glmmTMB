@@ -74,13 +74,15 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' the default (\code{na.pass}) is to predict \code{NA}
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
-##' @param re.form (not yet implemented) specify which random effects to condition on when predicting. To compute population-level predictions for a given grouping variable (i.e., setting \emph{all} random effects for that grouping variable to zero), set the group value to \code{NA}.
+##' @param re.form (not yet implemented: see \section{Details} for population-level predictions) (formula, \code{NULL}, or \code{NA}) specify which random effects to condition on when predicting. 
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
 ##' @details
 ##' \itemize{
+##' \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
 ##' \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
 ##' However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
+
 ##' \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
 ##' }
 ##' 
