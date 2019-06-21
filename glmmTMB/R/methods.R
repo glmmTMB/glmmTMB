@@ -46,6 +46,9 @@ zeroDisp <- function(object) {
     formComp(object,"dispformula",~0)
 }
 
+## no roxygen for now ...
+# @param xnm vector of fixed-effect parameter names (e.g. names(fixef(m)$disp))
+# @param nm name of component (e.g. "disp")
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
@@ -871,13 +874,16 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     return(ci)
 }
 
+##' @rdname glmmTMB_methods
+##' @param x a fitted \code{glmmTMB} object
 ##' @export
-## FIXME: establish separate 'terms' components for
-##   each model component (conditional, random, zero-inflation, dispersion ...)
+## was: x$modelInfo$reTrms[[component]]$terms[[part]]
+## now modified because e.g. "disp" component didn't get a $reTrms
+##  component (updated fitTMB to save a separate "terms" component)
 terms.glmmTMB <- function(x, component="cond", part="fixed", ...) {
     if (part != "fixed") stop("only fixed terms currently available")
-    return(x$modelInfo$reTrms[[component]]$terms[[part]])
-    ## terms(x$frame)
+
+    return(x$modelInfo$terms[[component]][[part]])
 }
 
 ##' @export
@@ -1044,9 +1050,16 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
 
 ## need this so we can get contrasts carried through properly to model.matrix
 
+
+#' Methods for extracting developer-level information from \code{glmmTMB} models
+#' @rdname glmmTMB_methods
+#' @param object a fitted \code{glmmTMB} object
+#' @param component model component ("cond", "zi", or "disp"; not all models contain all components)
+#' @param part whether to return results for the fixed or random effect part of the model (at present only \code{part="fixed"} is implemented for most methods)
+#' @param \dots additional arguments (ignored or passed to \code{\link{model.frame}})
 #' @export
 
-model.matrix.glmmTMB <- function (object, ...)
+model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
 {
     ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
     ## if (n_match <- match("x", names(object), 0L))
@@ -1054,9 +1067,21 @@ model.matrix.glmmTMB <- function (object, ...)
     ## else {
     ## data <- model.frame(object, xlev = object$xlevels, ...)
 
-    data <- model.frame(object, ...)
-    NextMethod("model.matrix", data = data,
-               contrasts.arg = object$modelInfo$contrasts)
+    ## was calling NextMethod() on the model frame: failed after messing
+    ##   with terms structure
+    ## could be more efficient to extract $X, $Z rather than re-building
+    ## model matrix??
+    if (part != "fixed") stop("only fixed model matrices currently available")
+
+    ff <- object$modelInfo$allForm
+    form <- ff[[switch(component,
+                       cond="formula",
+                       zi="ziformula",
+                       disp="dispformula")]]
+    model.matrix(lme4::nobars(form), model.frame(object, ...),
+                 contrasts.arg = object$modelInfo$contrasts)
+    ## FIXME: what if contrasts are *different* for different components? (ugh)
+    ## should at least write a test to flag this case ...
 }
 
 ## convert ranef object to a long-format data frame, e.g. suitable

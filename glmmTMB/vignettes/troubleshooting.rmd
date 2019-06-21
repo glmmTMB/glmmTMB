@@ -20,21 +20,23 @@ The contents will expand with experience.
 
 If your problem is not covered below, there's a chance it has been solved in the development version; try updating to the latest version of `glmmTMB` on GitHub.
 
-#Warnings
+# Warnings
 
-## Model convergence problem; non-positive-definite Hessian matrix
+## Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.
 
 You may see the same warning as in the following example:
 ```{r non-pos-def,cache=TRUE}
 zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
-This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the estimated curvature of the log-likelihood surface is inconsistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
+This error states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, it is downward-curving, or flat, in some direction(s).
 
-It can occur:
+These problems are most likely:
 
 - when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)
-- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)
+- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated ("singular fit": often caused by having too few levels of the random-effect grouping variable)
+- when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)
+- when dispersion is estimated to be near zero
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
 
 How do we diagnose the problem?

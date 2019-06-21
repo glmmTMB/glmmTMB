@@ -25,12 +25,20 @@ if (require(car)) {
     fm0 <- lme4::lmer(Reaction~Days+(1|Subject),sleepstudy,REML=FALSE)
     expect_equal(Anova(fm1),Anova(fm0),tolerance=3e-6)
     expect_equal(Anova(fm1,type="III"),Anova(fm0,type="III"),tolerance=3e-6)
-    ## test Anova on non-default component
+    ## test Anova on various components
     fmd <- glmmTMB(Reaction~Days+(1|Subject),
                    disp=~I(Days>5), sleepstudy, REML=FALSE)
     ad <- Anova(fmd,component="disp")
-    expect_equal(ad[1,1],160.1628,tolerance=1e-5)
+    expect_equal(ad[1,1],18.767,tolerance=1e-5)
+    expect_equal(rownames(ad), "I(Days > 5)")
+    ac <- Anova(fmd,component="cond")
+    expect_equal(ac[1,1], 160.1628, tolerance=1e-5)
+    expect_equal(rownames(ac), "Days")
+    expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
 }
+
+model.frame(fmd)
+model.matrix(fmd)
 
 if (require(effects)) {
     context("effects")

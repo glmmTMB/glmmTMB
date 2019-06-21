@@ -230,6 +230,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     fixedform <- formula
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
+    terms <- NULL ## make sure it's empty in case we don't set it
+    
     nobs <- nrow(fr)
     
     ## check for empty fixed form
@@ -868,6 +870,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+## FIXME: export fitTMB?
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
@@ -1008,6 +1011,9 @@ fitTMB <- function(TMBStruc) {
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
+                                terms = lapply(list(cond=condList, zi=ziList,
+                                                    disp=dispList),
+                                               "[[", "terms"),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm,
                                 REML,
