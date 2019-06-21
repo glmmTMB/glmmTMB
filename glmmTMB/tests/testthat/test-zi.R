@@ -32,3 +32,6 @@ test_that("zi", {
     expect_equal(fixef(owls_nb2),fixef(owls_nb3))
 })
 
+suppressWarnings(RNGversion("3.5.1"))
+dd <- data.frame(y=c(rbeta(100,shape1=2,shape2=1),rep(0,10)))
+glmmTMB(y~1, data=dd, family=beta_family, zi=~1)
