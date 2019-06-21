@@ -34,8 +34,9 @@ test_that("zi", {
 
 test_that("zi beta", {
     suppressWarnings(RNGversion("3.5.1"))
+    set.seed(101)
     dd <- data.frame(y=c(rbeta(100,shape1=2,shape2=1),rep(0,10)))
     m1 <- glmmTMB(y~1, data=dd, family=beta_family, zi=~1)
     expect_equal(unname(plogis(fixef(m1)[["zi"]])),1/11)
-    expect_equal(unname(fixef(m1)[["cond"]]), 0.704939, tolerance=1e-5)
+    expect_equal(unname(fixef(m1)[["cond"]]), 0.6211636, tolerance=1e-5)
 })
