@@ -315,3 +315,24 @@ getCapabilities <- function(what="all",check=FALSE) {
         return(family_OK)
     }
 }
+
+Gamma <- function(link="inverse") {
+    g <- stats::Gamma(link=link)
+    ## stats::Gamma does clever deparsing stuff ... need to work around it ...
+    if (is.function(link)) {
+        g$link <- deparse(substitute(link))
+    } else g$link <- link
+    ## modify initialization to allow zero values in zero-inflated cases
+    g$initialize <- expression({
+        if (exists("ziformula") && !ident(ziformula, ~0)) {
+            if (any(y < 0)) stop("negative values not allowed for the 'Gamma' family with zero-inflation")
+            } else {
+                if (any(y <= 0)) stop("non-positive values not allowed for the 'Gamma' family")
+            }
+            n <- rep.int(1, nobs)
+            mustart <- y
+    })
+
+   return(g)
+}
+
