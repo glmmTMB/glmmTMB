@@ -24,9 +24,9 @@ If your problem is not covered below, there's a chance it has been solved in the
 
 ## Model convergence problem; non-positive-definite Hessian matrix
 
-You may see the same warning as in the following example:
-```{r non-pos-def,cache=TRUE}
-zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
+```
+In fitTMB(TMBStruc) :
+  Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')
 ```
 
 This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the estimated curvature of the log-likelihood surface is inconsistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
@@ -38,6 +38,15 @@ It can occur:
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
 
 How do we diagnose the problem?
+
+### Example 1.
+
+Consider this example:
+
+```{r non-pos-def,cache=TRUE, warning=FALSE}
+zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
+```
+
 First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for logit link, this
 implies probabilities very close to 0 or 1; for log link, this implies mean counts that are
 close to 0 or gigantic).
@@ -141,6 +150,74 @@ s_vals <- cbind(glm=sqrt(diag(vcov(m4.1))),
 print(s_vals,digits=3)
 ```
 
+## Example 2.
+
+```{r}
+load(system.file("vignette_data","troubleshooting.rda",package="glmmTMB"))
+```
+
+```{r}
+summary(mod1)
+```
+
+```{r}
+diagnose_vcov <- function(model, tol=1e-5, digits=2, analyze_hessian=FALSE) {
+    vv <- vcov(model, full=TRUE)
+    nn <- rownames(vv)
+    if (!all(is.finite(vv))) {
+        if (missing(analyze_hessian)) warning("analyzing Hessian, not vcov")
+        if (!analyze_hessian) stop("can't analyze vcov")
+        analyze_hessian <- TRUE
+    }
+    if (analyze_hessian) {
+        par.fixed <- model$obj$env$last.par.best
+        r <- model$obj$env$random
+        if (!is.null(r)) par.fixed <- par.fixed[-r]
+        vv <- optimHess(par.fixed, fn=model$obj$fn, gr=model$obj$gr)
+        ## note vv is now HESSIAN, not vcov
+    }
+    ee <- eigen(vv)
+    if (all(ee$values>tol)) {message("var-cov matrix OK"); return(invisible(NULL))}
+    ## find negative or small-positive eigenvalues (flat/wrong curvature)
+    bad_evals <- which(ee$values<tol)
+    ## order worst to best
+    bad_evals <- bad_evals[order(-ee$values[bad_evals])]
+    ret <- lapply(bad_evals,
+                  function(i) {
+                      ## extract loadings
+                      v <- setNames(ee$vectors[,i], nn)
+                      ## order in decreasing magnitude & round
+                      list(val=ee$values[i],vec=round(v[order(-abs(v))],digits))
+                  })
+    return(ret)
+}
+```
+
+```{r}
+diagnose_vcov(mod1)
+```
+
+This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let's try dropping the zero-inflation term:
+
+```{r}
+summary(mod2)
+```
+
+```{r}
+diagnose_vcov(mod2)
+```
+
+The dispersion parameter is still problematic.  Simplify the model by switching from NB1 to Poisson:
+
+```{r}
+summary(mod3)
+```
+
+```{r}
+diagnose_vcov(mod3)
+```
+
+                                                         
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 
 ## Model convergence problem:  eigenvalue problems

@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 
-<meta name="date" content="2019-05-22" />
+<meta name="date" content="2019-06-23" />
 
 <title>Troubleshooting with glmmTMB</title>
 
@@ -93,7 +93,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 <h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
-<h4 class="date">2019-05-22</h4>
+<h4 class="date">2019-06-23</h4>
 
 
 
@@ -103,8 +103,8 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <h1>Warnings</h1>
 <div id="model-convergence-problem-non-positive-definite-hessian-matrix" class="section level2">
 <h2>Model convergence problem; non-positive-definite Hessian matrix</h2>
-<p>You may see the same warning as in the following example:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~spp, Salamanders, <span class="dt">family=</span>nbinom2)</code></pre></div>
+<pre><code>In fitTMB(TMBStruc) :
+  Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')</code></pre>
 <p>This error states that the point that <code>glmmTMB</code> has identified as the putative maximum-likelihood estimate, the estimated curvature of the log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).</p>
 <p>It can occur:</p>
 <ul>
@@ -112,7 +112,12 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li>when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)</li>
 <li>when <em>complete separation</em> occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1</li>
 </ul>
-<p>How do we diagnose the problem? First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for logit link, this implies probabilities very close to 0 or 1; for log link, this implies mean counts that are close to 0 or gigantic).</p>
+<p>How do we diagnose the problem?</p>
+<div id="example-1." class="section level3">
+<h3>Example 1.</h3>
+<p>Consider this example:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~spp, Salamanders, <span class="dt">family=</span>nbinom2)</code></pre></div>
+<p>First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for logit link, this implies probabilities very close to 0 or 1; for log link, this implies mean counts that are close to 0 or gigantic).</p>
 <p>Inspecting the fixed-effect estimates for this model:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">fixef</span>(zinbm0)</code></pre></div>
 <p>The zero-inflation intercept parameter is tiny (<span class="math inline">\(\approx -17\)</span>): since the parameters are estimated on the logit scale, we back-transform with <code>plogis(-17)</code> to see the at the zero-inflation probability for the baseline level is about <span class="math inline">\(4 \times 10^{-8}\)</span>)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are</p>
@@ -152,13 +157,56 @@ ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span
 m4<span class="fl">.3</span> &lt;-<span class="st"> </span><span class="kw">update</span>(m4<span class="fl">.2</span>, <span class="dt">data=</span>ps)
 ## scaling factor for back-transforming standard deviations
 ss &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,
-        fatsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ds$fat,<span class="st">&quot;scaled:scale&quot;</span>),
-        fibsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ds$fiber,<span class="st">&quot;scaled:scale&quot;</span>),
+        fatsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ps$fat,<span class="st">&quot;scaled:scale&quot;</span>),
+        fibsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ps$fiber,<span class="st">&quot;scaled:scale&quot;</span>),
         fatsc*fibsc)
 s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">glm=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.1</span>))),
                 <span class="dt">glmmTMB_unsc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)$cond)),
                 <span class="dt">glmmTMB_sc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.3</span>)$cond))*ss)
 <span class="kw">print</span>(s_vals,<span class="dt">digits=</span><span class="dv">3</span>)</code></pre></div>
+</div>
+</div>
+<div id="example-2." class="section level2">
+<h2>Example 2.</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>,<span class="st">&quot;troubleshooting.rda&quot;</span>,<span class="dt">package=</span><span class="st">&quot;glmmTMB&quot;</span>))</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod1)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">diagnose_vcov &lt;-<span class="st"> </span>function(model, <span class="dt">tol=</span><span class="fl">1e-5</span>, <span class="dt">digits=</span><span class="dv">2</span>, <span class="dt">analyze_hessian=</span><span class="ot">FALSE</span>) {
+    vv &lt;-<span class="st"> </span><span class="kw">vcov</span>(model, <span class="dt">full=</span><span class="ot">TRUE</span>)
+    nn &lt;-<span class="st"> </span><span class="kw">rownames</span>(vv)
+    if (!<span class="kw">all</span>(<span class="kw">is.finite</span>(vv))) {
+        if (<span class="kw">missing</span>(analyze_hessian)) <span class="kw">warning</span>(<span class="st">&quot;analyzing Hessian, not vcov&quot;</span>)
+        if (!analyze_hessian) <span class="kw">stop</span>(<span class="st">&quot;can't analyze vcov&quot;</span>)
+        analyze_hessian &lt;-<span class="st"> </span><span class="ot">TRUE</span>
+    }
+    if (analyze_hessian) {
+        par.fixed &lt;-<span class="st"> </span>model$obj$env$last.par.best
+        r &lt;-<span class="st"> </span>model$obj$env$random
+        if (!<span class="kw">is.null</span>(r)) par.fixed &lt;-<span class="st"> </span>par.fixed[-r]
+        vv &lt;-<span class="st"> </span><span class="kw">optimHess</span>(par.fixed, <span class="dt">fn=</span>model$obj$fn, <span class="dt">gr=</span>model$obj$gr)
+        ## note vv is now HESSIAN, not vcov
+    }
+    ee &lt;-<span class="st"> </span><span class="kw">eigen</span>(vv)
+    if (<span class="kw">all</span>(ee$values&gt;tol)) {<span class="kw">message</span>(<span class="st">&quot;var-cov matrix OK&quot;</span>); <span class="kw">return</span>(<span class="kw">invisible</span>(<span class="ot">NULL</span>))}
+    ## find negative or small-positive eigenvalues (flat/wrong curvature)
+    bad_evals &lt;-<span class="st"> </span><span class="kw">which</span>(ee$values&lt;tol)
+    ## order worst to best
+    bad_evals &lt;-<span class="st"> </span>bad_evals[<span class="kw">order</span>(-ee$values[bad_evals])]
+    ret &lt;-<span class="st"> </span><span class="kw">lapply</span>(bad_evals,
+                  function(i) {
+                      ## extract loadings
+                      v &lt;-<span class="st"> </span><span class="kw">setNames</span>(ee$vectors[,i], nn)
+                      ## order in decreasing magnitude &amp; round
+                      <span class="kw">list</span>(<span class="dt">val=</span>ee$values[i],<span class="dt">vec=</span><span class="kw">round</span>(v[<span class="kw">order</span>(-<span class="kw">abs</span>(v))],digits))
+                  })
+    <span class="kw">return</span>(ret)
+}</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">diagnose_vcov</span>(mod1)</code></pre></div>
+<p>This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let’s try dropping the zero-inflation term:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod2)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">diagnose_vcov</span>(mod2)</code></pre></div>
+<p>The dispersion parameter is still problematic. Simplify the model by switching from NB1 to Poisson:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod3)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">diagnose_vcov</span>(mod3)</code></pre></div>
 <p>In general models with non-positive definite Hessian matrices should be excluded from further consideration.</p>
 </div>
 <div id="model-convergence-problem-eigenvalue-problems" class="section level2">
