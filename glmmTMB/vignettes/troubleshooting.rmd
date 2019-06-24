@@ -165,7 +165,7 @@ The first model gives the specified warning when it runs, as well as the other s
 summary(mod1)
 ```
 
-We can immediately see that the dispersion is very small (`r signif(sigma(mod1),3)`), and that the zero-inflation parameter is strongly negative (`r round(fixef(mod1)[["zi"]],2)`). However, we'll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:
+We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative. However, we'll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:
 
 ```{r diagnose_vcov}
 diagnose_vcov <- function(model, tol=1e-5, digits=2, analyze_hessian=FALSE) {
@@ -206,7 +206,7 @@ Running the diagnostics on the model:
 (d1 <- diagnose_vcov(mod1))
 ```
 
-This model has a very bad eigenvalue (with a value of `r signif(d1[[1]]$val,3)`) that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let's try dropping the zero-inflation term:
+This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let's try dropping the zero-inflation term:
 
 ```{r ss_mod2_up, eval=FALSE}
 mod2 <- update(mod1, ziformula=~0)

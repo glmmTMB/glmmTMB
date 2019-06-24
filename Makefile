@@ -38,7 +38,7 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 doc-update: $(PACKAGE)/R/*.R
-	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\"))" | $(R) --slave
+	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\")))" | $(R) --slave
 	@touch doc-update
 
 ## vignettes
@@ -73,14 +73,14 @@ vignette-update: ${docpdf} ${dochtml}
 ####
 namespace-update :: $(PACKAGE)/NAMESPACE
 $(PACKAGE)/NAMESPACE: $(PACKAGE)/R/*.R
-	echo "roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\"))" | $(R) --slave
+	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\")))" | $(R) --slave
 
 build-package: $(TARBALL)
 $(TARBALL): $(PACKAGE)/NAMESPACE $(CPP_SRC)
 	$(R) CMD build --resave-data=no $(PACKAGE)
 
 install: $(TARBALL)
-	$(R) CMD INSTALL --preclean $<
+	export NOT_CRAN=true; $(R) CMD INSTALL --preclean $<
 	@touch $@
 
 ## To enable quick compile, run from R:
