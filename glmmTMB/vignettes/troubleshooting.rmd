@@ -26,10 +26,7 @@ If your problem is not covered below, there's a chance it has been solved in the
 
 This warning:
 
-```
-In fitTMB(TMBStruc) :
-  Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')
-```
+> In fitTMB(TMBStruc) : Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')
 
 will usually be accompanied by `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run `summary()` on the resulting model, you'll get the warning `In sqrt(diag(vcov)) : NaNs produced`. This warning states that at the (putative) maximum likelihood estimate `glmmTMB` has found, the estimated curvature of the log-likelihood surface is inconsistent with the point really being an MLE: instead, it is upward-curving, or flat, in some direction(s). In technical terms, the matrix of second derivatives of the negative log-likelihood with respect to the parameters (the "Hessian") has zero or negative eigenvalues (or eigenvalues so close to zero that the linear algebra required to compute a variance-covariance matrix from the Hessian fails).
 
@@ -271,15 +268,24 @@ This warning occurs when the optimizer visits a region of parameter space that i
 
 The following warnings indicate possibly-transient numerical problems with the fit, and can be treated in the same way (i.e. ignored if there are no errors or convergence warnings about the final fitted model).
 
-```{r Cholmod, eval=FALSE}
-Cholmod warning 'matrix not positive definite'
-```
+> Cholmod warning 'matrix not positive definite'
 
-```{r lgamma, eval=FALSE}
-Warning in f(par, order = order, ...) : value out of range in 'lgamma'
-```
+In older versions of R (< 3.6.0):
 
-The last of these warnings will be eliminated from R itself at some point in the future (based on [this change](https://github.com/wch/r-source/commit/891224cbd653de69cb2a0ce0136b8eab51a2d227)).
+> Warning in f(par, order = order, ...) : value out of range in 'lgamma'
+
+## false convergence
+
+This warning:
+
+> false convergence: the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x
+
+comes from the `nlminb` optimizer used by default in `glmmTMB`. It's usually hard to diagnose the source of this warning (this [Stack Overflow answer](https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean) explains a bit more about what it means). Reasonable methods for making sure your model is OK are:
+
+- restart the model at the estimated fitted values
+- try using a different optimizer, e.g. `control=glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS"))`
+
+and see if the results are sufficiently similar to the original fit.
 
 # Errors
 
@@ -299,7 +305,8 @@ If you see this error, check that the response variable meets the assumptions of
 
 > Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x
 
-> Error in optimHess(par.fixed, obj\$fn, obj\$gr): gradient in optim evaluated to length x
+> Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x
 
-Try rescaling predictor variables. Try a simpler model and build up.
+Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)
+
 

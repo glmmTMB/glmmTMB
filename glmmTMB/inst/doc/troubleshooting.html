@@ -104,8 +104,9 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <div id="model-convergence-problem-non-positive-definite-hessian-matrix" class="section level2">
 <h2>Model convergence problem; non-positive-definite Hessian matrix</h2>
 <p>This warning:</p>
-<pre><code>In fitTMB(TMBStruc) :
-  Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')</code></pre>
+<blockquote>
+<p>In fitTMB(TMBStruc) : Model convergence problem; non-positive-definite Hessian matrix. See vignette(‘troubleshooting’)</p>
+</blockquote>
 <p>will usually be accompanied by <code>NA</code> values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run <code>summary()</code> on the resulting model, you’ll get the warning <code>In sqrt(diag(vcov)) : NaNs produced</code>. This warning states that at the (putative) maximum likelihood estimate <code>glmmTMB</code> has found, the estimated curvature of the log-likelihood surface is inconsistent with the point really being an MLE: instead, it is upward-curving, or flat, in some direction(s). In technical terms, the matrix of second derivatives of the negative log-likelihood with respect to the parameters (the “Hessian”) has zero or negative eigenvalues (or eigenvalues so close to zero that the linear algebra required to compute a variance-covariance matrix from the Hessian fails).</p>
 <p>This error is likely to occur:</p>
 <ul>
@@ -376,9 +377,26 @@ s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="
 </blockquote>
 <p>This warning occurs when the optimizer visits a region of parameter space that is invalid. It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above.</p>
 <p>The following warnings indicate possibly-transient numerical problems with the fit, and can be treated in the same way (i.e. ignored if there are no errors or convergence warnings about the final fitted model).</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Cholmod warning <span class="st">'matrix not positive definite'</span></code></pre></div>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Warning in <span class="kw">f</span>(par, <span class="dt">order =</span> order, ...) :<span class="st"> </span>value out of range in <span class="st">'lgamma'</span></code></pre></div>
-<p>The last of these warnings will be eliminated from R itself at some point in the future (based on <a href="https://github.com/wch/r-source/commit/891224cbd653de69cb2a0ce0136b8eab51a2d227">this change</a>).</p>
+<blockquote>
+<p>Cholmod warning ‘matrix not positive definite’</p>
+</blockquote>
+<p>In older versions of R (&lt; 3.6.0):</p>
+<blockquote>
+<p>Warning in f(par, order = order, …) : value out of range in ‘lgamma’</p>
+</blockquote>
+</div>
+<div id="false-convergence" class="section level2">
+<h2>false convergence</h2>
+<p>This warning:</p>
+<blockquote>
+<p>false convergence: the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x</p>
+</blockquote>
+<p>comes from the <code>nlminb</code> optimizer used by default in <code>glmmTMB</code>. It’s usually hard to diagnose the source of this warning (this <a href="https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean">Stack Overflow answer</a> explains a bit more about what it means). Reasonable methods for making sure your model is OK are:</p>
+<ul>
+<li>restart the model at the estimated fitted values</li>
+<li>try using a different optimizer, e.g. <code>control=glmmTMBControl(optimizer=optim, optArgs=list(method=&quot;BFGS&quot;))</code></li>
+</ul>
+<p>and see if the results are sufficiently similar to the original fit.</p>
 </div>
 </div>
 <div id="errors" class="section level1">
@@ -397,9 +415,9 @@ m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y~<span class="dv">
 <p>Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x</p>
 </blockquote>
 <blockquote>
-<p>Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x</p>
+<p>Error in optimHess(par.fixed, obj<span class="math inline">\(fn, obj\)</span>gr): gradient in optim evaluated to length x</p>
 </blockquote>
-<p>Try rescaling predictor variables. Try a simpler model and build up.</p>
+<p>Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)</p>
 </div>
 </div>
 
