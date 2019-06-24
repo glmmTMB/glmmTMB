@@ -30,13 +30,15 @@ cNames <- list(cond = "Conditional model",
                zi = "Zero-inflation model",
                disp = "Dispersion model")
 
-## FIXME: this is a bit ugly. On the other hand, a single-parameter
-## dispersion model without a (... ?)
+## check identity without worrying about environments etc.
+ident <- function(x,target) isTRUE(all.equal(x,target))
 
 formComp <- function(object,type="dispformula",target) {
-    isTRUE(all.equal(object$modelInfo$allForm[[type]],target)) ||
-        isTRUE(all.equal(object$call[[type]],target))
+    ident(object$modelInfo$allForm[[type]],target) ||
+        ident(object$call[[type]],target)
 }
+## FIXME: this is a bit ugly. On the other hand, a single-parameter
+## dispersion model without a (... ?)
 
 trivialDisp <- function(object) {
     formComp(object,"dispformula",~1)
@@ -51,7 +53,6 @@ trivialFixef <- function(xnm,nm) {
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
     ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
 }
-
 
 ##' @method print fixef.glmmTMB
 ##' @export

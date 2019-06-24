@@ -2,7 +2,6 @@
 #include "init.h"
 #include <omp.h>
 
-
 namespace glmmtmb{
   template<class Type>
   Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
@@ -641,6 +640,10 @@ Type objective_function<Type>::operator() ()
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etad);
 
+// "zero-truncated" likelihood: ignore zeros in positive distributions
+//  (currently only used in gamma_family, beta_family)  
+#define zt_lik(x,loglik_exp) (zi_flag && x==Type(0) ? -INFINITY : loglik_exp)
+
   // Observation likelihood
   Type s1, s2, s3, log_nzprob;
   Type tmp_loglik;
@@ -663,14 +666,14 @@ Type objective_function<Type>::operator() ()
       case Gamma_family:
         s1 = phi(i);           // shape
         s2 = mu(i) / phi(i);   // scale
-        tmp_loglik = dgamma(yobs(i), s1, s2, true);
+        tmp_loglik = zt_lik(yobs(i),dgamma(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rgamma(s1, s2);}
         break;
       case beta_family:
         // parameterization after Ferrari and Cribari-Neto 2004, betareg package
         s1 = mu(i)*phi(i);
         s2 = (Type(1)-mu(i))*phi(i);
-        tmp_loglik = dbeta(yobs(i), s1, s2, true);
+        tmp_loglik = zt_lik(yobs(i),dbeta(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case betabinomial_family:
