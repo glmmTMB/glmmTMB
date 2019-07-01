@@ -21,4 +21,5 @@ glmmTMB/vignettes/*_figure
 gh-pages
 .#*
 
+misc/*
 TAGS
