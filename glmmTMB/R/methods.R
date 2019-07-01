@@ -30,13 +30,15 @@ cNames <- list(cond = "Conditional model",
                zi = "Zero-inflation model",
                disp = "Dispersion model")
 
-## FIXME: this is a bit ugly. On the other hand, a single-parameter
-## dispersion model without a (... ?)
+## check identity without worrying about environments etc.
+ident <- function(x,target) isTRUE(all.equal(x,target))
 
 formComp <- function(object,type="dispformula",target) {
-    isTRUE(all.equal(object$modelInfo$allForm[[type]],target)) ||
-        isTRUE(all.equal(object$call[[type]],target))
+    ident(object$modelInfo$allForm[[type]],target) ||
+        ident(object$call[[type]],target)
 }
+## FIXME: this is a bit ugly. On the other hand, a single-parameter
+## dispersion model without a (... ?)
 
 trivialDisp <- function(object) {
     formComp(object,"dispformula",~1)
@@ -51,7 +53,6 @@ trivialFixef <- function(xnm,nm) {
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
     ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
 }
-
 
 ##' @method print fixef.glmmTMB
 ##' @export
@@ -1223,4 +1224,34 @@ coef.glmmTMB <- function(object,
     }
     class(res) <- "coef.glmmTMB"
     return(res)
+}
+
+
+##' Extract weights from a glmmTMB object
+##'
+##' @details
+##' At present only explicitly specified
+##' \emph{prior weights} (i.e., weights specified
+##' in the \code{weights} argument) can be extracted from a fitted model.
+##' \itemize{
+##' \item Unlike other GLM-type models such as \code{\link{glm}} or
+##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
+##' the total number of trials when binomial responses are specified
+##' as a two-column matrix.
+##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' weighted least squares, \code{working weights} (see \code{\link[stats]{weights.glm}}) are unavailable.
+##' }
+##' @importFrom stats model.frame
+##' @importFrom stats weights
+##' @param object a fitted \code{glmmTMB} object
+##' @param type weights type
+##' @param ... additional arguments (not used; for methods compatibility)
+##' @export
+weights.glmmTMB <- function(object, type="prior", ...) {
+    type <- match.arg(type)  ## other types are *not* OK
+    if (length(list(...)>0)) {
+        warning("unused arguments ignored: ",
+             paste(shQuote(names(list(...))),collapse=","))
+    }
+    stats::model.frame(object)[["(weights)"]]
 }

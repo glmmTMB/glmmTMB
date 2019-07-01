@@ -120,7 +120,26 @@ that the zero-inflation probability is less than `plogis(-2.08)` = 0.11.
 More broadly, general inspection of the data (e.g., plotting the response against potential covariates)
 should help to diagnose overly complex models.
 
-In some cases, scaling predictor variables may help.
+In some cases, scaling predictor variables may help.  For example, in this example from @phisanti, the results of `glm` and `glmmTMB` applied to a scaled version of the data set agree, while `glmmTMB` applied to the raw data set gives a non-positive-definite Hessian warning.
+
+```{r fatfiberglmm}
+## data taken from gamlss.data:plasma, originally
+## http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/plasma.html
+load(system.file("vignette_data","plasma.rda", package="glmmTMB"))
+m4.1 <- glm(calories ~ fat*fiber, family = Gamma(link = "log"), data = plasma)
+m4.2 <- glmmTMB(calories ~ fat*fiber, family = Gamma(link = "log"), data = plasma)
+ps  <- transform(plasma,fat=scale(fat,center=FALSE),fiber=scale(fiber,center=FALSE))
+m4.3 <- update(m4.2, data=ps)
+## scaling factor for back-transforming standard deviations
+ss <- c(1,
+        fatsc <- 1/attr(ps$fat,"scaled:scale"),
+        fibsc <- 1/attr(ps$fiber,"scaled:scale"),
+        fatsc*fibsc)
+s_vals <- cbind(glm=sqrt(diag(vcov(m4.1))),
+                glmmTMB_unsc=sqrt(diag(vcov(m4.2)$cond)),
+                glmmTMB_sc=sqrt(diag(vcov(m4.3)$cond))*ss)
+print(s_vals,digits=3)
+```
 
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 

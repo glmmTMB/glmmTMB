@@ -10,10 +10,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<meta name="author" content="Nafis Sadat" />
 
 <meta name="date" content="2019-05-21" />
 
-<title>Miscellaneous examples</title>
+<title>Parallel optimization using glmmTMB</title>
 
 
 
@@ -92,44 +93,60 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 
-<h1 class="title toc-ignore">Miscellaneous examples</h1>
+<h1 class="title toc-ignore">Parallel optimization using glmmTMB</h1>
+<h4 class="author">Nafis Sadat</h4>
 <h4 class="date">2019-05-21</h4>
 
 
 
-<div id="beta-dispersion-model" class="section level2">
-<h2>Beta dispersion model</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">set.seed</span>(<span class="dv">1001</span>)
-N &lt;-<span class="st"> </span><span class="dv">1000</span>
-mean_pars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>)
-disp_pars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>)
-dd &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">x=</span><span class="kw">rnorm</span>(N))
-m &lt;-<span class="st"> </span><span class="kw">plogis</span>(mean_pars[<span class="dv">1</span>]+mean_pars[<span class="dv">2</span>]*dd$x)
-d &lt;-<span class="st"> </span><span class="kw">exp</span>(disp_pars[<span class="dv">1</span>]+disp_pars[<span class="dv">2</span>]*dd$x)
-dd$y &lt;-<span class="st"> </span><span class="kw">rbeta</span>(N,<span class="dt">shape1=</span>m*d,<span class="dt">shape2=</span>(<span class="dv">1</span>-m)*d)</code></pre></div>
-<p>Fit models:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">## location only
-m1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(y~x,
-              <span class="dt">family=</span><span class="kw">beta_family</span>(),
-              <span class="dt">data=</span>dd)
-## add model for dispersion
-m2 &lt;-<span class="st"> </span><span class="kw">update</span>(m1,<span class="dt">dispformula=</span>~x)</code></pre></div>
-<p>Fixed effects look close to theoretical values:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">fixef</span>(m2)</code></pre></div>
-<pre><code>## 
-## Conditional model:
-## (Intercept)            x  
-##       1.005        2.013  
-## 
-## Dispersion model:
-## (Intercept)            x  
-##       1.064        1.962</code></pre>
-<p>AIC is insanely much better for the model with dispersion varying:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">bbmle::<span class="kw">AICtab</span>(m1,m2)</code></pre></div>
-<pre><code>##    dAIC   df
-## m2    0.0 4 
-## m1 1491.6 3</code></pre>
-</div>
+<p>A new, experimental feature of <code>glmmTMB</code> is the ability to parallelize the optimization process. This vignette shows an example and timing of a simple model fit with and without parallelizing across threads.</p>
+<p>If your OS supports OpenMP parallelization and R was installed using OpenMP, <code>glmmTMB</code> will automatically pick up the OpenMP flags from R’s <code>Makevars</code> and compile the C++ model with OpenMP support. If the flag is not available, then the model will be compiled with serial optimization only.</p>
+<p>Load packages:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">library</span>(glmmTMB)
+nt &lt;-<span class="st"> </span><span class="kw">min</span>(parallel::<span class="kw">detectCores</span>(),<span class="dv">5</span>)</code></pre></div>
+<p>Simulate a dataset with large <code>N</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">N &lt;-<span class="st"> </span><span class="fl">3e5</span>
+xdata &lt;-<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)
+ydata &lt;-<span class="st"> </span><span class="fl">0.3</span> +<span class="st"> </span><span class="fl">0.4</span>*xdata +<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">0</span>, <span class="fl">0.25</span>)</code></pre></div>
+<p>First, we fit the model serially. We can pass the number of parallelizing process we want using the <code>parallel</code> parameter in <code>glmmTMBcontrol</code>:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(
+  model1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata ~<span class="st"> </span><span class="dv">1</span> +<span class="st"> </span>xdata,
+                    <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> <span class="dv">1</span>))
+  )</code></pre></div>
+<pre><code>##    user  system elapsed 
+##   2.924   0.212   3.312</code></pre>
+<p>Now, we fit the same model using five threads (or as many as possible - 2 in this case):</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(
+  model2 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata ~<span class="st"> </span><span class="dv">1</span> +<span class="st"> </span>xdata,
+                    <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> nt))
+  )</code></pre></div>
+<pre><code>##    user  system elapsed 
+##   3.424   0.336   2.639</code></pre>
+<p>The speed-up is definitely more visible on models with a much larger number of observations, or in models with random effects.</p>
+<p>Here’s an example where we have an IID Gaussian random effect. We first simulate the data with 200 groups (our random effect):</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">xdata &lt;-<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)
+groups &lt;-<span class="st"> </span><span class="dv">200</span>
+data_use &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">obs =</span> <span class="dv">1</span>:N)
+data_use &lt;-<span class="st"> </span><span class="kw">within</span>(data_use,
+{
+  
+  group_var &lt;-<span class="st"> </span><span class="kw">rep</span>(<span class="kw">seq</span>(groups), <span class="dt">times =</span> <span class="kw">nrow</span>(data_use) /<span class="st"> </span>groups)
+  group_intercept &lt;-<span class="st"> </span><span class="kw">rnorm</span>(groups, <span class="dv">0</span>, <span class="fl">0.1</span>)[group_var]
+  xdata &lt;-<span class="st"> </span>xdata
+  ydata &lt;-<span class="st"> </span><span class="fl">0.3</span> +<span class="st"> </span>group_intercept +<span class="st"> </span><span class="fl">0.5</span>*xdata +<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">0</span>, <span class="fl">0.25</span>)
+})</code></pre></div>
+<p>We fit the random effect model, first with a single thread:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(
+  model3 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata ~<span class="st"> </span><span class="dv">1</span> +<span class="st"> </span>xdata +<span class="st"> </span>(<span class="dv">1</span> |<span class="st"> </span>group_var), <span class="dt">data =</span> data_use, <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> <span class="dv">1</span>))
+)</code></pre></div>
+<pre><code>##    user  system elapsed 
+##  26.108   1.540  29.811</code></pre>
+<p>Now we fit the same model, but using 2 threads. The speed-up is way more prevalent in this model.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">system.time</span>(
+  model4 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata ~<span class="st"> </span><span class="dv">1</span> +<span class="st"> </span>xdata +<span class="st"> </span>(<span class="dv">1</span> |<span class="st"> </span>group_var), <span class="dt">data =</span> data_use, <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> nt))
+)</code></pre></div>
+<pre><code>##    user  system elapsed 
+##  42.360   3.492  31.040</code></pre>
 
 
 

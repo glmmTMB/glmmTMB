@@ -8,7 +8,7 @@ glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
   dispformula = ~1, weights = NULL, offset = NULL,
   contrasts = NULL, na.action = na.fail, se = TRUE,
   verbose = FALSE, doFit = TRUE, control = glmmTMBControl(),
-  REML = FALSE, start = NULL)
+  REML = FALSE, start = NULL, map = NULL)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4
@@ -58,6 +58,8 @@ conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}
 \code{theta}, \code{thetazi} (random-effect parameters, on the
 standard deviation/Cholesky scale, for conditional and z-i models);
 \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)}
+
+\item{map}{mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}}
 }
 \description{
 Fit models with TMB

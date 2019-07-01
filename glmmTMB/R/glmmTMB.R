@@ -33,7 +33,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        doPredict=0,
                        whichPredict=integer(0),
                        REML=FALSE,
-                       start=NULL) {
+                       start=NULL,
+                       map=NULL) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
@@ -60,7 +61,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
     ## Handle ~0 dispersion for gaussian family.
-    mapArg <- NULL
+    mapArg <- map
     dispformula.orig <- dispformula ## Restore when done
     # family$family contains the *name* of the family
     if ( usesDispersion(family$family) && (dispformula == ~0) ) {
@@ -72,7 +73,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         ## check that this fixed dispersion is small enough.
         betad_init <- log( sqrt( .Machine$double.eps ) )
         dispformula[] <- ~1
-        mapArg <- list(betad = factor(NA)) ## Fix betad
+        mapArg <- c(mapArg,list(betad = factor(NA))) ## Fix betad
     } else {
         betad_init <- 0
     }
@@ -204,7 +205,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose, REML))
+            fr, se, call, verbose, REML, map))
 }
 
 ##' Create X and random effect terms from formula
@@ -479,6 +480,7 @@ binomialType <- function(x) {
 ##' \code{theta}, \code{thetazi} (random-effect parameters, on the
 ##' standard deviation/Cholesky scale, for conditional and z-i models);
 ##' \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)
+##' @param map mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -571,7 +573,8 @@ glmmTMB <- function (
     doFit=TRUE,
     control=glmmTMBControl(),
     REML=FALSE,
-    start=NULL
+    start=NULL,
+    map=NULL
     )
 {
 
@@ -717,6 +720,7 @@ glmmTMB <- function (
     ##  AND (inverse-link  & any(y==0)) OR (log-link & any(y<=0))
     ##  and then only to check whether it's NULL or not ...
     etastart <- mustart <- NULL
+
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
@@ -739,7 +743,8 @@ glmmTMB <- function (
                    call=call,
                    verbose=verbose,
                    REML=REML,
-                   start=start)
+                   start=start,
+                   map=map)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
@@ -753,13 +758,15 @@ glmmTMB <- function (
 }
 
 ##' Control parameters for glmmTMB optimization
-##' @param optCtrl   Passed as argument \code{control} to \code{nlminb}.
+##' @param optCtrl   Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}
+##' @param optArgs   additional arguments to be passed to optimizer function (e.g.: \code{list(method="BFGS")} when \code{optimizer=optim})
 ##' @param profile   Logical; Experimental option to improve speed and
 ##'                  robustness when a model has many fixed effects
 ##' @param collect   Logical; Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
 ##' @param parallel  Numeric; Setting number of OpenMP threads to evaluate
-##'                  the negative log-likelihood in parallel. Default: 1
+##'                  the negative log-likelihood in parallel
+##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
@@ -783,12 +790,31 @@ glmmTMB <- function (
 ##' enabled for more than 5 fixed effects one can use
 ##'
 ##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
+##'
+##' The \code{optimizer} argument can be any optimization (minimizing) function, provided that:
+##' \itemize{
+##' \item the first three arguments, in order, are the starting values, objective function, and gradient function;
+##' \item it also takes a \code{control} argument;
+##' \item it returns a list with elements (at least) \code{convergence} (0 if convergence is successful) and \code{message}
+##' }
+##' @examples
+##' ## fit with default (nlminb) and alternative (optim/BFGS) optimizer
+##' m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders)
+##' m1B <- update(m1, control=glmmTMBControl(optimizer=optim,
+##'                optArgs=list(method="BFGS")))
+##' ## estimates are *nearly* identical:
+##' all.equal(fixef(m1), fixef(m1B))
 ##' @export
-glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400), 
+glmmTMBControl <- function(optCtrl=NULL,
+                           optArgs=list(),
+                           optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
                            parallel = 1) {
-    
+
+    if (is.null(optCtrl) && identical(optimizer,nlminb)) {
+        optCtrl <- list(iter.max=300, eval.max=400)
+    }
     ## Make sure that we specify at least one thread
     if (is.na(parallel) | is.null(parallel) | parallel < 1) {
       stop("Number of parallel threads must be a numeric >= 1")
@@ -800,7 +826,7 @@ glmmTMBControl <- function(optCtrl=list(iter.max=300, eval.max=400),
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile, collect, parallel)
+    namedList(optCtrl, profile, collect, parallel, optimizer, optArgs)
 }
 
 ##' collapse duplicated observations
@@ -857,6 +883,19 @@ fitTMB <- function(TMBStruc) {
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
     }
 
+    ## avoid repetition; rely on environment for parameters
+    optfun <- function() {
+        with(obj,
+             if( length(par) ) {
+                 do.call(control$optimizer,
+                         c(list(par, fn, gr,
+                                control = control $ optCtrl),
+                           control $ optArgs))
+             } else {
+                 list( par=par, objective=fn(par))
+             })
+    }
+    
     if (control $ profile) {
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
@@ -866,13 +905,7 @@ fitTMB <- function(TMBStruc) {
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
-        optTime <- system.time(fit <- with(obj,
-                                           if( length(par) )
-                                               nlminb(start = par, objective = fn, gradient = gr,
-                                                      control = control $ optCtrl)
-                                           else
-                                               list( par=par, objective=fn(par) )
-                                           ) )
+        optTime <- system.time(fit <- optfun())
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
@@ -915,17 +948,16 @@ fitTMB <- function(TMBStruc) {
         fit$newton.steps <- iter
     } else {
 
-    obj <- with(TMBStruc,
-                MakeADFun(data.tmb,
-                     parameters,
-                     map = mapArg,
-                     random = randomArg,
-                     profile = NULL,
-                     silent = !verbose,
-                     DLL = "glmmTMB"))
-
-    optTime <- system.time(fit <- with(obj, nlminb(start=par, objective=fn,
-                                                   gradient=gr, control=control$optCtrl)))
+        obj <- with(TMBStruc,
+                    MakeADFun(data.tmb,
+                              parameters,
+                              map = mapArg,
+                              random = randomArg,
+                              profile = NULL,
+                              silent = !verbose,
+                              DLL = "glmmTMB"))
+        
+        optTime <- system.time(fit <- optfun())
     }
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
@@ -979,7 +1011,8 @@ fitTMB <- function(TMBStruc) {
                                                 stripReTrms),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm,
-                                REML))
+                                REML,
+                                map))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
