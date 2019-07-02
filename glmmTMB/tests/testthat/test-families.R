@@ -245,10 +245,11 @@ test_that("truncated_genpois",{
     tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
     expect_equal(sigma(tgp1), sigma(tgp2), tol=1e-1)
     expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tol=1e-2)
-    expect_lt(confint(tgp2)["sigma", "2.5 %"], sigma(tgp1))
-    expect_lt(sigma(tgp1), confint(tgp2)["sigma", "97.5 %"])
-    expect_lt(confint(tgp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
-    expect_lt(unname(fixef(tgp1)$cond[1]), confint(tgp2)["cond.(Intercept)", "97.5 %"])
+    cc <- confint(tgp2, full=TRUE)
+    expect_lt(cc["sigma", "2.5 %"], sigma(tgp1))
+    expect_lt(sigma(tgp1), cc["sigma", "97.5 %"])
+    expect_lt(cc["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
+    expect_lt(unname(fixef(tgp1)$cond[1]), cc["cond.(Intercept)", "97.5 %"])
 })
 
 
