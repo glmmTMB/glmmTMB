@@ -37,6 +37,9 @@ fm2diag2   <- update(fm2, . ~ Days + (1| Subject)+ (0+Days|Subject))
 ## model with two different grouping variables
 fmP <- glmmTMB(strength ~ cask + (1|batch) + (1|sample), data=Pastes)
 
+fm4   <- glmmTMB(Murder~Illiteracy+Population+Area+`HS Grad`,
+                 data=as.data.frame(state.x77), REML = TRUE)
+
 yb <- cbind(1:10,10)
 ddb <- data.frame(y=I(yb))
 ddb <- within(ddb, {
@@ -174,14 +177,14 @@ test_that("confint", {
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),
                   .Dim = c(2L, 2L),
-                  .Dimnames = list(c("cond.(Intercept)", "cond.Days"),
+                  .Dimnames = list(c("(Intercept)", "Days"),
                                    c("2.5 %", "97.5 %"))),
         tolerance=1e-6)
     ciw <- confint(fm2, 1:2, method="Wald", estimate=FALSE)
     expect_warning(confint(fm2,type="junk"),
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
-    ci.2G <- confint(fm2G, estimate=FALSE)
+    ci.2G <- confint(fm2G, full=TRUE, estimate=FALSE)
     ci.2G.expect <- structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788, 
                              0.0115949839191128, -0.518916570291726, 0.0720456818399729, 5.58401849115119, 
                              0.0429217639222305, 0.150456372618643, 0.0264376535768207, 0.481694558481224, 
@@ -193,7 +196,7 @@ test_that("confint", {
                                             c("2.5 %", "97.5 %")))
     expect_equal(ci.2G, ci.2G.expect, tolerance=1e-6)
     ## nbinom2 test Std.Dev and sigma
-    ci.2NB <- confint(fm2NB, estimate=FALSE)
+    ci.2NB <- confint(fm2NB, full=TRUE, estimate=FALSE)
     ci.2NB.expect <-
         structure(c(5.48098713986992, 0.0248163859092965, 0.066177247560203, 
                     0.0113436356932709, -0.520883841816814, 183.810584738707, 5.58422550782448, 
@@ -207,7 +210,7 @@ test_that("confint", {
     expect_equal(ci.2NB, ci.2NB.expect, tolerance=1e-6)
     ## profile CI
     ## ... no RE
-    ci.prof0 <- confint(fm_noRE,method="profile", npts=3)
+    ci.prof0 <- confint(fm_noRE, full=TRUE, method="profile", npts=3)
     expect_equal(ci.prof0,
                  structure(c(238.216039176535, 7.99674863649355, 7.51779308310198, 
                              264.368471102549, 12.8955469713508, 7.93347860201449),
@@ -231,6 +234,13 @@ test_that("confint", {
     ## check against 'raw' tmbroot
     tmbr <- TMB::tmbroot(fm2$obj,name=1)
     expect_equal(ci.uni[1:2],unname(c(tmbr)))
+
+    ## GH #438
+    cc <- confint(fm4)
+    expect_equal(dim(cc),c(5,3))
+    expect_equal(rownames(cc),
+                 c("(Intercept)", "Illiteracy", "Population", "Area", "`HS Grad`"))
+
 })
 
 test_that("profile", {

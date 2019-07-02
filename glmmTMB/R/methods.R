@@ -9,11 +9,17 @@
 ##' be extracted.
 ##' @param \dots optional additional arguments. Currently none are used in any
 ##' methods.
-##' @return a named, numeric vector of fixed-effects estimates.
+##' @return an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients 
 ##' @keywords models
+##' @details The print method for \code{fixef.glmmTMB} object \emph{only displays non-trivial components}: in particular, the dispersion parameter estimate is not printed for models with a single (intercept) dispersion parameter (see examples)
 ##' @examples
 ##' data(sleepstudy, package = "lme4")
-##' fixef(glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
+##' fm1 <- glmmTMB(Reaction ~ Days, sleepstudy)
+##' (f1 <- fixef(fm1))
+##' f1$cond
+##' ## show full coefficients, including dispersion parameter
+##' unlist(f1)
+##' print.default(f1)
 ##' @importFrom nlme fixef
 ##' @export fixef
 ##' @export
@@ -194,7 +200,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   } ## arrange()
 
   pl <- getParList(object)  ## see VarCorr.R
-  if (condVar && has.random(object))  {
+  if (condVar && hasRandom(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
                   bzi=ss[rownames(ss)=="bzi","Std. Error"])
@@ -316,10 +322,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
-  if (is.null(REML <- object$modelInfo$REML)) {
-     ## let vcov work with old (pre-REML option) stored objects
-     REML <- FALSE
-  }
+  REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
@@ -696,6 +699,7 @@ format.perc <- function (probs, digits) {
 ##' @param parallel method (if any) for parallel computation
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
+##' @param full CIs for all parameters (including dispersion) ?
 ##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
@@ -706,7 +710,7 @@ format.perc <- function (probs, digits) {
 ##' confint(model)  ## Wald/delta-method CIs
 ##' confint(model,parm="theta_")  ## Wald/delta-method CIs
 ##' confint(model,parm=1,method="profile")
-confint.glmmTMB <- function (object, parm, level = 0.95,
+confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              method=c("wald",
                                       "Wald",
                                       "profile",
@@ -716,6 +720,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                              parallel = c("no", "multicore", "snow"),
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
+                             full = FALSE,
                              ...)
 {
     method <- tolower(match.arg(method))
@@ -738,32 +743,11 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     pct <- format.perc(a, 3)
     fac <- qnorm(a)
     estimate <- as.logical(estimate)
-    ci <- matrix(NA, 0, 2 + estimate,
+    ci <- matrix(NA, nrow=0, ncol=2 + estimate,
                  dimnames=list(NULL,
-                               c(pct, "Estimate")
-                               [c(TRUE, TRUE, estimate)] ))
-    if (is.null(REML <- object$modelInfo$REML) || !REML) {
-        pnm <- names(object$obj$par)
-    } else {
-        pnm <- names(object$fit$parfull)
-    }
-    pvec <- seq_along(pnm)
-    if (!missing(parm)) {
-            ## FIXME: DRY/refactor with confint.profile
-            ## FIXME: beta_ not well defined; sigma parameters not
-            ## distinguishable (all called "sigma")
-            ## for non-trivial dispersion model
-            theta_parms <- which(pnm=="theta")
-            ## if non-trivial disp, keep disp parms for "beta_"
-            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
-            if (identical(parm,"theta_")) {
-                parm <- theta_parms
-            } else if (identical(parm,"beta_")) {
-                parm <- seq(nrow(ci))[setdiff(pvec,c(theta_parms,disp_parms))]
-            }
-    } else {
-        parm <- pvec
-    }
+                               if (!estimate) pct else c(pct, "Estimate")))
+    parm <- getParms(parm, object, full)
+
     if (method=="wald") {
         for (component in c("cond", "zi") ) {
             if (components.has(component)) {
@@ -799,7 +783,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                                  estimate = estimate)
                 ci <- rbind(ci, ci.sd)
             }
-        }
+        } ## cond and zi components
         if (components.has("other")) {
             ## sigma
             ff <- object$modelInfo$family$family
@@ -827,6 +811,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
         ci <- ci[parm, , drop=FALSE]
         ## end Wald method
     } else if (method=="uniroot") {
+        if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
         plist <- parallel_default(parallel,ncpus)
@@ -872,6 +857,10 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                       parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
+    }
+    ## if only conditional, strip component prefix
+    if (all(substr(rownames(ci),1,5)=="cond.")) {
+        rownames(ci) <- sub("^cond\\.","",rownames(ci))
     }
     return(ci)
 }
