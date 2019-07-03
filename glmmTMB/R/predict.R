@@ -74,7 +74,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' the default (\code{na.pass}) is to predict \code{NA}
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
-##' @param re.form (not yet implemented: see \section{Details} for population-level predictions) (formula, \code{NULL}, or \code{NA}) specify which random effects to condition on when predicting. 
+##' @param re.form (not yet implemented: see Details for population-level predictions) (formula, \code{NULL}, or \code{NA}) specify which random effects to condition on when predicting. 
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
 ##' @details
