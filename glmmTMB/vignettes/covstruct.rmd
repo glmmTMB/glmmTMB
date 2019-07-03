@@ -24,6 +24,8 @@ knitr::opts_chunk$set(echo = TRUE, eval=if (isTRUE(exists("params"))) params$EVA
 ## In addition: Warning message:
 ## In retape() : Expected object. Got NULL.
 set.seed(1)
+## run this in interactive session if you actually want to evaluate chunks ...
+## Sys.setenv(NOT_CRAN="true")
 ```
 
 This vignette demonstrates some of the covariance structures available in the `glmmTMB` package.
@@ -395,7 +397,7 @@ d$group <- factor(rep(1, nrow(d)))
 
 The model is fit by
 
-```{r fit_spatial_model}
+```{r fit_spatial_model, cache=TRUE}
 f <- glmmTMB(z ~ 1 + exp(pos + 0 | group), data=d)
 ```
 

@@ -12,7 +12,7 @@
 \method{as.data.frame}{ranef.glmmTMB}(x, ...,
   stringsAsFactors = default.stringsAsFactors())
 
-\method{coef}{glmmTMB}(object, condVar = FALSE, ...)
+coef.glmmTMB(object, condVar = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} model.}

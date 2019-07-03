@@ -14,8 +14,12 @@
 \arguments{
 \item{object}{\code{glmmTMB} fitted object.}
 
-\item{parm}{Specification of a parameter subset \emph{after}
-\code{component} subset has been applied.}
+\item{parm}{which parameters to profile, specified
+\itemize{
+\item by index (position) [\emph{after} component selection for \code{confint}, if any]
+\item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+\item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
+}}
 
 \item{level}{Confidence level.}
 

@@ -688,8 +688,12 @@ format.perc <- function (probs, digits) {
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
-##' @param parm Specification of a parameter subset \emph{after}
-##'     \code{component} subset has been applied.
+##' @param parm which parameters to profile, specified
+#' \itemize{
+#' \item by index (position) [\emph{after} component selection for \code{confint}, if any]
+#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
+#' }
 ##' @param level Confidence level.
 ##' @param method 'wald', 'profile', or 'uniroot': see Details
 ##' function)
@@ -746,6 +750,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     ci <- matrix(NA, nrow=0, ncol=2 + estimate,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
+    
     parm <- getParms(parm, object, full)
 
     if (method=="wald") {

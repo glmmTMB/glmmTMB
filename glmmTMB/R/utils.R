@@ -645,7 +645,8 @@ getParms <- function(parm=NULL, object, full=FALSE) {
             } else {
                 parm <- grep("beta",intnames)
             }
-        } else if (identical(parm, "disp_")) {
+        } else if (identical(parm, "disp_") ||
+                   identical(parm, "sigma")) {
             parm <- grep("^betad", intnames)
         } else { ## generic parameter vector
             nparm <- match(parm,pnames)
