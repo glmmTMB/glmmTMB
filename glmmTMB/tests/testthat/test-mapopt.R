@@ -26,6 +26,19 @@ test_that("predict works with mapped params",
                        c(fit = -1.18646939995962, se.fit = 0.0342594326326737),
                        tolerance=1e-6))
 
+test_that("vcov works with mapped params", {
+    expect_equal(dim(vcov(m1)$cond),c(1,1))
+    expect_equal(dim(vcov(m1,full=TRUE)),c(1,1))
+    expect_equal(dim(vcov(m2)$cond),c(2,2))
+    expect_equal(dim(vcov(m2,full=TRUE)),c(2,2))
+})
+
+test_that("confint works with mapped params", {
+          expect_equal(dim(confint(m1)), c(1,3))
+          expect_equal(dim(confint(m2)), c(2,3))
+})
+
+
 context("alternate optimizers")
 
 test_that("alternate optimizers work", {
@@ -33,6 +46,6 @@ test_that("alternate optimizers work", {
                        tol=1e-4)
           expect_false(identical(fixef(m1),fixef(m1optim)))
 })
-          
+
 
         

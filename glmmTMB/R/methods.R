@@ -373,8 +373,25 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
           if (length(nn)==0) return(nn)
           return(paste("theta",gsub(" ","",nn),sep="_"))
       }
-      nameList <- c(nameList,list(reNames("cond"),reNames("zi")))
+      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
+  }
 
+  ## drop NA-mapped variables
+
+  ## for matching map names vs nameList components ...
+  intnames <- c("beta","betazi","betad","theta","thetazi")
+
+  map <- object$obj$env$map
+  for (m in seq_along(map)) {
+      if (length(NAmap <- which(is.na(map[[m]])))>0) {
+          w <- match(names(map)[m],intnames) ##
+          if (length(nameList)>=w) { ## may not exist if !full
+              nameList[[w]] <- nameList[[w]][-NAmap]
+          }
+      }
+  }
+
+  if (full) {
       colnames(covF) <- rownames(covF) <- unlist(nameList)
       res <- covF        ## return just a matrix in this case
   } else {
@@ -755,10 +772,14 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
     if (method=="wald") {
         for (component in c("cond", "zi") ) {
-            if (components.has(component)) {
-                cf <- unlist(fixef(object)[component])
-                vv <- vcov(object)[component]
-                ss <- unlist(lapply(vv,diag))
+            if (components.has(component) &&
+                length(fixef(object)[[component]])>0) {
+                vv <- vcov(object)[[component]]
+                cf <- unlist(fixef(object)[[component]])
+                cf <- cf[colnames(vv)]
+                ss <- diag(vv)
+                ## using [[-extraction; need to add component name explicitly
+                names(cf) <- names(ss) <- paste(component, names(cf), sep=".")
                 ses <- sqrt(ss)
                 ci.tmp <- cf + ses %o% fac
                 if (estimate) ci.tmp <- cbind(ci.tmp, cf)

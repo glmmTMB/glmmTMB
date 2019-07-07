@@ -263,7 +263,7 @@ test_that("vcov", {
            structure(c("(Intercept)", "Days", "d~(Intercept)",
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
-          .Names = c("cond1", "cond2", "disp", "", "", "")))
+          .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
     ## vcov doesn't include dispersion for non-dispersion families ...
     expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
 })
