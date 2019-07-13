@@ -770,13 +770,16 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     
     parm <- getParms(parm, object, full)
 
+
     if (method=="wald") {
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
                 length(fixef(object)[[component]])>0) {
                 vv <- vcov(object)[[component]]
                 cf <- unlist(fixef(object)[[component]])
-                cf <- cf[colnames(vv)]
+                ## strip tag (only really necessary for zi~
+                nn <- gsub(paste0(component,"~"),"",colnames(vv))
+                cf <- cf[nn]
                 ss <- diag(vv)
                 ## using [[-extraction; need to add component name explicitly
                 names(cf) <- names(ss) <- paste(component, names(cf), sep=".")
