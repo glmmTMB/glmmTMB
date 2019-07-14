@@ -760,11 +760,11 @@ glmmTMB <- function (
 ##' Control parameters for glmmTMB optimization
 ##' @param optCtrl   Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}
 ##' @param optArgs   additional arguments to be passed to optimizer function (e.g.: \code{list(method="BFGS")} when \code{optimizer=optim})
-##' @param profile   Logical; Experimental option to improve speed and
+##' @param profile   (logical) Experimental option to improve speed and
 ##'                  robustness when a model has many fixed effects
-##' @param collect   Logical; Experimental option to improve speed by
+##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
-##' @param parallel  Numeric; Setting number of OpenMP threads to evaluate
+##' @param parallel  (numeric) Set number of OpenMP threads to evaluate
 ##'                  the negative log-likelihood in parallel
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @importFrom TMB openmp
@@ -816,8 +816,8 @@ glmmTMBControl <- function(optCtrl=NULL,
         optCtrl <- list(iter.max=300, eval.max=400)
     }
     ## Make sure that we specify at least one thread
-    if (is.na(parallel) | is.null(parallel) | parallel < 1) {
-      stop("Number of parallel threads must be a numeric >= 1")
+    if (is.na(parallel) || is.null(parallel) || parallel < 1) {
+        stop("Number of parallel threads must be a numeric >= 1")
     }
     parallel <- as.integer(parallel)
   
