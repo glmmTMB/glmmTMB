@@ -7,11 +7,12 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 
-<meta name="date" content="2019-05-22" />
+<meta name="date" content="2019-07-18" />
 
 <title>Troubleshooting with glmmTMB</title>
 
@@ -69,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
       if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -93,7 +94,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 <h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
-<h4 class="date">2019-05-22</h4>
+<h4 class="date">2019-07-18</h4>
 
 
 
@@ -101,15 +102,17 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <p>If your problem is not covered below, there’s a chance it has been solved in the development version; try updating to the latest version of <code>glmmTMB</code> on GitHub.</p>
 <div id="warnings" class="section level1">
 <h1>Warnings</h1>
-<div id="model-convergence-problem-non-positive-definite-hessian-matrix" class="section level2">
-<h2>Model convergence problem; non-positive-definite Hessian matrix</h2>
+<div id="model-convergence-problem-non-positive-definite-hessian-matrix-na-values-for-likelihoodaicetc." class="section level2">
+<h2>Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.</h2>
 <p>You may see the same warning as in the following example:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~spp, Salamanders, <span class="dt">family=</span>nbinom2)</code></pre></div>
-<p>This error states that the point that <code>glmmTMB</code> has identified as the putative maximum-likelihood estimate, the estimated curvature of the log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).</p>
-<p>It can occur:</p>
+<p>This warning states that at <code>glmmTMB</code>’s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found the best fit (minimum): instead, it is downward-curving, or flat, in some direction(s).</p>
+<p>These problems are most likely:</p>
 <ul>
 <li>when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)</li>
-<li>when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)</li>
+<li>when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (“singular fit”: often caused by having too few levels of the random-effect grouping variable)</li>
+<li>when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)</li>
+<li>when dispersion is estimated to be near zero</li>
 <li>when <em>complete separation</em> occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1</li>
 </ul>
 <p>How do we diagnose the problem? First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for logit link, this implies probabilities very close to 0 or 1; for log link, this implies mean counts that are close to 0 or gigantic).</p>
@@ -152,8 +155,8 @@ ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span
 m4<span class="fl">.3</span> &lt;-<span class="st"> </span><span class="kw">update</span>(m4<span class="fl">.2</span>, <span class="dt">data=</span>ps)
 ## scaling factor for back-transforming standard deviations
 ss &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,
-        fatsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ds$fat,<span class="st">&quot;scaled:scale&quot;</span>),
-        fibsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ds$fiber,<span class="st">&quot;scaled:scale&quot;</span>),
+        fatsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ps$fat,<span class="st">&quot;scaled:scale&quot;</span>),
+        fibsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ps$fiber,<span class="st">&quot;scaled:scale&quot;</span>),
         fatsc*fibsc)
 s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">glm=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.1</span>))),
                 <span class="dt">glmmTMB_unsc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)$cond)),
@@ -201,6 +204,9 @@ m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y~<span class="dv">
 </div>
 </div>
 
+
+
+<!-- code folding -->
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->

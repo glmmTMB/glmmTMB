@@ -29,7 +29,7 @@ You may see the same warning as in the following example:
 zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
-This error states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, it is downward-curving, or flat, in some direction(s).
+This warning states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, it is downward-curving, or flat, in some direction(s).
 
 These problems are most likely:
 
