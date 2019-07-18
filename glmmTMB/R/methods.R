@@ -379,12 +379,12 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
   ## drop NA-mapped variables
 
   ## for matching map names vs nameList components ...
-  intnames <- c("beta","betazi","betad","theta","thetazi")
+  par_components <- c("beta","betazi","betad","theta","thetazi")
 
   map <- object$obj$env$map
   for (m in seq_along(map)) {
       if (length(NAmap <- which(is.na(map[[m]])))>0) {
-          w <- match(names(map)[m],intnames) ##
+          w <- match(names(map)[m],par_components) ##
           if (length(nameList)>=w) { ## may not exist if !full
               nameList[[w]] <- nameList[[w]][-NAmap]
           }
@@ -770,7 +770,6 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     
     parm <- getParms(parm, object, full)
 
-
     if (method=="wald") {
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
@@ -782,11 +781,14 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 cf <- cf[nn]
                 ss <- diag(vv)
                 ## using [[-extraction; need to add component name explicitly
-                names(cf) <- names(ss) <- paste(component, names(cf), sep=".")
-                ses <- sqrt(ss)
-                ci.tmp <- cf + ses %o% fac
-                if (estimate) ci.tmp <- cbind(ci.tmp, cf)
-                ci <- rbind(ci, ci.tmp)
+                if (length(cf)>0) {
+                    names(cf) <- names(ss) <-
+                        paste(component, names(cf), sep=".")
+                    ses <- sqrt(ss)
+                    ci.tmp <- cf + ses %o% fac
+                    if (estimate) ci.tmp <- cbind(ci.tmp, cf)
+                    ci <- rbind(ci, ci.tmp)
+                }
                 ## VarCorr -> stddev
                 cfun <- function(x) {
                     ss <- attr(x, "stddev")
@@ -837,6 +839,17 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             } ## tweedie
         }  ## model has 'other' component
         ## Take subset
+
+        ## FIXME: drop this ...
+        ## names to match vcov(.,full=TRUE)
+        nn2 <- gsub("^(zi|disp)\\.","\\1~",
+                    gsub("^cond\\.","",rownames(ci)))
+        vn <- rownames(vcov(object,full=TRUE))
+        ## subset ci to fitted parameters only
+        ci <- ci[match(vn,nn2), , drop=FALSE]
+
+        
+        ## now get selected parameters
         ci <- ci[parm, , drop=FALSE]
         ## end Wald method
     } else if (method=="uniroot") {

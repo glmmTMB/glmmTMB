@@ -2,7 +2,6 @@ stopifnot(require("testthat"),
           require("glmmTMB"))
 
 data(Salamanders, package = "glmmTMB")
-
 context("mapping")
 
 m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders,
@@ -13,18 +12,34 @@ m2 <- glmmTMB(count~ mined + (1|site), family=poisson, data=Salamanders,
               start=list(theta=log(2)),
               map=list(theta=factor(NA)))
 
+m3 <- glmmTMB(count~ mined + (1|site),
+              zi = ~1, family=poisson, data=Salamanders,
+              start=list(theta=log(2), betazi=c(-1)),
+              map=list(theta=factor(NA),
+                       betazi=factor(NA)))
+
+m4_nomap <- glmmTMB(count~ mined + (1|site), 
+              zi=~mined,  family=poisson, data=Salamanders)
+
+m4 <- glmmTMB(count~ mined + (1|site), 
+              zi=~mined,  family=poisson, data=Salamanders,
+              map=list(theta=factor(NA)),
+              start = list(theta=log(10)))
+
 m1optim <- update(m1, control=glmmTMBControl(optimizer=optim,
                                              optArgs=list(method="BFGS")))
 
 test_that("basic mapping works", {
     expect_equal(fixef(m1)$cond[[2]], 2.0)
     expect_equal(exp(getME(m2,"theta")), 2.0)
+    expect_equal(fixef(m3)$zi[[1]], -1.0)
 })
 
 test_that("predict works with mapped params",
           expect_equal(vapply(predict(m1,se.fit=TRUE),unique,numeric(1)),
                        c(fit = -1.18646939995962, se.fit = 0.0342594326326737),
-                       tolerance=1e-6))
+                       tolerance=1e-6)
+          )
 
 test_that("vcov works with mapped params", {
     expect_equal(dim(vcov(m1)$cond),c(1,1))
@@ -36,6 +51,7 @@ test_that("vcov works with mapped params", {
 test_that("confint works with mapped params", {
           expect_equal(dim(confint(m1)), c(1,3))
           expect_equal(dim(confint(m2)), c(2,3))
+          expect_equal(dim(confint(m3)), c(2,3))
 })
 
 
