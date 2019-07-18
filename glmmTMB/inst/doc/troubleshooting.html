@@ -104,9 +104,8 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <h1>Warnings</h1>
 <div id="model-convergence-problem-non-positive-definite-hessian-matrix-na-values-for-likelihoodaicetc." class="section level2">
 <h2>Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.</h2>
-<p>You may see the same warning as in the following example:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~spp, Salamanders, <span class="dt">family=</span>nbinom2)</code></pre></div>
-<p>This warning states that at <code>glmmTMB</code>’s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found the best fit (minimum): instead, it is downward-curving, or flat, in some direction(s).</p>
+<p>This warning (<code>Model convergence problem; non-positive-definite Hessian matrix</code>) states that at <code>glmmTMB</code>’s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).</p>
+<p>It will usually be accompanied by <code>NA</code> values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run <code>summary()</code> on the resulting model, you’ll get the warning <code>In sqrt(diag(vcov)) : NaNs produced</code>.</p>
 <p>These problems are most likely:</p>
 <ul>
 <li>when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)</li>
@@ -115,58 +114,257 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li>when dispersion is estimated to be near zero</li>
 <li>when <em>complete separation</em> occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1</li>
 </ul>
-<p>How do we diagnose the problem? First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for logit link, this implies probabilities very close to 0 or 1; for log link, this implies mean counts that are close to 0 or gigantic).</p>
+<p>How do we diagnose the problem?</p>
+<div id="example-1." class="section level3">
+<h3>Example 1.</h3>
+<p>Consider this example:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~spp, Salamanders, <span class="dt">family=</span>nbinom2)</code></pre></div>
+<p>First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for a logit link, this implies probabilities very close to 0 or 1; for a log link, this implies mean counts that are close to 0 or extremely large).</p>
 <p>Inspecting the fixed-effect estimates for this model:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">fixef</span>(zinbm0)</code></pre></div>
+<pre><code>## 
+## Conditional model:
+## (Intercept)        sppPR        sppDM      sppEC-A      sppEC-L  
+##     -0.5377      -0.6531       0.3303      -0.2001       0.6615  
+##    sppDES-L        sppDF  
+##      0.7993       0.3714  
+## 
+## Zero-inflation model:
+## (Intercept)        sppPR        sppDM      sppEC-A      sppEC-L  
+##     -17.825       17.852       -5.202       17.486       15.431  
+##    sppDES-L        sppDF  
+##      14.708       15.485</code></pre>
 <p>The zero-inflation intercept parameter is tiny (<span class="math inline">\(\approx -17\)</span>): since the parameters are estimated on the logit scale, we back-transform with <code>plogis(-17)</code> to see the at the zero-inflation probability for the baseline level is about <span class="math inline">\(4 \times 10^{-8}\)</span>)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ff &lt;-<span class="st"> </span><span class="kw">fixef</span>(zinbm0)$zi
 <span class="kw">round</span>(<span class="kw">plogis</span>(<span class="kw">c</span>(<span class="dt">sppGP=</span><span class="kw">unname</span>(ff[<span class="dv">1</span>]),ff[-<span class="dv">1</span>]+ff[<span class="dv">1</span>])),<span class="dv">3</span>)</code></pre></div>
+<pre><code>##    sppGP    sppPR    sppDM  sppEC-A  sppEC-L sppDES-L    sppDF 
+##    0.000    0.507    0.000    0.416    0.084    0.042    0.088</code></pre>
 <p>Since the baseline probability is already effectively zero, making the intercept parameter larger or smaller will have very little effect - the likelihood is flat, which leads to the non-positive-definite warning.</p>
 <p>Now that we suspect the problem is in the zero-inflation component, we can try to come up with ways of simplifying the model: for example, we could use a model that compared the first species (“GP”) to the rest:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Salamanders &lt;-<span class="st"> </span><span class="kw">transform</span>(Salamanders, <span class="dt">GP=</span><span class="kw">as.numeric</span>(spp==<span class="st">&quot;GP&quot;</span>))
 zinbm0_A =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span>~GP)</code></pre></div>
 <p>This fits without a warning, although the GP zero-inflation parameter is still extreme:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">fixef</span>(zinbm0_A)[[<span class="st">&quot;zi&quot;</span>]]</code></pre></div>
+<pre><code>## (Intercept)          GP 
+##   -2.890515  -15.414542</code></pre>
 <p>Another possibility would be to fit the variation among species in the zero-inflation parameter as a random effect, rather than a fixed effect: this is slightly more parsimonious. This again fits without an error, although both the average level of zero-inflation and the among-species variation are estimated as very small:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm0_B =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span>~(<span class="dv">1</span>|spp))
-<span class="kw">fixef</span>(zinbm0_B)[[<span class="st">&quot;zi&quot;</span>]]
-<span class="kw">VarCorr</span>(zinbm0_B)</code></pre></div>
+<span class="kw">fixef</span>(zinbm0_B)[[<span class="st">&quot;zi&quot;</span>]]</code></pre></div>
+<pre><code>## (Intercept) 
+##   -16.54352</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">VarCorr</span>(zinbm0_B)</code></pre></div>
+<pre><code>## 
+## Conditional model:
+##  Groups Name        Std.Dev.
+##  site   (Intercept) 1.3894  
+## 
+## Zero-inflation model:
+##  Groups Name        Std.Dev. 
+##  spp    (Intercept) 0.0078215</code></pre>
 <!-- FIXME: updating here does weird things
 zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 -->
 <p>The original analysis considered variation in zero-inflation by site status (mined or not mined) rather than by species - this simpler model only tries to estimate two parameters (mined + difference between mined and no-mining) rather than 7 (one per species) for the zero-inflation model.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">zinbm1 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~mined, Salamanders, <span class="dt">family=</span>nbinom2)
 <span class="kw">fixef</span>(zinbm1)[[<span class="st">&quot;zi&quot;</span>]]</code></pre></div>
+<pre><code>## (Intercept)     minedno 
+##   0.3787986 -17.5118413</code></pre>
 <p>This again fits without a warning, but we see that the zero-inflation is effectively zero in the unmined (“minedno”) condition (<code>plogis(0.38-17.5)</code> is approximately <span class="math inline">\(4 \times 10^{-8}\)</span>). We can estimate the confidence interval, but it takes some extra work: the default Wald standard errors and confidence intervals are useless in this case.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">## at present we need to specify the parameter by number; for
 ##  extreme cases need to specify the parameter range
 ## (not sure why the upper bound needs to be so high ... ?)
 cc =<span class="st"> </span><span class="kw">confint</span>(zinbm1,<span class="dt">method=</span><span class="st">&quot;uniroot&quot;</span>,<span class="dt">parm=</span><span class="dv">9</span>, <span class="dt">parm.range=</span><span class="kw">c</span>(-<span class="dv">20</span>,<span class="dv">20</span>))
 <span class="kw">print</span>(cc)</code></pre></div>
+<pre><code>##            2.5 %    97.5 %  Estimate
+## zi~minedno    NA -2.083725 -17.51184</code></pre>
 <p>The lower CI is not defined; the upper CI is -2.08, i.e. we can state that the zero-inflation probability is less than <code>plogis(-2.08)</code> = 0.11.</p>
 <p>More broadly, general inspection of the data (e.g., plotting the response against potential covariates) should help to diagnose overly complex models.</p>
+</div>
+<div id="example-2." class="section level3">
+<h3>Example 2.</h3>
 <p>In some cases, scaling predictor variables may help. For example, in this example from <span class="citation">@phisanti</span>, the results of <code>glm</code> and <code>glmmTMB</code> applied to a scaled version of the data set agree, while <code>glmmTMB</code> applied to the raw data set gives a non-positive-definite Hessian warning.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">## data taken from gamlss.data:plasma, originally
 ## http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/plasma.html
 <span class="kw">load</span>(<span class="kw">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>,<span class="st">&quot;plasma.rda&quot;</span>, <span class="dt">package=</span><span class="st">&quot;glmmTMB&quot;</span>))
 m4<span class="fl">.1</span> &lt;-<span class="st"> </span><span class="kw">glm</span>(calories ~<span class="st"> </span>fat*fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)
-m4<span class="fl">.2</span> &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(calories ~<span class="st"> </span>fat*fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)
-ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span class="dt">fat=</span><span class="kw">scale</span>(fat,<span class="dt">center=</span><span class="ot">FALSE</span>),<span class="dt">fiber=</span><span class="kw">scale</span>(fiber,<span class="dt">center=</span><span class="ot">FALSE</span>))
+m4<span class="fl">.2</span> &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(calories ~<span class="st"> </span>fat*fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</code></pre></div>
+<pre><code>## Warning in fitTMB(TMBStruc): Model convergence problem; non-positive-
+## definite Hessian matrix. See vignette('troubleshooting')</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span class="dt">fat=</span><span class="kw">scale</span>(fat,<span class="dt">center=</span><span class="ot">FALSE</span>),<span class="dt">fiber=</span><span class="kw">scale</span>(fiber,<span class="dt">center=</span><span class="ot">FALSE</span>))
 m4<span class="fl">.3</span> &lt;-<span class="st"> </span><span class="kw">update</span>(m4<span class="fl">.2</span>, <span class="dt">data=</span>ps)
 ## scaling factor for back-transforming standard deviations
 ss &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,
         fatsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ps$fat,<span class="st">&quot;scaled:scale&quot;</span>),
         fibsc &lt;-<span class="st"> </span><span class="dv">1</span>/<span class="kw">attr</span>(ps$fiber,<span class="st">&quot;scaled:scale&quot;</span>),
         fatsc*fibsc)
+## combine SEs, suppressing the warning from the unscaled model
 s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">glm=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.1</span>))),
-                <span class="dt">glmmTMB_unsc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)$cond)),
+                <span class="dt">glmmTMB_unsc=</span><span class="kw">suppressWarnings</span>(<span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)$cond))),
                 <span class="dt">glmmTMB_sc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.3</span>)$cond))*ss)
 <span class="kw">print</span>(s_vals,<span class="dt">digits=</span><span class="dv">3</span>)</code></pre></div>
+<pre><code>##                  glm glmmTMB_unsc glmmTMB_sc
+## (Intercept) 5.11e-02     0.022496   5.21e-02
+## fat         6.69e-04     0.000225   6.77e-04
+## fiber       3.70e-03     0.001448   3.79e-03
+## fat:fiber   4.48e-05          NaN   4.54e-05</code></pre>
+</div>
+</div>
+<div id="example-3." class="section level2">
+<h2>Example 3.</h2>
+<p>Here is another example (from Samantha Sherman):</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">system.file</span>(<span class="st">&quot;vignette_data&quot;</span>,<span class="st">&quot;troubleshooting.rda&quot;</span>,<span class="dt">package=</span><span class="st">&quot;glmmTMB&quot;</span>))</code></pre></div>
+<p>The first model gives the specified warning when it runs, as well as the other symptoms such as <code>NA</code> values for the likelihood:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod1)</code></pre></div>
+<pre><code>## Warning in sqrt(diag(vcov)): NaNs produced</code></pre>
+<pre><code>##  Family: nbinom1  ( log )
+## Formula:          taeCPUE ~ Avg.Relief + (1 | site.name/reef.name)
+## Zero inflation:           ~1
+## Data: dd
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##       NA       NA       NA       NA     3401 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups              Name        Variance Std.Dev.
+##  reef.name:site.name (Intercept) 0.168    0.4098  
+##  site.name           (Intercept) 3.544    1.8825  
+## Number of obs: 3407, groups:  reef.name:site.name, 70; site.name, 39
+## 
+## Overdispersion parameter for nbinom1 family (): 5.82e-10 
+## 
+## Conditional model:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -4.61484    0.43798  -10.54  &lt; 2e-16 ***
+## Avg.Relief   0.16744    0.05895    2.84  0.00451 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Zero-inflation model:
+##             Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept)   -20.21         NA      NA       NA</code></pre>
+<p>We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative. However, we’ll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">diagnose_vcov &lt;-<span class="st"> </span>function(model, <span class="dt">tol=</span><span class="fl">1e-5</span>, <span class="dt">digits=</span><span class="dv">2</span>, <span class="dt">analyze_hessian=</span><span class="ot">FALSE</span>) {
+    vv &lt;-<span class="st"> </span><span class="kw">vcov</span>(model, <span class="dt">full=</span><span class="ot">TRUE</span>)
+    nn &lt;-<span class="st"> </span><span class="kw">rownames</span>(vv)
+    if (!<span class="kw">all</span>(<span class="kw">is.finite</span>(vv))) {
+        if (<span class="kw">missing</span>(analyze_hessian)) <span class="kw">warning</span>(<span class="st">&quot;analyzing Hessian, not vcov&quot;</span>)
+        if (!analyze_hessian) <span class="kw">stop</span>(<span class="st">&quot;can't analyze vcov&quot;</span>)
+        analyze_hessian &lt;-<span class="st"> </span><span class="ot">TRUE</span>
+    }
+    if (analyze_hessian) {
+        par.fixed &lt;-<span class="st"> </span>model$obj$env$last.par.best
+        r &lt;-<span class="st"> </span>model$obj$env$random
+        if (!<span class="kw">is.null</span>(r)) par.fixed &lt;-<span class="st"> </span>par.fixed[-r]
+        vv &lt;-<span class="st"> </span><span class="kw">optimHess</span>(par.fixed, <span class="dt">fn=</span>model$obj$fn, <span class="dt">gr=</span>model$obj$gr)
+        ## note vv is now HESSIAN, not vcov
+    }
+    ee &lt;-<span class="st"> </span><span class="kw">eigen</span>(vv)
+    if (<span class="kw">all</span>(ee$values&gt;tol)) {<span class="kw">message</span>(<span class="st">&quot;var-cov matrix OK&quot;</span>); <span class="kw">return</span>(<span class="kw">invisible</span>(<span class="ot">NULL</span>))}
+    ## find negative or small-positive eigenvalues (flat/wrong curvature)
+    bad_evals &lt;-<span class="st"> </span><span class="kw">which</span>(ee$values&lt;tol)
+    ## order worst to best
+    bad_evals &lt;-<span class="st"> </span>bad_evals[<span class="kw">order</span>(-ee$values[bad_evals])]
+    ret &lt;-<span class="st"> </span><span class="kw">lapply</span>(bad_evals,
+                  function(i) {
+                      ## extract loadings
+                      v &lt;-<span class="st"> </span><span class="kw">setNames</span>(ee$vectors[,i], nn)
+                      ## order in decreasing magnitude &amp; round
+                      <span class="kw">list</span>(<span class="dt">val=</span>ee$values[i],<span class="dt">vec=</span><span class="kw">round</span>(v[<span class="kw">order</span>(-<span class="kw">abs</span>(v))],digits))
+                  })
+    <span class="kw">return</span>(ret)
+}</code></pre></div>
+<p>Running the diagnostics on the model:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">(d1 &lt;-<span class="st"> </span><span class="kw">diagnose_vcov</span>(mod1))</code></pre></div>
+<pre><code>## [[1]]
+## [[1]]$val
+## [1] -132661.7
+## 
+## [[1]]$vec
+##                zi~(Intercept)                 d~(Intercept) 
+##                         -1.00                         -0.03 
+## theta_1|reef.name:site.name.1                   (Intercept) 
+##                          0.00                          0.00 
+##           theta_1|site.name.1                    Avg.Relief 
+##                          0.00                          0.00</code></pre>
+<p>This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let’s try dropping the zero-inflation term:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mod2 &lt;-<span class="st"> </span><span class="kw">update</span>(mod1, <span class="dt">ziformula=</span>~<span class="dv">0</span>)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod2)</code></pre></div>
+<pre><code>##  Family: nbinom1  ( log )
+## Formula:          taeCPUE ~ Avg.Relief + (1 | site.name/reef.name)
+## Data: dd
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##       NA       NA       NA       NA     3402 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups              Name        Variance Std.Dev.
+##  reef.name:site.name (Intercept) 0.168    0.4099  
+##  site.name           (Intercept) 3.544    1.8826  
+## Number of obs: 3407, groups:  reef.name:site.name, 70; site.name, 39
+## 
+## Overdispersion parameter for nbinom1 family (): 1.4e-08 
+## 
+## Conditional model:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -4.61508    0.43804 -10.536  &lt; 2e-16 ***
+## Avg.Relief   0.16745    0.05898   2.839  0.00452 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+<p>We still get the warning, and the <code>NA</code>-valued likelihoods (and the very small dispersion parameter). Diagnose:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">diagnose_vcov</span>(mod2)</code></pre></div>
+<pre><code>## [[1]]
+## [[1]]$val
+## [1] -2509.873
+## 
+## [[1]]$vec
+##                 d~(Intercept)           theta_1|site.name.1 
+##                            -1                             0 
+##                    Avg.Relief                   (Intercept) 
+##                             0                             0 
+## theta_1|reef.name:site.name.1 
+##                             0</code></pre>
+<p>We can see that the dispersion parameter is still problematic. Simplify the model by switching from NB1 to Poisson:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mod3 &lt;-<span class="st"> </span><span class="kw">update</span>(mod2, <span class="dt">family=</span>poisson)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod3)</code></pre></div>
+<pre><code>##  Family: poisson  ( log )
+## Formula:          taeCPUE ~ Avg.Relief + (1 | site.name/reef.name)
+## Data: dd
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##   1562.5   1587.0   -777.2   1554.5     3403 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups              Name        Variance Std.Dev.
+##  reef.name:site.name (Intercept) 0.168    0.4099  
+##  site.name           (Intercept) 3.544    1.8826  
+## Number of obs: 3407, groups:  reef.name:site.name, 70; site.name, 39
+## 
+## Conditional model:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -4.61507    0.43804 -10.536  &lt; 2e-16 ***
+## Avg.Relief   0.16745    0.05898   2.839  0.00452 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1</code></pre>
+<p>There are no warnings, the model looks OK now, and the diagnostic function agrees:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">diagnose_vcov</span>(mod3)</code></pre></div>
+<pre><code>## var-cov matrix OK</code></pre>
+<p>You can also check directly whether the model is OK by examining the <code>pdHess</code> (“positive-definite Hessian”) component of the <code>sdr</code> (“standard deviation report”) component of the model:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mod3$sdr$pdHess                       </code></pre></div>
+<pre><code>## [1] TRUE</code></pre>
+<p>(<strong>FIXME</strong>: add an accessor method for this?)</p>
 <p>In general models with non-positive definite Hessian matrices should be excluded from further consideration.</p>
 </div>
 <div id="model-convergence-problem-eigenvalue-problems" class="section level2">
 <h2>Model convergence problem: eigenvalue problems</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(count~spp +<span class="st"> </span>mined +<span class="st"> </span>(<span class="dv">1</span>|site), <span class="dt">zi=</span>~spp +<span class="st"> </span>mined, Salamanders, <span class="dt">family=</span>genpois)</code></pre></div>
+<pre><code>## Warning in fitTMB(TMBStruc): Model convergence problem; extreme or very
+## small eigen values detected. See vignette('troubleshooting')</code></pre>
 <p>In this example, the fixed-effect covariance matrix is <code>NaN</code>. It may have to do with the generalized Poisson (<code>genpois</code>) distribution, which is known to have convergence problems; luckily, the negative binomial (<code>nbinom1</code> and <code>nbinom2</code>) and/or Conway-Maxwell Poisson (<code>compois</code>) are good alternatives.</p>
 <p>Models with convergence problems should be excluded from further consideration, in general.</p>
 <p>In some cases, extreme eigenvalues may be caused by having predictor variables that are on very different scales: try rescaling, and centering, continuous predictors in the model.</p>
@@ -178,9 +376,26 @@ s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="
 </blockquote>
 <p>This warning occurs when the optimizer visits a region of parameter space that is invalid. It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above.</p>
 <p>The following warnings indicate possibly-transient numerical problems with the fit, and can be treated in the same way (i.e. ignored if there are no errors or convergence warnings about the final fitted model).</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Cholmod warning <span class="st">'matrix not positive definite'</span></code></pre></div>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Warning in <span class="kw">f</span>(par, <span class="dt">order =</span> order, ...) :<span class="st"> </span>value out of range in <span class="st">'lgamma'</span></code></pre></div>
-<p>The last of these warnings will be eliminated from R itself at some point in the future (based on <a href="https://github.com/wch/r-source/commit/891224cbd653de69cb2a0ce0136b8eab51a2d227">this change</a>).</p>
+<blockquote>
+<p>Cholmod warning ‘matrix not positive definite’</p>
+</blockquote>
+<p>In older versions of R (&lt; 3.6.0):</p>
+<blockquote>
+<p>Warning in f(par, order = order, …) : value out of range in ‘lgamma’</p>
+</blockquote>
+</div>
+<div id="false-convergence" class="section level2">
+<h2>false convergence</h2>
+<p>This warning:</p>
+<blockquote>
+<p>false convergence: the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x</p>
+</blockquote>
+<p>comes from the <code>nlminb</code> optimizer used by default in <code>glmmTMB</code>. It’s usually hard to diagnose the source of this warning (this <a href="https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean">Stack Overflow answer</a> explains a bit more about what it means). Reasonable methods for making sure your model is OK are:</p>
+<ul>
+<li>restart the model at the estimated fitted values</li>
+<li>try using a different optimizer, e.g. <code>control=glmmTMBControl(optimizer=optim, optArgs=list(method=&quot;BFGS&quot;))</code></li>
+</ul>
+<p>and see if the results are sufficiently similar to the original fit.</p>
 </div>
 </div>
 <div id="errors" class="section level1">
@@ -189,6 +404,7 @@ s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="
 <h2>NA/NaN gradient evaluation</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">dat1 =<span class="st"> </span><span class="kw">expand.grid</span>(<span class="dt">y=</span>-<span class="dv">1</span>:<span class="dv">1</span>, <span class="dt">rep=</span><span class="dv">1</span>:<span class="dv">10</span>)
 m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y~<span class="dv">1</span>, dat1, <span class="dt">family=</span>nbinom2)</code></pre></div>
+<pre><code>## Error in eval(family$initialize): negative values not allowed for the negative binomial family</code></pre>
 <p>The error occurs here because the negative binomial distribution is inappropriate for data with negative values.</p>
 <p>If you see this error, check that the response variable meets the assumptions of the specified distribution.</p>
 </div>
@@ -198,9 +414,9 @@ m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y~<span class="dv">
 <p>Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x</p>
 </blockquote>
 <blockquote>
-<p>Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x</p>
+<p>Error in optimHess(par.fixed, obj<span class="math inline">\(fn, obj\)</span>gr): gradient in optim evaluated to length x</p>
 </blockquote>
-<p>Try rescaling predictor variables. Try a simpler model and build up.</p>
+<p>Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)</p>
 </div>
 </div>
 
