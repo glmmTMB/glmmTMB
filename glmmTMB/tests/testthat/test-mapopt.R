@@ -49,9 +49,20 @@ test_that("vcov works with mapped params", {
 })
 
 test_that("confint works with mapped params", {
-          expect_equal(dim(confint(m1)), c(1,3))
-          expect_equal(dim(confint(m2)), c(2,3))
-          expect_equal(dim(confint(m3)), c(2,3))
+    cm1 <- confint(m1)
+    expect_equal(dim(cm1), c(1,3))
+    expect_equal(rownames(cm1), "(Intercept)")
+    cm2 <- confint(m2)
+    expect_equal(dim(cm2), c(2,3))
+    expect_equal(rownames(cm2), c("(Intercept)","minedno"))
+    cm3 <- confint(m3)
+    expect_equal(dim(cm3), c(2,3))
+    expect_equal(rownames(cm3), c("(Intercept)","minedno"))
+    cm4 <- confint(m4)
+    expect_equal(dim(cm4), c(4,3))
+    expect_equal(rownames(cm4),
+       c("cond.(Intercept)", "cond.minedno", "zi.(Intercept)", "zi.minedno"))
+    cm4_nomap <- confint(m4_nomap)
 })
 
 

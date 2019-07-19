@@ -687,21 +687,28 @@ format.perc <- function (probs, digits) {
 ##' @details
 ##' Available methods are
 ##' \describe{
-##' \item{wald}{These intervals are based on the standard errors
+##' \item{"wald"}{These intervals are based on the standard errors
 ##' calculated for parameters on the scale
 ##' of their internal parameterization depending on the family. Derived
 ##' quantities such as standard deviation parameters and dispersion
-##' parameters are backtransformed. It follows that confidence
-##' intervals for these derived quantities are asymmetric.}
-##' \item{profile}{This method computes a likelihood profile
+##' parameters are back-transformed. It follows that confidence
+##' intervals for these derived quantities are typically asymmetric.}
+##' \item{"profile"}{This method computes a likelihood profile
 ##' for the specified parameter(s) using \code{profile.glmmTMB};
 ##' fits a spline function to each half of the profile; and
 ##' inverts the function to find the specified confidence interval.}
-##' \item{uniroot}{This method uses the \code{\link{uniroot}}
+##' \item{"uniroot"}{This method uses the \code{\link{uniroot}}
 ##' function to find critical values of one-dimensional profile
 ##' functions for each specified parameter.}
 ##' }
-##'
+##' At present, "wald" returns confidence intervals for variance
+##' parameters on the standard deviation/correlation scale, while
+##' "profile" and "uniroot" report them on the underlying ("theta")
+##' scale: for each random effect, the first set of parameter values
+##' are standard deviations on the log scale, while remaining parameters
+##' represent correlations on the scaled Cholesky scale (see the
+##' 
+##' 
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
@@ -711,6 +718,9 @@ format.perc <- function (probs, digits) {
 #' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
 #' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 #' }
+#'  Parameter indexing by number may give unusual results when
+#'  some parameters have been fixed using the \code{map} argument:
+#'  please report surprises to the package maintainers.
 ##' @param level Confidence level.
 ##' @param method 'wald', 'profile', or 'uniroot': see Details
 ##' function)
@@ -768,16 +778,22 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
     
-    parm <- getParms(parm, object, full)
+    if (!is.null(parm) || method!="wald") {
+        parm <- getParms(parm, object, full)
+    }
 
     if (method=="wald") {
+        map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
-                length(fixef(object)[[component]])>0) {
+                (nbeta <- length(fixef(object)[[component]]))>0) {
+                ## variance and estimates
                 vv <- vcov(object)[[component]]
-                cf <- unlist(fixef(object)[[component]])
+                cf <- fixef(object)[[component]]
                 ## strip tag (only really necessary for zi~
                 nn <- gsub(paste0(component,"~"),"",colnames(vv))
+                ## vcov only includes estimated (not mapped/fixed)
+                ##  fixed-effect parameters
                 cf <- cf[nn]
                 ss <- diag(vv)
                 ## using [[-extraction; need to add component name explicitly
@@ -812,6 +828,10 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                                  ## "Std.Dev.",
                                                  ## sep="."),
                                                  estimate = estimate)
+                ## would consider excluding mapped parameters here
+                ## (works automatically for fixed effects via vcov)
+                ## but tough because of theta <-> sd/corr mapping;
+                ## instead, eliminate rows below where lowerCI==upperCI
                 ci <- rbind(ci, ci.sd)
             }
         } ## cond and zi components
@@ -839,18 +859,20 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             } ## tweedie
         }  ## model has 'other' component
         ## Take subset
-
-        ## FIXME: drop this ...
-        ## names to match vcov(.,full=TRUE)
-        nn2 <- gsub("^(zi|disp)\\.","\\1~",
-                    gsub("^cond\\.","",rownames(ci)))
-        vn <- rownames(vcov(object,full=TRUE))
-        ## subset ci to fitted parameters only
-        ci <- ci[match(vn,nn2), , drop=FALSE]
-
         
+        ## drop mapped values (where lower == upper)
+        ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
+
         ## now get selected parameters
-        ci <- ci[parm, , drop=FALSE]
+        if (!is.null(parm)) {
+            ci <- ci[parm, , drop=FALSE]
+        } else {
+            ## drop residual std dev/trivial dispersion parameter
+            if (!full) {
+                ci <- ci[rownames(ci)!="sigma",, drop=FALSE]
+            }
+        }
+
         ## end Wald method
     } else if (method=="uniroot") {
         if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")

@@ -19,7 +19,10 @@
 \item by index (position) [\emph{after} component selection for \code{confint}, if any]
 \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
 \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
-}}
+}
+ Parameter indexing by number may give unusual results when
+ some parameters have been fixed using the \code{map} argument:
+ please report surprises to the package maintainers.}
 
 \item{level}{Confidence level.}
 
@@ -48,20 +51,26 @@ Calculate confidence intervals
 \details{
 Available methods are
 \describe{
-\item{wald}{These intervals are based on the standard errors
+\item{"wald"}{These intervals are based on the standard errors
 calculated for parameters on the scale
 of their internal parameterization depending on the family. Derived
 quantities such as standard deviation parameters and dispersion
-parameters are backtransformed. It follows that confidence
-intervals for these derived quantities are asymmetric.}
-\item{profile}{This method computes a likelihood profile
+parameters are back-transformed. It follows that confidence
+intervals for these derived quantities are typically asymmetric.}
+\item{"profile"}{This method computes a likelihood profile
 for the specified parameter(s) using \code{profile.glmmTMB};
 fits a spline function to each half of the profile; and
 inverts the function to find the specified confidence interval.}
-\item{uniroot}{This method uses the \code{\link{uniroot}}
+\item{"uniroot"}{This method uses the \code{\link{uniroot}}
 function to find critical values of one-dimensional profile
 functions for each specified parameter.}
 }
+At present, "wald" returns confidence intervals for variance
+parameters on the standard deviation/correlation scale, while
+"profile" and "uniroot" report them on the underlying ("theta")
+scale: for each random effect, the first set of parameter values
+are standard deviations on the log scale, while remaining parameters
+represent correlations on the scaled Cholesky scale (see the
 }
 \examples{
 data(sleepstudy, package="lme4")

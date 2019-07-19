@@ -616,8 +616,7 @@ hasRandom <- function(x) {
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
 }
 
-getParms <- function(parm=NULL, object, full=FALSE,
-                     skip_map = TRUE) {
+getParms <- function(parm=NULL, object, full=FALSE) {
     vv <- vcov(object, full=TRUE)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)
@@ -657,12 +656,6 @@ getParms <- function(parm=NULL, object, full=FALSE,
             }
             parm <- nparm
         }
-    }
-    ## get rid of mapped parameters
-    if (!is.null(map <- object$modelInfo$map)) {
-        f <- factor(intnames,
-        split(
-        browser()
     }
     return(parm)
 }
