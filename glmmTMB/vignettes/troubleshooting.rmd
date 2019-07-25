@@ -22,19 +22,18 @@ If your problem is not covered below, there's a chance it has been solved in the
 
 # Warnings
 
-## Model convergence problem; non-positive-definite Hessian matrix
+## Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.
 
-This warning:
+This warning (`Model convergence problem; non-positive-definite Hessian matrix`) states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).
 
-> In fitTMB(TMBStruc) : Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')
+It will usually be accompanied by `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run `summary()` on the resulting model, you'll get the warning `In sqrt(diag(vcov)) : NaNs produced`.
 
-will usually be accompanied by `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run `summary()` on the resulting model, you'll get the warning `In sqrt(diag(vcov)) : NaNs produced`. This warning states that at the (putative) maximum likelihood estimate `glmmTMB` has found, the estimated curvature of the log-likelihood surface is inconsistent with the point really being an MLE: instead, it is upward-curving, or flat, in some direction(s). In technical terms, the matrix of second derivatives of the negative log-likelihood with respect to the parameters (the "Hessian") has zero or negative eigenvalues (or eigenvalues so close to zero that the linear algebra required to compute a variance-covariance matrix from the Hessian fails).
-
-This error is likely to occur:
+These problems are most likely:
 
 - when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)
-- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)
-- when a dispersion parameter is effectively zero
+- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated ("singular fit": often caused by having too few levels of the random-effect grouping variable)
+- when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)
+- when dispersion is estimated to be near zero
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
 
 How do we diagnose the problem?

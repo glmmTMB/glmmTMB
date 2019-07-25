@@ -6,8 +6,8 @@
 ## copied unchanged (?); unexported utilities from car
 responseName.default <- function (model, ...) deparse(attr(terms(model), "variables")[[2]])
 
-term.names.default <- function (model, ...) {
-    term.names <- labels(terms(model))
+term.names.default <- function (model, component="cond", ...) {
+    term.names <- labels(terms(model, component=component))
     if (has.intercept(model)) c("(Intercept)", term.names)
     else term.names
 }
@@ -61,6 +61,10 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                            vcov. = vcov(mod)[[component]], singular.ok, ...) 
 {
 
+    ff <- fixef(mod)[[component]]
+    if (trivialFixef(names(ff),component)) {
+        stop(sprintf("trivial fixed effect for component %s: can't compute Anova table", sQuote(component)))
+    }
     test.statistic <- match.arg(test.statistic)
     if (test.statistic=="F") {
         stop("F tests currently unavailable")
@@ -74,7 +78,8 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
     afun <- switch(type,
                    `2` = , II = Anova.II.glmmTMB,
                    `3` = , III = Anova.III.glmmTMB)
-    afun(mod, vcov., test=test.statistic, singular.ok = singular.ok)
+    afun(mod, vcov., test=test.statistic, singular.ok = singular.ok,
+         component = component)
 }
 
 ## defined as a function, not a method, so we can hand the object
@@ -128,25 +133,28 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
         if (nrow(hyp.matrix.term) == 0)
             return(c(statistic=NA, df=0))            
         hyp <- linearHypothesis_glmmTMB(mod, hyp.matrix.term, 
-                                        vcov.=vcov., singular.ok=singular.ok, test=test, ...)
+                                        vcov.=vcov.,
+                                        singular.ok=singular.ok,
+                                        test=test,
+                                        component=component, ...)
         if (test == "Chisq") return(c(statistic=hyp$Chisq[2], df=hyp$Df[2]))
         else return(c(statistic=hyp$F[2], df=hyp$Df[2], res.df=hyp$Res.Df[2]))
     } ## hyp.term()
 
     ## may be irrelevant, glmmTMB doesn't currently handle aliased terms?
-    not.aliased <- !is.na(fixef(mod)$cond)
+    not.aliased <- !is.na(fixef(mod)[[component]])
     if (!singular.ok && !all(not.aliased))
         stop("there are aliased coefficients in the model")
-    fac <- attr(terms(mod), "factors")
+    fac <- attr(terms(mod, component=component), "factors")
     intercept <- has.intercept(mod)
     p <- length(fixef(mod)[[component]])
     I.p <- diag(p)
     if (!missing(vcov.)){
         vcov. <- vcov(mod, complete=FALSE)[[component]]
     }
-    assign <- attr(model.matrix(mod), "assign")
+    assign <- attr(model.matrix(mod, component=component), "assign")
     assign[!not.aliased] <- NA
-    names <- term.names.default(mod)
+    names <- term.names.default(mod, component=component)
     if (intercept) names <- names[-1]
     n.terms <- length(names)
     p <- teststat <- df <- res.df <- rep(0, n.terms)

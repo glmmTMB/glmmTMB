@@ -7,11 +7,12 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 
-<meta name="date" content="2019-06-23" />
+<meta name="date" content="2019-07-18" />
 
 <title>Troubleshooting with glmmTMB</title>
 
@@ -69,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
       if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -93,7 +94,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 <h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
-<h4 class="date">2019-06-23</h4>
+<h4 class="date">2019-07-18</h4>
 
 
 
@@ -101,18 +102,16 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <p>If your problem is not covered below, there’s a chance it has been solved in the development version; try updating to the latest version of <code>glmmTMB</code> on GitHub.</p>
 <div id="warnings" class="section level1">
 <h1>Warnings</h1>
-<div id="model-convergence-problem-non-positive-definite-hessian-matrix" class="section level2">
-<h2>Model convergence problem; non-positive-definite Hessian matrix</h2>
-<p>This warning:</p>
-<blockquote>
-<p>In fitTMB(TMBStruc) : Model convergence problem; non-positive-definite Hessian matrix. See vignette(‘troubleshooting’)</p>
-</blockquote>
-<p>will usually be accompanied by <code>NA</code> values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run <code>summary()</code> on the resulting model, you’ll get the warning <code>In sqrt(diag(vcov)) : NaNs produced</code>. This warning states that at the (putative) maximum likelihood estimate <code>glmmTMB</code> has found, the estimated curvature of the log-likelihood surface is inconsistent with the point really being an MLE: instead, it is upward-curving, or flat, in some direction(s). In technical terms, the matrix of second derivatives of the negative log-likelihood with respect to the parameters (the “Hessian”) has zero or negative eigenvalues (or eigenvalues so close to zero that the linear algebra required to compute a variance-covariance matrix from the Hessian fails).</p>
-<p>This error is likely to occur:</p>
+<div id="model-convergence-problem-non-positive-definite-hessian-matrix-na-values-for-likelihoodaicetc." class="section level2">
+<h2>Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.</h2>
+<p>This warning (<code>Model convergence problem; non-positive-definite Hessian matrix</code>) states that at <code>glmmTMB</code>’s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).</p>
+<p>It will usually be accompanied by <code>NA</code> values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run <code>summary()</code> on the resulting model, you’ll get the warning <code>In sqrt(diag(vcov)) : NaNs produced</code>.</p>
+<p>These problems are most likely:</p>
 <ul>
 <li>when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)</li>
-<li>when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)</li>
-<li>when a dispersion parameter is effectively zero</li>
+<li>when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (“singular fit”: often caused by having too few levels of the random-effect grouping variable)</li>
+<li>when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)</li>
+<li>when dispersion is estimated to be near zero</li>
 <li>when <em>complete separation</em> occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1</li>
 </ul>
 <p>How do we diagnose the problem?</p>
@@ -245,7 +244,7 @@ s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="
 ## Zero-inflation model:
 ##             Estimate Std. Error z value Pr(&gt;|z|)
 ## (Intercept)   -20.21         NA      NA       NA</code></pre>
-<p>We can immediately see that the dispersion is very small (5.8210^{-10}), and that the zero-inflation parameter is strongly negative (-20.21). However, we’ll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:</p>
+<p>We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative. However, we’ll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">diagnose_vcov &lt;-<span class="st"> </span>function(model, <span class="dt">tol=</span><span class="fl">1e-5</span>, <span class="dt">digits=</span><span class="dv">2</span>, <span class="dt">analyze_hessian=</span><span class="ot">FALSE</span>) {
     vv &lt;-<span class="st"> </span><span class="kw">vcov</span>(model, <span class="dt">full=</span><span class="ot">TRUE</span>)
     nn &lt;-<span class="st"> </span><span class="kw">rownames</span>(vv)
@@ -289,7 +288,7 @@ s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="
 ##                          0.00                          0.00 
 ##           theta_1|site.name.1                    Avg.Relief 
 ##                          0.00                          0.00</code></pre>
-<p>This model has a very bad eigenvalue (with a value of -1.3310^{5}) that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let’s try dropping the zero-inflation term:</p>
+<p>This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let’s try dropping the zero-inflation term:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mod2 &lt;-<span class="st"> </span><span class="kw">update</span>(mod1, <span class="dt">ziformula=</span>~<span class="dv">0</span>)</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">summary</span>(mod2)</code></pre></div>
 <pre><code>##  Family: nbinom1  ( log )
@@ -421,6 +420,9 @@ m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y~<span class="dv">
 </div>
 </div>
 
+
+
+<!-- code folding -->
 
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
