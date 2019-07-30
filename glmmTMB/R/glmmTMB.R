@@ -230,6 +230,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     fixedform <- formula
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
+    terms <- NULL ## make sure it's empty in case we don't set it
+    
     nobs <- nrow(fr)
     
     ## check for empty fixed form
@@ -480,7 +482,7 @@ binomialType <- function(x) {
 ##' \code{theta}, \code{thetazi} (random-effect parameters, on the
 ##' standard deviation/Cholesky scale, for conditional and z-i models);
 ##' \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)
-##' @param map mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}
+##' @param map (list) specify which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g. \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effects parameters of the conditional model and fix the fourth parameter to its starting value. In general users will probably want to use \code{start} to specify non-default starting values for fixed parameters.  See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -558,6 +560,11 @@ binomialType <- function(x) {
 ##' fixef(m0)$disp
 ##' c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
 ##' }
+##' 
+##' ## Using 'map' to fix random-effects SD to 10
+##' m1_map <- update(m1, map=list(theta=factor(NA)),
+##'                 start = list(theta=log(10)))
+##' VarCorr(m1_map)
 glmmTMB <- function (
     formula,
     data = NULL,
@@ -869,6 +876,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+## FIXME: export fitTMB?
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
@@ -1009,6 +1017,9 @@ fitTMB <- function(TMBStruc) {
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
+                                terms = lapply(list(cond=condList, zi=ziList,
+                                                    disp=dispList),
+                                               "[[", "terms"),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm,
                                 REML,

@@ -17,15 +17,22 @@
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{vcov(., full=TRUE)} (and hence profiling) now work for models with \code{dispformula=~0}
-      \item Documentation fix only: when \code{family=genpois}, the index of dispersion is known as phi^2.
+      \item Documentation fix only: when \code{family=genpois}, the
+      index of dispersion is known as phi^2.
+      \item \code{Anova} now respects the \code{component} argument (GH
+  #494, from @eds-slim)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item \code{VarCorr} no longer prints residual variances for models with \code{dispformula=~0}
+      \item \code{VarCorr} no longer prints residual variances for
+      models with \code{dispformula=~0}
+      \item the \code{model.matrix()} and \code{terms()} methods
+      for \code{glmmTMB} objects have been slightly modified
+      (hopefully in a 99.9\% back-compatible way)
     }
   } % user-visible changes
-} % version 0.2.3-9000
+} % version 0.2.3-9xxx
 
 \section{CHANGES IN VERSION 0.2.3}{
   \subsection{NEW FEATURES}{

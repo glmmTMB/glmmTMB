@@ -11,3 +11,4 @@ cache$
 .*gh-pages/.*$
 .RData
 revdep/
+TAGS

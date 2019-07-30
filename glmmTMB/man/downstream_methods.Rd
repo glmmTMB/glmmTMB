@@ -8,7 +8,7 @@
 \alias{downstream_methods}
 \title{Downstream methods for glmmTMB objects}
 \usage{
-Anova.glmmTMB(mod, type = c("II", "III", 2, 3),
+\method{Anova}{glmmTMB}(mod, type = c("II", "III", 2, 3),
   test.statistic = c("Chisq", "F"), component = "cond",
   vcov. = vcov(mod)[[component]], singular.ok, ...)
 
