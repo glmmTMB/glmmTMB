@@ -68,7 +68,7 @@ conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}
 standard deviation/Cholesky scale, for conditional and z-i models);
 \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)}
 
-\item{map}{mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}}
+\item{map}{(list) specify which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g. \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effects parameters of the conditional model and fix the fourth parameter to its starting value. In general users will probably want to use \code{start} to specify non-default starting values for fixed parameters.  See \code{\link[TMB]{MakeADFun}} for more details.}
 
 \item{zioffset}{offset for zero-inflated model}
 
