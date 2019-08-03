@@ -155,8 +155,8 @@ expandAllGrpVar <- function(bb) {
                         return(lapply(expandGrpVar(x[[3]]),
                                       makeOp,x=x[[2]],op=quote(`|`)))
                     } else {
-                        return(makeOp(esfun(x[[2]]),esfun(x[[3]]),
-                                      op=x[[1]]))
+                        return(setNames(makeOp(esfun(x[[2]]),esfun(x[[3]]),
+                                               op=x[[1]]),names(x)))
                     }
                 }
             } ## esfun def.
@@ -185,6 +185,8 @@ head.name <- function(x) { x }
 ##'    it is of the form (xx|gg), then convert it to the default
 ##'    special type; we won't allow pathological cases like
 ##'    ((xx|gg)) ... [can we detect them?]
+##' @examples
+##' splitForm(quote(us(x,n=2)))
 ##' @keywords internal
 fbx <- function(term,debug=FALSE,specials=character(0),
                 default.special="us") {
@@ -239,6 +241,7 @@ fbx <- function(term,debug=FALSE,specials=character(0),
 ##' splitForm(~x+y+(1|(f/g)/h))             ## 'slash'; term
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
 ##' splitForm(~(((x+y))))               ## lots of parentheses
+##' splitForm(~1+rr(f|g,n=2))
 ##'
 ##' @author Steve Walker
 ##' @importFrom lme4 nobars
