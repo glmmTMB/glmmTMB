@@ -80,6 +80,7 @@ $(TARBALL): $(PACKAGE)/NAMESPACE $(CPP_SRC)
 	$(R) CMD build --resave-data=no $(PACKAGE)
 
 install: $(TARBALL)
+	echo "devtools::install_deps('glmmTMB', dependencies=TRUE)" | $(R) --slave
 	export NOT_CRAN=true; $(R) CMD INSTALL --preclean $<
 	@touch $@
 
