@@ -19,10 +19,10 @@ methods.}
 a named, numeric vector of fixed-effects estimates.
 }
 \description{
-Extract the fixed-effects estimates
+Extract Fixed Effects
 }
 \details{
-Extract the estimates of the fixed-effects parameters from a fitted model.
+Extract fixed effects from a fitted \code{glmmTMB} model.
 }
 \examples{
 data(sleepstudy, package = "lme4")
