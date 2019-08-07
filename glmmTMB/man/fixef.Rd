@@ -22,7 +22,7 @@ an object of class \code{fixef.glmmTMB} comprising a list of components (\code{c
 Extract Fixed Effects
 }
 \details{
-Extract the estimates of the fixed-effects parameters from a fitted model.
+Extract fixed effects from a fitted \code{glmmTMB} model.
 
 The print method for \code{fixef.glmmTMB} object \emph{only displays non-trivial components}: in particular, the dispersion parameter estimate is not printed for models with a single (intercept) dispersion parameter (see examples)
 }
