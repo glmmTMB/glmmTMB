@@ -16,7 +16,7 @@
 
 \item{se.fit}{return the standard errors of the predicted values?}
 
-\item{re.form}{(not yet implemented: see \section{Details} for population-level predictions) (formula, \code{NULL}, or \code{NA}) specify which random effects to condition on when predicting.}
+\item{re.form}{(not yet implemented: see Details for population-level predictions) (formula, \code{NULL}, or \code{NA}) specify which random effects to condition on when predicting.}
 
 \item{allow.new.levels}{allow previously unobserved levels in random-effects variables? see details.}
 
