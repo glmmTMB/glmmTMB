@@ -19,7 +19,7 @@ methods.}
 an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients
 }
 \description{
-Extract the fixed-effects estimates
+Extract Fixed Effects
 }
 \details{
 Extract the estimates of the fixed-effects parameters from a fitted model.

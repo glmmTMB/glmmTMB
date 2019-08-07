@@ -5,7 +5,8 @@
   probit              = 2,
   inverse             = 3,
   cloglog             = 4,
-  identity            = 5
+  identity            = 5,
+  sqrt                = 6
 )
 .valid_family <- c(
   gaussian = 0,
