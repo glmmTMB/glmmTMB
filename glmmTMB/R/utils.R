@@ -614,7 +614,59 @@ fix_predvars <- function(pv,tt) {
     return(new_pv)
 }
 
-has.random <- function(x) {
+hasRandom <- function(x) {
     pl <- getParList(x)
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
+}
+
+getParms <- function(parm=NULL, object, full=FALSE) {
+    vv <- vcov(object, full=TRUE)
+    sds <- sqrt(diag(vv))
+    pnames <- names(sds) <- rownames(vv)
+    intnames <- names(object$obj$env$last.par) ## internal names
+    ## "beta" vals may be identified by object$obj$env$random, if REML
+    intnames <- intnames[intnames != "b"]
+    if (length(pnames) != length(sds)) { ## shouldn't happen ...
+        stop("length mismatch between internal and external parameter names")
+    }
+
+    if (is.null(parm)) {
+        if (!full && trivialDisp(object)) {
+            parm <- grep("betad", intnames, invert=TRUE)
+        } else {
+            parm <- seq_along(sds)
+        }
+    }
+    if (is.character(parm)) {
+        if (identical(parm,"theta_")) {
+            parm <- which(intnames=="theta")
+        } else if (identical(parm,"beta_")) {
+            if (trivialDisp(object)) {
+                ## include conditional and zi params
+                ##   but not dispersion params
+                parm <- grep("^beta(zi)?$",intnames)
+            } else {
+                parm <- grep("beta",intnames)
+            }
+        } else if (identical(parm, "disp_") ||
+                   identical(parm, "sigma")) {
+            parm <- grep("^betad", intnames)
+        } else { ## generic parameter vector
+            nparm <- match(parm,pnames)
+            if (any(is.na(nparm))) {
+                stop("unrecognized parameter names: ",
+                     parm[is.na(nparm)])
+            }
+            parm <- nparm
+        }
+    }
+    return(parm)
+}
+
+isREML <- function(x) {
+    if (is.null(REML <- x$modelInfo$REML)) {
+        ## let vcov work with old (pre-REML option) stored objects
+        REML <- FALSE
+    }
+    return(REML)
 }
