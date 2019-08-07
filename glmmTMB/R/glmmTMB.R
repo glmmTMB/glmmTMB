@@ -164,7 +164,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## safer initialization for link functions that might give
   ##  illegal predictions for certain families
-  beta_init <-  if (family$link %in% c("identity","inverse")) 1 else 0
+  ##  (sqrt() behaves weirdly for beta=0
+  ##    [because inverse-link is symmetric around 0?]
+  beta_init <-  if (family$link %in% c("identity","inverse","sqrt")) 1 else 0
 
   ## Extra family specific parameters
   numThetaFamily <- (family$family == "tweedie")

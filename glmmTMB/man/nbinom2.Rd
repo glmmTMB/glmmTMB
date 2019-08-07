@@ -41,7 +41,7 @@ betabinomial(link = "logit")
 tweedie(link = "log")
 }
 \arguments{
-\item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", or "identity")}
+\item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
 }
 \value{
 returns a list with (at least) components
