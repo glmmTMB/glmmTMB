@@ -323,6 +323,19 @@ test_that("tweedie", {
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
 })
 
+test_that("gaussian_sqrt", {
+    set.seed(101)
+    nobs <- 200
+    dd0_sqrt <- simfun0(nobs=nobs,sd.re=1,invlink=function(x) x^2)
+    dd0_sqrt$y <- rnorm(nobs,mean=dd0_sqrt$mu,sd=0.1)
+    g1 <- glmmTMB(y~x+(1|f), family=gaussian(link="sqrt"),
+                  data=dd0_sqrt)
+    expect_equal(fixef(g1),
+                 structure(list(cond = c(`(Intercept)` = 2.03810165917618, x = 1.00241002916226
+), zi = numeric(0), disp = c(`(Intercept)` = -4.68350239019746)), class = "fixef.glmmTMB"),
+tol=1e-6)
+})
+
 context("link function info available")
 
 fam1 <- c("poisson","nbinom1","nbinom2","compois")

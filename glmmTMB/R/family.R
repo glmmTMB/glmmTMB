@@ -50,7 +50,7 @@ make_family <- function(x,link) {
 ##'
 ##' 
 ##' @aliases family_glmmTMB
-##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", or "identity")
+##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")
 ##' @return returns a list with (at least) components
 ##' \item{family}{length-1 character vector giving the family name}
 ##' \item{link}{length-1 character vector specifying the link function}
