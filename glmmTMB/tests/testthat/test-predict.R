@@ -26,6 +26,15 @@ test_that("manual prediction of pop level pred", {
                  fixef(g0)$cond[1] + fixef(g0)$cond[2] * nd$Days , tol=1e-10)
 })
 
+test_that("population-level prediction", {
+    prnd <- predict(g0)
+    expect_equal(length(unique(prnd)),180)
+    prnd2 <- predict(g0, re.form=~0)
+    prnd3 <- predict(g0, re.form=NA)
+    expect_equal(prnd2,prnd3)
+    expect_equal(length(unique(prnd2)),10)
+})
+
 context("Catch invalid predictions")
 
 test_that("new levels of fixed effect factor", {
