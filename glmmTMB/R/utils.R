@@ -593,7 +593,7 @@ fix_predvars <- function(pv,tt) {
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
     ##  and *first* comma but not arg ... 
-    init_regexp <- "^([(:_.[:alnum:]]+).*"
+    init_regexp <- "^([(^:_.[:alnum:]]+).*"
     tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())

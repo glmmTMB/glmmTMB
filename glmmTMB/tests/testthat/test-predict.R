@@ -197,3 +197,22 @@ test_that("complex bases in dispformula", {
     expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
                  list(fit = 283.656705454758, se.fit = 4.74204256781178))
 })
+
+test_that("fix_predvars works for I(x^2)", {
+    ## GH512; @strengejacke
+    set.seed(123)
+    n <- 500
+    d <- data.frame(
+        y = rbinom(n, size = 1, prob = .2),
+        x = rnorm(n),
+        site = sample(letters, size = n, replace = TRUE),
+        area = sample(LETTERS[1:9], size = n, replace = TRUE)
+    )
+    form <- y ~ x + I(x^2) + I(x^3) + (1 | area)
+    m1 <- glmer(form, family = binomial("logit"), data = d)
+    m2 <- glmmTMB(form, family = binomial("logit"), data = d)
+    nd <- data.frame(x = c(-2, -1, 0, 1, 2), area = NA)
+    p1 <- predict(m1, newdata = nd, type = "link", re.form = NA)
+    p2 <- predict(m2, newdata = nd, type = "link")
+    expect_equal(unname(p1),unname(p2), tolerance=1e-4)
+})
