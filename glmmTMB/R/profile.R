@@ -57,6 +57,7 @@ profile.glmmTMB <- function(fitted,
                             cl = NULL,
                             ...) {
 
+    if (isREML(fitted)) stop("can't compute profiles for REML models at the moment (sorry)")
     plist <- parallel_default(parallel,ncpus)
     parallel <- plist$parallel
     do_parallel <- plist$do_parallel
@@ -66,33 +67,11 @@ profile.glmmTMB <- function(fitted,
     ytol <- qchisq(level_max,1)
     ystep <- ytol/npts
 
-    vv <- vcov(fitted,full=TRUE)
-    sds <- sqrt(diag(vv))
-    pnames <- names(sds) <- rownames(vv)
-    intnames <- names(fitted$obj$env$last.par)
-    random <- fitted$obj$env$random
-    intnames <- intnames[setdiff(seq_len(length(intnames)),random)]
-
-    ## get pars: need to match up names with internal positions
-    if (is.null(parm)) parm <-  seq_along(sds)
-    if (is.character(parm)) {
-        if (identical(parm,"theta_")) {
-            parm <- which(intnames=="theta")
-        } else if (identical(parm,"beta_")) {
-            ## include both conditional and zi params
-            ##   but not dispersion params
-            parm <- grep("^beta(zi)?$",intnames)
-        } else {
-            nparm <- match(parm,pnames)
-            if (any(is.na(nparm))) {
-                stop("unrecognized parameter names: ",
-                     parm[is.na(nparm)])
-            }
-            parm <- nparm
-        }
-    }
+    ## don't suppress sigma profiling (full=TRUE)
+    parm <- getParms(parm, fitted, full=TRUE)
 
     ## only need selected SDs
+    sds <- sqrt(diag(vcov(fitted,full=TRUE)))
     sds <- sds[parm]
 
     if (!is.null(stderr)) {
@@ -164,7 +143,7 @@ profile.glmmTMB <- function(fitted,
         dd0$value <- dd0$value - min(dd0$value,na.rm=TRUE)
         return(dd0)
     }
-    dd <- Map(dfun, L, colnames(vv)[parm])
+    dd <- Map(dfun, L, names(sds))
     dd <- do.call(rbind,dd)
     class(dd) <- c("profile.glmmTMB","data.frame")
     return(dd)

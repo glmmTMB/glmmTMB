@@ -95,7 +95,7 @@ cc1 <- capture.output(print(summary(fm3)))
 expect_true(any(grepl("Dispersion model:",cc0)))
 expect_true(any(grepl("Dispersion model:",cc1)))
 
-
+## FIXME: slow ( ~ 49 seconds )
 ## ??? wrong context?
 # not simulated this way, but returns right structure
 test_that("weird variance structure", {

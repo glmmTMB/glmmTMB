@@ -25,4 +25,7 @@ fbx(term, debug = FALSE, specials = character(0),
 \description{
 (f)ind (b)ars e(x)tended: recursive
 }
+\examples{
+splitForm(quote(us(x,n=2)))
+}
 \keyword{internal}

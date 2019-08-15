@@ -5,6 +5,7 @@ date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{random effect structures}
+  %\VignettePackage{glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 params:
@@ -24,6 +25,8 @@ knitr::opts_chunk$set(echo = TRUE, eval=if (isTRUE(exists("params"))) params$EVA
 ## In addition: Warning message:
 ## In retape() : Expected object. Got NULL.
 set.seed(1)
+## run this in interactive session if you actually want to evaluate chunks ...
+## Sys.setenv(NOT_CRAN="true")
 ```
 
 This vignette demonstrates some of the covariance structures available in the `glmmTMB` package.
@@ -141,9 +144,9 @@ the parameters. We could either increase the length of the time series
 or increase the number of groups. We'll try the latter:
 
 ```{r simGroup}
-simGroup <- function(g) {
+simGroup <- function(g, n=6, rho=0.7) {
     x <- mvrnorm(mu = rep(0,n),
-             Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process
+             Sigma = rho ^ as.matrix(dist(1:n)) )   ## Simulate the process
     y <- x + rnorm(n)                               ## Add measurement noise
     times <- factor(1:n)
     group <- factor(rep(g,n))
@@ -159,7 +162,7 @@ dat1 <- do.call("rbind", lapply(1:1000, simGroup) )
 ```
 
 And fitting the model on this larger dataset gives estimates close to
-the true values:
+the true values (AR standard deviation=1, residual (measurement) standard deviation=1, autocorrelation=0.7):
 
 ```{r fit.ar1}
 (fit.ar1 <- glmmTMB(y ~ ar1(times + 0 | group), data=dat1))
@@ -171,8 +174,8 @@ We can try to fit an unstructured covariance to the previous dataset
 `dat`. For this case an unstructured covariance has `r (n*n-n)/2`
 correlation parameters and `r n` variance parameters. Adding
 $\sigma_0^2 I$ on top would cause a strict
-overparameterization. Hence, when fitting the model with `glmmTMB`, we
-have to disable the $\varepsilon$ term (the dispersion):
+overparameterization, as these would be redundant with the diagonal
+elements in the covariance matrix. Hence, when fitting the model with `glmmTMB`, we have to disable the $\varepsilon$ term (the dispersion) by setting `dispformula=~0`:
 
 ```{r fit.us}
 fit.us <- glmmTMB(y ~ us(times + 0 | group), data=dat1, dispformula=~0)
@@ -185,10 +188,11 @@ The estimated variance and correlation parameters are:
 VarCorr(fit.us)
 ```
 
+\newcommand{\textsub}{2}{#1_{{\text \small #2}}}
 The estimated correlation is approximately constant along diagonals
 (apparent Toeplitz structure) and we note that the first off-diagonal
 is now ca. half the true value (0.7) because the dispersion is
-effectively included in the estimated covariance matrix.
+effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{sigma^2}{meas})$).
 
 ## The Toeplitz structure
 
@@ -207,14 +211,24 @@ fit.toep$sdr$pdHess ## Converged ?
 The estimated variance and correlation parameters are:
 
 ```{r fit.toep.vc}
-VarCorr(fit.toep)
+(vc.toep <- VarCorr(fit.toep))
 ```
 
-The residual variance appears downward biased. REML estimation
-(currently not part of `glmmTMB`) would probably give a better
-estimate of the variance and thereby the correlation parameters.
+The diagonal elements are all approximately equal to the true total variance ($\textsub{\sigma^2}{AR} + \textsub{sigma^2}{meas}$=2), and the off-diagonal elements are approximately equal to the expected value of 0.7/2=0.35.
+```{r fit.toep.vc.diag}
+vc1 <- vc.toep$cond[[1]] ## first term of var-cov for RE of conditional model
+summary(diag(vc1))
+summary(vc1[row(vc1)!=col(vc1)])
+```
 
-> FIXME: Add REML argument to glmmTMB
+We can get a *slightly* better estimate of the variance by using REML estimation (however, the estimate of the correlations seems to have gotten slightly worse):
+
+```{r fit.toep.reml}
+fit.toep.reml <- update(fit.toep, REML=TRUE)
+vc1R <- VarCorr(fit.toep.reml)$cond[[1]]
+summary(diag(vc1R))
+summary(vc1R[row(vc1R)!=col(vc1R)])
+```
 
 ## Compound symmetry
 
@@ -236,17 +250,21 @@ VarCorr(fit.cs)
 
 ## Anova tables
 
-The models ar1, toep, and us are nested so we can use:
+The models `ar1`, `toep`, and `us` are nested so we can use:
 
 ```{r anova1}
 anova(fit.ar1, fit.toep, fit.us)
 ```
+
+`ar1` has the lowest AIC (it's the simplest model, and fits the data adequately); we can't reject the (true in this case!) null model that an AR1 structure is adequate to describe the data.
 
 The model `cs` is a sub-model of `toep`:
 
 ```{r anova2}
 anova(fit.cs, fit.toep)
 ```
+
+Here we *can* reject the null hypothesis of compound symmetry (i.e., that all the pairwise correlations are the same).
 
 ## Adding coordinate information
 
@@ -395,7 +413,7 @@ d$group <- factor(rep(1, nrow(d)))
 
 The model is fit by
 
-```{r fit_spatial_model}
+```{r fit_spatial_model, cache=TRUE}
 f <- glmmTMB(z ~ 1 + exp(pos + 0 | group), data=d)
 ```
 
@@ -453,7 +471,7 @@ for variance parameters) and their order.
 
 ### Unstructured
 
-For an unstructured matrix of size `n` parameters `1:n` represent the log-standard deviations while the remaining `n(n-1)/2` (i.e. `(n+1):(n:(n*(n+1)/2))`) are the elements of the *scaled* Cholesky factor of the correlation matrix, filled in row-wise order (see [TMB documentation](http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html)). In particular, if $L$ is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as $\Sigma = D^{-1/2} L L^\top D^{-1/2}$, where $D = \textrm{diag}(L L^\top)$. For a single correlation parameter $\theta_0$, this works out to $\rho = \theta_0/(1+\theta_0^2)$.
+For an unstructured matrix of size `n`, parameters `1:n` represent the log-standard deviations while the remaining `n(n-1)/2` (i.e. `(n+1):(n:(n*(n+1)/2))`) are the elements of the *scaled* Cholesky factor of the correlation matrix, filled in row-wise order (see [TMB documentation](http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html)). In particular, if $L$ is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as $\Sigma = D^{-1/2} L L^\top D^{-1/2}$, where $D = \textrm{diag}(L L^\top)$. For a single correlation parameter $\theta_0$, this works out to $\rho = \theta_0/(1+\theta_0^2)$.
 
 ```{r fit.us.2}
 vv0 <- VarCorr(fit.us)

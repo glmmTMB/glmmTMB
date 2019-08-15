@@ -16,16 +16,23 @@ be extracted.}
 methods.}
 }
 \value{
-a named, numeric vector of fixed-effects estimates.
+an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients
 }
 \description{
-Extract the fixed-effects estimates
+Extract Fixed Effects
 }
 \details{
-Extract the estimates of the fixed-effects parameters from a fitted model.
+Extract fixed effects from a fitted \code{glmmTMB} model.
+
+The print method for \code{fixef.glmmTMB} object \emph{only displays non-trivial components}: in particular, the dispersion parameter estimate is not printed for models with a single (intercept) dispersion parameter (see examples)
 }
 \examples{
 data(sleepstudy, package = "lme4")
-fixef(glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
+fm1 <- glmmTMB(Reaction ~ Days, sleepstudy)
+(f1 <- fixef(fm1))
+f1$cond
+## show full coefficients, including dispersion parameter
+unlist(f1)
+print.default(f1)
 }
 \keyword{models}

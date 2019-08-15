@@ -220,7 +220,8 @@ enum valid_link {
   probit_link              = 2,
   inverse_link             = 3,
   cloglog_link             = 4,
-  identity_link            = 5
+  identity_link            = 5,
+  sqrt_link                = 6
 };
 
 enum valid_covStruct {
@@ -262,6 +263,9 @@ Type inverse_linkfun(Type eta, int link) {
     break;
   case inverse_link:
     ans = Type(1) / eta;
+    break;
+  case sqrt_link:
+    ans = eta*eta; // pow(eta, Type(2)) doesn't work ... ?
     break;
     // TODO: Implement remaining links
   default:
