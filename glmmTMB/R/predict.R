@@ -237,7 +237,19 @@ predict.glmmTMB <- function(object,newdata=NULL,
     ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
            This is currently incompatible with se.fit=TRUE."))
   }
-  
+
+  ## FIXME: what if newparams only has a subset of components?
+
+  oldPar <- object$fit$par
+  if (!is.null(newparams)) oldPar <- newparams
+
+  if (pop_pred) {
+      TMBStruc <- within(TMBStruc, {
+          parameters$b[] <- 0       
+          mapArg$b <- factor(rep(NA,length(parameters$b)))
+      })
+  }
+
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
@@ -247,13 +259,6 @@ predict.glmmTMB <- function(object,newdata=NULL,
                            silent = TRUE,
                            DLL = "glmmTMB"))
 
-  origPar <- oldPar <- object$fit$par
-    
-  on.exit(newObj$fn(origPar))
-  if (!is.null(newparams)) oldPar <- newparams    
-  if (pop_pred) {
-      oldPar[names(oldPar)=="theta"] <- (-100)
-  }    
   newObj$fn(oldPar)  ## call once to update internal structures
   lp <- newObj$env$last.par
 

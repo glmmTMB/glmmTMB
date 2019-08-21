@@ -33,6 +33,9 @@ test_that("population-level prediction", {
     prnd3 <- predict(g0, re.form=NA)
     expect_equal(prnd2,prnd3)
     expect_equal(length(unique(prnd2)),10)
+    ## make sure we haven't messed up any internal structures ...
+    prnd4 <- predict(g0)
+    expect_equal(prnd, prnd4)
 })
 
 context("Catch invalid predictions")
@@ -58,9 +61,12 @@ test_that("new levels in AR1 (OK)", {
 
 context("Predict two-column response case")
 
-fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial, data=Salamanders)
-expect_equal(predict(fm, type="response"),
-             c(0.05469247, 0.29269818)[Salamanders$mined] )
+test_that("two-column response", {
+    fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial,
+                  data=Salamanders)
+    expect_equal(predict(fm, type="response"),
+                 c(0.05469247, 0.29269818)[Salamanders$mined] )
+})
 
 context("Prediction with dispformula=~0")
 y <- 1:10
