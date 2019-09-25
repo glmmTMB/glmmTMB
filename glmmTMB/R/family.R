@@ -104,7 +104,7 @@ nbinom2 <- function(link="log") {
                     }
                 }
                 return(mu*(1+mu/theta))
-               },  ## variance function
+              },  ## variance function
               ## full versions needed for effects::mer.to.glm
               ## (so we can evaluate a glm)
               initialize = expression({
@@ -316,6 +316,12 @@ getCapabilities <- function(what="all",check=FALSE) {
     }
 }
 
+#' @export
+#' @rdname nbinom2
+#' @note In order to allow zero-inflated Gamma models to be fitted,
+#' \code{glmmTMB} exports a \code{Gamma()} family constructor function
+#' that calls (and slightly post-processes) \code{stats:Gamma()};
+#' it should be 100\% backward-compatible.
 Gamma <- function(link="inverse") {
     g <- stats::Gamma(link=link)
     ## stats::Gamma does clever deparsing stuff ... need to work around it ...
@@ -332,7 +338,6 @@ Gamma <- function(link="inverse") {
             n <- rep.int(1, nobs)
             mustart <- y
     })
-
    return(g)
 }
 

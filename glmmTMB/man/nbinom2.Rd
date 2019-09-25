@@ -14,6 +14,7 @@
 \alias{beta_family}
 \alias{betabinomial}
 \alias{tweedie}
+\alias{Gamma}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
@@ -39,6 +40,8 @@ beta_family(link = "logit")
 betabinomial(link = "logit")
 
 tweedie(link = "log")
+
+Gamma(link = "inverse")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
@@ -71,6 +74,12 @@ and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)
     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}}
 }
+}
+\note{
+In order to allow zero-inflated Gamma models to be fitted,
+\code{glmmTMB} exports a \code{Gamma()} family constructor function
+that calls (and slightly post-processes) \code{stats:Gamma()};
+it should be 100\% backward-compatible.
 }
 \references{
 \itemize{
