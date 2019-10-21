@@ -200,8 +200,10 @@ test_that("complex bases in dispformula", {
 
 test_that("contrasts carried over", {
     ## GH 439, @cvoeten
-    iris2 <- iris
+    iris2 <- transform(iris,
+                       grp=c("a","b"))
     contrasts(iris2$Species) <- contr.sum
+    contrasts(iris2$grp) <- contr.sum
     mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
     mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
     ## these are not *exactly* equal because of numeric differences
@@ -210,4 +212,12 @@ test_that("contrasts carried over", {
     ## make sure we actually imposed contrasts correctly/differently
     expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
     expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
+    expect_equal(c(predict(mod3,newdata=data.frame(Species="ABC"),
+                           allow.new.levels=TRUE)),
+                 5.843333, tolerance=1e-6)
+    mod4 <- glmmTMB(Sepal.Length ~ grp + (1|Species), iris2)
+    expect_equal(c(predict(mod4, newdata=data.frame(Species="ABC",grp="a"),
+                           allow.new.levels=TRUE)),
+                 5.839998, tolerance=1e-6)
 })

@@ -175,11 +175,28 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
   augFr <- rbind(object$frame,newFr)
   facs <- which(vapply(augFr,is.factor,logical(1)))
-  for (i in facs) {
-      if (!isTRUE(all.equal(c1 <- contrasts(object$frame[[i]]), contrasts(newFr[[i]])))) {
-          stop("contrasts mismatch between original and prediction frame in variable",sQuote(names(object$frame)[i]))
+  for (fnm in names(augFr)[facs]) {
+      c1 <- contrasts(object$frame[[fnm]])
+      c2 <- if (length(levels(newFr[[fnm]]))<2) NULL else contrasts(newFr[[fnm]])
+      if (!is.null(c2) && !isTRUE(all.equal(c1, c2))) {
+         stop("contrasts mismatch between original and prediction frame in variable ",
+                   sQuote(fnm))
+          }
+      if (!allow.new.levels) {
+          contrasts(augFr[[fnm]]) <- c1
+      } else {
+          ## what do we do here?
+          ## the new levels aren't actually going to get used for anything,
+          ##  but they break the contrast construction. Extend the contrast
+          ##  matrix with a properly labeled zero matrix.
+          new_levels <- setdiff(levels(newFr[[fnm]]),levels(object$frame[[fnm]]))
+          aug_c1 <- rbind(c1,
+                          matrix(0,
+                                 ncol=ncol(c1),
+                                 nrow=length(new_levels),
+                                 dimnames=list(new_levels,colnames(c1))))
+          contrasts(augFr[[fnm]]) <- aug_c1
       }
-      contrasts(augFr[[i]]) <- c1
   }
 
   ## Pointers into 'new rows' of augmented data frame.
