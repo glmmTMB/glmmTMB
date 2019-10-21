@@ -20,8 +20,10 @@
       \item Documentation fix only: when \code{family=genpois}, the
       index of dispersion is known as phi^2.
       \item \code{Anova} now respects the \code{component} argument (GH
-  #494, from @eds-slim)
-    }
+      #494, from @eds-slim)
+      \item \code{predict} now works when contrasts are set on factors
+  in original data (GH #439, from @cvoeten)
+   }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{

@@ -171,7 +171,16 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ##  or new levels/allow.new.levels)
 
   ## append to existing model frame
-  augFr <- rbind(object$fr,newFr)
+  ## rbind loses attributes!
+  ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
+  augFr <- rbind(object$frame,newFr)
+  facs <- which(vapply(augFr,is.factor,logical(1)))
+  for (i in facs) {
+      if (!isTRUE(all.equal(c1 <- contrasts(object$frame[[i]]), contrasts(newFr[[i]])))) {
+          stop("contrasts mismatch between original and prediction frame in variable",sQuote(names(object$frame)[i]))
+      }
+      contrasts(augFr[[i]]) <- c1
+  }
 
   ## Pointers into 'new rows' of augmented data frame.
   w <- nrow(object$fr) + seq_len(nrow(newFr))

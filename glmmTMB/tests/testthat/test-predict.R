@@ -197,3 +197,17 @@ test_that("complex bases in dispformula", {
     expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
                  list(fit = 283.656705454758, se.fit = 4.74204256781178))
 })
+
+test_that("contrasts carried over", {
+    ## GH 439, @cvoeten
+    iris2 <- iris
+    contrasts(iris2$Species) <- contr.sum
+    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    ## these are not *exactly* equal because of numeric differences
+    ##  when estimating parameters differently ... (?)
+    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    ## make sure we actually imposed contrasts correctly/differently
+    expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
+    expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+})
