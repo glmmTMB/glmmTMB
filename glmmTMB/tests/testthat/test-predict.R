@@ -256,4 +256,4 @@ test_that("contrasts carried over", {
     expect_equal(c(predict(mod4, newdata=data.frame(Species="ABC",grp="a"),
                            allow.new.levels=TRUE)),
                  5.839998, tolerance=1e-6)
-
+})
