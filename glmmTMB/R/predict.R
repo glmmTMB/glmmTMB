@@ -181,11 +181,14 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## append to existing model frame
   ## rbind loses attributes!
   ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
+  safe_contrasts <- function(x) {
+      if (length(levels(x))<2) return(NULL) else return(contrasts(x))
+  }
   augFr <- rbind(object$frame,newFr)
   facs <- which(vapply(augFr,is.factor,logical(1)))
   for (fnm in names(augFr)[facs]) {
-      c1 <- contrasts(object$frame[[fnm]])
-      c2 <- if (length(levels(newFr[[fnm]]))<2) NULL else contrasts(newFr[[fnm]])
+      c1 <- safe_contrasts(object$frame[[fnm]])
+      c2 <- safe_contrasts(augFr[[fnm]])
       if (!allow.new.levels) {
           if (!is.null(c2) && !isTRUE(all.equal(c1, c2))) {
               stop("contrasts mismatch between original and prediction frame in variable ",
@@ -199,13 +202,15 @@ predict.glmmTMB <- function(object,newdata=NULL,
           ## the new levels aren't actually going to get used for anything,
           ##  but they break the contrast construction. Extend the contrast
           ##  matrix with a properly labeled zero matrix.
-          new_levels <- setdiff(levels(newFr[[fnm]]),levels(object$frame[[fnm]]))
-          aug_c1 <- rbind(c1,
+          if (!is.null(c1)) {
+              new_levels <- setdiff(levels(newFr[[fnm]]),levels(object$frame[[fnm]]))
+              aug_c1 <- rbind(c1,
                           matrix(0,
                                  ncol=ncol(c1),
                                  nrow=length(new_levels),
                                  dimnames=list(new_levels,colnames(c1))))
-          contrasts(augFr[[fnm]]) <- aug_c1
+              contrasts(augFr[[fnm]]) <- aug_c1
+          }
       }
   }
 
