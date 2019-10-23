@@ -178,13 +178,15 @@ predict.glmmTMB <- function(object,newdata=NULL,
   for (fnm in names(augFr)[facs]) {
       c1 <- contrasts(object$frame[[fnm]])
       c2 <- if (length(levels(newFr[[fnm]]))<2) NULL else contrasts(newFr[[fnm]])
-      if (!is.null(c2) && !isTRUE(all.equal(c1, c2))) {
-         stop("contrasts mismatch between original and prediction frame in variable ",
+      if (!allow.new.levels) {
+          if (!is.null(c2) && !isTRUE(all.equal(c1, c2))) {
+              stop("contrasts mismatch between original and prediction frame in variable ",
                    sQuote(fnm))
           }
-      if (!allow.new.levels) {
           contrasts(augFr[[fnm]]) <- c1
       } else {
+          ## DON'T check for contrasts mismatch with new levels
+          ##   (hope we don't miss anything important!)
           ## what do we do here?
           ## the new levels aren't actually going to get used for anything,
           ##  but they break the contrast construction. Extend the contrast

@@ -212,6 +212,8 @@ test_that("contrasts carried over", {
     ## make sure we actually imposed contrasts correctly/differently
     expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
     expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    expect_equal(predict(mod1,newdata=iris2,allow.new.levels=TRUE),
+                 predict(mod1,newdata=iris))
     mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
     expect_equal(c(predict(mod3,newdata=data.frame(Species="ABC"),
                            allow.new.levels=TRUE)),
