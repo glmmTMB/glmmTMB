@@ -4,19 +4,21 @@
 \alias{predict.glmmTMB}
 \title{prediction}
 \usage{
-\method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE,
-  re.form, allow.new.levels = FALSE, type = c("link", "response",
-  "conditional", "zprob", "zlink"), zitype = NULL, na.action = na.pass,
-  debug = FALSE, ...)
+\method{predict}{glmmTMB}(object, newdata = NULL, newparams = NULL,
+  se.fit = FALSE, re.form = NULL, allow.new.levels = FALSE,
+  type = c("link", "response", "conditional", "zprob", "zlink"),
+  zitype = NULL, na.action = na.pass, debug = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
 
 \item{newdata}{new data for prediction}
 
+\item{newparams}{new parameters for prediction}
+
 \item{se.fit}{return the standard errors of the predicted values?}
 
-\item{re.form}{(not yet implemented: see Details for population-level predictions) (formula, \code{NULL}, or \code{NA}) specify which random effects to condition on when predicting.}
+\item{re.form}{\code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)}
 
 \item{allow.new.levels}{allow previously unobserved levels in random-effects variables? see details.}
 

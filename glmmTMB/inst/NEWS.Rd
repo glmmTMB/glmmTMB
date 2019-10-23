@@ -12,6 +12,9 @@
       (see \code{?TMB::MakeADFun} for details)
       \item \code{glmmTMBControl} has new \code{optimizer} and
       \code{optArgs} arguments to allow use of an optimizer other than \code{nlminb}
+      \item \code{predict} can make population-level predictions 
+       (i.e., setting all random effects to zero). 
+       See \code{?predict.glmmTMB} for details.
     }
   } % new features
   \subsection{BUG FIXES}{
