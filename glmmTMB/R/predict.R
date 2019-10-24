@@ -188,7 +188,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   facs <- which(vapply(augFr,is.factor,logical(1)))
   for (fnm in names(augFr)[facs]) {
       c1 <- safe_contrasts(object$frame[[fnm]])
-      c2 <- safe_contrasts(augFr[[fnm]])
+      c2 <- safe_contrasts(newFr[[fnm]])
       if (!allow.new.levels) {
           if (!is.null(c2) && !isTRUE(all.equal(c1, c2))) {
               stop("contrasts mismatch between original and prediction frame in variable ",
