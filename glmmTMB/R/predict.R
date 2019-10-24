@@ -100,7 +100,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
 ##' @importFrom TMB sdreport
-##' @importFrom stats optimHess model.frame na.fail na.pass napredict
+##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,
                             newparams=NULL,
