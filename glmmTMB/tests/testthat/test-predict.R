@@ -224,7 +224,7 @@ test_that("fix_predvars works for I(x^2)", {
         area = sample(LETTERS[1:9], size = n, replace = TRUE)
     )
     form <- y ~ x + I(x^2) + I(x^3) + (1 | area)
-    m1 <- glmer(form, family = binomial("logit"), data = d)
+    m1 <- lme4::glmer(form, family = binomial("logit"), data = d)
     m2 <- glmmTMB(form, family = binomial("logit"), data = d)
     nd <- data.frame(x = c(-2, -1, 0, 1, 2), area = NA)
     p1 <- predict(m1, newdata = nd, type = "link", re.form = NA)

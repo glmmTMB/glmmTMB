@@ -184,6 +184,13 @@ predict.glmmTMB <- function(object,newdata=NULL,
   safe_contrasts <- function(x) {
       if (length(levels(x))<2) return(NULL) else return(contrasts(x))
   }
+  aug_contrasts <- function(c1,new_levels) {
+      rbind(c1,
+            matrix(0,
+                   ncol=ncol(c1),
+                   nrow=length(new_levels),
+                   dimnames=list(new_levels,colnames(c1))))
+  }
   augFr <- rbind(object$frame,newFr)
   facs <- which(vapply(augFr,is.factor,logical(1)))
   for (fnm in names(augFr)[facs]) {
@@ -194,23 +201,16 @@ predict.glmmTMB <- function(object,newdata=NULL,
               stop("contrasts mismatch between original and prediction frame in variable ",
                    sQuote(fnm))
           }
-          contrasts(augFr[[fnm]]) <- c1
-      } else {
-          ## DON'T check for contrasts mismatch with new levels
-          ##   (hope we don't miss anything important!)
-          ## what do we do here?
-          ## the new levels aren't actually going to get used for anything,
-          ##  but they break the contrast construction. Extend the contrast
-          ##  matrix with a properly labeled zero matrix.
-          if (!is.null(c1)) {
-              new_levels <- setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]]))
-              aug_c1 <- rbind(c1,
-                          matrix(0,
-                                 ncol=ncol(c1),
-                                 nrow=length(new_levels),
-                                 dimnames=list(new_levels,colnames(c1))))
-              contrasts(augFr[[fnm]]) <- aug_c1
-          }
+      }
+      ## DON'T check for contrasts mismatch with new levels
+      ##   (hope we don't miss anything important!)
+      ## what do we do here?
+      ## the new levels aren't actually going to get used for anything,
+      ##  but they break the contrast construction. Extend the contrast
+      ##  matrix with a properly labeled zero matrix.
+      if (!is.null(c1)) {
+          new_levels <- na.omit(setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]])))
+          contrasts(augFr[[fnm]]) <- aug_contrasts(c1,new_levels)
       }
   }
 
