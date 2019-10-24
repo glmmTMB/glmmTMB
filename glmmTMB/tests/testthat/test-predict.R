@@ -240,6 +240,8 @@ test_that("contrasts carried over", {
     contrasts(iris2$grp) <- contr.sum
     mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
     mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    iris3 <- iris[1,]
+    iris3$Species <- "extra"
     ## these are not *exactly* equal because of numeric differences
     ##  when estimating parameters differently ... (?)
     expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
@@ -256,4 +258,8 @@ test_that("contrasts carried over", {
     expect_equal(c(predict(mod4, newdata=data.frame(Species="ABC",grp="a"),
                            allow.new.levels=TRUE)),
                  5.839998, tolerance=1e-6)
+    ## works with char rather than factor in new group vble
+    expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
+                 5.843333, tolerance=1e-6)
+
 })

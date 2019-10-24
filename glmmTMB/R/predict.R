@@ -203,7 +203,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
           ##  but they break the contrast construction. Extend the contrast
           ##  matrix with a properly labeled zero matrix.
           if (!is.null(c1)) {
-              new_levels <- setdiff(levels(newFr[[fnm]]),levels(object$frame[[fnm]]))
+              new_levels <- setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]]))
               aug_c1 <- rbind(c1,
                           matrix(0,
                                  ncol=ncol(c1),
