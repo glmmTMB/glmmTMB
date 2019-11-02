@@ -720,10 +720,21 @@ glmmTMB <- function(
     }
     
    if (grepl("^truncated", family$family) &&
-       (!is.factor(y) && any(y<1)) & (ziformula == ~0))
+       (!is.factor(y) && any(y<0.001)) & (ziformula == ~0))
         stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
              "Zeros are compatible with a truncated distribution only when zero-inflation is added."))
 
+
+    if (grepl("(binom|pois)",family$family) && family$family!="binomial") {
+        ## see enum.R: this should cover nbinom1, nbinom2, betabinomial, 
+        ## poisson, genpois, compois, and the truncated variants
+        ## binomial()$initialize already has its own check
+        if (any(abs(y-round(y))>0.001)) {
+            warning(sprintf("non-integer counts in a %s model",
+                            family$family))
+        }
+    }
+    
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
                    combForm,
