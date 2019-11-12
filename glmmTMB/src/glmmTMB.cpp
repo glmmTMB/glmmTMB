@@ -645,9 +645,9 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etad);
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions
-// close to zero: use for count data (cf binomial()$initialize)
-#define zt_lik_zero(x,loglik_exp) (zi_flag && (x == Type(0)) ? -INFINITY : loglik_exp)
 // exact zero: use for positive distributions (Gamma, beta)
+#define zt_lik_zero(x,loglik_exp) (zi_flag && (x == Type(0)) ? -INFINITY : loglik_exp)
+// close to zero: use for count data (cf binomial()$initialize)
 #define zt_lik_nearzero(x,loglik_exp) (zi_flag && (x < Type(0.001)) ? -INFINITY : loglik_exp)
 
   // Observation likelihood
