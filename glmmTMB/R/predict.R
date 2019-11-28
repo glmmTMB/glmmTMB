@@ -100,7 +100,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
 ##' @importFrom TMB sdreport
-##' @importFrom stats optimHess model.frame na.fail na.pass napredict
+##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,
                             newparams=NULL,
@@ -179,7 +179,47 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ##  or new levels/allow.new.levels)
 
   ## append to existing model frame
-  augFr <- rbind(object$fr,newFr)
+  ## rbind loses attributes!
+  ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
+  ## at this point I'm not even sure if contrasts are actually *used*
+  ## for anything in the prediction process: do mismatches even matter?  
+  safe_contrasts <- function(x) {
+      if (length(levels(x))<2) return(NULL) else return(contrasts(x))
+  }
+  aug_contrasts <- function(c1,new_levels) {
+      rbind(c1,
+            matrix(0,
+                   ncol=ncol(c1),
+                   nrow=length(new_levels),
+                   dimnames=list(new_levels,colnames(c1))))
+  }
+  augFr <- rbind(object$frame,newFr)
+  facs <- which(vapply(augFr,is.factor,logical(1)))
+  for (fnm in names(augFr)[facs]) {
+      c1 <- safe_contrasts(object$frame[[fnm]])
+      c2 <- safe_contrasts(newFr[[fnm]])
+      if (!allow.new.levels) {
+          c1_sub <- c1[rownames(c2),colnames(c2),drop=FALSE]
+          if (!is.null(c2) &&
+              ## maybe too coarse, but as mentioned above, I don't
+              ##  even know if such mismatches really matter ...
+              !(isTRUE(all.equal(c1_sub,c2)) ||
+                isTRUE(all.equal(c1,c2)))) {
+              stop("contrasts mismatch between original and prediction frame in variable ",
+                   sQuote(fnm))
+          }
+      }
+      ## DON'T check for contrasts mismatch with new levels
+      ##   (hope we don't miss anything important!)
+      ## what do we do here?
+      ## the new levels aren't actually going to get used for anything,
+      ##  but they break the contrast construction. Extend the contrast
+      ##  matrix with a properly labeled zero matrix.
+      if (!is.null(c1)) {
+          new_levels <- stats::na.omit(setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]])))
+          contrasts(augFr[[fnm]]) <- aug_contrasts(c1,new_levels)
+      }
+  }
 
   ## Pointers into 'new rows' of augmented data frame.
   w <- nrow(object$fr) + seq_len(nrow(newFr))

@@ -224,10 +224,42 @@ test_that("fix_predvars works for I(x^2)", {
         area = sample(LETTERS[1:9], size = n, replace = TRUE)
     )
     form <- y ~ x + I(x^2) + I(x^3) + (1 | area)
-    m1 <- glmer(form, family = binomial("logit"), data = d)
+    m1 <- lme4::glmer(form, family = binomial("logit"), data = d)
     m2 <- glmmTMB(form, family = binomial("logit"), data = d)
     nd <- data.frame(x = c(-2, -1, 0, 1, 2), area = NA)
     p1 <- predict(m1, newdata = nd, type = "link", re.form = NA)
     p2 <- predict(m2, newdata = nd, type = "link")
     expect_equal(unname(p1),unname(p2), tolerance=1e-4)
+})
+
+test_that("contrasts carried over", {
+    ## GH 439, @cvoeten
+    iris2 <- transform(iris,
+                       grp=c("a","b"))
+    contrasts(iris2$Species) <- contr.sum
+    contrasts(iris2$grp) <- contr.sum
+    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    iris3 <- iris[1,]
+    iris3$Species <- "extra"
+    ## these are not *exactly* equal because of numeric differences
+    ##  when estimating parameters differently ... (?)
+    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    ## make sure we actually imposed contrasts correctly/differently
+    expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
+    expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    expect_equal(predict(mod1,newdata=iris2,allow.new.levels=TRUE),
+                 predict(mod1,newdata=iris))
+    mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
+    expect_equal(c(predict(mod3,newdata=data.frame(Species="ABC"),
+                           allow.new.levels=TRUE)),
+                 5.843333, tolerance=1e-6)
+    mod4 <- glmmTMB(Sepal.Length ~ grp + (1|Species), iris2)
+    expect_equal(c(predict(mod4, newdata=data.frame(Species="ABC",grp="a"),
+                           allow.new.levels=TRUE)),
+                 5.839998, tolerance=1e-6)
+    ## works with char rather than factor in new group vble
+    expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
+                 5.843333, tolerance=1e-6)
+
 })
