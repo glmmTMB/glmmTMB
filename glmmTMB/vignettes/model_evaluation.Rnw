@@ -61,6 +61,7 @@
 
 \title{Post-model-fitting procedures with \tcode{glmmTMB} models: diagnostics, inference, and model output}
 \date{\today}
+\author{}
 \begin{document}
 \maketitle
 
@@ -361,6 +362,48 @@ cat(to_latex(h1,tabular_only=TRUE))
   \item \code{huxtable} needs quite a few additional \LaTeX\ packages: use \code{report_latex_dependencies()} to see what they are.
 \end{itemize}
 
+\section{influence measures}
+
+\emph{Influence measures} quantify the effects of particular observations, or groups of observations, on the results of a statistical model; \emph{leverage} and \emph{Cook's distance} are the two most common formats for influence measures. If a \href{https://en.wikipedia.org/wiki/Projection_matrix}{projection matrix} (or ``hat matrix'') is available, influence measures can be computed efficiently; otherwise, the same quantities can be estimated by brute-force methods, refitting the model with each group or observation successively left out.
+
+We've adapted the \tcode{car::influence.merMod} function to handle \tcode{glmmTMB} models; because it uses brute force, it can be slow, especially if evaluating the influence of individual observations.  For now, it is included as a separate source file rather than exported as a method (see below), although it may be included in the package (or incorporated in the \tcode{car} package) in the future.
+
+<<infl, eval=FALSE>>=
+source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
+owls_nb1_influence_time <- system.time(
+  owls_nb1_influence <- influence_mixed(owls_nb1, groups="Nest")
+)
+@
+
+Re-fitting the model with each of the \Sexpr{length(unique(Owls$Nest))} nests excluded takes \Sexpr{round(owls_nb1_influence_time[["elapsed"]])} seconds (on an old Macbook Pro). The `car::infIndexPlot()` function is one way of displaying the results:
+
+<<plot_infl>>=
+car::infIndexPlot(owls_nb1_influence)
+@ 
+
+Or, you can transform the results and plot them however you like:
+
+<<plot_infl2>>=
+inf <- as.data.frame(owls_nb1_influence[["fixed.effects[-Nest]"]])
+inf <- transform(inf,
+                 nest=rownames(inf),
+                 cooks=cooks.distance(owls_nb1_influence))
+inf$ord <- rank(inf$cooks)
+if (require(reshape2)) {
+  inf_long <- melt(inf, id.vars=c("ord","nest"))
+  gg_infl <- (ggplot(inf_long,aes(ord,value))
+    + geom_point()
+    + facet_wrap(~variable, scale="free_y")
+    + scale_x_reverse(expand=expand_scale(mult=0.15))
+    + scale_y_continuous(expand=expand_scale(mult=0.15))
+    + geom_text(data=subset(inf_long,ord>24),
+                aes(label=nest),vjust=-1.05)
+  )
+  print(gg_infl)
+}
+@ 
+
+
 \section{to do}
 
 \begin{itemize}
@@ -374,11 +417,12 @@ cat(to_latex(h1,tabular_only=TRUE))
 save("owls_nb1",
      "owls_nb1_simres",
      "owls_nb1_dredge",
+     "owls_nb1_influence",
+     "owls_nb1_influence_time",
      file="../inst/vignette_data/model_evaluation.rda",
      version=2 ## for compatibility with R < 3.6.0
      )
 @
-
 \end{document}
 
 
