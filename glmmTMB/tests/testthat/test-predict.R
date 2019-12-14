@@ -26,6 +26,18 @@ test_that("manual prediction of pop level pred", {
                  fixef(g0)$cond[1] + fixef(g0)$cond[2] * nd$Days , tol=1e-10)
 })
 
+test_that("population-level prediction", {
+    prnd <- predict(g0)
+    expect_equal(length(unique(prnd)),180)
+    prnd2 <- predict(g0, re.form=~0)
+    prnd3 <- predict(g0, re.form=NA)
+    expect_equal(prnd2,prnd3)
+    expect_equal(length(unique(prnd2)),10)
+    ## make sure we haven't messed up any internal structures ...
+    prnd4 <- predict(g0)
+    expect_equal(prnd, prnd4)
+})
+
 context("Catch invalid predictions")
 
 test_that("new levels of fixed effect factor", {
@@ -49,9 +61,12 @@ test_that("new levels in AR1 (OK)", {
 
 context("Predict two-column response case")
 
-fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial, data=Salamanders)
-expect_equal(predict(fm, type="response"),
-             c(0.05469247, 0.29269818)[Salamanders$mined] )
+test_that("two-column response", {
+    fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial,
+                  data=Salamanders)
+    expect_equal(predict(fm, type="response"),
+                 c(0.05469247, 0.29269818)[Salamanders$mined] )
+})
 
 context("Prediction with dispformula=~0")
 y <- 1:10
@@ -196,4 +211,55 @@ test_that("complex bases in dispformula", {
                  tolerance=1e-5)
     expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
                  list(fit = 283.656705454758, se.fit = 4.74204256781178))
+})
+
+test_that("fix_predvars works for I(x^2)", {
+    ## GH512; @strengejacke
+    set.seed(123)
+    n <- 500
+    d <- data.frame(
+        y = rbinom(n, size = 1, prob = .2),
+        x = rnorm(n),
+        site = sample(letters, size = n, replace = TRUE),
+        area = sample(LETTERS[1:9], size = n, replace = TRUE)
+    )
+    form <- y ~ x + I(x^2) + I(x^3) + (1 | area)
+    m1 <- lme4::glmer(form, family = binomial("logit"), data = d)
+    m2 <- glmmTMB(form, family = binomial("logit"), data = d)
+    nd <- data.frame(x = c(-2, -1, 0, 1, 2), area = NA)
+    p1 <- predict(m1, newdata = nd, type = "link", re.form = NA)
+    p2 <- predict(m2, newdata = nd, type = "link")
+    expect_equal(unname(p1),unname(p2), tolerance=1e-4)
+})
+
+test_that("contrasts carried over", {
+    ## GH 439, @cvoeten
+    iris2 <- transform(iris,
+                       grp=c("a","b"))
+    contrasts(iris2$Species) <- contr.sum
+    contrasts(iris2$grp) <- contr.sum
+    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    iris3 <- iris[1,]
+    iris3$Species <- "extra"
+    ## these are not *exactly* equal because of numeric differences
+    ##  when estimating parameters differently ... (?)
+    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    ## make sure we actually imposed contrasts correctly/differently
+    expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
+    expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    expect_equal(predict(mod1,newdata=iris2,allow.new.levels=TRUE),
+                 predict(mod1,newdata=iris))
+    mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
+    expect_equal(c(predict(mod3,newdata=data.frame(Species="ABC"),
+                           allow.new.levels=TRUE)),
+                 5.843333, tolerance=1e-6)
+    mod4 <- glmmTMB(Sepal.Length ~ grp + (1|Species), iris2)
+    expect_equal(c(predict(mod4, newdata=data.frame(Species="ABC",grp="a"),
+                           allow.new.levels=TRUE)),
+                 5.839998, tolerance=1e-6)
+    ## works with char rather than factor in new group vble
+    expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
+                 5.843333, tolerance=1e-6)
+
 })

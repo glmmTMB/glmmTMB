@@ -12,6 +12,9 @@
       (see \code{?TMB::MakeADFun} for details)
       \item \code{glmmTMBControl} has new \code{optimizer} and
       \code{optArgs} arguments to allow use of an optimizer other than \code{nlminb}
+      \item \code{predict} can make population-level predictions 
+       (i.e., setting all random effects to zero). 
+       See \code{?predict.glmmTMB} for details.
     }
   } % new features
   \subsection{BUG FIXES}{
@@ -20,8 +23,10 @@
       \item Documentation fix only: when \code{family=genpois}, the
       index of dispersion is known as phi^2.
       \item \code{Anova} now respects the \code{component} argument (GH
-  #494, from @eds-slim)
-    }
+      #494, from @eds-slim)
+      \item \code{predict} now works when contrasts are set on factors
+  in original data (GH #439, from @cvoeten)
+   }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{

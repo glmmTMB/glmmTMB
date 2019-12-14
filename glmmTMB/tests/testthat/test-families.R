@@ -63,6 +63,26 @@ test_that("binomial", {
     x <- c(1, 2, 3)        ## weights=1 => x > weights !
     expect_error  ( glmmTMB(x~1, family=binomial()) )      ## Error as glm
 })
+
+context("non-integer count warnings")
+test_that("count distributions", {
+    dd <- data.frame(y=c(0.5,1,1,1))
+    for (f in c("binomial","betabinomial","poisson",
+                "genpois",
+                ## "compois", ## fails anyway ...
+                "truncated_genpois",
+                # "truncated_compois",
+                "nbinom1",
+                "nbinom2"
+                # why do these truncated cases fail?
+                ##, "truncated_nbinom1",
+                ##"truncated_nbinom2"
+                )) {
+        expect_warning(m <- glmmTMB(y~1,data=dd,family=f),
+                       "non-integer")
+    }
+})
+
 context("fitting exotic families")
 test_that("beta", {
     set.seed(101)
