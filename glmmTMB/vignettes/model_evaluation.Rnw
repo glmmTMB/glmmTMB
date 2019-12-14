@@ -107,7 +107,8 @@ L <- load(system.file("vignette_data","model_evaluation.rda",
 
 A couple of example models:
 
-<<examples>>=
+% don't need to evaluate this since we have loaded owls_nb1 from model_evaluation.rda
+<<examples,eval=FALSE>>=
 owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                         (1|Nest)+offset(log(BroodSize)),
                     contrasts=list(FoodTreatment="contr.sum",
@@ -134,6 +135,7 @@ simex_b1 <- glmmTMB(z~a*b*c,family=beta_family,data=dd)
 
 The \code{DHARMa} package provides diagnostics for hierarchical models. After running
 
+% set to eval=FALSE since we have this stored in model_evaluation.rda?
 <<dharma_sim,cache=TRUE,message=FALSE>>=
 owls_nb1_simres <- simulateResiduals(owls_nb1)
 @
@@ -211,6 +213,7 @@ The \code{mixed} package implements a true ``type-3-like'' parameter-dropping me
 We can run \code{MuMIn::dredge(owls_nb1)} on the model to fit all possible submodels.
 Since this takes a little while (45 seconds or so), we've instead loaded some previously computed results:
 
+% stored in vignette_data/model_evaluation.rda ...
 <<dredge1>>=
 owls_nb1_dredge
 @
