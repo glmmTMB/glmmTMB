@@ -1,6 +1,6 @@
 #include <TMB.hpp>
 #include "init.h"
-
+// #include <omp.h>
 namespace glmmtmb{
   template<class Type>
   Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
@@ -576,6 +576,9 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
+  // Set max number of OpenMP threads to help us optimize faster
+  // max_parallel_regions = omp_get_max_threads();
+  
   DATA_MATRIX(X);
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);

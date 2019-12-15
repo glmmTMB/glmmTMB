@@ -771,7 +771,7 @@ glmmTMB <- function(
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
 ##' @param parallel  (numeric) Set number of OpenMP threads to evaluate
-##'                  the negative log-likelihood in parallel
+##'                  the negative log-likelihood in parallel (currently \emph{disabled})
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @importFrom TMB openmp
 ##' @details
@@ -826,7 +826,7 @@ glmmTMBControl <- function(optCtrl=NULL,
         stop("Number of parallel threads must be a numeric >= 1")
     }
     parallel <- as.integer(parallel)
-  
+    if (parallel>1) warning("parallel argument disregarded")
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
