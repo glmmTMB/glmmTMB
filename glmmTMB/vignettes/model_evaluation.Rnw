@@ -66,6 +66,7 @@
 \maketitle
 
 %\linenumbers
+%% TO DO: pipeline for re-running stored objects
 
 <<setopts,echo=FALSE,message=FALSE>>=
 library("knitr")
@@ -135,8 +136,8 @@ simex_b1 <- glmmTMB(z~a*b*c,family=beta_family,data=dd)
 
 The \code{DHARMa} package provides diagnostics for hierarchical models. After running
 
-% set to eval=FALSE since we have this stored in model_evaluation.rda?
-<<dharma_sim,cache=TRUE,message=FALSE>>=
+% set to eval=FALSE since we have this stored in model_evaluation.rda
+<<dharma_sim,eval=FALSE,message=FALSE>>=
 owls_nb1_simres <- simulateResiduals(owls_nb1)
 @
 
@@ -371,14 +372,18 @@ cat(to_latex(h1,tabular_only=TRUE))
 
 We've adapted the \tcode{car::influence.merMod} function to handle \tcode{glmmTMB} models; because it uses brute force, it can be slow, especially if evaluating the influence of individual observations.  For now, it is included as a separate source file rather than exported as a method (see below), although it may be included in the package (or incorporated in the \tcode{car} package) in the future.
 
-<<infl, eval=FALSE>>=
+<<load_infl>>=
 source(system.file("other_methods","influence_mixed.R", package="glmmTMB"))
+@ 
+
+
+<<infl, eval=FALSE>>=
 owls_nb1_influence_time <- system.time(
   owls_nb1_influence <- influence_mixed(owls_nb1, groups="Nest")
 )
 @
 
-Re-fitting the model with each of the \Sexpr{length(unique(Owls$Nest))} nests excluded takes \Sexpr{round(owls_nb1_influence_time[["elapsed"]])} seconds (on an old Macbook Pro). The `car::infIndexPlot()` function is one way of displaying the results:
+Re-fitting the model with each of the \Sexpr{length(unique(Owls$Nest))} nests excluded takes \Sexpr{round(owls_nb1_influence_time[["elapsed"]])} seconds (on an old Macbook Pro). The \tcode{car::infIndexPlot()} function is one way of displaying the results:
 
 <<plot_infl>>=
 car::infIndexPlot(owls_nb1_influence)
@@ -386,7 +391,7 @@ car::infIndexPlot(owls_nb1_influence)
 
 Or, you can transform the results and plot them however you like:
 
-<<plot_infl2>>=
+<<plot_infl2,fig.width=8,fig.height=6>>=
 inf <- as.data.frame(owls_nb1_influence[["fixed.effects[-Nest]"]])
 inf <- transform(inf,
                  nest=rownames(inf),
