@@ -25,7 +25,10 @@
       \item \code{Anova} now respects the \code{component} argument (GH
       #494, from @eds-slim)
       \item \code{predict} now works when contrasts are set on factors
-  in original data (GH #439, from @cvoeten)
+      in original data (GH #439, from @cvoeten)
+      \item \code{bootMer} now works with models with Bernoulli
+      responses (even though \code{simulate()} returns a two-column
+      matrix in this case) (GH #529, @frousseu)
    }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
