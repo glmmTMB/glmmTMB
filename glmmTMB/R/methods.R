@@ -935,13 +935,17 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 ##' @rdname glmmTMB_methods
 ##' @param x a fitted \code{glmmTMB} object
 ##' @export
-## was: x$modelInfo$reTrms[[component]]$terms[[part]]
-## now modified because e.g. "disp" component didn't get a $reTrms
+##  modified because e.g. "disp" component didn't get a $reTrms
 ##  component (updated fitTMB to save a separate "terms" component)
 terms.glmmTMB <- function(x, component="cond", part="fixed", ...) {
     if (part != "fixed") stop("only fixed terms currently available")
-
-    return(x$modelInfo$terms[[component]][[part]])
+    if ("terms" %in% names(x$modelInfo)) {
+        tt <- x$modelInfo$terms[[component]]
+    } else {
+        ## allow back-compatibility
+        tt <- x$modelInfo$reTrms[[component]]$terms
+    }
+    return(tt[[part]])
 }
 
 ##' @export
