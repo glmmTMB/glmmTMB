@@ -317,6 +317,8 @@ getCapabilities <- function(what="all",check=FALSE) {
     }
 }
 
+#' @export
+#' @rdname nbinom2
 ziGamma <- function(link="inverse") {
     g <- stats::Gamma(link=link)
     ## stats::Gamma does clever deparsing stuff ... need to work around it ...

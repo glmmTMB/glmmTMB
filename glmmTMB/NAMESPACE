@@ -67,6 +67,7 @@ export(truncated_nbinom1)
 export(truncated_nbinom2)
 export(truncated_poisson)
 export(tweedie)
+export(ziGamma)
 if(getRversion() >= "3.6.0") {
      S3method(car::Anova, glmmTMB)
 } else {
