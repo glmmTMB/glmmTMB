@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 0.2.3-9000}{
+\section{CHANGES IN VERSION 0.2.4}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{glmmTMB} has a new \code{map} to allow for some
