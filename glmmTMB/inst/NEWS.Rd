@@ -15,6 +15,10 @@
       \item \code{predict} can make population-level predictions 
        (i.e., setting all random effects to zero). 
        See \code{?predict.glmmTMB} for details.
+       \item \code{beta_family} now allows zero-inflation;
+       new \code{ziGamma} family (minor modification of
+       \code{stats::Gamma}) allows zero-inflation
+       (i.e., Gamma-hurdle models)
     }
   } % new features
   \subsection{BUG FIXES}{
