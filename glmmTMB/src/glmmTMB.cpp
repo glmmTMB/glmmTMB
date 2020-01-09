@@ -624,8 +624,9 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR_INDICATOR(keep, yobs);
 
   // Joint negative log-likelihood
-  // parallel_accumulator<Type> jnll(this);
-  Type jnll = 0;
+  // ?? should this work on non-OpenMP systems?
+  parallel_accumulator<Type> jnll(this);
+  // Type jnll = 0;
 
   // Random effects
   jnll += allterms_nll(b, theta, terms, this->do_simulate);
