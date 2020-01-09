@@ -16,15 +16,13 @@ dropHead(term, value)
 drop.special2(x, value = quote(offset), preserve = NULL)
 }
 \arguments{
-\item{value}{head of terms to extract}
+\item{value}{term to remove from formula}
 
 \item{term}{expression/formula}
 
 \item{x}{formula}
 
 \item{preserve}{(integer) retain the specified occurrence of "value"}
-
-\item{value}{term to remove from formula}
 }
 \value{
 a list of expressions

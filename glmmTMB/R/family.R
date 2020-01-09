@@ -65,6 +65,7 @@ make_family <- function(x,link) {
 ##'  \describe{
 ##'      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
 ##'      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu\phi}{V=mu*phi}}
+##'       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
 ##'      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
 ##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
 ##'      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
@@ -316,7 +317,9 @@ getCapabilities <- function(what="all",check=FALSE) {
     }
 }
 
-Gamma <- function(link="inverse") {
+#' @export
+#' @rdname nbinom2
+ziGamma <- function(link="inverse") {
     g <- stats::Gamma(link=link)
     ## stats::Gamma does clever deparsing stuff ... need to work around it ...
     if (is.function(link)) {

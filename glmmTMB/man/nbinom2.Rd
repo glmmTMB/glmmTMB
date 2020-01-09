@@ -14,6 +14,7 @@
 \alias{beta_family}
 \alias{betabinomial}
 \alias{tweedie}
+\alias{ziGamma}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
@@ -39,6 +40,8 @@ beta_family(link = "logit")
 betabinomial(link = "logit")
 
 tweedie(link = "log")
+
+ziGamma(link = "inverse")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
@@ -62,6 +65,7 @@ and the predicted mean as \eqn{\mu}{mu}:
  \describe{
      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu\phi}{V=mu*phi}}
+      \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
