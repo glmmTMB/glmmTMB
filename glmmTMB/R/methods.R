@@ -1235,9 +1235,13 @@ refit.glmmTMB <- function(object, newresp, ...) {
           } else {
               stop("can't handle this data format, sorry ...")
           }
+      } else {
+          if (is.matrix(newresp)) newresp <- newresp[,1]
+          newdata[[deparse(fresp)]] <- newresp
       }
-  } else newdata[[deparse(fresp)]] <- newresp
-      
+  } else {
+      newdata[[deparse(fresp)]] <- newresp
+  }
   cc$data <- quote(newdata)
   return(eval(cc))
 }
