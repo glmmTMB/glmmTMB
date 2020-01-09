@@ -881,7 +881,7 @@ fitTMB <- function(TMBStruc) {
     control <- TMBStruc$control
     
     ## Assign OpenMP threads
-    TMB::openmp(n = control$parallel)
+    ## TMB::openmp(n = control$parallel)
 
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
