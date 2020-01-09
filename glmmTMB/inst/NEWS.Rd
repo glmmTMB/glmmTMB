@@ -41,7 +41,6 @@
       models with \code{dispformula=~0}
       \item the \code{model.matrix()} and \code{terms()} methods
       for \code{glmmTMB} objects have been slightly modified
-      (hopefully in a 99.9\% back-compatible way)
     }
   } % user-visible changes
 } % version 0.2.3-9xxx

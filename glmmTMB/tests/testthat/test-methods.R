@@ -107,6 +107,13 @@ test_that("terms", {
     assign = c(0L, 1L, 1L, 1L)))
 })
 
+test_that("terms back-compatibility", {
+    f0 <- readRDS(system.file("test_data", "oldfit.rds",
+                              package="glmmTMB",
+                              mustWork=TRUE))
+    expect_true(!is.null(terms(f0)))
+})
+    
 test_that("summary_print", {
     getVal <- function(x,tag="Dispersion") {
         cc <- capture.output(print(summary(x)))
