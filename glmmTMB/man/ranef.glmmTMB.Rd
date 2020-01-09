@@ -9,8 +9,7 @@
 \usage{
 \method{ranef}{glmmTMB}(object, condVar = TRUE, ...)
 
-\method{as.data.frame}{ranef.glmmTMB}(x, ...,
-  stringsAsFactors = default.stringsAsFactors())
+\method{as.data.frame}{ranef.glmmTMB}(x, ..., stringsAsFactors = default.stringsAsFactors())
 
 \method{coef}{glmmTMB}(object, condVar = FALSE, ...)
 }

@@ -8,8 +8,13 @@
 \usage{
 addForm(...)
 
-splitForm(formula, defaultTerm = "us", allowFixedOnly = TRUE,
-  allowNoSpecials = TRUE, debug = FALSE)
+splitForm(
+  formula,
+  defaultTerm = "us",
+  allowFixedOnly = TRUE,
+  allowNoSpecials = TRUE,
+  debug = FALSE
+)
 
 noSpecials(term, delete = TRUE, debug = FALSE)
 }

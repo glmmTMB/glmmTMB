@@ -4,8 +4,14 @@
 \alias{glmmTMBControl}
 \title{Control parameters for glmmTMB optimization}
 \usage{
-glmmTMBControl(optCtrl = NULL, optArgs = list(), optimizer = nlminb,
-  profile = FALSE, collect = FALSE, parallel = 1)
+glmmTMBControl(
+  optCtrl = NULL,
+  optArgs = list(),
+  optimizer = nlminb,
+  profile = FALSE,
+  collect = FALSE,
+  parallel = 1
+)
 }
 \arguments{
 \item{optCtrl}{Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}}
@@ -14,14 +20,14 @@ glmmTMBControl(optCtrl = NULL, optArgs = list(), optimizer = nlminb,
 
 \item{optimizer}{Function to use in model fitting. See \code{Details} for required properties of this function.}
 
-\item{profile}{Logical; Experimental option to improve speed and
+\item{profile}{(logical) Experimental option to improve speed and
 robustness when a model has many fixed effects}
 
-\item{collect}{Logical; Experimental option to improve speed by
+\item{collect}{(logical) Experimental option to improve speed by
 recognizing duplicated observations.}
 
-\item{parallel}{Numeric; Setting number of OpenMP threads to evaluate
-the negative log-likelihood in parallel}
+\item{parallel}{(numeric) Set number of OpenMP threads to evaluate
+the negative log-likelihood in parallel (currently \emph{disabled})}
 }
 \description{
 Control parameters for glmmTMB optimization

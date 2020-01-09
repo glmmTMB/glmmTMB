@@ -4,10 +4,19 @@
 \alias{predict.glmmTMB}
 \title{prediction}
 \usage{
-\method{predict}{glmmTMB}(object, newdata = NULL, newparams = NULL,
-  se.fit = FALSE, re.form = NULL, allow.new.levels = FALSE,
+\method{predict}{glmmTMB}(
+  object,
+  newdata = NULL,
+  newparams = NULL,
+  se.fit = FALSE,
+  re.form = NULL,
+  allow.new.levels = FALSE,
   type = c("link", "response", "conditional", "zprob", "zlink"),
-  zitype = NULL, na.action = na.pass, debug = FALSE, ...)
+  zitype = NULL,
+  na.action = na.pass,
+  debug = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}

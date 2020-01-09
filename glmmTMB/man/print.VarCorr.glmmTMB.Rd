@@ -4,8 +4,13 @@
 \alias{print.VarCorr.glmmTMB}
 \title{Printing The Variance and Correlation Parameters of a \code{glmmTMB}}
 \usage{
-\method{print}{VarCorr.glmmTMB}(x, digits = max(3, getOption("digits") -
-  2), comp = "Std.Dev.", formatter = format, ...)
+\method{print}{VarCorr.glmmTMB}(
+  x,
+  digits = max(3, getOption("digits") - 2),
+  comp = "Std.Dev.",
+  formatter = format,
+  ...
+)
 }
 \arguments{
 \item{x}{a result of \code{\link{VarCorr}(<glmmTMB>)}.}
