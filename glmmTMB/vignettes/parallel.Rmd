@@ -13,7 +13,7 @@ Parallelization via OpenMP is **disabled** in the current version of `glmmTMB`, 
 
 ---
 
-```{r setup}
+```{r knitr_setup}
 knitr::opts_chunk$set(eval=FALSE)
 ```
 
@@ -28,7 +28,7 @@ library(knitr)
 
 Load packages:
 
-```{r libs,message=FALSE}
+```{r libs,message=FALSE,eval=TRUE}
 library(glmmTMB)
 nt <- min(parallel::detectCores(),5)
 ```
