@@ -882,8 +882,10 @@ fitTMB <- function(TMBStruc) {
     
     ## Assign OpenMP threads
     if (control$parallel>1) {
-        TMB::openmp(n = control$parallel)
+        n_orig <- TMB::openmp(NULL)
         ## will warn if OpenMP not supported
+        TMB::openmp(n = control$parallel)
+        on.exit(TMB::openmp(n = n_orig))
     }
 
     if (control $ collect) {

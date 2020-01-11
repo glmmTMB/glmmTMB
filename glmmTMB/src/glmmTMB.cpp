@@ -1,8 +1,8 @@
 #include <TMB.hpp>
 #include "init.h"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+// don't need to include omp.h; we get it via TMB.hpp
+
+
 
 namespace glmmtmb{
   template<class Type>
@@ -579,10 +579,11 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
-#ifdef _OPENMP
-  // Set max number of OpenMP threads to help us optimize faster
-  max_parallel_regions = omp_get_max_threads();	
-#endif
+// DELETE when we're sure this is redundant ...
+// #ifdef _OPENMP
+// Set max number of OpenMP threads to help us optimize faster
+// max_parallel_regions = omp_get_max_threads();    
+// #endif
 
   DATA_MATRIX(X);
   DATA_SPARSE_MATRIX(Z);
