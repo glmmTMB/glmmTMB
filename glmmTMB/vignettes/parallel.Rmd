@@ -90,3 +90,10 @@ From [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-devel/R-ext
 > Apple builds of clang on macOS currently have no OpenMP support, but CRAN binary packages are built with a clang-based toolchain which supports OpenMP. http://www.openmp.org/resources/openmp-compilers-tools gives some idea of what compilers support what versions.
 
 > The performance of OpenMP varies substantially between platforms. The Windows implementation has substantial overheads, so is only beneficial if quite substantial tasks are run in parallel. Also, on Windows new threads are started with the default FPU control word, so computations done on OpenMP threads will not make use of extended-precision arithmetic which is the default for the main process. 
+## System information
+
+This report was built using `r nt` parallel threads (on a machine with a total of `r parallel::detectCores()` cores)
+
+```{r SI}
+print(sessionInfo(), locale=FALSE)
+```
