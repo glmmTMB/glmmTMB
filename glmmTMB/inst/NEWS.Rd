@@ -4,14 +4,15 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 0.2.4}{
+\section{CHANGES IN VERSION 1.0.0}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item \code{glmmTMB} has a new \code{map} to allow for some
+      \item new \code{map} argument to \code{glmmTMB} allows for some
       parameter values to be fixed
       (see \code{?TMB::MakeADFun} for details)
-      \item \code{glmmTMBControl} has new \code{optimizer} and
-      \code{optArgs} arguments to allow use of an optimizer other than \code{nlminb}
+      \item new \code{optimizer} and
+      \code{optArgs} arguments to \code{glmmTMBControl} allow use of
+      optimizers other than \code{nlminb}
       \item \code{predict} can make population-level predictions 
        (i.e., setting all random effects to zero). 
        See \code{?predict.glmmTMB} for details.
@@ -22,9 +23,9 @@
     }
   } % new features
   \subsection{BUG FIXES}{
-    \itemize{
+  \itemize{
       \item \code{vcov(., full=TRUE)} (and hence profiling) now work for models with \code{dispformula=~0}
-      \item Documentation fix only: when \code{family=genpois}, the
+      \item Documentation fix: when \code{family=genpois}, the
       index of dispersion is known as phi^2.
       \item \code{Anova} now respects the \code{component} argument (GH
       #494, from @eds-slim)
@@ -33,17 +34,22 @@
       \item \code{bootMer} now works with models with Bernoulli
       responses (even though \code{simulate()} returns a two-column
       matrix in this case) (GH #529, @frousseu)
+      \item better support for \code{emmeans} applied to zero-inflation
+      or dispersion models (correct link functions) (Russ Lenth)
    }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
-    \itemize{
+  \itemize{
+      \item \code{sigma(.)} now returns \code{NA} for models with
+      non-trivial dispersion models (i.e. models with more than one
+      dispersion parameter) (raised by GH #533, from @marek-tph)
       \item \code{VarCorr} no longer prints residual variances for
       models with \code{dispformula=~0}
       \item the \code{model.matrix()} and \code{terms()} methods
       for \code{glmmTMB} objects have been slightly modified
     }
   } % user-visible changes
-} % version 0.2.3-9xxx
+} % version 1.0.0
 
 \section{CHANGES IN VERSION 0.2.3}{
   \subsection{NEW FEATURES}{
