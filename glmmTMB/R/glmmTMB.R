@@ -886,8 +886,12 @@ fitTMB <- function(TMBStruc) {
     if (!is.null(control$parallel)) {
         n_orig <- TMB::openmp(NULL)
         ## will warn if OpenMP not supported
-        TMB::openmp(n = control$parallel)
-        on.exit(TMB::openmp(n = n_orig))
+        ## only proceed farther if OpenMP *is* supported ...
+        ## (avoid extra warnings)
+        if (n_orig>0) {
+            TMB::openmp(n = control$parallel)
+            on.exit(TMB::openmp(n = n_orig))
+        }
     }
 
     if (control $ collect) {
