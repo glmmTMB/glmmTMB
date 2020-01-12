@@ -78,16 +78,6 @@ if(getRversion() >= "3.6.0") {
 } else {
   export(Effect.glmmTMB)
 }
-if(getRversion() >= "3.6.0") {
-  S3method(emmeans::emm_basis, glmmTMB)
-} else {
-  export(emm_basis.glmmTMB)
-}
-if(getRversion() >= "3.6.0") {
-  S3method(emmeans::recover_data, glmmTMB)
-} else {
-  export(recover_data.glmmTMB)
-}
 if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
 importFrom(Matrix,Cholesky)
 importFrom(Matrix,solve)
