@@ -4,8 +4,14 @@
 \alias{glmmTMBControl}
 \title{Control parameters for glmmTMB optimization}
 \usage{
-glmmTMBControl(optCtrl = NULL, optArgs = list(), optimizer = nlminb,
-  profile = FALSE, collect = FALSE, parallel = 1)
+glmmTMBControl(
+  optCtrl = NULL,
+  optArgs = list(),
+  optimizer = nlminb,
+  profile = FALSE,
+  collect = FALSE,
+  parallel = NULL
+)
 }
 \arguments{
 \item{optCtrl}{Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}}
