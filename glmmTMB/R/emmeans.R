@@ -1,12 +1,6 @@
 ## methods for extending emmeans to handle glmmTMB objects
 
-## FIXME:
-## I don't know a good way to export methods
-## conditionally defining a generic as described in this thread
-## <https://stat.ethz.ch/pipermail/r-package-devel/2018q2/002764.html>
-## seems like a good idea, but loading the other package masks the
-## generic!
-## so: fully export methods
+## NOTE: methods are dynamically exported by emmeans utility -- see code in zzz.R
 
 ##' Downstream methods for glmmTMB objects
 ##' 
@@ -45,26 +39,9 @@
 ##' }
 
 
-## recover_data <- function(mod, ...) {
-##    if (requireNamespace("emmeans", quietly = TRUE)) {
-##        emmeans::recover_data(object, ...)
-##    } else UseMethod("recover_data")
-## }
-
-## ##' rdname downstream_methods
-## ##' export 
-## emm_basis <-  function(object, trms, xlev, grid, ...) {
-##     if (requireNamespace("emmeans", quietly = TRUE)) {
-##         emmeans::emm_basis(object, trms, xlev, grid, ...)
-##     } else UseMethod("emm_basis")
-## }
+## recover_data method -- DO NOT export -- see zzz.R
 
 #' @importFrom stats delete.response
-#' @rawNamespace if(getRversion() >= "3.6.0") {
-#'   S3method(emmeans::recover_data, glmmTMB)
-#' } else {
-#'   export(recover_data.glmmTMB)
-#' }
 recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
     if (!requireNamespace("emmeans"))
@@ -73,37 +50,15 @@ recover_data.glmmTMB <- function(object, ...) {
                  attr(model.frame(object),"na.action"), ...)
 }
 
-## copied from emmeans (not exported)
-## (will be exported in next release of emmeans)
-.std.link.labels <- function (fam, misc) 
-{
-    if (is.null(fam) || !is.list(fam)) 
-        return(misc)
-    if (fam$link == "identity") 
-        return(misc)
-    misc$tran = fam$link
-    misc$inv.lbl = "response"
-    if (grepl("binomial", fam$family))  {
-        misc$inv.lbl = "prob"
-    } else if (fam$family=="beta") {
-        misc$inv.lbl = "prop"
-    } else if (grepl("(pois|nbinom|tweedie|Gamma)", fam$family)) {
-        misc$inv.lbl = "rate"
-    }
-    misc
-}
+
+## emm_basis method -- Dynamically exported, see zzz.R
 
 #' @rdname downstream_methods
 #' @aliases downstream_methods
 #' @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
-
-#' @rawNamespace if(getRversion() >= "3.6.0") {
-#'   S3method(emmeans::emm_basis, glmmTMB)
-#' } else {
-#'   export(emm_basis.glmmTMB)
-#' }
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
-    if (component != "cond") warning("only tested for conditional component")
+    ## Not needed anymore?
+    ## if (component != "cond") warning("only tested for conditional component")
     V <- as.matrix(vcov(object)[[component]])
     misc = list()
     if (family(object)$family=="gaussian") {
@@ -115,8 +70,12 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
         dfargs = list()
 
     }
+    fam = switch(component,
+                 cond = family(object),
+                 zi = list(link = "logit"),
+                 disp = list(link = "log"))
     
-    misc = .std.link.labels(family(object), misc)
+    misc = emmeans::.std.link.labels(fam, misc)
     ## (used to populate the reminder of response scale)
     contrasts = attr(model.matrix(object), "contrasts")
     ## keep only variables found in conditional fixed effects
