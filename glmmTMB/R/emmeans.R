@@ -50,26 +50,6 @@ recover_data.glmmTMB <- function(object, ...) {
                  attr(model.frame(object),"na.action"), ...)
 }
 
-### Not needed, as it is exported by emmeans
-# ## copied from emmeans (not exported)
-# ## (will be exported in next release of emmeans)
-# .std.link.labels <- function (fam, misc) 
-# {
-#     if (is.null(fam) || !is.list(fam)) 
-#         return(misc)
-#     if (fam$link == "identity") 
-#         return(misc)
-#     misc$tran = fam$link
-#     misc$inv.lbl = "response"
-#     if (grepl("binomial", fam$family))  {
-#         misc$inv.lbl = "prob"
-#     } else if (fam$family=="beta") {
-#         misc$inv.lbl = "prop"
-#     } else if (grepl("(pois|nbinom|tweedie|Gamma)", fam$family)) {
-#         misc$inv.lbl = "rate"
-#     }
-#     misc
-# }
 
 ## emm_basis method -- Dynamically exported, see zzz.R
 
@@ -77,7 +57,8 @@ recover_data.glmmTMB <- function(object, ...) {
 #' @aliases downstream_methods
 #' @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
-    if (component != "cond") warning("only tested for conditional component")
+    ## Not needed anymore?
+    ## if (component != "cond") warning("only tested for conditional component")
     V <- as.matrix(vcov(object)[[component]])
     misc = list()
     if (family(object)$family=="gaussian") {
