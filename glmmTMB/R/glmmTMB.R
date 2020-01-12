@@ -816,16 +816,18 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = 1) {
+                           parallel = NULL) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
     }
     ## Make sure that we specify at least one thread
-    if (is.na(parallel) | is.null(parallel) | parallel < 1) {
-      stop("Number of parallel threads must be a numeric >= 1")
+    if (!is.null(parallel)) {
+        if (is.na(parallel) || parallel < 1) {
+            stop("Number of parallel threads must be a numeric >= 1")
+        }
+        parallel <- as.integer(parallel)
     }
-    parallel <- as.integer(parallel)
   
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
@@ -881,7 +883,7 @@ fitTMB <- function(TMBStruc) {
     control <- TMBStruc$control
     
     ## Assign OpenMP threads
-    if (control$parallel>1) {
+    if (!is.null(control$parallel)) {
         n_orig <- TMB::openmp(NULL)
         ## will warn if OpenMP not supported
         TMB::openmp(n = control$parallel)
