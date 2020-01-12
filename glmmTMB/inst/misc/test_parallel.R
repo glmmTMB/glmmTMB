@@ -29,7 +29,6 @@ parallel_test <- function(nt=5, N=1e5, groups=200, seed=1) {
                 pars=list(nt=nt, N=N, groups=groups, seed=seed),
                 s_info=sessionInfo(),
                 p_info=help(package="glmmTMB"))
-    }
 }
 
 
