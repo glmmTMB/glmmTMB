@@ -23,3 +23,7 @@ gh-pages
 
 misc/*
 TAGS
+
+glmmTMB/build
+glmmTMB/revdep
+
