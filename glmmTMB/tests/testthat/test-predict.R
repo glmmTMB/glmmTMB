@@ -263,3 +263,9 @@ test_that("contrasts carried over", {
                  5.843333, tolerance=1e-6)
 
 })
+
+test_that("dispersion", {
+    mod5 <- glmmTMB(Sepal.Length ~ Species, disp=~ Species, iris)
+    expect_equal(length(unique(predict(mod5, type="disp"))), length(unique(iris$Species)))
+    expect_equal(length(unique(predict(mod5, type="disp", se.fit=TRUE)$se.fit)), length(unique(iris$Species)))
+})
