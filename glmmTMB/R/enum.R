@@ -41,5 +41,6 @@
 .valid_zipredictcode <- c(
   corrected = 0,
   uncorrected = 1,
-  prob = 2
+  prob = 2,
+  disp = 3
 )
