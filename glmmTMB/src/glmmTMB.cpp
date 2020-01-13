@@ -240,7 +240,8 @@ enum valid_covStruct {
 enum valid_ziPredictCode {
   corrected_zipredictcode = 0,
   uncorrected_zipredictcode = 1,
-  prob_zipredictcode = 2
+  prob_zipredictcode = 2,
+  disp_zipredictcode = 3
 };
 
 template<class Type>
@@ -852,6 +853,18 @@ Type objective_function<Type>::operator() ()
     REPORT(bzi);
   }
   // For predict
+  if(ziPredictCode==disp_zipredictcode){ //zi irrelevant; just reusing variable
+    switch(family){
+    case gaussian_family:
+      mu = sqrt(phi);
+      break;
+    case Gamma_family:
+      mu = 1/sqrt(phi);
+      break;
+    default:
+      mu = phi;
+    }
+  } else {
   if(zi_flag) {
     switch(ziPredictCode){
     case corrected_zipredictcode:
@@ -866,7 +879,7 @@ Type objective_function<Type>::operator() ()
     default:
       error("Invalid 'ziPredictCode'");
     }
-  }
+  }}
 
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);

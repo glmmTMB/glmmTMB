@@ -70,6 +70,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' for non-zero-inflated models)}
 ##' \item{"zlink"}{predicted zero-inflation probability on the scale of
 ##' the logit link function}
+##' \item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 ##' the default (\code{na.pass}) is to predict \code{NA}
@@ -107,7 +108,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
                             se.fit=FALSE,
                             re.form=NULL, allow.new.levels=FALSE,
                             type = c("link", "response",
-                                     "conditional","zprob","zlink"),
+                                     "conditional","zprob","zlink",
+                                     "disp"),
                             zitype = NULL,
                             na.action = na.pass,
                             debug=FALSE,
@@ -236,6 +238,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                      conditional= "uncorrected",
                      zlink      = ,
                      zprob      = "prob",
+                     disp       = "disp",#zi irrelevant; just reusing variable
                      stop("unknown type ",type))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 

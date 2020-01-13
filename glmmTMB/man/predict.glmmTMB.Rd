@@ -6,7 +6,7 @@
 \usage{
 \method{predict}{glmmTMB}(object, newdata = NULL, newparams = NULL,
   se.fit = FALSE, re.form = NULL, allow.new.levels = FALSE,
-  type = c("link", "response", "conditional", "zprob", "zlink"),
+  type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
   zitype = NULL, na.action = na.pass, debug = FALSE, ...)
 }
 \arguments{
@@ -36,6 +36,7 @@ and \code{mu} otherwise}
 for non-zero-inflated models)}
 \item{"zlink"}{predicted zero-inflation probability on the scale of
 the logit link function}
+\item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 }}
 
 \item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}
