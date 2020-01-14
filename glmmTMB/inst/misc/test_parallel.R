@@ -1,8 +1,13 @@
 ## remotes::install_local(".")
 
-parallel_test <- function(nt=5, N=1e5, groups=200, seed=1) {
+parallel_test <- function(nt=NA, N=1e5, groups=200, seed=1) {
     require(glmmTMB)
-    nt <- min(parallel::detectCores(),nt)
+    nt_orig <- nt
+    if (is.na(nt)) {
+        nt <- parallel::detectCores()
+    } else {
+        nt <- min(parallel::detectCores(),nt)
+    }
     if (!is.null(seed)) set.seed(seed)
     xdata <- rnorm(N, 1, 2)
     data_use <- data.frame(obs = 1:N)
@@ -29,6 +34,21 @@ parallel_test <- function(nt=5, N=1e5, groups=200, seed=1) {
                 pars=list(nt=nt, N=N, groups=groups, seed=seed),
                 s_info=sessionInfo(),
                 p_info=help(package="glmmTMB"))
+    class(ret) <- "partest"
+    return(ret)
 }
 
+print.partest <- function(x, ...) {
+    s <- x$t_serial[["elapsed"]]
+    p <- x$t_parallel[["elapsed"]]
+    cat(sprintf(
+       "elapsed time for N=%1.1g: serial=%1.1f, parallel=%1.1f (%d threads)\n",
+        x$pars$N,s,p,x$pars$nt))
+    cat(sprintf("ratio=%1.1f\n",s/p))
+    cat("platform: ",x$s_info$platform,"\n")
+}
 
+if (FALSE) {
+    ## test 
+    (p <- parallel_test(N=1e4))
+}
