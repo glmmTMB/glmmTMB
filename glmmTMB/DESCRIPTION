@@ -50,7 +50,7 @@ Suggests:
     coda,
     reshape2,
     car,
-    emmeans,
+    emmeans (>= 1.4),
     estimability,
     DHARMa,
     multcomp,
