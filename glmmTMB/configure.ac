@@ -1,4 +1,7 @@
-#https://github.com/USCBiostats/software-dev/wiki/Setting-up-optional-OpenMP-support
+## https://github.com/USCBiostats/software-dev/wiki/Setting-up-optional-OpenMP-support
+## see also: https://stackoverflow.com/questions/5298830/how-to-include-m4-files-in-autoconf
+## https://github.com/wch/r-source/blob/568e8affd870537f4f8d862e61f131848a6a9a86/m4/openmp.m4
+
 #                                               -*- Autoconf -*-
 # glmmTMB configure.ac
 # (with some code borrowed from RcppArmadillo configure.ac
