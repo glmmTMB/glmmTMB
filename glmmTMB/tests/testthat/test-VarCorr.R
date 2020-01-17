@@ -167,7 +167,7 @@ c3 <- getVCText(vc,comp=c("Variance"))
 expect_equal(c3,structure(list(V3 = c(4.814071, 0.046192, 1.716208), V4 = c(NA, 
 -0.581, NA)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA, 
 -3L)),
-tolerance=1e-5)
+tolerance=5e-5)
 
 if (FALSE) {  ## not yet ...
     as.data.frame(vc)
