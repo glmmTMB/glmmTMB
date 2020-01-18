@@ -40,9 +40,13 @@ test_that("predict dispersion", {
 })
 
 dat2 <<- rbind(head(d1, 50), head(d2, 50)) #smaller for faster fitting when not checking estimates
-nbm0 <<- glmmTMB(round(x)~disp+(1|fac), ziformula=~0, dispformula=~disp, dat2, family=nbinom1, se=FALSE)
+## suppress "... false convergence (8) ..."
+suppressWarnings(nbm0 <<-
+            glmmTMB(round(x)~disp+(1|fac), ziformula=~0, dispformula=~disp, dat2, family=nbinom1, se=FALSE)
+          ) 
 pm0 <<- update(nbm0, family=poisson)
-nbm1 <<- update(pm0, family=nbinom1)
+## suppress "... false convergence (8) ..."
+nbm1 <<- suppressWarnings(update(pm0, family=nbinom1))
 test_that("update maintains dispformula in call", {
 	expect_equal(getCall(nbm0), getCall(nbm1))
 })
