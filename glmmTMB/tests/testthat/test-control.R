@@ -69,7 +69,7 @@ test_that("parallel regions", {
 
 
   m1 <- capture_time_model( parallel = 1 )
-  m2 <- capture_time_model( parallel = 5  )
+  m2 <- capture_time_model( parallel = parallel::detectCores()  )
 
   expect_true( all( distFits(m1[[1]], m2[[1]]) < c(1e-4, 1e-2, 1e-4) ) )
 
