@@ -26,4 +26,7 @@ TAGS
 
 glmmTMB/build
 glmmTMB/revdep
+glmmTMB/config.log
+glmmTMB/config.status
+glmmTMB/src/Makevars
 
