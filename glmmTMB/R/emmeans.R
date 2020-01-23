@@ -31,10 +31,10 @@
 ##' if (require(emmeans)) {
 ##'     emmeans (warp.lm, poly ~ tension | wool)
 ##' }
-##' if (require(car) && packageVersion("car")>=3.0.6) {
+##' if (require(car) && packageVersion("car")>="3.0.6") {
 ##'     Anova(warp.lm,type="III")
 ##' }
-##' if (require(effects) && packageVersion("effects")>=4.1.4) {
+##' if (require(effects) && packageVersion("effects")>="4.1.4") {
 ##'     plot(allEffects(warp.lm))
 ##' }
 
