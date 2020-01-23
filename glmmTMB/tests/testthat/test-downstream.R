@@ -51,10 +51,7 @@ if (require(car) && packageVersion("car")>="3.0.6") {
     expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
 }
 
-model.frame(fmd)
-model.matrix(fmd)
-
-if (require(effects)) {
+if (require(effects) && packageVersion("effects")>="4.1.4") {
     context("effects")
     ## pass dd: some kind of scoping issue in testthat context
     f <- function(x,dd) {
