@@ -32,7 +32,7 @@ if (require(emmeans)) {
     expect_equal(predict(rgz, type="response")[2], 0.88809654, tolerance=1e-4)
 }
 
-if (require(car)) {
+if (require(car) && packageVersion("car")>="3.0.6") {
     context("car::Anova")
     fm1 <- glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
     ## lme4 is imported so we don't need to explicitly require() it
