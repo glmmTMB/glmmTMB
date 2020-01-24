@@ -7,8 +7,7 @@
 \usage{
 \method{terms}{glmmTMB}(x, component = "cond", part = "fixed", ...)
 
-\method{model.matrix}{glmmTMB}(object, component = "cond",
-  part = "fixed", ...)
+\method{model.matrix}{glmmTMB}(object, component = "cond", part = "fixed", ...)
 }
 \arguments{
 \item{x}{a fitted \code{glmmTMB} object}

@@ -8,9 +8,15 @@
 \alias{downstream_methods}
 \title{Downstream methods for glmmTMB objects}
 \usage{
-Anova.glmmTMB(mod, type = c("II", "III", 2, 3),
-  test.statistic = c("Chisq", "F"), component = "cond",
-  vcov. = vcov(mod)[[component]], singular.ok, ...)
+Anova.glmmTMB(
+  mod,
+  type = c("II", "III", 2, 3),
+  test.statistic = c("Chisq", "F"),
+  component = "cond",
+  vcov. = vcov(mod)[[component]],
+  singular.ok,
+  ...
+)
 
 Effect.glmmTMB(focal.predictors, mod, ...)
 
@@ -66,10 +72,10 @@ warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
 if (require(emmeans)) {
     emmeans (warp.lm, poly ~ tension | wool)
 }
-if (require(car)) {
+if (require(car) && packageVersion("car")>="3.0.6") {
     Anova(warp.lm,type="III")
 }
-if (require(effects)) {
+if (require(effects) && packageVersion("effects")>="4.1.4") {
     plot(allEffects(warp.lm))
 }
 }

@@ -32,7 +32,7 @@ if (require(emmeans)) {
     expect_equal(predict(rgz, type="response")[2], 0.88809654, tolerance=1e-4)
 }
 
-if (require(car)) {
+if (require(car) && packageVersion("car")>="3.0.6") {
     context("car::Anova")
     fm1 <- glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
     ## lme4 is imported so we don't need to explicitly require() it
@@ -51,10 +51,7 @@ if (require(car)) {
     expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
 }
 
-model.frame(fmd)
-model.matrix(fmd)
-
-if (require(effects)) {
+if (require(effects) && packageVersion("effects")>="4.1.4") {
     context("effects")
     ## pass dd: some kind of scoping issue in testthat context
     f <- function(x,dd) {

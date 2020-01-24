@@ -4,11 +4,29 @@
 \alias{mkTMBStruc}
 \title{Extract info from formulas, reTrms, etc., format for TMB}
 \usage{
-mkTMBStruc(formula, ziformula, dispformula, combForm, mf, fr, yobs,
-  respCol, weights, contrasts, size = NULL, family, se = NULL,
-  call = NULL, verbose = NULL, ziPredictCode = "corrected",
-  doPredict = 0, whichPredict = integer(0), REML = FALSE,
-  start = NULL, map = NULL)
+mkTMBStruc(
+  formula,
+  ziformula,
+  dispformula,
+  combForm,
+  mf,
+  fr,
+  yobs,
+  respCol,
+  weights,
+  contrasts,
+  size = NULL,
+  family,
+  se = NULL,
+  call = NULL,
+  verbose = NULL,
+  ziPredictCode = "corrected",
+  doPredict = 0,
+  whichPredict = integer(0),
+  REML = FALSE,
+  start = NULL,
+  map = NULL
+)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4 syntax.}

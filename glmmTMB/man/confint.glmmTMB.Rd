@@ -4,12 +4,19 @@
 \alias{confint.glmmTMB}
 \title{Calculate confidence intervals}
 \usage{
-\method{confint}{glmmTMB}(object, parm = NULL, level = 0.95,
+\method{confint}{glmmTMB}(
+  object,
+  parm = NULL,
+  level = 0.95,
   method = c("wald", "Wald", "profile", "uniroot"),
-  component = c("all", "cond", "zi", "other"), estimate = TRUE,
+  component = c("all", "cond", "zi", "other"),
+  estimate = TRUE,
   parallel = c("no", "multicore", "snow"),
-  ncpus = getOption("profile.ncpus", 1L), cl = NULL, full = FALSE,
-  ...)
+  ncpus = getOption("profile.ncpus", 1L),
+  cl = NULL,
+  full = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{\code{glmmTMB} fitted object.}

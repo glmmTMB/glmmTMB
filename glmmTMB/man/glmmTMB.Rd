@@ -4,11 +4,24 @@
 \alias{glmmTMB}
 \title{Fit Models with TMB}
 \usage{
-glmmTMB(formula, data = NULL, family = gaussian(), ziformula = ~0,
-  dispformula = ~1, weights = NULL, offset = NULL,
-  contrasts = NULL, na.action = na.fail, se = TRUE,
-  verbose = FALSE, doFit = TRUE, control = glmmTMBControl(),
-  REML = FALSE, start = NULL, map = NULL)
+glmmTMB(
+  formula,
+  data = NULL,
+  family = gaussian(),
+  ziformula = ~0,
+  dispformula = ~1,
+  weights = NULL,
+  offset = NULL,
+  contrasts = NULL,
+  na.action = na.fail,
+  se = TRUE,
+  verbose = FALSE,
+  doFit = TRUE,
+  control = glmmTMBControl(),
+  REML = FALSE,
+  start = NULL,
+  map = NULL
+)
 }
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4 syntax.}

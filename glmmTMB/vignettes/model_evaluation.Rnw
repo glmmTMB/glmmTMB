@@ -167,8 +167,10 @@ We can use \code{car::Anova()} to get traditional ANOVA-style tables from \code{
 \end{itemize}
 
 <<caranova1>>=
-Anova(owls_nb1)  ## default type II
-Anova(owls_nb1,type="III")
+if (requireNamespace("car") && packageVersion("car")>="3.0.6") {
+  Anova(owls_nb1)  ## default type II
+  Anova(owls_nb1,type="III")
+}
 @
 
 
@@ -182,7 +184,9 @@ plot(ae)
 (the error can probably be ignored)
 
 <<effects2, fig.width=12,fig.height=12>>=
-plot(allEffects(simex_b1))
+if (requireNamespace("effects") && packageVersion("effects")>="4.1.4") {
+  plot(allEffects(simex_b1))
+}
 @
 
 

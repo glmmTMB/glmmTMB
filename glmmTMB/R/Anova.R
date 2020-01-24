@@ -84,6 +84,7 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
 
 ## defined as a function, not a method, so we can hand the object
 ## off to car::linearHypothesis.default (not exported)
+
 linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
                       rhs = NULL, test = c("Chisq", "F"),
                       vcov. = NULL, singular.ok = FALSE, verbose = FALSE, 
@@ -93,8 +94,12 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
     ## match.call?
     test <- match.arg(test)
     ## call linearHypothesis.default (not exported)
-    if (!requireNamespace("car"))
+    if (!requireNamespace("car")) {
         stop("please install (if necessary) and load the car package")
+    }
+    if (utils::packageVersion("car")<"3.0.6") {
+        stop("please install a more recent version of the car package (>= 3.0.6)")
+    }
     car::linearHypothesis(model=model,
              hypothesis.matrix=hypothesis.matrix,
              rhs=rhs,
