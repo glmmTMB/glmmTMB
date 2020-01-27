@@ -181,10 +181,9 @@ if (requireNamespace("car")) {
 <<effects1,fig.width=8,fig.height=4>>=
 effects_ok <- (requireNamespace("effects") &&
                "Effect.glmmTMB" %in% methods("Effect"))
-if (effects_ok)
+if (effects_ok) {
     (ae <- allEffects(owls_nb1))
     plot(ae)
-  }
 }
 @
 
