@@ -167,9 +167,11 @@ We can use \code{car::Anova()} to get traditional ANOVA-style tables from \code{
 \end{itemize}
 
 <<caranova1>>=
-if (requireNamespace("car") && packageVersion("car")>="3.0.6") {
-  Anova(owls_nb1)  ## default type II
-  Anova(owls_nb1,type="III")
+if (requireNamespace("car")) {
+  if ("Anova.glmmTMB" %in% methods("Anova")) {
+    Anova(owls_nb1)  ## default type II
+    Anova(owls_nb1,type="III")
+  }
 }
 @
 
@@ -177,14 +179,19 @@ if (requireNamespace("car") && packageVersion("car")>="3.0.6") {
 \subsection{effects}
 
 <<effects1,fig.width=8,fig.height=4>>=
-(ae <- allEffects(owls_nb1))
-plot(ae)
+effects_ok <- (requireNamespace("effects") &&
+               "Effect.glmmTMB" %in% methods("Effect"))
+if (effects_ok)
+    (ae <- allEffects(owls_nb1))
+    plot(ae)
+  }
+}
 @
 
 (the error can probably be ignored)
 
 <<effects2, fig.width=12,fig.height=12>>=
-if (requireNamespace("effects") && packageVersion("effects")>="4.1.4") {
+if (effects_ok) {
   plot(allEffects(simex_b1))
 }
 @

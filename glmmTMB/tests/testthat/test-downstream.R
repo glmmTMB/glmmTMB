@@ -65,14 +65,16 @@ if (require(effects)) {
     }
     fm2_tmb <- glmmTMB(round(Reaction)~Days+(1|Subject),family=poisson,data=sleepstudy)
     fm2_lmer <- lme4::glmer(round(Reaction)~Days+(1|Subject),family=poisson,data=sleepstudy)
-    expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
-    ## 
-    set.seed(101)
-    dd <<- data.frame(y=rnbinom(1000,mu=4,size=1),
-                     x = rnorm(1000),
-                     f=factor(rep(LETTERS[1:20],each=50)))
-    fm3_tmb <- glmmTMB(y~x,family=nbinom2,data=dd)
-    fm3_MASS <- MASS::glm.nb(y~x,data=dd)
-    ## suppressing "overriding variance function for effects: computed variances may be incorrect" warning here
-    expect_equal(suppressWarnings(f(fm3_tmb,dd)),f(fm3_MASS,dd),tolerance=2e-5)
-}
+    if ("Effect.glmmTMB" %in% methods("Effect")) {
+        expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
+        ## 
+        set.seed(101)
+        dd <<- data.frame(y=rnbinom(1000,mu=4,size=1),
+                          x = rnorm(1000),
+                          f=factor(rep(LETTERS[1:20],each=50)))
+        fm3_tmb <- glmmTMB(y~x,family=nbinom2,data=dd)
+        fm3_MASS <- MASS::glm.nb(y~x,data=dd)
+        ## suppressing "overriding variance function for effects: computed variances may be incorrect" warning here
+        expect_equal(suppressWarnings(f(fm3_tmb,dd)),f(fm3_MASS,dd),tolerance=2e-5)
+    } ## Effect method loaded
+} ## effects

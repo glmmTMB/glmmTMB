@@ -31,8 +31,14 @@
 ##' if (require(emmeans)) {
 ##'     emmeans (warp.lm, poly ~ tension | wool)
 ##' }
-##' if (require(car) && packageVersion("car")>="3.0.6") {
-##'     Anova(warp.lm,type="III")
+##' if (require(car)) {
+##'     if ("Anova.glmmTMB" %in% methods("Anova")) {
+##'        ## should be available in later versions
+##'        Anova(warp.lm,type="III")
+##'     } else if (length(find("Anova.glmmTMB"))>0) {
+##'        ## try to test back-compatibly
+##'        Anova.glmmTMB(warp.lm, type="III")
+##'     }
 ##' }
 ##' if (require(effects) && packageVersion("effects")>="4.1.4") {
 ##'     plot(allEffects(warp.lm))
