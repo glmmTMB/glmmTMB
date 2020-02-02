@@ -32,7 +32,10 @@ if (require(emmeans)) {
     expect_equal(predict(rgz, type="response")[2], 0.88809654, tolerance=1e-4)
 }
 
-if (require(car) && packageVersion("car")>="3.0.6") {
+if (require(car) && getRversion()>="3.6.0") {
+    ## only testing on recent R: see comments
+    ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
+    ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
     context("car::Anova")
     fm1 <- glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
     ## lme4 is imported so we don't need to explicitly require() it
@@ -65,7 +68,10 @@ if (require(effects)) {
     }
     fm2_tmb <- glmmTMB(round(Reaction)~Days+(1|Subject),family=poisson,data=sleepstudy)
     fm2_lmer <- lme4::glmer(round(Reaction)~Days+(1|Subject),family=poisson,data=sleepstudy)
-    if ("Effect.glmmTMB" %in% methods("Effect")) {
+    if (getRversion() >= "3.6.0") {
+        ## only testing on recent R: see comments
+        ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
+        ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
         expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
         ## 
         set.seed(101)
@@ -76,5 +82,5 @@ if (require(effects)) {
         fm3_MASS <- MASS::glm.nb(y~x,data=dd)
         ## suppressing "overriding variance function for effects: computed variances may be incorrect" warning here
         expect_equal(suppressWarnings(f(fm3_tmb,dd)),f(fm3_MASS,dd),tolerance=2e-5)
-    } ## Effect method loaded
+    } ## recent R
 } ## effects

@@ -67,21 +67,8 @@ fixed effects of the zero-inflation or dispersion models, but has not been teste
 for the fixed effects of the conditional component
 }
 }
-\examples{
-warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
-if (require(emmeans)) {
-    emmeans (warp.lm, poly ~ tension | wool)
-}
-if (require(car)) {
-    if ("Anova.glmmTMB" \%in\% methods("Anova")) {
-       ## should be available in later versions
-       Anova(warp.lm,type="III")
-    } else if (length(find("Anova.glmmTMB"))>0) {
-       ## try to test back-compatibly
-       Anova.glmmTMB(warp.lm, type="III")
-    }
-}
-if (require(effects) && packageVersion("effects")>="4.1.4") {
-    plot(allEffects(warp.lm))
-}
+\details{
+While the examples below are disabled for earlier versions of
+R, they may still work; it may be necessary to refer to private
+versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }

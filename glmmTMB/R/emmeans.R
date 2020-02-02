@@ -26,22 +26,21 @@
 ##' @param \dots Additional parameters that may be supported by the method.
 ##' @param grid A \code{data.frame} (provided by \code{ref_grid}) containing the
 ##' predictor settings needed in the reference grid
+##' @details While the examples below are disabled for earlier versions of
+##' R, they may still work; it may be necessary to refer to private
+##' versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 ##' @examples
 ##' warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
 ##' if (require(emmeans)) {
 ##'     emmeans (warp.lm, poly ~ tension | wool)
 ##' }
-##' if (require(car)) {
-##'     if ("Anova.glmmTMB" %in% methods("Anova")) {
-##'        ## should be available in later versions
+##' if (getRversion() >= "3.6.0") {
+##'    if (require(car)) {
 ##'        Anova(warp.lm,type="III")
-##'     } else if (length(find("Anova.glmmTMB"))>0) {
-##'        ## try to test back-compatibly
-##'        Anova.glmmTMB(warp.lm, type="III")
-##'     }
-##' }
-##' if (require(effects) && packageVersion("effects")>="4.1.4") {
-##'     plot(allEffects(warp.lm))
+##'    }
+##'    if (require(effects) 
+##'        plot(allEffects(warp.lm))
+##'    }
 ##' }
 
 
