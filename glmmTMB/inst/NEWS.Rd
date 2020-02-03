@@ -5,6 +5,12 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.0.0}{
+
+The update to version 1.0.0 doesn't bring any major changes
+or incompatibilities. We're just finally adhereing to social norms
+where 1.0 signifies a certain level of confidence.
+It's 2020 now, so it seems like a good time to do something slightly drastic ;)
+
   \subsection{NEW FEATURES}{
     \itemize{
       \item new \code{map} argument to \code{glmmTMB} allows for some
