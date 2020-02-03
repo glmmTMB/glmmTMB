@@ -54,9 +54,6 @@ if (require(car) && getRversion()>="3.6.0") {
     expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
 }
 
-model.frame(fmd)
-model.matrix(fmd)
-
 if (require(effects)) {
     context("effects")
     ## pass dd: some kind of scoping issue in testthat context
