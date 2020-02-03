@@ -167,11 +167,9 @@ We can use \code{car::Anova()} to get traditional ANOVA-style tables from \code{
 \end{itemize}
 
 <<caranova1>>=
-if (requireNamespace("car")) {
-  if ("Anova.glmmTMB" %in% methods("Anova")) {
+if (requireNamespace("car") && getRversion() >= "3.6.0") {
     Anova(owls_nb1)  ## default type II
     Anova(owls_nb1,type="III")
-  }
 }
 @
 
@@ -179,8 +177,7 @@ if (requireNamespace("car")) {
 \subsection{effects}
 
 <<effects1,fig.width=8,fig.height=4>>=
-effects_ok <- (requireNamespace("effects") &&
-               "Effect.glmmTMB" %in% methods("Effect"))
+effects_ok <- (requireNamespace("effects") && getRversion() >= "3.6.0")
 if (effects_ok) {
     (ae <- allEffects(owls_nb1))
     plot(ae)
