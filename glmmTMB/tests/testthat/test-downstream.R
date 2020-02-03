@@ -32,7 +32,10 @@ if (require(emmeans)) {
     expect_equal(predict(rgz, type="response")[2], 0.88809654, tolerance=1e-4)
 }
 
-if (require(car) && packageVersion("car")>="3.0.6") {
+if (require(car) && getRversion()>="3.6.0") {
+    ## only testing on recent R: see comments
+    ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
+    ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
     context("car::Anova")
     fm1 <- glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
     ## lme4 is imported so we don't need to explicitly require() it
@@ -51,7 +54,7 @@ if (require(car) && packageVersion("car")>="3.0.6") {
     expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
 }
 
-if (require(effects) && packageVersion("effects")>="4.1.4") {
+if (require(effects)) {
     context("effects")
     ## pass dd: some kind of scoping issue in testthat context
     f <- function(x,dd) {
@@ -62,14 +65,19 @@ if (require(effects) && packageVersion("effects")>="4.1.4") {
     }
     fm2_tmb <- glmmTMB(round(Reaction)~Days+(1|Subject),family=poisson,data=sleepstudy)
     fm2_lmer <- lme4::glmer(round(Reaction)~Days+(1|Subject),family=poisson,data=sleepstudy)
-    expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
-    ## 
-    set.seed(101)
-    dd <<- data.frame(y=rnbinom(1000,mu=4,size=1),
-                     x = rnorm(1000),
-                     f=factor(rep(LETTERS[1:20],each=50)))
-    fm3_tmb <- glmmTMB(y~x,family=nbinom2,data=dd)
-    fm3_MASS <- MASS::glm.nb(y~x,data=dd)
-    ## suppressing "overriding variance function for effects: computed variances may be incorrect" warning here
-    expect_equal(suppressWarnings(f(fm3_tmb,dd)),f(fm3_MASS,dd),tolerance=2e-5)
-}
+    if (getRversion() >= "3.6.0") {
+        ## only testing on recent R: see comments
+        ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
+        ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
+        expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
+        ## 
+        set.seed(101)
+        dd <<- data.frame(y=rnbinom(1000,mu=4,size=1),
+                          x = rnorm(1000),
+                          f=factor(rep(LETTERS[1:20],each=50)))
+        fm3_tmb <- glmmTMB(y~x,family=nbinom2,data=dd)
+        fm3_MASS <- MASS::glm.nb(y~x,data=dd)
+        ## suppressing "overriding variance function for effects: computed variances may be incorrect" warning here
+        expect_equal(suppressWarnings(f(fm3_tmb,dd)),f(fm3_MASS,dd),tolerance=2e-5)
+    } ## recent R
+} ## effects
