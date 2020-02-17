@@ -19,6 +19,8 @@ Authors@R: c(person("Arni","Magnusson",role="aut",
             person("Daniel","Lüdecke", role="ctb",
 	        comment=c(ORCID="0000-0002-8895-3206")),
             person("Russ","Lenth", role="ctb"),
+	    person("Joseph", "O'Brien", role = "ctb",
+		       comment = c(ORCID = "0000-0001-9851-5077")),
             person("Mollie","Brooks",role=c("aut","cre"),
                    email="mollieebrooks@gmail.com",
 		   comment=c(ORCID="0000-0001-6963-8326")))

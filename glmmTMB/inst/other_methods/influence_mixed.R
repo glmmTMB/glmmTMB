@@ -6,6 +6,7 @@
 # 2018-06-07: skip plot of "sigma^2" in GLMM if dispersion fixed to 1; improved labelling for covariance components
 # 2018-11-04: tweak to dfbetas.influence.merMod() suggested by Ben Bolker.
 # 2018-11-09: parallel version of influence.merMod()
+# 2020-02-17: works with tibble data (Ben Bolker/Joseph O'Brien)
 
 ## influence diagnostics for mixed models
 
@@ -81,6 +82,18 @@ namedList <- function (...)  {
 ##' @param maxfun maximum number of function evaluations
 ##' @param ncores number of parallel cores to use for computation
 ##' @param component for glmmTMB models, which component to use (conditional, zero-inflated, or dispersion)
+##' @examples
+##' source(system.file("other_methods","influence_mixed.R",package="glmmTMB"))
+##' m1 <- glmmTMB(count ~ mined + (1|site),
+##'   zi=~mined,
+##'   family=poisson, data=Salamanders)
+##' i1 <- influence_mixed(m1,groups="site")
+##' ## check that it works with tibbles too ...
+##' m2 <- update(m1, data=tibble::as_tibble(Salamanders))
+##' i2 <- influence_mixed(m2,groups="site")
+##' if (require(car)) {
+##'    stopifnot(all.equal(dfbeta(i1),dfbeta(i2)))
+##' }
 influence_mixed <- function(model, groups=".case", data, maxfun=1000,
                             ncores=getOption("mc.cores", 2L),
                             component=c("cond","zi","disp"),
@@ -111,11 +124,11 @@ influence_mixed <- function(model, groups=".case", data, maxfun=1000,
     else if (length(groups) > 1){
         del.var <- paste0(groups, collapse=".")
         ## Reduce(interaction,groups) ?
-        data[, del.var] <- apply(data, 1, paste0, collapse=".")
+        data[[del.var]] <- apply(data, 1, paste0, collapse=".")
         groups <- del.var
     }
-    unique.del <- unique(data[, groups])
-    data[[".groups"]] <- data[, groups]
+    unique.del <- unique(data[[groups]])
+    data[[".groups"]] <- data[[groups]]
     par <- list(theta=getME(model, "theta"))
     if (inherits(model, "glmerMod") || inherits(model,"glmmTMB")) {
         par$beta <- fe(model)
