@@ -114,7 +114,8 @@ influence_mixed <- function(model, groups=".case", data, maxfun=1000,
         data[, del.var] <- apply(data, 1, paste0, collapse=".")
         groups <- del.var
     }
-    unique.del <- unique(data[, groups])
+    # Explicit drop = TRUE will ensure returned as expected vector when data is classed as a tibble:
+    unique.del <- unique(data[, groups, drop = TRUE])
     data[[".groups"]] <- data[, groups]
     par <- list(theta=getME(model, "theta"))
     if (inherits(model, "glmerMod") || inherits(model,"glmmTMB")) {
