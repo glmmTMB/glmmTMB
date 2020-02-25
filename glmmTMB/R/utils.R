@@ -155,8 +155,8 @@ expandAllGrpVar <- function(bb) {
                         return(lapply(expandGrpVar(x[[3]]),
                                       makeOp,x=x[[2]],op=quote(`|`)))
                     } else {
-                        return(makeOp(esfun(x[[2]]),esfun(x[[3]]),
-                                      op=x[[1]]))
+                        return(setNames(makeOp(esfun(x[[2]]),esfun(x[[3]]),
+                                               op=x[[1]]),names(x)))
                     }
                 }
             } ## esfun def.
@@ -185,6 +185,8 @@ head.name <- function(x) { x }
 ##'    it is of the form (xx|gg), then convert it to the default
 ##'    special type; we won't allow pathological cases like
 ##'    ((xx|gg)) ... [can we detect them?]
+##' @examples
+##' splitForm(quote(us(x,n=2)))
 ##' @keywords internal
 fbx <- function(term,debug=FALSE,specials=character(0),
                 default.special="us") {
@@ -239,6 +241,7 @@ fbx <- function(term,debug=FALSE,specials=character(0),
 ##' splitForm(~x+y+(1|(f/g)/h))             ## 'slash'; term
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
 ##' splitForm(~(((x+y))))               ## lots of parentheses
+##' splitForm(~1+rr(f|g,n=2))
 ##'
 ##' @author Steve Walker
 ##' @importFrom lme4 nobars
@@ -553,11 +556,11 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
     return(list(parallel=parallel,do_parallel=do_parallel))
 }
 
-##' translate vector of correlation parameters to correlation values,
-##' following the definition at \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}:
-##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}.
+##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters
 ##' @return a vector of correlation values
+##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
@@ -590,7 +593,7 @@ fix_predvars <- function(pv,tt) {
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
     ##  and *first* comma but not arg ... 
-    init_regexp <- "^([(:_.[:alnum:]]+).*"
+    init_regexp <- "^([(^:_.[:alnum:]]+).*"
     tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())
@@ -611,7 +614,59 @@ fix_predvars <- function(pv,tt) {
     return(new_pv)
 }
 
-has.random <- function(x) {
+hasRandom <- function(x) {
     pl <- getParList(x)
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
+}
+
+getParms <- function(parm=NULL, object, full=FALSE) {
+    vv <- vcov(object, full=TRUE)
+    sds <- sqrt(diag(vv))
+    pnames <- names(sds) <- rownames(vv)
+    intnames <- names(object$obj$env$last.par) ## internal names
+    ## "beta" vals may be identified by object$obj$env$random, if REML
+    intnames <- intnames[intnames != "b"]
+    if (length(pnames) != length(sds)) { ## shouldn't happen ...
+        stop("length mismatch between internal and external parameter names")
+    }
+
+    if (is.null(parm)) {
+        if (!full && trivialDisp(object)) {
+            parm <- grep("betad", intnames, invert=TRUE)
+        } else {
+            parm <- seq_along(sds)
+        }
+    }
+    if (is.character(parm)) {
+        if (identical(parm,"theta_")) {
+            parm <- which(intnames=="theta")
+        } else if (identical(parm,"beta_")) {
+            if (trivialDisp(object)) {
+                ## include conditional and zi params
+                ##   but not dispersion params
+                parm <- grep("^beta(zi)?$",intnames)
+            } else {
+                parm <- grep("beta",intnames)
+            }
+        } else if (identical(parm, "disp_") ||
+                   identical(parm, "sigma")) {
+            parm <- grep("^betad", intnames)
+        } else { ## generic parameter vector
+            nparm <- match(parm,pnames)
+            if (any(is.na(nparm))) {
+                stop("unrecognized parameter names: ",
+                     parm[is.na(nparm)])
+            }
+            parm <- nparm
+        }
+    }
+    return(parm)
+}
+
+isREML <- function(x) {
+    if (is.null(REML <- x$modelInfo$REML)) {
+        ## let vcov work with old (pre-REML option) stored objects
+        REML <- FALSE
+    }
+    return(REML)
 }

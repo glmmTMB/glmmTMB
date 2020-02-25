@@ -1,6 +1,6 @@
-##' Extract the fixed-effects estimates
+##' Extract Fixed Effects
 ##'
-##' Extract the estimates of the fixed-effects parameters from a fitted model.
+##' Extract fixed effects from a fitted \code{glmmTMB} model.
 ##' @name fixef
 ##' @title Extract fixed-effects estimates
 ##' @aliases fixef fixef.glmmTMB
@@ -9,20 +9,26 @@
 ##' be extracted.
 ##' @param \dots optional additional arguments. Currently none are used in any
 ##' methods.
-##' @return a named, numeric vector of fixed-effects estimates.
+##' @return an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients 
 ##' @keywords models
+##' @details The print method for \code{fixef.glmmTMB} object \emph{only displays non-trivial components}: in particular, the dispersion parameter estimate is not printed for models with a single (intercept) dispersion parameter (see examples)
 ##' @examples
 ##' data(sleepstudy, package = "lme4")
-##' fixef(glmmTMB(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
+##' fm1 <- glmmTMB(Reaction ~ Days, sleepstudy)
+##' (f1 <- fixef(fm1))
+##' f1$cond
+##' ## show full coefficients, including dispersion parameter
+##' unlist(f1)
+##' print.default(f1)
 ##' @importFrom nlme fixef
 ##' @export fixef
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
   structure(list(cond = setNames(pl$beta,   colnames(getME(object, "X"))),
-                 zi    = setNames(pl$betazi, colnames(getME(object, "Xzi"))),
-                 disp = setNames(pl$betad, colnames(getME(object, "Xd")))),
-            class =  "fixef.glmmTMB")
+                 zi   = setNames(pl$betazi, colnames(getME(object, "Xzi"))),
+                 disp = setNames(pl$betad,  colnames(getME(object, "Xd")))),
+            class = "fixef.glmmTMB")
 }
 
 ## general purpose matching between component names and printable names
@@ -30,13 +36,15 @@ cNames <- list(cond = "Conditional model",
                zi = "Zero-inflation model",
                disp = "Dispersion model")
 
-## FIXME: this is a bit ugly. On the other hand, a single-parameter
-## dispersion model without a (... ?)
+## check identity without worrying about environments etc.
+ident <- function(x,target) isTRUE(all.equal(x,target))
 
 formComp <- function(object,type="dispformula",target) {
-    isTRUE(all.equal(object$modelInfo$allForm[[type]],target)) ||
-        isTRUE(all.equal(object$call[[type]],target))
+    ident(object$modelInfo$allForm[[type]],target) ||
+        ident(object$call[[type]],target)
 }
+## FIXME: this is a bit ugly. On the other hand, a single-parameter
+## dispersion model without a (... ?)
 
 trivialDisp <- function(object) {
     formComp(object,"dispformula",~1)
@@ -46,12 +54,14 @@ zeroDisp <- function(object) {
     formComp(object,"dispformula",~0)
 }
 
+## no roxygen for now ...
+# @param xnm vector of fixed-effect parameter names (e.g. names(fixef(m)$disp))
+# @param nm name of component (e.g. "disp")
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
     ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
 }
-
 
 ##' @method print fixef.glmmTMB
 ##' @export
@@ -68,12 +78,12 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 
 ##' Extract Random Effects
 ##'
-##' Generic function to extract random effects from \code{glmmTMB} models, both
+##' Extract random effects from a fitted \code{glmmTMB} model, both
 ##' for the conditional model and zero inflation.
 ##'
 ##' @param object a \code{glmmTMB} model.
-##' @param condVar include conditional variances in result?
-##' @param ... some methods for this generic function require additional
+##' @param condVar whether to include conditional variances in result.
+##' @param \dots some methods for this generic function require additional
 ##'   arguments.
 ##'
 ##' @return
@@ -90,32 +100,32 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' random effects terms) will have associated \code{condVar} attributes
 ##' giving the conditional variances of the random effects values.
 ##' These are in the form of three-dimensional arrays: see
-##' \code{\link{ranef.merMod}} for details (the only difference between
-##' the packages is that the attributes are called \sQuote{"postVar"}
-##' in \pkg{lme4}, vs. \sQuote{"condVar"} in \pkg{glmmTMB}.
+##' \code{\link{ranef.merMod}} for details. The only difference between
+##' the packages is that the attributes are called \sQuote{postVar}
+##' in \pkg{lme4}, vs. \sQuote{condVar} in \pkg{glmmTMB}.
 ##' \item For \code{coef.glmmTMB}: a similar list, but containing
-##' the overall coefficient value for each level (i.e., the sum of
+##' the overall coefficient value for each level, i.e., the sum of
 ##' the fixed effect estimate and the random effect value for that
-##' level). \emph{Conditional variances are not yet available as
-##' an option for \code{coef.glmmTMB}.}
+##' level. \emph{Conditional variances are not yet available as
+##' an option for} \code{coef.glmmTMB}.
 ##' \item For \code{as.data.frame}: a data frame with components
 ##' \describe{
 ##' \item{component}{part of the model to which the random effects apply (conditional or zero-inflation)}
 ##' \item{grpvar}{grouping variable}
-##' \item{term}{random-effects term (e.g., intercept or slope}
+##' \item{term}{random-effects term (e.g., intercept or slope)}
 ##' \item{grp}{group, or level of the grouping variable}
 ##' \item{condval}{value of the conditional mode}
 ##' \item{condsd}{conditional standard deviation}
 ##' }
 ##' }
-##' 
+##'
 ##' @note When a model has no zero inflation, the
-##'   the \code{ranef} and \code{coef} print methods simplify the
-##'   structure shown, by default. To show the full list structure, use
-##'   \code{print(ranef(model),simplify=FALSE)} (or the analogous
-##' code for \code{coef}).
+##' \code{ranef} and \code{coef} print methods simplify the
+##' structure shown, by default. To show the full list structure, use
+##' \code{print(ranef(model),simplify=FALSE)} or the analogous
+##' code for \code{coef}.
 ##' In all cases, the full list structure is used to access
-##'   the data frames (see example).
+##' the data frames, see example.
 ##'
 ##' @seealso \code{\link{fixef.glmmTMB}}.
 ##'
@@ -193,7 +203,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   } ## arrange()
 
   pl <- getParList(object)  ## see VarCorr.R
-  if (condVar && has.random(object))  {
+  if (condVar && hasRandom(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
                   bzi=ss[rownames(ss)=="bzi","Std. Error"])
@@ -315,10 +325,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, ...) {
-  if (is.null(REML <- object$modelInfo$REML)) {
-     ## let vcov work with old (pre-REML option) stored objects
-     REML <- FALSE
-  }
+  REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
@@ -369,8 +376,25 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
           if (length(nn)==0) return(nn)
           return(paste("theta",gsub(" ","",unlist(nn)),sep="_"))
       }
-      nameList <- c(nameList,list(reNames("cond"),reNames("zi")))
+      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
+  }
 
+  ## drop NA-mapped variables
+
+  ## for matching map names vs nameList components ...
+  par_components <- c("beta","betazi","betad","theta","thetazi")
+
+  map <- object$obj$env$map
+  for (m in seq_along(map)) {
+      if (length(NAmap <- which(is.na(map[[m]])))>0) {
+          w <- match(names(map)[m],par_components) ##
+          if (length(nameList)>=w) { ## may not exist if !full
+              nameList[[w]] <- nameList[[w]][-NAmap]
+          }
+      }
+  }
+
+  if (full) {
       colnames(covF) <- rownames(covF) <- unlist(nameList)
       res <- covF        ## return just a matrix in this case
   } else {
@@ -666,26 +690,40 @@ format.perc <- function (probs, digits) {
 ##' @details
 ##' Available methods are
 ##' \describe{
-##' \item{wald}{These intervals are based on the standard errors
+##' \item{"wald"}{These intervals are based on the standard errors
 ##' calculated for parameters on the scale
 ##' of their internal parameterization depending on the family. Derived
 ##' quantities such as standard deviation parameters and dispersion
-##' parameters are backtransformed. It follows that confidence
-##' intervals for these derived quantities are asymmetric.}
-##' \item{profile}{This method computes a likelihood profile
+##' parameters are back-transformed. It follows that confidence
+##' intervals for these derived quantities are typically asymmetric.}
+##' \item{"profile"}{This method computes a likelihood profile
 ##' for the specified parameter(s) using \code{profile.glmmTMB};
 ##' fits a spline function to each half of the profile; and
 ##' inverts the function to find the specified confidence interval.}
-##' \item{uniroot}{This method uses the \code{\link{uniroot}}
+##' \item{"uniroot"}{This method uses the \code{\link{uniroot}}
 ##' function to find critical values of one-dimensional profile
 ##' functions for each specified parameter.}
 ##' }
-##'
+##' At present, "wald" returns confidence intervals for variance
+##' parameters on the standard deviation/correlation scale, while
+##' "profile" and "uniroot" report them on the underlying ("theta")
+##' scale: for each random effect, the first set of parameter values
+##' are standard deviations on the log scale, while remaining parameters
+##' represent correlations on the scaled Cholesky scale (see the
+##' 
+##' 
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
-##' @param parm Specification of a parameter subset \emph{after}
-##'     \code{component} subset has been applied.
+##' @param parm which parameters to profile, specified
+#' \itemize{
+#' \item by index (position) [\emph{after} component selection for \code{confint}, if any]
+#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
+#' }
+#'  Parameter indexing by number may give unusual results when
+#'  some parameters have been fixed using the \code{map} argument:
+#'  please report surprises to the package maintainers.
 ##' @param level Confidence level.
 ##' @param method 'wald', 'profile', or 'uniroot': see Details
 ##' function)
@@ -695,6 +733,7 @@ format.perc <- function (probs, digits) {
 ##' @param parallel method (if any) for parallel computation
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
+##' @param full CIs for all parameters (including dispersion) ?
 ##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
@@ -705,7 +744,7 @@ format.perc <- function (probs, digits) {
 ##' confint(model)  ## Wald/delta-method CIs
 ##' confint(model,parm="theta_")  ## Wald/delta-method CIs
 ##' confint(model,parm=1,method="profile")
-confint.glmmTMB <- function (object, parm, level = 0.95,
+confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              method=c("wald",
                                       "Wald",
                                       "profile",
@@ -715,6 +754,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                              parallel = c("no", "multicore", "snow"),
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
+                             full = FALSE,
                              ...)
 {
     method <- tolower(match.arg(method))
@@ -737,38 +777,37 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
     pct <- format.perc(a, 3)
     fac <- qnorm(a)
     estimate <- as.logical(estimate)
-    ci <- matrix(NA, 0, 2 + estimate,
+    ci <- matrix(NA, nrow=0, ncol=2 + estimate,
                  dimnames=list(NULL,
-                               c(pct, "Estimate")
-                               [c(TRUE, TRUE, estimate)] ))
-    pnm <- names(object$obj$par)
-    pvec <- seq_along(pnm)
-    if (!missing(parm)) {
-            ## FIXME: DRY/refactor with confint.profile
-            ## FIXME: beta_ not well defined; sigma parameters not
-            ## distinguishable (all called "sigma")
-            ## for non-trivial dispersion model
-            theta_parms <- which(pnm=="theta")
-            ## if non-trivial disp, keep disp parms for "beta_"
-            disp_parms <- if (!trivialDisp(object)) numeric(0) else grep("^sigma",rownames(ci))
-            if (identical(parm,"theta_")) {
-                parm <- theta_parms
-            } else if (identical(parm,"beta_")) {
-                parm <- seq(nrow(ci))[setdiff(pvec,c(theta_parms,disp_parms))]
-            }
-    } else {
-        parm <- pvec
+                               if (!estimate) pct else c(pct, "Estimate")))
+    
+    if (!is.null(parm) || method!="wald") {
+        parm <- getParms(parm, object, full)
     }
+
     if (method=="wald") {
+        map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
-            if (components.has(component)) {
-                cf <- unlist(fixef(object)[component])
-                vv <- vcov(object)[component]
-                ss <- unlist(lapply(vv,diag))
-                ses <- sqrt(ss)
-                ci.tmp <- cf + ses %o% fac
-                if (estimate) ci.tmp <- cbind(ci.tmp, cf)
-                ci <- rbind(ci, ci.tmp)
+            if (components.has(component) &&
+                (nbeta <- length(fixef(object)[[component]]))>0) {
+                ## variance and estimates
+                vv <- vcov(object)[[component]]
+                cf <- fixef(object)[[component]]
+                ## strip tag (only really necessary for zi~
+                nn <- gsub(paste0(component,"~"),"",colnames(vv))
+                ## vcov only includes estimated (not mapped/fixed)
+                ##  fixed-effect parameters
+                cf <- cf[nn]
+                ss <- diag(vv)
+                ## using [[-extraction; need to add component name explicitly
+                if (length(cf)>0) {
+                    names(cf) <- names(ss) <-
+                        paste(component, names(cf), sep=".")
+                    ses <- sqrt(ss)
+                    ci.tmp <- cf + ses %o% fac
+                    if (estimate) ci.tmp <- cbind(ci.tmp, cf)
+                    ci <- rbind(ci, ci.tmp)
+                }
                 ## VarCorr -> stddev
 
                 cfun <- function(x) {
@@ -795,6 +834,10 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                                                  ## "Std.Dev.",
                                                  ## sep="."),
                                                  estimate = estimate)
+                ## would consider excluding mapped parameters here
+                ## (works automatically for fixed effects via vcov)
+                ## but tough because of theta <-> sd/corr mapping;
+                ## instead, eliminate rows below where lowerCI==upperCI
                 ci <- rbind(ci, ci.sd)
                 ## VarCorr -> correlation
                 getCorrelation <- TRUE ## FIXME: Make 'getCorrelation' a function argument ???
@@ -817,7 +860,7 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                     ci <- rbind(ci, ci.corr)
                 }
             }
-        }
+        } ## cond and zi components
         if (components.has("other")) {
             ## sigma
             ff <- object$modelInfo$family$family
@@ -842,9 +885,23 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
             } ## tweedie
         }  ## model has 'other' component
         ## Take subset
-        ci <- ci[parm, , drop=FALSE]
+        
+        ## drop mapped values (where lower == upper)
+        ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
+
+        ## now get selected parameters
+        if (!is.null(parm)) {
+            ci <- ci[parm, , drop=FALSE]
+        } else {
+            ## drop residual std dev/trivial dispersion parameter
+            if (!full) {
+                ci <- ci[rownames(ci)!="sigma",, drop=FALSE]
+            }
+        }
+
         ## end Wald method
     } else if (method=="uniroot") {
+        if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
         plist <- parallel_default(parallel,ncpus)
@@ -891,16 +948,27 @@ confint.glmmTMB <- function (object, parm, level = 0.95,
                       ...)
         ci <- confint(pp)
     }
+    ## if only conditional, strip component prefix
+    if (all(substr(rownames(ci),1,5)=="cond.")) {
+        rownames(ci) <- sub("^cond\\.","",rownames(ci))
+    }
     return(ci)
 }
 
+##' @rdname glmmTMB_methods
+##' @param x a fitted \code{glmmTMB} object
 ##' @export
-## FIXME: establish separate 'terms' components for
-##   each model component (conditional, random, zero-inflation, dispersion ...)
+##  modified because e.g. "disp" component didn't get a $reTrms
+##  component (updated fitTMB to save a separate "terms" component)
 terms.glmmTMB <- function(x, component="cond", part="fixed", ...) {
     if (part != "fixed") stop("only fixed terms currently available")
-    return(x$modelInfo$reTrms[[component]]$terms[[part]])
-    ## terms(x$frame)
+    if ("terms" %in% names(x$modelInfo)) {
+        tt <- x$modelInfo$terms[[component]]
+    } else {
+        ## allow back-compatibility
+        tt <- x$modelInfo$reTrms[[component]]$terms
+    }
+    return(tt[[part]])
 }
 
 ##' @export
@@ -1067,9 +1135,16 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
 
 ## need this so we can get contrasts carried through properly to model.matrix
 
+
+#' Methods for extracting developer-level information from \code{glmmTMB} models
+#' @rdname glmmTMB_methods
+#' @param object a fitted \code{glmmTMB} object
+#' @param component model component ("cond", "zi", or "disp"; not all models contain all components)
+#' @param part whether to return results for the fixed or random effect part of the model (at present only \code{part="fixed"} is implemented for most methods)
+#' @param \dots additional arguments (ignored or passed to \code{\link{model.frame}})
 #' @export
 
-model.matrix.glmmTMB <- function (object, ...)
+model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
 {
     ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
     ## if (n_match <- match("x", names(object), 0L))
@@ -1077,9 +1152,21 @@ model.matrix.glmmTMB <- function (object, ...)
     ## else {
     ## data <- model.frame(object, xlev = object$xlevels, ...)
 
-    data <- model.frame(object, ...)
-    NextMethod("model.matrix", data = data,
-               contrasts.arg = object$modelInfo$contrasts)
+    ## was calling NextMethod() on the model frame: failed after messing
+    ##   with terms structure
+    ## could be more efficient to extract $X, $Z rather than re-building
+    ## model matrix??
+    if (part != "fixed") stop("only fixed model matrices currently available")
+
+    ff <- object$modelInfo$allForm
+    form <- ff[[switch(component,
+                       cond="formula",
+                       zi="ziformula",
+                       disp="dispformula")]]
+    model.matrix(lme4::nobars(form), model.frame(object, ...),
+                 contrasts.arg = object$modelInfo$contrasts)
+    ## FIXME: what if contrasts are *different* for different components? (ugh)
+    ## should at least write a test to flag this case ...
 }
 
 ## convert ranef object to a long-format data frame, e.g. suitable
@@ -1175,9 +1262,13 @@ refit.glmmTMB <- function(object, newresp, ...) {
           } else {
               stop("can't handle this data format, sorry ...")
           }
+      } else {
+          if (is.matrix(newresp)) newresp <- newresp[,1]
+          newdata[[deparse(fresp)]] <- newresp
       }
-  } else newdata[[deparse(fresp)]] <- newresp
-      
+  } else {
+      newdata[[deparse(fresp)]] <- newresp
+  }
   cc$data <- quote(newdata)
   return(eval(cc))
 }
@@ -1242,4 +1333,34 @@ coef.glmmTMB <- function(object,
     }
     class(res) <- "coef.glmmTMB"
     return(res)
+}
+
+
+##' Extract weights from a glmmTMB object
+##'
+##' @details
+##' At present only explicitly specified
+##' \emph{prior weights} (i.e., weights specified
+##' in the \code{weights} argument) can be extracted from a fitted model.
+##' \itemize{
+##' \item Unlike other GLM-type models such as \code{\link{glm}} or
+##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
+##' the total number of trials when binomial responses are specified
+##' as a two-column matrix.
+##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' weighted least squares, \code{working weights} (see \code{\link[stats]{weights.glm}}) are unavailable.
+##' }
+##' @importFrom stats model.frame
+##' @importFrom stats weights
+##' @param object a fitted \code{glmmTMB} object
+##' @param type weights type
+##' @param ... additional arguments (not used; for methods compatibility)
+##' @export
+weights.glmmTMB <- function(object, type="prior", ...) {
+    type <- match.arg(type)  ## other types are *not* OK
+    if (length(list(...)>0)) {
+        warning("unused arguments ignored: ",
+             paste(shQuote(names(list(...))),collapse=","))
+    }
+    stats::model.frame(object)[["(weights)"]]
 }

@@ -20,27 +20,34 @@ The contents will expand with experience.
 
 If your problem is not covered below, there's a chance it has been solved in the development version; try updating to the latest version of `glmmTMB` on GitHub.
 
-#Warnings
+# Warnings
 
-## Model convergence problem; non-positive-definite Hessian matrix
+## Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.
 
-You may see the same warning as in the following example:
-```{r non-pos-def,cache=TRUE}
-zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
-```
+This warning (`Model convergence problem; non-positive-definite Hessian matrix`) states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).
 
-This error states that the point that `glmmTMB` has identified as the putative maximum-likelihood estimate, the estimated curvature of the log-likelihood surface is inconsistent with `glmmTMB` really having found a maximum: instead, it is upward-curving, or flat, in some direction(s).
+It will usually be accompanied by `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run `summary()` on the resulting model, you'll get the warning `In sqrt(diag(vcov)) : NaNs produced`.
 
-It can occur:
+These problems are most likely:
 
 - when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)
-- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (often caused by having too few levels of the random-effect grouping variable)
+- when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated ("singular fit": often caused by having too few levels of the random-effect grouping variable)
+- when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)
+- when dispersion is estimated to be near zero
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
 
 How do we diagnose the problem?
-First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for logit link, this
-implies probabilities very close to 0 or 1; for log link, this implies mean counts that are
-close to 0 or gigantic).
+
+### Example 1.
+
+Consider this example:
+
+```{r non-pos-def,cache=TRUE, warning=FALSE}
+zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
+```
+
+First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for a logit link, this
+implies probabilities very close to 0 or 1; for a log link, this implies mean counts that are close to 0 or extremely large).
 
 Inspecting the fixed-effect estimates for this model:
 
@@ -85,7 +92,6 @@ zinbm0_B = update(zinbm0, ziformula=~(1|spp))
 fixef(zinbm0_B)[["zi"]]
 VarCorr(zinbm0_B)
 ```
-
 <!-- FIXME: updating here does weird things
 zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 -->
@@ -120,8 +126,125 @@ that the zero-inflation probability is less than `plogis(-2.08)` = 0.11.
 More broadly, general inspection of the data (e.g., plotting the response against potential covariates)
 should help to diagnose overly complex models.
 
-In some cases, scaling predictor variables may help.
+### Example 2.
 
+In some cases, scaling predictor variables may help.  For example, in this example from @phisanti, the results of `glm` and `glmmTMB` applied to a scaled version of the data set agree, while `glmmTMB` applied to the raw data set gives a non-positive-definite Hessian warning.
+
+```{r fatfiberglmm}
+## data taken from gamlss.data:plasma, originally
+## http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/plasma.html
+load(system.file("vignette_data","plasma.rda", package="glmmTMB"))
+m4.1 <- glm(calories ~ fat*fiber, family = Gamma(link = "log"), data = plasma)
+m4.2 <- glmmTMB(calories ~ fat*fiber, family = Gamma(link = "log"), data = plasma)
+ps  <- transform(plasma,fat=scale(fat,center=FALSE),fiber=scale(fiber,center=FALSE))
+m4.3 <- update(m4.2, data=ps)
+## scaling factor for back-transforming standard deviations
+ss <- c(1,
+        fatsc <- 1/attr(ps$fat,"scaled:scale"),
+        fibsc <- 1/attr(ps$fiber,"scaled:scale"),
+        fatsc*fibsc)
+## combine SEs, suppressing the warning from the unscaled model
+s_vals <- cbind(glm=sqrt(diag(vcov(m4.1))),
+                glmmTMB_unsc=suppressWarnings(sqrt(diag(vcov(m4.2)$cond))),
+                glmmTMB_sc=sqrt(diag(vcov(m4.3)$cond))*ss)
+print(s_vals,digits=3)
+```
+
+## Example 3.
+
+Here is another example (from Samantha Sherman):
+
+```{r load_ss_ex}
+load(system.file("vignette_data","troubleshooting.rda",package="glmmTMB"))
+```
+
+The first model gives the specified warning when it runs, as well as the other symptoms such as `NA` values for the likelihood:
+
+```{r ss_ex_mod1}
+summary(mod1)
+```
+
+We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative. However, we'll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:
+
+```{r diagnose_vcov}
+diagnose_vcov <- function(model, tol=1e-5, digits=2, analyze_hessian=FALSE) {
+    vv <- vcov(model, full=TRUE)
+    nn <- rownames(vv)
+    if (!all(is.finite(vv))) {
+        if (missing(analyze_hessian)) warning("analyzing Hessian, not vcov")
+        if (!analyze_hessian) stop("can't analyze vcov")
+        analyze_hessian <- TRUE
+    }
+    if (analyze_hessian) {
+        par.fixed <- model$obj$env$last.par.best
+        r <- model$obj$env$random
+        if (!is.null(r)) par.fixed <- par.fixed[-r]
+        vv <- optimHess(par.fixed, fn=model$obj$fn, gr=model$obj$gr)
+        ## note vv is now HESSIAN, not vcov
+    }
+    ee <- eigen(vv)
+    if (all(ee$values>tol)) {message("var-cov matrix OK"); return(invisible(NULL))}
+    ## find negative or small-positive eigenvalues (flat/wrong curvature)
+    bad_evals <- which(ee$values<tol)
+    ## order worst to best
+    bad_evals <- bad_evals[order(-ee$values[bad_evals])]
+    ret <- lapply(bad_evals,
+                  function(i) {
+                      ## extract loadings
+                      v <- setNames(ee$vectors[,i], nn)
+                      ## order in decreasing magnitude & round
+                      list(val=ee$values[i],vec=round(v[order(-abs(v))],digits))
+                  })
+    return(ret)
+}
+```
+
+Running the diagnostics on the model:
+
+```{r diag_1}
+(d1 <- diagnose_vcov(mod1))
+```
+
+This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let's try dropping the zero-inflation term:
+
+```{r ss_mod2_up, eval=FALSE}
+mod2 <- update(mod1, ziformula=~0)
+```
+
+```{r ss_mod2}
+summary(mod2)
+```
+
+We still get the warning, and the `NA`-valued likelihoods (and the very small dispersion parameter). Diagnose:
+
+```{r ss_diag2}
+diagnose_vcov(mod2)
+```
+
+We can see that the dispersion parameter is still problematic.  Simplify the model by switching from NB1 to Poisson:
+
+```{r mod3_up, eval=FALSE}
+mod3 <- update(mod2, family=poisson)
+```
+
+```{r ss_mod3}
+summary(mod3)
+```
+
+There are no warnings, the model looks OK now, and the diagnostic function agrees:
+
+```{r ss_diag3}
+diagnose_vcov(mod3)
+```
+
+You can also check directly whether the model is OK by examining the `pdHess` ("positive-definite Hessian") component of the `sdr` ("standard deviation report") component of the model:
+
+```{r checkhess}
+mod3$sdr$pdHess					      
+```
+
+(**FIXME**: add an accessor method for this?)
+                                              
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 
 ## Model convergence problem:  eigenvalue problems
@@ -144,15 +267,24 @@ This warning occurs when the optimizer visits a region of parameter space that i
 
 The following warnings indicate possibly-transient numerical problems with the fit, and can be treated in the same way (i.e. ignored if there are no errors or convergence warnings about the final fitted model).
 
-```{r Cholmod, eval=FALSE}
-Cholmod warning 'matrix not positive definite'
-```
+> Cholmod warning 'matrix not positive definite'
 
-```{r lgamma, eval=FALSE}
-Warning in f(par, order = order, ...) : value out of range in 'lgamma'
-```
+In older versions of R (< 3.6.0):
 
-The last of these warnings will be eliminated from R itself at some point in the future (based on [this change](https://github.com/wch/r-source/commit/891224cbd653de69cb2a0ce0136b8eab51a2d227)).
+> Warning in f(par, order = order, ...) : value out of range in 'lgamma'
+
+## false convergence
+
+This warning:
+
+> false convergence: the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x
+
+comes from the `nlminb` optimizer used by default in `glmmTMB`. It's usually hard to diagnose the source of this warning (this [Stack Overflow answer](https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean) explains a bit more about what it means). Reasonable methods for making sure your model is OK are:
+
+- restart the model at the estimated fitted values
+- try using a different optimizer, e.g. `control=glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS"))`
+
+and see if the results are sufficiently similar to the original fit.
 
 # Errors
 
@@ -172,7 +304,8 @@ If you see this error, check that the response variable meets the assumptions of
 
 > Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x
 
-> Error in optimHess(par.fixed, obj\$fn, obj\$gr): gradient in optim evaluated to length x
+> Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x
 
-Try rescaling predictor variables. Try a simpler model and build up.
+Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)
+
 

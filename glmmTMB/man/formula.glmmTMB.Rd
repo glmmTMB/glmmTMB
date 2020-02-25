@@ -4,8 +4,7 @@
 \alias{formula.glmmTMB}
 \title{Extract the formula of a glmmTMB object}
 \usage{
-\method{formula}{glmmTMB}(x, fixed.only = FALSE, component = c("cond",
-  "zi", "disp"), ...)
+\method{formula}{glmmTMB}(x, fixed.only = FALSE, component = c("cond", "zi", "disp"), ...)
 }
 \arguments{
 \item{x}{a \code{glmmTMB} object}

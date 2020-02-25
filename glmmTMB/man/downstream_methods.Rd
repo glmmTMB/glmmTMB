@@ -8,9 +8,15 @@
 \alias{downstream_methods}
 \title{Downstream methods for glmmTMB objects}
 \usage{
-Anova.glmmTMB(mod, type = c("II", "III", 2, 3),
-  test.statistic = c("Chisq", "F"), component = "cond",
-  vcov. = vcov(mod)[[component]], singular.ok, ...)
+Anova.glmmTMB(
+  mod,
+  type = c("II", "III", 2, 3),
+  test.statistic = c("Chisq", "F"),
+  component = "cond",
+  vcov. = vcov(mod)[[component]],
+  singular.ok,
+  ...
+)
 
 Effect.glmmTMB(focal.predictors, mod, ...)
 
@@ -61,15 +67,8 @@ fixed effects of the zero-inflation or dispersion models, but has not been teste
 for the fixed effects of the conditional component
 }
 }
-\examples{
-warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
-if (require(emmeans)) {
-    emmeans (warp.lm, poly ~ tension | wool)
-}
-if (require(car)) {
-    Anova(warp.lm,type="III")
-}
-if (require(effects)) {
-    plot(allEffects(warp.lm))
-}
+\details{
+While the examples below are disabled for earlier versions of
+R, they may still work; it may be necessary to refer to private
+versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }

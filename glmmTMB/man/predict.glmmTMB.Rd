@@ -4,19 +4,30 @@
 \alias{predict.glmmTMB}
 \title{prediction}
 \usage{
-\method{predict}{glmmTMB}(object, newdata = NULL, se.fit = FALSE,
-  re.form, allow.new.levels = FALSE, type = c("link", "response",
-  "conditional", "zprob", "zlink"), zitype = NULL, na.action = na.pass,
-  debug = FALSE, ...)
+\method{predict}{glmmTMB}(
+  object,
+  newdata = NULL,
+  newparams = NULL,
+  se.fit = FALSE,
+  re.form = NULL,
+  allow.new.levels = FALSE,
+  type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
+  zitype = NULL,
+  na.action = na.pass,
+  debug = FALSE,
+  ...
+)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} object}
 
 \item{newdata}{new data for prediction}
 
+\item{newparams}{new parameters for prediction}
+
 \item{se.fit}{return the standard errors of the predicted values?}
 
-\item{re.form}{(not yet implemented) specify which random effects to condition on when predicting. To compute population-level predictions for a given grouping variable (i.e., setting \emph{all} random effects for that grouping variable to zero), set the group value to \code{NA}.}
+\item{re.form}{\code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)}
 
 \item{allow.new.levels}{allow previously unobserved levels in random-effects variables? see details.}
 
@@ -34,6 +45,7 @@ and \code{mu} otherwise}
 for non-zero-inflated models)}
 \item{"zlink"}{predicted zero-inflation probability on the scale of
 the logit link function}
+\item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 }}
 
 \item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}
@@ -51,6 +63,7 @@ prediction
 }
 \details{
 \itemize{
+\item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
 \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
 However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
 \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.

@@ -1,6 +1,7 @@
 #include <TMB.hpp>
 #include "init.h"
-#include <omp.h>
+// don't need to include omp.h; we get it via TMB.hpp
+
 
 
 namespace glmmtmb{
@@ -222,7 +223,8 @@ enum valid_link {
   probit_link              = 2,
   inverse_link             = 3,
   cloglog_link             = 4,
-  identity_link            = 5
+  identity_link            = 5,
+  sqrt_link                = 6
 };
 
 enum valid_covStruct {
@@ -240,7 +242,8 @@ enum valid_covStruct {
 enum valid_ziPredictCode {
   corrected_zipredictcode = 0,
   uncorrected_zipredictcode = 1,
-  prob_zipredictcode = 2
+  prob_zipredictcode = 2,
+  disp_zipredictcode = 3
 };
 
 template<class Type>
@@ -264,6 +267,9 @@ Type inverse_linkfun(Type eta, int link) {
     break;
   case inverse_link:
     ans = Type(1) / eta;
+    break;
+  case sqrt_link:
+    ans = eta*eta; // pow(eta, Type(2)) doesn't work ... ?
     break;
     // TODO: Implement remaining links
   default:
@@ -574,9 +580,11 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
-  // Set max number of OpenMP threads to help us optimize faster
-  max_parallel_regions = omp_get_max_threads();	
-
+// DELETE when we're sure this is redundant ...
+// #ifdef _OPENMP
+// Set max number of OpenMP threads to help us optimize faster
+// max_parallel_regions = omp_get_max_threads();    
+// #endif
 
   DATA_MATRIX(X);
   DATA_SPARSE_MATRIX(Z);
@@ -641,6 +649,12 @@ Type objective_function<Type>::operator() ()
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etad);
 
+// "zero-truncated" likelihood: ignore zeros in positive distributions
+// exact zero: use for positive distributions (Gamma, beta)
+#define zt_lik_zero(x,loglik_exp) (zi_flag && (x == Type(0)) ? -INFINITY : loglik_exp)
+// close to zero: use for count data (cf binomial()$initialize)
+#define zt_lik_nearzero(x,loglik_exp) (zi_flag && (x < Type(0.001)) ? -INFINITY : loglik_exp)
+
   // Observation likelihood
   Type s1, s2, s3, log_nzprob;
   Type tmp_loglik;
@@ -663,14 +677,14 @@ Type objective_function<Type>::operator() ()
       case Gamma_family:
         s1 = phi(i);           // shape
         s2 = mu(i) / phi(i);   // scale
-        tmp_loglik = dgamma(yobs(i), s1, s2, true);
+        tmp_loglik = zt_lik_zero(yobs(i),dgamma(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rgamma(s1, s2);}
         break;
       case beta_family:
         // parameterization after Ferrari and Cribari-Neto 2004, betareg package
         s1 = mu(i)*phi(i);
         s2 = (Type(1)-mu(i))*phi(i);
-        tmp_loglik = dbeta(yobs(i), s1, s2, true);
+        tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case betabinomial_family:
@@ -700,7 +714,7 @@ Type objective_function<Type>::operator() ()
           s3 = logspace_add( Type(0), etad(i) );
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
-          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
           SIMULATE{
             s1 = mu(i)/phi(i);//sz
             s2 = 1/(1+phi(i)); //pb
@@ -727,7 +741,7 @@ Type objective_function<Type>::operator() ()
           s3         = logspace_add( Type(0), s1 - etad(i) );
           log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
           tmp_loglik -= log_nzprob;
-          if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+          tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
             s1 = phi(i); //sz
             s2 = phi(i)/(phi(i)+mu(i)); //pb
@@ -745,7 +759,7 @@ Type objective_function<Type>::operator() ()
         // log(nzprob) = log( 1 - exp(-mu(i)) )
         log_nzprob = logspace_sub(Type(0), -mu(i));
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
-        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+        tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
           yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
         }
@@ -760,8 +774,8 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i) / sqrt(phi(i)); //theta
         s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
         log_nzprob = logspace_sub(Type(0), -s1);
-        tmp_loglik = glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob;
-        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+        tmp_loglik = zt_lik_nearzero(yobs(i),
+		    glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob);
         SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
         break;
       case compois_family:
@@ -774,8 +788,8 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i); //mean
         s2 = 1/phi(i); //nu
         log_nzprob = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
-        tmp_loglik = dcompois2(yobs(i), s1, s2, true) - log_nzprob;
-        if( yobs(i) < Type(1) ) tmp_loglik = -INFINITY;
+        tmp_loglik = zt_lik_nearzero(yobs(i),
+			    dcompois2(yobs(i), s1, s2, true) - log_nzprob);
         SIMULATE{yobs(i)=glmmtmb::rtruncated_compois2(mu(i), 1/phi(i));}
         break;
       case tweedie_family:
@@ -843,6 +857,18 @@ Type objective_function<Type>::operator() ()
     REPORT(bzi);
   }
   // For predict
+  if(ziPredictCode==disp_zipredictcode){ //zi irrelevant; just reusing variable
+    switch(family){
+    case gaussian_family:
+      mu = sqrt(phi);
+      break;
+    case Gamma_family:
+      mu = 1/sqrt(phi);
+      break;
+    default:
+      mu = phi;
+    }
+  } else {
   if(zi_flag) {
     switch(ziPredictCode){
     case corrected_zipredictcode:
@@ -857,7 +883,7 @@ Type objective_function<Type>::operator() ()
     default:
       error("Invalid 'ziPredictCode'");
     }
-  }
+  }}
 
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);

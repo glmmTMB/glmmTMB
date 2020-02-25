@@ -10,9 +10,9 @@
 
 ## Where to ask questions
 
-- `r-sig-mixed-models@r-project.org` for general questions about `glmmTMB` usage and mixed models
-- https://github.com/glmmTMB/glmmTMB/issues for bug, infelicity, and wishlist reporting
-- https://groups.google.com/forum/#!forum/tmb-users for TMB-specific questions
+- the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) for general questions about `glmmTMB` usage and mixed models
+- the [glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues) for bug, infelicity, and wishlist reporting
+- the [TMB users forum](https://groups.google.com/forum/#!forum/tmb-users) for TMB-specific questions
 - maintainer e-mail only for urgent/private communications
 
 Please do **not** cross-post, i.e. ask the same question in more than one forum, unless it's suggested that you have posted in the wrong place, or unless you receive total silence in one forum. In the latter case it may be better to send a reminder/"bump" message to the original forum; in any case you should mention in your new message where/when you've previously asked the question.
@@ -31,6 +31,8 @@ directly from the GitHub repository via
 devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
 ```
 (or using `remotes::install_github()` with the same argument); this string denotes "Github user `glmmTMB`, repository `glmmTMB`, subdirectory `glmmTMB`"). If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. You will need to have development tools (compilers etc.) installed: `devtools::dr_devtools()` and the [RStudio devtools docs](https://www.rstudio.com/products/rpackages/devtools/) should help with that step. (Note of course that as well as being more up-to-date, the development version may contain new bugs or untested features.)
+
+Recent versions of `glmmTMB` enable parallel (threaded) computations based on `OpenMP` (see the [parallel vignette](glmmTMB/vignettes/parallel.Rmd) for more information). OpenMP will be available automatically if your system supports it, but this may depend on the details of your operating system, compiler, compilation flags used when your R executable was built, etc.; in particular, see [here](https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac) for tips on enabling OpenMP for older (<= El Capitan/10.11.4) MacOS systems. (That page suggests using optimization level `-O3`, which [may cause problems for glmmTMB](https://github.com/glmmTMB/glmmTMB/issues/297).)
 
 ### Handling TMB/Matrix/glmmTMB mismatches
 

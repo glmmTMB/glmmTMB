@@ -12,7 +12,7 @@ family_factory <- function(default_link,family,variance) {
 }
 
 ## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
-globalVariables(".Theta") 
+utils::globalVariables(".Theta") 
 
 ## attempt to guess whether calling function has been called from glm.fit ...
 in_glm_fit <- function() {
@@ -50,7 +50,7 @@ make_family <- function(x,link) {
 ##'
 ##' 
 ##' @aliases family_glmmTMB
-##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", or "identity")
+##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")
 ##' @return returns a list with (at least) components
 ##' \item{family}{length-1 character vector giving the family name}
 ##' \item{link}{length-1 character vector specifying the link function}
@@ -65,6 +65,7 @@ make_family <- function(x,link) {
 ##'  \describe{
 ##'      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
 ##'      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu\phi}{V=mu*phi}}
+##'       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
 ##'      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
 ##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
 ##'      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
@@ -225,8 +226,14 @@ beta_family <- function(link="logit") {
     r <- list(family="beta",
               variance=function(mu) { mu*(1-mu) },
               initialize=expression({
-                  if (any(y <= 0 | y >= 1)) 
-                      stop("y values must be 0 < y < 1")
+                  if (exists("ziformula") && !ident(ziformula, ~0)) {
+                      if (any(y < 0 | y >= 1)) {
+                          stop("y values must be 0 <= y < 1")
+                      }
+                  } else {
+                      if (any(y <= 0 | y >= 1)) 
+                          stop("y values must be 0 < y < 1")
+                  }
                   mustart <- y
               }))
     return(make_family(r,link))
@@ -309,3 +316,26 @@ getCapabilities <- function(what="all",check=FALSE) {
         return(family_OK)
     }
 }
+
+#' @export
+#' @rdname nbinom2
+ziGamma <- function(link="inverse") {
+    g <- stats::Gamma(link=link)
+    ## stats::Gamma does clever deparsing stuff ... need to work around it ...
+    if (is.function(link)) {
+        g$link <- deparse(substitute(link))
+    } else g$link <- link
+    ## modify initialization to allow zero values in zero-inflated cases
+    g$initialize <- expression({
+        if (exists("ziformula") && !ident(ziformula, ~0)) {
+            if (any(y < 0)) stop("negative values not allowed for the 'Gamma' family with zero-inflation")
+            } else {
+                if (any(y <= 0)) stop("non-positive values not allowed for the 'Gamma' family")
+            }
+            n <- rep.int(1, nobs)
+            mustart <- y
+    })
+
+   return(g)
+}
+

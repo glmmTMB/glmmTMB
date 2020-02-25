@@ -14,7 +14,6 @@ A new, experimental feature of `glmmTMB` is the ability to parallelize the optim
 If your OS supports OpenMP parallelization and R was installed using OpenMP, `glmmTMB` will automatically pick up the OpenMP flags from R's `Makevars` and compile the C++ model with OpenMP support. If the flag is not available, then the model will be compiled with serial optimization only.
 
 ```{r setup, include=FALSE, message=FALSE}
-set.seed(1)
 library(knitr)
 ```
 
@@ -22,6 +21,7 @@ Load packages:
 
 ```{r libs,message=FALSE}
 library(glmmTMB)
+set.seed(1)
 nt <- min(parallel::detectCores(),5)
 ```
 
@@ -68,18 +68,32 @@ data_use <- within(data_use,
 
 We fit the random effect model, first with a single thread:
 ```{r fit3}
-system.time(
+(t_serial <- system.time(
   model3 <- glmmTMB(formula = ydata ~ 1 + xdata + (1 | group_var), data = data_use, control = glmmTMBControl(parallel = 1))
+ )
 )
 ```
 
-Now we fit the same model, but using `r nt` threads. The speed-up is way more prevalent in this model.
+Now we fit the same model, but using `r nt` threads. The speed-up is more noticeable with this model.
 
 ```{r fit4}
-system.time(
-  model4 <- glmmTMB(formula = ydata ~ 1 + xdata + (1 | group_var), data = data_use, control = glmmTMBControl(parallel = nt))
+(t_parallel <- system.time(
+     update(model3,  control = glmmTMBControl(parallel = nt))
+ )
 )
 ```
 
+## Notes on OpenMP support 
 
+From [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support):
 
+> Apple builds of clang on macOS currently have no OpenMP support, but CRAN binary packages are built with a clang-based toolchain which supports OpenMP. http://www.openmp.org/resources/openmp-compilers-tools gives some idea of what compilers support what versions.
+
+> The performance of OpenMP varies substantially between platforms. The Windows implementation has substantial overheads, so is only beneficial if quite substantial tasks are run in parallel. Also, on Windows new threads are started with the default FPU control word, so computations done on OpenMP threads will not make use of extended-precision arithmetic which is the default for the main process. 
+## System information
+
+This report was built using `r nt` parallel threads (on a machine with a total of `r parallel::detectCores()` cores)
+
+```{r SI}
+print(sessionInfo(), locale=FALSE)
+```

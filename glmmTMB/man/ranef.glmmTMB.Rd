@@ -9,17 +9,16 @@
 \usage{
 \method{ranef}{glmmTMB}(object, condVar = TRUE, ...)
 
-\method{as.data.frame}{ranef.glmmTMB}(x, ...,
-  stringsAsFactors = default.stringsAsFactors())
+\method{as.data.frame}{ranef.glmmTMB}(x, ..., stringsAsFactors = default.stringsAsFactors())
 
 \method{coef}{glmmTMB}(object, condVar = FALSE, ...)
 }
 \arguments{
 \item{object}{a \code{glmmTMB} model.}
 
-\item{condVar}{include conditional variances in result?}
+\item{condVar}{whether to include conditional variances in result.}
 
-\item{...}{some methods for this generic function require additional
+\item{\dots}{some methods for this generic function require additional
 arguments.}
 
 \item{x}{a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)}
@@ -40,19 +39,19 @@ If \code{condVar=TRUE}, the individual list elements within the
 random effects terms) will have associated \code{condVar} attributes
 giving the conditional variances of the random effects values.
 These are in the form of three-dimensional arrays: see
-\code{\link{ranef.merMod}} for details (the only difference between
-the packages is that the attributes are called \sQuote{"postVar"}
-in \pkg{lme4}, vs. \sQuote{"condVar"} in \pkg{glmmTMB}.
+\code{\link{ranef.merMod}} for details. The only difference between
+the packages is that the attributes are called \sQuote{postVar}
+in \pkg{lme4}, vs. \sQuote{condVar} in \pkg{glmmTMB}.
 \item For \code{coef.glmmTMB}: a similar list, but containing
-the overall coefficient value for each level (i.e., the sum of
+the overall coefficient value for each level, i.e., the sum of
 the fixed effect estimate and the random effect value for that
-level). \emph{Conditional variances are not yet available as
-an option for \code{coef.glmmTMB}.}
+level. \emph{Conditional variances are not yet available as
+an option for} \code{coef.glmmTMB}.
 \item For \code{as.data.frame}: a data frame with components
 \describe{
 \item{component}{part of the model to which the random effects apply (conditional or zero-inflation)}
 \item{grpvar}{grouping variable}
-\item{term}{random-effects term (e.g., intercept or slope}
+\item{term}{random-effects term (e.g., intercept or slope)}
 \item{grp}{group, or level of the grouping variable}
 \item{condval}{value of the conditional mode}
 \item{condsd}{conditional standard deviation}
@@ -60,17 +59,17 @@ an option for \code{coef.glmmTMB}.}
 }
 }
 \description{
-Generic function to extract random effects from \code{glmmTMB} models, both
+Extract random effects from a fitted \code{glmmTMB} model, both
 for the conditional model and zero inflation.
 }
 \note{
 When a model has no zero inflation, the
-  the \code{ranef} and \code{coef} print methods simplify the
-  structure shown, by default. To show the full list structure, use
-  \code{print(ranef(model),simplify=FALSE)} (or the analogous
-code for \code{coef}).
+\code{ranef} and \code{coef} print methods simplify the
+structure shown, by default. To show the full list structure, use
+\code{print(ranef(model),simplify=FALSE)} or the analogous
+code for \code{coef}.
 In all cases, the full list structure is used to access
-  the data frames (see example).
+the data frames, see example.
 }
 \examples{
 if (requireNamespace("lme4")) {

@@ -63,6 +63,26 @@ test_that("binomial", {
     x <- c(1, 2, 3)        ## weights=1 => x > weights !
     expect_error  ( glmmTMB(x~1, family=binomial()) )      ## Error as glm
 })
+
+context("non-integer count warnings")
+test_that("count distributions", {
+    dd <- data.frame(y=c(0.5,1,1,1))
+    for (f in c("binomial","betabinomial","poisson",
+                "genpois",
+                ## "compois", ## fails anyway ...
+                "truncated_genpois",
+                # "truncated_compois",
+                "nbinom1",
+                "nbinom2"
+                # why do these truncated cases fail?
+                ##, "truncated_nbinom1",
+                ##"truncated_nbinom2"
+                )) {
+        expect_warning(m <- glmmTMB(y~1,data=dd,family=f),
+                       "non-integer")
+    }
+})
+
 context("fitting exotic families")
 test_that("beta", {
     set.seed(101)
@@ -245,10 +265,11 @@ test_that("truncated_genpois",{
     tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
     expect_equal(sigma(tgp1), sigma(tgp2), tol=1e-1)
     expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tol=1e-2)
-    expect_lt(confint(tgp2)["sigma", "2.5 %"], sigma(tgp1))
-    expect_lt(sigma(tgp1), confint(tgp2)["sigma", "97.5 %"])
-    expect_lt(confint(tgp2)["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
-    expect_lt(unname(fixef(tgp1)$cond[1]), confint(tgp2)["cond.(Intercept)", "97.5 %"])
+    cc <- confint(tgp2, full=TRUE)
+    expect_lt(cc["sigma", "2.5 %"], sigma(tgp1))
+    expect_lt(sigma(tgp1), cc["sigma", "97.5 %"])
+    expect_lt(cc["cond.(Intercept)", "2.5 %"], unname(fixef(tgp1)$cond[1]))
+    expect_lt(unname(fixef(tgp1)$cond[1]), cc["cond.(Intercept)", "97.5 %"])
 })
 
 
@@ -321,6 +342,19 @@ test_that("tweedie", {
     twm2 <- glmmTMB(y2 ~ 1, family=tweedie())
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
+})
+
+test_that("gaussian_sqrt", {
+    set.seed(101)
+    nobs <- 200
+    dd0_sqrt <- simfun0(nobs=nobs,sd.re=1,invlink=function(x) x^2)
+    dd0_sqrt$y <- rnorm(nobs,mean=dd0_sqrt$mu,sd=0.1)
+    g1 <- glmmTMB(y~x+(1|f), family=gaussian(link="sqrt"),
+                  data=dd0_sqrt)
+    expect_equal(fixef(g1),
+                 structure(list(cond = c(`(Intercept)` = 2.03810165917618, x = 1.00241002916226
+), zi = numeric(0), disp = c(`(Intercept)` = -4.68350239019746)), class = "fixef.glmmTMB"),
+tol=1e-6)
 })
 
 context("link function info available")

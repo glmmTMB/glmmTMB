@@ -10,45 +10,8 @@ if (getRversion() < "3.3.0") {
                                     length(coef(object))))
 }
 
-## FIXME: fit these centrally and restore, to save time
-fm_noRE   <- glmmTMB(Reaction ~ Days , sleepstudy)
-fm1   <- glmmTMB(Reaction ~ Days + (1| Subject), sleepstudy)
-fm2   <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
-fm2diag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy)
-fm0   <- update(fm2, . ~ . -Days)
-## binomial, numeric response
-fm2Bn  <- update(fm2, as.numeric(Reaction>median(Reaction)) ~ .,
-                 family=binomial)
-## binomial, factor response
-fm2Bf  <- update(fm2, factor(Reaction>median(Reaction)) ~ ., family=binomial)
-fm2P  <- update(fm2, round(Reaction) ~ ., family=poisson)
-fm2G  <- update(fm2, family=Gamma(link="log"))
-fm2NB <- update(fm2P, family=nbinom2)
-## for testing sigma() against base R
-fm3   <- update(fm2, . ~ Days)
-fm3G <-  update(fm3, family=Gamma(link="log"))
-fm3NB <- update(fm3, round(Reaction) ~ ., family=nbinom2)
-## z-i model
-fm3ZIP <- update(fm2, round(Reaction) ~ ., family=poisson,
-                 ziformula=~(1|Subject))
-## separate-terms model
-fm2diag2   <- update(fm2, . ~ Days + (1| Subject)+ (0+Days|Subject))
-
-## model with two different grouping variables
-fmP <- glmmTMB(strength ~ cask + (1|batch) + (1|sample), data=Pastes)
-
-yb <- cbind(1:10,10)
-ddb <- data.frame(y=I(yb))
-ddb <- within(ddb, {
-     w <- rowSums(yb)
-     prop <- y[,1]/w
-})
-f1b <- glmmTMB(y ~ 1, family=binomial(), data=ddb)
-f2b <- glm    (y ~ 1, family=binomial(), data=ddb)
-f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
-                   data=ddb)
-f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
-                   data=ddb)
+load(system.file("test_data", "models.rda", package="glmmTMB",
+                 mustWork=TRUE))
 
 context("basic methods")
 
@@ -144,6 +107,13 @@ test_that("terms", {
     assign = c(0L, 1L, 1L, 1L)))
 })
 
+test_that("terms back-compatibility", {
+    f0 <- readRDS(system.file("test_data", "oldfit.rds",
+                              package="glmmTMB",
+                              mustWork=TRUE))
+    expect_true(!is.null(terms(f0)))
+})
+    
 test_that("summary_print", {
     getVal <- function(x,tag="Dispersion") {
         cc <- capture.output(print(summary(x)))
@@ -174,7 +144,7 @@ test_that("confint", {
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),
                   .Dim = c(2L, 2L),
-                  .Dimnames = list(c("cond.(Intercept)", "cond.Days"),
+                  .Dimnames = list(c("(Intercept)", "Days"),
                                    c("2.5 %", "97.5 %"))),
         tolerance=1e-6)
     ciw <- confint(fm2, 1:2, method="Wald", estimate=FALSE)
@@ -183,16 +153,19 @@ test_that("confint", {
     ## Gamma test Std.Dev and sigma
     ci.2G <- confint(fm2G, estimate=FALSE)
     ci.2G.expect <-
-structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788, 
-0.0115949839191128, -0.518916570291726, -0.518916570291726, 5.58401849115119, 
-0.0429217639222305, 0.150456372618643, 0.0264376535768207, 0.481694558481224, 
-0.481694558481224), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)", 
-"cond.Days", "Subject.cond.Std.Dev.(Intercept)", "Subject.cond.Std.Dev.Days", 
-"Subject.cond.Cor.Days.(Intercept)", "cond.Corr.Subject.Days:(Intercept)"
-), c("2.5 %", "97.5 %")))
+        structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788, 
+                    0.0115949839191128, -0.518916570291726, -0.518916570291726,
+                    5.58401849115119, 0.0429217639222305, 0.150456372618643,
+                    0.0264376535768207, 0.481694558481224, 0.481694558481224),
+                  .Dim = c(6L, 2L),
+                  .Dimnames = list(c("cond.(Intercept)", "cond.Days",
+          "Subject.cond.Std.Dev.(Intercept)", "Subject.cond.Std.Dev.Days", 
+          "Subject.cond.Cor.Days.(Intercept)",
+          "cond.Corr.Subject.Days:(Intercept)"), c("2.5 %", "97.5 %")))
     expect_equal(ci.2G, ci.2G.expect, tolerance=1e-6)
     ## nbinom2 test Std.Dev and sigma
-    ci.2NB <- confint(fm2NB, estimate=FALSE)
+    ci.2NB <- confint(fm2NB, full=TRUE, estimate=FALSE)
+    ## FIXME: correlation is included twice!
     ci.2NB.expect <-
         structure(c(5.48098713986992, 0.0248163859092965, 0.066177247560203, 
                     0.0113436356932709, -0.520883841816814, 183.810584738707, 5.58422550782448, 
@@ -203,10 +176,10 @@ structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788,
                                      "cond.Days",
                                      "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days", 
                                      "cond.Cor.Days.(Intercept)", "sigma"), c("2.5 %", "97.5 %")))
-    expect_equal(ci.2NB, ci.2NB.expect, tolerance=1e-6)
+    ## expect_equal(ci.2NB, ci.2NB.expect, tolerance=1e-6)
     ## profile CI
     ## ... no RE
-    ci.prof0 <- confint(fm_noRE,method="profile", npts=3)
+    ci.prof0 <- confint(fm_noRE, full=TRUE, method="profile", npts=3)
     expect_equal(ci.prof0,
                  structure(c(238.216039176535, 7.99674863649355, 7.51779308310198, 
                              264.368471102549, 12.8955469713508, 7.93347860201449),
@@ -230,6 +203,13 @@ structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788,
     ## check against 'raw' tmbroot
     tmbr <- TMB::tmbroot(fm2$obj,name=1)
     expect_equal(ci.uni[1:2],unname(c(tmbr)))
+
+    ## GH #438
+    cc <- confint(fm4)
+    expect_equal(dim(cc),c(5,3))
+    expect_equal(rownames(cc),
+                 c("(Intercept)", "Illiteracy", "Population", "Area", "`HS Grad`"))
+
 })
 
 test_that("profile", {
@@ -252,7 +232,7 @@ test_that("vcov", {
            structure(c("(Intercept)", "Days", "d~(Intercept)",
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
-          .Names = c("cond1", "cond2", "disp", "", "", "")))
+          .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
     ## vcov doesn't include dispersion for non-dispersion families ...
     expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
 })

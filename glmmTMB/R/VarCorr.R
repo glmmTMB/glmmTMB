@@ -88,6 +88,7 @@ sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     ff <- object$modelInfo$family$family
     if (!usesDispersion(ff)) return(1.)
+    if (length(pl$betad)>1) return(NA)
     switch(family(object)$family,
            gaussian=exp(0.5*pl$betad),
            Gamma=exp(-0.5*pl$betad),

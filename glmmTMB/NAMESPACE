@@ -35,6 +35,7 @@ S3method(simulate,glmmTMB)
 S3method(summary,glmmTMB)
 S3method(terms,glmmTMB)
 S3method(vcov,glmmTMB)
+S3method(weights,glmmTMB)
 export(VarCorr)
 export(addForm)
 export(beta_family)
@@ -66,6 +67,7 @@ export(truncated_nbinom1)
 export(truncated_nbinom2)
 export(truncated_poisson)
 export(tweedie)
+export(ziGamma)
 if(getRversion() >= "3.6.0") {
      S3method(car::Anova, glmmTMB)
 } else {
@@ -75,16 +77,6 @@ if(getRversion() >= "3.6.0") {
   S3method(effects::Effect, glmmTMB)
 } else {
   export(Effect.glmmTMB)
-}
-if(getRversion() >= "3.6.0") {
-  S3method(emmeans::emm_basis, glmmTMB)
-} else {
-  export(emm_basis.glmmTMB)
-}
-if(getRversion() >= "3.6.0") {
-  S3method(emmeans::recover_data, glmmTMB)
-} else {
-  export(recover_data.glmmTMB)
 }
 if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
 importFrom(Matrix,Cholesky)
@@ -115,6 +107,7 @@ importFrom(nlme,fixef)
 importFrom(nlme,ranef)
 importFrom(splines,backSpline)
 importFrom(splines,interpSpline)
+importFrom(stats,"contrasts<-")
 importFrom(stats,AIC)
 importFrom(stats,BIC)
 importFrom(stats,anova)
@@ -160,6 +153,7 @@ importFrom(stats,terms)
 importFrom(stats,update)
 importFrom(stats,var)
 importFrom(stats,vcov)
+importFrom(stats,weights)
 importFrom(stats,xtabs)
 importFrom(utils,head)
 useDynLib(glmmTMB)

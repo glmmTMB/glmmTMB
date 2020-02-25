@@ -32,3 +32,24 @@ test_that("zi", {
     expect_equal(fixef(owls_nb2),fixef(owls_nb3))
 })
 
+test_that("zi beta and Gamma", {
+    suppressWarnings(RNGversion("3.5.1"))
+    set.seed(101)
+    dd <- data.frame(yb=c(rbeta(100,shape1=2,shape2=1),rep(0,10)),
+                     yg=c(rgamma(100,shape=1.5,rate=1),rep(0,10)))
+    expect_error(glmmTMB(yb~1, data=dd, family=beta_family),
+                 "y values must be")
+    m1 <- glmmTMB(yb~1, data=dd, family=beta_family, zi=~1)
+    expect_equal(unname(plogis(fixef(m1)[["zi"]])),1/11)
+    expect_equal(unname(fixef(m1)[["cond"]]), 0.6211636, tolerance=1e-5)
+    ## need *both* ziformula and family=ziGamma for gamma-hurdle
+    expect_error(glmmTMB(yg~1, data=dd, family=Gamma),
+                 "non-positive values not allowed")
+    expect_error(glmmTMB(yg~1, zi=~1, data=dd, family=Gamma),
+                 "non-positive values not allowed")
+    expect_error(glmmTMB(yg~1, data=dd, family=ziGamma),
+                 "non-positive values not allowed")
+    m2 <- glmmTMB(yg~1, data=dd, family=ziGamma(link="log"), zi=~1)
+    expect_equal(unname(plogis(fixef(m2)[["zi"]])),1/11)
+    expect_equal(unname(fixef(m2)[["cond"]]), 0.3995267, tolerance=1e-5)
+})

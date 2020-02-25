@@ -53,6 +53,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' prediction
 ##' @param object a \code{glmmTMB} object
 ##' @param newdata new data for prediction
+##' @param newparams new parameters for prediction
 ##' @param se.fit return the standard errors of the predicted values?
 ##' @param zitype deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}
 ##' @param type Denoting \eqn{mu} as the mean of the conditional distribution and
@@ -69,18 +70,21 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' for non-zero-inflated models)}
 ##' \item{"zlink"}{predicted zero-inflation probability on the scale of
 ##' the logit link function}
+##' \item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 ##' the default (\code{na.pass}) is to predict \code{NA}
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
-##' @param re.form (not yet implemented) specify which random effects to condition on when predicting. To compute population-level predictions for a given grouping variable (i.e., setting \emph{all} random effects for that grouping variable to zero), set the group value to \code{NA}.
+##' @param re.form \code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
 ##' @details
 ##' \itemize{
+##' \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
 ##' \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
 ##' However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
+
 ##' \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
 ##' }
 ##' 
@@ -97,13 +101,15 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
 ##' @importFrom TMB sdreport
-##' @importFrom stats optimHess model.frame na.fail na.pass napredict
+##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
 predict.glmmTMB <- function(object,newdata=NULL,
+                            newparams=NULL,
                             se.fit=FALSE,
-                            re.form, allow.new.levels=FALSE,
+                            re.form=NULL, allow.new.levels=FALSE,
                             type = c("link", "response",
-                                     "conditional","zprob","zlink"),
+                                     "conditional","zprob","zlink",
+                                     "disp"),
                             zitype = NULL,
                             na.action = na.pass,
                             debug=FALSE,
@@ -116,8 +122,14 @@ predict.glmmTMB <- function(object,newdata=NULL,
      type <- zitype
   }
   type <- match.arg(type)
-  if (!missing(re.form)) stop("re.form not yet implemented")
-  ##if (allow.new.levels) stop("allow.new.levels not yet implemented")
+  ## FIXME: better test? () around re.form==~0 are *necessary*
+  ## could steal isRE from lme4 predict.R ...
+  pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
+                                       identical(re.form,NA)))
+  if (!(is.null(re.form) || pop_pred)) {
+      stop("re.form must equal NULL, NA, or ~0")
+  }
+
   mc <- mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
@@ -169,7 +181,47 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ##  or new levels/allow.new.levels)
 
   ## append to existing model frame
-  augFr <- rbind(object$fr,newFr)
+  ## rbind loses attributes!
+  ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
+  ## at this point I'm not even sure if contrasts are actually *used*
+  ## for anything in the prediction process: do mismatches even matter?  
+  safe_contrasts <- function(x) {
+      if (length(levels(x))<2) return(NULL) else return(contrasts(x))
+  }
+  aug_contrasts <- function(c1,new_levels) {
+      rbind(c1,
+            matrix(0,
+                   ncol=ncol(c1),
+                   nrow=length(new_levels),
+                   dimnames=list(new_levels,colnames(c1))))
+  }
+  augFr <- rbind(object$frame,newFr)
+  facs <- which(vapply(augFr,is.factor,logical(1)))
+  for (fnm in names(augFr)[facs]) {
+      c1 <- safe_contrasts(object$frame[[fnm]])
+      c2 <- safe_contrasts(newFr[[fnm]])
+      if (!allow.new.levels) {
+          c1_sub <- c1[rownames(c2),colnames(c2),drop=FALSE]
+          if (!is.null(c2) &&
+              ## maybe too coarse, but as mentioned above, I don't
+              ##  even know if such mismatches really matter ...
+              !(isTRUE(all.equal(c1_sub,c2)) ||
+                isTRUE(all.equal(c1,c2)))) {
+              stop("contrasts mismatch between original and prediction frame in variable ",
+                   sQuote(fnm))
+          }
+      }
+      ## DON'T check for contrasts mismatch with new levels
+      ##   (hope we don't miss anything important!)
+      ## what do we do here?
+      ## the new levels aren't actually going to get used for anything,
+      ##  but they break the contrast construction. Extend the contrast
+      ##  matrix with a properly labeled zero matrix.
+      if (!is.null(c1)) {
+          new_levels <- stats::na.omit(setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]])))
+          contrasts(augFr[[fnm]]) <- aug_contrasts(c1,new_levels)
+      }
+  }
 
   ## Pointers into 'new rows' of augmented data frame.
   w <- nrow(object$fr) + seq_len(nrow(newFr))
@@ -186,6 +238,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                      conditional= "uncorrected",
                      zlink      = ,
                      zprob      = "prob",
+                     disp       = "disp",#zi irrelevant; just reusing variable
                      stop("unknown type ",type))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
@@ -217,7 +270,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
   assertIdenticalModels(TMBStruc$data.tmb,
                         object$obj$env$data, allow.new.levels)
                         
-  ## Check that the neccessary predictor variables are finite (not NA nor NaN)
+  ## Check that the necessary predictor variables are finite (not NA nor NaN)
   if(se.fit) {
     with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
                              any(!is.finite(Z@x)) |
@@ -227,7 +280,19 @@ predict.glmmTMB <- function(object,newdata=NULL,
     ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
            This is currently incompatible with se.fit=TRUE."))
   }
-  
+
+  ## FIXME: what if newparams only has a subset of components?
+
+  oldPar <- object$fit$par
+  if (!is.null(newparams)) oldPar <- newparams
+
+  if (pop_pred) {
+      TMBStruc <- within(TMBStruc, {
+          parameters$b[] <- 0       
+          mapArg$b <- factor(rep(NA,length(parameters$b)))
+      })
+  }
+
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
@@ -237,7 +302,6 @@ predict.glmmTMB <- function(object,newdata=NULL,
                            silent = TRUE,
                            DLL = "glmmTMB"))
 
-  oldPar <- object$fit$par
   newObj$fn(oldPar)  ## call once to update internal structures
   lp <- newObj$env$last.par
 

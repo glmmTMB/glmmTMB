@@ -164,7 +164,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## safer initialization for link functions that might give
   ##  illegal predictions for certain families
-  beta_init <-  if (family$link %in% c("identity","inverse")) 1 else 0
+  ##  (sqrt() behaves weirdly for beta=0
+  ##    [because inverse-link is symmetric around 0?]
+  beta_init <-  if (family$link %in% c("identity","inverse","sqrt")) 1 else 0
 
   ## Extra family specific parameters
   numThetaFamily <- (family$family == "tweedie")
@@ -230,6 +232,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
     fixedform <- formula
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
+    terms <- NULL ## make sure it's empty in case we don't set it
+    
     nobs <- nrow(fr)
     
     ## check for empty fixed form
@@ -446,57 +450,37 @@ binomialType <- function(x) {
   !is.na(match(x, .binomialFamilies))
 }
 
-##' Fit models with TMB
-##' @param formula combined fixed and random effects formula, following lme4
-##'     syntax
-##' @param data data frame
-##' @param family a family function, a character string naming a family function, or the result of a call to a family function family (variance/link function) information; see \code{\link{family}} for generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.
-##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for
-##'     zero-inflation combining fixed and random effects:
-##' the default \code{~0} specifies no zero-inflation.
-##' Specifying \code{~.} sets the zero-inflation
-##' formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}.
-##' The zero-inflation model uses a logit link.
-##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the
-##'     default \code{~1} specifies the standard dispersion given any family.
-##'     The argument is ignored for families that do not have a dispersion parameter.
-##'     For an explanation of the dispersion parameter for each family, see (\code{\link{sigma}}).
-##'     The dispersion model uses a log link. 
-##'     In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value: at present it is set to \code{sqrt(.Machine$double.eps)}), forcing variance into the random effects.
+##' Fit Models with TMB
+##'
+##' Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
+##' @param formula combined fixed and random effects formula, following lme4 syntax.
+##' @param data optional data frame containing model variables.
+##' @param family a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See \code{\link{family}} for a generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.
+##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default \code{~0} specifies no zero-inflation. Specifying \code{~.} sets the zero-inflation formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}. The zero-inflation model uses a logit link.
+##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value: at present it is set to \code{sqrt(.Machine$double.eps)}), forcing variance into the random effects.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
-##' @param offset offset for conditional model (only)
-##' @param contrasts an optional list, e.g. \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
-##' @param se whether to return standard errors
-##' @param na.action how to handle missing values (see \code{\link{na.action}} and \code{\link{model.frame}}); from \code{\link{lm}}, \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset.  The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}
-##' @param verbose logical indicating if some progress indication should be printed to the console.
-##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects,
-##'     without fitting the model
-##' @param control control parameters; see \code{\link{glmmTMBControl}}.
-##' @param REML Logical; Use REML estimation rather than maximum likelihood.
-##' @param start starting values, expressed as a list with possible components
-##' \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for
-##' conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}
-##' (conditional modes for conditional and zero-inflation models);
-##' \code{theta}, \code{thetazi} (random-effect parameters, on the
-##' standard deviation/Cholesky scale, for conditional and z-i models);
-##' \code{thetaf} (extra family parameters, e.g. shape for Tweedie models)
-##' @param map mapping function for setting some parameter values as fixed (see \code{\link[TMB]{MakeADFun}}
+##' @param offset offset for conditional model (only).
+##' @param contrasts an optional list, e.g., \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
+##' @param na.action how to handle missing values, see \code{\link{na.action}} and \code{\link{model.frame}}. From \code{\link{lm}}: \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset. The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}
+##' @param se whether to return standard errors.
+##' @param verbose whether progress indication should be printed to the console.
+##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects, without fitting the model.
+##' @param control control parameters, see \code{\link{glmmTMBControl}}.
+##' @param REML whether to use REML estimation rather than maximum likelihood.
+##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{thetaf} (extra family parameters, e.g., shape for Tweedie models).
+##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
 ##' @details
-##' \itemize{
-##' \item binomial models with more than one trial (i.e., not binary/Bernoulli)
-##' can either be specified in the form \code{prob ~ ..., weights = N} or in
-##' the more typical two-column matrix (\code{cbind(successes,failures)~...}) form.
-##' \item Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify. 
-##' \item Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit)/(1+df.residual(fit)))} when comparing with \code{lm} ...
-##' \item by default, vector-valued random effects are fitted with
-##' unstructured (general positive definite) variance-covariance matrices.
-##' Structured variance-covariance matrices can be specified in
-##' the form \code{struc(terms|group)}, where \code{struc} is one
-##' of
+##' Binomial models with more than one trial (i.e., not binary/Bernoulli) can either be specified in the form \code{prob ~ ..., weights = N}, or in the more typical two-column matrix \code{cbind(successes,failures)~...} form.
+##'
+##' Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify. 
+##'
+##' Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit) / (1+df.residual(fit)))} when comparing with \code{lm}.
+##'
+##' By default, vector-valued random effects are fitted with unstructured (general positive definite) variance-covariance matrices. Structured variance-covariance matrices can be specified in the form \code{struc(terms|group)}, where \code{struc} is one of
 ##' \itemize{
 ##' \item \code{diag} (diagonal, heterogeneous variance)
 ##' \item \code{ar1} (autoregressive order-1, homogeneous variance)
@@ -507,58 +491,68 @@ binomialType <- function(x) {
 ##' \item \code{mat} (* Matérn process correlation)
 ##' \item \code{toep} (* Toeplitz)
 ##' }
-##' (note structures marked with * are experimental/untested)
-##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \sQuote{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated} (it produces a warning and will be removed at some point in the future). Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present (see \code{\link{family}}).
-##' }
+##' Structures marked with * are experimental/untested.
+##'
+##' For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
+##'
+##' @note
+##' For more information about the \pkg{glmmTMB} package, see Brooks et al. (2017) and the \code{vignette(package="glmmTMB")} collection. For the underlying \pkg{TMB} package that performs the model estimation, see Kristensen et al. (2016).
 ##' @references
-##' \itemize{
-##' \item Millar, Russell B. Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB. John Wiley & Sons, 2011.
-##' }
+##' Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., Nielsen, A., Skaug, H. J., Mächler, M. and Bolker, B. M. (2017). glmmTMB balances speed and flexibility among packages for zero-inflated generalized linear mixed modeling. \emph{The R Journal}, \bold{9}(2), 378--400.
+##'
+##' Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. \emph{Journal of Statistical Software}, \bold{70}, 1--21.
+##'
+##' Millar, R. B. (2011). \emph{Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.} Wiley, New York.
 ##' @useDynLib glmmTMB
 ##' @importFrom stats update
 ##' @export
 ##' @examples
-##' (m1 <- glmmTMB(count~ mined + (1|site), 
-##'   zi=~mined, 
+##' (m1 <- glmmTMB(count ~ mined + (1|site),
+##'   zi=~mined,
 ##'   family=poisson, data=Salamanders))
 ##' summary(m1)
 ##' \donttest{
 ##' ## Zero-inflated negative binomial model
-##' (m2 <- glmmTMB(count~spp + mined + (1|site), 
-##'   zi=~spp + mined, 
-##'   family=nbinom2, Salamanders))
-##' 
+##' (m2 <- glmmTMB(count ~ spp + mined + (1|site),
+##'   zi=~spp + mined,
+##'   family=nbinom2, data=Salamanders))
+##'
 ##' ## Hurdle Poisson model
-##' (m3 <- glmmTMB(count~spp + mined + (1|site), 
-##'   zi=~spp + mined, 
-##'   family=truncated_poisson, Salamanders))
-##' 
+##' (m3 <- glmmTMB(count ~ spp + mined + (1|site),
+##'   zi=~spp + mined,
+##'   family=truncated_poisson, data=Salamanders))
+##'
 ##' ## Binomial model
 ##' data(cbpp, package="lme4")
-##' (tmbm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1 | herd),
-##'                data=cbpp, family=binomial))
-##' 
+##' (bovine <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd),
+##'   family=binomial, data=cbpp))
+##'
 ##' ## Dispersion model
-##' sim1=function(nfac=40, nt=100, facsd=.1, tsd=.15, mu=0, residsd=1)
+##' sim1 <- function(nfac=40, nt=100, facsd=0.1, tsd=0.15, mu=0, residsd=1)
 ##' {
-##'   dat=expand.grid(fac=factor(letters[1:nfac]), t= 1:nt)
-##'   n=nrow(dat)
-##'   dat$REfac=rnorm(nfac, sd= facsd)[dat$fac]
-##'   dat$REt=rnorm(nt, sd= tsd)[dat$t]
-##'   dat$x=rnorm(n, mean=mu, sd=residsd) + dat$REfac + dat$REt
-##'   return(dat)
+##'   dat <- expand.grid(fac=factor(letters[1:nfac]), t=1:nt)
+##'   n <- nrow(dat)
+##'   dat$REfac <- rnorm(nfac, sd=facsd)[dat$fac]
+##'   dat$REt <- rnorm(nt, sd=tsd)[dat$t]
+##'   dat$x <- rnorm(n, mean=mu, sd=residsd) + dat$REfac + dat$REt
+##'   dat
 ##' }
 ##' set.seed(101)
-##' d1 = sim1(mu=100, residsd =10)
-##' d2 = sim1(mu=200, residsd =5)
-##' d1$sd="ten"
-##' d2$sd="five"
-##' dat = rbind(d1, d2)
-##' m0 = glmmTMB(x~sd+(1|t), dispformula=~sd, dat)
+##' d1 <- sim1(mu=100, residsd=10)
+##' d2 <- sim1(mu=200, residsd=5)
+##' d1$sd <- "ten"
+##' d2$sd <- "five"
+##' dat <- rbind(d1, d2)
+##' m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 ##' fixef(m0)$disp
-##' c(log(5^2), log(10^2)-log(5^2)) #expected dispersion model coefficients
+##' c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
 ##' }
-glmmTMB <- function (
+##'
+##' ## Using 'map' to fix random-effects SD to 10
+##' m1_map <- update(m1, map=list(theta=factor(NA)),
+##'                  start=list(theta=log(10)))
+##' VarCorr(m1_map)
+glmmTMB <- function(
     formula,
     data = NULL,
     family = gaussian(),
@@ -720,15 +714,28 @@ glmmTMB <- function (
     ##  AND (inverse-link  & any(y==0)) OR (log-link & any(y<=0))
     ##  and then only to check whether it's NULL or not ...
     etastart <- mustart <- NULL
+
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
     
    if (grepl("^truncated", family$family) &&
-       (!is.factor(y) && any(y<1)) & (ziformula == ~0))
-        stop(paste0("'", names(respCol), "'", " contains zeros (or values below the allowable range). ",
-             "Zeros are compatible with a truncated distribution only when zero-inflation is added."))
+       (!is.factor(y) && any(y<0.001)) && (ziformula == ~0)) {
+        stop(paste0("'", names(respCol), "'", " contains zeros (or values close to zero). ",
+             "Zeros are compatible with a truncated distribution only when zero-inflation is added"))
+   }
 
+    if (grepl("(nbinom|pois)",family$family)) {
+        ## see enum.R: this should cover nbinom1, nbinom2,
+        ## poisson, genpois, compois, and the truncated variants
+        ## binomial()$initialize already has its own check
+        ## (shared by betabinomial)
+        if (any(abs(y-round(y))>0.001)) {
+            warning(sprintf("non-integer counts in a %s model",
+                            family$family))
+        }
+    }
+    
     TMBStruc <- 
         mkTMBStruc(formula, ziformula, dispformula,
                    combForm,
@@ -809,16 +816,18 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = 1) {
+                           parallel = NULL) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
     }
     ## Make sure that we specify at least one thread
-    if (is.na(parallel) | is.null(parallel) | parallel < 1) {
-      stop("Number of parallel threads must be a numeric >= 1")
+    if (!is.null(parallel)) {
+        if (is.na(parallel) || parallel < 1) {
+            stop("Number of parallel threads must be a numeric >= 1")
+        }
+        parallel <- as.integer(parallel)
     }
-    parallel <- as.integer(parallel)
   
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
@@ -868,12 +877,22 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+## FIXME: export fitTMB?
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
     
     ## Assign OpenMP threads
-    TMB::openmp(n = control$parallel)
+    if (!is.null(control$parallel)) {
+        n_orig <- TMB::openmp(NULL)
+        ## will warn if OpenMP not supported
+        ## only proceed farther if OpenMP *is* supported ...
+        ## (avoid extra warnings)
+        if (n_orig>0) {
+            TMB::openmp(n = control$parallel)
+            on.exit(TMB::openmp(n = n_orig))
+        }
+    }
 
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
@@ -1008,6 +1027,9 @@ fitTMB <- function(TMBStruc) {
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
                                                 stripReTrms),
+                                terms = lapply(list(cond=condList, zi=ziList,
+                                                    disp=dispList),
+                                               "[[", "terms"),
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm,
                                 REML,

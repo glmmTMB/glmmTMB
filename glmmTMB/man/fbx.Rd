@@ -4,8 +4,7 @@
 \alias{fbx}
 \title{(f)ind (b)ars e(x)tended: recursive}
 \usage{
-fbx(term, debug = FALSE, specials = character(0),
-  default.special = "us")
+fbx(term, debug = FALSE, specials = character(0), default.special = "us")
 }
 \arguments{
 \item{term}{a formula or piece of a formula}
@@ -24,5 +23,8 @@ fbx(term, debug = FALSE, specials = character(0),
 }
 \description{
 (f)ind (b)ars e(x)tended: recursive
+}
+\examples{
+splitForm(quote(us(x,n=2)))
 }
 \keyword{internal}

@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 0.2.3
+Version: 1.0.0
 Authors@R: c(person("Arni","Magnusson",role="aut",
 	   	   comment=c(ORCID="0000-0003-2769-6741")),
 	    person("Hans","Skaug",role="aut"),
@@ -12,10 +12,13 @@ Authors@R: c(person("Arni","Magnusson",role="aut",
             person("Martin","Maechler",role="aut",
 	        comment=c(ORCID="0000-0002-8685-9910")),
             person("Koen","van Bentham",role="aut"),
-            person("Nafis","Sadat",role="ctb",
-                comment=c(ORCID="0000-0001-5715-616X")),
             person("Ben","Bolker",role="aut",
 	           comment=c(ORCID="0000-0002-2127-0443")),
+            person("Nafis","Sadat",role="ctb",
+                comment=c(ORCID="0000-0001-5715-616X")),
+            person("Daniel","Lüdecke", role="ctb",
+	        comment=c(ORCID="0000-0002-8895-3206")),
+            person("Russ","Lenth", role="ctb"),
             person("Mollie","Brooks",role=c("aut","cre"),
                    email="mollieebrooks@gmail.com",
 		   comment=c(ORCID="0000-0001-6963-8326")))
@@ -46,8 +49,8 @@ Suggests:
     pscl,
     coda,
     reshape2,
-    car,
-    emmeans,
+    car (>= 3.0.6),
+    emmeans (>= 1.4),
     estimability,
     DHARMa,
     multcomp,
@@ -55,14 +58,18 @@ Suggests:
     effects (>= 4.0-1),
     dotwhisker,
     broom,
+    broom.mixed,
     plyr,
     png,
-    boot
+    boot,
+    texreg,
+    xtable,
+    huxtable
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 6.1.1
+RoxygenNote: 7.0.2
 NeedsCompilation: yes
 Encoding: UTF-8

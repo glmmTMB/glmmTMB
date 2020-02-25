@@ -38,27 +38,49 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 doc-update: $(PACKAGE)/R/*.R
-	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\"))" | $(R) --slave
+	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\")))" | $(R) --slave
 	@touch doc-update
 
-## FIXME: build *all* .Rnw files in the directory
-vignette-update: $(PACKAGE)/vignettes/*.Rnw
-	cd $(PACKAGE)/vignettes; echo "library(knitr);knit2pdf('glmmTMB.Rnw')" | $(R) --slave
-	 mv $(PACKAGE)/vignettes/glmmTMB.pdf $(PACKAGE)/inst/doc
-	@touch vignette-update
+## vignettes
 
+## list of vignette inputs:
+rnw_vig += glmmTMB model_evaluation 
+rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel
+
+docdir = $(PACKAGE)/inst/doc
+vigdir = $(PACKAGE)/vignettes
+
+docpdf :=  $(rnw_vig:%=${docdir}/%.pdf)
+dochtml := $(rmd_vig:%=${docdir}/%.html)
+
+## LaTeX/BibTeX must run in the same directory as the file ...
+$(vigdir)/%.pdf: $(vigdir)/%.[Rr]nw
+	cd $(vigdir); echo "knitr::knit2pdf(basename(\"$<\"))" | $(R) --slave
+
+%.html: %.rmd
+	export NOT_CRAN=true; echo "rmarkdown::render(\"$<\")" | $(R) --slave
+
+## files in doc dir => generate files in vig dir using downstream rules,
+## then move them
+$(docdir)/%: $(vigdir)/%
+	mv $< $@
+
+$(vigdir)/model_evaluation.html: $(vigdir)/model_evaluation.rmd texreg
+
+vignette-update: ${docpdf} ${dochtml}
+
+
+####
 namespace-update :: $(PACKAGE)/NAMESPACE
 $(PACKAGE)/NAMESPACE: $(PACKAGE)/R/*.R
-	echo "library(roxygen2);roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\"))" | $(R) --slave
-
-##	sed -i -e "s/importFrom(lme4,sigma)/if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)/" $(PACKAGE)/NAMESPACE
+	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"namespace\")))" | $(R) --slave
 
 build-package: $(TARBALL)
 $(TARBALL): $(PACKAGE)/NAMESPACE $(CPP_SRC)
 	$(R) CMD build --resave-data=no $(PACKAGE)
 
 install: $(TARBALL)
-	$(R) CMD INSTALL --preclean $<
+	export NOT_CRAN=true; $(R) CMD INSTALL --preclean $<
 	@touch $@
 
 ## To enable quick compile, run from R:
