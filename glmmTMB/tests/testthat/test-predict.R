@@ -235,7 +235,7 @@ test_that("fix_predvars works for I(x^2)", {
 test_that("contrasts carried over", {
     ## GH 439, @cvoeten
     iris2 <- transform(iris,
-                       grp=c("a","b"))
+                       grp=factor(c("a","b")))
     contrasts(iris2$Species) <- contr.sum
     contrasts(iris2$grp) <- contr.sum
     mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
