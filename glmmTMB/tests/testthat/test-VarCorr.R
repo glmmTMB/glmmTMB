@@ -175,9 +175,10 @@ if (FALSE) {  ## not yet ...
 }
 
 Orthodont$units <- factor(seq(nrow(Orthodont)))
-fm0 <- glmmTMB(distance ~ age + (1|Subject) + (1|units),
+## suppress 'false convergence' warning
+suppressWarnings(fm0 <- glmmTMB(distance ~ age + (1|Subject) + (1|units),
                dispformula=~0,
-               data = Orthodont)
+               data = Orthodont))
 
 test_that("VarCorr omits resid when dispformula=~0", {
     expect_false(attr(VarCorr(fm0)$cond,"useSc"))
