@@ -5,7 +5,7 @@ context("Testing dispersion")
 
 sim1=function(nfac=24, nt=100, facsd=.1, tsd=.15, mu=0, residsd=1)
 {
-	dat=expand.grid(fac=factor(letters[1:nfac]), t= 1:nt)
+	dat=expand.grid(fac=factor(1:nfac, levels=1:nfac), t= 1:nt)
 	n=nrow(dat)
 	dat$REfac=rnorm(nfac, sd= facsd)[dat$fac]
 	dat$REt=rnorm(nt, sd= tsd)[dat$t]
@@ -20,15 +20,16 @@ d1=sim1(mu=100, residsd =10)
 d2=sim1(mu=200, residsd =5)
 
 d1=transform(d1, 
-	fac=paste0(fac, 1),
+	fac=paste0(fac, "_D10"),
 	disp="ten")
 	
 d2=transform(d2, 
-	fac=paste0(fac, 2),
+	fac=paste0(fac, "_D5"),
 	disp="five")
 
 ## global assignment for testthat
 dat <<- rbind(d1, d2)
+dat$disp = factor(dat$disp, levels = c("ten", "five"))
 m0 <<- glmmTMB(x~disp+(1|fac), dispformula=~disp, dat)
 
 test_that("disp calc", {
