@@ -137,14 +137,16 @@ profile.glmmTMB <- function(fitted,
     } else { ## non-parallel
         L <- Map(FUN, parm, sds)
     }
+    ## stringsAsFactors=TRUE below to maintain backward compatibility/
+    ## ordering of rows in confint.profile.glmmTMB ...
     dfun <- function(x,n) {
-        dd0 <- data.frame(n,x)
+        dd0 <- data.frame(n,x, stringsAsFactors=TRUE)
         names(dd0)[1:2] <- c(".par",".focal")
         dd0$value <- dd0$value - min(dd0$value,na.rm=TRUE)
         return(dd0)
     }
     dd <- Map(dfun, L, names(sds))
-    dd <- do.call(rbind,dd)
+    dd <- do.call(rbind,c(dd, list(stringsAsFactors=TRUE)))
     class(dd) <- c("profile.glmmTMB","data.frame")
     return(dd)
 }
