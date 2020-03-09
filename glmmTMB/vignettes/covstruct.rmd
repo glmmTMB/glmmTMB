@@ -22,13 +22,17 @@ knitr::opts_chunk$set(echo = TRUE, eval=if (exists("params")) params$EVAL else F
 do_image <- exists("params") && params$EVAL
 ## want to *store* images within package
 save_vig_dir <- file.path("inst","vignette_data")
-if (require(here)) {
-  save_vig_dir <- file.path(here(),save_vig_dir)
+pkg_dir <- "glmmTMB"
+## guess where we are ...
+if (grepl("/vignettes$",getwd())) {  ## in vignettes dir
+  save_vig_dir <- file.path("../",save_vig_dir)
+} else if (grepl(paste0("/",pkg_dir,"$"),getwd())) { ## in repo head
+  save_vig_dir <- file.path(pkg_dir,save_vig_dir)
 }
 ## want to *retrieve* images from system files
 use_vig_dir <- system.file("vignette_data",package="glmmTMB")
 mkfig <- function(expr,fn) {
-  png(file.path(save_vig_dir,fn))
+  png(normalizePath(file.path(save_vig_dir,fn)))
   eval(substitute(expr))
   invisible(dev.off())
 }
@@ -403,13 +407,15 @@ d <- d[sample(nrow(d), 100), ]
 
 Display sampled noisy volcano data:
 
+<!-- never evaluate -->
 ```{r volcano_data_image_fake,eval=FALSE}
 volcano.data <- array(NA, dim(volcano))
 volcano.data[cbind(d$x, d$y)] <- d$z
 image(volcano.data, main="Spatial data", useRaster=TRUE)
 ```
 
-```{r volcano_data_image_real,echo=FALSE,eval=TRUE}
+<!-- evaluate if NOT_CRAN -->
+```{r volcano_data_image_real,echo=FALSE}
 if (do_image) {
   volcano.data <- array(NA, dim(volcano))
   volcano.data[cbind(d$x, d$y)] <- d$z
@@ -417,6 +423,7 @@ if (do_image) {
 }
 ```
 
+<!-- always evaluate -->
 ```{r volcano_image,eval=TRUE,echo=FALSE}
 usefig("volcano_data.png")
 ```
