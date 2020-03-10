@@ -58,8 +58,8 @@ Currently the available covariance structures are:
 | Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |             |
 | Heterogeneous compound symmetry  | `cs`          |  $n+1$          |             |
 | Heterogeneous diagonal           | `diag`        |  $n$            |             |
-| AR(1)                            | `ar1`         |  $2$            |             |
-| Ornstein–Uhlenbeck               | `ou`          |  $2$            | Coordinates |
+| AR(1)                            | `ar1`         |  $2$            | Unit spaced levels |
+| Ornstein-Uhlenbeck               | `ou`          |  $2$            | Coordinates |
 | Spatial exponential              | `exp`         |  $2$            | Coordinates |
 | Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
 | Spatial Matern                   | `mat`         |  $3$            | Coordinates |
@@ -110,9 +110,13 @@ y <- x + rnorm(n)                                   ## Add measurement noise
 In order to fit the model with `glmmTMB` we must first specify a time
 variable as a *factor*. The factor *levels* correspond to unit spaced
 time points.
+It is a common mistake to forget some factor levels due to missing
+data or to order the levels incorrectly. We therefore recommend to
+construct factors with explicit levels, using the `levels` argument to
+the `factor` function:
 
 ```{r simtimes}
-times <- factor(1:n)
+times <- factor(1:n, levels=1:n)
 levels(times)
 ```
 
