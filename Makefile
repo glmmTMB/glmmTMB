@@ -57,8 +57,9 @@ dochtml := $(rmd_vig:%=${docdir}/%.html)
 $(vigdir)/%.pdf: $(vigdir)/%.[Rr]nw
 	cd $(vigdir); echo "knitr::knit2pdf(basename(\"$<\"))" | $(R) --slave
 
+## ditto for vignette building
 %.html: %.rmd
-	export NOT_CRAN=true; echo "rmarkdown::render(\"$<\")" | $(R) --slave
+	cd $(vigdir); export NOT_CRAN=true; echo "rmarkdown::render(basename(\"$<\"))" | $(R) --slave
 
 ## files in doc dir => generate files in vig dir using downstream rules,
 ## then move them

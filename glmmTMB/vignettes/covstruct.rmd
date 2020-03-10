@@ -18,7 +18,27 @@ library(glmmTMB)
 library(MASS)  ## for mvrnorm()
 library(TMB) ## for tmbprofile()
 ## devtools::install_github("kaskr/adcomp/TMB")  ## get development version
-knitr::opts_chunk$set(echo = TRUE, eval=if (isTRUE(exists("params"))) params$EVAL else FALSE)
+knitr::opts_chunk$set(echo = TRUE, eval=if (exists("params")) params$EVAL else FALSE)
+do_image <- exists("params") && params$EVAL
+## want to *store* images within package
+save_vig_dir <- file.path("inst","vignette_data")
+pkg_dir <- "glmmTMB"
+## guess where we are ...
+if (grepl("/vignettes$",getwd())) {  ## in vignettes dir
+  save_vig_dir <- file.path("../",save_vig_dir)
+} else if (grepl(paste0("/",pkg_dir,"$"),getwd())) { ## in repo head
+  save_vig_dir <- file.path(pkg_dir,save_vig_dir)
+}
+## want to *retrieve* images from system files
+use_vig_dir <- system.file("vignette_data",package="glmmTMB")
+mkfig <- function(expr,fn) {
+  png(normalizePath(file.path(save_vig_dir,fn)))
+  eval(substitute(expr))
+  invisible(dev.off())
+}
+usefig <- function(fn) {
+  knitr::include_graphics(file.path(use_vig_dir,fn))
+}
 ## turned off caching for now: got error in chunk 'fit.us.2'
 ## Error in retape() : 
 ##   Error when reading the variable: 'thetaf'. Please check data and parameters.
@@ -387,10 +407,25 @@ d <- d[sample(nrow(d), 100), ]
 
 Display sampled noisy volcano data:
 
-```{r volcano_data_image}
+<!-- never evaluate -->
+```{r volcano_data_image_fake,eval=FALSE}
 volcano.data <- array(NA, dim(volcano))
 volcano.data[cbind(d$x, d$y)] <- d$z
-image(volcano.data, main="Spatial data")
+image(volcano.data, main="Spatial data", useRaster=TRUE)
+```
+
+<!-- evaluate if NOT_CRAN -->
+```{r volcano_data_image_real,echo=FALSE}
+if (do_image) {
+  volcano.data <- array(NA, dim(volcano))
+  volcano.data[cbind(d$x, d$y)] <- d$z
+  mkfig(image(volcano.data, main="Spatial data"),"volcano_data.png")
+}
+```
+
+<!-- always evaluate -->
+```{r volcano_image,eval=TRUE,echo=FALSE}
+usefig("volcano_data.png")
 ```
 
 Based on this data, we'll attempt to re-construct the original image.
@@ -458,9 +493,20 @@ pred <- sapply(1:61, predict_col)
 
 Finally plot the re-constructed image by
 
-```{r image_results}
+```{r image_results_fake,eval=FALSE}
 image(pred, main="Reconstruction")
 ```
+```{r image_results_real,echo=FALSE}
+if (do_image) {
+  mkfig(image(pred, main="Reconstruction", useRaster=TRUE),
+        "volcano_results.png")
+}
+```
+
+```{r results_image,eval=TRUE,echo=FALSE}
+usefig("volcano_results.png")
+```
+
 
 ## Mappings
 
@@ -487,11 +533,9 @@ cc <- diag(n)
 cc[upper.tri(cc)] <- cpars
 L <- crossprod(cc)
 D <- diag(1/sqrt(diag(L)))
-D %*% L %*% D
-unname(attr(vv1,"correlation"))
+round(D %*% L %*% D,3)
+round(unname(attr(vv1,"correlation")),3)
 ```
-
-> FIXME: why are these not quite the same? Not what I expected
 
 ```{r other_check}
 all.equal(c(cov2cor(vv1)),c(fit.us$obj$env$report(fit.us$fit$parfull)$corr[[1]]))
@@ -508,9 +552,17 @@ range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 tt <- tmbprofile(fit.us$obj,2,trace=FALSE)
 ```
 
-```{r fit.us.profile.plot}
-plot(tt)
+```{r fit.us.profile.plot_fake,eval=FALSE}
 confint(tt)
+plot(tt)
+```
+
+```{r fit.us.profile.plot_real,echo=FALSE}
+mkfig(plot(tt),"us_profile_plot.png")
+```
+                   
+```{r us_profile_image,eval=TRUE,echo=FALSE}
+usefig("us_profile_plot.png")
 ```
 
 ```{r fit.cs.profile,cache=TRUE}
@@ -520,7 +572,16 @@ range(which(names(ppar)=="theta")) ## the last n*(n+1)/2 parameters
 ## only 1 fixed effect parameter, 1 dispersion parameter
 tt2 <- tmbprofile(fit.cs$obj,3,trace=FALSE)
 ```
-
-```{r fit.cs.profile.plot}
+                   
+```{r fit.cs.profile.plot_fake,eval=FALSE}
 plot(tt2)
 ```
+
+```{r fit.cs.profile.plot_real,echo=FALSE}
+mkfig(plot(tt2),"cs_profile_plot.png")
+```
+
+```{r fit.cs.profile_image,echo=FALSE,eval=TRUE}
+usefig("cs_profile_plot.png")
+```
+
