@@ -212,11 +212,11 @@ The estimated variance and correlation parameters are:
 VarCorr(fit.us)
 ```
 
-\newcommand{\textsub}{2}{#1_{{\text \small #2}}}
+\newcommand{\textsub}[2]{#1_{{\text {#2}}}}
 The estimated correlation is approximately constant along diagonals
 (apparent Toeplitz structure) and we note that the first off-diagonal
 is now ca. half the true value (0.7) because the dispersion is
-effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{sigma^2}{meas})$).
+effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas})$).
 
 ## The Toeplitz structure
 
@@ -238,7 +238,7 @@ The estimated variance and correlation parameters are:
 (vc.toep <- VarCorr(fit.toep))
 ```
 
-The diagonal elements are all approximately equal to the true total variance ($\textsub{\sigma^2}{AR} + \textsub{sigma^2}{meas}$=2), and the off-diagonal elements are approximately equal to the expected value of 0.7/2=0.35.
+The diagonal elements are all approximately equal to the true total variance ($\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}$=2), and the off-diagonal elements are approximately equal to the expected value of 0.7/2=0.35.
 ```{r fit.toep.vc.diag}
 vc1 <- vc.toep$cond[[1]] ## first term of var-cov for RE of conditional model
 summary(diag(vc1))
