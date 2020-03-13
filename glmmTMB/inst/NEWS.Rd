@@ -5,7 +5,7 @@
 \encoding{UTF-8}
 \section{CHANGES IN VERSION 1.0.1}{
 	\itemize{
-      \item updated for R-devel changes (stringsAsFactors=TRUE by default)
+      \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)
 	}
 }
 \section{CHANGES IN VERSION 1.0.0}{
