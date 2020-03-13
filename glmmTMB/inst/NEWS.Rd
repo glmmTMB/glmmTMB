@@ -3,7 +3,11 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-
+\section{CHANGES IN VERSION 1.0.1}{
+	\itemize{
+      \item updated for R-devel changes (stringsAsFactors=TRUE by default)
+	}
+}
 \section{CHANGES IN VERSION 1.0.0}{
 
 The 1.0.0 release does not introduce any major changes or incompatibilities, 
