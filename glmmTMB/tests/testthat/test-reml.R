@@ -28,5 +28,5 @@ test_that("REML check against lmer", {
     expect_equal(as.vector(predict(fm2.lmer)) ,
                  predict(fm2.glmmTMB), tolerance=1e-4)
     expect_equal(vcov(fm2.glmmTMB)$cond,
-                 as.matrix(vcov(fm2.lmer)) , tolerance=1e-3)
+                 as.matrix(vcov(fm2.lmer)) , tolerance=1e-2)
 })
