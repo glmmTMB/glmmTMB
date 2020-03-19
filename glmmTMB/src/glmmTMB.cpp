@@ -249,6 +249,7 @@ enum valid_ziPredictCode {
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
+  double eps = 3e-16;
   switch (link) {
   case log_link:
     ans = exp(eta);
@@ -263,7 +264,11 @@ Type inverse_linkfun(Type eta, int link) {
     ans = pnorm(eta);
     break;
   case cloglog_link:
-    ans = Type(1) - exp(-exp(eta));
+    // R definition:
+    // pmax(pmin(-expm1(-exp(eta)), 1 - .Machine$double.eps), .Machine$double.eps)
+    // FIXME: we should consider clamping or at least emitting a useful message
+    // on under/overflow, if that wouldn't be problematically non-differentiable
+    ans = logspace_sub( Type(0), -exp(eta)); // equiv. 1- exp(-exp(eta))
     break;
   case inverse_link:
     ans = Type(1) / eta;
