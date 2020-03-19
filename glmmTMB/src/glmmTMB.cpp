@@ -249,7 +249,6 @@ enum valid_ziPredictCode {
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
-  double eps = 3e-16;
   switch (link) {
   case log_link:
     ans = exp(eta);
