@@ -74,6 +74,33 @@ namespace glmmtmb{
     /* See 'R-API: entry points to C-code' (Writing R-extensions) */
     double Rf_logspace_sub (double logx, double logy);
     void   Rf_pnorm_both(double x, double *cum, double *ccum, int i_tail, int log_p);
+    double eps=3.0e-16; // hack? std::numeric_limits<T>::epsilon ?
+  }
+
+  /* y(x) = invcloglog(x) := 1 - exp(-exp(x)) = logspace_sub( 0, -exp(x))
+
+     y'(x) = exp(-exp(x)) * exp(x) = (1-y(x))*exp(x)
+
+   */
+  TMB_ATOMIC_VECTOR_FUNCTION(
+                             // ATOMIC_NAME
+			     invcloglog
+                             ,
+                             // OUTPUT_DIM
+                             1,
+                             // ATOMIC_DOUBLE
+                             ty[0] = std::max(eps,
+					      std::min(1.0-eps,
+				       Rf_logspace_sub(0., -exp(tx[0]))));
+                             ,
+                             // ATOMIC_REVERSE
+                             px[0] = (1.0 - ty[0]) * exp(tx[0]);
+                             )
+  
+  template<class Type>  Type invcloglog(Type x) {
+    CppAD::vector<Type> tx(1);
+    tx[0] = x;
+    return invcloglog(tx)[0];
   }
 
   /* y(x) = logit_invcloglog(x) := log( exp(exp(x)) - 1 ) = logspace_sub( exp(x), 0 )
@@ -249,6 +276,8 @@ enum valid_ziPredictCode {
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
+  Type eps=3e-16;
+  
   switch (link) {
   case log_link:
     ans = exp(eta);
@@ -264,10 +293,8 @@ Type inverse_linkfun(Type eta, int link) {
     break;
   case cloglog_link:
     // R definition:
-    // pmax(pmin(-expm1(-exp(eta)), 1 - .Machine$double.eps), .Machine$double.eps)
-    // FIXME: we should consider clamping or at least emitting a useful message
-    // on under/overflow, if that wouldn't be problematically non-differentiable
-    ans = logspace_sub( Type(0), -exp(eta)); // equiv. 1- exp(-exp(eta))
+    // pmax(pmin(-expm1(-exp(eta)), 1 - .Machine$double.eps), .Machine$double.eps
+    ans = glmmtmb::invcloglog(eta);
     break;
   case inverse_link:
     ans = Type(1) / eta;
@@ -826,6 +853,11 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
       tmp_loglik *= weights(i);
+      // FIXME: add a flag to enable tracing
+      // Rcout << "obs " << i << "; NLL= " << tmp_loglik << std::endl;
+      if (asDouble(tmp_loglik) != asDouble(tmp_loglik)) {
+	Rcout << "NaN encountered at observation " << i << std::endl;
+      }
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }
