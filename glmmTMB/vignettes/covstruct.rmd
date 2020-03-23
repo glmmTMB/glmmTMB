@@ -58,8 +58,8 @@ Currently the available covariance structures are:
 | Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |             |
 | Heterogeneous compound symmetry  | `cs`          |  $n+1$          |             |
 | Heterogeneous diagonal           | `diag`        |  $n$            |             |
-| AR(1)                            | `ar1`         |  $2$            |             |
-| Ornstein–Uhlenbeck               | `ou`          |  $2$            | Coordinates |
+| AR(1)                            | `ar1`         |  $2$            | Unit spaced levels |
+| Ornstein-Uhlenbeck               | `ou`          |  $2$            | Coordinates |
 | Spatial exponential              | `exp`         |  $2$            | Coordinates |
 | Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
 | Spatial Matern                   | `mat`         |  $3$            | Coordinates |
@@ -110,9 +110,13 @@ y <- x + rnorm(n)                                   ## Add measurement noise
 In order to fit the model with `glmmTMB` we must first specify a time
 variable as a *factor*. The factor *levels* correspond to unit spaced
 time points.
+It is a common mistake to forget some factor levels due to missing
+data or to order the levels incorrectly. We therefore recommend to
+construct factors with explicit levels, using the `levels` argument to
+the `factor` function:
 
 ```{r simtimes}
-times <- factor(1:n)
+times <- factor(1:n, levels=1:n)
 levels(times)
 ```
 
@@ -208,11 +212,11 @@ The estimated variance and correlation parameters are:
 VarCorr(fit.us)
 ```
 
-\newcommand{\textsub}{2}{#1_{{\text \small #2}}}
+\newcommand{\textsub}[2]{#1_{{\text {#2}}}}
 The estimated correlation is approximately constant along diagonals
 (apparent Toeplitz structure) and we note that the first off-diagonal
 is now ca. half the true value (0.7) because the dispersion is
-effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{sigma^2}{meas})$).
+effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas})$).
 
 ## The Toeplitz structure
 
@@ -234,7 +238,7 @@ The estimated variance and correlation parameters are:
 (vc.toep <- VarCorr(fit.toep))
 ```
 
-The diagonal elements are all approximately equal to the true total variance ($\textsub{\sigma^2}{AR} + \textsub{sigma^2}{meas}$=2), and the off-diagonal elements are approximately equal to the expected value of 0.7/2=0.35.
+The diagonal elements are all approximately equal to the true total variance ($\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}$=2), and the off-diagonal elements are approximately equal to the expected value of 0.7/2=0.35.
 ```{r fit.toep.vc.diag}
 vc1 <- vc.toep$cond[[1]] ## first term of var-cov for RE of conditional model
 summary(diag(vc1))
