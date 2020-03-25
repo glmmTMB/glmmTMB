@@ -688,8 +688,12 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case betabinomial_family:
-        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
-        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
+        // Transform to logit scale independent of link
+        s3 = logit_inverse_linkfun(eta(i), link); // logit(p)
+        // Was: s1 = mu(i) * phi(i);
+        s1 = inverse_linkfun( s3, logit_link) * phi(i);
+        // Was: s2 = (Type(1) - mu(i)) * phi(i);
+        s2 = inverse_linkfun(-s3, logit_link) * phi(i);
         tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
         SIMULATE {
           yobs(i) = rbinom(size(i), rbeta(s1, s2) );
