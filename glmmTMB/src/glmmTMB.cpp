@@ -5,6 +5,7 @@
 
 
 namespace glmmtmb{
+  /* Not used anymore: */
   template<class Type>
   Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
   {
@@ -22,7 +23,25 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
-	
+  /* R:
+    > identical(lgamma(exp(-600)), 600)
+    [1] TRUE
+  */
+  template<class Type>
+  Type lgamma_exp(Type x) {
+    return CppAD::CondExpLt(x, Type(-600), -x, lgamma(exp(x)));
+  }
+  template<class Type>
+  Type dbetabinom_robust(Type y, Type loga, Type logb, Type n, int give_log=0)
+  {
+    Type a = exp(loga), b = exp(logb);
+    Type logres =
+      lgamma(n + 1) - lgamma(y + 1)     - lgamma(n - y + 1) +
+      lgamma(y + a) + lgamma(n - y + b) - lgamma(n + a + b) +
+      lgamma(a + b) - lgamma_exp(loga)  - lgamma_exp(logb);
+    if(!give_log) return exp(logres);
+    else return logres;
+  }
   template<class Type>
   Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
   {
@@ -691,12 +710,12 @@ Type objective_function<Type>::operator() ()
         // Transform to logit scale independent of link
         s3 = logit_inverse_linkfun(eta(i), link); // logit(p)
         // Was: s1 = mu(i) * phi(i);
-        s1 = inverse_linkfun( s3, logit_link) * phi(i);
+        s1 = log_inverse_linkfun( s3, logit_link) + log(phi(i)); // s1 = log(mu*phi)
         // Was: s2 = (Type(1) - mu(i)) * phi(i);
-        s2 = inverse_linkfun(-s3, logit_link) * phi(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
+        s2 = log_inverse_linkfun(-s3, logit_link) + log(phi(i)); // s2 = log((1-mu)*phi)
+        tmp_loglik = glmmtmb::dbetabinom_robust(yobs(i), s1, s2, size(i), true);
         SIMULATE {
-          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
+          yobs(i) = rbinom(size(i), rbeta(exp(s1), exp(s2)) );
         }
         break;
       case nbinom1_family:
