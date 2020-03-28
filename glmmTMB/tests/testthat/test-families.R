@@ -181,7 +181,29 @@ test_that("dbetabinom", {
                   family=betabinomial(),
                   data=dd)
     expect_identical(m1$fit, m2$fit)
-})
+    ## Rolf Turner example:
+    X <- readRDS(system.file("test_data","turner_bb.rds",package="glmmTMB"))
+    fmla <- cbind(Dead, Alive) ~ (Trt + 0)/Dose + (Dose | Rep)
+    ## baseline (binomial, not betabinomial)
+    fit0  <- glmmTMB(fmla, data = X, family = binomial(link = "cloglog"),
+                     dispformula = ~1)
+    fit1  <- suppressWarnings(
+        glmmTMB(fmla, data = X, family = betabinomial(link = "cloglog"),
+                dispformula = ~1)
+    )
+    expect_equal(tolerance=1e-4,fixef(fit1),
+                 structure(list(cond = c(TrtAdults10deg = -0.693410788148063, 
+     TrtAdults20deg = -0.891664583879834, TrtLarvae10deg = -0.799519392130355, 
+     TrtLarvae20deg = -0.899557656066877, TrtPupae10deg = -1.4293900813833, 
+     TrtPupae20deg = -1.11457632329333, `TrtAdults10deg:Dose` = 0.0320132626830385, 
+     `TrtAdults20deg:Dose` = 0.0463642064543417, `TrtLarvae10deg:Dose` = 0.0574430373271645, 
+     `TrtLarvae20deg:Dose` = 0.0396853129130459, `TrtPupae10deg:Dose` = 0.0364579742965876, 
+     `TrtPupae20deg:Dose` = 0.068549995166097), zi = numeric(0), disp = c(`(Intercept)` = 0.387321612280635)), class = "fixef.glmmTMB"))
+    ##
+    fit2  <- glmmTMB(fmla, data = X, family = betabinomial(link = "cloglog"),
+                dispformula = ~1,
+                start=list(beta=fixef(fit0)$cond))
+)
 
 test_that("truncated", {
     ## Poisson
