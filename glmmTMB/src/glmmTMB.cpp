@@ -326,6 +326,9 @@ Type log_inverse_linkfun(Type eta, int link) {
   case log_link:
     ans = eta;
     break;
+  case logit_link:
+    ans = -logspace_add(Type(0), -eta);
+    break;
   default:
     ans = log( inverse_linkfun(eta, link) );
   } // End switch
