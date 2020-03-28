@@ -35,9 +35,12 @@ namespace glmmtmb{
   Type dbetabinom_robust(Type y, Type loga, Type logb, Type n, int give_log=0)
   {
     Type a = exp(loga), b = exp(logb);
+    Type logy = log(y), lognmy = log(n - y); // May be -Inf
     Type logres =
       lgamma(n + 1) - lgamma(y + 1)     - lgamma(n - y + 1) +
-      lgamma(y + a) + lgamma(n - y + b) - lgamma(n + a + b) +
+      lgamma_exp(logspace_add(logy, loga)) +
+      lgamma_exp(logspace_add(lognmy, logb)) -
+      lgamma(n + a + b) +
       lgamma(a + b) - lgamma_exp(loga)  - lgamma_exp(logb);
     if(!give_log) return exp(logres);
     else return logres;
