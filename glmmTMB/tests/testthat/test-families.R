@@ -204,7 +204,7 @@ test_that("dbetabinom", {
                 dispformula = ~1,
                 start=list(beta=fixef(fit0)$cond))
     ff2 <- fixef(fit2)$cond
-    cbind(ff1,ff2,
+    cbind(ff1,ff2,ff_GA)
 })
 
 test_that("truncated", {
