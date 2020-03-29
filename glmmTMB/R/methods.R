@@ -604,7 +604,8 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
         stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
-    mr <- model.response(object$frame)
+    na.act <- attr(object$frame,"na.action")
+    mr <- napredict(na.act,model.response(object$frame))
     wts <- model.weights(model.frame(object))
     ## binomial model specified as (success,failure)
     if (!is.null(dim(mr))) {
