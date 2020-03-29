@@ -39,13 +39,13 @@ namespace glmmtmb{
         return lgamma(exp(x));
     }
   }
-  TMB_BIND_ATOMIC(func, 1, adaptive::logspace_gamma(x[0]))
+  TMB_BIND_ATOMIC(logspace_gamma, 1, adaptive::logspace_gamma(x[0]))
   template<class Type>
   Type logspace_gamma(Type x) {
     CppAD::vector<Type> args(2); // Last index reserved for derivative order
     args[0] = x;
     args[1] = 0;
-    return func(args)[0];
+    return logspace_gamma(args)[0];
   }
   template<class Type>
   Type dbetabinom_robust(Type y, Type loga, Type logb, Type n, int give_log=0)
