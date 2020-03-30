@@ -22,7 +22,7 @@ enum-update:: $(PACKAGE)/R/enum.R
 $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo '## Auto generated - do not edit by hand' > $@
 	echo ".valid_link <- c(" >> $@
-	grep _link.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_link//g >> $@
+	grep "_link[ ]*=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_link//g >> $@
 	echo ")" >> $@
 
 	echo ".valid_family <- c(" >> $@
