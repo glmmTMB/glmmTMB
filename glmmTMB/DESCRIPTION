@@ -69,7 +69,7 @@ Suggests:
     huxtable
 SystemRequirements: GNU make
 VignetteBuilder: knitr
-URL: https://github.com/glmmTMB
+URL: https://github.com/glmmTMB/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 RoxygenNote: 7.0.2
