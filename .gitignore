@@ -30,3 +30,5 @@ glmmTMB/config.log
 glmmTMB/config.status
 glmmTMB/src/Makevars
 
+doc-update
+

@@ -1202,6 +1202,10 @@ lme4::refit
 #'                   ziformula=~mined,
 #'                   data=Salamanders,
 #'                   family=nbinom1)
+#'    ## single parametric bootstrap step: refit with data simulated from original model
+#'    fm1R <- refit(fm1, simulate(fm1)[[1]])
+#'    ## the bootMer function from lme4 provides a wrapper for doing multiple refits
+#'    ##   with a specified summary function
 #'    b1 <- lme4::bootMer(fm1, FUN=function(x) fixef(x)$zi, nsim=20, .progress="txt")
 #'    if (requireNamespace("boot")) {
 #'       boot.ci(b1,type="perc")
