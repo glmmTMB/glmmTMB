@@ -27,6 +27,7 @@ addons:
       - libstdc++6 
       - libclang-common-7-dev 
       - clang-7
+      - libglpk-dev
 
 
 r_github_packages:
