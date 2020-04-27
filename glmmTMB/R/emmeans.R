@@ -38,11 +38,10 @@
 ##'    if (require(car)) {
 ##'        Anova(warp.lm,type="III")
 ##'    }
-##'    if (require(effects) 
+##'    if (require(effects) {
 ##'        plot(allEffects(warp.lm))
 ##'    }
 ##' }
-
 
 ## recover_data method -- DO NOT export -- see zzz.R
 
