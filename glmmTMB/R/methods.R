@@ -1189,7 +1189,9 @@ isLMM.glmmTMB <- function(object) {
 }
 
 #' @export
+lme4::refit
 
+#' @export
 #' @rdname bootmer_methods
 #' @importFrom stats formula
 #' @param ... additional arguments (for generic consistency; ignored)
