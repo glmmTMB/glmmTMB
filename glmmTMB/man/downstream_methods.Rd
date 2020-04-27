@@ -81,7 +81,7 @@ if (getRversion() >= "3.6.0") {
    if (require(car)) {
        Anova(warp.lm,type="III")
    }
-   if (require(effects) {
+   if (require(effects)) {
        plot(allEffects(warp.lm))
    }
 }
