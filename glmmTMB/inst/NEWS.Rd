@@ -3,6 +3,15 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
+\section{CHANGES IN VERSION 1.0.1.9000}{
+  \subsection{USER-VISIBLE CHANGES}
+  \itemize{
+      \item the \code{refit()} function is now re-exported (i.e., no longer need to load
+      \code{lme4} to use it)
+    }
+}
+
+
 \section{CHANGES IN VERSION 1.0.1}{
 	\itemize{
       \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)

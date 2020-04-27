@@ -72,3 +72,17 @@ While the examples below are disabled for earlier versions of
 R, they may still work; it may be necessary to refer to private
 versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }
+\examples{
+warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+if (require(emmeans)) {
+    emmeans (warp.lm, poly ~ tension | wool)
+}
+if (getRversion() >= "3.6.0") {
+   if (require(car)) {
+       Anova(warp.lm,type="III")
+   }
+   if (require(effects)) {
+       plot(allEffects(warp.lm))
+   }
+}
+}
