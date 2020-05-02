@@ -998,6 +998,15 @@ fitTMB <- function(TMBStruc) {
                        "See vignette('troubleshooting')"))
       } else {
         eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
+        if (is.complex(eigval)) {
+            ## FIXME: more principled cutoff?
+            if ((maxim <- max(abs(Im(eigval)))) > .Machine$double.eps*10) {
+                eigval <- Re(eigval)
+            } else {
+                stop(sprintf("detected complex eigenvalues of covariance matrix (max(abs(Im))=%g: try se=FALSE?",
+                             maxim))
+            }
+        }
         if( is(eigval, "try-error") || ( min(eigval) < .Machine$double.eps*10 ) ) {
           warning(paste0("Model convergence problem; ",
                        "extreme or very small eigen values detected. ", 
