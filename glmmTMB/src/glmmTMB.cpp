@@ -639,10 +639,23 @@ Type objective_function<Type>::operator() ()
 
   // Linear predictor
   vector<Type> eta = Z * b + offset;
-  eta += (sparseX(0) == 1 ? XS : X) * beta;
+  if (sparseX(0)==0) {
+    eta += X*beta;
+  } else {
+    eta += XS*beta;
+  }
   vector<Type> etazi = Zzi * bzi + zioffset;
-  etazi += (sparseX(1) == 1 ? XziS : Xzi) * betazi;
-  vector<Type> etad = doffset + (sparseX(2) == 1 ? XdS : Xd) * betad;
+  if (sparseX(1)==0) {
+    etazi += Xzi*betazi;
+  } else {
+    etazi += XziS*betazi;
+  }
+  vector<Type> etad = doffset;
+  if (sparseX(2)==0) {
+    etad += Xd*betad;
+  } else {
+    etad += XdS*betad;
+  }
   
   // Apply link
   vector<Type> mu(eta.size());

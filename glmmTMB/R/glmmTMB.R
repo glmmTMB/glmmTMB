@@ -197,11 +197,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
   parameters <- with(data.tmb,
                      list(
-                       beta    = rep(beta_init, max(ncol(X),ncol(Xd))),
-                       betazi  = rr0(ncol(Xzi)),
+                       beta    = rep(beta_init, max(ncol(X),ncol(XS))),
+                       betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
-                       betad   = rep(betad_init, ncol(Xd)),
+                       betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
                        theta   = rr0(sum(getVal(condReStruc,"blockNumTheta"))),
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
                        thetaf  = rr0(numThetaFamily)
