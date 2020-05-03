@@ -14,6 +14,7 @@
 ##' @param ziPredictCode zero-inflation code
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
+##' @param sparseX see \code{\link{glmmTMB}}
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -34,11 +35,21 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        whichPredict=integer(0),
                        REML=FALSE,
                        start=NULL,
-                       map=NULL) {
+                       map=NULL,
+                       sparseX=NULL) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
   ## to a list with class "family" above ...
+
+  if (is.null(sparseX)) sparseX <- logical(0)
+  for (component in c("cond", "zi", "disp")) {
+      if (!component %in% names(sparseX)) {
+          sparseX[[component]] <- FALSE
+      }
+  }
+  ## make sure the order is right!
+  sparseX <- sparseX[c("cond","zi","disp")]
     
   ## FIXME: (1) should use proper tryCatch below
   if (!is(family,"family")) {
@@ -87,11 +98,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts)
-    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts)
+    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts, sparse=sparseX[["cond"]])
+    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts, sparse=sparseX[["zi"]])
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
-                            contrasts=contrasts)
+                            contrasts=contrasts, sparse=sparseX[["disp"]])
 
     condReStruc <- with(condList, getReStruc(reTrms, ss))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss))
@@ -133,13 +144,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
   if (is.null(size)) size <- numeric(0)
 
-    
+
+  denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
+  ## need a 'dgTMatrix' (double, general, Triplet representation)
+  sparseXval <- function(component,lst)
+    { if (sparseX[[component]]) lst$X else Matrix::sparseMatrix(dims=c(0,0),i=integer(0),j=integer(0),x=numeric(0),giveCsparse=FALSE) }
+
   data.tmb <- namedList(
-    X = condList$X,
+    X = denseXval("cond",condList),
+    XS = sparseXval("cond",condList),  
     Z = condList$Z,
-    Xzi = ziList$X,
+    Xzi = denseXval("zi",ziList),
+    XziS = sparseXval("zi",ziList),
     Zzi = ziList$Z,
-    Xd = dispList$X,
+    Xd = denseXval("disp",dispList),
+    XdS = sparseXval("disp",dispList),
+    
     ## Zdisp=dispList$Z,
     ## use c() on yobs, size to strip attributes such as 'AsIs'
     ##  (which confuse MakeADFun)
@@ -157,7 +177,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
-    whichPredict = whichPredict
+    whichPredict = whichPredict,
+    sparseX = as.integer(sparseX)
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -176,7 +197,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
   parameters <- with(data.tmb,
                      list(
-                       beta    = rep(beta_init, ncol(X)),
+                       beta    = rep(beta_init, max(ncol(X),ncol(Xd))),
                        betazi  = rr0(ncol(Xzi)),
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
@@ -226,7 +247,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE) {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -255,10 +276,14 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts) {
         attr(tt, "predvars") <- fix_predvars(pv,tt)
         mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
-        ## FIXME: make model matrix sparse?? i.e. Matrix:::sparse.model.matrix()
-        X <- model.matrix(drop.special2(fixedform), fr, contrasts)
+        if (!sparse) {
+            X <- model.matrix(drop.special2(fixedform), fr, contrasts)
+        } else {
+            X <- Matrix::sparse.model.matrix(drop.special2(fixedform), fr, contrasts)
+            ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
+            ##  (but we may not need it, and would add another dependency etc.)
+        }
         ## will be 0-column matrix if fixed formula is empty
-
         offset <- rep(0,nobs)
         terms <- list(fixed=terms(terms_fixed))
         if (inForm(fixedform,quote(offset))) {
@@ -469,6 +494,7 @@ binomialType <- function(x) {
 ##' @param REML whether to use REML estimation rather than maximum likelihood.
 ##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{thetaf} (extra family parameters, e.g., shape for Tweedie models).
 ##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
+##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -568,7 +594,8 @@ glmmTMB <- function(
     control=glmmTMBControl(),
     REML=FALSE,
     start=NULL,
-    map=NULL
+    map=NULL,
+    sparseX=NULL
     )
 {
 
@@ -750,7 +777,8 @@ glmmTMB <- function(
                    verbose=verbose,
                    REML=REML,
                    start=start,
-                   map=map)
+                   map=map,
+                   sparseX=sparseX)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
