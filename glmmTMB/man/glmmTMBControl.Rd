@@ -10,7 +10,8 @@ glmmTMBControl(
   optimizer = nlminb,
   profile = FALSE,
   collect = FALSE,
-  parallel = NULL
+  parallel = NULL,
+  eigval_check = TRUE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ recognizing duplicated observations.}
 
 \item{parallel}{Numeric; Setting number of OpenMP threads to evaluate
 the negative log-likelihood in parallel}
+
+\item{eigval_check}{Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)}
 }
 \description{
 Control parameters for glmmTMB optimization

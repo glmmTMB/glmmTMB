@@ -801,6 +801,7 @@ glmmTMB <- function(
 ##' @param parallel  Numeric; Setting number of OpenMP threads to evaluate
 ##'                  the negative log-likelihood in parallel
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
+##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
@@ -844,7 +845,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = NULL) {
+                           parallel = NULL,
+                           eigval_check = TRUE) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -862,7 +864,8 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile, collect, parallel, optimizer, optArgs)
+    namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
+              eigval_check)
 }
 
 ##' collapse duplicated observations
@@ -1024,7 +1027,7 @@ fitTMB <- function(TMBStruc) {
         warning(paste0("Model convergence problem; ",
                        "non-positive-definite Hessian matrix. ", 
                        "See vignette('troubleshooting')"))
-      } else {
+      } else if (control$eigval_check) {
         eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
         if (is.complex(eigval)) {
             ## FIXME: more principled cutoff?
@@ -1040,7 +1043,7 @@ fitTMB <- function(TMBStruc) {
                        "extreme or very small eigen values detected. ", 
                        "See vignette('troubleshooting')"))
         }
-      }
+     } ## eigenvalue check
     }
 
     if ( !is.null(fit$convergence) && fit$convergence != 0)
