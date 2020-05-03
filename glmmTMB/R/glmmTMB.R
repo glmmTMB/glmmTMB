@@ -228,7 +228,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose, REML, map))
+            fr, se, call, verbose, REML, map, sparseX))
 }
 
 ##' Create X and random effect terms from formula
@@ -1070,7 +1070,8 @@ fitTMB <- function(TMBStruc) {
                                 reStruc = namedList(condReStruc, ziReStruc),
                                 allForm,
                                 REML,
-                                map))
+                                map,
+                                sparseX))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
