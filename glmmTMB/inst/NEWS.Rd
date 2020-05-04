@@ -4,13 +4,19 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 \section{CHANGES IN VERSION 1.0.1.9000}{
-  \subsection{USER-VISIBLE CHANGES}
-  \itemize{
-      \item the \code{refit()} function is now re-exported (i.e., no longer need to load
-      \code{lme4} to use it)
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the \code{refit()} function is now re-exported (i.e., no
+      longer need to load \code{lme4} to use it)
     }
+  }
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new \code{sparseX} argument to specify sparse fixed-effect
+      model matrices for one or more components
+    }
+  }
 }
-
 
 \section{CHANGES IN VERSION 1.0.1}{
 	\itemize{

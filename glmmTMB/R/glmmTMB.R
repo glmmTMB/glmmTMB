@@ -237,6 +237,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param ranOK random effects allowed here?
 ##' @param type label for model type
 ##' @param contrasts a list of contrasts (see ?glmmTMB)
+##' @param sparse (logical) return sparse model matrix?
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}

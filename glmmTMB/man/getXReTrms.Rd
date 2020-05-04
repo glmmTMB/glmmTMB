@@ -18,6 +18,8 @@ getXReTrms(formula, mf, fr, ranOK = TRUE, type = "", contrasts, sparse = FALSE)
 \item{type}{label for model type}
 
 \item{contrasts}{a list of contrasts (see ?glmmTMB)}
+
+\item{sparse}{(logical) return sparse model matrix?}
 }
 \value{
 a list composed of
