@@ -581,13 +581,13 @@ Type objective_function<Type>::operator() ()
 {
 
   DATA_MATRIX(X);
-  DATA_SPARSE_MATRIX(XS);
+  bool sparseX = X.rows()==0 && X.cols()==0;
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
-  DATA_SPARSE_MATRIX(XziS);
+  bool sparseXzi = Xzi.rows()==0 && Xzi.cols()==0;
   DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
-  DATA_SPARSE_MATRIX(XdS);
+  bool sparseXd = Xd.rows()==0 && Xd.cols()==0;
   DATA_VECTOR(yobs);
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
@@ -624,9 +624,6 @@ Type objective_function<Type>::operator() ()
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
 
-  // indicator for sparse model matrix
-  DATA_IVECTOR(sparseX);
-
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
@@ -639,21 +636,24 @@ Type objective_function<Type>::operator() ()
 
   // Linear predictor
   vector<Type> eta = Z * b + offset;
-  if (sparseX(0)==0) {
+  if (!sparseX) {
     eta += X*beta;
   } else {
+    DATA_SPARSE_MATRIX(XS);
     eta += XS*beta;
   }
   vector<Type> etazi = Zzi * bzi + zioffset;
-  if (sparseX(1)==0) {
+  if (!sparseXzi) {
     etazi += Xzi*betazi;
   } else {
+    DATA_SPARSE_MATRIX(XziS);
     etazi += XziS*betazi;
   }
   vector<Type> etad = doffset;
-  if (sparseX(2)==0) {
+  if (!sparseXd) {
     etad += Xd*betad;
   } else {
+    DATA_SPARSE_MATRIX(XdS);
     etad += XdS*betad;
   }
   

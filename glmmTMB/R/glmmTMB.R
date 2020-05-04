@@ -177,8 +177,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
-    whichPredict = whichPredict,
-    sparseX = as.integer(sparseX)
+    whichPredict = whichPredict
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))

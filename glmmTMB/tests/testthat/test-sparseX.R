@@ -16,3 +16,9 @@ test_that("basic fits", {
     expect_equal(predict(fm2, newdata=nd),predict(fm2S, newdata=nd))
 })
 
+test_that("back-compatibility", {
+    x <- readRDS(system.file("test_data","oldfit.rds",
+                             package="glmmTMB"))
+    expect_is(VarCorr(x),"VarCorr.glmmTMB")
+    expect_is(predict(x),"numeric")
+})
