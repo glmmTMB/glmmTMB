@@ -45,8 +45,15 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
             stop(msg)
         }
     }
-    checkModelMatrix(data.tmb1$X,   data.tmb0$X)
-    checkModelMatrix(data.tmb1$Xzi, data.tmb0$Xzi)
+    ## get whichever of the model matrices is non-zero
+    getX <- function(data,suffix="") {
+        denseX <- data[[paste0("X",suffix)]]
+        sparseX <- data[[paste0("X",suffix,"S")]]
+        if (ncol(denseX)>0) denseX else sparseX
+    }
+    checkModelMatrix(getX(data.tmb1), getX(data.tmb0))
+    checkModelMatrix(getX(data.tmb1,"zi"), getX(data.tmb0,"zi"))
+    checkModelMatrix(getX(data.tmb1,"d"), getX(data.tmb0,"d"))
     NULL
 }
 
@@ -261,7 +268,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                doPredict=as.integer(se.fit),
                                whichPredict=w,
                                REML=omi$REML,
-                               map=omi$map))
+                               map=omi$map,
+                               sparseX=omi$sparseX))
 
   ## short-circuit
   if(debug) return(TMBStruc)

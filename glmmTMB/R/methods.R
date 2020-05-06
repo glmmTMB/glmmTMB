@@ -24,10 +24,14 @@
 ##' @export fixef
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
+  getXnm <- function(suffix) {
+      nm <- paste0("X",suffix)
+      return(colnames(getME(object, nm)))
+  }
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
-  structure(list(cond = setNames(pl$beta,   colnames(getME(object, "X"))),
-                 zi   = setNames(pl$betazi, colnames(getME(object, "Xzi"))),
-                 disp = setNames(pl$betad,  colnames(getME(object, "Xd")))),
+  structure(list(cond = setNames(pl$beta,   getXnm("")),
+                 zi   = setNames(pl$betazi, getXnm("zi")),
+                 disp = setNames(pl$betad,  getXnm("d"))),
             class = "fixef.glmmTMB")
 }
 
@@ -261,12 +265,13 @@ getME.glmmTMB <- function(object,
   oo.env <- object$obj$env
   ### Start of the switch
   allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
+  isSparse <- function(component) { if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
   switch(name,
-         "X"     = oo.env$data$X,
-         "Xzi"   = oo.env$data$Xzi,
+         "X"     = if (!isSparse("cond")) oo.env$data$X else oo.env$data$XS,
+         "Xzi"   = if (!isSparse("zi")) oo.env$data$Xzi else oo.env$data$XziS,
          "Z"     = oo.env$data$Z,
          "Zzi"   = oo.env$data$Zzi,
-         "Xd"    = oo.env$data$Xd,
+         "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
          "theta" = allpars$theta ,
          "beta"  = unlist(allpars[c("beta","betazi","betad")]),
          "..foo.." = # placeholder!

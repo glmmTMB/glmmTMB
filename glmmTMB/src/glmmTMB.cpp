@@ -580,17 +580,14 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
-// DELETE when we're sure this is redundant ...
-// #ifdef _OPENMP
-// Set max number of OpenMP threads to help us optimize faster
-// max_parallel_regions = omp_get_max_threads();    
-// #endif
-
   DATA_MATRIX(X);
+  bool sparseX = X.rows()==0 && X.cols()==0;
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
+  bool sparseXzi = Xzi.rows()==0 && Xzi.cols()==0;
   DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
+  bool sparseXd = Xd.rows()==0 && Xd.cols()==0;
   DATA_VECTOR(yobs);
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
@@ -638,10 +635,28 @@ Type objective_function<Type>::operator() ()
   jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
-  vector<Type> eta = X * beta + Z * b + offset;
-  vector<Type> etazi = Xzi * betazi + Zzi * bzi + zioffset;
-  vector<Type> etad = Xd * betad + doffset;
-
+  vector<Type> eta = Z * b + offset;
+  if (!sparseX) {
+    eta += X*beta;
+  } else {
+    DATA_SPARSE_MATRIX(XS);
+    eta += XS*beta;
+  }
+  vector<Type> etazi = Zzi * bzi + zioffset;
+  if (!sparseXzi) {
+    etazi += Xzi*betazi;
+  } else {
+    DATA_SPARSE_MATRIX(XziS);
+    etazi += XziS*betazi;
+  }
+  vector<Type> etad = doffset;
+  if (!sparseXd) {
+    etad += Xd*betad;
+  } else {
+    DATA_SPARSE_MATRIX(XdS);
+    etad += XdS*betad;
+  }
+  
   // Apply link
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
