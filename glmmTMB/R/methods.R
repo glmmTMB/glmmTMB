@@ -1161,9 +1161,7 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
 ##' @rdname ranef.glmmTMB
 ##' @param x a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)
 ##' @param stringsAsFactors see \code{\link{data.frame}}
-as.data.frame.ranef.glmmTMB <- function(x,
-                ...,
-                stringsAsFactors = default.stringsAsFactors()) {
+as.data.frame.ranef.glmmTMB <- function(x, ...) {
     tmpf <- function(x) do.call(rbind,lapply(names(x),asDf0,x=x,id=TRUE))
     x0 <- lapply(x,tmpf)
     x1 <- Map(function(x,n) {
