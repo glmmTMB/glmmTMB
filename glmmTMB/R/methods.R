@@ -88,8 +88,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' @param object a \code{glmmTMB} model.
 ##' @param condVar whether to include conditional variances in result.
 ##' @param \dots some methods for this generic function require additional
-##'   arguments.
-##'
+##'   arguments (they are unused here and will trigger an error)
 ##' @return
 ##' \itemize{
 ##' \item For \code{ranef}, an object of class \code{ranef.glmmTMB} with two components:
@@ -148,6 +147,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' @export ranef
 ##' @export
 ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
+  check_dots(...)
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
   ## FIXME: add condVar, make sure format matches lme4
@@ -1160,8 +1160,8 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
 ##' @export
 ##' @rdname ranef.glmmTMB
 ##' @param x a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)
-##' @param stringsAsFactors see \code{\link{data.frame}}
 as.data.frame.ranef.glmmTMB <- function(x, ...) {
+    check_dots(...)
     tmpf <- function(x) do.call(rbind,lapply(names(x),asDf0,x=x,id=TRUE))
     x0 <- lapply(x,tmpf)
     x1 <- Map(function(x,n) {
