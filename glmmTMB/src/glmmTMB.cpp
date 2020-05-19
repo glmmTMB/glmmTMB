@@ -2,7 +2,12 @@
 #include "init.h"
 // don't need to include omp.h; we get it via TMB.hpp
 
-
+// from https://github.com/kaskr/adcomp/issues/7
+template<class Type>
+Type posfun(Type x, Type eps, Type &pen){
+    pen += CppAD::CondExpLt(x,eps,Type(0.01)*pow(x-eps,2),Type(0));
+    return CppAD::CondExpGe(x,eps,x,eps/(Type(2)-x/eps));
+}
 
 namespace glmmtmb{
   template<class Type>
@@ -630,6 +635,10 @@ Type objective_function<Type>::operator() ()
   // Joint negative log-likelihood
   parallel_accumulator<Type> jnll(this);
 
+  // posfun/clamping penalty
+  // FIXME: eps for clamping as DATA_SCALAR()?
+  Type pen=0;  
+
   // Random effects
   jnll += allterms_nll(b, theta, terms, this->do_simulate);
   jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
@@ -681,6 +690,7 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
         break;
       case poisson_family:
+	mu(i) = posfun(mu(i), Type(1e-6), pen);
         tmp_loglik = dpois(yobs(i), mu(i), true);
         SIMULATE{yobs(i) = rpois(mu(i));}
         break;
@@ -839,6 +849,7 @@ Type objective_function<Type>::operator() ()
       tmp_loglik *= weights(i);
       // Add up
       jnll -= keep(i) * tmp_loglik;
+      jnll += pen;
     }
   }
 
