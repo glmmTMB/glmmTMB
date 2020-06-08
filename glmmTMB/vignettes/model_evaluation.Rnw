@@ -247,32 +247,10 @@ model.avg(owls_nb1_dredge)
 
 \subsection{\tcode{multcomp} for multiple comparisons and \emph{post hoc} tests}
 
-<<glht_def>>=
-glht_glmmTMB <- function (model, ..., component="cond") {
-    glht(model, ...,
-         coef. = function(x) fixef(x)[[component]],
-         vcov. = function(x) vcov(x)[[component]],
-         df = NULL)
-}
-modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
-                               vcov. = function(x) vcov(x)[[component]],
-                               df = NULL, component="cond", ...) {
-    multcomp:::modelparm.default(model, coef. = coef., vcov. = vcov.,
-                        df = df, ...)
-}
-@
-
 <<glht_use>>=
 g1 <- glht(cbpp_b1, linfct = mcp(period = "Tukey"))
 summary(g1)
 @
-
-\subsubsection{issues}
-
-It is possible to make \code{multcomp} work in a way that (1) actually
-uses the S3 method structure and (2) doesn't need access to
-private multcomp methods (i.e. accessed by \code{multcomp:::}) ? Not sure,
-but both of the following hacks should work. (The \code{glht_glmmTMB} solution below is clunky because it isn't a real S3 method; the \code{model.parm.glmmTMB} solution can't be included in the package source code as-is because ::: is not allowed in CRAN package code.)
 
 \section{Extracting coefficients, coefficient plots and tables}
 

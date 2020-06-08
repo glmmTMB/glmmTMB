@@ -9,7 +9,7 @@
 \usage{
 \method{ranef}{glmmTMB}(object, condVar = TRUE, ...)
 
-\method{as.data.frame}{ranef.glmmTMB}(x, ..., stringsAsFactors = default.stringsAsFactors())
+\method{as.data.frame}{ranef.glmmTMB}(x, ...)
 
 \method{coef}{glmmTMB}(object, condVar = FALSE, ...)
 }
@@ -19,11 +19,9 @@
 \item{condVar}{whether to include conditional variances in result.}
 
 \item{\dots}{some methods for this generic function require additional
-arguments.}
+arguments (they are unused here and will trigger an error)}
 
 \item{x}{a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)}
-
-\item{stringsAsFactors}{see \code{\link{data.frame}}}
 }
 \value{
 \itemize{

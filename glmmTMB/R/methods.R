@@ -1351,3 +1351,33 @@ weights.glmmTMB <- function(object, type="prior", ...) {
     }
     stats::model.frame(object)[["(weights)"]]
 }
+
+# would like to export this only as a method, but not sure how ...
+# https://stackoverflow.com/questions/29079179/does-using-package-generics-require-the-package-to-be-in-depends-or-imports
+
+# extract model parameters
+#
+# This is a utility function for multcomp::glht
+# 
+## @param model fitted glmmTMB model
+## @param coef. function for retrieving coefficients
+## @param vcov. function for retrieving covariance matrix
+## @param df degrees of freedom
+## @param component which model component to test (cond, zi, or disp)
+
+##' @rawNamespace if(getRversion() >= "3.6.0") {
+##'      S3method(multcomp::modelparm, glmmTMB)
+##' } else {
+##'    export(modelparm.glmmTMB)
+##' }
+modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
+                               vcov. = function(x) vcov(x)[[component]],
+                               df = NULL, component="cond", ...) {
+    beta <- coef.(model)
+    sigma <- vcov.(model)
+    estimable <- unname(!is.na(beta))
+    if (is.null(df)) df <- 0
+    RET <- list(coef = beta, vcov = sigma, df = df, estimable = estimable)
+    class(RET) <- "modelparm"
+    return(RET)
+}
