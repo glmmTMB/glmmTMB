@@ -3,11 +3,14 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.1.9000}{
+\section{CHANGES IN VERSION 1.0.1.9001}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the \code{refit()} function is now re-exported (i.e., no
       longer need to load \code{lme4} to use it)
+      \item a \code{modelparm.glmmTMB} method is now provided (so that
+      \code{multcomp::glht} should work out of the box with
+      \code{glmmTMB} objects)
     }
   }
   \subsection{NEW FEATURES}{
