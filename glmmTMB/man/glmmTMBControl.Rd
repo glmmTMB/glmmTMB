@@ -62,7 +62,9 @@ The \code{optimizer} argument can be any optimization (minimizing) function, pro
 \itemize{
 \item the first three arguments, in order, are the starting values, objective function, and gradient function;
 \item it also takes a \code{control} argument;
-\item it returns a list with elements (at least) \code{convergence} (0 if convergence is successful) and \code{message}
+\item it returns a list with elements (at least) \code{par}, \code{objective}, \code{convergence} (0 if convergence is successful) and \code{message}
+(the code internally handles output from \code{optim()}, by renaming the \code{value} component to \code{objective})
+
 }
 }
 \examples{

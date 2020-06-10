@@ -830,7 +830,9 @@ glmmTMB <- function(
 ##' \itemize{
 ##' \item the first three arguments, in order, are the starting values, objective function, and gradient function;
 ##' \item it also takes a \code{control} argument;
-##' \item it returns a list with elements (at least) \code{convergence} (0 if convergence is successful) and \code{message}
+##' \item it returns a list with elements (at least) \code{par}, \code{objective}, \code{convergence} (0 if convergence is successful) and \code{message}
+##' (the code internally handles output from \code{optim()}, by renaming the \code{value} component to \code{objective})
+##' 
 ##' }
 ##' @examples
 ##' ## fit with default (nlminb) and alternative (optim/BFGS) optimizer
@@ -908,7 +910,23 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
-## FIXME: export fitTMB?
+##' Optimize a TMB model and package results
+##'
+##' This function (called internally by \code{\link{glmmTMB}}) runs
+##' the actual model optimization, after all of the appropriate structures
+##' have been set up. It can be useful to run \code{\link{glmmTMB}} with
+##' \code{doFit=TRUE}, adjust the components as required, and then
+##' finish the fitting process with \code{fitTMB} (however, it is the
+##' user's responsibility to make sure that any modifications 
+##' create an internally consistent final fitted object).
+##' 
+##' @param TMBStruc a list contain
+##' @examples
+##' m0 <- glmmTMB(count ~ mined + (1|site),
+##'              family=poisson, data=Salamanders, doFit=FALSE)
+##' names(m0)
+##' fitTMB(m0)
+##' @export
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
@@ -934,7 +952,7 @@ fitTMB <- function(TMBStruc) {
 
     ## avoid repetition; rely on environment for parameters
     optfun <- function() {
-        with(obj,
+        res <- with(obj,
              if( length(par) ) {
                  do.call(control$optimizer,
                          c(list(par, fn, gr,
@@ -943,6 +961,16 @@ fitTMB <- function(TMBStruc) {
              } else {
                  list( par=par, objective=fn(par))
              })
+        ## make optim() results look like nlminb() results (which is
+        ## what glmmTMB is expecting downstream)
+        ## FIXME: what does nloptr output look like?
+        ## nlminb components: par, objective, convergence, message
+        ## optim components: par, value, counts, convergence, message
+        if ("value" %in% names(res)) {
+            res$objective <- res$value
+            res$value <- NULL
+        }
+        return(res)
     }
     
     if (control $ profile) {
