@@ -6,7 +6,7 @@
 \section{CHANGES IN VERSION 1.0.1.9001}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item the \code{refit()} function is now re-exported (i.e., no
+      \item the \code{refit()} function is now re-exported (i.e., you no
       longer need to load \code{lme4} to use it)
       \item a \code{modelparm.glmmTMB} method is now provided (so that
       \code{multcomp::glht} should work out of the box with
@@ -19,8 +19,15 @@
       model matrices for one or more components
     }
   }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{summary} and model printing now work if
+      \code{control=glmmTMBControl(optimizer=optim)} is used (GH #589)
+      \item structured covariance models now work in zero-inflation and
+      dispersion components (GH #579)
+    }
+  } % bug fixes
 }
-
 \section{CHANGES IN VERSION 1.0.1}{
 	\itemize{
       \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)
