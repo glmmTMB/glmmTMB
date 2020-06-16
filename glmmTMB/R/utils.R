@@ -334,7 +334,10 @@ splitForm <- function(formula,
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
 ##' noSpecials(y~us(1|f))
+##' noSpecials(y~us(1|f), delete=FALSE)
+##' noSpecials(y~us(1|f), debug=TRUE)
 ##' noSpecials(y~us+1)  ## should *not* delete unless head of a function
+##' noSpecials(~us+1)   ## should work on a one-sided formula!
 ##' @export
 ##' @keywords internal
 noSpecials <- function(term, delete=TRUE, debug=FALSE) {
@@ -344,37 +347,42 @@ noSpecials <- function(term, delete=TRUE, debug=FALSE) {
         ##    construct response~1 formula
         as.formula(substitute(R~1,list(R=nospec)),
                    env=environment(term))
-    } else
+    } else {
         nospec
+    }
 }
 
-
-## noSpecials_(y~1+us(1|f))
 noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
     if (debug) print(term)
     if (!anySpecial(term)) return(term)
     if (length(term)==1) return(term)  ## 'naked' specials
     if (isSpecial(term)) {
         if(delete) {
-            NULL
+            return(NULL)
         } else { ## careful to return  (1|f) and not  1|f:
-            substitute((TERM), list(TERM = term[[2]]))
+            return(substitute((TERM), list(TERM = term[[2]])))
         }
     } else {
-        nb2 <- noSpecials(term[[2]], delete=delete, debug=debug)
+        if (debug) print("not special")
+        nb2 <- noSpecials_(term[[2]], delete=delete, debug=debug)
         nb3 <- if (length(term)==3) {
-                   noSpecials(term[[3]], delete=delete, debug=debug)
+                   noSpecials_(term[[3]], delete=delete, debug=debug)
                } else NULL
-        if (is.null(nb2))
-            nb3
-        else if (is.null(nb3))
-            nb2
-        else {
+        if (is.null(nb2)) {
+            return(nb3)
+        } else if (is.null(nb3)) {
+            if (length(term)==2 && identical(term[[1]], quote(`~`))) { ## special case for one-sided formula
+                term[[2]] <- nb2
+                return(term)
+            } else {
+                return(nb2)
+            }
+        } else {  ## neither term completely disappears
             term[[2]] <- nb2
             term[[3]] <- nb3
-            term
+            return(term)
         }
-    }
+    } 
 }
 
 isSpecial <- function(term) {
