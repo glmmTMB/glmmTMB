@@ -15,6 +15,7 @@
 %\VignetteDepends{dotwhisker}
 %\VignetteDepends{texreg}
 %\VignetteDepends{xtable}
+%\VignetteDepends{huxtable}
 \usepackage{lineno}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
@@ -29,8 +30,9 @@
 \usepackage{hhline}
 \usepackage{calc}
 \usepackage{tabularx}
-\usepackage{threeparttable}
+%\usepackage{threeparttable}
 \usepackage{wrapfig}
+\usepackage{adjustbox}
 \newcommand{\R}{{\sf R}}
 \newcommand{\fixme}[1]{\textbf{\color{red} fixme: #1}}
 \newcommand{\notimpl}[1]{\emph{\color{magenta} #1}}
@@ -66,7 +68,10 @@
 \maketitle
 
 %\linenumbers
-%% TO DO: pipeline for re-running stored objects
+%% FIXME: pipeline for re-running stored objects
+%% FIXME: improve owls fit so DHARMa looks OK?
+%% FIXME: fix broom.mixed:tidy method
+%% FIXME: huxtable issues
 
 <<setopts,echo=FALSE,message=FALSE>>=
 library("knitr")
@@ -100,7 +105,8 @@ library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)
-library(huxtable)
+## temporarily disabled: causes problems with <<caranova1>> chunk?
+## library(huxtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",
                       package="glmmTMB"))
@@ -147,10 +153,12 @@ you can plot the results:
 plot(owls_nb1_simres)
 @
 
+\code{DHARMa} provides lots of other methods based on the simulated residuals:
+see \tcode{vignette("DHARMa", package="DHARMa")}
+
 \subsubsection{issues}
 
 \begin{itemize}
-\item When you run \code{simulateResiduals()} you'll notice a long warning (actually a \emph{message}: ``It seems you are diagnosing a \code{glmmTMB} model \ldots'' that explains some issues with \code{glmmTMB} fits in \code{DHARMa}
 \item \code{DHARMa} will only work for models using families for which a simulate method has been implemented (in \code{TMB}, and appropriately reflected in \code{glmmTMB})
 \end{itemize}
 
@@ -262,14 +270,12 @@ The \code{broom} and \code{broom.mixed} packages are designed to extract informa
 if (requireNamespace("broom.mixed") && requireNamespace("dotwhisker")) {
   (t1 <- broom.mixed::tidy(owls_nb1, conf.int = TRUE))
   if (packageVersion("dotwhisker")>"0.4.1") {
-    ## to get this version (which fixes various dotwhisker problems)
-    ## use devtools::install_github("bbolker/broom.mixed") or
-    ## wait for pull request acceptance/submission to CRAN/etc.
-    dwplot(owls_nb1)+geom_vline(xintercept=0,lty=2)
+    dw <- dwplot(owls_nb1)
   } else {
     owls_nb1$coefficients <- TRUE  ## hack!
-    dwplot(owls_nb1,by_2sd=FALSE)+geom_vline(xintercept=0,lty=2)
+    dw <- dwplot(owls_nb1,by_2sd=FALSE)
   }
+  print(dw+geom_vline(xintercept=0,lty=2))
 }
 @
 
@@ -316,6 +322,10 @@ if (requireNamespace("xtable")) {
 
 \subsection{coefficient tables with \tcode{texreg}}
 
+For now, to avoid needing to import the \tcode{texreg} package,
+we are providing the required \tcode{extract.glmmTMB} in a separate
+R file that you can import with \tcode{source()}, as follows:
+
 <<texreg1,results="asis">>=
 source(system.file("other_methods","extract.R",package="glmmTMB"))
 texreg(owls_nb1,caption="Owls model", label="tab:owls")
@@ -325,9 +335,10 @@ See output in Table~\ref{tab:owls}.
 
 \subsection{coefficient tables with \tcode{huxtable}}
 
-The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX.
+The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX. \emph{The current version (5.0.0) is giving us a little bit of trouble, so we've temporarily disabled evaluation of this code chunk \ldots}
 
-<<huxtable,results="asis">>=
+<<huxtable,results="asis",eval=FALSE>>=
+library("huxtable")
 cc <- c("intercept (mean)"="(Intercept)",
         "food treatment (starvation)"="FoodTreatment1",
         "parental sex (M)"="SexParent1",
@@ -376,7 +387,7 @@ car::infIndexPlot(owls_nb1_influence)
 
 Or, you can transform the results and plot them however you like:
 
-<<plot_infl2,fig.width=8,fig.height=6>>=
+<<plot_infl2,fig.width=10,fig.height=6,out.width="\\textwidth">>=
 inf <- as.data.frame(owls_nb1_influence[["fixed.effects[-Nest]"]])
 inf <- transform(inf,
                  nest=rownames(inf),
@@ -387,8 +398,9 @@ if (require(reshape2)) {
   gg_infl <- (ggplot(inf_long,aes(ord,value))
     + geom_point()
     + facet_wrap(~variable, scale="free_y")
-    + scale_x_reverse(expand=expand_scale(mult=0.15))
-    + scale_y_continuous(expand=expand_scale(mult=0.15))
+    ## n.b. may need expand_scale() in older ggplot versions ?
+    + scale_x_reverse(expand=expansion(mult=0.15))
+    + scale_y_continuous(expand=expansion(mult=0.15))
     + geom_text(data=subset(inf_long,ord>24),
                 aes(label=nest),vjust=-1.05)
   )
