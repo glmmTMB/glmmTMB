@@ -3,7 +3,7 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.1.9001}{
+\section{CHANGES IN VERSION 1.0.2}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the \code{refit()} function is now re-exported (i.e., you no
@@ -25,6 +25,7 @@
       \code{control=glmmTMBControl(optimizer=optim)} is used (GH #589)
       \item structured covariance models now work in zero-inflation and
       dispersion components (GH #579)
+      \item documentaion of formula for variance in beta family (GH #595)
     }
   } % bug fixes
 }
@@ -35,9 +36,9 @@
 }
 \section{CHANGES IN VERSION 1.0.0}{
 
-The 1.0.0 release does not introduce any major changes or incompatibilities, 
+The 1.0.0 release does not introduce any major changes or incompatibilities,
 but signifies that glmmTMB is considered stable and reliable for general use.
-	
+
   \subsection{NEW FEATURES}{
     \itemize{
       \item new \code{map} argument to \code{glmmTMB} allows for some
@@ -46,8 +47,8 @@ but signifies that glmmTMB is considered stable and reliable for general use.
       \item new \code{optimizer} and
       \code{optArgs} arguments to \code{glmmTMBControl} allow use of
       optimizers other than \code{nlminb}
-      \item \code{predict} can make population-level predictions 
-       (i.e., setting all random effects to zero). 
+      \item \code{predict} can make population-level predictions
+       (i.e., setting all random effects to zero).
        See \code{?predict.glmmTMB} for details.
        \item \code{beta_family} now allows zero-inflation;
        new \code{ziGamma} family (minor modification of
@@ -101,7 +102,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
   } % new features
   \subsection{BUG FIXES}{
     \itemize{
-      \item models with multiple types of RE (e.g. ar1 and us) 
+      \item models with multiple types of RE (e.g. ar1 and us)
       may have failed previously (GH #329)
       \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
       \item \code{profile} now works for models without random effects
@@ -119,9 +120,9 @@ but signifies that glmmTMB is considered stable and reliable for general use.
 \section{CHANGES IN VERSION 0.2.2}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item REML is now an option (GH #352). It is typically only for 
-      Gaussian response variables, but can also be useful 
-      for some non-Gaussian response variables if used with caution 
+      \item REML is now an option (GH #352). It is typically only for
+      Gaussian response variables, but can also be useful
+      for some non-Gaussian response variables if used with caution
       (i.e. simulate a test case first).
     }
   }
@@ -176,4 +177,4 @@ but signifies that glmmTMB is considered stable and reliable for general use.
      }
    }
  }
- 
+

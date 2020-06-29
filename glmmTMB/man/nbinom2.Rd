@@ -71,7 +71,7 @@ and the predicted mean as \eqn{\mu}{mu}:
      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.)}
      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
-and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)\phi}{V=mu*(1-mu)*phi}}
+and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}}
 }
