@@ -33,12 +33,6 @@ extract.glmmTMB <- function(model) {
     return(tr)
 }
 
-verbatim <- function(x)
-{
-  txt <- trimws(capture.output(x))
-  txt <- c("\\begin{verbatim}", txt, "\\end{verbatim}")
-  cat(txt, sep="\n")
-}
 ## setMethod("extract", signature = className("glmmTMB", "glmmTMB"),
 ##          definition = extract.glmmTMB)
 
