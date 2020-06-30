@@ -39,18 +39,18 @@ opts_chunk$set(fig.width=5,fig.height=5,
                out.width="0.8\\textwidth",echo=TRUE)
 Rver <- paste(R.version$major,R.version$minor,sep=".")
 used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
-@ 
+@
 
 \section{Introduction/quick start}
 
-\code{glmmTMB} is an R package built on 
+\code{glmmTMB} is an R package built on
 the \href{https://github.com/kaskr/adcomp}{Template Model Builder} automatic differentiation engine, for fitting generalized
 linear mixed models and extensions.
 
 (Not-yet-implemented features are denoted \notimpl{like this})
 
 \begin{itemize}
-  \item response distributions: Poisson, binomial, negative binomial (NB1 and NB2 parameterizations), Gamma, Beta, Gaussian; truncated Poisson and negative binomial; \notimpl{Student $t$; Tweedie}
+  \item response distributions: Gaussian, binomial, beta-binomial, Poisson, negative binomial (NB1 and NB2 parameterizations), Conway-Maxwell-Poisson, generalized Poisson, Gamma, Beta, Tweedie; as well as zero-truncated Poisson, Conway-Maxwell-Poisson, generalized Poisson, and negative binomial; \notimpl{Student $t$} See \code{?family\_glmmTMB} for a current list including details of parameterizations.
   \item link functions: log, logit, probit, complementary log-log, inverse, identity
   \item zero-inflation with fixed and random-effects components; hurdle models via truncated Poisson/NB
   \item single or multiple (nested or crossed) random effects
@@ -72,7 +72,7 @@ In order to fit a model in \code{glmmTMB} you need to:
 \begin{itemize}
 \item specify a model for the conditional effects, in the standard
   R (Wilkinson-Rogers) formula notation (see \code{?formula}
-  or Section 11.1 of the \href{http://cran.r-project.org/doc/manuals/R-intro.pdf}{Introduction to R}. 
+  or Section 11.1 of the \href{http://cran.r-project.org/doc/manuals/R-intro.pdf}{Introduction to R}.
   Formulae can also include \emph{offsets}.
 \item specify a model for the random effects, in the notation
   that is common to the \code{nlme} and \code{lme4} packages.
@@ -82,8 +82,8 @@ In order to fit a model in \code{glmmTMB} you need to:
   For example, the formula would be \code{1|block} for a random-intercept model
   or \code{time|block} for a model with random variation in slopes
   through time across groups specified by \code{block}. A model
-  of nested random effects (block within site) would be
-  \code{1|site/block}; a model of crossed random effects
+  of nested random effects (block within site) could be
+  \code{1|site/block} if block labels are reused across multiple sites, or \code{(1|site)+ (1|block)} if the nesting structure is explicit in the data and each level of block only occurs within one site. A model of crossed random effects
   (block and year) would be \code{(1|block)+(1|year)}.
   \item choose the error distribution by specifying the family (\code{family} argument). In general, you can specify the function (\code{binomial}, \code{gaussian}, \code{poisson}, \code{Gamma} from base R, or one of the options listed at \code{family\_glmmTMB} [\code{nbinom2}, \code{beta\_family()}, \code{betabinomial}, \ldots])).
 \item choose the error distribution by specifying the family (\code{family} argument). For standard GLM families implemented in R, you can use the function name (\code{binomial}, \code{gaussian}, \code{poisson}, \code{Gamma}). Otherwise, you should specify the family argument as a list containing (at least) the (character) elements \code{family} and \code{link}, e.g. \code{family=list(family="nbinom2",link="log")}.
@@ -96,14 +96,14 @@ generated using \Sexpr{R.version$version.string} and package versions:
 <<pkgversions,echo=FALSE>>=
 pkgver <- vapply(sort(used.pkgs),function(x) as.character(packageVersion(x)),"")
 print(pkgver,quote=FALSE)
-@ 
+@
 
 The current citation for \code{glmmTMB} is:
 \begin{quote}
 %% fixme: would like to deal with smart quotes
 <<citation,echo=FALSE,results="asis">>=
 print(citation("glmmTMB"),style="latex")
-@ 
+@
 \end{quote}
 
 \section{Preliminaries: packages and data}
@@ -116,7 +116,7 @@ library("ggplot2")
 ## cosmetic
 theme_set(theme_bw()+
   theme(panel.spacing=grid::unit(0,"lines")))
-@ 
+@
 
 The data, taken from \cite{zuur_mixed_2009} and ultimately
 from \cite{roulinbersier_2007}, quantify
@@ -145,7 +145,7 @@ Owls <- transform(Owls,
                   Nest=reorder(Nest,NegPerChick),
                   NCalls=SiblingNegotiation,
                   FT=FoodTreatment)
-@ 
+@
 (If you were really using this data set you should start
 with \code{summary(Owls)} to explore the data set.)
 
@@ -160,7 +160,7 @@ G0+stat_sum(aes(size=..n..),alpha=0.5)+
                             breaks=seq(1,9,by=2))+
     theme(axis.title.x=element_text(hjust=0.5,size=12),
          axis.text.y=element_text(size=7))
-@ 
+@
 
 We should explore the data before we start to
 build models, e.g. by plotting it in
@@ -177,7 +177,7 @@ gt1 <- system.time(glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
                                      ziformula=~1,
                                      data=Owls,
                                      family=poisson))
-@ 
+@
 
 <<glmmTMBfit>>=
 fit_zipoisson <- glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
@@ -189,7 +189,7 @@ fit_zipoisson <- glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
 
 <<zipoisssum>>=
 summary(fit_zipoisson)
-@ 
+@
 
 We can also try a standard zero-inflated negative binomial model;
 the default is the ``NB2'' parameterization (variance = $\mu(1+\mu/k)$: \cite{hardin_generalized_2007}).
@@ -219,7 +219,7 @@ fit_zinbinom <- update(fit_zipoisson,family=nbinom2)
 %% FIXME: caching may lead to
 %% ## Error in ICtab(..., mnames = mnames, type = "AIC"): memory block of size 3.1 Gb
 %% downstream, in AICtab() ...
-%% for now I'm removing caching, but we should 
+%% for now I'm removing caching, but we should
 %%   (1) document this as an issue/make a MWE
 %%   (2) fix it
 %%   (3) we could also cache the AICtab chunk as well ..
@@ -229,24 +229,20 @@ Alternatively, we can use an ``NB1'' fit (variance = $\phi \mu$).
 fit_zinbinom1 <- update(fit_zipoisson,family=nbinom1)
 @
 
-\notimpl{we should have a \code{getFamily} function:
-ideally it would also specify which are really implemented
-(although that's harder), and specify default links}
-
 Relax the assumption that total number of calls is strictly proportional
 to brood size (i.e. using log(brood size) as an offset):
 <<glmmTMBnbinom1vfit>>=
 fit_zinbinom1_bs <- update(fit_zinbinom1,
                            . ~ (FT+ArrivalTime)*SexParent+
                                BroodSize+(1|Nest))
-@ 
+@
 
 Every change we have made so far improves the fit --- changing distributions
 improves it enormously, while changing the role of brood size makes only
 a modest (-1 AIC unit) difference:
 <<aictab>>=
 AICtab(fit_zipoisson,fit_zinbinom,fit_zinbinom1,fit_zinbinom1_bs)
-@ 
+@
 
 \subsection{Hurdle models}
 
@@ -263,7 +259,7 @@ fit_hnbinom1 <-  update(fit_zinbinom1_bs,
                         ziformula=~.,
                         data=Owls,
                         family=list(family="truncated_nbinom1",link="log"))
-@ 
+@
 
 Then we can use \code{AICtab} to compare all the models.
 <<hurdle_AIC>>=
@@ -275,7 +271,7 @@ AICtab(fit_zipoisson,fit_zinbinom,fit_zinbinom1,fit_zinbinom1_bs,fit_hnbinom1)
 To get a rough idea of \code{glmmTMB}'s speed relative to
 \code{lme4} (the most commonly used mixed-model package for R),
 we try a few standard problems, enlarging the data sets by
-cloning the original data set (making multiple copies and 
+cloning the original data set (making multiple copies and
 sticking them together).
 
 <<contraception_sum,echo=FALSE>>=
@@ -287,7 +283,7 @@ meandiff <- mean(with(tmatContraception,
                       time[pkg=="glmer"]/time[pkg=="glmmTMB"]))
 @
 
-Figure~\ref{fig:contraception} shows the results of 
+Figure~\ref{fig:contraception} shows the results of
 replicating the \code{Contraception} data set
 (\Sexpr{nc} observations, \Sexpr{nl} levels in the
 random effects grouping level) from 1 to 40 times.
