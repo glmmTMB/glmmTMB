@@ -1185,7 +1185,7 @@ as.data.frame.ranef.glmmTMB <- function(x, ...) {
 #' @importFrom lme4 isLMM
 #' @importFrom lme4 refit
 ## don't export refit ...
-#' @description see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
+#' @description see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details
 isLMM.glmmTMB <- function(object) {
    fam <- family(object)
    fam$family=="gaussian" && fam$link=="identity"
@@ -1335,7 +1335,7 @@ coef.glmmTMB <- function(object,
 ##' the total number of trials when binomial responses are specified
 ##' as a two-column matrix.
 ##' \item Since \code{glmmTMB} does not fit models via iteratively
-##' weighted least squares, \code{working weights} (see \code{\link[stats]{weights.glm}}) are unavailable.
+##' weighted least squares, \code{working weights} (see \code{\link[stats:glm]{weights.glm}}) are unavailable.
 ##' }
 ##' @importFrom stats model.frame
 ##' @importFrom stats weights
