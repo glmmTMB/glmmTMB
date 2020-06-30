@@ -229,10 +229,6 @@ Alternatively, we can use an ``NB1'' fit (variance = $\phi \mu$).
 fit_zinbinom1 <- update(fit_zipoisson,family=nbinom1)
 @
 
-\notimpl{we should have a \code{getFamily} function:
-ideally it would also specify which are really implemented
-(although that's harder), and specify default links}
-
 Relax the assumption that total number of calls is strictly proportional
 to brood size (i.e. using log(brood size) as an offset):
 <<glmmTMBnbinom1vfit>>=
