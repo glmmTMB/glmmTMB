@@ -26,6 +26,6 @@ in the \code{weights} argument) can be extracted from a fitted model.
 the total number of trials when binomial responses are specified
 as a two-column matrix.
 \item Since \code{glmmTMB} does not fit models via iteratively
-weighted least squares, \code{working weights} (see \code{\link[stats]{weights.glm}}) are unavailable.
+weighted least squares, \code{working weights} (see \code{\link[stats:glm]{weights.glm}}) are unavailable.
 }
 }

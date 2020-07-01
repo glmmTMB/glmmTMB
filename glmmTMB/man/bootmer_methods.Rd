@@ -17,7 +17,7 @@
 \item{...}{additional arguments (for generic consistency; ignored)}
 }
 \description{
-see \code{\link[lme4]{refit}} and \code{\link[lme4]{isLMM}} for details
+see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details
 }
 \details{
 These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.

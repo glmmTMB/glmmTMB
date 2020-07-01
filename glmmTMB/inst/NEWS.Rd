@@ -3,7 +3,12 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.2}{
+\section{CHANGES IN VERSION 1.0.2.1}{
+	\itemize{
+      \item fix documentation links for CRAN checks
+	}
+}
+\section{CHANGES IN VERSION 1.0.2 (unreleased)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the \code{refit()} function is now re-exported (i.e., you no
