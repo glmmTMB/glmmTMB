@@ -4,7 +4,7 @@ author: "Mollie Brooks"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{simulate}
+  %\VignetteIndexEntry{Simulate from a fitted glmmTMB model}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---

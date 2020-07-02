@@ -30,7 +30,7 @@
 \usepackage{hhline}
 \usepackage{calc}
 \usepackage{tabularx}
-%\usepackage{threeparttable}
+\usepackage{threeparttable} % maybe not available elsewhere?
 \usepackage{wrapfig}
 \usepackage{adjustbox}
 \newcommand{\R}{{\sf R}}
@@ -338,7 +338,7 @@ See output in Table~\ref{tab:owls}.
 The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX. \emph{The current version (5.0.0) is giving us a little bit of trouble, so we've temporarily disabled evaluation of this code chunk \ldots}
 
 <<huxtable,results="asis",eval=FALSE>>=
-library("huxtable")
+## library("huxtable")
 cc <- c("intercept (mean)"="(Intercept)",
         "food treatment (starvation)"="FoodTreatment1",
         "parental sex (M)"="SexParent1",
