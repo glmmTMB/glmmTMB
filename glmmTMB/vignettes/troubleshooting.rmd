@@ -211,7 +211,7 @@ BFGS doesn't give us any warnings. Comparing the parameter estimates:
 
 ```{r ss_mod2optim_comp}
 (parcomp <- cbind(nlminb=unlist(fixef(mod2)),
-                  optim=unlist(fixef(mod2_optim)))
+                  optim=unlist(fixef(mod2_optim))))
 ```
 
 ```{r comp, echo=FALSE}
