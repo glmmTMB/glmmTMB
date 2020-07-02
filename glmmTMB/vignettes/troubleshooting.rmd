@@ -311,9 +311,9 @@ If you see this error, check that the response variable meets the assumptions of
 ## gradient length
 
 
-> Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x
+> Error in `nlminb(start = par, objective = fn, gradient = gr)` : gradient function must return a numeric vector of length x
 
-> Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x
+> Error in `optimHess(par.fixed, obj$fn, obj$gr)`: gradient in optim evaluated to length x
 
 Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)
 
