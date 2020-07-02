@@ -37,7 +37,8 @@ Imports:
     TMB (>= 1.7.14),
     lme4 (>= 1.1-18.9000),
     Matrix,
-    nlme
+    nlme,
+    numDeriv
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
@@ -66,13 +67,12 @@ Suggests:
     boot,
     texreg,
     xtable,
-    huxtable,
-    numDeriv
+    huxtable
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 NeedsCompilation: yes
 Encoding: UTF-8

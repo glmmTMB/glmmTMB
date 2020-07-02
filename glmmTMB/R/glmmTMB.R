@@ -1051,10 +1051,25 @@ fitTMB <- function(TMBStruc) {
         sdr <- NULL
     }
     if(!is.null(sdr$pdHess)) {
-      if(!sdr$pdHess) {
-        warning(paste0("Model convergence problem; ",
-                       "non-positive-definite Hessian matrix. ", 
-                       "See vignette('troubleshooting')"))
+       if(!sdr$pdHess) {
+          ## double-check (slower, more accurate hessian)
+          env <- environment(obj$fn)
+          par <- env$last.par.best
+          if (!is.null(rr <- env$random)) {
+              par <- par[-rr]
+          }
+          h <- numDeriv::jacobian(obj$gr, par)
+          eigs <- eigen(h)
+          if (min(eigs$values)>.Machine$double.eps) {
+              ## apparently fit is OK after all ...
+              sdr$pdHess <- TRUE
+              Vtheta <- try(solve(h), silent=TRUE)
+              if (!inherits(Vtheta,"try-error")) sdr$cov.fixed[] <- Vtheta
+          } else {
+              warning(paste0("Model convergence problem; ",
+                             "non-positive-definite Hessian matrix. ", 
+                             "See vignette('troubleshooting')"))
+          }
       } else if (control$eigval_check) {
         eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
         if (is.complex(eigval)) {
