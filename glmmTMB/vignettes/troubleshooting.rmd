@@ -55,6 +55,8 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
+**FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below)
+
 The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
 are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
 
@@ -201,7 +203,7 @@ The "false convergence" warning comes from the `nlminb()` optimizer, and is [dif
 
 The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We'll try option 3 and refit with the BFGS option from `optim()`:
 
-```{r ss_mod2optim}
+```{r ss_mod2optim,eval=FALSE}
 mod2_optim <- update(mod2,
                 control=glmmTMBControl(optimizer=optim,
                                        optArgs=list(method="BFGS")))
@@ -221,16 +223,7 @@ pzi1 <- exp(zi1)
 pzi2 <- exp(zi2)
 ```
 
-```{r hackcomp, echo=FALSE, eval=TRUE}
-## UGH: have to hack around all of the non-evaluation machinery
-zi1 <- -17.333945381341
-zi2 <- -11.4800818066051
-pzi1 <- 2.96457997868236e-08
-pzi2 <- 1.03338896489101e-05
-```
-
-The conditional-model parameters are practically identical. The dispersion parameters *look* quite different (`r round(zi1,1)` vs. `r round(zi2,1)`), but if we back-transform from the log scale (via `exp()`) we can see that they are both extremely small (`r signif(pzi1,3)` vs. `r signif(pzi2,3)`).
-
+The conditional-model parameters are practically identical. The dispersion parameters *look* quite different (`r round(zi1,1)` vs. `r round(zi2,1)`), but if we back-transform from the log scale (via `exp()`) we can see that they are both extremely small ($`r signif(pzi1,3)`$ vs. $`r signif(pzi2,3)`$).
 
 Simplify the model by switching from NB1 to Poisson:
 
@@ -259,6 +252,12 @@ In general models with non-positive definite Hessian matrices should be excluded
 ```{r genpois_NaN,cache=TRUE}
 m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
 ```
+
+```{r diag_genpois}
+diagnose(m1)
+```
+
+**FIXME**: no longer an eigenvalue problem, just an 'unusually large coefficients problem" due to ZI components that are $\approx 0$.
 
 In this example, the fixed-effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
 
