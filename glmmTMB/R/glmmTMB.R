@@ -1173,10 +1173,10 @@ summary.glmmTMB <- function(object,...)
 
     famL <- family(object)
 
-    mkCoeftab <- function(coefs,vcov) {
+    mkCoeftab <- function(coefs,vcovs) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
-                       "Std. Error" = sqrt(diag(vcov)))
+                       "Std. Error" = sqrt(diag(vcovs)))
         if (p > 0) {
             coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]),
                            deparse.level = 0)
@@ -1191,7 +1191,7 @@ summary.glmmTMB <- function(object,...)
     }
 
     ff <- fixef(object)
-    vv <- vcov(object)
+    vv <- vcov(object,include_mapped=TRUE)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),

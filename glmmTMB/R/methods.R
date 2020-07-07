@@ -324,12 +324,15 @@ df.residual.glmmTMB <- function(object, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
+##' @param include_mapped include mapped variables (these will be given variances and covariances of 0)
 ##' @param \dots ignored, for method compatibility
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
 ##' @export
-vcov.glmmTMB <- function(object, full=FALSE, ...) {
+vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
+  ## don't check_dots, car::Anova tries to pass 'complete'
+  ## check_dots(...)  
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
@@ -381,41 +384,56 @@ vcov.glmmTMB <- function(object, full=FALSE, ...) {
           if (length(nn)==0) return(nn)
           return(paste("theta",gsub(" ","",nn),sep="_"))
       }
+      ## nameList for estimated variables;
       nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
   }
+
 
   ## drop NA-mapped variables
 
   ## for matching map names vs nameList components ...
   par_components <- c("beta","betazi","betad","theta","thetazi")
 
+  fullNameList <- nameList
   map <- object$obj$env$map
-  for (m in seq_along(map)) {
-      if (length(NAmap <- which(is.na(map[[m]])))>0) {
-          w <- match(names(map)[m],par_components) ##
-          if (length(nameList)>=w) { ## may not exist if !full
-              nameList[[w]] <- nameList[[w]][-NAmap]
+  if (length(map)>0) {
+        ## fullNameList for all variables, including mapped vars
+      ## (nameList will get reduced shortly)
+      for (m in seq_along(map)) {
+          if (length(NAmap <- which(is.na(map[[m]])))>0) {
+              w <- match(names(map)[m],par_components) ##
+              if (length(nameList)>=w) { ## may not exist if !full
+                  nameList[[w]] <- nameList[[w]][-NAmap]
+              }
           }
       }
   }
 
   if (full) {
-      colnames(covF) <- rownames(covF) <- unlist(nameList)
+   colnames(covF) <- rownames(covF) <- unlist(nameList)
       res <- covF        ## return just a matrix in this case
   } else {
-      splitMat <- function(x) {
-          ss <- split(seq_along(colnames(x)),
-                      colnames(x))
-          lapply(ss,function(z) x[z,z,drop=FALSE])
-      }
-      covList <- splitMat(covF)
-      names(covList) <-
-          names(cNames)[match(names(covList),c("beta","betazi","betad"))]
+      ## extract block-diagonal matrix
+      ss <- split(seq_along(colnames(covF)), colnames(covF))
+      cl_names <- names(cNames)[match(names(ss),c("beta","betazi","betad"))]
+      covList <- vector("list",length(ss))
+      names(covList) <- names(ss) <- cl_names
       for (nm in names(covList)) {
+          m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           if (length(xnms <- nameList[[nm]])==0) {
               covList[[nm]] <- NULL
+          } else {
+              if (!include_mapped || length(map)==0) {
+                  dimnames(m) <- list(xnms,xnms)
+              } else {
+                  fnm <- fullNameList[[nm]]
+                  mm <- matrix(0,length(fnm),length(fnm),
+                               dimnames=list(fnm,fnm))
+                  mm[nameList[[nm]],nameList[[nm]]] <- m
+                  m <- mm
+              }
+              covList[[nm]] <- m
           }
-          else dimnames(covList[[nm]]) <- list(xnms,xnms)
       }
       res <- covList
       ##  FIXME: should vcov always return a three-element list
