@@ -86,9 +86,6 @@ make_family <- function(x,link) {
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 ##' \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. https://doi.org/10.1214/09-AOAS306.
 ##' \item{Shonkwiler, J. S. (2016). "Variance of the truncated negative binomial distribution." \emph{Journal of Econometrics} 195(2), 209–210. doi:10.1016/j.jeconom.2016.09.002
-
-
-
 ##' }
 ##' @export
 ##' @importFrom stats make.link
@@ -199,8 +196,11 @@ truncated_poisson <- function(link="log") {
 }
 
 #' @rdname nbinom2
+#' @importFrom stats dnbinom pnbinom
 #' @export	       	
 truncated_nbinom2 <- function(link="log") {
+    theta_errstr <- "theta (nbinom parameter) neither passed as an argument nor stored in enviroment"
+    missing_theta <- "one" ## or "stop" or "na"
     r <- list(family="truncated_nbinom2",
               variance=function(mu,theta) {
                       if (missing(theta)) {
