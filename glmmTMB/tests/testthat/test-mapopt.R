@@ -41,11 +41,20 @@ test_that("predict works with mapped params",
                        tolerance=1e-6)
           )
 
+m1_sd <- c(`(Intercept)` = 0.0342594326326741, minedno = 0)
+
 test_that("vcov works with mapped params", {
     expect_equal(dim(vcov(m1)$cond),c(1,1))
     expect_equal(dim(vcov(m1,full=TRUE)),c(1,1))
     expect_equal(dim(vcov(m2)$cond),c(2,2))
     expect_equal(dim(vcov(m2,full=TRUE)),c(2,2))
+    v1 <- vcov(m1,include_mapped=TRUE)
+    expect_equal(dim(v1$cond),c(2,2))
+    expect_equal(sqrt(diag(v1$cond)), m1_sd, tolerance=1e-6)
+})
+
+test_that("summary works with mapped params", {
+    expect_equal(summary(m1)$coef$cond[,"Std. Error"], m1_sd)
 })
 
 test_that("confint works with mapped params", {

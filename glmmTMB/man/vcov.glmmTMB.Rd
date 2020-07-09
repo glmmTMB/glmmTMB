@@ -4,14 +4,16 @@
 \alias{vcov.glmmTMB}
 \title{Calculate Variance-Covariance Matrix for a Fitted glmmTMB model}
 \usage{
-\method{vcov}{glmmTMB}(object, full = FALSE, ...)
+\method{vcov}{glmmTMB}(object, full = FALSE, include_mapped = FALSE, ...)
 }
 \arguments{
 \item{object}{a \dQuote{glmmTMB} fit}
 
 \item{full}{return a full variance-covariance matrix?}
 
-\item{\dots}{ignored, for method compatibility}
+\item{include_mapped}{include mapped variables (these will be given variances and covariances of 0)}
+
+\item{\dots}{ignored, for method compatibility (any values included here will throw an error)}
 }
 \value{
 By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
