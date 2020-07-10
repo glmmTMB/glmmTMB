@@ -291,7 +291,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ##  via deparse, but since that what was presumably done
             ##  internally to get the model frame names in the first place ...
             for (o in extractForm(fixedform,quote(offset))) {
-                offset_nm <- deparse(o)
+                offset_nm <- safe_deparse(o)
                 ## don't think this will happen, but ...
                 if (length(offset_nm)>1) {
                     stop("trouble reconstructing offset name")

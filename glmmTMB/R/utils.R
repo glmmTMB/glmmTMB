@@ -596,7 +596,7 @@ fix_predvars <- function(pv,tt) {
         tt <- RHSForm(tt, as.form=TRUE)
     }
     ## ugh, deparsing again ...
-    tt_vars <- vapply(attr(tt,"variables"),deparse,character(1))[-1]
+    tt_vars <- vapply(attr(tt, "variables"), safe_deparse,character(1))[-1]
     ## remove terminal paren - e.g. match term poly(x, 2) to
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
@@ -689,3 +689,5 @@ check_dots <- function(..., action="stop") {
     }
     return(NULL)
 }
+
+safe_deparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)

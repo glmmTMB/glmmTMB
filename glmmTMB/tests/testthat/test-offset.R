@@ -1,5 +1,6 @@
 stopifnot(require("testthat"),
-          require("glmmTMB"))
+          require("glmmTMB"),
+          require("lme4"))
 
 context("offsets")
 
@@ -72,3 +73,10 @@ test_that("LM with random crap in the formula", {
     expect_equal(unname(fixef(m1)$cond),unname(fixef(m2)$cond))
 })
 
+test_that("offset in do.call", {
+    ss <- lme4::sleepstudy
+    off <- rnorm(nrow(ss),10,20)
+    m1 <<- glmmTMB(Reaction ~ Days,ss,offset=off)
+    m2 <<- do.call(glmmTMB,list(Reaction ~ Days,ss,offset=off))
+    expect_equal(fixef(m1),fixef(m2))
+})
