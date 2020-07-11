@@ -291,7 +291,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ##  via deparse, but since that what was presumably done
             ##  internally to get the model frame names in the first place ...
             for (o in extractForm(fixedform,quote(offset))) {
-                offset_nm <- safe_deparse(o)
+                offset_nm <- deparse1(o)
                 ## don't think this will happen, but ...
                 if (length(offset_nm)>1) {
                     stop("trouble reconstructing offset name")
@@ -650,12 +650,20 @@ glmmTMB <- function(
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)
-    ## need evaluate offset within envi
-    if (!is.null(eval(substitute(offset),data,
-                      enclos=environment(formula)))) {
-        formula <- addForm0(formula,makeOp(substitute(offset),op=quote(offset)))
+    ## need to evaluate offset within environment
+    ## how do we figure out where offset exists/whether it has
+    ## been prematurely evaluated?
+    offsub <- substitute(offset)
+    if (is.numeric(offsub)) {
+        ## length may cause problems in formula
+        data[["..offset"]] <- offset
+        offsub <-quote(..offset)
     }
-
+    if (!is.null(eval(offsub,data,
+                      enclos=environment(formula)))) {
+        formula <- addForm0(formula,makeOp(offsub,
+                                           op=quote(offset)))
+    }
 
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
@@ -669,6 +677,7 @@ glmmTMB <- function(
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
+    mf$data <- data ## propagate ..offset modification?
 
     ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
