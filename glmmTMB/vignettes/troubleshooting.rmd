@@ -156,7 +156,7 @@ print(s_vals,digits=3)
 
 Here is another example (from Samantha Sherman):
 
-```{r load_ss_ex}
+```{r load_ss_ex,eval=TRUE}
 L <- load(system.file("vignette_data","sherman.rda",package="glmmTMB"))
 ```
 
@@ -211,12 +211,12 @@ mod2_optim <- update(mod2,
 
 BFGS doesn't give us any warnings. Comparing the parameter estimates:
 
-```{r ss_mod2optim_comp}
+```{r ss_mod2optim_comp,eval=TRUE}
 (parcomp <- cbind(nlminb=unlist(fixef(mod2)),
                   optim=unlist(fixef(mod2_optim))))
 ```
 
-```{r comp, echo=FALSE}
+```{r comp, echo=FALSE,eval=TRUE}
 zi1 <- parcomp["disp.(Intercept)","nlminb"]
 zi2 <- parcomp["disp.(Intercept)","optim"]
 pzi1 <- exp(zi1)
