@@ -1085,7 +1085,7 @@ fitTMB <- function(TMBStruc) {
           }
       } else if (control$eigval_check) {
           eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
-          if( is(eigval, "try-error") || ( min(e_check(eigval)) < .Machine$double.eps*10 ) ) {
+          if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
               warning(paste0("Model convergence problem; ",
                              "extreme or very small eigenvalues detected. ", 
                              "See vignette('troubleshooting')"))
