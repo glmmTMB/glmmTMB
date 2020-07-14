@@ -20,16 +20,17 @@
 ##' @param eval_eps numeric tolerance for 'bad' eigenvalues
 ##' @param evec_eps numeric tolerance for 'bad' eigenvector elements
 ##' @param big_coef numeric tolerance for large coefficients
-##' @param big_sd numeric tolerance for badly scaled
+##' @param big_sd_log10 numeric tolerance for badly scaled parameters (log10 scale), i.e. by default predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)
 ##' @param check_coefs identify large-magnitude coefficients?
 ##' @param check_hessian identify non-positive-definite Hessian components?
 ##' @param check_scales identify predictors with unusually small or large scales?
 ##' @return a logical value based on whether anything questionable was found
 ##' @importFrom numDeriv jacobian hessian
-
+##' @importFrom stats sd
 ##' @export
 ##'
-diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,big_coef=10,big_log10_sd=3,
+diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
+                     big_coef=10,big_sd_log10=3,
                      check_coefs=TRUE,
                      check_hessian=TRUE,
                      check_scales=TRUE) {
@@ -65,10 +66,10 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,big_coef=10,big_log10_sd=3
         ## zero-variance columns excluded (presumably intercepts,
         ##  if not will presumably be caught elsewhere as collinear with
         ##  with intercepts.  Detecting "(Intercept)" seems too fragile?
-        sdvec <- sdvec[sdvec>0 & abs(log10(sdvec))>big_log10_sd]
+        sdvec <- sdvec[sdvec>0 & abs(log10(sdvec))>big_sd_log10]
         if (length(sdvec)>0) {
             model_OK <- FALSE
-            cat(sprintf("\npredictors with unusually large or small standard deviations (|log10(sd)|>%g):\n\n",big_log10_sd))
+            cat(sprintf("\npredictors with unusually large or small standard deviations (|log10(sd)|>%g):\n\n",sdvec))
             print(sdvec)
             cat("\n",strwrap(paste("Predictor variables with very narrow or wide ranges generally give rise to parameters with very large or",
                                    "small magnitudes, which can sometimes exacerbate numerical instability, and may also be appear",

@@ -9,7 +9,7 @@ diagnose(
   eval_eps = 1e-05,
   evec_eps = 0.01,
   big_coef = 10,
-  big_log10_sd = 3,
+  big_sd_log10 = 3,
   check_coefs = TRUE,
   check_hessian = TRUE,
   check_scales = TRUE
@@ -24,13 +24,13 @@ diagnose(
 
 \item{big_coef}{numeric tolerance for large coefficients}
 
+\item{big_sd_log10}{numeric tolerance for badly scaled parameters (log10 scale), i.e. by default predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)}
+
 \item{check_coefs}{identify large-magnitude coefficients?}
 
 \item{check_hessian}{identify non-positive-definite Hessian components?}
 
 \item{check_scales}{identify predictors with unusually small or large scales?}
-
-\item{big_sd}{numeric tolerance for badly scaled}
 }
 \value{
 a logical value based on whether anything questionable was found
