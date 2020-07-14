@@ -1050,6 +1050,18 @@ fitTMB <- function(TMBStruc) {
     } else {
         sdr <- NULL
     }
+    ## generic complex eigenvalue checker
+    e_complex_check <- function(ev, tol=sqrt(.Machine$double.eps)) {
+        if (is.complex(ev)) {
+            if ((maxim <- max(abs(Im(ev)))) > tol) {
+                ev <- Re(ev)
+            } else {
+                stop(sprintf("detected complex eigenvalues of covariance matrix (max(abs(Im))=%g: try se=FALSE?",
+                             maxim))
+            }
+        }
+        return(ev)
+    }
     if(!is.null(sdr$pdHess)) {
        if(!sdr$pdHess) {
           ## double-check (slower, more accurate hessian)
@@ -1060,7 +1072,8 @@ fitTMB <- function(TMBStruc) {
           }
           h <- numDeriv::jacobian(obj$gr, par)
           eigs <- eigen(h)
-          if (min(eigs$values)>.Machine$double.eps) {
+          ev <- e_complex_check(eigs$values)
+          if (min(ev)>.Machine$double.eps) {
               ## apparently fit is OK after all ...
               sdr$pdHess <- TRUE
               Vtheta <- try(solve(h), silent=TRUE)
@@ -1071,24 +1084,15 @@ fitTMB <- function(TMBStruc) {
                              "See vignette('troubleshooting')"))
           }
       } else if (control$eigval_check) {
-        eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
-        if (is.complex(eigval)) {
-            ## FIXME: more principled cutoff?
-            if ((maxim <- max(abs(Im(eigval)))) > .Machine$double.eps*10) {
-                eigval <- Re(eigval)
-            } else {
-                stop(sprintf("detected complex eigenvalues of covariance matrix (max(abs(Im))=%g: try se=FALSE?",
-                             maxim))
-            }
-        }
-        if( is(eigval, "try-error") || ( min(eigval) < .Machine$double.eps*10 ) ) {
-          warning(paste0("Model convergence problem; ",
-                       "extreme or very small eigen values detected. ", 
-                       "See vignette('troubleshooting')"))
-        }
-     } ## eigenvalue check
-    }
-
+          eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
+          if( is(eigval, "try-error") || ( min(e_check(eigval)) < .Machine$double.eps*10 ) ) {
+              warning(paste0("Model convergence problem; ",
+                             "extreme or very small eigenvalues detected. ", 
+                             "See vignette('troubleshooting')"))
+          } ## bad eigval
+      } ## do eigval check
+    } ## pdHess exists
+        
     if ( !is.null(fit$convergence) && fit$convergence != 0)
         warning("Model convergence problem; ",
                 fit$message, ". ",
