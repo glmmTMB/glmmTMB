@@ -22,7 +22,7 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
-	
+
   template<class Type>
   Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
   {
@@ -36,7 +36,7 @@ namespace glmmtmb{
     if(!give_log) return exp(logres);
     else return logres;
   }
-	
+
   /* Simulate from generalized poisson distribution */
   template<class Type>
   Type rgenpois(Type theta, Type lambda) {
@@ -50,7 +50,7 @@ namespace glmmtmb{
     }
     return ans;
   }
-	
+
   /* Simulate from zero-truncated generalized poisson distribution */
   template<class Type>
   Type rtruncated_genpois(Type theta, Type lambda) {
@@ -236,7 +236,8 @@ enum valid_covStruct {
   exp_covstruct = 5,
   gau_covstruct = 6,
   mat_covstruct = 7,
-  toep_covstruct = 8
+  toep_covstruct = 8,
+  rr_covstruct = 9
 };
 
 enum valid_ziPredictCode {
@@ -320,11 +321,13 @@ struct per_term_info {
   int blockSize;     // Size of one block
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
+  int blockRank;     // rank of block if rr
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
+  matrix<Type> fact_load; // For rr case
 };
 
 template <class Type>
@@ -337,10 +340,12 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
       int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
+      int blockRank = (int) REAL(getListElement(y, "blockRank", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
+      (*this)(i).blockRank = blockRank;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
       if(!isNull(t)){
@@ -547,6 +552,15 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd.resize(n);  // For report
     term.sd.fill(sd);
   }
+  else if (term.blockCode == rr_covstruct){
+    // case: reduced rank
+    for(int i = 0; i < term.blockReps; i++){
+      ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
+      if (do_simulate) {
+        U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+      }
+    }
+  }
   else error("covStruct not implemented!");
   return ans;
 }
@@ -558,19 +572,22 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
-  int nr, np = 0, offset;
+  int nr, np = 0, offset, blockSize;
   for(int i=0; i < terms.size(); i++){
     nr = terms(i).blockSize * terms(i).blockReps;
     // Note: 'blockNumTheta=0' ==> Same parameters as previous term.
     bool emptyTheta = ( terms(i).blockNumTheta == 0 );
     offset = ( emptyTheta ? -np : 0 );
     np     = ( emptyTheta ?  np : terms(i).blockNumTheta );
+    // if rr then change the dimensions of u, otherwise as before
+    bool notrr = ( terms(i).blockRank == 0 );
+    blockSize = ( notrr ? terms(i).blockSize : terms(i).blockRank);
     vector<int> dim(2);
-    dim << terms(i).blockSize, terms(i).blockReps;
+    dim << blockSize, terms(i).blockReps;
     array<Type> useg( &u(upointer), dim);
     vector<Type> tseg = theta.segment(tpointer + offset, np);
     ans += termwise_nll(useg, tseg, terms(i), do_simulate);
-    upointer += nr;
+    upointer += (notrr ? nr : terms(i).blockRank * terms(i).blockReps);
     tpointer += terms(i).blockNumTheta;
   }
   return ans;
@@ -623,9 +640,63 @@ Type objective_function<Type>::operator() ()
   bool zi_flag = (betazi.size() > 0);
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
-
+  DATA_INTEGER(dorr);
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
+
+  vector<Type> bnew(Z.cols());
+  matrix<Type> lam;
+  if( dorr == 1 ){
+    Eigen::SparseMatrix<Type> lamsparse;
+    int upointer = 0; //this is a pointer for b
+    int unewpointer = 0; //this is a pointer for bnew which has more elements than b
+    int tpointer = 0;
+    int nr, nt, n, p;
+
+    for(int i=0; i < terms.size(); i++){
+      int nlv = terms(i).blockRank;
+      bool lv = ( nlv > 0 );
+      nr = (lv ? nlv * terms(i).blockReps: terms(i).blockSize * terms(i).blockReps);
+      // if it is a latent variable term, nr (the number of b's) is n*nlv, otherwise as before
+      nt = terms(i).blockNumTheta;
+      vector<Type> btmp(nr);
+      if(lv){
+        n = terms(i).blockReps;
+        p = terms(i).blockSize;
+        vector<Type> lam_diag = exp(theta.segment(tpointer, nlv));
+        vector<Type> lam_lower = theta.segment(tpointer + nlv, nt - nlv);
+
+        matrix<Type> newlam(p, nlv);
+        for (int j = 0; j < nlv; j++){
+          for (int i = 0; i < p; i++){
+            if (j > i)
+              newlam(i, j) = 0;
+            else if(i == j)
+              newlam(i, j) = lam_diag(j);
+            else
+              newlam(i, j) = lam_lower(j*p - (j + 1)*j/2 + i - 1 - j); //Fills by column
+          }
+        }
+        matrix<Type> I(n,n);
+        I.setIdentity();
+
+        lam = kronecker(I, newlam);
+        lamsparse = asSparseMatrix(lam);
+        btmp = b.segment(upointer,  nr);
+        bnew.segment(unewpointer, n*p) = lamsparse*btmp;
+
+        terms(i).fact_load = newlam; // For report
+      }else{
+        btmp = b.segment(upointer,  nr);
+        bnew.segment(unewpointer, nr) = btmp;
+      }
+      upointer += nr;
+      unewpointer += terms(i).blockSize * terms(i).blockReps;
+      tpointer += nt;
+    }
+  }else{
+    bnew = b;
+  }
 
   // Joint negative log-likelihood
   parallel_accumulator<Type> jnll(this);
@@ -635,7 +706,7 @@ Type objective_function<Type>::operator() ()
   jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
-  vector<Type> eta = Z * b + offset;
+  vector<Type> eta = Z * bnew + offset;
   if (!sparseX) {
     eta += X*beta;
   } else {
@@ -656,7 +727,7 @@ Type objective_function<Type>::operator() ()
     DATA_SPARSE_MATRIX(XdS);
     etad += XdS*betad;
   }
-  
+
   // Apply link
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
@@ -862,10 +933,19 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+  vector<matrix<Type> > fact_load(terms.size());
+  for(int i=0; i<terms.size(); i++){
+    // NOTE: Dummy terms reported as empty
+    if(terms(i).blockRank > 0){
+      fact_load(i) = terms(i).fact_load;
+    }
+  }
+
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(fact_load);
   SIMULATE {
     REPORT(yobs);
     REPORT(b);

@@ -50,10 +50,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
   ## make sure the order is right!
   sparseX <- sparseX[c("cond","zi","disp")]
-    
+
   ## FIXME: (1) should use proper tryCatch below
   if (!is(family,"family")) {
-      ## if family specified as list 
+      ## if family specified as list
       if (is.list(family)) {
           warning("specifying ",sQuote("family")," as a plain list is deprecated")
       }
@@ -104,7 +104,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]])
 
-    condReStruc <- with(condList, getReStruc(reTrms, ss))
+    condReStruc <- with(condList, getReStruc(reTrms, ss, aa))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss))
 
     grpVar <- with(condList, getGrpVar(reTrms$flist))
@@ -114,7 +114,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (is.null(weights)) weights <- rep(1, nobs)
 
   ## binomial family:
-  ## binomial()$initialize was only executed locally  
+  ## binomial()$initialize was only executed locally
   ## yobs could be a factor -> treat as binary following glm
   ## yobs could be cbind(success, failure)
   ## yobs could be binary
@@ -149,17 +149,18 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## need a 'dgTMatrix' (double, general, Triplet representation)
   sparseXval <- function(component,lst)
     { if (sparseX[[component]]) lst$X else Matrix::sparseMatrix(dims=c(0,0),i=integer(0),j=integer(0),x=numeric(0),giveCsparse=FALSE) }
+  rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
-    XS = sparseXval("cond",condList),  
+    XS = sparseXval("cond",condList),
     Z = condList$Z,
     Xzi = denseXval("zi",ziList),
     XziS = sparseXval("zi",ziList),
     Zzi = ziList$Z,
     Xd = denseXval("disp",dispList),
     XdS = sparseXval("disp",dispList),
-    
+
     ## Zdisp=dispList$Z,
     ## use c() on yobs, size to strip attributes such as 'AsIs'
     ##  (which confuse MakeADFun)
@@ -177,7 +178,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
-    whichPredict = whichPredict
+    whichPredict = whichPredict,
+    dorr = rrVal(condList)
   )
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -194,18 +196,39 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   rr0 <- function(n) {
        if (is.null(n)) numeric(0) else rep(0, n)
   }
+
+  b0 <- function(Z, ReStruc){
+    # ReStruc <- condReStruc;Z <- TMBStruc$data.tmb$Z
+    ncolZ <- ncol(Z)
+    nb <- ncolZ
+    blockCodes <- getVal(ReStruc,"blockCode")
+    blockRank <- getVal(ReStruc, "blockRank")
+    blockReps <- getVal(ReStruc, "blockReps")
+    blockSize <- getVal(ReStruc, "blockSize")
+    for (i in seq_along(blockRank)) {
+      if(blockRank[i]>0){
+        brr <- blockReps[i] * blockRank[i] #number of bs for rr
+        bOld <- blockReps[i] * blockSize[i] #number of bs assigned in ncolZ
+        blockb <- brr - bOld
+        nb <- nb + blockb
+      }
+    }
+    b <- rep(beta_init, nb)
+    b
+  }
+
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(beta_init, max(ncol(X),ncol(XS))),
                        betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
-                       b       = rep(beta_init, ncol(Z)),
+                       b       = b0(Z, condReStruc),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
                        theta   = rr0(sum(getVal(condReStruc,"blockNumTheta"))),
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
                        thetaf  = rr0(numThetaFamily)
                      ))
-    
+
   for (p in names(start)) {
       if (!(p %in% names(parameters))) {
           stop(sprintf("unrecognized vector '%s' in %s",p,sQuote("start")),
@@ -217,7 +240,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       }
       parameters[[p]] <- start[[p]]
   }
-    
+
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi")
   ## REML
@@ -254,9 +277,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
 
     terms <- NULL ## make sure it's empty in case we don't set it
-    
+
     nobs <- nrow(fr)
-    
+
     ## check for empty fixed form
     ## need to ignore environments when checking!
     ##  ignore.environment= arg only works with closures
@@ -265,7 +288,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         environment(y) <- emptyenv()
         return(identical(x,y))
     }
-        
+
     if (idfun(RHSForm(fixedform, as.form=TRUE), ~ 0) ||
         idfun(RHSForm(fixedform, as.form=TRUE), ~ -1)) {
         X <- matrix(ncol=0, nrow=nobs)
@@ -300,13 +323,14 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             }
         }
     }
-    
+
     ## ran-effects model frame (for predvars)
     ## important to COPY formula (and its environment)?
     ranform <- formula
     if (is.null(findbars(ranform))) {
         reTrms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
+        aa <- integer(0)
         ss <- integer(0)
     } else {
 
@@ -318,6 +342,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr, reorder.terms=FALSE)
 
         ss <- splitForm(formula)
+        #need to keep reTrmAddArgs to get n in rr
+        aa <- suppressWarnings(as.numeric(gsub(".*([0-9]+).*", "\\1", ss$reTrmAddArgs)))
+        aa[is.na(aa)] <- 0
         ss <- unlist(ss$reTrmClasses)
 
         Z <- t(reTrms$Zt)   ## still sparse ...
@@ -333,7 +360,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss, terms, offset)
+    namedList(X, Z, reTrms, ss, aa, terms, offset)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -359,7 +386,7 @@ getGrpVar <- function(x)
 ##' Calculates number of random effects, number of parameters,
 ##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
-##' @param ss a character string indicating a valid covariance structure. 
+##' @param ss a character string indicating a valid covariance structure.
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 ##' default is to use an unstructured  variance-covariance
 ##' matrix (\code{"us"}) for all blocks).
@@ -377,7 +404,7 @@ getGrpVar <- function(x)
 ##' getReStruc(rt)
 ##' @importFrom stats setNames dist
 ##' @export
-getReStruc <- function(reTrms, ss=NULL) {
+getReStruc <- function(reTrms, ss=NULL, aa=NULL) {
 
   ## information from ReTrms is contained in cnms, flist
   ## cnms: list of column-name vectors per term
@@ -395,13 +422,15 @@ getReStruc <- function(reTrms, ss=NULL) {
         blksize <- diff(reTrms$Gp) / nreps
         ## figure out number of parameters from block size + structure type
 
+        blkrank <- aa
+
         if (is.null(ss)) {
             ss <- rep("us",length(blksize))
         }
 
         covCode <- .valid_covstruct[ss]
 
-        parFun <- function(struc, blksize) {
+        parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
                    "0" = blksize, # diag
                    "1" = blksize * (blksize+1) / 2, # us
@@ -411,9 +440,10 @@ getReStruc <- function(reTrms, ss=NULL) {
                    "5" = 2,  # exp
                    "6" = 2,  # gau
                    "7" = 3,  # mat
-                   "8" = 2 * blksize - 1) # toep
+                   "8" = 2 * blksize - 1, # toep
+                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2) #rr
         }
-        blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
+        blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
         ans <-
             lapply( seq_along(ss), function(i) {
@@ -421,7 +451,8 @@ getReStruc <- function(reTrms, ss=NULL) {
                     list(blockReps = nreps[i],
                          blockSize = blksize[i],
                          blockNumTheta = blockNumTheta[[i]],
-                         blockCode = covCode[i]
+                         blockCode = covCode[i],
+                         blockRank = blkrank[i]
                          )
                 if(ss[i] == "ar1"){
                     ## FIXME: Keep this warning ?
@@ -467,7 +498,7 @@ okWeights <- function(x) {
 	TRUE
   #!is.na(match(x, .okWeightFamilies))
   ## x %in% .okWeightFamilies
-}	
+}
 
 ## Families for which binomial()$initialize is used
 .binomialFamilies <- c("binomial", "betabinomial")
@@ -502,7 +533,7 @@ binomialType <- function(x) {
 ##' @details
 ##' Binomial models with more than one trial (i.e., not binary/Bernoulli) can either be specified in the form \code{prob ~ ..., weights = N}, or in the more typical two-column matrix \code{cbind(successes,failures)~...} form.
 ##'
-##' Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify. 
+##' Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify.
 ##'
 ##' Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit) / (1+df.residual(fit)))} when comparing with \code{lm}.
 ##'
@@ -699,7 +730,7 @@ glmmTMB <- function(
 
     mf$formula <- combForm
     fr <- eval(mf,envir=environment(formula),enclos=parent.frame())
-    
+
     ## FIXME: throw an error *or* convert character to factor
     ## convert character vectors to factor (defensive)
     ## fr <- factorize(fr.form, fr, char.only = TRUE)
@@ -713,7 +744,7 @@ glmmTMB <- function(
     }
 
     if (is.null(weights)) weights <- rep(1,nobs)
-    
+
     ## sanity checks (skipped!)
     ## wmsgNlev <- checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
     ## wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
@@ -731,7 +762,7 @@ glmmTMB <- function(
             stop("matrix-valued responses are not allowed")
         }
     }
-    
+
     ## (1) transform 'y' appropriately for binomial models
     ##     (2-column matrix, factor, logical -> numeric)
     ## (2) warn on non-integer values
@@ -745,7 +776,7 @@ glmmTMB <- function(
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
-    
+
    if (grepl("^truncated", family$family) &&
        (!is.factor(y) && any(y<0.001)) && (ziformula == ~0)) {
         stop(paste0("'", names(respCol), "'", " contains zeros (or values close to zero). ",
@@ -762,8 +793,8 @@ glmmTMB <- function(
                             family$family))
         }
     }
-    
-    TMBStruc <- 
+
+    TMBStruc <-
         mkTMBStruc(formula, ziformula, dispformula,
                    combForm,
                    mf, fr,
@@ -832,7 +863,7 @@ glmmTMB <- function(
 ##' \item it also takes a \code{control} argument;
 ##' \item it returns a list with elements (at least) \code{par}, \code{objective}, \code{convergence} (0 if convergence is successful) and \code{message}
 ##' (the code internally handles output from \code{optim()}, by renaming the \code{value} component to \code{objective})
-##' 
+##'
 ##' }
 ##' @examples
 ##' ## fit with default (nlminb) and alternative (optim/BFGS) optimizer
@@ -860,7 +891,7 @@ glmmTMBControl <- function(optCtrl=NULL,
         }
         parallel <- as.integer(parallel)
     }
-  
+
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
@@ -917,9 +948,9 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' have been set up. It can be useful to run \code{\link{glmmTMB}} with
 ##' \code{doFit=TRUE}, adjust the components as required, and then
 ##' finish the fitting process with \code{fitTMB} (however, it is the
-##' user's responsibility to make sure that any modifications 
+##' user's responsibility to make sure that any modifications
 ##' create an internally consistent final fitted object).
-##' 
+##'
 ##' @param TMBStruc a list contain
 ##' @examples
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
@@ -930,7 +961,7 @@ glmmTMBControl <- function(optCtrl=NULL,
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
-    
+
     ## Assign OpenMP threads
     if (!is.null(control$parallel)) {
         n_orig <- TMB::openmp(NULL)
@@ -972,7 +1003,7 @@ fitTMB <- function(TMBStruc) {
         }
         return(res)
     }
-    
+
     if (control $ profile) {
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
@@ -1033,7 +1064,7 @@ fitTMB <- function(TMBStruc) {
                               profile = NULL,
                               silent = !verbose,
                               DLL = "glmmTMB"))
-        
+
         optTime <- system.time(fit <- optfun())
     }
 
@@ -1053,7 +1084,7 @@ fitTMB <- function(TMBStruc) {
     if(!is.null(sdr$pdHess)) {
       if(!sdr$pdHess) {
         warning(paste0("Model convergence problem; ",
-                       "non-positive-definite Hessian matrix. ", 
+                       "non-positive-definite Hessian matrix. ",
                        "See vignette('troubleshooting')"))
       } else if (control$eigval_check) {
         eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
@@ -1068,7 +1099,7 @@ fitTMB <- function(TMBStruc) {
         }
         if( is(eigval, "try-error") || ( min(eigval) < .Machine$double.eps*10 ) ) {
           warning(paste0("Model convergence problem; ",
-                       "extreme or very small eigen values detected. ", 
+                       "extreme or very small eigen values detected. ",
                        "See vignette('troubleshooting')"))
         }
      } ## eigenvalue check
@@ -1119,7 +1150,7 @@ fitTMB <- function(TMBStruc) {
     ## functions, if possible (for glm/effects compatibility)
     ff <- ret$modelInfo$family
     ## family has variance component with extra parameters
-    xvarpars <- (length(fv <- ff$variance)>0 &&  
+    xvarpars <- (length(fv <- ff$variance)>0 &&
                  length(formals(fv))>1)
     nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
     if (nbfam || xvarpars) {
@@ -1135,7 +1166,7 @@ fitTMB <- function(TMBStruc) {
 ##' @importFrom stats AIC BIC
 llikAIC <- function(object) {
     llik <- logLik(object)
-    AICstats <- 
+    AICstats <-
         c(AIC = AIC(llik), BIC = BIC(llik), logLik = c(llik),
           deviance = -2*llik, ## FIXME:
           df.resid = df.residual(object))
@@ -1153,7 +1184,7 @@ ngrps.glmmTMB <- function(object, ...) {
     ## FIXME: adjust reTrms names for consistency rather than hacking here
     names(res) <- gsub("List$","",names(res))
     return(res)
-    
+
 }
 
 ngrps.factor <- function(object, ...) nlevels(object)
@@ -1198,7 +1229,7 @@ summary.glmmTMB <- function(object,...)
                       names(ff))
 
     llAIC <- llikAIC(object)
-                   
+
     ## FIXME: You can't count on object@re@flist,
     ##	      nor compute VarCorr() unless is(re, "reTrms"):
     varcor <- VarCorr(object)
@@ -1215,7 +1246,7 @@ summary.glmmTMB <- function(object,...)
 		   ## fitMsgs = .merMod.msgs(object),
                    ## optinfo = object@optinfo
 		   ), class = "summary.glmmTMB")
-               
+
 }
 
 ## copied from lme4:::print.summary.merMod (makes use of

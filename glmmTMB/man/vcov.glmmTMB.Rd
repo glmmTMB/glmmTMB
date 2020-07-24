@@ -13,7 +13,7 @@
 
 \item{include_mapped}{include mapped variables (these will be given variances and covariances of 0)}
 
-\item{\dots}{ignored, for method compatibility (any values included here will throw an error)}
+\item{\dots}{ignored, for method compatibility}
 }
 \value{
 By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
