@@ -32,3 +32,5 @@ glmmTMB/src/Makevars
 
 doc-update
 
+*.Rcheck
+*.tar.gz
