@@ -827,6 +827,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         cf <- cf[nn]
         ss <- diag(vv)
         ## using [[-extraction; need to add component name explicitly
+        ci.tmp <- NULL
         if (length(cf)>0) {
             names(cf) <- names(ss) <-
                 paste(component, names(cf), sep=".")
@@ -840,7 +841,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
-                (nbeta <- length(fixef(object)[[component]]))>0) {
+                length(fixef(object)[[component]])>0) {
                 ## variance and estimates
                 ci <- rbind(ci, wald_comp(component))
             }
@@ -875,10 +876,12 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         } ## cond and zi components
         if (components.has("other")) {
             ## sigma
+            component <- "disp"
             ff <- object$modelInfo$family$family
             if (usesDispersion(ff)) {
-                if (!trivialDisp(object)) {
-                    ci <- rbind(ci, wald_comp("disp"))
+                if (!trivialDisp(object) &&
+                    length(fixef(object)[[component]])>0) {
+                    ci <- rbind(ci, wald_comp(component))
                 } else {
                     ci.sigma <- .CI_univariate_monotone(object,
                                                     sigma,
