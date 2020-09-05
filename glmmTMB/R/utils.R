@@ -435,13 +435,14 @@ inForm <- function(form,value) {
 ##' extractForm(~a+offset(b),quote(offset))
 ##' extractForm(~c,quote(offset))
 ##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' extractForm(~offset(x),quote(offset))
 ##' @export
 ##' @keywords internal
 extractForm <- function(term,value) {
     if (!inForm(term,value)) return(NULL)
     if (is.name(term) || !is.language(term)) return(NULL)
     if (identical(head(term),value)) {
-        return(term)
+        return(list(term))
     }
     if (length(term) == 2) {
         return(extractForm(term[[2]],value))

@@ -16,3 +16,14 @@ test_that("noSpecials", {
     expect_equal(noSpecials(~us+1), ~ us + 1)
     expect_equal(noSpecials(~1+x+us(1|f), delete=FALSE), ~ 1 + x + (1|f))
 })
+
+test_that("extractForm", {
+    expect_equal(extractForm(~a+offset(b),quote(offset)),
+                 list(quote(offset(b))))
+    expect_equal(extractForm(~c,quote(offset)), NULL)
+    expect_equal(extractForm(~a+offset(b)+offset(c),quote(offset)),
+                 list(quote(offset(b)),quote(offset(c))))
+    expect_equal(extractForm(~offset(x),quote(offset)),
+                 list(quote(offset(x))))
+
+})
