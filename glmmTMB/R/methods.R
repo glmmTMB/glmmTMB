@@ -382,7 +382,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
                  names(re),
                  sapply(re,"[[","blockNumTheta"))
           if (length(nn)==0) return(nn)
-          return(paste("theta",gsub(" ","",nn),sep="_"))
+          return(paste("theta",gsub(" ","",unlist(nn)),sep="_"))
       }
       ## nameList for estimated variables;
       nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
@@ -833,6 +833,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     ci <- rbind(ci, ci.tmp)
                 }
                 ## VarCorr -> stddev
+
                 cfun <- function(x) {
                     ss <- attr(x, "stddev")
                     names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
@@ -846,7 +847,9 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     }
                     return(ss)
                 }
-                reduce <- function(VC) sapply(VC[[component]], cfun)
+              
+                reduce <- function(VC) unlist(lapply(VC[[component]], cfun))
+              
                 ci.sd <- .CI_univariate_monotone(object,
                                                  VarCorr,
                                                  reduce = reduce,
@@ -860,6 +863,26 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ## but tough because of theta <-> sd/corr mapping;
                 ## instead, eliminate rows below where lowerCI==upperCI
                 ci <- rbind(ci, ci.sd)
+                ## VarCorr -> correlation
+                getCorrelation <- TRUE ## FIXME: Make 'getCorrelation' a function argument ???
+                if (getCorrelation) {
+                    mat2vec <- function(m) {
+                        ans <- structure(as.vector(m),
+                                         names=do.call(paste,c(expand.grid(dimnames(m)),sep=":")))
+                        ans[lower.tri(m)]
+                    }
+                    reduce <- function(VC) unlist(lapply(VC[[component]],
+                                                         function(x)mat2vec(attr(x, "correlation"))))
+                    ci.corr <- .CI_univariate_monotone(object,
+                                                       VarCorr,
+                                                       reduce = reduce,
+                                                       level = level,
+                                                       name.prepend=paste(component,
+                                                                          "Corr.",
+                                                                          sep="."),
+                                                       estimate = estimate)
+                    ci <- rbind(ci, ci.corr)
+                }
             }
         } ## cond and zi components
         if (components.has("other")) {
