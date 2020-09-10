@@ -439,34 +439,33 @@ getReStruc <- function(reTrms, ss=NULL, reXterms=NULL, fr=NULL) {
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
-        ans <-
-            lapply( seq_along(ss), function(i) {
-                tmp <-
-                    list(blockReps = nreps[i],
-                         blockSize = blksize[i],
-                         blockNumTheta = blockNumTheta[[i]],
-                         blockCode = covCode[i]
-                         )
-                if(ss[i] == "ar1") {
-                    ## FIXME: Keep this warning ?
-                    if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                        warning("AR1 not meaningful with intercept")
-                    if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                        stop("ar1() expects a single, factor variable as the time component")
-                    }
-                } else if(ss[i] == "ou"){
-                    times <- parseNumLevels(reTrms$cnms[[i]])
-                    if (ncol(times) != 1)
-                        stop("'ou' structure is for 1D coordinates only.")
-                    if (is.unsorted(times, strictly=TRUE))
-                        stop("'ou' is for strictly sorted times only.")
-                    tmp$times <- drop(times)
-                } else if(ss[i] %in% c("exp", "gau", "mat")){
-                    coords <- parseNumLevels(reTrms$cnms[[i]])
-                    tmp$dist <- as.matrix( dist(coords) )
+        ans <- list()
+        for (i in seq_along(ss)) {
+            tmp <- list(blockReps = nreps[i],
+                        blockSize = blksize[i],
+                        blockNumTheta = blockNumTheta[[i]],
+                        blockCode = covCode[i]
+                        )
+            if(ss[i] == "ar1") {
+                ## FIXME: Keep this warning ?
+                if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                    warning("AR1 not meaningful with intercept")
+                if (length(.getXlevels(reXterms[[i]],fr))!=1) {
+                    stop("ar1() expects a single, factor variable as the time component")
                 }
-                tmp
-            })
+            } else if(ss[i] == "ou"){
+                times <- parseNumLevels(reTrms$cnms[[i]])
+                if (ncol(times) != 1)
+                    stop("'ou' structure is for 1D coordinates only.")
+                if (is.unsorted(times, strictly=TRUE))
+                    stop("'ou' is for strictly sorted times only.")
+                tmp$times <- drop(times)
+            } else if(ss[i] %in% c("exp", "gau", "mat")){
+                coords <- parseNumLevels(reTrms$cnms[[i]])
+                tmp$dist <- as.matrix( dist(coords) )
+            }
+            ans[[i]] <- tmp
+        }
         setNames(ans, names(reTrms$Ztlist))
     }
 }
