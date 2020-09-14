@@ -665,6 +665,8 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
 ## Helper to get CI of simple *univariate monotone* parameter
 ## function, i.e. a function of 'fit$par' and/or 'fit$parfull'.
 ## Examples: 'sigma.glmmTMB' and some parts of 'VarCorr.glmmTMB'.
+## Works by pushing values for the lower and upper limits into
+## the object's parameter vector
 
 ##' @importFrom stats qchisq
 .CI_univariate_monotone <- function(object, f, reduce=NULL,
@@ -949,6 +951,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                       ...)
         ci <- confint(pp)
     }
+    ## FIXME: 
     ## if only conditional, strip component prefix
     if (all(substr(rownames(ci),1,5)=="cond.")) {
         rownames(ci) <- sub("^cond\\.","",rownames(ci))

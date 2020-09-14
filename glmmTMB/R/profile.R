@@ -161,6 +161,7 @@ profile.glmmTMB <- function(fitted,
 #' salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
 #' confint(salamander_prof1)
 #' confint(salamander_prof1,level=0.99)
+#' @importFrom stats approx coef na.omit
 #' @importFrom splines interpSpline backSpline
 #' @export
 confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
@@ -188,11 +189,11 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
             return(NA_real_)
         }
         for_spl <- splines::interpSpline(value~.focal,hh)
-        ## adapted from  splines:::backSpline.npolySpline
+        ## adapted from  splines:::backSpline.npolySpline: check for non-monotonic spline
         coeff <- coef(for_spl)
         bknots <- coeff[, 1]
         adiff <- diff(bknots)
-        if (prod(adiff)<=0) {
+        if (! (all(adiff<0) || all(adiff>0)) ) {
             warning("non-monotonic spline, falling back to linear interpolation")
             ## remove duplicates in a principled way (take duplicate with *greatest* z-value)
             hh <- hh[order(hh$value),]
