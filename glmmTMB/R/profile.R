@@ -166,7 +166,6 @@ profile.glmmTMB <- function(fitted,
 confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:
     ##   non-monotonic values: error and/or linear interpolation
-    ##   non-monotonic spline,
     qval <- 0.5*qchisq(level,df=1)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
@@ -181,13 +180,28 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     }
     ## fit spline and invert for one half (lower, upper) of the profile
     ci_fun_half <- function(hh) {
+        hh <- na.omit(hh)
         if (nrow(hh)==0) return(NA_real_)
         if (max(hh$value,na.rm=TRUE)<qval) {
             restr_prof_flag <- TRUE
+            warning("max profile values less than target: consider increasing level_max when computing profiles")
+            return(NA_real_)
         }
         for_spl <- splines::interpSpline(value~.focal,hh)
-        bak_spl <- splines::backSpline(for_spl)
-        predict(bak_spl,qval)$y
+        ## adapted from  splines:::backSpline.npolySpline
+        coeff <- coef(for_spl)
+        bknots <- coeff[, 1]
+        adiff <- diff(bknots)
+        if (prod(adiff)<=0) {
+            warning("non-monotonic spline, falling back to linear interpolation")
+            ## remove duplicates in a principled way (take duplicate with *greatest* z-value)
+            hh <- hh[order(hh$value),]
+            hh <- hh[!duplicated(hh$value,fromLast=TRUE),]
+            return(approx(hh$value, hh$.focal, xout=qval)$y)
+        } else {
+            bak_spl <- splines::backSpline(for_spl)
+            return(predict(bak_spl,qval)$y)
+        }
     }
     objList <- split(object,object$.par)
     if (is.null(parm)) {
@@ -196,7 +210,7 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     restr_prof_flag <- FALSE
     ci_mat <- t(vapply(objList[parm],ci_fun,numeric(2)))
     if (restr_prof_flag) {
-        warning("max profile values less than target: consider increasing level_max when computing profiles")
+
     }
     return(ci_mat)
 }
