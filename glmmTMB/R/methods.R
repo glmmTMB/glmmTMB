@@ -944,17 +944,23 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- cbind(L,par)
         }
         ci <- rbind(ci,L) ## really just adding column names!
-    }
-    else {  ## profile CIs
+    } else {  ## profile CIs
         pp <- profile(object, parm=parm, level_max=level,
                       parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
     }
-    ## FIXME: 
     ## if only conditional, strip component prefix
     if (all(substr(rownames(ci),1,5)=="cond.")) {
         rownames(ci) <- sub("^cond\\.","",rownames(ci))
+    }
+    ## check if we are
+    ## * estimating std devs: exponentiate CI endpoints
+    ## * estimating correlations: throw a warning
+    if (method %in% c("profile","uniroot")) {
+        if (any(names(object$fit$par)=="theta")) {
+            ## browser()
+        }
     }
     return(ci)
 }

@@ -193,15 +193,23 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
         coeff <- coef(for_spl)
         bknots <- coeff[, 1]
         adiff <- diff(bknots)
+        lin_approx <- FALSE
         if (! (all(adiff<0) || all(adiff>0)) ) {
             warning("non-monotonic spline, falling back to linear interpolation")
+            lin_approx <- TRUE
+        } else {
+            bak_spl <- try(splines::backSpline(for_spl), silent=TRUE)
+            if (!inherits(bak_spl,"try-error")) {
+                return(predict(bak_spl,qval)$y)
+            }
+            lin_approx <- TRUE
+            warning("spline problem, falling back to linear interpolation")
+        }
+        if (lin_approx) {
             ## remove duplicates in a principled way (take duplicate with *greatest* z-value)
             hh <- hh[order(hh$value),]
             hh <- hh[!duplicated(hh$value,fromLast=TRUE),]
             return(approx(hh$value, hh$.focal, xout=qval)$y)
-        } else {
-            bak_spl <- splines::backSpline(for_spl)
-            return(predict(bak_spl,qval)$y)
         }
     }
     objList <- split(object,object$.par)
