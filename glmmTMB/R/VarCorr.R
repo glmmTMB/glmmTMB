@@ -134,20 +134,16 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 
 # probably should change so it's similar to docov as above?
 # this is only assumming one fact_load matrix
-# FIX: need to adjust for nlv = 1
-rrSdCorr <- function(par){
+rrSdCorr <- function(par, isrr){
   xrr <- par
-  isfl <- sapply(par$fact_load, function(x) !identical(dim(x),c(0L,0L)))
-  if(any(isfl)){
-    fl <- which(isfl)
-    lambda <- xrr$fact_load[[fl]]
-    llt <- tcrossprod(lambda)
-    sdll <- sqrt(diag(llt))
-    xrr$sd[[fl]] <- sdll
-    sdi <- diag(1/sdll, nrow = length(sdll))
-    corr <- sdi %*% llt %*% sdi #could use cov2cor(llt)?
-    xrr$corr[[fl]] <- corr
-    }
+  fl <- which(isrr)
+  lambda <- xrr$fact_load[[fl]]
+  llt <- tcrossprod(lambda)
+  sdll <- sqrt(diag(llt))
+  xrr$sd[[fl]] <- sdll
+  sdi <- diag(1/sdll, nrow = length(sdll))
+  corr <- sdi %*% llt %*% sdi #could use cov2cor(llt)?
+  xrr$corr[[fl]] <- corr
   return(xrr)
 }
 
@@ -193,7 +189,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     reS <- x$modelInfo$reStruc
     familyStr <- family(x)$family
     # Need to calculate corr and sd for rr struc
-    xrep <- rrSdCorr(xrep)
+    isrr <- FALSE
+    isrr <- sapply(xrep$fact_load, function(x) !identical(dim(x),c(0L,0L)))
+    if(any(isrr))
+      xrep <- rrSdCorr(xrep, isrr)
     useSc <- if (missing(sigma)) {
         ## *only* report residual variance for Gaussian family ...
         ## *not* usesDispersion(familyStr)

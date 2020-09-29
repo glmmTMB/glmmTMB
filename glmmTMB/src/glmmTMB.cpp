@@ -936,7 +936,7 @@ Type objective_function<Type>::operator() ()
   vector<matrix<Type> > fact_load(terms.size());
   for(int i=0; i<terms.size(); i++){
     // NOTE: Dummy terms reported as empty
-    if(terms(i).blockRank > 0){
+    if(terms(i).blockNumTheta > 0){
       fact_load(i) = terms(i).fact_load;
     }
   }
