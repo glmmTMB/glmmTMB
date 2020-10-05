@@ -666,6 +666,13 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
 ## function, i.e. a function of 'fit$par' and/or 'fit$parfull'.
 ## Examples: 'sigma.glmmTMB' and some parts of 'VarCorr.glmmTMB'.
 
+## NOT roxygen (##') comments, as we don't want to trigger Rd file creation
+## @param object fitted model
+## @param f function
+## @param reduce
+## @param name.prepend
+## @param estimate
+
 ##' @importFrom stats qchisq
 .CI_univariate_monotone <- function(object, f, reduce=NULL,
                                     level=0.95,
@@ -692,7 +699,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     nm <- names(ans)
     tmp <- cbind(ans$lower, ans$upper)
     if (is.null(tmp) || nrow(tmp) == 0L) return (NULL)
-    sort2 <- function(x) if(any(is.nan(x))) x * NaN else sort(x)
+    sort2 <- function(x) if(any(is.na(x))) x*NA else sort(x)
     ans <- cbind( t( apply(tmp, 1, sort2) ) , ans$Estimate )
     colnames(ans) <- nm
     if (!is.null(name.prepend))
@@ -809,45 +816,51 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         parm <- getParms(parm, object, full)
     }
 
+    wald_comp <- function(component) {
+        vv <- vcov(object)[[component]]
+        cf <- fixef(object)[[component]]
+        ## strip tag (only really necessary for zi~, d~)
+        tag <- if (component=="disp") "d" else component
+        nn <- gsub(paste0(tag,"~"),"",colnames(vv))
+        ## vcov only includes estimated (not mapped/fixed)
+        ##  fixed-effect parameters
+        cf <- cf[nn]
+        ss <- diag(vv)
+        ## using [[-extraction; need to add component name explicitly
+        ci.tmp <- NULL
+        if (length(cf)>0) {
+            names(cf) <- names(ss) <-
+                paste(component, names(cf), sep=".")
+            ses <- sqrt(ss)
+            ci.tmp <- cf + ses %o% fac
+            if (estimate) ci.tmp <- cbind(ci.tmp, cf)
+        }
+        return(ci.tmp)
+    }
     if (method=="wald") {
         map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
-                (nbeta <- length(fixef(object)[[component]]))>0) {
+                length(fixef(object)[[component]])>0) {
                 ## variance and estimates
-                vv <- vcov(object)[[component]]
-                cf <- fixef(object)[[component]]
-                ## strip tag (only really necessary for zi~
-                nn <- gsub(paste0(component,"~"),"",colnames(vv))
-                ## vcov only includes estimated (not mapped/fixed)
-                ##  fixed-effect parameters
-                cf <- cf[nn]
-                ss <- diag(vv)
-                ## using [[-extraction; need to add component name explicitly
-                if (length(cf)>0) {
-                    names(cf) <- names(ss) <-
-                        paste(component, names(cf), sep=".")
-                    ses <- sqrt(ss)
-                    ci.tmp <- cf + ses %o% fac
-                    if (estimate) ci.tmp <- cbind(ci.tmp, cf)
-                    ci <- rbind(ci, ci.tmp)
+                ci <- rbind(ci, wald_comp(component))
+            }
+            ## VarCorr -> stddev
+            cfun <- function(x) {
+                ss <- attr(x, "stddev")
+                names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
+                cc <- attr(x,"correlation")
+                if (length(cc)>1) {
+                    nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                    cc <- cc[lower.tri(cc)]
+                    nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                    names(cc) <- nn
+                    ss <- c(ss,cc)
                 }
-                ## VarCorr -> stddev
-                cfun <- function(x) {
-                    ss <- attr(x, "stddev")
-                    names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
-                    cc <- attr(x,"correlation")
-                    if (length(cc)>1) {
-                        nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
-                        cc <- cc[lower.tri(cc)]
-                        nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
-                        names(cc) <- nn
-                        ss <- c(ss,cc)
-                    }
-                    return(ss)
-                }
-                reduce <- function(VC) sapply(VC[[component]], cfun)
-                ci.sd <- .CI_univariate_monotone(object,
+                return(ss)
+            }
+            reduce <- function(VC) sapply(VC[[component]], cfun)
+            ci.sd <- .CI_univariate_monotone(object,
                                                  VarCorr,
                                                  reduce = reduce,
                                                  level = level,
@@ -860,19 +873,24 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ## but tough because of theta <-> sd/corr mapping;
                 ## instead, eliminate rows below where lowerCI==upperCI
                 ci <- rbind(ci, ci.sd)
-            }
         } ## cond and zi components
         if (components.has("other")) {
             ## sigma
+            component <- "disp"
             ff <- object$modelInfo$family$family
             if (usesDispersion(ff)) {
-                ci.sigma <- .CI_univariate_monotone(object,
+                if (!trivialDisp(object) &&
+                    length(fixef(object)[[component]])>0) {
+                    ci <- rbind(ci, wald_comp(component))
+                } else {
+                    ci.sigma <- .CI_univariate_monotone(object,
                                                     sigma,
                                                     reduce = NULL,
                                                     level=level,
                                                     name.prepend="sigma",
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.sigma)
+                    ci <- rbind(ci, ci.sigma)
+                }
             }
             ## Tweedie power
             if (ff == "tweedie") {
