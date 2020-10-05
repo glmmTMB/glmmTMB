@@ -269,3 +269,10 @@ test_that("dispersion", {
     expect_equal(length(unique(predict(mod5, type="disp"))), length(unique(iris$Species)))
     expect_equal(length(unique(predict(mod5, type="disp", se.fit=TRUE)$se.fit)), length(unique(iris$Species)))
 })
+
+test_that("offset-only model (GH #625)", {
+    owls_nb0 <- glmmTMB(SiblingNegotiation ~ offset(log(BroodSize)),
+                        family = nbinom2(),
+                        data=Owls)
+    expect_equal(mean(predict(owls_nb0)), 1.88220473712677)
+})
