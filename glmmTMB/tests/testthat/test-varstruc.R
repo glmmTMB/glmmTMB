@@ -71,6 +71,17 @@ test_that("print ar1 (>1 RE)", {
 
 })
 
+test_that("ar1 requires factor time", {
+    expect_error(glmmTMB(Reaction ~ 1 +
+                             (1|Subject) + ar1(as.numeric(row)+0| Subject), sleepstudy),
+                 "expects a single")
+    ## works even when the factor is a weird/hard-to-recognize component
+    expect_is(glmmTMB(Reaction ~ 1 +
+                          (1|Subject) + ar1(relevel(factor(row),"2")+0| Subject),
+                      sleepstudy),
+              "glmmTMB")
+})
+
 ## FIXME: simpler to check formatVC() directly?
 get_vcout <- function(x,g="\\bSubject\\b") {
     cc <- capture.output(print(VarCorr(x)))
