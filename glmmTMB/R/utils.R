@@ -435,13 +435,14 @@ inForm <- function(form,value) {
 ##' extractForm(~a+offset(b),quote(offset))
 ##' extractForm(~c,quote(offset))
 ##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' extractForm(~offset(x),quote(offset))
 ##' @export
 ##' @keywords internal
 extractForm <- function(term,value) {
     if (!inForm(term,value)) return(NULL)
     if (is.name(term) || !is.language(term)) return(NULL)
     if (identical(head(term),value)) {
-        return(term)
+        return(list(term))
     }
     if (length(term) == 2) {
         return(extractForm(term[[2]],value))
@@ -596,7 +597,7 @@ fix_predvars <- function(pv,tt) {
         tt <- RHSForm(tt, as.form=TRUE)
     }
     ## ugh, deparsing again ...
-    tt_vars <- vapply(attr(tt,"variables"),deparse,character(1))[-1]
+    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
     ## remove terminal paren - e.g. match term poly(x, 2) to
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
@@ -688,4 +689,10 @@ check_dots <- function(..., action="stop") {
             paste(names(L), collapse=","))
     }
     return(NULL)
+}
+
+if (getRversion()<"4.0.0") {
+    deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...) {
+        paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+    }
 }

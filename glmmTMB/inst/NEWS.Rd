@@ -3,10 +3,18 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.2.1}{
-	\itemize{
-      \item fix documentation links for CRAN checks
-	}
+\section{CHANGES IN VERSION 1.0.2.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item truncated nbinom2 family now includes a \code{variance}
+      component
+    }
+  } % new features
+}
+\section{CHANGES IN VERSION 1.0.2.1 (2020-07-02)}{
+  \itemize{
+    \item fix documentation links for CRAN checks
+  }
 }
 \section{CHANGES IN VERSION 1.0.2 (unreleased)}{
   \subsection{USER-VISIBLE CHANGES}{
@@ -28,18 +36,17 @@
     \itemize{
       \item \code{summary} and model printing now work if
       \code{control=glmmTMBControl(optimizer=optim)} is used (GH #589)
-      \item structured covariance models now work in zero-inflation and
-      dispersion components (GH #579)
-      \item documentaion of formula for variance in beta family (GH #595)
+      \item structured covariance models now work in zero-inflation components (GH #579)
+      \item documentation of formula for variance in beta family (GH #595)
     }
   } % bug fixes
 }
-\section{CHANGES IN VERSION 1.0.1}{
-	\itemize{
-      \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)
-	}
+\section{CHANGES IN VERSION 1.0.1 (2020-03-15)}{
+  \itemize{
+    \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)
+  }
 }
-\section{CHANGES IN VERSION 1.0.0}{
+\section{CHANGES IN VERSION 1.0.0 (2020-02-03)}{
 
 The 1.0.0 release does not introduce any major changes or incompatibilities,
 but signifies that glmmTMB is considered stable and reliable for general use.
@@ -90,7 +97,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
   } % user-visible changes
 } % version 1.0.0
 
-\section{CHANGES IN VERSION 0.2.3}{
+\section{CHANGES IN VERSION 0.2.3 (2019-01-11)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{ranef} now returns information about conditional variances (as
@@ -122,7 +129,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
     } % itemize
   } % user-visible
 } % version 0.2.3
-\section{CHANGES IN VERSION 0.2.2}{
+\section{CHANGES IN VERSION 0.2.2 (2018-07-03)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item REML is now an option (GH #352). It is typically only for
@@ -142,7 +149,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
   }
 }
 
-\section{CHANGES IN VERSION 0.2.1}{
+\section{CHANGES IN VERSION 0.2.1 (2018-05-11)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item likelihood profiles (via \code{profile}) and likelihood

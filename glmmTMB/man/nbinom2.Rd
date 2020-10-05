@@ -68,6 +68,7 @@ and the predicted mean as \eqn{\mu}{mu}:
       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
+     \item{truncated_nbinom2}{Zero-truncated version of nbinom2: variance expression from Shonkwiler2016.}
      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.)}
      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
@@ -85,5 +86,6 @@ and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)
 \item Morris  W (1997). "Disentangling Effects of Induced Plant Defenses and Food Quantity on Herbivores by Fitting Nonlinear Models." \emph{American Naturalist} 150:299-327.
 \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. https://doi.org/10.1214/09-AOAS306.
+\item Shonkwiler, J. S. (2016). "Variance of the truncated negative binomial distribution." \emph{Journal of Econometrics} 195(2), 209–210. doi:10.1016/j.jeconom.2016.09.002
 }
 }

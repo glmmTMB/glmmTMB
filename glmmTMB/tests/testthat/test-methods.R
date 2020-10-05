@@ -250,6 +250,8 @@ test_that("vcov", {
           .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
     ## vcov doesn't include dispersion for non-dispersion families ...
     expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
+    ## oops, dot_check() disabled in vcov.glmmTMB ...
+    ## expect_error(vcov(fm2,x="junk"),"unknown arguments")
 })
 
 set.seed(101)
@@ -371,3 +373,28 @@ test_that("binomial response types work with data in external scope", {
     f3 <- fixef(refit(f3b,s3[[1]]))
     expect_equal(f1,f3)
 })
+
+test_that("confint works for models with dispformula", {
+    ## FIXME: should make this an example
+    sim1 <- function(nfac=40, nt=100, facsd=0.1, tsd=0.15, mu=0, residsd=1) {
+        dat <- expand.grid(fac=factor(letters[1:nfac]), t=1:nt)
+        n <- nrow(dat)
+        dat$REfac <- rnorm(nfac, sd=facsd)[dat$fac]
+        dat$REt <- rnorm(nt, sd=tsd)[dat$t]
+        dat$x <- rnorm(n, mean=mu, sd=residsd) + dat$REfac + dat$REt
+        dat
+    }
+    set.seed(101)
+    d1 <- sim1(mu=100, residsd=10)
+    d2 <- sim1(mu=200, residsd=5)
+    d1$sd <- "ten"
+    d2$sd <- "five"
+    dat <- rbind(d1, d2)
+    m1 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
+    ref_val <- structure(c(3.14851028784965, 1.30959944530366, 3.25722952319077, 
+                           1.46335165911997, 3.20286990552021, 1.38647555221182), .Dim = 2:3,
+                         .Dimnames = list(c("disp.(Intercept)", "disp.sdten"),
+                                          c("2.5 %", "97.5 %", "Estimate")))
+    expect_equal(tail(confint(m1),2), ref_val)
+})
+

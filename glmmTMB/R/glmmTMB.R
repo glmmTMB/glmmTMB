@@ -104,8 +104,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]])
 
-    condReStruc <- with(condList, getReStruc(reTrms, ss))
-    ziReStruc <- with(ziList, getReStruc(reTrms, ss))
+    condReStruc <- with(condList, getReStruc(reTrms, ss, reXterms, fr))
+    ziReStruc <- with(ziList, getReStruc(reTrms, ss, reXterms, fr))
 
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
@@ -291,7 +291,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ##  via deparse, but since that what was presumably done
             ##  internally to get the model frame names in the first place ...
             for (o in extractForm(fixedform,quote(offset))) {
-                offset_nm <- deparse(o)
+                offset_nm <- deparse1(o)
                 ## don't think this will happen, but ...
                 if (length(offset_nm)>1) {
                     stop("trouble reconstructing offset name")
@@ -304,8 +304,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## ran-effects model frame (for predvars)
     ## important to COPY formula (and its environment)?
     ranform <- formula
+
     if (is.null(findbars(ranform))) {
-        reTrms <- NULL
+        reTrms <- reXterms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         ss <- integer(0)
     } else {
@@ -318,6 +319,27 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr, reorder.terms=FALSE)
 
         ss <- splitForm(formula)
+
+        ## terms for the model matrix in each RE term
+        ## this is imperfect: it should really be done in mkReTrms/mkBlist,
+        ## where we are generating these terms anyway on the way
+        ## to constructing Z, but that's in lme4 so we can't change it
+        ## unless absolutely necessary
+        termsfun <- function(x) {
+            ## this is a little magic: copying lme4:::mkBlist approach
+            ff <- eval(substitute( ~ foo, list(foo = x[[2]]))) ## make formula from LHS
+            tt <- try(terms(ff, data=fr), silent=TRUE)         ## construct terms
+            if (inherits(tt,"try-error")) {
+                stop(
+                    sprintf("can't evaluate RE term %s: simplify?",
+                            sQuote(deparse(ff)))
+                )
+            }
+            tt
+        }
+        
+        reXterms <- lapply(ss$reTrmFormulas, termsfun)
+        
         ss <- unlist(ss$reTrmClasses)
 
         Z <- t(reTrms$Zt)   ## still sparse ...
@@ -333,7 +355,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss, terms, offset)
+    namedList(X, Z, reTrms, ss, terms, offset, reXterms)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -363,6 +385,8 @@ getGrpVar <- function(x)
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 ##' default is to use an unstructured  variance-covariance
 ##' matrix (\code{"us"}) for all blocks).
+##' @param reXterms terms objects corresponding to each RE term
+##' @param fr model frame
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -377,7 +401,7 @@ getGrpVar <- function(x)
 ##' getReStruc(rt)
 ##' @importFrom stats setNames dist
 ##' @export
-getReStruc <- function(reTrms, ss=NULL) {
+getReStruc <- function(reTrms, ss=NULL, reXterms=NULL, fr=NULL) {
 
   ## information from ReTrms is contained in cnms, flist
   ## cnms: list of column-name vectors per term
@@ -415,33 +439,33 @@ getReStruc <- function(reTrms, ss=NULL) {
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, SIMPLIFY=FALSE)
 
-        ans <-
-            lapply( seq_along(ss), function(i) {
-                tmp <-
-                    list(blockReps = nreps[i],
-                         blockSize = blksize[i],
-                         blockNumTheta = blockNumTheta[[i]],
-                         blockCode = covCode[i]
-                         )
-                if(ss[i] == "ar1"){
-                    ## FIXME: Keep this warning ?
-                    if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                        warning("AR1 not meaningful with intercept")
+        ans <- list()
+        for (i in seq_along(ss)) {
+            tmp <- list(blockReps = nreps[i],
+                        blockSize = blksize[i],
+                        blockNumTheta = blockNumTheta[[i]],
+                        blockCode = covCode[i]
+                        )
+            if(ss[i] == "ar1") {
+                ## FIXME: Keep this warning ?
+                if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                    warning("AR1 not meaningful with intercept")
+                if (length(.getXlevels(reXterms[[i]],fr))!=1) {
+                    stop("ar1() expects a single, factor variable as the time component")
                 }
-                if(ss[i] == "ou"){
-                    times <- parseNumLevels(reTrms$cnms[[i]])
-                    if (ncol(times) != 1)
-                        stop("'ou' structure is for 1D coordinates only.")
-                    if (is.unsorted(times, strictly=TRUE))
-                        stop("'ou' is for strictly sorted times only.")
-                    tmp$times <- drop(times)
-                }
-                if(ss[i] %in% c("exp", "gau", "mat")){
-                    coords <- parseNumLevels(reTrms$cnms[[i]])
-                    tmp$dist <- as.matrix( dist(coords) )
-                }
-                tmp
-            })
+            } else if(ss[i] == "ou"){
+                times <- parseNumLevels(reTrms$cnms[[i]])
+                if (ncol(times) != 1)
+                    stop("'ou' structure is for 1D coordinates only.")
+                if (is.unsorted(times, strictly=TRUE))
+                    stop("'ou' is for strictly sorted times only.")
+                tmp$times <- drop(times)
+            } else if(ss[i] %in% c("exp", "gau", "mat")){
+                coords <- parseNumLevels(reTrms$cnms[[i]])
+                tmp$dist <- as.matrix( dist(coords) )
+            }
+            ans[[i]] <- tmp
+        }
         setNames(ans, names(reTrms$Ztlist))
     }
 }
@@ -650,12 +674,20 @@ glmmTMB <- function(
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)
-    ## need evaluate offset within envi
-    if (!is.null(eval(substitute(offset),data,
-                      enclos=environment(formula)))) {
-        formula <- addForm0(formula,makeOp(substitute(offset),op=quote(offset)))
+    ## need to evaluate offset within environment
+    ## how do we figure out where offset exists/whether it has
+    ## been prematurely evaluated?
+    offsub <- substitute(offset)
+    if (is.numeric(offsub)) {
+        ## length may cause problems in formula
+        data[["..offset"]] <- offset
+        offsub <-quote(..offset)
     }
-
+    if (!is.null(eval(offsub,data,
+                      enclos=environment(formula)))) {
+        formula <- addForm0(formula,makeOp(offsub,
+                                           op=quote(offset)))
+    }
 
     environment(ziformula) <- environment(formula)
     call$ziformula <- ziformula
@@ -669,6 +701,7 @@ glmmTMB <- function(
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
+    mf$data <- data ## propagate ..offset modification?
 
     ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
@@ -1192,10 +1225,10 @@ summary.glmmTMB <- function(object,...)
 
     famL <- family(object)
 
-    mkCoeftab <- function(coefs,vcov) {
+    mkCoeftab <- function(coefs,vcovs) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
-                       "Std. Error" = sqrt(diag(vcov)))
+                       "Std. Error" = sqrt(diag(vcovs)))
         if (p > 0) {
             coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]),
                            deparse.level = 0)
@@ -1210,7 +1243,7 @@ summary.glmmTMB <- function(object,...)
     }
 
     ff <- fixef(object)
-    vv <- vcov(object)
+    vv <- vcov(object,include_mapped=TRUE)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),
