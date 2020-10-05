@@ -6,7 +6,7 @@
 Calculates number of random effects, number of parameters,
 block size and number of blocks.  Mostly for internal use.}
 \usage{
-getReStruc(reTrms, ss = NULL)
+getReStruc(reTrms, ss = NULL, reXterms = NULL, fr = NULL)
 }
 \arguments{
 \item{reTrms}{random-effects terms list}
@@ -15,6 +15,10 @@ getReStruc(reTrms, ss = NULL)
 Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 default is to use an unstructured  variance-covariance
 matrix (\code{"us"}) for all blocks).}
+
+\item{reXterms}{terms objects corresponding to each RE term}
+
+\item{fr}{model frame}
 }
 \value{
 a list
