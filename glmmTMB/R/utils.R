@@ -696,3 +696,21 @@ if (getRversion()<"4.0.0") {
         paste(deparse(expr, width.cutoff, ...), collapse = collapse)
     }
 }
+
+## in case these are useful, we can document and export them later ...
+rnbinom1 <- function(n, mu, phi) {
+    ## var = mu*(1+phi) = mu*(1+mu/k) -> k = mu/phi
+    rnbinom(n, mu=mu, size=mu/phi)
+}
+
+dnbinom1 <- function(x, mu, phi, ...) {
+    dnbinom(n, mu=mu, size=mu/phi, ...)
+}
+
+pnbinom1 <- function(q, mu, phi, ...) {
+    pnbinom(q, mu=mu, size=mu/phi, ...)
+}
+
+qnbinom1 <- function(p, mu, phi, log=FALSE) {
+    pnbinom(p, mu=mu, size=mu/phi, ...)
+}
