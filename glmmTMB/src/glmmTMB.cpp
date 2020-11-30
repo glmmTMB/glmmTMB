@@ -659,11 +659,12 @@ Type objective_function<Type>::operator() ()
       nr = (lv ? nlv * terms(i).blockReps: terms(i).blockSize * terms(i).blockReps);
       // if it is a latent variable term, nr (the number of b's) is n*nlv, otherwise as before
       nt = terms(i).blockNumTheta;
-      vector<Type> btmp(nr);
       if(lv){
+        vector<Type> btmp(nr);
         n = terms(i).blockReps;
         p = terms(i).blockSize;
         vector<Type> lam_diag = exp(theta.segment(tpointer, nlv));
+        // vector<Type> lam_diag = theta.segment(tpointer, nlv);
         vector<Type> lam_lower = theta.segment(tpointer + nlv, nt - nlv);
 
         matrix<Type> newlam(p, nlv);
@@ -687,8 +688,9 @@ Type objective_function<Type>::operator() ()
 
         terms(i).fact_load = newlam; // For report
       }else{
-        btmp = b.segment(upointer,  nr);
-        bnew.segment(unewpointer, nr) = btmp;
+        vector<Type> btmp2(nr);
+        btmp2 = b.segment(upointer,  nr);
+        bnew.segment(unewpointer, nr) = btmp2;
       }
       upointer += nr;
       unewpointer += terms(i).blockSize * terms(i).blockReps;
@@ -941,6 +943,7 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+  REPORT(mu);
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);

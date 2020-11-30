@@ -21,18 +21,17 @@ startParams <- function(parameters,
                         family,
                         condReStruc,
                         start = NULL,
-                        start.fa = F,
                         map = NULL,
                         seed = NULL,
-                        jitter.var = 0,
-                        jitter.res = F,
-                        refit.Start = F) {
+                        jitter.sd = 0,
+                        jitter.res = F) {
   if(!is.null(seed)) set.seed(seed)
+  # get the starting values for the factor loadings and latent variables
   favalues <- function(yobs, mu, weights, fr,
                        formula, ziformula, dispformula,
                        condReStruc, family, phi = NULL,
-                       start.met, start.fa, jitter.var = 0,
-                       jitter.res = F, refit.Start = F){
+                       start.met, jitter.sd = 0,
+                       jitter.res = F){
     nobs <- length(yobs)
     fam <- family$family
     rank <- vapply(condReStruc, function(x) x[["blockRank"]], numeric(1))
@@ -44,7 +43,7 @@ startParams <- function(parameters,
       # need to test this... not normal
       resid <- family$dev.resids(y = yobs, mu = mu, wt = weights)
       if(jitter.res)
-        resid <- resid  + rnorm(length(resid), 0, 1*jitter.var)
+        resid <- resid  + rnorm(length(resid), 0, jitter.sd)
     }
     if (start.met == "ds.res") {
       # ### Get the dunn smyth residuals
@@ -63,6 +62,12 @@ startParams <- function(parameters,
         u <- runif(n = nobs, min = a, max = b)
         resid <- qnorm(u)
       }
+      if (fam == "binomial"){
+        a <- pbinom(yobs - 1, 1, mu)
+        b <- pbinom(yobs, 1, mu)
+        u <- runif(n = nobs, min = a, max = b)
+        resid <- qnorm(u)
+      }
     }
     resid[is.infinite(resid)] <- 0; resid[is.nan(resid)] <- 0
     resid <- as.data.frame(resid)
@@ -71,99 +76,36 @@ startParams <- function(parameters,
     names(par.list) <- c("theta", "b", "fact_load")
     # Use glmmTMB to get initial starting values for factor loadings and latent variables
     # I have not implemented it for other random effect terms... do we want to fit all of the re?
-    if(!start.fa){
-      fr.res <- cbind(fr, resid)
-      ranForm <- findbars(RHSForm(formula))
-      rrTrm <- as.character(ranForm[ranForm==namBlk][[1]])
-      x <- paste(rrTrm[2], rrTrm[1], rrTrm[3])
-      resForm <- formula(paste("resid ~ 0 +", "rr(", x , ",", nlv, ")"))
-      # Fixing sd to 1
-      fit.res <- glmmTMB(resForm, data = fr.res, family = gaussian,
-                         start=list(betad = c(log(1))), map = list(betad = factor(c(NA)))) #residual model
-      # needed because glmmTMB is now returning a list (FIX ME)
-      par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
-      par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
-      # Add jitter to latent variables
-      par.list$b <-  par.list$b + rnorm(length(par.list$b), 0, 1*jitter.var)
-      if(refit.Start){
-        fit.fix.b <- glmmTMB(resForm, data = fr.res, family = gaussian,
-                             start=list(betad = c(log(1)), b = c(par.list$b)),
-                             map = list(betad = factor(c(NA)), b = factor(rep(NA, length(par.list$b))))) #residual model
-        par.list$theta <- fit.fix.b$obj$env$parList(fit.fix.b$fit$par, fit.fix.b$fit$parfull)$theta
-        # predict.lambda.b <- predict(fit.fix.b, type = "response")
-        # exp(par.list$theta [1]) * par.list$b
-        # par.list$b
-        par.list$fact_load <- fit.fix.b$obj$env$report(fit.fix.b$fit$parfull)$fact_load[[1]]
-      }
-    }
-    #### apply factor analysis to the DS residuals
-    # NEED to generalize this!
-    #### Get the upper matrix of the loadings by applying QR decompositon
-    QR.decomp <- function(lambda, u, nlv, p){
-      if(nlv > 1 & p > 2){
-        qr.decom <- qr(t(lambda))
-        sgn <- sign(diag(qr.R(qr.decom)))
-        R.new <- diag(sgn) %*% qr.R(qr.decom)
-        Q.new <- qr.Q(qr.decom) %*% diag(sgn)
+    fr.res <- cbind(fr, resid)
+    ranForm <- findbars(RHSForm(formula))
+    rrTrm <- as.character(ranForm[ranForm == namBlk][[1]])
+    x <- paste(rrTrm[2], rrTrm[1], rrTrm[3])
+    resForm <- formula(paste("resid ~ 0 +", "rr(", x , ",", nlv, ")"))
+    # residual model; assuming gaussian and fixing sd to 1
+    fit.res <- glmmTMB(resForm, data = fr.res, family = gaussian, start = list(betad = c(log(1))), map = list(betad = factor(c(NA))))
+    par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
+    par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
+    # Add jitter to latent variables
+    par.list$b <- par.list$b + rnorm(length(par.list$b), 0, jitter.sd)
 
-        u <- u%*%Q.new
-        u <- as.vector(t(u))
-
-        loglam <- log(diag(R.new))
-        lam <- t(R.new)[t(upper.tri(R.new))]
-        theta <- c(loglam, lam)
-      } else {
-        sig <- sign(diag(lambda));
-        lambda <- t(t(lambda)*sig)
-        u <- t(t(u)*sig)
-        theta <- lambda
-      }
-      return(list(theta = theta, u = u, fact_load = t(R.new)))
-    }
-
-    if(start.fa){
-      n <- condReStruc[[namBlk]]$blockReps
-      p <- condReStruc[[namBlk]]$blockSize
-      resid$id <- fr$id #TMBStruc$condList$reTrms$flist
-      resid$grp <- fr$species
-      resi <- reshape(resid, timevar ="grp", idvar = "id", direction = "wide")
-      resi <- resi[,-1]
-      if (n > p){
-        fa  <-  try(factanal(resi,factors=nlv,scores = "regression"))
-        lambda <- matrix(fa$loadings,p,nlv)
-        index <- fa$scores
-      } else if(n < p){
-        fa  <-  try(factanal(t(resi), factors=nlv, rotation = "varimax",scores = "regression"))
-        lambda <- fa$scores
-        index <- matrix(fa$loadings,n, nlv)
-      }
-
-      if(refit.Start){
-        jittered.b <- index + matrix( rnorm(length(index), 0, 1*jitter.var), ncol = nlv)
-        bT <- matrix(jittered.b, ncol = nlv, byrow = T)
-        b.bT <- crossprod(bT)
-        lambda.new <- crossprod(as.matrix(resi), bT) %*% solve(b.bT)
-        theta.b.new <- QR.decomp(lambda.new, jittered.b, nlv, p)
-        par.list$theta <- theta.b.new$theta
-        par.list$b <- theta.b.new$u
-        par.list$fact_load <- theta.b.new$fact_load
-      }else{
-        theta.b <- QR.decomp(lambda, index, nlv, p)
-        par.list$theta <- theta.b$theta
-        par.list$b <- theta.b$u
-        par.list$fact_load <- theta.b$fact_load
-
-        par.list$b <-  par.list$b + rnorm(length(par.list$b), 0, 1*jitter.var)
-      }
-    }
+    # rescale b and theta
+    # if(nlv > 0){
+    #   par.list.fit <- par.list
+    #   b.mat <- matrix(par.list.fit$b, ncol = nlv, byrow = T) # b's are by row
+    #   sd.b <- sqrt(diag(cov(b.mat)) )
+    #   b.scale <- diag(x = 1/sd.b, nrow = length(sd.b))
+    #   b.scaled <- b.mat %*% b.scale
+    #   par.list$b <- as.vector(t(b.scaled))
+    #   }
 
     return(par.list)
   }
 
+  # get the starting values for the fixed parameters and for the rr parameters (theta and b)
   startVals <-  function(yobs, weights, fr, Xd,
                          family, formula, ziformula, dispformula,
-                         condReStruc, parameters, start.met, start.fa, jitter.var,
-                         jitter.res = F, refit.Start = F){
+                         condReStruc, parameters, start.met,
+                         jitter.sd, jitter.res = F){
     start <- parameters #starting parameters
 
     fam <- family$family
@@ -180,28 +122,10 @@ startParams <- function(parameters,
       phi <- as.matrix(Xd) %*% exp(fixed.pars$betad) #FIX: should look at sparse version
     # (apply factor analysis) to residuals and get starting values for rr
     fastart <- favalues(yobs, mu, weights, fr, formula, ziformula, dispformula,
-                        condReStruc, family, phi, start.met, start.fa,
-                        jitter.var, jitter.res, refit.Start)
+                        condReStruc, family, phi, start.met,
+                        jitter.sd, jitter.res)
 
-    # refit to get updated estimates of fixed parameters
-    if(refit.Start){
-      lambda <- t(as.matrix(fastart$fact_load)) # factor loadings
-      matrix.b <- matrix(fastart$b, ncol = 2, byrow = T)
-      blam <- as.data.frame(matrix.b %*% lambda)
-      names(blam) <- levels(fr$species)
-      blam <- cbind(blam, id = unique(fr$id))
-      blam.long <- reshape2::melt(blam, id.vars = "id") #put b*lambda into long format
-      names(blam.long)[2:3] <- c("species", "blamda")
-      fr.off <- left_join(fr, blam.long, by = c("species", "id"))
-
-      refit.fixed <- glmmTMB(fixedform, ziformula = ziformula, dispformula = dispformula,
-                             offset = blamda, data = fr.off, fam, start = NULL)
-      re.fixed.pars <- refit.fixed$obj$env$parList(refit.fixed$fit$par, refit.fixed$fit$parfull)
-      start.fixed <- re.fixed.pars
-    }else{
-      start.fixed <- fixed.pars
-    }
-
+    start.fixed <- fixed.pars
     # Set starting values for fixed parameters from model fit.fixed
     fix.names <- !(names(start) %in% c("b", "theta"))
     for (i in names(start)[fix.names]) {
@@ -228,13 +152,16 @@ startParams <- function(parameters,
     return(start)
   }
 
-  if(start == "res" || start == "ds.res" || start == "jitter.res"){
-    start.met <- start
-    start <- startVals(yobs, weights, fr, Xd,
-                       family, formula, ziformula, dispformula,
-                       condReStruc, parameters, start.met, start.fa,
-                       jitter.var, jitter.res, refit.Start)
-  }
+    if(start == "res" || start == "ds.res" || start == "jitter.res"){
+        start.met <- start
+        start <- startVals(yobs, weights, fr, Xd,
+                           family, formula, ziformula, dispformula,
+                           condReStruc, parameters, start.met,
+                           jitter.sd, jitter.res)
+      }
+  # else{
+        # start$b <- start$b + rnorm(length(start$b), 0, sd = jitter.sd)
+      # }
 
   for (p in names(start)) {
     if (!(p %in% names(parameters))) {
@@ -247,6 +174,7 @@ startParams <- function(parameters,
     }
     parameters[[p]] <- start[[p]]
   }
+
   return(parameters)
 }
 
@@ -287,13 +215,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        whichPredict=integer(0),
                        REML=FALSE,
                        start=NULL,
-                       start.fa = FALSE,
                        map=NULL,
                        sparseX=NULL,
                        seed = NULL,
-                       jitter.var = 0,
-                       jitter.res = F,
-                       refit.Start = F) {
+                       jitter.sd = 0,
+                       jitter.res = F) {
 
   if(!is.null(seed)) set.seed(seed)
   ## handle family specified as naked list
@@ -504,11 +430,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               family,
                               condReStruc,
                               start = start,
-                              start.fa = start.fa,
                               seed,
-                              jitter.var = jitter.var,
-                              jitter.res = jitter.res,
-                              refit.Start = refit.Start)
+                              jitter.sd = jitter.sd,
+                              jitter.res = jitter.res)
   }
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
@@ -906,14 +830,12 @@ glmmTMB <- function(
     control=glmmTMBControl(),
     REML=FALSE,
     start=NULL,
-    start.fa = FALSE,
     map=NULL,
     sparseX=NULL,
     n.init = 1,
     seed = NULL,
-    jitter.var = 0,
-    jitter.res = F,
-    refit.Start = F
+    jitter.sd = 0,
+    jitter.res = F
     )
 {
 
@@ -1097,13 +1019,11 @@ glmmTMB <- function(
                  verbose=verbose,
                  REML=REML,
                  start=start,
-                 start.fa = start.fa,
                  map=map,
                  sparseX=sparseX,
                  seed = seed, #need to check if this works
-                 jitter.var = jitter.var,
-                 jitter.res = jitter.res,
-                 refit.Start = refit.Start)
+                 jitter.sd = jitter.sd,
+                 jitter.res = jitter.res)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir = TMBStruc)
@@ -1112,8 +1032,6 @@ glmmTMB <- function(
     if (!doFit) return(TMBStruc)
 
     n.i = 1
-    # if (n.init > 1)
-      # seed <- sample(1:10000, n.init)
 
     fit.ni <- vector("list", n.init)
     TMBStruc.ni <- TMBStruc #TMBStruc is the original, if n.init > 1 then change starting params if start == "res"
@@ -1136,11 +1054,9 @@ glmmTMB <- function(
                                                    family = family,
                                                    condReStruc = condReStruc,
                                                    start = start, #FIX
-                                                   start.fa = start.fa,
                                                    seed = NULL,
-                                                   jitter.var = jitter.var,
-                                                   jitter.res = jitter.res,
-                                                   refit.Start = refit.Start))
+                                                   jitter.sd = jitter.sd,
+                                                   jitter.res = jitter.res))
         }
 
       ## pack all the bits we will need for fitTMB
@@ -1156,7 +1072,6 @@ glmmTMB <- function(
       }
       n.i <- n.i + 1
     } #end while loop
-    # return(list(res, fit.ni))
     return(res)
 }
 
@@ -1348,6 +1263,7 @@ fitTMB <- function(TMBStruc) {
                               parameters,
                               map = mapArg,
                               random = randomArg,
+                              inner.control=list(mgcmax = 1e+200,maxit = 1000),
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
