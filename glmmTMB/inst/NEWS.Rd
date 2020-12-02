@@ -10,7 +10,14 @@
       component
     }
   } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{Anova} with \code{type="III"} now handles
+      \code{component} argument correctly, more robust to trivial models
+    }
+  }
 }
+
 \section{CHANGES IN VERSION 1.0.2.1 (2020-07-02)}{
   \itemize{
     \item fix documentation links for CRAN checks
