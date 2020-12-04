@@ -15,3 +15,5 @@ glmmTMB/vignettes/cache
 .#*
 *.tgz
 *.zip
+*.log
+*.status
