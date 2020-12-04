@@ -12,3 +12,6 @@ glmmTMB/vignettes/*.tex
 glmmTMB/vignettes/*.out
 glmmTMB/vignettes/figure
 glmmTMB/vignettes/cache
+.#*
+*.tgz
+*.zip
