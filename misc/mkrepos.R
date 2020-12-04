@@ -24,6 +24,7 @@ ufun <- function(pkg_ver=pkg_version,hash,ext,base_dir=FALSE) {
 }
 
 
+src <- sprintf("glmmTMB_%s.tar.gz",pkg_version)
 macbin <- sprintf("glmmTMB_%s.tgz",pkg_version)
 winbin <- sprintf("glmmTMB_%s.zip",pkg_version)
 download.file(ufun(hash=mhash,ext="tgz"), dest=macbin)
@@ -33,7 +34,11 @@ download.file(ufun(hash=whash,ext="zip"), dest=winbin)
 library(drat)
 insertPackage(macbin,"repos")
 insertPackage(winbin,"repos")
+insertPackage(src,"repos")
 
 ## to install:
-install.packages("glmmTMB", repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",
-                 type="binary")
+## install.packages("glmmTMB", repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",
+##                 type="binary")
+unlink(macbin)
+unlink(winbin)
+unlink(src)
