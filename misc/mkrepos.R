@@ -42,8 +42,10 @@ insertPackage(winbin,"repos")
 insertPackage(src,"repos")
 
 ## to install:
-## install.packages("glmmTMB", repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",
-##                 type="binary")
+if (FALSE) {
+    install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos",
+                     type="source")
+}
 unlink(macbin)
 unlink(winbin)
 unlink(src)
