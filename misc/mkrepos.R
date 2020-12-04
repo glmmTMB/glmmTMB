@@ -30,6 +30,11 @@ winbin <- sprintf("glmmTMB_%s.zip",pkg_version)
 download.file(ufun(hash=mhash,ext="tgz"), dest=macbin)
 download.file(ufun(hash=whash,ext="zip"), dest=winbin)
 
+system("git checkout master")
+system('R CMD build --compact-vignettes="both" glmmTMB')
+
+system("git checkout gh-pages")
+
 ## put stuff in the right place
 library(drat)
 insertPackage(macbin,"repos")
