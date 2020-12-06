@@ -601,15 +601,15 @@ fix_predvars <- function(pv,tt) {
     ## remove terminal paren - e.g. match term poly(x, 2) to
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
-    ##  and *first* comma but not arg ... 
+    ##  but not *first* comma nor arg ...
+    ##  could possibly try init_regexp <- "^([^,]+).*" ?
     init_regexp <- "^([(^:_.[:alnum:]]+).*"
     tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())
-    ## maybe multiple variables per pv term ... [[-1]] ignores head
+    ## maybe multiple variables per pv term ... [-1] ignores head
     ## FIXME: test for really long predvar strings ????
-    pv_strings <- vapply(pv,deparse,FUN.VALUE=character(1),
-                         width.cutoff=500)[-1]
+    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
     pv_strings <- gsub(init_regexp,"\\1",pv_strings)
     for (i in seq_along(tt_vars)) {
         w <- match(tt_vars_short[[i]],pv_strings)
