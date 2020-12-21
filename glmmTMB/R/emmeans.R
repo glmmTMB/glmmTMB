@@ -72,12 +72,13 @@ recover_data.glmmTMB <- function(object, ...) {
 # @rdname downstream_methods
 # @aliases downstream_methods
 # @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", vcov., ....) {
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", vcov., ...) {
     ## browser()
-    L <- as.list(...)
+    L <- list(...)
     if (length(L)>0) {
-        warning("ignored extra arguments to emm_basis.glmmTMB: ",
-                paste(names(L),collapse=", "))
+        ## don't warn: $misc and $options are always passed through ...
+        ## warning("ignored extra arguments to emm_basis.glmmTMB: ",
+        ## paste(names(L),collapse=", "))
     }
     if (missing(vcov.)) {
         V <- as.matrix(vcov(object)[[component]])
