@@ -4,7 +4,9 @@
 # via usethis::use_github_action_check_standard()
 # run in subdirectory:
 #    https://stackoverflow.com/questions/57806624/github-actions-how-to-build-project-in-sub-directory
-
+#  https://stackoverflow.com/questions/58139175/running-actions-in-another-directory
+# https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsworking-directory
+# https://github.community/t/github-actions-working-directory-incorrectly-documented-unexpected-value-working-directory/16076
 on:
   push:
     branches:
@@ -79,7 +81,7 @@ jobs:
         env:
           _R_CHECK_CRAN_INCOMING_REMOTE_: false
         run: rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")
-	working-directory: glmmTMB
+	working-directory: ./glmmTMB
         shell: Rscript {0}
 
       - name: Upload check results
