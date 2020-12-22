@@ -36,3 +36,4 @@ doc-update
 
 *.Rcheck
 *.tar.gz
+*.Rout
