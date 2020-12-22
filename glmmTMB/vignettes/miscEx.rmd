@@ -3,7 +3,7 @@ title: "Miscellaneous examples"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{miscellaneous examples}
+  %\VignetteIndexEntry{Miscellaneous examples}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---

@@ -4,7 +4,7 @@ author: "Ben Bolker"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{post-hoc MCMC}
+  %\VignetteIndexEntry{post-hoc MCMC with glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
