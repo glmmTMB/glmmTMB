@@ -8,10 +8,6 @@
 # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsworking-directory
 # https://github.community/t/github-actions-working-directory-incorrectly-documented-unexpected-value-working-directory/16076
 
-defaults:
-  run:
-    working-directory: ./glmmTMB
-
 on:
   push:
     branches:
@@ -29,6 +25,8 @@ jobs:
     runs-on: ${{ matrix.config.os }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+
+    working-directory: ./glmmTMB
 
     strategy:
       fail-fast: false
