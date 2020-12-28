@@ -74,13 +74,15 @@ jobs:
           done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "20.04"))')
         working-directory: ./glmmTMB
 
-      - name: Install dependencies
+      - name: Install extra LaTeX packages
+        run: |
+          apt-get install texlive-science texlive-latex-extra
+        working-directory: ./glmmTMB
+
+- name: Install dependencies
         run: |
           remotes::install_deps(dependencies = TRUE)
           remotes::install_cran("rcmdcheck")
-          install.packages("tinytex")
-          tinytex::install_tinytex()
-          tinytex::tlmgr_install(c("framed","lineno","siunitx","colortbl","multirow","hhline","caption","calc","tabularx","wrapfig","adjustbox"))
         shell: Rscript {0}
         working-directory: ./glmmTMB
 
