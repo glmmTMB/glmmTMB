@@ -79,7 +79,7 @@ jobs:
           apt-get install texlive-science texlive-latex-extra
         working-directory: ./glmmTMB
 
-- name: Install dependencies
+       - name: Install dependencies
         run: |
           remotes::install_deps(dependencies = TRUE)
           remotes::install_cran("rcmdcheck")
