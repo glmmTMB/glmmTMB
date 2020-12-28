@@ -7,7 +7,6 @@
 #  https://stackoverflow.com/questions/58139175/running-actions-in-another-directory
 # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsworking-directory
 # https://github.community/t/github-actions-working-directory-incorrectly-documented-unexpected-value-working-directory/16076
-
 on:
   push:
     branches:
