@@ -78,9 +78,9 @@ jobs:
         run: |
           remotes::install_deps(dependencies = TRUE)
           remotes::install_cran("rcmdcheck")
-          install.packages('tinytex')
+          install.packages("tinytex")
           tinytex::install_tinytex()
-          shell: Rscript {0}
+        shell: Rscript {0}
         working-directory: ./glmmTMB
 
       - name: Check
