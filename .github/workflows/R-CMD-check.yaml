@@ -12,6 +12,7 @@ on:
     branches:
       - main
       - master
+      - github_actions
   pull_request:
     branches:
       - main
