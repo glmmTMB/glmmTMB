@@ -75,7 +75,7 @@ jobs:
         working-directory: ./glmmTMB
 
       - name: Install extra LaTeX packages
-        run: sudo apt-get install texlive-science texlive-latex-extra
+        run: sudo apt-get install texlive-science texlive-latex-extra texlive-bibtex-extra
         working-directory: ./glmmTMB
 
       - name: Install dependencies
