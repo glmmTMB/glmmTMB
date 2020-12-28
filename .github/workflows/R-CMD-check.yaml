@@ -80,6 +80,7 @@ jobs:
           remotes::install_cran("rcmdcheck")
           install.packages("tinytex")
           tinytex::install_tinytex()
+          tinytex::tlmgr_install(c("framed","lineno","siunitx","colortbl","multirow","hhline","caption","calc","tabularx","wrapfig","adjustbox"))
         shell: Rscript {0}
         working-directory: ./glmmTMB
 
