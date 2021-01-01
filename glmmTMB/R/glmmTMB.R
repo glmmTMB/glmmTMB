@@ -36,7 +36,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        REML=FALSE,
                        start=NULL,
                        map=NULL,
-                       sparseX=NULL) {
+                       sparseX=NULL,
+                       control=glmmTMBControl()) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
@@ -82,7 +83,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                  " family")
         ## FIXME: Depending on the final estimates, we should somehow
         ## check that this fixed dispersion is small enough.
-        betad_init <- log( sqrt( .Machine$double.eps ) )
+        betad_init <- control$zerodisp_val
         dispformula[] <- ~1
         mapArg <- c(mapArg,list(betad = factor(NA))) ## Fix betad
     } else {
@@ -811,7 +812,8 @@ glmmTMB <- function(
                    REML=REML,
                    start=start,
                    map=map,
-                   sparseX=sparseX)
+                   sparseX=sparseX,
+                   control=control)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir=TMBStruc)
@@ -835,6 +837,7 @@ glmmTMB <- function(
 ##'                  the negative log-likelihood in parallel
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
+##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
@@ -881,7 +884,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            profile=FALSE,
                            collect=FALSE,
                            parallel = NULL,
-                           eigval_check = TRUE) {
+                           eigval_check = TRUE,
+                           zerodisp_val=log(sqrt(.Machine$double.eps))) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -900,7 +904,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check)
+              eigval_check, zerodisp_val)
 }
 
 ##' collapse duplicated observations

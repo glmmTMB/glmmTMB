@@ -259,5 +259,27 @@ test_that("contrasts arg", {
                  tolerance=1e-4)
 })
 
+test_that("zero disp setting", {
+    suppressWarnings(fm0z1 <- glmmTMB(Reaction ~ 1 + (1|Subject), sleepstudy,
+                                      dispformula=~0))
+    fm0z2 <- update(fm0z1,
+                    control=glmmTMBControl(zerodisp_val=log(1e-3)))
+
+    if (FALSE) {
+        getvc <- function(p) {
+            fmz <- update(fm0z1,
+                          control=glmmTMBControl(zerodisp_val=log(10^(-p))))
+            ## figure out warnings?
+            val <- sqrt(c(VarCorr(fmz)$cond[[1]]))
+            return(val)
+        }
+    
+        pvec <- seq(3,16,by=0.25)
+        vvec <- sapply(pvec, getvc)
+        plot(pvec,vvec)
+        abline(v=-log10(sqrt(.Machine$double.eps)))
+    }
+
+})
 
 
