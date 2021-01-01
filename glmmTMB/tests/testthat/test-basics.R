@@ -266,6 +266,7 @@ test_that("zero disp setting", {
                     control=glmmTMBControl(zerodisp_val=log(1e-3)))
 
     if (FALSE) {
+        fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
         getvc <- function(p) {
             fmz <- update(fm0z1,
                           control=glmmTMBControl(zerodisp_val=log(10^(-p))))
@@ -274,9 +275,11 @@ test_that("zero disp setting", {
             return(val)
         }
     
-        pvec <- seq(3,16,by=0.25)
+        pvec <- seq(3,25,by=0.25)
         vvec <- sapply(pvec, getvc)
-        plot(pvec,vvec)
+        par(las=1)
+        plot(pvec,vvec,log="y")
+        sqrt(c(VarCorr(fm0)$cond[[1]]))
         abline(v=-log10(sqrt(.Machine$double.eps)))
     }
 
