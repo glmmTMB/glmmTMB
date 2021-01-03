@@ -3,7 +3,7 @@ title: "Troubleshooting with glmmTMB"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{troubleshooting}
+  %\VignetteIndexEntry{Troubleshooting with glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 params:

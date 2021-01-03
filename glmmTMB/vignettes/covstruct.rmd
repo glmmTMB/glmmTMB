@@ -4,7 +4,7 @@ author: "Kasper Kristensen"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{random effect structures}
+  %\VignetteIndexEntry{Covariance structures with glmmTMB}
   %\VignettePackage{glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
