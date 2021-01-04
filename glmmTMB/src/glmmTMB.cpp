@@ -663,8 +663,8 @@ Type objective_function<Type>::operator() ()
         vector<Type> btmp(nr);
         n = terms(i).blockReps;
         p = terms(i).blockSize;
-        vector<Type> lam_diag = exp(theta.segment(tpointer, nlv));
-        // vector<Type> lam_diag = theta.segment(tpointer, nlv);
+        // vector<Type> lam_diag = exp(theta.segment(tpointer, nlv));
+        vector<Type> lam_diag = theta.segment(tpointer, nlv);
         vector<Type> lam_lower = theta.segment(tpointer + nlv, nt - nlv);
 
         matrix<Type> newlam(p, nlv);

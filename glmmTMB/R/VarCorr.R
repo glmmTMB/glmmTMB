@@ -137,13 +137,18 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 rrSdCorr <- function(par, isrr){
   xrr <- par
   fl <- which(isrr)
-  lambda <- xrr$fact_load[[fl]]
-  llt <- tcrossprod(lambda)
-  sdll <- sqrt(diag(llt))
-  xrr$sd[[fl]] <- sdll
-  sdi <- diag(1/sdll, nrow = length(sdll))
-  corr <- sdi %*% llt %*% sdi #could use cov2cor(llt)?
-  xrr$corr[[fl]] <- corr
+  do1rrSdCorr <- function(par, fl){
+    lambda <- par$fact_load[[fl]]
+    llt <- tcrossprod(lambda)
+    sdll <- sqrt(diag(llt))
+    sdi <- diag(1/sdll, nrow = length(sdll))
+    corr <- sdi %*% llt %*% sdi
+    return(list(sd = sdll, corr = corr))
+  }
+  # not sure if this is the best way... will go back
+  sdCorr <- lapply(fl, function(x) do1rrSdCorr(par, x))
+  xrr$sd[fl] <- lapply(seq_along(fl), function(x) sdCorr[[x]]$sd)
+  xrr$corr[fl] <- lapply(seq_along(fl), function(x) sdCorr[[x]]$corr)
   return(xrr)
 }
 

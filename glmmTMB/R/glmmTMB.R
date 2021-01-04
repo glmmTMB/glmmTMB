@@ -27,7 +27,7 @@ startParams <- function(parameters,
                         jitter.res = F) {
   if(!is.null(seed)) set.seed(seed)
   # get the starting values for the factor loadings and latent variables
-  favalues <- function(yobs, mu, weights, fr,
+  rrValues <- function(yobs, mu, weights, fr,
                        formula, ziformula, dispformula,
                        condReStruc, family, phi = NULL,
                        start.met, jitter.sd = 0,
@@ -37,10 +37,10 @@ startParams <- function(parameters,
     rank <- vapply(condReStruc, function(x) x[["blockRank"]], numeric(1))
     nlv <- rank[rank > 0]
     namBlk <- names(nlv)
+    ntheta <- sum(sapply(1:length(namBlk), function(x) condReStruc[[namBlk[x]]]$blockNumTheta))
 
     resid <- rep(NA, nobs)
     if(start.met == "res" || start.met == "jitter.res") {
-      # need to test this... not normal
       resid <- family$dev.resids(y = yobs, mu = mu, wt = weights)
       if(jitter.res)
         resid <- resid  + rnorm(length(resid), 0, jitter.sd)
@@ -55,7 +55,6 @@ startParams <- function(parameters,
       }
       if (fam == "nbinom2") {
         #nbinom2 quadratic parameterization (Hardin & Hilbe 2007). V=mu*(1+mu/phi) = mu+mu^2/phi.
-        # Only including this to check against gllvm
         phi <- phi + 1e-05
         a <- pnbinom(yobs - 1, mu =  mu, size = phi)
         b <- pnbinom(yobs, mu =  mu, size = phi)
@@ -75,28 +74,22 @@ startParams <- function(parameters,
     par.list <- vector("list", length = 3)
     names(par.list) <- c("theta", "b", "fact_load")
     # Use glmmTMB to get initial starting values for factor loadings and latent variables
-    # I have not implemented it for other random effect terms... do we want to fit all of the re?
     fr.res <- cbind(fr, resid)
     ranForm <- findbars(RHSForm(formula))
-    rrTrm <- as.character(ranForm[ranForm == namBlk][[1]])
-    x <- paste(rrTrm[2], rrTrm[1], rrTrm[3])
-    resForm <- formula(paste("resid ~ 0 +", "rr(", x , ",", nlv, ")"))
+    nrr <- length(namBlk)
+    rrTrm <- lapply(1:length(namBlk), function(x) as.character(ranForm[ranForm == namBlk][[x]]))
+    x <- sapply(1:nrr, function(x) paste(rrTrm[[x]][2], rrTrm[[x]][1], rrTrm[[x]][3]))
+    resForm <- formula(paste("resid ~ 0 "))
+    for(i in 1:nrr){
+      rrForm <- formula(paste("~ rr(", x[i], ",", nlv[i], ")"))
+      resForm <- addForm(resForm,rrForm)
+    }
     # residual model; assuming gaussian and fixing sd to 1
-    fit.res <- glmmTMB(resForm, data = fr.res, family = gaussian, start = list(betad = c(log(1))), map = list(betad = factor(c(NA))))
+    fit.res <- glmmTMB(resForm, data = fr.res, family = gaussian, start = list(betad = c(log(1)) ), map = list(betad = factor(c(NA))))
     par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
     par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
     # Add jitter to latent variables
     par.list$b <- par.list$b + rnorm(length(par.list$b), 0, jitter.sd)
-
-    # rescale b and theta
-    # if(nlv > 0){
-    #   par.list.fit <- par.list
-    #   b.mat <- matrix(par.list.fit$b, ncol = nlv, byrow = T) # b's are by row
-    #   sd.b <- sqrt(diag(cov(b.mat)) )
-    #   b.scale <- diag(x = 1/sd.b, nrow = length(sd.b))
-    #   b.scaled <- b.mat %*% b.scale
-    #   par.list$b <- as.vector(t(b.scaled))
-    #   }
 
     return(par.list)
   }
@@ -120,8 +113,8 @@ startParams <- function(parameters,
 
     if(length(fixed.pars$betad) != 0)
       phi <- as.matrix(Xd) %*% exp(fixed.pars$betad) #FIX: should look at sparse version
-    # (apply factor analysis) to residuals and get starting values for rr
-    fastart <- favalues(yobs, mu, weights, fr, formula, ziformula, dispformula,
+    # obtain residuals and get starting values for rr
+    rrStart <- rrValues(yobs, mu, weights, fr, formula, ziformula, dispformula,
                         condReStruc, family, phi, start.met,
                         jitter.sd, jitter.res)
 
@@ -134,15 +127,15 @@ startParams <- function(parameters,
     }
 
     # Change starting parameters for b and theta for the rr structure
-    tp <- 1  #theta position
-    bp <- 1  #b positon
+    tp <- trrp <- 1  #theta position for full model, and for model with only rr
+    bp <- brrp <- 1  #b position for full model, and for model with only rr
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
       if (condReStruc[[j]]$blockRank > 0) {
-        # This is assuming only one rr structure in fastart
         nb <- condReStruc[[j]]$blockRank * condReStruc[[j]]$blockReps
-        start$b[bp:(bp + nb - 1)] <- fastart$b
-        start$theta[tp:(tp + nt - 1)] <- fastart$theta
+        start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
+        start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
+        brrp <- brrp + nb; trrp <- trrp + nt
       }else{
         nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
       }
@@ -158,10 +151,7 @@ startParams <- function(parameters,
                            family, formula, ziformula, dispformula,
                            condReStruc, parameters, start.met,
                            jitter.sd, jitter.res)
-      }
-  # else{
-        # start$b <- start$b + rnorm(length(start$b), 0, sd = jitter.sd)
-      # }
+    }
 
   for (p in names(start)) {
     if (!(p %in% names(parameters))) {
@@ -405,6 +395,23 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     b
   }
 
+  # theta is 0, except if dorr, theta is 1
+  t01 <- function(dorr, condReStruc){
+    theta <- rr0(sum(getVal(condReStruc,"blockNumTheta")))
+    if(dorr){
+      nt <- 1
+      blockNumTheta <- getVal(condReStruc,"blockNumTheta")
+      blockCode <- getVal(condReStruc, "blockCode")
+      for (i in 1:length(blockCode)) {
+        if(blockCode[i]==9){
+          theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
+        }
+        nt <- nt + blockNumTheta[i]
+      }
+    }
+    theta
+  }
+
   parameters <- with(data.tmb,
                      list(
                        beta    = rep(beta_init, max(ncol(X),ncol(XS))),
@@ -412,7 +419,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = b0(Z, dorr, condReStruc),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
-                       theta   = rr0(sum(getVal(condReStruc,"blockNumTheta"))),
+                       theta   = t01(dorr, condReStruc),
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
                        thetaf  = rr0(numThetaFamily)
                      ))
@@ -832,7 +839,6 @@ glmmTMB <- function(
     start=NULL,
     map=NULL,
     sparseX=NULL,
-    n.init = 1,
     seed = NULL,
     jitter.sd = 0,
     jitter.res = F
@@ -1031,47 +1037,8 @@ glmmTMB <- function(
     ## short-circuit
     if (!doFit) return(TMBStruc)
 
-    n.i = 1
-
-    fit.ni <- vector("list", n.init)
-    TMBStruc.ni <- TMBStruc #TMBStruc is the original, if n.init > 1 then change starting params if start == "res"
-    while(n.i <= n.init) {
-      # allow n initial iterations
-
-      if (n.i != 1) { # change starting parameters by default?
-        TMBStruc.ni$parameters <- with(TMBStruc,
-                                       startParams(parameters,
-                                                   allForm$formula,
-                                                   allForm$ziformula,
-                                                   allForm$dispformula,
-                                                   allForm$combForm,
-                                                   fr,
-                                                   Xd = data.tmb$Xd,
-                                                   data.tmb$yobs,
-                                                   data.tmb$weights,
-                                                   contrasts = contrasts,
-                                                   data.tmb$size,
-                                                   family = family,
-                                                   condReStruc = condReStruc,
-                                                   start = start, #FIX
-                                                   seed = NULL,
-                                                   jitter.sd = jitter.sd,
-                                                   jitter.res = jitter.res))
-        }
-
-      ## pack all the bits we will need for fitTMB
-      res.ni <- fitTMB(TMBStruc.ni)
-      fit.ni[[n.i]] <- res.ni
-      loglik.ni <- res.ni$obj$env$value.best[1]
-      # Change? this might be finite but logLik returns NA if !pdHess
-      # Add? && res.ni$sdr$pdHess to the if statement to deal with above
-
-      if ((n.i == 1 || loglik.res > loglik.ni)  && is.finite(loglik.ni) ) {
-        res <- res.ni
-        loglik.res <- res$obj$env$value.best[1]
-      }
-      n.i <- n.i + 1
-    } #end while loop
+    ## pack all the bits we will need for fitTMB
+    res <- fitTMB(TMBStruc)
     return(res)
 }
 
