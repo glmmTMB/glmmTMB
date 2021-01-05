@@ -69,14 +69,24 @@ recover_data.glmmTMB <- function(object, ...) {
 ## emm_basis method -- Dynamically exported, see zzz.R
 ## don't document, causes confusion
 
-# @rdname downstream_methods
-# @aliases downstream_methods
-# @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
-    ## Not needed anymore?
-    ## if (component != "cond") warning("only tested for conditional component")
-    V <- as.matrix(vcov(object)[[component]])
-    misc = list()
+## @rdname downstream_methods
+## @aliases downstream_methods
+## @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
+## vcov. user-specified covariance matrix
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", vcov., ...) {
+    ## browser()
+    L <- list(...)
+    if (length(L)>0) {
+        ## don't warn: $misc and $options are always passed through ...
+        ## warning("ignored extra arguments to emm_basis.glmmTMB: ",
+        ## paste(names(L),collapse=", "))
+    }
+    if (missing(vcov.)) {
+        V <- as.matrix(vcov(object)[[component]])
+    } else {
+        V <- vcov.
+    }
+    misc <- list()
     if (family(object)$family=="gaussian") {
         dfargs = list(df = df.residual(object))
         dffun = function(k, dfargs) dfargs$df
@@ -86,30 +96,29 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
         dfargs = list()
 
     }
-    fam = switch(component,
+    fam <- switch(component,
                  cond = family(object),
-                 zi = list(link = "logit"),
-                 disp = list(link = "log"))
+                 zi = list(link="logit"),
+                 disp = list(link="log"))
     
-    misc = emmeans::.std.link.labels(fam, misc)
+    misc <- emmeans::.std.link.labels(fam, misc)
     ## (used to populate the reminder of response scale)
-    contrasts = attr(model.matrix(object), "contrasts")
+    contrasts <- attr(model.matrix(object), "contrasts")
     ## keep only variables found in conditional fixed effects
-    contrasts = contrasts[names(contrasts) %in% all.vars(terms(object))]
-    m = model.frame(trms, grid, na.action = na.pass, xlev = xlev)
-    X = model.matrix(trms, m, contrasts.arg = contrasts)
-    bhat = fixef(object)[[component]]
+    contrasts <- contrasts[names(contrasts) %in% all.vars(terms(object))]
+    m <- model.frame(trms, grid, na.action=na.pass, xlev=xlev)
+    X <- model.matrix(trms, m, contrasts.arg=contrasts)
+    bhat <- fixef(object)[[component]]
     if (length(bhat) < ncol(X)) {
-        kept = match(names(bhat), dimnames(X)[[2]])
-        bhat = NA * X[1, ]
-        bhat[kept] = fixef(object)[[component]]
-        modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
-        nbasis = estimability::nonest.basis(modmat)
+        kept <- match(names(bhat), dimnames(X)[[2]])
+        bhat <- NA * X[1, ]
+        bhat[kept] <- fixef(object)[[component]]
+        modmat <- model.matrix(trms, model.frame(object), contrasts.arg=contrasts)
+        nbasis <- estimability::nonest.basis(modmat)
     }  else {
-        nbasis = estimability::all.estble
+        nbasis <- estimability::all.estble
     }
-    dfargs = list(df = df.residual(object))
-    dffun = function(k, dfargs) dfargs$df
-    list(X = X, bhat = bhat, nbasis = nbasis, V = V, dffun = dffun, 
-         dfargs = dfargs, misc = misc)
+    dfargs <- list(df=df.residual(object))
+    dffun <- function(k, dfargs) dfargs$df
+    namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
 }

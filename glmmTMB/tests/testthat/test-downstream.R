@@ -30,6 +30,16 @@ if (require(emmeans)) {
     expect_is(rgz, "emmGrid")
     expect_equal(predict(rgz)[2], 2.071444, tolerance=1e-4)
     expect_equal(predict(rgz, type="response")[2], 0.88809654, tolerance=1e-4)
+
+    ## test zeroing out non-focal variance components
+    V <- vcov(m2)[["cond"]]
+    v <- V["minedno","minedno"]
+    V[] <- 0
+    V["minedno","minedno"] <- v
+    expect_equal(as.data.frame(emmeans(m2, ~mined, component="cond"))[["SE"]],
+                 c(0.38902257366905, 0.177884950308125))
+    expect_equal(as.data.frame(emmeans(m2, ~mined, component="cond", vcov.=V))[["SE"]],
+                 c(0, 0.366598230362198))
 }
 
 if (require(car) && getRversion()>="3.6.0") {
