@@ -714,3 +714,16 @@ pnbinom1 <- function(q, mu, phi, ...) {
 qnbinom1 <- function(p, mu, phi, log=FALSE) {
     pnbinom(p, mu=mu, size=mu/phi, ...)
 }
+
+nullSparseMatrix <- function() {
+    argList <- list(
+        dims=c(0,0),
+        i=integer(0),
+        j=integer(0),
+        x=numeric(0))
+    if (packageVersion("Matrix")<"1.3.0") {
+        do.call(Matrix::sparseMatrix, c(argList, list(giveCsparse=FALSE)))
+    } else {
+        do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
+    }
+}

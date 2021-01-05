@@ -147,8 +147,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
   ## need a 'dgTMatrix' (double, general, Triplet representation)
-  sparseXval <- function(component,lst)
-    { if (sparseX[[component]]) lst$X else Matrix::sparseMatrix(dims=c(0,0),i=integer(0),j=integer(0),x=numeric(0),giveCsparse=FALSE) }
+  sparseXval <- function(component,lst) {
+     if (sparseX[[component]]) lst$X else nullSparseMatrix()
+  }
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
