@@ -260,29 +260,21 @@ test_that("contrasts arg", {
 })
 
 test_that("zero disp setting", {
-    suppressWarnings(fm0z1 <- glmmTMB(Reaction ~ 1 + (1|Subject), sleepstudy,
-                                      dispformula=~0))
-    fm0z2 <- update(fm0z1,
-                    control=glmmTMBControl(zerodisp_val=log(1e-3)))
-
-    if (FALSE) {
-        fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
-        getvc <- function(p) {
-            fmz <- update(fm0z1,
-                          control=glmmTMBControl(zerodisp_val=log(10^(-p))))
-            ## figure out warnings?
-            val <- sqrt(c(VarCorr(fmz)$cond[[1]]))
-            return(val)
-        }
-    
-        pvec <- seq(3,25,by=0.25)
-        vvec <- sapply(pvec, getvc)
-        par(las=1)
-        plot(pvec,vvec,log="y")
-        sqrt(c(VarCorr(fm0)$cond[[1]]))
-        abline(v=-log10(sqrt(.Machine$double.eps)))
+    skip_on_cran()
+    set.seed(101)
+    dd <- data.frame(y=rnorm(100),obs=1:100)
+    m0 <- glmmTMB(y~1, data=dd)
+    v0 <- sigma(m0)^2
+    m1 <- glmmTMB(y~1+(1|obs), data=dd)
+    tmpf <- function(x) c(sigma(x)^2,c(VarCorr(x)[["cond"]]$obs))
+    m <- -log10(sqrt(.Machine$double.eps))
+    pvec <- c(1,5,m,2*m,20)
+    res <- matrix(NA,ncol=2,nrow=length(pvec))
+    for (i in (seq_along(pvec))) {
+        mz <- update(m1,dispformula=~0,
+                     control=glmmTMBControl(zerodisp_val=log(10^(-pvec[i]))))
+        res[i,] <- tmpf(mz)
     }
-
+    res <- rbind(res,tmpf(m1))
+    expect_true(var(res[,1]+res[,2])<1e-8)
 })
-
-
