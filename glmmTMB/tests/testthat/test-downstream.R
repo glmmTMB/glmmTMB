@@ -2,6 +2,8 @@ require(glmmTMB)
 require(testthat)
 
 data(sleepstudy,package="lme4")
+m <- load(system.file("test_data","models.rda",package="glmmTMB",
+                      mustWork=TRUE))
 
 if (require(emmeans)) {
     context("emmeans")
@@ -62,6 +64,17 @@ if (require(car) && getRversion()>="3.6.0") {
     expect_equal(ac[1,1], 160.1628, tolerance=1e-5)
     expect_equal(rownames(ac), "Days")
     expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
+
+    ## test that zi and cond tests are different
+    a1 <- Anova(fm3ZIP)
+    a2 <- Anova(fm3ZIP, component="zi")
+    a3 <- Anova(fm3ZIP, type="III")
+    a4 <- Anova(fm3ZIP, type="III",component="zi")
+    get_pval <- function(x) c(na.omit(x$`Pr(>Chisq)`))
+    expect_equal(get_pval(a1),1.82693150434104e-13)
+    expect_equal(get_pval(a2),numeric(0))
+    expect_equal(get_pval(a3),c(0, 1.82693150434104e-13))
+    expect_equal(get_pval(a4),0.81337346580467)
 }
 
 if (require(effects)) {
