@@ -435,13 +435,14 @@ inForm <- function(form,value) {
 ##' extractForm(~a+offset(b),quote(offset))
 ##' extractForm(~c,quote(offset))
 ##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' extractForm(~offset(x),quote(offset))
 ##' @export
 ##' @keywords internal
 extractForm <- function(term,value) {
     if (!inForm(term,value)) return(NULL)
     if (is.name(term) || !is.language(term)) return(NULL)
     if (identical(head(term),value)) {
-        return(term)
+        return(list(term))
     }
     if (length(term) == 2) {
         return(extractForm(term[[2]],value))
@@ -596,19 +597,19 @@ fix_predvars <- function(pv,tt) {
         tt <- RHSForm(tt, as.form=TRUE)
     }
     ## ugh, deparsing again ...
-    tt_vars <- vapply(attr(tt,"variables"),deparse,character(1))[-1]
+    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
     ## remove terminal paren - e.g. match term poly(x, 2) to
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
-    ##  and *first* comma but not arg ... 
+    ##  but not *first* comma nor arg ...
+    ##  could possibly try init_regexp <- "^([^,]+).*" ?
     init_regexp <- "^([(^:_.[:alnum:]]+).*"
     tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())
-    ## maybe multiple variables per pv term ... [[-1]] ignores head
+    ## maybe multiple variables per pv term ... [-1] ignores head
     ## FIXME: test for really long predvar strings ????
-    pv_strings <- vapply(pv,deparse,FUN.VALUE=character(1),
-                         width.cutoff=500)[-1]
+    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
     pv_strings <- gsub(init_regexp,"\\1",pv_strings)
     for (i in seq_along(tt_vars)) {
         w <- match(tt_vars_short[[i]],pv_strings)
@@ -688,4 +689,28 @@ check_dots <- function(..., action="stop") {
             paste(names(L), collapse=","))
     }
     return(NULL)
+}
+
+if (getRversion()<"4.0.0") {
+    deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...) {
+        paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+    }
+}
+
+## in case these are useful, we can document and export them later ...
+rnbinom1 <- function(n, mu, phi) {
+    ## var = mu*(1+phi) = mu*(1+mu/k) -> k = mu/phi
+    rnbinom(n, mu=mu, size=mu/phi)
+}
+
+dnbinom1 <- function(x, mu, phi, ...) {
+    dnbinom(n, mu=mu, size=mu/phi, ...)
+}
+
+pnbinom1 <- function(q, mu, phi, ...) {
+    pnbinom(q, mu=mu, size=mu/phi, ...)
+}
+
+qnbinom1 <- function(p, mu, phi, log=FALSE) {
+    pnbinom(p, mu=mu, size=mu/phi, ...)
 }

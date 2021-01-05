@@ -14,6 +14,8 @@ glmmTMB/vignettes/figure
 glmmTMB/vignettes/cache
 *~
 *#*
+glmmTMB*.tar.gz
+glmmTMB.Rcheck
 
 glmmTMB/vignettes/*_cache
 glmmTMB/vignettes/*_files
@@ -32,3 +34,6 @@ glmmTMB/src/Makevars
 
 doc-update
 
+*.Rcheck
+*.tar.gz
+*.Rout

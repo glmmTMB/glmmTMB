@@ -49,6 +49,7 @@ inForm(f2,quote(offset))
 extractForm(~a+offset(b),quote(offset))
 extractForm(~c,quote(offset))
 extractForm(~a+offset(b)+offset(c),quote(offset))
+extractForm(~offset(x),quote(offset))
 dropHead(~a+offset(b),quote(offset))
 dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
 }
