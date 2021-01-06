@@ -1,3 +1,5 @@
+## copied from https://github.com/easystats/insight/blob/master/.github/workflows/R-check.yaml
+## update Linux version to 18.04??
 on:
   push:
     branches:
