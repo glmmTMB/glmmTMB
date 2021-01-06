@@ -53,6 +53,7 @@ jobs:
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2)
           writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
         shell: Rscript {0}
+        working-directory: ./glmmTMB
 
       - name: Cache R packages
         if: runner.os != 'Windows'
@@ -70,14 +71,15 @@ jobs:
           Rscript -e "remotes::install_github('r-hub/sysreqs')"
           sysreqs=$(Rscript -e "cat(sysreqs::sysreq_commands('DESCRIPTION'))")
           sudo -s eval "$sysreqs"
+        working-directory: ./glmmTMB
 
       - name: Install dependencies
         run: |
           remotes::install_deps(dependencies = TRUE)
           remotes::install_cran("rcmdcheck")
           remotes::install_github("kaskr/adcomp/TMB") ## need latest TMB version
-
         shell: Rscript {0}
+        working-directory: ./glmmTMB
 
       - name: Session info
         run: |
@@ -89,6 +91,7 @@ jobs:
             utils::sessionInfo(pkgs)
           }
         shell: Rscript {0}
+        working-directory: ./glmmTMB
 
       - name: Check
         env:
@@ -96,15 +99,17 @@ jobs:
           _R_CHECK_FORCE_SUGGESTS_: false
         run: rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")
         shell: Rscript {0}
+        working-directory: ./glmmTMB
 
       - name: Show testthat output
         if: always()
         run: find check -name 'testthat.Rout*' -exec cat '{}' \; || true
         shell: bash
+        working-directory: ./glmmTMB
 
       - name: Upload check results
         if: failure()
         uses: actions/upload-artifact@master
         with:
           name: ${{ runner.os }}-r${{ matrix.config.r }}-results
-          path: check
+          path: ./glmmTMB/check
