@@ -723,7 +723,7 @@ nullSparseMatrix <- function() {
         i=integer(0),
         j=integer(0),
         x=numeric(0))
-    if (packageVersion("Matrix")<"1.3.0") {
+    if (utils::packageVersion("Matrix")<"1.3.0") {
         do.call(Matrix::sparseMatrix, c(argList, list(giveCsparse=FALSE)))
     } else {
         do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
