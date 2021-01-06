@@ -1,4 +1,5 @@
 ## copied from https://github.com/easystats/insight/blob/master/.github/workflows/R-check.yaml
+## modified with appropriate working directories following R-CMD-check.yaml
 ## update Linux version to 18.04??
 on:
   push:
