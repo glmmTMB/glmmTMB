@@ -881,7 +881,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = NULL,
+                           parallel = getOption("mc.cores", 1L),
                            eigval_check = TRUE) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
@@ -964,17 +964,22 @@ glmmTMBControl <- function(optCtrl=NULL,
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
-    
+
     ## Assign OpenMP threads
-    if (!is.null(control$parallel)) {
-        n_orig <- TMB::openmp(NULL)
-        ## will warn if OpenMP not supported
-        ## only proceed farther if OpenMP *is* supported ...
-        ## (avoid extra warnings)
-        if (n_orig>0) {
-            TMB::openmp(n = control$parallel)
-            on.exit(TMB::openmp(n = n_orig))
-        }
+    ## Warn if OpenMP not supported and threads>1
+    ## FIXME: custom warning?
+    n_orig <- withCallingHandlers(
+        warning=function(cnd) {
+            if (control$parallel==1) {
+                invokeRestart("muffleWarning")
+            }
+        },
+        TMB::openmp(NULL)
+    )    
+    ## Only proceed farther if OpenMP *is* supported ...
+    if (n_orig>0) {
+        TMB::openmp(n = control$parallel)
+        on.exit(TMB::openmp(n = n_orig))
     }
 
     if (control $ collect) {

@@ -729,3 +729,7 @@ nullSparseMatrix <- function() {
         do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
     }
 }
+
+omp_check <- function() {
+    .Call("omp_check",package="glmmTMB")
+}
