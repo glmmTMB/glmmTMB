@@ -81,7 +81,7 @@ jobs:
           remotes::install_github("kaskr/adcomp/TMB") ## need latest TMB version
           install.packages('tinytex')
           tinytex::install_tinytex()
-        ## install more latex packages here?
+          tinytex::tlmgr_install(c("adjustbox","alltt","array","babel","calc","caption","colortbl","fancyvrb","graphicx","hhline","hyperref","inputenc","lineno","multirow","natbib","siunitx","tabularx","url","wrapfig"))
         shell: Rscript {0}
         working-directory: ./glmmTMB
 
