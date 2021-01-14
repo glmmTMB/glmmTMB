@@ -53,6 +53,13 @@ startParams <- function(parameters,
         u <- runif(n = nobs, min = a, max = b)
         resid <- qnorm(u)
       }
+      if (fam == "nbinom1") {
+        phi <- phi + 1e-05
+        a <- pnbinom(yobs - 1, mu =  mu, size = mu/phi)
+        b <- pnbinom(yobs, mu =  mu, size = mu/phi)
+        u <- runif(n = nobs, min = a, max = b)
+        resid <- qnorm(u)
+      }
       if (fam == "binomial"){
         a <- pbinom(yobs - 1, 1, mu)
         b <- pbinom(yobs, 1, mu)
@@ -202,7 +209,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        whichPredict=integer(0),
                        REML=FALSE,
                        start=NULL,
-                       start_method = list(method = NULL, jitter.sd = 0),
                        map=NULL,
                        sparseX=NULL,
                        control=glmmTMBControl()) {
@@ -316,13 +322,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
   ## need a 'dgTMatrix' (double, general, Triplet representation)
-  sparseXval <- function(component,lst)
-    { if (sparseX[[component]]) lst$X else Matrix::sparseMatrix(dims=c(0,0),i=integer(0),j=integer(0),x=numeric(0),giveCsparse=FALSE) }
+  sparseXval <- function(component,lst) {
+    if (sparseX[[component]]) lst$X else nullSparseMatrix()
+  }
   # function to set value for dorr
   rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
-  sparseXval <- function(component,lst) {
-     if (sparseX[[component]]) lst$X else nullSparseMatrix()
-  }
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
@@ -422,7 +426,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        thetaf  = rr0(numThetaFamily)
                      ))
 
-  if(!is.null(start) || !is.null(start_method$method)){
+  if(!is.null(start) || !is.null(control$start_method$method)){
     parameters <- startParams(parameters,
                               formula, ziformula, dispformula,
                               combForm,
@@ -435,7 +439,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               family,
                               condReStruc,
                               start = start,
-                              start_method = start_method)
+                              start_method = control$start_method)
   }
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
@@ -1035,8 +1039,8 @@ glmmTMB <- function(
                             family$family))
         }
     }
-    
-    TMBStruc <- 
+
+    TMBStruc <-
         mkTMBStruc(formula, ziformula, dispformula,
                    combForm,
                    mf, fr,
@@ -1077,6 +1081,7 @@ glmmTMB <- function(
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
+##' @param start_method Method to get starting values for latent variables and their loadings when rr_covstruct is specified
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
@@ -1124,8 +1129,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            collect=FALSE,
                            parallel = NULL,
                            eigval_check = TRUE,
+                           zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0)) {
-                           zerodisp_val=log(sqrt(.Machine$double.eps))) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1144,8 +1149,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, start_method)
-              eigval_check, zerodisp_val)
+              eigval_check, zerodisp_val, start_method)
 }
 
 ##' collapse duplicated observations
