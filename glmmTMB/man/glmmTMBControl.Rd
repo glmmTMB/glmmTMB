@@ -11,7 +11,8 @@ glmmTMBControl(
   profile = FALSE,
   collect = FALSE,
   parallel = NULL,
-  eigval_check = TRUE
+  eigval_check = TRUE,
+  zerodisp_val = log(sqrt(.Machine$double.eps))
 )
 }
 \arguments{
@@ -31,6 +32,8 @@ recognizing duplicated observations.}
 the negative log-likelihood in parallel}
 
 \item{eigval_check}{Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)}
+
+\item{zerodisp_val}{value of the dispersion parameter when \code{dispformula=~0} is specified}
 }
 \description{
 Control parameters for glmmTMB optimization

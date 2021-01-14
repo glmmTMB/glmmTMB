@@ -204,7 +204,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        start=NULL,
                        start_method = list(method = NULL, jitter.sd = 0),
                        map=NULL,
-                       sparseX=NULL) {
+                       sparseX=NULL,
+                       control=glmmTMBControl()) {
 
   ## handle family specified as naked list
   ## if specified as character or function, should have been converted
@@ -250,7 +251,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                  " family")
         ## FIXME: Depending on the final estimates, we should somehow
         ## check that this fixed dispersion is small enough.
-        betad_init <- log( sqrt( .Machine$double.eps ) )
+        betad_init <- control$zerodisp_val
         dispformula[] <- ~1
         mapArg <- c(mapArg,list(betad = factor(NA))) ## Fix betad
     } else {
@@ -319,6 +320,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     { if (sparseX[[component]]) lst$X else Matrix::sparseMatrix(dims=c(0,0),i=integer(0),j=integer(0),x=numeric(0),giveCsparse=FALSE) }
   # function to set value for dorr
   rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
+  sparseXval <- function(component,lst) {
+     if (sparseX[[component]]) lst$X else nullSparseMatrix()
+  }
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
@@ -622,7 +626,7 @@ getGrpVar <- function(x)
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)
-##' @importFrom stats setNames dist
+##' @importFrom stats setNames dist .getXlevels
 ##' @export
 getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
@@ -741,7 +745,7 @@ binomialType <- function(x) {
 ##' @param data optional data frame containing model variables.
 ##' @param family a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See \code{\link{family}} for a generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.
 ##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default \code{~0} specifies no zero-inflation. Specifying \code{~.} sets the zero-inflation formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}. The zero-inflation model uses a logit link.
-##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value: at present it is set to \code{sqrt(.Machine$double.eps)}), forcing variance into the random effects.
+##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via \code{control=glmmTMBControl(zero_dispval=...)}; the default value is \code{sqrt(.Machine$double.eps)}.
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only).
 ##' @param contrasts an optional list, e.g., \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
@@ -1031,24 +1035,24 @@ glmmTMB <- function(
                             family$family))
         }
     }
-
-    TMBStruc <-
-      mkTMBStruc(formula, ziformula, dispformula,
-                 combForm,
-                 mf, fr,
-                 yobs=y,
-                 respCol,
-                 weights,
-                 contrasts=contrasts,
-                 family=family,
-                 se=se,
-                 call=call,
-                 verbose=verbose,
-                 REML=REML,
-                 start=start,
-                 start_method = control$start_method,
-                 map=map,
-                 sparseX=sparseX)
+    
+    TMBStruc <- 
+        mkTMBStruc(formula, ziformula, dispformula,
+                   combForm,
+                   mf, fr,
+                   yobs=y,
+                   respCol,
+                   weights,
+                   contrasts=contrasts,
+                   family=family,
+                   se=se,
+                   call=call,
+                   verbose=verbose,
+                   REML=REML,
+                   start=start,
+                   map=map,
+                   sparseX=sparseX,
+                   control=control)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir = TMBStruc)
@@ -1072,6 +1076,7 @@ glmmTMB <- function(
 ##'                  the negative log-likelihood in parallel
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
+##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
@@ -1120,6 +1125,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            parallel = NULL,
                            eigval_check = TRUE,
                            start_method = list(method = NULL, jitter.sd = 0)) {
+                           zerodisp_val=log(sqrt(.Machine$double.eps))) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1139,6 +1145,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
               eigval_check, start_method)
+              eigval_check, zerodisp_val)
 }
 
 ##' collapse duplicated observations

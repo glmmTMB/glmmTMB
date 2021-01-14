@@ -699,19 +699,34 @@ if (getRversion()<"4.0.0") {
 }
 
 ## in case these are useful, we can document and export them later ...
+#' @importFrom stats rnbinom qnbinom dnbinom pnbinom
+
 rnbinom1 <- function(n, mu, phi) {
     ## var = mu*(1+phi) = mu*(1+mu/k) -> k = mu/phi
     rnbinom(n, mu=mu, size=mu/phi)
 }
 
 dnbinom1 <- function(x, mu, phi, ...) {
-    dnbinom(n, mu=mu, size=mu/phi, ...)
+    dnbinom(x, mu=mu, size=mu/phi, ...)
 }
 
 pnbinom1 <- function(q, mu, phi, ...) {
     pnbinom(q, mu=mu, size=mu/phi, ...)
 }
 
-qnbinom1 <- function(p, mu, phi, log=FALSE) {
-    pnbinom(p, mu=mu, size=mu/phi, ...)
+qnbinom1 <- function(p, mu, phi, ...) {
+    qnbinom(p, mu=mu, size=mu/phi, ...)
+}
+
+nullSparseMatrix <- function() {
+    argList <- list(
+        dims=c(0,0),
+        i=integer(0),
+        j=integer(0),
+        x=numeric(0))
+    if (utils::packageVersion("Matrix")<"1.3.0") {
+        do.call(Matrix::sparseMatrix, c(argList, list(giveCsparse=FALSE)))
+    } else {
+        do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
+    }
 }
