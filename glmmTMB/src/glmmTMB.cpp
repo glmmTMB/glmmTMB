@@ -70,6 +70,11 @@ namespace glmmtmb{
     return R_IsNA(asDouble(x));
   }
 
+  template<class Type>
+  bool notFinite(Type x) {
+     return (!R_FINITE(asDouble(x)));
+  }
+
   extern "C" {
     /* See 'R-API: entry points to C-code' (Writing R-extensions) */
     double Rf_logspace_sub (double logx, double logy);
@@ -720,7 +725,7 @@ Type objective_function<Type>::operator() ()
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
         SIMULATE {
-          s1 = mu(i);
+          s1 = mu(i);  
           s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
           yobs(i) = rnbinom2(s1, s2);
         }
@@ -733,7 +738,10 @@ Type objective_function<Type>::operator() ()
           SIMULATE{
             s1 = mu(i)/phi(i);//sz
             s2 = 1/(1+phi(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+	    // FIXME: could be more efficient to sample dnbinom until >0?
+	    // https://cran.r-project.org/web/packages/aster/vignettes/trunc.pdf
+            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2)-Type(1e-8), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+	    if (glmmtmb::notFinite(yobs(i))) std::cout << "s2 :" << s2 << "\n"; std::cout.flush();
           }
         }
         break;
