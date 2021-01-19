@@ -17,14 +17,17 @@ f_pkgs <- c("broom","broom.mixed","glmmTMB")
 #' simulation function
 #' @param N number of obs (should be even)
 #' @param seed random-number seed
-sim_fun <- function(N=25000,seed=NULL) {
+sim_fun <- function(N=25000,seed=NULL, do_gamma=FALSE) {
+    ## sample from Gamma *or* uniform dist
+    rval <- if (!do_gamma) sample(0:100000, N/2, replace=TRUE) else rgamma(N/2,shape=2,scale=1)
     if (!is.null(seed)) set.seed(seed)
+    ## sensible ranges, but null model (no relationship between predictors & response
     df <- data.frame(
         id=1:N
       , disease=sample(0:1, N, replace=TRUE)
       , age=sample(18:88, N, replace=TRUE)
       , gender=sample(0:1, N, replace=TRUE)
-      , cost=c(sample(0:100000, (N/2), replace=TRUE), rep(0, (N/2)))
+      , cost=c(rval, rep(0, N/2))
       , time=sample(30:3287, N, replace=TRUE))
     df$cost_binary <- as.numeric(df$cost>0)
     return(df)
@@ -39,6 +42,7 @@ sum_fun <- function(df,
     if (do_subset) df <- subset(df, cost>0)
     glm_fit <- glm(form,data=df,family=family)
     glmmTMB_fit <- glmmTMB(form,data=df,family=family)
+    ## extract estimates/SEs and combine
     res <- (purrr::map_dfr(list(glm=glm_fit,glmmTMB=glmmTMB_fit),
                            tidy, .id="pkg")
         %>% dplyr::select(pkg,term,estimate,std.error)
@@ -46,6 +50,7 @@ sum_fun <- function(df,
     return(res)
 }
 
+## compute mean SE and sd(estimate) across the ensemble, by pkg & term
 collapse_fun <- function(all_sims) {
     a0 <- (all_sims
         %>% group_by(pkg,term)
@@ -58,16 +63,35 @@ collapse_fun <- function(all_sims) {
     return(a1)
 }
 
+## pretty-print (leave out mean estimates)
+pp <- function(x) x %>% collapse_fun() %>% select(-starts_with("mean_est_"))
+
+### 
 set.seed(101)
 all_sims <- furrr::future_map_dfr(1:1000,
                                   ~sum_fun(sim_fun()),
                                   .progress=TRUE,
                                   .options=furrr_options(packages=f_pkgs, seed=TRUE))
 
-pp <- function(x) x %>% collapse_fun() %>% select(-starts_with("mean_est_"))
 
-## Gamma results
-pp(all_sims)
+## equivalent, but for no offset
+set.seed(101)
+all_sims_nooff <- furrr::future_map_dfr(1:1000,
+                                 ~sum_fun(sim_fun(),
+                                          form = cost ~ disease + gender + age
+                                          ),
+                                 .progress=TRUE,
+                                 .options=furrr_options(packages=f_pkgs, seed=TRUE))
+
+
+## response actually Gamma-distributed ...
+set.seed(101)
+all_sims_gamma <- furrr::future_map_dfr(1:1000,
+                                  ~sum_fun(sim_fun(do_gamma=TRUE)),
+                                  .progress=TRUE,
+                                  .options=furrr_options(packages=f_pkgs, seed=TRUE))
+
+pp(all_sims_gamma)
 
 all_sims_binom <- furrr::future_map_dfr(1:1000,
                                  ~sum_fun(sim_fun(),
@@ -76,6 +100,15 @@ all_sims_binom <- furrr::future_map_dfr(1:1000,
                                           family=binomial),
                                  .progress=TRUE,
                                  .options=furrr_options(packages=f_pkgs, seed=TRUE))
+
+## Gamma results
+pp(all_sims)
+##   term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
+##   <chr>             <dbl>           <dbl>       <dbl>           <dbl>
+## 1 (Intercept)     0.0655         0.0340       0.0669          0.0669 
+## 2 age             0.00103        0.000533     0.00104         0.00104
+## 3 disease         0.0421         0.0219       0.0427          0.0427 
+## 4 gender          0.0421         0.0219       0.0421          0.0421 
 
 pp(all_sims_binom)
 ##  term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
