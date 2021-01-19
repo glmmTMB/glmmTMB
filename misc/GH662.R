@@ -101,20 +101,27 @@ all_sims_binom <- furrr::future_map_dfr(1:1000,
                                  .progress=TRUE,
                                  .options=furrr_options(packages=f_pkgs, seed=TRUE))
 
-## Gamma results
+## RESULTS
 pp(all_sims)
-##   term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
-##   <chr>             <dbl>           <dbl>       <dbl>           <dbl>
-## 1 (Intercept)     0.0655         0.0340       0.0669          0.0669 
-## 2 age             0.00103        0.000533     0.00104         0.00104
-## 3 disease         0.0421         0.0219       0.0427          0.0427 
-## 4 gender          0.0421         0.0219       0.0421          0.0421 
+   term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
+   <chr>             <dbl>           <dbl>       <dbl>           <dbl>
+ 1 (Intercept)     0.0655         0.0340       0.0669          0.0669 
+ 2 age             0.00103        0.000533     0.00104         0.00104
+ 3 disease         0.0421         0.0219       0.0427          0.0427 
+ 4 gender          0.0421         0.0219       0.0421          0.0421 
 
 pp(all_sims_binom)
-##  term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
-##  <chr>             <dbl>           <dbl>       <dbl>           <dbl>
-## 1 (Intercept)    0.0394          0.0394      0.0384          0.0384  
-## 2 age            0.000617        0.000618    0.000630        0.000630
-## 3 disease        0.0253          0.0253      0.0263          0.0263  
-## 4 gender         0.0253          0.0253      0.0253          0.0253  
+  term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
+  <chr>             <dbl>           <dbl>       <dbl>           <dbl>
+ 1 (Intercept)    0.0394          0.0394      0.0384          0.0384  
+ 2 age            0.000617        0.000618    0.000630        0.000630
+ 3 disease        0.0253          0.0253      0.0263          0.0263  
+ 4 gender         0.0253          0.0253      0.0253          0.0253  
 
+pp(all_sims_nooff)
+  term        mean_se_glm mean_se_glmmTMB calc_se_glm calc_se_glmmTMB
+  <chr>             <dbl>           <dbl>       <dbl>           <dbl>
+1 (Intercept)    0.0161          0.0209      0.0166          0.0166  
+2 age            0.000252        0.000327    0.000266        0.000266
+3 disease        0.0103          0.0134      0.0104          0.0104  
+4 gender         0.0103          0.0134      0.0104          0.0104  
