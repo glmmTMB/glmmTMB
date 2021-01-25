@@ -91,6 +91,15 @@ all_sims_gamma <- furrr::future_map_dfr(1:1000,
                                   .progress=TRUE,
                                   .options=furrr_options(packages=f_pkgs, seed=TRUE))
 
+
+## response actually Gamma-distributed, no offset ...
+set.seed(101)
+all_sims_gamma_nooff <- furrr::future_map_dfr(1:1000,
+              ~sum_fun(sim_fun(do_gamma=TRUE)),
+              form = cost ~ disease + gender + age,
+                                  .progress=TRUE,
+                                  .options=furrr_options(packages=f_pkgs, seed=TRUE))
+
 pp(all_sims_gamma)
 
 all_sims_binom <- furrr::future_map_dfr(1:1000,
@@ -125,3 +134,25 @@ pp(all_sims_nooff)
 2 age            0.000252        0.000327    0.000266        0.000266
 3 disease        0.0103          0.0134      0.0104          0.0104  
 4 gender         0.0103          0.0134      0.0104          0.0104  
+
+pp(all_sims_gamma_nooff)
+## standard error too SMALL??
+
+## simpler/standalone
+## this seems OK (based on one replicate?)
+
+set.seed(101)
+library(glmmTMB)
+library(bbmle)
+dd <- data.frame(y=rgamma(1000,shape=2,scale=1))
+m1 <- glm(y~1,data=dd,family=Gamma(link="log"))
+m2 <- mle2(y~dgamma(shape=exp(log_shape),
+                    scale=exp(log_mu-log_shape)),
+                    data=dd,
+                    start=list(log_mu=0,log_shape=0))
+m3 <- glmmTMB(y~1,data=dd,family=Gamma(link="log"))
+
+cc <- c("Estimate", "Std. Error")
+coef(summary(m1))[,cc]
+coef(summary(m2))["log_mu",cc]
+coef(summary(m3))$cond[,cc]
