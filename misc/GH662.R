@@ -141,10 +141,11 @@ pp(all_sims_gamma_nooff)
 ## simpler/standalone
 ## this seems OK (based on one replicate?)
 
+N <- 5e4
 set.seed(101)
 library(glmmTMB)
 library(bbmle)
-dd <- data.frame(y=rgamma(1000,shape=2,scale=1))
+dd <- data.frame(y=rgamma(N,shape=2,scale=1))
 m1 <- glm(y~1,data=dd,family=Gamma(link="log"))
 m2 <- mle2(y~dgamma(shape=exp(log_shape),
                     scale=exp(log_mu-log_shape)),
@@ -155,4 +156,28 @@ m3 <- glmmTMB(y~1,data=dd,family=Gamma(link="log"))
 cc <- c("Estimate", "Std. Error")
 coef(summary(m1))[,cc]
 coef(summary(m2))["log_mu",cc]
+coef(summary(m3))$cond[,cc]
+
+
+rgamma2 <- function(n, shape, mu) {
+    rgamma(n, shape=shape, scale=mu/shape)
+}
+dgamma2 <- function(x, shape, mu, log=FALSE) {
+    dgamma(x, shape=shape, scale=mu/shape, log=log)
+}
+
+## also fine with a single covariate
+set.seed(101)
+dd <- data.frame(x=rnorm(N))
+dd$y <- with(dd,rgamma2(N,shape=2,mu=exp(1+2*x)))
+m1 <- glm(y~x,data=dd,family=Gamma(link="log"))
+m2 <- mle2(y~dgamma2(shape=exp(log_shape), mu=exp(log_mu)),
+                    data=dd,
+                    parameters=list(log_mu~x),
+                    start=list(log_mu=0,log_shape=0))
+m3 <- glmmTMB(y~x,data=dd,family=Gamma(link="log"))
+
+cc <- c("Estimate", "Std. Error")
+coef(summary(m1))[,cc]
+coef(summary(m2))[1:2,cc]
 coef(summary(m3))$cond[,cc]
