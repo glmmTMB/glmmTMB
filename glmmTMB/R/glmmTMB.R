@@ -4,8 +4,6 @@
 ##' @param mf call to model frame
 ##' @param fr model frame
 ##' @param yobs observed y
-##' @param zioffset offset for zero-inflated model
-##' @param doffset offset for dispersion model
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @keywords internal
@@ -18,16 +16,18 @@ startParams <- function(parameters,
                         contrasts,
                         size = NULL,
                         Xd = NULL,
+                        XdS = NULL,
                         family,
                         condReStruc,
                         start = NULL,
-                        start_method = list(method = NULL, jitter.sd = 0),
-                        map = NULL) {
+                        sparseX = NULL,
+                        start_method = list(method = NULL, jitter.sd = 0)) {
 
   start.met <- start_method$method
   jitter.sd <- ifelse(!is.null(start_method$jitter.sd), start_method$jitter.sd, 0)
 
-  # get the starting values for the factor loadings and latent variables
+  # rrValues calculates residuals from the fixed model,
+  # fits a reduced rank model to obtain starting values for the latent variables and the factor loadings
   rrValues <- function(yobs, weights, fr, mu,
                        family, formula, ziformula, dispformula, condReStruc,
                        phi = NULL, jitter.sd = 0){
@@ -46,7 +46,6 @@ startParams <- function(parameters,
         resid <- qnorm(u)
       }
       if (fam == "nbinom2") {
-        #nbinom2 quadratic parameterization (Hardin & Hilbe 2007). V=mu*(1+mu/phi) = mu+mu^2/phi.
         phi <- phi + 1e-05
         a <- pnbinom(yobs - 1, mu =  mu, size = phi)
         b <- pnbinom(yobs, mu =  mu, size = phi)
@@ -102,23 +101,30 @@ startParams <- function(parameters,
     return(par.list)
   }
 
-  # get the starting values for the fixed parameters and for the rr parameters (theta and b)
-  startVals <-  function(yobs, weights, fr, Xd,
+  # Fit a fixed model to get the starting values for the fixed parameters, call rrValues to get starting parameters for the rr cov struct (theta and b)
+  startVals <-  function(yobs, weights, fr, Xd, XdS, sparseX,
                          family, formula, ziformula, dispformula, condReStruc,
                          parameters, jitter.sd){
     start <- parameters #starting parameters
     fam <- family$family
-    ### fit a glm
+    ### fit a fixed model
     fixedform <- formula
     RHSForm(fixedform) <- nobars(RHSForm(fixedform))
-    fit.fixed <- glmmTMB(fixedform, ziformula = ziformula, dispformula = dispformula,
-                         data = fr, fam, start = NULL)
+    # FIX ME: Need to add offset?
+    fit.fixed <- glmmTMB(fixedform, data = fr, family = fam,
+                         ziformula = ziformula, dispformula = dispformula,
+                         weights = weights, sparseX = sparseX)
     fixed.pars <- fit.fixed$obj$env$parList(fit.fixed$fit$par, fit.fixed$fit$parfull)
     nu <- predict(fit.fixed)
     mu <- family$linkinv(nu)
 
-    if(length(fixed.pars$betad) != 0)
-      phi <- as.matrix(Xd) %*% exp(fixed.pars$betad) #FIX: should look at sparse version
+    sparseXd <- ifelse(dim(Xd)[1] == 0 && dim(Xd)[2] == 0, 1, 0)
+    if(length(fixed.pars$betad) != 0){
+      if(!sparseXd)
+        phi <- as.matrix(Xd) %*% exp(fixed.pars$betad)
+      else
+        phi <- as.vector(XdS %*% exp(fixed.pars$betad))
+    }
     # obtain residuals and get starting values for rr
     rrStart <- rrValues(yobs, weights, fr, mu,
                         family, formula, ziformula, dispformula, condReStruc,
@@ -152,7 +158,7 @@ startParams <- function(parameters,
   }
 
   if(!is.null(start.met)){
-    start <- startVals(yobs, weights, fr, Xd,
+    start <- startVals(yobs, weights, fr, Xd, XdS, sparseX,
                        family, formula, ziformula, dispformula, condReStruc,
                        parameters, jitter.sd)
     }
@@ -436,9 +442,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               contrasts,
                               size = data.tmb$size,
                               Xd = data.tmb$Xd,
+                              XdS = data.tmb$XdS,
                               family,
                               condReStruc,
                               start = start,
+                              sparseX = sparseX,
                               start_method = control$start_method)
   }
 
