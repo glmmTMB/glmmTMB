@@ -729,3 +729,63 @@ nullSparseMatrix <- function() {
         do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
     }
 }
+
+
+#' @importFrom utils packageVersion
+checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB") {
+    ## Check for version mismatch in dependent binary packages
+    file <- system.file(sprintf("%s-version",dep_pkg),
+                        package=this_pkg)
+    cur_dep_version <- as.character(packageVersion(dep_pkg))
+    if(!file.exists(file)) {
+        writeLines(cur_dep_version, con = file)
+    }
+    built_dep_version <- scan(file,what=character())
+    if(!identical(built_dep_version, cur_dep_version)) {
+        warning(
+            "Package version inconsistency detected.\n",
+            sprintf("%s was built with %s version %s",
+                    this_pkg, dep_pkg, built_dep_version),
+            "\n",
+            sprintf("Current %s version is %s",
+                    dep_pkg, cur_dep_version),
+            "\n",
+            sprintf("Please re-install %s from source ", this_pkg),
+            "or restore original ",
+            sQuote(dep_pkg), " package (see '?reinstalling' for more information)"
+        )
+    }
+}
+
+#' @name reinstalling
+#' @rdname reinstalling
+#' @title Reinstalling binary dependencies
+#' 
+#' @description The \code{glmmTMB} package depends on several upstream packages, which it
+#' uses in a way that depends heavily on their internal (binary) structure.
+#' Sometimes, therefore, installing an update to one of these packages will
+#' require that you re-install a \emph{binary-compatible} version of \code{glmmTMB},
+#' i.e. a version that has been compiled with the updated version of the upstream
+#' package.
+#' \itemize{
+#' \item If you have development tools (compilers etc.) installed, then you
+#' can re-install a binary-compatible version of the package by running
+#' \code{install.packages("glmmTMB", type="source")}. If you want to install
+#' the development version of \code{glmmTMB} instead, you can use
+#' \code{remotes::install_github("glmmTMB/glmmTMB/glmmTMB")}.
+#' (On Windows, you can install development tools following the instructions at
+#' \url{https://cran.r-project.org/bin/windows/Rtools/}; on MacOS, see
+#' \url{https://mac.r-project.org/tools/}.)
+#' 
+#' \item If you do \emph{not} have development tools and can't/don't want to
+#' install them (and so can't install packages with compiled code from source),
+#' you have two choices: (1) revert the upstream package(s)
+#' to their previous binary version (the \code{checkpoint} package may be
+#' useful); (2) hope that the glmmTMB maintainers have posted a binary
+#' version of the package that works with your system; try installing it via
+#' \code{install.packages("glmmTMB",repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",type="binary")}
+#' If this doesn't work, please file an issue (with full details about your
+#' operating system and R version) requesting that the maintainers build and
+#' post an appropriate binary version of the package.
+#' }
+NULL
