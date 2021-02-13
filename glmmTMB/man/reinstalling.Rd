@@ -21,9 +21,10 @@ the development version of \code{glmmTMB} instead, you can use
 \url{https://mac.r-project.org/tools/}.)
 
 \item If you do \emph{not} have development tools and can't/don't want to
-install them, you have two choices: (1) revert the upstream packages
-to their previous binary version; the \code{checkpoint} package may be
-useful for this; (2) hope that the glmmTMB maintainers have posted a binary
+install them (and so can't install packages with compiled code from source),
+you have two choices: (1) revert the upstream package(s)
+to their previous binary version (the \code{checkpoint} package may be
+useful); (2) hope that the glmmTMB maintainers have posted a binary
 version of the package that works with your system; try installing it via
 \code{install.packages("glmmTMB",repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",type="binary")}
 If this doesn't work, please file an issue (with full details about your

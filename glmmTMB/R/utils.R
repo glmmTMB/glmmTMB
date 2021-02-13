@@ -731,15 +731,18 @@ nullSparseMatrix <- function() {
 }
 
 
+    
+## Check for version mismatch in dependent binary packages
 #' @importFrom utils packageVersion
-checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB") {
-    ## Check for version mismatch in dependent binary packages
-    file <- system.file(sprintf("%s-version",dep_pkg),
-                        package=this_pkg)
+checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=FALSE) {
     cur_dep_version <- as.character(packageVersion(dep_pkg))
-    if(!file.exists(file)) {
-        writeLines(cur_dep_version, con = file)
+    fn <- sprintf("%s-version",dep_pkg)
+    if (write_file) {
+        cat(sprintf("current %s version=%s: writing file\n",dep_pkg,cur_dep_version))
+        writeLines(cur_dep_version, con = fn)
+        return(cur_dep_version)
     }
+    file <- system.file(fn,package=this_pkg)
     built_dep_version <- scan(file,what=character())
     if(!identical(built_dep_version, cur_dep_version)) {
         warning(
