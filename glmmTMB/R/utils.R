@@ -742,8 +742,8 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
         writeLines(cur_dep_version, con = fn)
         return(cur_dep_version)
     }
-    file <- system.file(fn,package=this_pkg)
-    built_dep_version <- scan(file,what=character())
+    fn <- system.file(fn,package=this_pkg)
+    built_dep_version <- scan(file=fn,what=character())
     if(!identical(built_dep_version, cur_dep_version)) {
         warning(
             "Package version inconsistency detected.\n",
