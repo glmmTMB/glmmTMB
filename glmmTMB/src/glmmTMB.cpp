@@ -3,11 +3,10 @@
 // don't need to include omp.h; we get it via TMB.hpp
 
 
-
 namespace glmmtmb{
-  template<class Type>
+ template<class Type>
   Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
-  {
+ {
     /*
       Wikipedia:
       f(k|n,\alpha,\beta) =
@@ -738,7 +737,7 @@ Type objective_function<Type>::operator() ()
           SIMULATE{
             s1 = mu(i)/phi(i);//sz
             s2 = 1/(1+phi(i)); //pb
-	    // FIXME: could be more efficient to sample dnbinom until >0?
+	    // FIXME: much better ways to sample trunc NB
 	    // https://cran.r-project.org/web/packages/aster/vignettes/trunc.pdf
             yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2)-Type(1e-8), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
 	    if (glmmtmb::notFinite(yobs(i))) std::cout << "s2 :" << s2 << "\n"; std::cout.flush();
@@ -768,7 +767,13 @@ Type objective_function<Type>::operator() ()
           SIMULATE{
             s1 = phi(i); //sz
             s2 = phi(i)/(phi(i)+mu(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+	    Type d0 = dnbinom(Type(0), s1, s2-Type(1e-8));  // make sure prob strictly <1
+	    float r = asDouble(runif(d0, Type(1)));
+            yobs(i) = Rf_qnbinom(r, asDouble(s1), asDouble(s2), 1, 0);
+	    if (glmmtmb::notFinite(yobs(i))) std::cout << "d0: " << d0
+						       << "; r: " << r
+						       << "; s1: " << s1
+						       << "; s2: " << s2 << "\n"; std::cout.flush();
           }
         }
         break;

@@ -398,3 +398,28 @@ test_that("confint works for models with dispformula", {
     expect_equal(tail(confint(m1),2), ref_val)
 })
 
+
+test_that("trunc nbinom simulation", {
+    ## GH 572
+    dd <- data.frame(f=factor(1:2),
+                     y=rep(1,2))
+
+    ## results for second element of sim, depending on family:
+    simres <- c(truncated_nbinom2=1,truncated_nbinom1=2)
+    for (f in c("truncated_nbinom2", "truncated_nbinom1")) {
+        ## generate a model with two groups, one with a ridiculously low (log mean).
+        ## don't allow the optimizer to actually do anything, so coefs will remain
+        ## at their starting values
+        suppressWarnings(m1 <- glmmTMB(y~f,
+                                       family=f,
+                                       data=dd,
+                                       start=list(beta=c(-40,39)),
+                                       control=glmmTMBControl(optCtrl=list(eval.max=0,iter.max=0))))
+        expect_equal(fixef(m1)$cond, c(`(Intercept)` = -40, f2 = 39))
+        expect_equal(fitted(m1),c(4.24835425529159e-18, 0.367879441171442))
+        ## should NOT get NaN for the first group if hack/fix is working
+        expect_equal(unname(unlist(simulate(m1,seed=101))),
+                     c(0,simres[[f]]))
+    }
+})
+
