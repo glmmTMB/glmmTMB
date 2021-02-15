@@ -32,3 +32,4 @@ doc-update
 *.Rcheck
 *.tar.gz
 project.Rproj
+*.Rout

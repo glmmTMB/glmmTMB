@@ -601,15 +601,15 @@ fix_predvars <- function(pv,tt) {
     ## remove terminal paren - e.g. match term poly(x, 2) to
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
-    ##  and *first* comma but not arg ... 
+    ##  but not *first* comma nor arg ...
+    ##  could possibly try init_regexp <- "^([^,]+).*" ?
     init_regexp <- "^([(^:_.[:alnum:]]+).*"
     tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())
-    ## maybe multiple variables per pv term ... [[-1]] ignores head
+    ## maybe multiple variables per pv term ... [-1] ignores head
     ## FIXME: test for really long predvar strings ????
-    pv_strings <- vapply(pv,deparse,FUN.VALUE=character(1),
-                         width.cutoff=500)[-1]
+    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
     pv_strings <- gsub(init_regexp,"\\1",pv_strings)
     for (i in seq_along(tt_vars)) {
         w <- match(tt_vars_short[[i]],pv_strings)
@@ -694,5 +694,38 @@ check_dots <- function(..., action="stop") {
 if (getRversion()<"4.0.0") {
     deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...) {
         paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+    }
+}
+
+## in case these are useful, we can document and export them later ...
+#' @importFrom stats rnbinom qnbinom dnbinom pnbinom
+
+rnbinom1 <- function(n, mu, phi) {
+    ## var = mu*(1+phi) = mu*(1+mu/k) -> k = mu/phi
+    rnbinom(n, mu=mu, size=mu/phi)
+}
+
+dnbinom1 <- function(x, mu, phi, ...) {
+    dnbinom(x, mu=mu, size=mu/phi, ...)
+}
+
+pnbinom1 <- function(q, mu, phi, ...) {
+    pnbinom(q, mu=mu, size=mu/phi, ...)
+}
+
+qnbinom1 <- function(p, mu, phi, ...) {
+    qnbinom(p, mu=mu, size=mu/phi, ...)
+}
+
+nullSparseMatrix <- function() {
+    argList <- list(
+        dims=c(0,0),
+        i=integer(0),
+        j=integer(0),
+        x=numeric(0))
+    if (utils::packageVersion("Matrix")<"1.3.0") {
+        do.call(Matrix::sparseMatrix, c(argList, list(giveCsparse=FALSE)))
+    } else {
+        do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
     }
 }
