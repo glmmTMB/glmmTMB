@@ -646,7 +646,10 @@ Type objective_function<Type>::operator() ()
 
   vector<Type> bnew(Z.cols());
   matrix<Type> lam;
-  if( dorr == 1 ){
+
+  if(dorr == 0){ //if there is no rr_covstruct
+    bnew = b;
+  }else{
     Eigen::SparseMatrix<Type> lamsparse;
     int upointer = 0; //this is a pointer for b
     int unewpointer = 0; //this is a pointer for bnew which has more elements than b
@@ -695,16 +698,18 @@ Type objective_function<Type>::operator() ()
       upointer += nr;
       unewpointer += terms(i).blockSize * terms(i).blockReps;
       tpointer += nt;
-    }
-  }else{
-    bnew = b;
+      }
   }
 
   // Joint negative log-likelihood
   parallel_accumulator<Type> jnll(this);
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  if(dorr == 0){ //added to fix test-bootMer
+    jnll += allterms_nll(bnew, theta, terms, this->do_simulate);
+  }else{
+    jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  }
   jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
@@ -943,7 +948,6 @@ Type objective_function<Type>::operator() ()
     }
   }
 
-  REPORT(mu);
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);
