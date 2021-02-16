@@ -143,7 +143,7 @@ test_that("summary_print", {
     expect_equal(getVal(fm2),654.9,tolerance=1e-2)
     expect_equal(getVal(fm2P),NULL)
     expect_equal(getVal(fm2G),0.00654,tolerance=1e-2)
-    expect_equal(getVal(fm2NB,"Overdispersion"),286,tolerance=1e-2)
+    expect_equal(getVal(fm2NB,"Dispersion"),286,tolerance=1e-2)
 })
 
 test_that("sigma", {
