@@ -555,7 +555,7 @@ Type objective_function<Type>::operator() ()
 	    // FIXME: much better ways to sample trunc NB
 	    // https://cran.r-project.org/web/packages/aster/vignettes/trunc.pdf
             yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2)-Type(1e-8), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
-	    if (glmmtmb::notFinite(yobs(i))) std::cout << "s2 :" << s2 << "\n"; std::cout.flush();
+	    // if (glmmtmb::notFinite(yobs(i))) std::cout << "s2 :" << s2 << "\n"; std::cout.flush();
           }
         }
         break;
@@ -585,10 +585,10 @@ Type objective_function<Type>::operator() ()
 	    Type d0 = dnbinom(Type(0), s1, s2-Type(1e-8));  // make sure prob strictly <1
 	    float r = asDouble(runif(d0, Type(1)));
             yobs(i) = Rf_qnbinom(r, asDouble(s1), asDouble(s2), 1, 0);
-	    if (glmmtmb::notFinite(yobs(i))) std::cout << "d0: " << d0
-						       << "; r: " << r
-						       << "; s1: " << s1
-						       << "; s2: " << s2 << "\n"; std::cout.flush();
+	    // if (glmmtmb::notFinite(yobs(i))) std::cout << "d0: " << d0
+	    // 					       << "; r: " << r
+	    // 					       << "; s1: " << s1
+	    // 					       << "; s2: " << s2 << "\n"; std::cout.flush();
           }
         }
         break;
