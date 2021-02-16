@@ -1,15 +1,10 @@
-//#include <TMB.hpp>
-#include <RcppEigen.h>
-#include <tmb_core.hpp>
-#include "distrib.h"
-
 // additional distributions etc. for glmmTMB
 
 // FIXME: check proper syntax for including 
 namespace glmmtmb{
 	
   template<class Type>
-  Type dbetabinom(Type y, Type a, Type b, Type n, int give_log)
+  Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
   {
     /*
       Wikipedia:
@@ -27,7 +22,7 @@ namespace glmmtmb{
   }
 	
   template<class Type>
-  Type dgenpois(Type y, Type theta, Type lambda, int give_log)
+  Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
   {
     /*
       f(y|\theta,\lambda) =
@@ -105,6 +100,11 @@ namespace glmmtmb{
     return ans;
   }
 
+  extern "C" {
+    /* See 'R-API: entry points to C-code' (Writing R-extensions) */
+    double Rf_logspace_sub (double logx, double logy);
+    void   Rf_pnorm_both(double x, double *cum, double *ccum, int i_tail, int log_p);
+  }
   /* y(x) = logit_invcloglog(x) := log( exp(exp(x)) - 1 ) = logspace_sub( exp(x), 0 )
 
      y'(x) = exp(x) + exp(x-y) = exp( logspace_add(x, x-y) )
@@ -220,4 +220,11 @@ extern "C" {
   }
 }
 
-	
+
+
+// Quantile functions needed to simulate from truncated distributions
+// OBSOLETE soon?
+extern "C" {
+  double Rf_qnbinom(double p, double size, double prob, int lower_tail, int log_p);
+  double Rf_qpois(double p, double lambda, int lower_tail, int log_p);
+}

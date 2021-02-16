@@ -1,6 +1,6 @@
 #include <TMB.hpp>
 #include "init.h"
-#include "distrib.h"
+#include "distrib.hpp"
 
 // don't need to include omp.h; we get it via TMB.hpp
 
