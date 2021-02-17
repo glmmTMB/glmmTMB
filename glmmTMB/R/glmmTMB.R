@@ -885,7 +885,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            profile=FALSE,
                            collect=FALSE,
                            parallel = getOption("mc.cores", 1L),
-                           eigval_check = TRUE) {
+                           eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps))) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
