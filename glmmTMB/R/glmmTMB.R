@@ -474,7 +474,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+##' \item{ss}{}
+##' \item{aa}{}
+##' \item{terms}{}
 ##' \item{offset}{offset vector, or vector of zeros if offset not specified}
+##' \item{reXterms}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -553,11 +557,31 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
 
         ss <- splitForm(formula)
         #need to keep reTrmAddArgs to get n in rr
-        aa <- ss$reTrmAddArgs
-        # FIX ME: need to change it to non text
-        aa <- suppressWarnings(as.numeric(gsub(".*([0-9]+).*", "\\1", ss$reTrmAddArgs)))
-        aa[is.na(aa)] <- 0
-        aa[which(ss$reTrmClasses != "rr")] <- 0 #temporary fix for ar1
+
+        # FIX ME: migrate this (or something like it) down to reTrms,
+        ##    allow for more different covstruct types that have additional arguments
+        ##  e.g. phylo(.,tree); fixed(.,Sigma)
+        # FIX ME: use NA rather than 0 as a placeholder in aa?
+
+        ## FIXME: make sure that eval() happens in the right environment
+        get_num <- function(v) {
+            if (length(v)==1) return(NA_real_)
+            payload <- v[[2]]
+            if (is.na(as.numeric(deparse(payload)))) {
+                stop("we only handle numeric constants right now")
+            }
+            return(eval(payload))
+        }
+        aa <- ifelse(ss$reTrmClass=="rr",
+                     vapply(ss$reTrmAddArgs,
+                           get_num,
+                           FUN.VALUE=numeric(1)),
+                     0)
+
+        #aa <- ss$reTrmAddArgs
+        ## aa <- suppressWarnings(as.numeric(gsub(".*([0-9]+).*", "\\1", ss$reTrmAddArgs)))
+        ## aa[is.na(aa)] <- 0
+        ## aa[which(ss$reTrmClasses != "rr")] <- 0 #temporary fix for ar1
 
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
