@@ -1,8 +1,8 @@
 .Rproj.user
 .Rhistory
 .RData
-glmmTMB.o
-glmmTMB.so
+*.o
+*.so
 glmmTMB/vignettes/*.pdf
 glmmTMB/vignettes/*.aux
 glmmTMB/vignettes/*.log
