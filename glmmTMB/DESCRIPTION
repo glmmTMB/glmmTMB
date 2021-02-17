@@ -21,6 +21,7 @@ Authors@R: c(person("Arni","Magnusson",role="aut",
             person("Russ","Lenth", role="ctb"),
 	    person("Joseph", "O'Brien", role = "ctb",
 		       comment = c(ORCID = "0000-0001-9851-5077")),
+            person("Charles J.","Geyer", role="ctb"),
             person("Mollie","Brooks",role=c("aut","cre"),
                    email="mollieebrooks@gmail.com",
 		   comment=c(ORCID="0000-0001-6963-8326")))
