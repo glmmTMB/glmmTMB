@@ -10,7 +10,7 @@ glmmTMBControl(
   optimizer = nlminb,
   profile = FALSE,
   collect = FALSE,
-  parallel = NULL,
+  parallel = getOption("mc.cores", 1L),
   eigval_check = TRUE,
   zerodisp_val = log(sqrt(.Machine$double.eps))
 )
