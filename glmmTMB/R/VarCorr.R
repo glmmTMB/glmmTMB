@@ -26,10 +26,10 @@ getParList <- function(object) {
 ##'      \item{gaussian}{returns the \emph{maximum likelihood} estimate
 ##'          of the standard deviation (i.e., smaller than the results of
 ##'                                  \code{sigma(lm(...))} by a factor of (n-1)/n)}
-##'      \item{nbinom1}{returns an overdispersion parameter
+##'      \item{nbinom1}{returns a dispersion parameter
 ##'          (usually denoted \eqn{\alpha}{alpha} as in Hardin and Hilbe (2007)):
 ##'          such that the variance equals \eqn{\mu(1+\alpha)}{mu(1+alpha)}.}
-##'      \item{nbinom2}{returns an overdispersion parameter
+##'      \item{nbinom2}{returns a dispersion parameter
 ##'          (usually denoted \eqn{\theta}{theta} or \eqn{k}); in contrast to
 ##'          most other families, larger \eqn{\theta}{theta} corresponds to a \emph{lower}
 ##'          variance which is \eqn{\mu(1+\mu/\theta)}{mu(1+mu/theta)}.}

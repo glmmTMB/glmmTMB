@@ -125,6 +125,7 @@ test_that("terms", {
 })
 
 test_that("terms back-compatibility", {
+    skip("skip until TMB fits are back-compatible")
     f0 <- readRDS(system.file("test_data", "oldfit.rds",
                               package="glmmTMB",
                               mustWork=TRUE))
@@ -142,7 +143,7 @@ test_that("summary_print", {
     expect_equal(getVal(fm2),654.9,tolerance=1e-2)
     expect_equal(getVal(fm2P),NULL)
     expect_equal(getVal(fm2G),0.00654,tolerance=1e-2)
-    expect_equal(getVal(fm2NB,"Overdispersion"),286,tolerance=1e-2)
+    expect_equal(getVal(fm2NB,"Dispersion"),286,tolerance=1e-2)
 })
 
 test_that("sigma", {
