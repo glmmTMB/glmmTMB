@@ -398,63 +398,108 @@ test_that("confint works for models with dispformula", {
     expect_equal(tail(confint(m1),2), ref_val)
 })
 
+## utility functions for checking truncated-distribution simulations
+## FIXME: add to utils.R?
+dtruncated_nbinom2 <- function(x,size,mu,k=0,log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x,mu=mu, size=size,log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dpois(x,lambda,log=TRUE) -
+                ppois(k, lambda=lambda, lower.tail=FALSE,
+                      log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+dtruncated_nbinom1 <- function(x,phi,mu,k=0,log=FALSE) {
+    ## V=mu*(1+phi) = mu*(1+mu/k) -> k=mu/phi
+    size <- mu/phi
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x,mu=mu, size=size,log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+simfun <- function(formula, family, data, beta=c(0,1)) {
+    ss <- list(beta=beta)
+    if (grepl("nbinom",family)) ss$betad <- 0
+    suppressWarnings(m1 <- glmmTMB(formula,
+                                   family=family,
+                                   data=data,
+                                   start=ss,
+                                   control=glmmTMBControl(optCtrl=list(eval.max=0,iter.max=0))))
+    return(m1)
+}
+
+ntab <- function(formula=y~x, family, data, seed=101) {
+    set.seed(seed)
+    m1 <- simfun(formula, family, data)
+    return(table(exp(data$x),unlist(simulate(m1))))
+}
+
+pfun <- function(i,tab, dist="nbinom2", data) {
+    n <- as.numeric(names(tab[i,]))
+    plot(n,tab[i,]/sum(tab[i,]))
+    m <- exp(data$x)[i]
+    argList <- switch(dist,
+                      nbinom1=list(n, phi=1, mu=m),
+                      nbinom2=list(n, size=1, mu=m),
+                      poisson=list(n, lambda=m))
+    expected <- do.call(paste0("dtruncated_",dist), argList)
+    lines(n,expected)
+}
 
 test_that("trunc nbinom simulation", {
     ## GH 572
     dd <- data.frame(f=factor(1:2),
                      y=rep(1,2))
-
     ## results for second element of sim, depending on family:
     simres <- c(truncated_nbinom2=1,truncated_nbinom1=2)
-    for (f in c("truncated_nbinom2", "truncated_nbinom1")) {
+    for (f in paste0("truncated_nbinom",1:2)) {
         ## generate a model with two groups, one with a ridiculously low (log mean).
         ## don't allow the optimizer to actually do anything, so coefs will remain
         ## at their starting values
-        suppressWarnings(m1 <- glmmTMB(y~f,
-                                       family=f,
-                                       data=dd,
-                                       start=list(beta=c(-40,39)),
-                                       control=glmmTMBControl(optCtrl=list(eval.max=0,iter.max=0))))
+        m1 <- simfun(y~f, family=f, data=dd, beta=c(-40,39))
         expect_equal(fixef(m1)$cond, c(`(Intercept)` = -40, f2 = 39))
         expect_equal(fitted(m1),c(4.24835425529159e-18, 0.367879441171442))
-        ## should NOT get NaN for the first group if hack/fix is working
+        ## should NOT get NaN (or zero) for the first group if hack/fix is working
         expect_equal(unname(unlist(simulate(m1,seed=101))),c(1,1))
     }
+    
 })
 
+test_that("trunc nbinom sim 2", {
+    dd <- expand.grid(x=log(1:5),
+                      rep=1:10000,
+                      y=1)
+    t1 <- ntab(family="truncated_nbinom1", data=dd)
+    t2 <- ntab(family="truncated_nbinom2", data=dd)
+    if (FALSE) { 
+        op <- par(ask=TRUE)
+        for (i in 1:nrow(t1)) pfun(i,tab=t1,dist="nbinom1",data=dd)
+        for (i in 1:nrow(t2)) pfun(i,tab=t2,dist="nbinom2",data=dd)
+        par(op)
+    }
+
+})
 
 test_that("trunc poisson simulation", {
     dd <- expand.grid(x=log(1:5),
-                      rep=1:10000)
-    dd$y <- 1
-
-    suppressWarnings(m1 <- glmmTMB(y~x,
-             family=truncated_poisson,
-             data=dd,
-             start=list(beta=c(0,1)),
-             control=glmmTMBControl(optCtrl=list(eval.max=0,iter.max=0))))
-    set.seed(101)
-    tt <- table(exp(dd$x),unlist(simulate(m1)))
-    expect_equal(unname(tt[1,1:6]),
+                      rep=1:10000,
+                      y=1)
+    t3 <- ntab(family="truncated_poisson", data=dd)
+    expect_equal(unname(t3[1,1:6]),
                  c(5829L, 2905L, 963L, 242L, 56L, 5L))
     ## explore
     if (FALSE) { 
-        dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
-            y <- ifelse(x<=k,-Inf,
-                        dpois(x,lambda,log=TRUE) -
-                        ppois(k, lambda=lambda, lower.tail=FALSE,
-                              log.p=TRUE))
-            if (log) return(y) else return(exp(y))
-        }
-        pfun <- function(i) {
-            n <- as.numeric(names(tt[i,]))
-            plot(n,tt[i,]/sum(tt[i,]))
-            lines(n,dtruncated_poisson(n, lambda=exp(dd$x)[i]))
-        }
         op <- par(ask=TRUE)
-        for (i in 1:nrow(tt)) pfun(i)
+        for (i in 1:nrow(t3)) pfun(i,tab=t3,dist="poisson",data=dd)
         par(op)
     }
 })
-
-    
