@@ -35,9 +35,12 @@ namespace glmmtmb{
     else return logres;
   }
 
-   // from C. Geyer aster package
+   // from C. Geyer aster package, src/raster.c l. 175
    // Simulate from truncated poisson
-   double rtruncpois(int k, double mu)
+   // see https://cran.r-project.org/web/packages/aster/vignettes/trunc.pdf for technical/mathematical details
+   // k is the truncation point (e.g. k=0 -> 0-truncated)
+   // MODIFICATIONS: change die() to throw std::range_error() 
+   double rtruncated_poisson(int k, double mu)
    {
     int m;
     double mdoub;
@@ -71,6 +74,47 @@ namespace glmmtmb{
         }
     }
    } // rtruncpois
+
+   // alpha = size (dispersion param), k = truncation point, mu = mean
+   double rtruncated_nbinom(double alpha, int k, double mu)
+   {
+    int m;
+    double mdoub;
+    double p = alpha / (mu + alpha);
+    double q = mu / (mu + alpha);
+
+    if (alpha <= 0.0)
+        throw std::range_error("non-positive size in k-truncated-neg-bin simulator\n");
+    if (mu <= 0.0)
+        throw std::range_error("non-positive mu in k-truncated-neg-bin simulator\n");
+    if (k < 0)
+        throw std::range_error("negative k in k-truncated-neg-bin simulator\n");
+
+    mdoub = (k + 1.0) * p - alpha * q;
+    if (mdoub < 0.0)
+        mdoub = 0.0;
+    m = mdoub;
+    if (m < mdoub)
+        m = m + 1;
+    /* since p < 1.0 and q > 0.0 we have 0.0 <= mdoub < k + 1
+       hence 0 <= m <= k + 1 */
+
+    for (;;) {
+        double x = rnbinom(alpha + m, p) + m;
+        if (m > 0) {
+            double a = 1.0;
+            int j;
+            double u = unif_rand();
+            for (j = 0; j < m; ++j)
+                a *= (k + 1 - j) / (x - j);
+            if (u < a && x > k)
+                return x;
+        } else {
+            if (x > k)
+                return x;
+        }
+    }
+   } // rtruncated_nbinom
 
   /* Simulate from generalized poisson distribution */
   template<class Type>

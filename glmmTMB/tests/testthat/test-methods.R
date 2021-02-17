@@ -418,8 +418,43 @@ test_that("trunc nbinom simulation", {
         expect_equal(fixef(m1)$cond, c(`(Intercept)` = -40, f2 = 39))
         expect_equal(fitted(m1),c(4.24835425529159e-18, 0.367879441171442))
         ## should NOT get NaN for the first group if hack/fix is working
-        expect_equal(unname(unlist(simulate(m1,seed=101))),
-                     c(0,simres[[f]]))
+        expect_equal(unname(unlist(simulate(m1,seed=101))),c(1,1))
     }
 })
 
+
+test_that("trunc poisson simulation", {
+    dd <- expand.grid(x=log(1:5),
+                      rep=1:10000)
+    dd$y <- 1
+
+    suppressWarnings(m1 <- glmmTMB(y~x,
+             family=truncated_poisson,
+             data=dd,
+             start=list(beta=c(0,1)),
+             control=glmmTMBControl(optCtrl=list(eval.max=0,iter.max=0))))
+    set.seed(101)
+    tt <- table(exp(dd$x),unlist(simulate(m1)))
+    expect_equal(unname(tt[1,1:6]),
+                 c(5829L, 2905L, 963L, 242L, 56L, 5L))
+    ## explore
+    if (FALSE) { 
+        dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
+            y <- ifelse(x<=k,-Inf,
+                        dpois(x,lambda,log=TRUE) -
+                        ppois(k, lambda=lambda, lower.tail=FALSE,
+                              log.p=TRUE))
+            if (log) return(y) else return(exp(y))
+        }
+        pfun <- function(i) {
+            n <- as.numeric(names(tt[i,]))
+            plot(n,tt[i,]/sum(tt[i,]))
+            lines(n,dtruncated_poisson(n, lambda=exp(dd$x)[i]))
+        }
+        op <- par(ask=TRUE)
+        for (i in 1:nrow(tt)) pfun(i)
+        par(op)
+    }
+})
+
+    

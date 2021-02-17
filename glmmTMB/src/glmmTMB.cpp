@@ -538,23 +538,25 @@ Type objective_function<Type>::operator() ()
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
-        SIMULATE {
-          s1 = mu(i);  
-          s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-          yobs(i) = rnbinom2(s1, s2);
-        }
-        if( family == truncated_nbinom1_family ) {
+	if (family != truncated_nbinom1_family) {
+		SIMULATE {
+			s1 = mu(i);  
+			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+			yobs(i) = rnbinom2(s1, s2);
+		}
+	} else {
           // s3 := log( 1. + phi(i) )
           s3 = logspace_add( Type(0), etad(i) );
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
           SIMULATE{
-            s1 = mu(i)/phi(i);//sz
-            s2 = 1/(1+phi(i)); //pb
+            s1 = mu(i)/phi(i); //sz
+	    yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(s1), 0, asDouble(mu(i)));
+            // s2 = 1/(1+phi(i)); //pb
 	    // FIXME: much better ways to sample trunc NB
 	    // https://cran.r-project.org/web/packages/aster/vignettes/trunc.pdf
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2)-Type(1e-8), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+            // yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2)-Type(1e-8), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
 	    // if (glmmtmb::notFinite(yobs(i))) std::cout << "s2 :" << s2 << "\n"; std::cout.flush();
           }
         }
@@ -580,11 +582,10 @@ Type objective_function<Type>::operator() ()
           tmp_loglik -= log_nzprob;
           tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
-            s1 = phi(i); //sz
-            s2 = phi(i)/(phi(i)+mu(i)); //pb
-	    Type d0 = dnbinom(Type(0), s1, s2-Type(1e-8));  // make sure prob strictly <1
-	    float r = asDouble(runif(d0, Type(1)));
-            yobs(i) = Rf_qnbinom(r, asDouble(s1), asDouble(s2), 1, 0);
+		  yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(phi(i)), 0, asDouble(mu(i)));
+	    // Type d0 = dnbinom(Type(0), s1, s2-Type(1e-8));  // make sure prob strictly <1
+	    // float r = asDouble(runif(d0, Type(1)));
+            // yobs(i) = Rf_qnbinom(r, asDouble(s1), asDouble(s2), 1, 0);
 	    // if (glmmtmb::notFinite(yobs(i))) std::cout << "d0: " << d0
 	    // 					       << "; r: " << r
 	    // 					       << "; s1: " << s1
@@ -604,7 +605,8 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
-          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
+		yobs(i) = glmmtmb::rtruncated_poisson(0, asDouble(mu(i)));
+		// yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
         }
         break;
      case genpois_family:
@@ -737,4 +739,6 @@ Type objective_function<Type>::operator() ()
 
   return jnll;
 }
+
+
 
