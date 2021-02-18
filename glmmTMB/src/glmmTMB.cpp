@@ -584,7 +584,7 @@ Type objective_function<Type>::operator() ()
   std::cout << "OpenMP max_parallel_regions=" << this -> max_parallel_regions << "\n";
 #else
   this -> max_parallel_regions = 1;
-  std::cout << "OpenMP max_parallel_regions=1\n";
+  std::cout << "no OpenMP (max_parallel_regions=1)\n;"
 #endif
 
   DATA_MATRIX(X);
