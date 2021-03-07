@@ -76,39 +76,42 @@ if (require(car) && getRversion()>="3.6.0") {
     expect_equal(get_pval(a3),c(0, 1.82693150434104e-13))
     expect_equal(get_pval(a4),0.81337346580467)
 
-    ## zi and cond for cases with different models (GH 673)
-    ## set up case where one of the 'term' indices matches up with an element
-    ## in the 'assign' attribute for the conditional model > the number of terms for the zi model
-    ## here conditional model
-    set.seed(101)
-    n <- 100
-    ## give data unique name to avoid interfering with dd below (only relevant in some contexts?)
-    dd673 <- data.frame(x=rnorm(n),y=rnorm(n),f=factor(sample(5,size=n,replace=TRUE)))
-    beta <- rep(1,6)
-    X <- model.matrix(~x+f,data=dd673)
-    dd673 <- within(dd673, {
-        eta_cond <- exp(X %*% beta)
-        eta_zi <- plogis(x+y)
-        z <- ifelse(runif(n)<eta_zi,0,rnbinom(n,mu=eta_cond,size=1))
-    })
-    m <- glmmTMB(z~x+f, family=nbinom2, data=dd673, zi=~x+y)
-    ac <-  attr(model.matrix(m), "assign")
-    az <- attr(model.matrix(m, component="zi"), "assign")
     test_that("Anova matches zi attributes correctly", {
+        ## zi and cond for cases with different models (GH 673)
+        ## set up case where one of the 'term' indices matches up with an element
+        ## in the 'assign' attribute for the conditional model > the number of terms for the zi model
+        ## here conditional model
+        ## ?? not sure why the data simulation/model fitting has to be within test_that() but apparently it does ??
+        set.seed(101)
+        n <- 100
+        ## give data unique name to avoid interfering with dd below (only relevant in some contexts?)
+        dd673 <<- data.frame(x=rnorm(n),y=rnorm(n),f=factor(sample(5,size=n,replace=TRUE)))
+        beta <- rep(1,6)
+        X <- model.matrix(~x+f,data=dd673)
+        dd673 <<- within(dd673, {
+            eta_cond <- exp(X %*% beta)
+            eta_zi <- plogis(x+y)
+            z <- ifelse(runif(n)<eta_zi,0,rnbinom(n,mu=eta_cond,size=1))
+        })
+        m673 <<- glmmTMB(z~x+f, family=nbinom2, data=dd673, zi=~x+y)
+        ac <-  attr(model.matrix(m673), "assign")
+        az <- attr(model.matrix(m673, component="zi"), "assign")
+
         expect_true(max(match(az,ac))>length(az)-1)
-        expect_equal(Anova(m, type=3),
+        expect_equal(Anova(m673, type=3),
                      structure(list(Chisq = c(4.72184220080362, 26.0412437493939, 
 2.44974442018967), Df = c(1, 1, 4), `Pr(>Chisq)` = c(0.0297818205083957, 
 3.34201109860344e-07, 0.653656869363576)), class = c("anova", 
 "data.frame"), row.names = c("(Intercept)", "x", "f"), heading = c("Analysis of Deviance Table (Type III Wald chisquare tests)\n", 
 "Response: z")))
-        expect_equal(Anova(m, type=3, component="zi"),
+        expect_equal(Anova(m673, type=3, component="zi"),
                      structure(list(Chisq = c(0.605706252119866, 4.82515004746816, 
 8.93942508493268), Df = c(1, 1, 1), `Pr(>Chisq)` = c(0.436409077669975, 
 0.0280474237991421, 0.00279080545380766)), class = c("anova", 
 "data.frame"), row.names = c("(Intercept)", "x", "y"), heading = c("Analysis of Deviance Table (Type III Wald chisquare tests)\n", 
 "Response: z")))
-    })
+    }
+)
 
 }
 
