@@ -1,17 +1,17 @@
 stopifnot(require("testthat"),
-          require("glmmTMB"),
-          require("mvabund"))
+          require("glmmTMB"))
 
-context("rr models")
-data(spider)
-sppTot <- sort(colSums(spider$abund), decreasing = T)
-tmp <- cbind(spider$abund, spider$x)
-tmp$id <- 1:nrow(tmp)
-spiderDat <- reshape(tmp,  idvar = "id",
+if (require(mvabund)) {
+
+    data(spider)
+    sppTot <- sort(colSums(spider$abund), decreasing = T)
+    tmp <- cbind(spider$abund, spider$x)
+    tmp$id <- 1:nrow(tmp)
+    spiderDat <- reshape(tmp,  idvar = "id",
                      timevar = "Species", times =  colnames(spider$abund),
                      varying = list(colnames(spider$abund)), v.names = "abund",
                      direction = "long")
-spiderDat <- with(spiderDat, spiderDat[Species %in% names(sppTot[1:4]), ])
+    spiderDat <- with(spiderDat, spiderDat[Species %in% names(sppTot[1:4]), ])
 
 test_that("rr model fit", {
     ## Fit poison model with rr
@@ -42,9 +42,10 @@ dd$w <- simulate(~1 + (x+y+z|g1) + (x+y+z|g2),
 
 test_that("rr eigenvalues", {
   m1 <- glmmTMB(w ~ 1 + rr(x+y+z|g1,2), data=dd)
-  eighenvalues <- zapsmall(eigen(VarCorr(m1)$cond$g1)$values)
-  expect_equal(eighenvalues[3:4], c(0, 0))
+  eigenvalues <- zapsmall(eigen(VarCorr(m1)$cond$g1)$values)
+  expect_equal(eigenvalues[3:4], c(0, 0))
   m2 <- glmmTMB(w ~ 1 + rr(x+y+z|g1,3)  + (x+y+z|g2), data=dd)
-  eighenvalues <- zapsmall(eigen(VarCorr(m2)$cond$g1)$values)
-  expect_equal(eighenvalues[4], 0)
+  eigenvalues <- zapsmall(eigen(VarCorr(m2)$cond$g1)$values)
+  expect_equal(eigenvalues[4], 0)
 })
+}

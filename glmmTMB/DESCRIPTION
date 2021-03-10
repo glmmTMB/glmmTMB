@@ -68,7 +68,8 @@ Suggests:
     texreg,
     xtable,
     huxtable,
-    numDeriv
+    numDeriv,
+    mvabund
 SystemRequirements: GNU make
 VignetteBuilder: knitr
 URL: https://github.com/glmmTMB/glmmTMB
