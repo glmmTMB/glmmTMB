@@ -5,74 +5,14 @@
 // don't need to include omp.h; we get it via TMB.hpp
 
 namespace glmmtmb{
-  template<class Type>
-  Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
-  {
-    /*
-      Wikipedia:
-      f(k|n,\alpha,\beta) =
-      \frac{\Gamma(n+1)}{\Gamma(k+1)\Gamma(n-k+1)}
-      \frac{\Gamma(k+\alpha)\Gamma(n-k+\beta)}{\Gamma(n+\alpha+\beta)}
-      \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}
-    */
-    Type logres =
-      lgamma(n + 1) - lgamma(y + 1)     - lgamma(n - y + 1) +
-      lgamma(y + a) + lgamma(n - y + b) - lgamma(n + a + b) +
-      lgamma(a + b) - lgamma(a)         - lgamma(b) ;
-    if(!give_log) return exp(logres);
-    else return logres;
-  }
-
-  template<class Type>
-  Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
-  {
-    /*
-      f(y|\theta,\lambda) =
-      \frac{\theta(theta+\lambda y)^{y-1}e^{-\theta-\lambda y}}{y \!}
-    */
-    Type logres =
-      log(theta) + (y - 1) * log(theta + lambda * y) -
-      theta - lambda * y - lgamma(y + Type(1));
-    if(!give_log) return exp(logres);
-    else return logres;
-  }
-
-  /* Simulate from generalized poisson distribution */
-  template<class Type>
-  Type rgenpois(Type theta, Type lambda) {
-    // Copied from R function HMMpa::rgenpois
-    Type ans = Type(0);
-    Type random_number = runif(Type(0), Type(1));
-    Type kum = dgenpois(Type(0), theta, lambda);
-    while (random_number > kum) {
-      ans = ans + Type(1);
-      kum += dgenpois(ans, theta, lambda);
-    }
-    return ans;
-  }
-
-  /* Simulate from zero-truncated generalized poisson distribution */
-  template<class Type>
-  Type rtruncated_genpois(Type theta, Type lambda) {
-    int nloop = 10000;
-    int counter = 0;
-    Type ans = rgenpois(theta, lambda);
-    while(ans < Type(1) && counter < nloop) {
-      ans = rgenpois(theta, lambda);
-      counter++;
-    }
-    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
-    return ans;
-  }
-
-  template<class Type>
-  bool isNA(Type x){
-    return R_IsNA(asDouble(x));
-  }
+template<class Type>
+bool isNA(Type x){
+  return R_IsNA(asDouble(x));
+}
 
 template<class Type>
 bool notFinite(Type x) {
-	return (!R_FINITE(asDouble(x)));
+  return (!R_FINITE(asDouble(x)));
 }
 }
 
@@ -678,7 +618,7 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	if (family != truncated_nbinom1_family) {
 		SIMULATE {
-			s1 = mu(i);  
+			s1 = mu(i);
 			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
 			yobs(i) = rnbinom2(s1, s2);
 		}

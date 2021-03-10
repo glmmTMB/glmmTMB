@@ -161,7 +161,7 @@ startParams <- function(parameters,
     start <- startVals(yobs, weights, fr, Xd, XdS, sparseX,
                        family, formula, ziformula, dispformula, condReStruc,
                        parameters, jitter.sd)
-    }
+  }
 
   for (p in names(start)) {
     if (!(p %in% names(parameters))) {
@@ -475,7 +475,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
 ##' \item{ss}{}
-##' \item{aa}{}
+##' \item{aa}{additional arguments, used to obtain rank}
 ##' \item{terms}{}
 ##' \item{offset}{offset vector, or vector of zeros if offset not specified}
 ##' \item{reXterms}
@@ -556,13 +556,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         reTrms <- mkReTrms(findbars(RHSForm(formula)), fr, reorder.terms=FALSE)
 
         ss <- splitForm(formula)
-        #need to keep reTrmAddArgs to get n in rr
-
         # FIX ME: migrate this (or something like it) down to reTrms,
         ##    allow for more different covstruct types that have additional arguments
         ##  e.g. phylo(.,tree); fixed(.,Sigma)
         # FIX ME: use NA rather than 0 as a placeholder in aa?
-
         ## FIXME: make sure that eval() happens in the right environment
         get_num <- function(v) {
             if (length(v)==1) return(NA_real_)
@@ -576,12 +573,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
                      vapply(ss$reTrmAddArgs,
                            get_num,
                            FUN.VALUE=numeric(1)),
-                     0)
-
-        #aa <- ss$reTrmAddArgs
-        ## aa <- suppressWarnings(as.numeric(gsub(".*([0-9]+).*", "\\1", ss$reTrmAddArgs)))
-        ## aa[is.na(aa)] <- 0
-        ## aa[which(ss$reTrmClasses != "rr")] <- 0 #temporary fix for ar1
+                    0)
 
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
@@ -655,6 +647,7 @@ getGrpVar <- function(x)
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
+##' \item{blockRank}{rank number}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
@@ -686,13 +679,13 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
             ss <- rep("us",length(blksize))
         }
 
-        if ( any(aa[ss=="rr"]==0)) {
-          aa0 <- which(aa==0 & ss=="rr")
+        if ( any(is.na(aa[ss=="rr"]))) {
+          aa0 <- which(is.na(aa) & ss=="rr")
           aa[aa0] <- 2 #set default blockRank to 2 if it's not specified
         }
 
         if ( is.null(aa)) {
-          aa <- rep(0,length(blksize))#set default blockRank to 2 if it's not specified
+          aa <- rep(0,length(blksize)) #set blockRank to 0
         }
 
         blkrank <- aa

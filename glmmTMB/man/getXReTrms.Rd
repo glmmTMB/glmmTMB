@@ -26,7 +26,11 @@ a list composed of
 \item{X}{design matrix for fixed effects}
 \item{Z}{design matrix for random effects}
 \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+\item{ss}{}
+\item{aa}{additional arguments, used to obtain rank}
+\item{terms}{}
 \item{offset}{offset vector, or vector of zeros if offset not specified}
+\item{reXterms}
 }
 \description{
 Create X and random effect terms from formula

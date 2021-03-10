@@ -26,6 +26,7 @@ a list
 \item{blockSize}{size (dimension) of one block}
 \item{blockReps}{number of times the blocks are repeated (levels)}
 \item{covCode}{structure code}
+\item{blockRank}{rank number}
 }
 \description{
 Calculate random effect structure
