@@ -76,6 +76,7 @@
 <<setopts,echo=FALSE,message=FALSE>>=
 library("knitr")
 opts_chunk$set(fig.width=5,fig.height=5,
+               error=FALSE,
                out.width="0.8\\textwidth",echo=TRUE)
 ## https://tex.stackexchange.com/questions/148188/knitr-xcolor-incompatible-color-definition/254482
 knit_hooks$set(document = function(x) {sub('\\usepackage[]{color}', '\\usepackage{xcolor}', x, fixed = TRUE)})

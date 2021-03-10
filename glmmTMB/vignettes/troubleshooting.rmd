@@ -154,7 +154,7 @@ print(s_vals,digits=3)
 
 Here is another example (from Samantha Sherman):
 
-```{r load_ss_ex}
+```{r load_ss_ex, eval=TRUE}
 load(system.file("vignette_data","troubleshooting.rda",package="glmmTMB"))
 ```
 
@@ -242,8 +242,21 @@ You can also check directly whether the model is OK by examining the `pdHess` ("
 ```{r checkhess}
 mod3$sdr$pdHess					      
 ```
-
 (**FIXME**: add an accessor method for this?)
+
+
+However, there is a more fundamental problem with this model: count models are being applied to non-integer data! We can try a Tweedie distribution instead:
+
+<!-- FORCE evaluation even on CRAN/override global eval=FALSE -->
+```{r mod4_up, eval=FALSE}
+mod4 <- update(mod3, family=tweedie)
+```
+
+```{r ss_mod4}
+summary(mod4)
+```
+
+For what it's worth, the Tweedie is trying pretty hard to get back to a Poisson distribution: the power parameter is `r round(1+plogis(mod4$fit$par[["thetaf"]]),2)`, which is just above the Poisson value of 1 (which in turn is the *minimum* value allowed by glmmTMB).
                                               
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 
