@@ -7,6 +7,7 @@
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @keywords internal
+##' @importFrom stats ppois pbinom rnorm
 startParams <- function(parameters,
                         formula, ziformula, dispformula,
                         combForm,
@@ -22,13 +23,14 @@ startParams <- function(parameters,
                         start = NULL,
                         sparseX = NULL,
                         start_method = list(method = NULL, jitter.sd = 0)) {
-
+   
   start.met <- start_method$method
-  jitter.sd <- ifelse(!is.null(start_method$jitter.sd), start_method$jitter.sd, 0)
+  jitter.sd <- ifelse(!is.null(start_method$jitter.sd),
+                        start_method$jitter.sd, 0)
 
-  # rrValues calculates residuals from the fixed model,
-  # fits a reduced rank model to obtain starting values for the latent variables and the factor loadings
-  rrValues <- function(yobs, weights, fr, mu,
+    ## rrValues calculates residuals from the fixed model,
+    ## fits a reduced rank model to obtain starting values for the latent variables and the factor loadings
+    rrValues <- function(yobs, weights, fr, mu,
                        family, formula, ziformula, dispformula, condReStruc,
                        phi = NULL, jitter.sd = 0){
     nobs <- length(yobs)
@@ -478,7 +480,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{aa}{additional arguments, used to obtain rank}
 ##' \item{terms}{}
 ##' \item{offset}{offset vector, or vector of zeros if offset not specified}
-##' \item{reXterms}
+##' \item{reXterms}{}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -642,6 +644,7 @@ getGrpVar <- function(x)
 ##' matrix (\code{"us"}) for all blocks).
 ##' @param reXterms terms objects corresponding to each RE term
 ##' @param fr model frame
+##' @param aa (?? additional info ??)
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -659,7 +662,7 @@ getGrpVar <- function(x)
 ##' @export
 getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
-  ## information from ReTrms is contained in cnms, flist
+  ## information from ReTrms is contained in cnms, flist elements
   ## cnms: list of column-name vectors per term
   ## flist: data frame of grouping variables (factors)
   ##   'assign' attribute gives match between RE terms and factors

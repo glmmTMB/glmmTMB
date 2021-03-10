@@ -30,7 +30,7 @@ a list composed of
 \item{aa}{additional arguments, used to obtain rank}
 \item{terms}{}
 \item{offset}{offset vector, or vector of zeros if offset not specified}
-\item{reXterms}
+\item{reXterms}{}
 }
 \description{
 Create X and random effect terms from formula
