@@ -3,7 +3,7 @@
 ## https://github.com/glmmTMB/glmmTMB/pull/652
 
 tag <- "BMB"     ## indicator of who is running/ran these examples
-ref <- "CRAN"    ## what branch/package version?
+ref <- "master"    ## what branch/package version?
 ## try with "CRAN", "master", "#652"
 
 ## adjust these to your liking
@@ -58,7 +58,7 @@ if (length(fn)==1) {  ## doing a run rather than compiling results
             save.image(file=chkfn)  ## checkpoint
         }
     }
-    saveRDS("times",file=datfn)
+    saveRDS(times,file=datfn)
 }
 
 ### compilation of results ...
