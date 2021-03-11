@@ -534,7 +534,7 @@ printDispersion <- function(ff,s) {
             sname <- "sigma^2"
             sval <- s^2
         } else {
-            dname <- "Overdispersion parameter"
+            dname <- "Dispersion parameter"
             sname <- ""
             sval <- s
         }

@@ -1,0 +1,12 @@
+---
+title: "glmmTMB hacks"
+---
+
+## hacks based on fixing parameters
+
+`glmmTMB` has a `map`
+
+## hacks based on filtering/wrapping the objective function
+
+
+## hacks based on modifying the X/Z matrix

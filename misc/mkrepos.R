@@ -44,7 +44,7 @@ insertPackage(src,"repos")
 
 ## to test installation (if you are on MacOS or Windows)
 if (FALSE) {
-    install.packages("glmmTMB", repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",
+    install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos",
                  type="binary")
 }
 
