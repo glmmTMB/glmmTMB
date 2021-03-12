@@ -20,8 +20,9 @@
 ##' @param eval_eps numeric tolerance for 'bad' eigenvalues
 ##' @param evec_eps numeric tolerance for 'bad' eigenvector elements
 ##' @param big_coef numeric tolerance for large coefficients
-##' @param big_sd_log10 numeric tolerance for badly scaled parameters (log10 scale), i.e. by default predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)
-##' @param check_coefs identify large-magnitude coefficients?
+##' @param big_sd_log10 numeric tolerance for badly scaled parameters (log10 scale), i.e. for default value of 3, predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)
+##' @param big_zstat numeric tolerance for Z-statistic (ratio of standard deviation to mean); identifies likely failures of Wald confidence intervals/p-values
+##' @param check_coefs identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)
 ##' @param check_hessian identify non-positive-definite Hessian components?
 ##' @param check_scales identify predictors with unusually small or large scales?
 ##' @return a logical value based on whether anything questionable was found
@@ -30,8 +31,11 @@
 ##' @export
 ##'
 diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
-                     big_coef=10,big_sd_log10=3,
+                     big_coef=10,
+                     big_sd_log10=3,
+                     big_zstat=5,
                      check_coefs=TRUE,
+                     check_zstats=TRUE,
                      check_hessian=TRUE,
                      check_scales=TRUE) {
     model_OK <- TRUE
@@ -40,19 +44,25 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
     ee <- environment(obj$fn)
     ## extract parameters
     pp <- ee$last.par[-ee$random]
+    ss <- summary(fit$sdr)
+    ss <- ss[grepl("^(beta|theta)",rownames(ss)),]
     ## easiest way to get names corresponding to all of the parameters
     nn <- tryCatch(colnames(vcov(fit,full=TRUE)),
                    ## fall-back position
                    error = function(e) make.unique(names(pp)))
-    names(pp) <- nn
+    nn0 <- names(pp)
+    names(pp) <- rownames(ss) <- nn
     ## check coefficients
     if (check_coefs) {
-        if (length(bigcoef <- pp[abs(pp)>big_coef])>0) {
+        link_par <- (nn0 != "beta" |
+                     family(fit)$link %in% c("log","cloglog","logit","probit"))
+        bigcoef <- (pp[abs(pp)>big_coef & link_par])
+        if (length(bigcoef)>0) {
             model_OK <- FALSE
-            cat(sprintf("Unusually large coefficients (|beta|>%g):\n\n",big_coef))
+            cat(sprintf("Unusually large coefficients (|x|>%g):\n\n",big_coef))
             print(bigcoef)
             cat("\n")
-            cat(strwrap(paste("Large negative coefficients in zi (log-odds of zero-inflation) or random effects (log-standard deviations) suggest",
+            cat(strwrap(paste("Large negative coefficients in zi (log-odds of zero-inflation), dispersion, or random effects (log-standard deviations) suggest",
                               "unnecessary components (converging to zero on the constrained scale); large negative and/or positive",
                               "components in binomial or Poisson conditional parameters suggest (quasi-)complete separation",
                               collapse="")),"\n",sep="\n")
@@ -75,6 +85,29 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
                                    "small magnitudes, which can sometimes exacerbate numerical instability, and may also be appear",
                                    "(incorrectly) to be indicating a poorly defined optimum (i.e., a non-positive definite Hessian",
                                    collapse=" ")),sep="\n")
+        }
+    }
+    if (check_zstats) {
+        z <- ss[,"Std. Error"]/ss[,"Estimate"]
+        bigz <- z[abs(z)>big_zstat]
+        if (length(bigz)>0) {
+            model_OK <- FALSE
+            cat(sprintf("Unusually large Z-statistics (|x|>%g):\n\n",big_zstat))
+            print(bigz)
+            cat("\n")
+            cat(strwrap(paste("Large Z-statistics (estimate/std err) suggest a failure ",
+                              "of the Wald approximation - often also associated with ",
+                              "parameters that are at or near the edge of their range ",
+                              "(e.g. random-effects standard deviations approaching 0). ",
+                              "While the Wald p-values and standard errors listed in ",
+                              "summary() are unreliable, profile confidence intervals ",
+                              "(see ?confint.glmmTMB) and likelihood ratio test p-values ",
+                              "derived by comparing models (e.g. ?drop1) may still be OK. ",
+                              "(Note that the LRT is conservative when the null value is ",
+                              "on the boundary, e.g. a variance or zero-inflation value of 0 ",
+                              "(Self and Liang 1987; Stram and Lee 1994; Goldman and Whelan 2000); ",
+                              "in simple cases the p-value is approximately twice as large as it should be.)",
+                              collapse="")),"\n",sep="\n")
         }
     }
     if (check_hessian) {
