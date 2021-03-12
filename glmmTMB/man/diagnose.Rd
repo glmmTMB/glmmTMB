@@ -10,7 +10,9 @@ diagnose(
   evec_eps = 0.01,
   big_coef = 10,
   big_sd_log10 = 3,
+  big_zstat = 5,
   check_coefs = TRUE,
+  check_zstats = TRUE,
   check_hessian = TRUE,
   check_scales = TRUE
 )
@@ -24,9 +26,13 @@ diagnose(
 
 \item{big_coef}{numeric tolerance for large coefficients}
 
-\item{big_sd_log10}{numeric tolerance for badly scaled parameters (log10 scale), i.e. by default predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)}
+\item{big_sd_log10}{numeric tolerance for badly scaled parameters (log10 scale), i.e. for default value of 3, predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)}
 
-\item{check_coefs}{identify large-magnitude coefficients?}
+\item{big_zstat}{numeric tolerance for Z-statistic}
+
+\item{check_coefs}{identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)}
+
+\item{check_zstats}{identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.}
 
 \item{check_hessian}{identify non-positive-definite Hessian components?}
 

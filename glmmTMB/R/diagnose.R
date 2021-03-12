@@ -21,9 +21,10 @@
 ##' @param evec_eps numeric tolerance for 'bad' eigenvector elements
 ##' @param big_coef numeric tolerance for large coefficients
 ##' @param big_sd_log10 numeric tolerance for badly scaled parameters (log10 scale), i.e. for default value of 3, predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)
-##' @param big_zstat numeric tolerance for Z-statistic (ratio of standard deviation to mean); identifies likely failures of Wald confidence intervals/p-values
+##' @param big_zstat numeric tolerance for Z-statistic 
 ##' @param check_coefs identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)
 ##' @param check_hessian identify non-positive-definite Hessian components?
+##' @param check_zstats identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.
 ##' @param check_scales identify predictors with unusually small or large scales?
 ##' @return a logical value based on whether anything questionable was found
 ##' @importFrom numDeriv jacobian hessian
