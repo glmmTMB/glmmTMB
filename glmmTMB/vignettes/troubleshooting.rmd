@@ -166,7 +166,6 @@ The first model gives the warning: "non-integer counts in an nbinom1 model" (ind
 ```{r ss_ex_mod1}
 summary(mod1)
 ```
-
 We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.
 
 Running diagnostics on the model, these are the only problems reported.
@@ -250,14 +249,12 @@ In general models with non-positive definite Hessian matrices should be excluded
 ## Model convergence problem:  eigenvalue problems
 
 ```{r genpois_NaN,cache=TRUE}
-m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
+m1 <- glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
 ```
 
 ```{r diag_genpois}
 diagnose(m1)
 ```
-
-**FIXME**: no longer an eigenvalue problem, just an 'unusually large coefficients problem" due to ZI components that are $\approx 0$.
 
 In this example, the fixed-effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
 
