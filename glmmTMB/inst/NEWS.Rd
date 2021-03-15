@@ -14,6 +14,7 @@
     \itemize{
       \item \code{Anova} with \code{type="III"} now handles
       \code{component} argument correctly, more robust to trivial models
+      \item fixed a typo/omission in the type-3 Anova method that made zi Anova break in some conditions (GH #674)
     }
   }
 }
