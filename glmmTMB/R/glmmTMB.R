@@ -1,20 +1,22 @@
 ##' Change starting parameters, either by residual method or by user input (start)
 ##' @inheritParams mkTMBStruc
-##' @param combForm combined formula
-##' @param mf call to model frame
+##' @param formula current formula, containing both fixed & random effects
+##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default \code{~0} specifies no zero-inflation. Specifying \code{~.} sets the zero-inflation formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}. The zero-inflation model uses a logit link.
+##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via \code{control=glmmTMBControl(zero_dispval=...)}; the default value is \code{sqrt(.Machine$double.eps)}.
 ##' @param fr model frame
 ##' @param yobs observed y
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
+##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{thetaf} (extra family parameters, e.g., shape for Tweedie models).
+##' @param sparseX see \code{\link{glmmTMB}}
+##' @param start_method Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when start = "res".
 ##' @keywords internal
 ##' @importFrom stats ppois pbinom rnorm
 startParams <- function(parameters,
                         formula, ziformula, dispformula,
-                        combForm,
                         fr,
                         yobs,
                         weights,
-                        contrasts,
                         size = NULL,
                         Xd = NULL,
                         XdS = NULL,
@@ -23,7 +25,7 @@ startParams <- function(parameters,
                         start = NULL,
                         sparseX = NULL,
                         start_method = list(method = NULL, jitter.sd = 0)) {
-   
+
   start.met <- start_method$method
   jitter.sd <- ifelse(!is.null(start_method$jitter.sd),
                         start_method$jitter.sd, 0)
@@ -437,11 +439,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if(!is.null(start) || !is.null(control$start_method$method)){
     parameters <- startParams(parameters,
                               formula, ziformula, dispformula,
-                              combForm,
                               fr,
                               yobs = data.tmb$yobs,
                               weights = data.tmb$weights,
-                              contrasts,
                               size = data.tmb$size,
                               Xd = data.tmb$Xd,
                               XdS = data.tmb$XdS,
@@ -476,11 +476,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
-##' \item{ss}{}
+##' \item{ss}{splitform of the formula}
 ##' \item{aa}{additional arguments, used to obtain rank}
-##' \item{terms}{}
+##' \item{terms}{terms for the fixed effects}
 ##' \item{offset}{offset vector, or vector of zeros if offset not specified}
-##' \item{reXterms}{}
+##' \item{reXterms}{terms for the model matrix in each RE term}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -1109,7 +1109,7 @@ glmmTMB <- function(
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
-##' @param start_method Method to get starting values for latent variables and their loadings when rr_covstruct is specified
+##' @param start_method Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when start = "res".
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by

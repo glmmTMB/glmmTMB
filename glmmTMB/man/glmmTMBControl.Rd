@@ -36,7 +36,7 @@ the negative log-likelihood in parallel}
 
 \item{zerodisp_val}{value of the dispersion parameter when \code{dispformula=~0} is specified}
 
-\item{start_method}{Method to get starting values for latent variables and their loadings when rr_covstruct is specified}
+\item{start_method}{Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when start = "res".}
 }
 \description{
 Control parameters for glmmTMB optimization
