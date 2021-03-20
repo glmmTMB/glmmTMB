@@ -83,5 +83,8 @@ test_that("alternate optimizers work", {
           expect_false(identical(fixef(m1),fixef(m1optim)))
 })
 
+test_that("summary", {
+    summary(m1)
+})
 
         
