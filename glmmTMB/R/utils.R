@@ -729,3 +729,15 @@ nullSparseMatrix <- function() {
         do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
     }
 }
+
+get_pars <- function(object) {
+    ee <- object$obj$env
+    x <- ee$last.par.best
+    ## work around built-in default to parList, which
+    ##  is bad if no random component
+    if (length(ee$random)>0) x <- x[-ee$random]
+    p <- ee$parList(x=x)
+    p <- unlist(p[names(p)!="b"])  ## drop primary RE
+    names(p) <- gsub("[0-9]+$","",names(p)) ## remove disambiguators
+    return(p)
+}

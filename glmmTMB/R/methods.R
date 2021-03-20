@@ -392,7 +392,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   ## drop NA-mapped variables
 
   ## for matching map names vs nameList components ...
-  par_components <- c("beta","betazi","betad","theta","thetazi")
+  par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
 
   fullNameList <- nameList
   map <- object$obj$env$map
@@ -546,7 +546,7 @@ printDispersion <- function(ff,s) {
 }
 
 .tweedie_power <- function(object) {
-    unname(plogis(object$fit$par["thetaf"]) + 1)
+    unname(plogis(get_pars(object)["thetaf"]) + 1)
 }
 
 ## Print family specific parameters
