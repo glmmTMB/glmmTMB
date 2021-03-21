@@ -742,5 +742,3 @@ get_pars <- function(object) {
     return(p)
 }
 
-## general naming
-components
