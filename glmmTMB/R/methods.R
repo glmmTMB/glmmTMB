@@ -324,7 +324,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
-##' @param include_mapped include mapped variables (these will be given variances and covariances of 0)
+##' @param include_mapped include mapped variables? (these will be given variances and covariances of NA)
 ##' @param \dots ignored, for method compatibility
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
@@ -410,32 +410,31 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   }
 
   if (full) {
-   colnames(covF) <- rownames(covF) <- unlist(nameList)
+        colnames(covF) <- rownames(covF) <- unlist(nameList)
       res <- covF        ## return just a matrix in this case
   } else {
       ## extract block-diagonal matrix
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
-      names(covList) <- c("beta","betazi","betad")
-      for (nm in names(covList)) {
+      names(covList) <- names(cNames) ## component names
+      parnms <- c("beta","betazi", "betad")     ## parameter names 
+      for (i in seq_along(covList)) {
+          nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
-          xnms <- nameList[[nm]]
-          if (length(xnms <- nameList[[nm]])==0) {
-              covList[[nm]] <- NULL
+          cnm <- names(covList)[[i]]
+          xnms <- nameList[[cnm]]
+          if (!include_mapped || length(map)==0) {
+              dimnames(m) <- list(xnms,xnms)
           } else {
-              if (!include_mapped || length(map)==0) {
-                  dimnames(m) <- list(xnms,xnms)
-              } else {
-                  fnm <- fullNameList[[nm]]
-                  mm <- matrix(0,length(fnm),length(fnm),
-                               dimnames=list(fnm,fnm))
-                  mm[nameList[[nm]],nameList[[nm]]] <- m
-                  m <- mm
-              }
-              covList[[nm]] <- m
+              fnm <- fullNameList[[cnm]]
+              mm <- matrix(NA_real_,length(fnm),length(fnm),
+                           dimnames=list(fnm,fnm))
+              mm[nameList[[cnm]],nameList[[cnm]]] <- m
+              m <- mm
           }
+          covList[[i]] <- m
       }
-      res <- covList
+      res <- covList[lengths(covList)>0]
       ##  FIXME: should vcov always return a three-element list
       ## (with NULL values for trivial models)?
       class(res) <- c("vcov.glmmTMB","matrix")
