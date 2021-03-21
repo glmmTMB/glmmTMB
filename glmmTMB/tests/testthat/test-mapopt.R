@@ -2,7 +2,6 @@ stopifnot(require("testthat"),
           require("glmmTMB"))
 
 data(Salamanders, package = "glmmTMB")
-context("mapping")
 
 m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders,
               start=list(beta=c(0,2)),
@@ -85,6 +84,9 @@ test_that("alternate optimizers work", {
 
 test_that("summary", {
     summary(m1)
+
+    debug(vcov.glmmTMB)
+    vcov(m3)
 })
 
         

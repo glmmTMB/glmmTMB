@@ -415,11 +415,11 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   } else {
       ## extract block-diagonal matrix
       ss <- split(seq_along(colnames(covF)), colnames(covF))
-      cl_names <- names(cNames)[match(names(ss),c("beta","betazi","betad"))]
-      covList <- vector("list",length(ss))
-      names(covList) <- names(ss) <- cl_names
+      covList <- vector("list",3)
+      names(covList) <- c("beta","betazi","betad")
       for (nm in names(covList)) {
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
+          xnms <- nameList[[nm]]
           if (length(xnms <- nameList[[nm]])==0) {
               covList[[nm]] <- NULL
           } else {

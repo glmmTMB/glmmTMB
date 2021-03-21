@@ -741,3 +741,6 @@ get_pars <- function(object) {
     names(p) <- gsub("[0-9]+$","",names(p)) ## remove disambiguators
     return(p)
 }
+
+## general naming
+components
