@@ -11,7 +11,7 @@
 
 \item{full}{return a full variance-covariance matrix?}
 
-\item{include_mapped}{include mapped variables (these will be given variances and covariances of 0)}
+\item{include_mapped}{include mapped variables? (these will be given variances and covariances of NA)}
 
 \item{\dots}{ignored, for method compatibility}
 }
