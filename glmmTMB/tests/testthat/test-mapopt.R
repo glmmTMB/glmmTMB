@@ -2,7 +2,6 @@ stopifnot(require("testthat"),
           require("glmmTMB"))
 
 data(Salamanders, package = "glmmTMB")
-context("mapping")
 
 m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders,
               start=list(beta=c(0,2)),
@@ -41,7 +40,7 @@ test_that("predict works with mapped params",
                        tolerance=1e-6)
           )
 
-m1_sd <- c(`(Intercept)` = 0.0342594326326741, minedno = 0)
+m1_sd <- c(`(Intercept)` = 0.0342594326326741, minedno = NA_real_)
 
 test_that("vcov works with mapped params", {
     expect_equal(dim(vcov(m1)$cond),c(1,1))
@@ -83,5 +82,12 @@ test_that("alternate optimizers work", {
           expect_false(identical(fixef(m1),fixef(m1optim)))
 })
 
+test_that("summary", {
+    expect_equal(coef(summary(m1))$cond["minedno",],
+                 c(Estimate = 2, `Std. Error` = NA, `z value` = NA, `Pr(>|z|)` = NA))
+    expect_equal(coef(summary(m3))$zi["(Intercept)",],
+                 c(Estimate = -1, `Std. Error` = NA, `z value` = NA, `Pr(>|z|)` = NA))
+
+})
 
         

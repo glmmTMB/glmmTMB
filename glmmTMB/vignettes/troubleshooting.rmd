@@ -55,6 +55,8 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
+**FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below)
+
 The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
 are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
 
@@ -128,7 +130,7 @@ should help to diagnose overly complex models.
 
 ### Example 2.
 
-In some cases, scaling predictor variables may help.  For example, in this example from @phisanti, the results of `glm` and `glmmTMB` applied to a scaled version of the data set agree, while `glmmTMB` applied to the raw data set gives a non-positive-definite Hessian warning.
+In some cases, scaling predictor variables may help.  For example, in this example from @phisanti, the results of `glm` and `glmmTMB` applied to a scaled version of the data set agree, while `glmmTMB` applied to the raw data set gives a non-positive-definite Hessian warning. (**FIXME: This is no longer true now that we try harder to compute an accurate Hessian ... we need another example ...**)
 
 ```{r fatfiberglmm}
 ## data taken from gamlss.data:plasma, originally
@@ -154,74 +156,75 @@ print(s_vals,digits=3)
 
 Here is another example (from Samantha Sherman):
 
-```{r load_ss_ex}
-load(system.file("vignette_data","troubleshooting.rda",package="glmmTMB"))
+```{r load_ss_ex,eval=TRUE}
+L <- load(system.file("vignette_data","sherman.rda",package="glmmTMB"))
 ```
 
-The first model gives the specified warning when it runs, as well as the other symptoms such as `NA` values for the likelihood:
+The first model gives the warning: "non-integer counts in an nbinom1 model" (indicating that we probably should use a different response distribution, or round the values if that seems appropriate).
+
 
 ```{r ss_ex_mod1}
 summary(mod1)
 ```
+We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.
 
-We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative. However, we'll develop some fancier machinery that checks the variance-covariance matrix or Hessian of the model, finds eigenvalues that are negative or close to zero, and identifies which model components contribute to those eigenvalues:
-
-```{r diagnose_vcov}
-diagnose_vcov <- function(model, tol=1e-5, digits=2, analyze_hessian=FALSE) {
-    vv <- vcov(model, full=TRUE)
-    nn <- rownames(vv)
-    if (!all(is.finite(vv))) {
-        if (missing(analyze_hessian)) warning("analyzing Hessian, not vcov")
-        if (!analyze_hessian) stop("can't analyze vcov")
-        analyze_hessian <- TRUE
-    }
-    if (analyze_hessian) {
-        par.fixed <- model$obj$env$last.par.best
-        r <- model$obj$env$random
-        if (!is.null(r)) par.fixed <- par.fixed[-r]
-        vv <- optimHess(par.fixed, fn=model$obj$fn, gr=model$obj$gr)
-        ## note vv is now HESSIAN, not vcov
-    }
-    ee <- eigen(vv)
-    if (all(ee$values>tol)) {message("var-cov matrix OK"); return(invisible(NULL))}
-    ## find negative or small-positive eigenvalues (flat/wrong curvature)
-    bad_evals <- which(ee$values<tol)
-    ## order worst to best
-    bad_evals <- bad_evals[order(-ee$values[bad_evals])]
-    ret <- lapply(bad_evals,
-                  function(i) {
-                      ## extract loadings
-                      v <- setNames(ee$vectors[,i], nn)
-                      ## order in decreasing magnitude & round
-                      list(val=ee$values[i],vec=round(v[order(-abs(v))],digits))
-                  })
-    return(ret)
-}
-```
-
-Running the diagnostics on the model:
+Running diagnostics on the model, these are the only problems reported.
 
 ```{r diag_1}
-(d1 <- diagnose_vcov(mod1))
+d1 <- diagnose(mod1)
 ```
 
-This model has a very bad eigenvalue that is mostly driven by the zero-inflation parameter, and a little bit by the dispersion parameter. Let's try dropping the zero-inflation term:
+Let's try dropping the zero-inflation term:
 
 ```{r ss_mod2_up, eval=FALSE}
 mod2 <- update(mod1, ziformula=~0)
 ```
 
+We also get a "false convergence (8)" warning; see below.
+
+**FIXME**: this anticipates/duplicates some of the discussion near the end.
+
+The `summary()` and `diagnose()` functions reveal only the large, negative dispersion parameter:
+
 ```{r ss_mod2}
 summary(mod2)
 ```
 
-We still get the warning, and the `NA`-valued likelihoods (and the very small dispersion parameter). Diagnose:
+Diagnose:
 
 ```{r ss_diag2}
-diagnose_vcov(mod2)
+diagnose(mod2)
 ```
 
-We can see that the dispersion parameter is still problematic.  Simplify the model by switching from NB1 to Poisson:
+The "false convergence" warning comes from the `nlminb()` optimizer, and is [difficult to interpret and resolve](https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean). The documentation says that the cause of this warning is that:
+
+> the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x.
+
+The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We'll try option 3 and refit with the BFGS option from `optim()`:
+
+```{r ss_mod2optim,eval=FALSE}
+mod2_optim <- update(mod2,
+                control=glmmTMBControl(optimizer=optim,
+                                       optArgs=list(method="BFGS")))
+```
+
+BFGS doesn't give us any warnings. Comparing the parameter estimates:
+
+```{r ss_mod2optim_comp,eval=TRUE}
+(parcomp <- cbind(nlminb=unlist(fixef(mod2)),
+                  optim=unlist(fixef(mod2_optim))))
+```
+
+```{r comp, echo=FALSE,eval=TRUE}
+zi1 <- parcomp["disp.(Intercept)","nlminb"]
+zi2 <- parcomp["disp.(Intercept)","optim"]
+pzi1 <- exp(zi1)
+pzi2 <- exp(zi2)
+```
+
+The conditional-model parameters are practically identical. The dispersion parameters *look* quite different (`r round(zi1,1)` vs. `r round(zi2,1)`), but if we back-transform from the log scale (via `exp()`) we can see that they are both extremely small ($`r signif(pzi1,3)`$ vs. $`r signif(pzi2,3)`$).
+
+Simplify the model by switching from NB1 to Poisson:
 
 ```{r mod3_up, eval=FALSE}
 mod3 <- update(mod2, family=poisson)
@@ -231,26 +234,26 @@ mod3 <- update(mod2, family=poisson)
 summary(mod3)
 ```
 
-There are no warnings, the model looks OK now, and the diagnostic function agrees:
-
 ```{r ss_diag3}
-diagnose_vcov(mod3)
+diagnose(mod3)
 ```
 
-You can also check directly whether the model is OK by examining the `pdHess` ("positive-definite Hessian") component of the `sdr` ("standard deviation report") component of the model:
+You can also check directly whether the Hessian (curvature) of the model is OK by examining the `pdHess` ("positive-definite Hessian") component of the `sdr` ("standard deviation report") component of the model:
 
 ```{r checkhess}
 mod3$sdr$pdHess					      
 ```
-
-(**FIXME**: add an accessor method for this?)
                                               
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
 
 ## Model convergence problem:  eigenvalue problems
 
 ```{r genpois_NaN,cache=TRUE}
-m1 = glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
+m1 <- glmmTMB(count~spp + mined + (1|site), zi=~spp + mined, Salamanders, family=genpois)
+```
+
+```{r diag_genpois}
+diagnose(m1)
 ```
 
 In this example, the fixed-effect covariance matrix is `NaN`. It may have to do with the generalized Poisson (`genpois`) distribution, which is known to have convergence problems; luckily, the negative binomial (`nbinom1` and `nbinom2`) and/or Conway-Maxwell Poisson (`compois`) are good alternatives. 
@@ -295,6 +298,8 @@ dat1 = expand.grid(y=-1:1, rep=1:10)
 m1 = glmmTMB(y~1, dat1, family=nbinom2)
 ```
 
+**FIXME**: this is no longer a "gradient evaluation" error ...
+
 The error occurs here because the negative binomial distribution is inappropriate for data with negative values.
 
 If you see this error, check that the response variable meets the assumptions of the specified distribution.
@@ -302,67 +307,9 @@ If you see this error, check that the response variable meets the assumptions of
 ## gradient length
 
 
-> Error in nlminb(start = par, objective = fn, gradient = gr) : gradient function must return a numeric vector of length x
+> Error in `nlminb(start = par, objective = fn, gradient = gr)` : gradient function must return a numeric vector of length x
 
-> Error in optimHess(par.fixed, obj$fn, obj$gr): gradient in optim evaluated to length x
+> Error in `optimHess(par.fixed, obj$fn, obj$gr)`: gradient in optim evaluated to length x
 
 Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)
 
-
-### inspecting Hessian (experimental!)
-
-Can we directly inspect the Hessian to find where the problems are?
-
-```{r diagnose_hessian}
-##' @param fit a \code{glmmTMB} fit
-##' @param h Hessian (if not provided, will be computed from the Jacobian of the gradient
-##' @param eval.eps numeric tolerance for 'bad' eigenvalues
-##' @param evec.eps numeric tolerance for 'bad' eigenvector elements
-diagnose_hessian <- function(fit,h=NULL, eval.eps=1e-5,evec.eps=1e-2) {
-    ## pull out the TMB object from the fit
-    obj <- fit$obj
-    ee <- environment(obj$fn)
-    ## extract parameters
-    pp <- ee$last.par[-ee$random]
-    ## easiest way to get names corresponding to all of the parameters
-    nn <- tryCatch(colnames(vcov(fit,full=TRUE)),
-                   ## fall-back position
-                   error = function(e) make.unique(names(pp)))
-    ## fit$sdr$pdHess
-    if ("sdr" %in% names(fit)) {
-        cat("bad params according to sdreport:",
-            paste(nn[!is.finite(suppressWarnings(sqrt(diag(fit$sdr$cov.fixed))))],
-                  collapse=", "),"\n")
-    }
-    ## two ways to compute the Hessian
-    ## (1) directly from the objective function, via finite difference+Richardson extrapolation
-    ## h1 <- hessian(obj$fn, pp)
-    ## (2) use the gradient and compute its Jacobian (faster and probably more stable)
-    if (is.null(h)) {
-        if (!require(numDeriv)) stop("need numDeriv package installed") 
-        h <- jacobian(obj$gr, pp)
-    }
-    ## double-check we get the same answer (approximately)
-    ## all.equal(h1,h,tolerance=1e-5)
-    ## now investigate the Hessian
-    eigs <- eigen(h)
-    ## non-positive definite means some of the eigenvectors are <= 0
-    bad <- which(eigs$values/max(eigs$values)<=eval.eps)
-    if (length(bad)==0) {
-        cat("Hessian seems OK\n")
-        return(invisible(h))
-    }
-    cat(sprintf("max eigenvalue = %1.3g",eigs$values[1]),"\n")
-    for (b in bad) {  ## there could be more than one 'bad' direction/eigenvector ..
-        cat(sprintf("Hessian eigenvalue %d = %1.3g (relative val = %1.3g)",
-                    b,eigs$values[b],eigs$values[b]/eigs$values[1]),"\n")
-        bad_vec <- eigs$vectors[,b]
-        bad_elements <- which(abs(bad_vec)>evec.eps)
-        cat("   bad elements:",nn[bad_elements],"\n")
-    }
-    cat("SDs computed from sqrt(diag(solve(H))):",
-        paste(suppressWarnings(sqrt(diag(solve(h)))), collapse=", "),"\n")
-    return(invisible(h))
-}
-diagnose_hessian(zinbm0)
-``` 
