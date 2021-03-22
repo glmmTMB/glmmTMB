@@ -130,7 +130,7 @@ should help to diagnose overly complex models.
 
 ### Example 2.
 
-In some cases, scaling predictor variables may help.  For example, in this example from @phisanti, the results of `glm` and `glmmTMB` applied to a scaled version of the data set agree, while `glmmTMB` applied to the raw data set gives a non-positive-definite Hessian warning. (**This is no longer true now that we try harder to compute an accurate Hessian ... we need another example ...**)
+In some cases, scaling predictor variables may help.  For example, in this example from @phisanti, the results of `glm` and `glmmTMB` applied to a scaled version of the data set agree, while `glmmTMB` applied to the raw data set gives a non-positive-definite Hessian warning. (**FIXME: This is no longer true now that we try harder to compute an accurate Hessian ... we need another example ...**)
 
 ```{r fatfiberglmm}
 ## data taken from gamlss.data:plasma, originally
