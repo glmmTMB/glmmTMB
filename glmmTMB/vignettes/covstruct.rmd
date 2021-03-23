@@ -1,6 +1,6 @@
 ---
 title: "Covariance structures with glmmTMB"
-author: "Kasper Kristensen and Maeve McGillicuddy"
+author: "Kasper Kristensen and Maeve McGillycuddy"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 bibliography: glmmTMB.bib
@@ -620,15 +620,17 @@ One of our main motivations for adding this variance-covariance structure is to 
 A GLVM can be fit by specifying a reduced rank (`rr`) covariance structure. For example, the code for modeling the mean abundance against taxa and to account for the correlation between taxa using two latent variables is as follows
 
 ```{r rr_ex, eval = FALSE}
-fit.rr <- glmmTMB(abundance ~ taxa + rr(taxa + 0|site, n = 2))
+fit.rr <- glmmTMB(abundance ~ taxa + rr(taxa + 0|site, d = 2))
 ```
 
-The left hand side of the bar `taxa + 0` corresponds to a factor loading matrix that accounts for the correlations among taxa. The right hand side of the bar splits the above specification independently among sites. The `n` is a non-negative integer (which defaults to 2). 
+The left hand side of the bar `taxa + 0` corresponds to a factor loading matrix that accounts for the correlations among taxa. The right hand side of the bar splits the above specification independently among sites. The `d` is a non-negative integer (which defaults to 2). 
 
 An option in `glmmTMBControl()` has been included to initialize the starting values for the parameters based on the approach mentioned above with the default set at `glmmTMBControl(start_method = list(method = NULL, jitter.sd = 0)`:
 
 - `method = "res"` initializes starting values from the results of fitting a GLM, and fitting a reduced rank model to the residuals to obtain starting values for the fixed coefficients, the latent variables and the factor loadings. 
 - `jitter.sd` adds variation to the starting values of latent variables when `start = "res"` (default 0).
+
+For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining `$nd-d(d-3)/2$`, (i.e. `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. The rank of the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
 
 ## References
 
