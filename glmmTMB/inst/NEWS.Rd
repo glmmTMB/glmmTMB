@@ -14,6 +14,19 @@
     \itemize{
       \item \code{Anova} with \code{type="III"} now handles
       \code{component} argument correctly, more robust to trivial models
+      \item fixed a typo/omission in the type-3 Anova method that made
+      zi Anova break in some conditions (GH #674)
+      \item fixed bugs/inconsistencies in handling of mapped parameters
+      (GH #678)
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item "mapped" parameters (i.e., fixed by user rather than
+      optimized) are now given variances/standard deviations of NA rather
+      than 0 in \code{vcov(., include_mapped=TRUE)} and by extension in
+      \code{summary}; hence Z-statistics and P-values will also be NA for
+      these parameters
     }
   }
 }

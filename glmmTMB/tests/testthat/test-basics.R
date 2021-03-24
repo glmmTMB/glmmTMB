@@ -22,8 +22,6 @@ matchForm <- function(obj, objU, family=FALSE) {
   return(objU)
 }
 
-context("Very basic glmmTMB fitting")
-
 lm0 <- lm(Reaction~Days,sleepstudy)
 fm00 <- glmmTMB(Reaction ~ Days, sleepstudy)
 fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
