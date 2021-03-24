@@ -70,7 +70,6 @@ Suggests:
     texreg,
     xtable,
     huxtable,
-    numDeriv,
     mvabund
 SystemRequirements: GNU make
 VignetteBuilder: knitr
