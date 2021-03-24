@@ -55,7 +55,7 @@ dochtml := $(rmd_vig:%=${docdir}/%.html)
 
 ## LaTeX/BibTeX must run in the same directory as the file ...
 $(vigdir)/%.pdf: $(vigdir)/%.[Rr]nw
-	cd $(vigdir); echo "knitr::knit2pdf(basename(\"$<\"))" | $(R) --slave
+	cd $(vigdir); export NOT_CRAN=true; echo "knitr::knit2pdf(basename(\"$<\"))" | $(R) --slave
 
 ## ditto for vignette building
 %.html: %.rmd
