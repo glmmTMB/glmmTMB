@@ -379,6 +379,29 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = rnorm(U.rows(), Type(0), Type(1));
       }
     }
+
+    int rank = term.blockRank;
+    int p = term.blockSize;
+    matrix<Type> Lambda(p, rank);
+    vector<Type> lam_diag = theta.head(rank);
+    vector<Type> lam_lower = theta.tail(theta.size() - rank);
+    for (int j = 0; j < rank; j++){
+      for (int i = 0; i < p; i++){
+        if (j > i)
+          Lambda(i, j) = 0;
+        else if(i == j)
+          Lambda(i, j) = lam_diag(j);
+        else
+          Lambda(i, j) = lam_lower(j*p - (j + 1)*j/2 + i - 1 - j); //Fills by column
+      }
+    }
+
+    for(int i = 0; i < term.blockReps; i++){
+      vector<Type> usub = U.col(i).segment(0, rank);
+      U.col(i) = Lambda * usub;
+    }
+
+    term.fact_load = Lambda;
   }
   else error("covStruct not implemented!");
   return ans;
@@ -398,15 +421,12 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
     bool emptyTheta = ( terms(i).blockNumTheta == 0 );
     offset = ( emptyTheta ? -np : 0 );
     np     = ( emptyTheta ?  np : terms(i).blockNumTheta );
-    // if rr then change the dimensions of u, otherwise as before
-    bool notrr = ( terms(i).blockRank == 0 );
-    blockSize = ( notrr ? terms(i).blockSize : terms(i).blockRank);
     vector<int> dim(2);
-    dim << blockSize, terms(i).blockReps;
+    dim << terms(i).blockSize, terms(i).blockReps;
     array<Type> useg( &u(upointer), dim);
     vector<Type> tseg = theta.segment(tpointer + offset, np);
     ans += termwise_nll(useg, tseg, terms(i), do_simulate);
-    upointer += (notrr ? nr : terms(i).blockRank * terms(i).blockReps);
+    upointer += nr;
     tpointer += terms(i).blockNumTheta;
   }
   return ans;
@@ -459,80 +479,18 @@ Type objective_function<Type>::operator() ()
   bool zi_flag = (betazi.size() > 0);
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
-  DATA_INTEGER(dorr);
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
-
-  vector<Type> bnew(Z.cols());
-  matrix<Type> lam;
-
-  if(dorr == 0){ //if there is no rr_covstruct
-    bnew = b;
-  }else{
-    Eigen::SparseMatrix<Type> lamsparse;
-    int upointer = 0; //this is a pointer for b
-    int unewpointer = 0; //this is a pointer for bnew which has more elements than b
-    int tpointer = 0;
-    int nr, nt, n, p;
-
-    for(int i=0; i < terms.size(); i++){
-      int nlv = terms(i).blockRank;
-      bool lv = ( nlv > 0 );
-      nr = (lv ? nlv * terms(i).blockReps: terms(i).blockSize * terms(i).blockReps);
-      // if it is a latent variable term, nr (the number of b's) is n*nlv, otherwise as before
-      nt = terms(i).blockNumTheta;
-      if(lv){
-        vector<Type> btmp(nr);
-        n = terms(i).blockReps;
-        p = terms(i).blockSize;
-        // vector<Type> lam_diag = exp(theta.segment(tpointer, nlv));
-        vector<Type> lam_diag = theta.segment(tpointer, nlv);
-        vector<Type> lam_lower = theta.segment(tpointer + nlv, nt - nlv);
-
-        matrix<Type> newlam(p, nlv);
-        for (int j = 0; j < nlv; j++){
-          for (int i = 0; i < p; i++){
-            if (j > i)
-              newlam(i, j) = 0;
-            else if(i == j)
-              newlam(i, j) = lam_diag(j);
-            else
-              newlam(i, j) = lam_lower(j*p - (j + 1)*j/2 + i - 1 - j); //Fills by column
-          }
-        }
-        matrix<Type> I(n,n);
-        I.setIdentity();
-
-        lam = kronecker(I, newlam);
-        lamsparse = asSparseMatrix(lam);
-        btmp = b.segment(upointer,  nr);
-        bnew.segment(unewpointer, n*p) = lamsparse*btmp;
-
-        terms(i).fact_load = newlam; // For report
-      }else{
-        vector<Type> btmp2(nr);
-        btmp2 = b.segment(upointer,  nr);
-        bnew.segment(unewpointer, nr) = btmp2;
-      }
-      upointer += nr;
-      unewpointer += terms(i).blockSize * terms(i).blockReps;
-      tpointer += nt;
-      }
-  }
 
   // Joint negative log-likelihood
   parallel_accumulator<Type> jnll(this);
 
   // Random effects
-  if(dorr == 0){ //added to fix test-bootMer
-    jnll += allterms_nll(bnew, theta, terms, this->do_simulate);
-  }else{
-    jnll += allterms_nll(b, theta, terms, this->do_simulate);
-  }
+  jnll += allterms_nll(b, theta, terms, this->do_simulate);
   jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
-  vector<Type> eta = Z * bnew + offset;
+  vector<Type> eta = Z * b + offset;
   if (!sparseX) {
     eta += X*beta;
   } else {

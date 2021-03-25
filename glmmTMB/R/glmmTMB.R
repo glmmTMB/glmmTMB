@@ -365,9 +365,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
-    whichPredict = whichPredict,
-    dorr = rrVal(condList)
+    whichPredict = whichPredict
   )
+
+
+  dorr = rrVal(condList)
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -383,28 +385,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   rr0 <- function(n) {
        if (is.null(n)) numeric(0) else rep(0, n)
-  }
-
-  # initialise the number of b's needed:
-  # no longer ncol(Z) if there is an rr cov_struc
-  b0 <- function(Z, dorr, condReStruc){
-    nb <- ncol(Z)
-    if(dorr){
-      blockCodes <- getVal(condReStruc,"blockCode")
-      blockRank <- getVal(condReStruc, "blockRank")
-      blockReps <- getVal(condReStruc, "blockReps")
-      blockSize <- getVal(condReStruc, "blockSize")
-      for (i in seq_along(blockRank)) {
-        if(blockRank[i]>0){
-          brr <- blockReps[i] * blockRank[i] #number of bs for rr
-          bOld <- blockReps[i] * blockSize[i] #number of bs assigned in ncol(Z)
-          blockb <- brr - bOld
-          nb <- nb + blockb
-        }
-      }
-    }
-    b <- rep(beta_init, nb)
-    b
   }
 
   # theta is 0, except if dorr, theta is 1
@@ -428,7 +408,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                      list(
                        beta    = rep(beta_init, max(ncol(X),ncol(XS))),
                        betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
-                       b       = b0(Z, dorr, condReStruc),
+                       b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
                        theta   = t01(dorr, condReStruc),
@@ -1391,19 +1371,19 @@ fitTMB <- function(TMBStruc) {
               if (!inherits(Vtheta,"try-error")) sdr$cov.fixed[] <- Vtheta
           } else {
               warning(paste0("Model convergence problem; ",
-                             "non-positive-definite Hessian matrix. ", 
+                             "non-positive-definite Hessian matrix. ",
                              "See vignette('troubleshooting')"))
           }
       } else if (control$eigval_check) {
           eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
           if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
               warning(paste0("Model convergence problem; ",
-                             "extreme or very small eigenvalues detected. ", 
+                             "extreme or very small eigenvalues detected. ",
                              "See vignette('troubleshooting')"))
           } ## bad eigval
       } ## do eigval check
     } ## pdHess exists
-        
+
     if ( !is.null(fit$convergence) && fit$convergence != 0)
         warning("Model convergence problem; ",
                 fit$message, ". ",

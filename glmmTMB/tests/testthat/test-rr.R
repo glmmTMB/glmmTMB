@@ -15,7 +15,7 @@ if (require(mvabund)) {
 
 test_that("rr model fit", {
     ## Fit poison model with rr
-    spider_p1 <<- glmmTMB(abund ~ Species + rr(Species + 0|id, n = 1),
+    spider_p1 <<- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
                          family = poisson,
                          data=spiderDat)
     spider_p2 <<- update(spider_p1,
