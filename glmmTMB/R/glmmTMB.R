@@ -78,7 +78,19 @@ startParams <- function(parameters,
     resid[is.infinite(resid)] <- 0; resid[is.nan(resid)] <- 0
     resid <- as.data.frame(resid)
 
-    rank <- vapply(condReStruc, function(x) x[["blockRank"]], numeric(1))
+    get_rank <- function(x){
+      if(x[["blockCode"]]==9){
+        p <- x$blockSize
+        nt <- x$blockNumTheta
+        rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
+      }else
+        rank <- 0
+      return(rank)
+    }
+
+    rank <- vapply(condReStruc,
+                   get_rank,
+                   FUN.VALUE=numeric(1))
     nlv <- rank[rank > 0]
     namBlk <- names(nlv)
 
@@ -147,17 +159,16 @@ startParams <- function(parameters,
     bp <- brrp <- 1  #b position for full model, and for model with only rr
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
-      if (condReStruc[[j]]$blockRank > 0) {
-        nb <- condReStruc[[j]]$blockRank * condReStruc[[j]]$blockReps
+      nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
+      if (condReStruc[[j]]$blockCode == 9) {
         start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
         start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
         brrp <- brrp + nb; trrp <- trrp + nt
-      }else{
-        nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
       }
       bp <- bp + nb
       tp <- tp + nt
     }
+
     return(start)
   }
 
@@ -630,7 +641,6 @@ getGrpVar <- function(x)
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
-##' \item{blockRank}{rank number}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
@@ -664,11 +674,11 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
         if ( any(is.na(aa[ss=="rr"]))) {
           aa0 <- which(is.na(aa) & ss=="rr")
-          aa[aa0] <- 2 #set default blockRank to 2 if it's not specified
+          aa[aa0] <- 2 #set default rank to 2 if it's not specified
         }
 
         if ( is.null(aa)) {
-          aa <- rep(0,length(blksize)) #set blockRank to 0
+          aa <- rep(0,length(blksize)) #set rank to 0
         }
 
         blkrank <- aa
@@ -694,8 +704,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
             tmp <- list(blockReps = nreps[i],
                         blockSize = blksize[i],
                         blockNumTheta = blockNumTheta[[i]],
-                        blockCode = covCode[i],
-                        blockRank = blkrank[i]
+                        blockCode = covCode[i]
                         )
             if(ss[i] == "ar1") {
                 ## FIXME: Keep this warning ?

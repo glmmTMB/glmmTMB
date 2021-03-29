@@ -140,7 +140,6 @@ struct per_term_info {
   int blockSize;     // Size of one block
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
-  int blockRank;     // rank of block if rr
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
   // Report output
@@ -159,12 +158,10 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
       int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
-      int blockRank = (int) REAL(getListElement(y, "blockRank", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
-      (*this)(i).blockRank = blockRank;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
       if(!isNull(t)){
@@ -380,11 +377,12 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
-    int rank = term.blockRank;
     int p = term.blockSize;
+    int nt = theta.size();
+    int rank = (2*p + 1 -  sqrt(pow(2*p + 1, 2) - 8*nt) ) / 2 ;
     matrix<Type> Lambda(p, rank);
     vector<Type> lam_diag = theta.head(rank);
-    vector<Type> lam_lower = theta.tail(theta.size() - rank);
+    vector<Type> lam_lower = theta.tail(nt - rank);
     for (int j = 0; j < rank; j++){
       for (int i = 0; i < p; i++){
         if (j > i)
@@ -414,7 +412,7 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
   Type ans = 0;
   int upointer = 0;
   int tpointer = 0;
-  int nr, np = 0, offset, blockSize;
+  int nr, np = 0, offset;
   for(int i=0; i < terms.size(); i++){
     nr = terms(i).blockSize * terms(i).blockReps;
     // Note: 'blockNumTheta=0' ==> Same parameters as previous term.
