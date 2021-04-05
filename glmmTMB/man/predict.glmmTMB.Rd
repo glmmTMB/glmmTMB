@@ -84,6 +84,4 @@ predict(g0, newdata=nd, allow.new.levels=TRUE)
 nd_pop <- data.frame(Days=unique(sleepstudy$Days),
                      Subject=NA)
 predict(g0, newdata=nd_pop)
-stopifnot(all.equal(predict(g0, sleepstudy),
-                      predict(g0, fast=TRUE), tolerance=1e-15)
 }
