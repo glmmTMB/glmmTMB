@@ -10,6 +10,7 @@ ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
 
 
 
+
 data(cbpp, package = "lme4")
 set.seed(101)
 cbpp_zi <- cbpp
@@ -109,7 +110,7 @@ test_that("fitted & predicted agree", {
     expect_equal(predict(tmbm1),predict(tmbm2))
 })
 
-context("zero-inflation prediction")
+## context("zero-inflation prediction")
 
 g0_zi <- update(tmbm2, ziformula = ~period)
 un <- function(x) lapply(x,unname)
@@ -150,11 +151,12 @@ test_that("type='zlink'", {
                  zlink_pred)
 })
 
-context("deprecated zitype parameter")
-expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
+test_that("deprecated zitype parameter", {
+    expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
+})
     
     
-context("complex bases")
+## context("complex bases")
 data("sleepstudy",package="lme4")
 nd <- data.frame(Days=0,
                  Subject=factor("309", levels=levels(sleepstudy$Subject)))
@@ -281,10 +283,10 @@ test_that("offset-only model (GH #625)", {
 test_that("fast prediction", {
     ## use tighter-than-default tolerances
     ## 
-    expect_equal(predict(fm2),predict(fm2,fast=TRUE), tolerance=1e-13)
-    expect_equal(predict(fm2, type="response"),
+    expect_equal(predict(fm2,fast=FALSE),predict(fm2,fast=TRUE), tolerance=1e-13)
+    expect_equal(predict(fm2, type="response",fast=FALSE),
                  predict(fm2, type="response", fast=TRUE),
                  tolerance=1e-13)
     ## handling NAs etc.
-    expect_equal(pp_ex, predict(fm2_ex, fast=TRUE))
+    expect_equal(pp_ex, predict(fm2_ex, fast=FALSE))
 })

@@ -85,7 +85,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' @param re.form \code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
-##' @param fast predict without expanding memory
+##' @param fast predict without expanding memory (default is TRUE if \code{newdata} and \code{newparams} are NULL and population-level prediction is not being done)
 ##' @details
 ##' \itemize{
 ##' \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
@@ -120,7 +120,7 @@ predict.glmmTMB <- function(object,
                                      "disp"),
                             zitype = NULL,
                             na.action = na.pass,
-                            fast=FALSE,
+                            fast=NULL,
                             debug=FALSE,
                             ...) {
   ## FIXME: add re.form
@@ -130,6 +130,7 @@ predict.glmmTMB <- function(object,
      type <- zitype
   }
   type <- match.arg(type)
+    
   ## FIXME: better test? () around re.form==~0 are *necessary*
   ## could steal isRE from lme4 predict.R ...
   pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
@@ -138,23 +139,35 @@ predict.glmmTMB <- function(object,
       stop("re.form must equal NULL, NA, or ~0")
   }
 
+  oldPar <- object$fit$par
+  if (!is.null(newparams)) oldPar <- newparams
+
+  new_stuff <- !is.null(newdata) || !is.null(newparams) || pop_pred
+  if (!is.null(fast)) {
+     if (new_stuff) {
+         stop("fast=TRUE is not compatible with newdata/newparams/population-level prediction")
+     }
+   } else {
+     fast <- !new_stuff
+   }
+
   if (fast) {
-    if (!is.null(newdata) || !is.null(newparams)) {
-        stop("fast=TRUE is not compatible with newdata/newparams")
-    }
     lp <- object$obj$env$last.par.best            ## extract fitted parameters
     dd <- environment(object$obj$fn)$data         ## data object
-    orig_whichPredict <- dd$whichPredict
+    orig_vals <- dd[c("whichPredict","doPredict")]
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
+    dd$doPredict <- as.numeric(se.fit)
     assign("data",dd, environment(object$obj$fn)) ## stick this in the appropriate environment
     newObj <- object$obj
 
     ## restore original value
     on.exit(add = TRUE,
-        {
-            dd$whichPredict <- orig_whichPredict
+    {
+        for (i in names(orig_vals)) {
+            dd[[i]] <- orig_vals[[i]]
             assign("data",dd, environment(object$obj$fn))
-        })
+        }
+    })
   } else {
     
   mc <- mf <- object$call
@@ -310,9 +323,6 @@ predict.glmmTMB <- function(object,
   }
 
   ## FIXME: what if newparams only has a subset of components?
-
-  oldPar <- object$fit$par
-  if (!is.null(newparams)) oldPar <- newparams
 
   if (pop_pred) {
       TMBStruc <- within(TMBStruc, {
