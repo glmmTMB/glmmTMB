@@ -1,8 +1,7 @@
 ## Helper function for predict.
 ## Assert that we can use old model (data.tmb0) as basis for
 ## predictions using the new data (data.tmb1):
-assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
-{
+assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) {
     ## Check terms. Only 'blockReps' and 'blockSize' are allowed to
     ## change.  Note that we allow e.g. spatial covariance matrices to
     ## change, while e.g. an unstrucured covariance must remain the
@@ -110,7 +109,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' predict(g0, newdata=nd_pop)
 ##' stopifnot(all.equal(predict(g0, sleepstudy),
 ##'                       predict(g0, fast=TRUE), tolerance=1e-15)
-##' @importFrom TMB sdreport
+#' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
 predict.glmmTMB <- function(object,
@@ -125,8 +124,7 @@ predict.glmmTMB <- function(object,
                             na.action = na.pass,
                             fast=FALSE,
                             debug=FALSE,
-                            ...)
-{
+                            ...) {
   ## FIXME: add re.form
 
   if (!is.null(zitype)) {
@@ -143,23 +141,23 @@ predict.glmmTMB <- function(object,
   }
 
   if (fast) {
-    if (type != "link" || se.fit || !is.null(newdata) ||
-        !is.null(newparams)) {
-        stop("only 'vanilla' prediction (link scale, no SE, original data) ",
-             "is compatible with fast=TRUE")
+    if (!is.null(newdata) || !is.null(newparams)) {
+        stop("fast=TRUE is not compatible with newdata/newparams")
     }
     lp <- object$obj$env$last.par.best            ## extract fitted parameters
     dd <- environment(object$obj$fn)$data         ## data object
     orig_whichPredict <- dd$whichPredict
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
     assign("data",dd, environment(object$obj$fn)) ## stick this in the appropriate environment
-    pred <- object$obj$report(lp)$mu_predict
+    newObj <- object$obj
 
     ## restore original value
-    dd$whichPredict <- orig_whichPredict
-    assign("data",dd, environment(object$obj$fn))
-    return(pred)
-  }
+    on.exit(add = TRUE,
+        {
+            dd$whichPredict <- orig_whichPredict
+            assign("data",dd, environment(object$obj$fn))
+        })
+  } else {
     
   mc <- mf <- object$call
   ## FIXME: DRY so much
@@ -303,7 +301,7 @@ predict.glmmTMB <- function(object,
                         object$obj$env$data, allow.new.levels)
                         
   ## Check that the necessary predictor variables are finite (not NA nor NaN)
-  if(se.fit) {
+  if (se.fit) {
     with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
                              any(!is.finite(Z@x)) |
                              any(!is.finite(Xzi)) |
@@ -336,6 +334,8 @@ predict.glmmTMB <- function(object,
 
   newObj$fn(oldPar)  ## call once to update internal structures
   lp <- newObj$env$last.par
+
+  } ## NOT fast
 
   na.act <- attr(model.frame(object),"na.action")
   do.napred <- missing(newdata) && !is.null(na.act)

@@ -6,6 +6,8 @@ sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
 
+load(system.file("test_data","models.rda", package="glmmTMB", mustWork=TRUE))
+
 data(cbpp, package = "lme4")
 set.seed(101)
 cbpp_zi <- cbpp
@@ -21,20 +23,20 @@ context("Predicting new levels")
 g0 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
 
 test_that("manual prediction of pop level pred", {
-    prnd <- predict(g0, newdata=nd, allow.new.levels=TRUE)
+    prnd <- predict(fm2, newdata=nd, allow.new.levels=TRUE)
     expect_equal( as.numeric(prnd),
-                 fixef(g0)$cond[1] + fixef(g0)$cond[2] * nd$Days , tol=1e-10)
+                 fixef(fm2)$cond[1] + fixef(fm2)$cond[2] * nd$Days , tol=1e-10)
 })
 
 test_that("population-level prediction", {
-    prnd <- predict(g0)
+    prnd <- predict(fm2)
     expect_equal(length(unique(prnd)),180)
-    prnd2 <- predict(g0, re.form=~0)
-    prnd3 <- predict(g0, re.form=NA)
+    prnd2 <- predict(fm2, re.form=~0)
+    prnd3 <- predict(fm2, re.form=NA)
     expect_equal(prnd2,prnd3)
     expect_equal(length(unique(prnd2)),10)
     ## make sure we haven't messed up any internal structures ...
-    prnd4 <- predict(g0)
+    prnd4 <- predict(fm2)
     expect_equal(prnd, prnd4)
 })
 
@@ -68,33 +70,36 @@ test_that("two-column response", {
                  c(0.05469247, 0.29269818)[Salamanders$mined] )
 })
 
-context("Prediction with dispformula=~0")
-y <- 1:10
-f <- glmmTMB(y ~ 1, dispformula=~0)
-expect_equal(predict(f), rep(5.5, 10))
+test_that("Prediction with dispformula=~0", {
+    y <- 1:10
+    f <- glmmTMB(y ~ 1, dispformula=~0)
+    expect_equal(predict(f), rep(5.5, 10))
+})
 
-context("Handling NA values in predictions")
 ss <- sleepstudy
 
-g0_ex <- update(g0, data=ssNA, na.action=na.exclude)
-g0_om <- update(g0, data=ssNA, na.action=na.omit)
-pp_ex <- predict(g0_ex)
-pp_om <- predict(g0_om)
-expect_equal(length(pp_ex),nrow(ssNA))
-expect_true(all(is.na(pp_ex)==is.na(ssNA$Days)))
-expect_equal(length(pp_om),length(na.omit(ssNA$Days)))
-expect_true(!any(is.na(pp_om)))
+fm2_ex <- update(fm2, data=ssNA, na.action=na.exclude)
+fm2_om <- update(fm2, data=ssNA, na.action=na.omit)
+pp_ex <- predict(fm2_ex)
+pp_om <- predict(fm2_om)
+
+test_that("NA values in predictions", {
+    expect_equal(length(pp_ex),nrow(ssNA))
+    expect_true(all(is.na(pp_ex)==is.na(ssNA$Days)))
+    expect_equal(length(pp_om),length(na.omit(ssNA$Days)))
+    expect_true(!any(is.na(pp_om)))
+})
 
 ## na.pass
-pp_ndNA <- predict(g0,newdata=ssNA)
+pp_ndNA <- predict(fm2,newdata=ssNA)
 expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)),
        failure_message="NAs don't match with na.pass+predict")
-pp_ndNA2 <- predict(g0,newdata=ssNA2)
+pp_ndNA2 <- predict(fm2,newdata=ssNA2)
 expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)),
        failure_message="NAs don't match with na.pass+predict+newdata")
 
 ## na.omit
-pp_ndNA_om <- predict(g0,newdata=ssNA,na.action=na.omit)
+pp_ndNA_om <- predict(fm2,newdata=ssNA,na.action=na.omit)
 expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
 
 context("prediction with different binomial specs")
@@ -275,4 +280,15 @@ test_that("offset-only model (GH #625)", {
                         family = nbinom2(),
                         data=Owls)
     expect_equal(mean(predict(owls_nb0)), 1.88220473712677)
+})
+
+test_that("fast prediction", {
+    ## use tighter-than-default tolerances
+    ## 
+    expect_equal(predict(fm2),predict(fm2,fast=TRUE), tolerance=1e-13)
+    expect_equal(predict(fm2, type="response"),
+                 predict(fm2, type="response", fast=TRUE),
+                 tolerance=1e-13)
+    ## handling NAs etc.
+    expect_equal(pp_ex, predict(fm2_ex, fast=TRUE))
 })
