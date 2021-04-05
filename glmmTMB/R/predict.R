@@ -108,6 +108,8 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' nd_pop <- data.frame(Days=unique(sleepstudy$Days),
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
+##' stopifnot(all.equal(predict(g0, sleepstudy),
+##'                       predict(g0, fast=TRUE), tolerance=1e-15)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
@@ -149,7 +151,7 @@ predict.glmmTMB <- function(object,
     lp <- object$obj$env$last.par.best            ## extract fitted parameters
     dd <- environment(object$obj$fn)$data         ## data object
     orig_whichPredict <- dd$whichPredict
-    dd$whichPredict <- as.numeric(seq(nrow(dd)))  ## replace 'whichPredict' entry
+    dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
     assign("data",dd, environment(object$obj$fn)) ## stick this in the appropriate environment
     pred <- object$obj$report(lp)$mu_predict
 
