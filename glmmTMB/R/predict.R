@@ -86,6 +86,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' @param re.form \code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
+##' @param fast predict without expanding memory
 ##' @details
 ##' \itemize{
 ##' \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
@@ -110,7 +111,8 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
-predict.glmmTMB <- function(object,newdata=NULL,
+predict.glmmTMB <- function(object,
+                            newdata=NULL,
                             newparams=NULL,
                             se.fit=FALSE,
                             re.form=NULL, allow.new.levels=FALSE,
@@ -119,6 +121,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                      "disp"),
                             zitype = NULL,
                             na.action = na.pass,
+                            fast=FALSE,
                             debug=FALSE,
                             ...)
 {
@@ -137,6 +140,25 @@ predict.glmmTMB <- function(object,newdata=NULL,
       stop("re.form must equal NULL, NA, or ~0")
   }
 
+  if (fast) {
+    if (type != "link" || se.fit || !is.null(newdata) ||
+        !is.null(newparams)) {
+        stop("only 'vanilla' prediction (link scale, no SE, original data) ",
+             "is compatible with fast=TRUE")
+    }
+    lp <- object$obj$env$last.par.best            ## extract fitted parameters
+    dd <- environment(object$obj$fn)$data         ## data object
+    orig_whichPredict <- dd$whichPredict
+    dd$whichPredict <- as.numeric(seq(nrow(dd)))  ## replace 'whichPredict' entry
+    assign("data",dd, environment(object$obj$fn)) ## stick this in the appropriate environment
+    pred <- object$obj$report(lp)$mu_predict
+
+    ## restore original value
+    dd$whichPredict <- orig_whichPredict
+    assign("data",dd, environment(object$obj$fn))
+    return(pred)
+  }
+    
   mc <- mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
