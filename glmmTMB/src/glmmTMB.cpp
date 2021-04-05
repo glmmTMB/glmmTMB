@@ -33,7 +33,8 @@ enum valid_family {
   truncated_nbinom1_family =502,
   truncated_nbinom2_family =503,
   t_family =600,
-  tweedie_family = 700
+  tweedie_family = 700,
+  lognormal_family = 800
 };
 
 enum valid_link {
@@ -620,6 +621,12 @@ Type objective_function<Type>::operator() ()
         SIMULATE {
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
         }
+      case lognormal_family:
+        s1 = 1 + phi(i)/pow(mu(i),2);
+        s2 = log(mu(i)/sqrt(s1));
+	s3 = sqrt(log(s1));
+	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
+	// FIXME: simulate method?
         break;
       default:
         error("Family not implemented!");

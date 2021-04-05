@@ -287,6 +287,16 @@ tweedie <- function(link="log") {
     return(make_family(r,link))
 }
 
+#' @rdname nbinom2
+#' @export
+lognormal <- function(link="log") {
+    r <- list(family="lognormal",
+              variance=function(mu,phi) {
+                  stop("variance for lognormal family not yet implemented")
+              })
+    return(make_family(r,link))
+}
+
 ## t not yet implemented in 
 ## t_family <- function(link="identity") {
 ##     ## FIXME: right now t behaves just like gaussian(); variance()

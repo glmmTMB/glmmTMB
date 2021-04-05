@@ -357,29 +357,35 @@ test_that("gaussian_sqrt", {
 tol=1e-6)
 })
 
-context("link function info available")
-
-fam1 <- c("poisson","nbinom1","nbinom2","compois")
-fam2 <- c("binomial","beta_family","betabinomial","tweedie")
-for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
-    ## print(f)
-    expect_true("linkinv" %in% names(get(f)()))
-}
-
-context("link info added to family")
+test_that("link function info available", {
+    fam1 <- c("poisson","nbinom1","nbinom2","compois")
+    fam2 <- c("binomial","beta_family","betabinomial","tweedie")
+    for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
+        ## print(f)
+        expect_true("linkinv" %in% names(get(f)()))
+    }
+})
 
 d.AD <- data.frame(counts=c(18,17,15,20,10,20,25,13,12),
                    outcome=gl(3,1,9),
                    treatment=gl(3,3))
-glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(),
-                   d.AD)
-expect_warning(glm.D93B <- glmmTMB(counts ~ outcome + treatment,
+glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(), data=d.AD)
+glm.D93C <- glmmTMB(counts ~ outcome + treatment, family = "poisson", data=d.AD)
+test_that("link info added to family", {
+    expect_warning(glm.D93B <- glmmTMB(counts ~ outcome + treatment,
                     family = list(family="poisson", link="log"),
                     d.AD))
 ## note update(..., family= ...) is only equal up to tolerance=5e-5 ...
-glm.D93C <- glmmTMB(counts ~ outcome + treatment,
-                    family = "poisson",
-                    d.AD)
-expect_equal(predict(glm.D93),predict(glm.D93B))
-expect_equal(predict(glm.D93),predict(glm.D93C))
+    expect_equal(predict(glm.D93),predict(glm.D93B))
+    expect_equal(predict(glm.D93),predict(glm.D93C))
+})
 
+
+set.seed(102)
+n <- 2000
+cc <- c(mean=1,sd=2) ## log-scale mean/sd
+x <- rnorm(n)
+dd <- data.frame(x,y=rlnorm(n, meanlog=cc[1]+cc[2]*x, sdlog=1))
+glmmTMB(y~x, family="lognormal", data=dd)
+## transform
+## mean = exp(mu+sd^2/2), var = (exp(sd^2)-1)*exp(2*mu+sd^2)
