@@ -1,12 +1,14 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-data(sleepstudy, package = "lme4")
+## load these data first, masks sleepstudy
+load(system.file("test_data","models.rda", package="glmmTMB", mustWork=TRUE))
+
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
 
-load(system.file("test_data","models.rda", package="glmmTMB", mustWork=TRUE))
+
 
 data(cbpp, package = "lme4")
 set.seed(101)
@@ -17,10 +19,6 @@ cbpp_zi[sample(nrow(cbpp),size=15,replace=FALSE),"incidence"] <- 0
 nd <- subset(sleepstudy, Subject=="308", select=-1)
 nd$Subject <- "new"
 nd$DaysFac <- "new"
-
-context("Predicting new levels")
-
-g0 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
 
 test_that("manual prediction of pop level pred", {
     prnd <- predict(fm2, newdata=nd, allow.new.levels=TRUE)
@@ -39,8 +37,6 @@ test_that("population-level prediction", {
     prnd4 <- predict(fm2)
     expect_equal(prnd, prnd4)
 })
-
-context("Catch invalid predictions")
 
 test_that("new levels of fixed effect factor", {
     g1 <- glmmTMB(Reaction ~ Days + Subject, sleepstudy)

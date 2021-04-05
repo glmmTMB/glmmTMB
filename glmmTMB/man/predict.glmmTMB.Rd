@@ -14,6 +14,7 @@
   type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
   zitype = NULL,
   na.action = na.pass,
+  fast = FALSE,
   debug = FALSE,
   ...
 )
@@ -53,6 +54,8 @@ the logit link function}
 \item{na.action}{how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 the default (\code{na.pass}) is to predict \code{NA}}
 
+\item{fast}{predict without expanding memory}
+
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
 used internally for debugging?}
 
@@ -81,4 +84,6 @@ predict(g0, newdata=nd, allow.new.levels=TRUE)
 nd_pop <- data.frame(Days=unique(sleepstudy$Days),
                      Subject=NA)
 predict(g0, newdata=nd_pop)
+stopifnot(all.equal(predict(g0, sleepstudy),
+                      predict(g0, fast=TRUE), tolerance=1e-15)
 }
