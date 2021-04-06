@@ -400,6 +400,11 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
 
     term.fact_load = Lambda;
+    if(isDouble<Type>::value) {
+      term.corr = Lambda * Lambda.transpose();
+      term.sd = term.corr.diagonal().array().sqrt();
+      term.corr.array() /= term.sd * term.sd.transpose();
+    }
   }
   else error("covStruct not implemented!");
   return ans;

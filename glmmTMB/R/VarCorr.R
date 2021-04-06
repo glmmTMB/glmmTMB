@@ -132,26 +132,6 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
     ss
 }
 
-# probably should change so it's similar to docov as above?
-# this is only assumming one fact_load matrix
-rrSdCorr <- function(par, isrr){
-  xrr <- par
-  fl <- which(isrr)
-  do1rrSdCorr <- function(par, fl){
-    lambda <- par$fact_load[[fl]]
-    llt <- tcrossprod(lambda)
-    sdll <- sqrt(diag(llt))
-    sdi <- diag(1/sdll, nrow = length(sdll))
-    corr <- sdi %*% llt %*% sdi
-    return(list(sd = sdll, corr = corr))
-  }
-  # not sure if this is the best way... will go back
-  sdCorr <- lapply(fl, function(x) do1rrSdCorr(par, x))
-  xrr$sd[fl] <- lapply(seq_along(fl), function(x) sdCorr[[x]]$sd)
-  xrr$corr[fl] <- lapply(seq_along(fl), function(x) sdCorr[[x]]$corr)
-  return(xrr)
-}
-
 ##' Extract variance and correlation components
 ##'
 ##' @aliases VarCorr
@@ -193,11 +173,6 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     reT <- x$modelInfo$reTrms
     reS <- x$modelInfo$reStruc
     familyStr <- family(x)$family
-    # Need to calculate corr and sd for rr struc
-    isrr <- FALSE
-    isrr <- sapply(xrep$fact_load, function(x) !identical(dim(x),c(0L,0L)))
-    if(any(isrr))
-      xrep <- rrSdCorr(xrep, isrr)
     useSc <- if (missing(sigma)) {
         ## *only* report residual variance for Gaussian family ...
         ## *not* usesDispersion(familyStr)
