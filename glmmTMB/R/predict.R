@@ -139,6 +139,7 @@ predict.glmmTMB <- function(object,
       stop("re.form must equal NULL, NA, or ~0")
   }
 
+  ## oldPar <- get_pars(object)
   oldPar <- object$fit$par
   if (!is.null(newparams)) oldPar <- newparams
 
@@ -151,13 +152,14 @@ predict.glmmTMB <- function(object,
      fast <- !new_stuff
    }
 
-  if (fast) {
-    lp <- object$obj$env$last.par.best            ## extract fitted parameters
-    dd <- environment(object$obj$fn)$data         ## data object
+   if (fast) {
+    ee <- environment(object$obj$fn)       
+    lp <- ee$last.par.best                 ## used in $report() call below
+    dd <- ee$data         ## data object
     orig_vals <- dd[c("whichPredict","doPredict")]
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
     dd$doPredict <- as.numeric(se.fit)
-    assign("data",dd, environment(object$obj$fn)) ## stick this in the appropriate environment
+    assign("data",dd, ee) ## stick this in the appropriate environment
     newObj <- object$obj
 
     ## restore original value
@@ -323,6 +325,16 @@ predict.glmmTMB <- function(object,
   }
 
   ## FIXME: what if newparams only has a subset of components?
+
+  if (!is.null(maparg <- TMBStruc$mapArg)) {
+     full_pars <- get_pars(object, unlist=FALSE)     
+     for (i in names(maparg)) {
+         mapind <- which(is.na(maparg[[i]]))
+         if (length(mapind)>0) {
+             TMBStruc$parameters[[i]][mapind] <- full_pars[[i]][mapind]
+         }
+     }
+  }
 
   if (pop_pred) {
       TMBStruc <- within(TMBStruc, {

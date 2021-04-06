@@ -88,24 +88,26 @@ test_that("NA values in predictions", {
 })
 
 ## na.pass
-pp_ndNA <- predict(fm2,newdata=ssNA)
-expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)),
-       failure_message="NAs don't match with na.pass+predict")
-pp_ndNA2 <- predict(fm2,newdata=ssNA2)
-expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)),
-       failure_message="NAs don't match with na.pass+predict+newdata")
+test_that("na.pass", {
+    pp_ndNA <- predict(fm2,newdata=ssNA)
+    expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)),
+           failure_message="NAs don't match with na.pass+predict")
+    pp_ndNA2 <- predict(fm2,newdata=ssNA2)
+    expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)),
+           failure_message="NAs don't match with na.pass+predict+newdata")
+})
 
 ## na.omit
-pp_ndNA_om <- predict(fm2,newdata=ssNA,na.action=na.omit)
-expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
-
-context("prediction with different binomial specs")
+test_that("na.omit", {
+    pp_ndNA_om <- predict(fm2,newdata=ssNA,na.action=na.omit)
+    expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
+})
 
 tmbm1 <- glmmTMB(cbind(incidence, size - incidence) ~ period + (1 | herd),
                  data = cbpp, family = binomial)
 tmbm2 <- update(tmbm1,incidence/size ~ . , weights = size)
 
-test_that("fitted & predicted agree", {
+test_that("different binomial specs: fitted & predicted agree", {
     expect_equal(fitted(tmbm1),fitted(tmbm2))
     expect_equal(predict(tmbm1),predict(tmbm2))
 })
