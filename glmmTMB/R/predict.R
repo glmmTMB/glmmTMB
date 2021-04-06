@@ -139,6 +139,18 @@ predict.glmmTMB <- function(object,
       stop("re.form must equal NULL, NA, or ~0")
   }
 
+  ## match type arg with internal name
+  ## FIXME: warn if "link"  
+  ziPredNm <- switch(type,
+                     response   = "corrected",
+                     link       =,
+                     conditional= "uncorrected",
+                     zlink      = ,
+                     zprob      = "prob",
+                     disp       = "disp",#zi irrelevant; just reusing variable
+                     stop("unknown type ",type))
+  ziPredCode <- .valid_zipredictcode[ziPredNm]
+
   ## oldPar <- get_pars(object)
   oldPar <- object$fit$par
   if (!is.null(newparams)) oldPar <- newparams
@@ -156,9 +168,10 @@ predict.glmmTMB <- function(object,
     ee <- environment(object$obj$fn)       
     lp <- ee$last.par.best                 ## used in $report() call below
     dd <- ee$data         ## data object
-    orig_vals <- dd[c("whichPredict","doPredict")]
+    orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
     dd$doPredict <- as.numeric(se.fit)
+    dd$ziPredictCode <- ziPredCode
     assign("data",dd, ee) ## stick this in the appropriate environment
     newObj <- object$obj
 
@@ -272,17 +285,6 @@ predict.glmmTMB <- function(object,
   ## 'mkTMBStruc' further down.
   yobs <- augFr[[names(omi$respCol)]]
 
-  ## match type arg with internal name
-  ## FIXME: warn if "link"  
-  ziPredNm <- switch(type,
-                     response   = "corrected",
-                     link       =,
-                     conditional= "uncorrected",
-                     zlink      = ,
-                     zprob      = "prob",
-                     disp       = "disp",#zi irrelevant; just reusing variable
-                     stop("unknown type ",type))
-  ziPredCode <- .valid_zipredictcode[ziPredNm]
 
   ## need eval.parent() because we will do eval(mf) down below ...
   TMBStruc <-
