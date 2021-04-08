@@ -346,8 +346,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   sparseXval <- function(component,lst) {
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
-  # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
@@ -379,7 +377,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     whichPredict = whichPredict
   )
 
-
+  # function to set value for dorr
+  rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
   dorr = rrVal(condList)
 
   getVal <- function(obj, component)
@@ -537,7 +536,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     if (is.null(findbars(ranform))) {
         reTrms <- reXterms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
-        aa <- integer(0) #added for rr
+        aa <- integer(0) #added for rr to get rank
         ss <- integer(0)
     } else {
 
@@ -635,7 +634,7 @@ getGrpVar <- function(x)
 ##' matrix (\code{"us"}) for all blocks).
 ##' @param reXterms terms objects corresponding to each RE term
 ##' @param fr model frame
-##' @param aa (?? additional info ??)
+##' @param aa additional arguments (i.e. rank)
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -879,7 +878,8 @@ glmmTMB <- function(
     REML=FALSE,
     start=NULL,
     map=NULL,
-    sparseX=NULL)
+    sparseX=NULL
+    )
 {
 
     ## edited copy-paste from glFormula
@@ -1098,7 +1098,7 @@ glmmTMB <- function(
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
-##' @param start_method Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when start = "res".
+##' @param start_method List; Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when method = "res".
 ##' @importFrom TMB openmp
 ##' @details
 ##' The general non-linear optimizer \code{nlminb} is used by
@@ -1278,7 +1278,6 @@ fitTMB <- function(TMBStruc) {
                               parameters,
                               map = mapArg,
                               random = randomArg,
-                              inner.control=list(mgcmax = 1e+200,maxit = 1000),
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))

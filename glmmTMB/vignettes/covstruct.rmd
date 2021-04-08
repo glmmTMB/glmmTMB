@@ -227,7 +227,7 @@ collecting correlation parameters within the same off-diagonal. This
 amounts to `r (n-1)` correlation parameters and `r n` variance
 parameters.
 
-> FIXME: Explain why dispformula=~1 causes over-overparameterization
+> FIXME: Explain why dispformula=~1 causes over-parameterization
 
 ```{r fit.toep}
 fit.toep <- glmmTMB(y ~ toep(times + 0 | group), data=dat1, dispformula=~0)
@@ -261,7 +261,7 @@ summary(vc1R[row(vc1R)!=col(vc1R)])
 The compound symmetry structure collects all off-diagonal elements of
 the correlation matrix to one common value.
 
-> FIXME: Explain why dispformula=~1 causes over-overparameterization
+> FIXME: Explain why dispformula=~1 causes over-parameterization
 
 ```{r fit.cs}
 fit.cs <- glmmTMB(y ~ cs(times + 0 | group), data=dat1, dispformula=~0)
@@ -628,7 +628,7 @@ The left hand side of the bar `taxa + 0` corresponds to a factor loading matrix 
 An option in `glmmTMBControl()` has been included to initialize the starting values for the parameters based on the approach mentioned above with the default set at `glmmTMBControl(start_method = list(method = NULL, jitter.sd = 0)`:
 
 - `method = "res"` initializes starting values from the results of fitting a GLM, and fitting a reduced rank model to the residuals to obtain starting values for the fixed coefficients, the latent variables and the factor loadings. 
-- `jitter.sd` adds variation to the starting values of latent variables when `start = "res"` (default 0).
+- `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
 
 For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining `$nd-d(d-3)/2$`, (i.e. `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. The rank of the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
 
