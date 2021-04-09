@@ -16,7 +16,7 @@ Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 default is to use an unstructured  variance-covariance
 matrix (\code{"us"}) for all blocks).}
 
-\item{aa}{(?? additional info ??)}
+\item{aa}{additional arguments (i.e. rank)}
 
 \item{reXterms}{terms objects corresponding to each RE term}
 
