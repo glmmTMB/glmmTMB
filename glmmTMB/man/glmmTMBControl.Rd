@@ -12,7 +12,8 @@ glmmTMBControl(
   collect = FALSE,
   parallel = NULL,
   eigval_check = TRUE,
-  zerodisp_val = log(sqrt(.Machine$double.eps))
+  zerodisp_val = log(sqrt(.Machine$double.eps)),
+  start_method = list(method = NULL, jitter.sd = 0)
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ the negative log-likelihood in parallel}
 \item{eigval_check}{Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)}
 
 \item{zerodisp_val}{value of the dispersion parameter when \code{dispformula=~0} is specified}
+
+\item{start_method}{List; Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when method = "res".}
 }
 \description{
 Control parameters for glmmTMB optimization
