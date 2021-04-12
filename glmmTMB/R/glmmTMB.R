@@ -561,7 +561,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             }
             return(eval(payload))
         }
-        aa <- ifelse(ss$reTrmClass=="rr",
+        browser()
+        aa <- ifelse(ss$reTrmClasses=="rr",
                      vapply(ss$reTrmAddArgs,
                            get_num,
                            FUN.VALUE=numeric(1)),

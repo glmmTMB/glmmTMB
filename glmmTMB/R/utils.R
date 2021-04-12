@@ -250,7 +250,8 @@ splitForm <- function(formula,
                       defaultTerm="us",
                       allowFixedOnly=TRUE,
                       allowNoSpecials=TRUE,
-                      debug=FALSE) {
+                      debug=FALSE,
+                      env=parent.frame()) {
 
     ## logic:
 
@@ -296,7 +297,14 @@ splitForm <- function(formula,
 
         parenTerm <- formSplitID == "("
                                         # capture additional arguments
-        reTrmAddArgs <- lapply(formSplits, "[", -2)[!parenTerm]
+
+        mkList <- function(x) {
+            x <- x[-2]
+            x[[1]] <- as.name("list")
+            ## WARNING, this could get tricky
+            eval(x, envir=env)
+        }
+        reTrmAddArgs <- lapply(formSplits, mkList)[!parenTerm]
                                         # remove these additional
                                         # arguments
         formSplits <- lapply(formSplits, "[", 1:2)
