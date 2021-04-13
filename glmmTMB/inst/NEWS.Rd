@@ -20,7 +20,8 @@
       (GH #678)
       \item \code{confint} with \code{parm="beta_"} or
       \code{parm="theta_"} now work correctly with more complex models
-      (including both zero inflation and random effects)
+      (e.g. including both zero inflation and random effects)
+      (reported by @MKie45 on Stack Overflow)
     }
   }
   \subsection{USER-VISIBLE CHANGES}{
