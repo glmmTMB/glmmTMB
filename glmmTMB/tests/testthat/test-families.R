@@ -197,8 +197,8 @@ test_that("dbetabinom", {
     fit1_glmmA <- readRDS(system.file("test_data","turner_bb_GLMMadaptive.RData",
                                       package="glmmTMB"))
     ff1 <- fixef(fit1)$cond
-    ff_GA <- fit1_glmmA[seq_along(ff1),1]
-    expect_equal(ff_GA, ff1)
+    ff_GA <- fit1_glmmA[seq_along(ff1),12]
+    expect_equal(ff_GA, ff1, tol=0.05)
     
     fit2  <- glmmTMB(fmla, data = X, family = betabinomial(link = "cloglog"),
                 dispformula = ~1,
