@@ -1072,7 +1072,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 #' @importFrom stats predict
 #' @export
 fitted.glmmTMB <- function(object, ...) {
-    predict(object,type="response")
+    predict(object,type="response", fast=TRUE)
 }
 
 .noSimFamilies <- NULL
