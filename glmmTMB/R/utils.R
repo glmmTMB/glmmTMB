@@ -314,6 +314,7 @@ splitForm <- function(formula,
 
         reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
                            lapply(formSplitSpec, "[[", 2))
+        reTrmFormulas <- unlist(reTrmFormulas) # Fix me:: added for rr structure when it has n = 2, gives a list of list... quick fix
         reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
                           sapply(lapply(formSplitSpec, "[[", 1), as.character))
     } else {
@@ -382,7 +383,7 @@ noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
             term[[3]] <- nb3
             return(term)
         }
-    } 
+    }
 }
 
 isSpecial <- function(term) {
@@ -454,7 +455,7 @@ extractForm <- function(term,value) {
 ##' return a formula/expression with a given value stripped, where
 ##' it occurs as the head of a term
 ##' @rdname formFuns
-##' @examples 
+##' @examples
 ##' dropHead(~a+offset(b),quote(offset))
 ##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
 ##' @export
