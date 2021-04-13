@@ -18,6 +18,9 @@
       zi Anova break in some conditions (GH #674)
       \item fixed bugs/inconsistencies in handling of mapped parameters
       (GH #678)
+      \item \code{confint} with \code{parm="beta_"} or
+      \code{parm="theta_"} now work correctly with more complex models
+      (including both zero inflation and random effects)
     }
   }
   \subsection{USER-VISIBLE CHANGES}{
@@ -27,6 +30,9 @@
       than 0 in \code{vcov(., include_mapped=TRUE)} and by extension in
       \code{summary}; hence Z-statistics and P-values will also be NA for
       these parameters
+      \item row ordering has changed in \code{confint} output data
+      frames (random effects parameters come \emph{last}, matching the
+      row/column order in \code{vcov(., full=TRUE)})
     }
   }
 }

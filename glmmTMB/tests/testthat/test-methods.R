@@ -170,28 +170,21 @@ test_that("confint", {
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
     ci.2G <- confint(fm2G, full=TRUE, estimate=FALSE)
-    ci.2G.expect <- structure(c(5.4810173444768, 0.0247781468857994, 0.0676097043327788, 
-                             0.0115949839191128, -0.518916570291726, 0.0720456818399729, 5.58401849115119, 
-                             0.0429217639222305, 0.150456372618643, 0.0264376535768207, 0.481694558481224, 
-                             0.0907365112123184),
-                           .Dim = c(6L, 2L),
-                           .Dimnames = list(c("cond.(Intercept)", 
-                                              "cond.Days", "cond.Std.Dev.(Intercept)",
-                                              "cond.Std.Dev.Days", "cond.Cor.Days.(Intercept)", "sigma"),
-                                            c("2.5 %", "97.5 %")))
+    ci.2G.expect <- structure(c(5.48101734463434, 0.0247781469519971, 0.0720456818285145, 
+                                0.0676097041325336, 0.0115949839239226, -0.518916569224983, 5.58401849103742, 
+                                0.0429217639958554, 0.0907365112607892, 0.150456372082291, 0.026437653590095, 
+                                0.481694558589466), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)", 
+                                                                                         "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days", 
+                                                                                         "cond.Cor.Days.(Intercept)"), c("2.5 %", "97.5 %")))
     expect_equal(ci.2G, ci.2G.expect, tolerance=1e-6)
     ## nbinom2 test Std.Dev and sigma
     ci.2NB <- confint(fm2NB, full=TRUE, estimate=FALSE)
-    ci.2NB.expect <-
-        structure(c(5.48098713986992, 0.0248163859092965, 0.066177247560203, 
-                    0.0113436356932709, -0.520883841816814, 183.810584738707, 5.58422550782448, 
-                    0.0428993227431795, 0.150917850214506, 0.026354988318893, 0.502211676507888, 
-                    444.735668635694),
-                  .Dim = c(6L, 2L),
-                  .Dimnames = list(c("cond.(Intercept)", 
-                                     "cond.Days",
-                                     "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days", 
-                                     "cond.Cor.Days.(Intercept)", "sigma"), c("2.5 %", "97.5 %")))
+    ci.2NB.expect <- structure(c(5.48098712803496, 0.0248163866132581, 183.810585063238, 
+                                 0.0661772559176498, 0.0113436359250623, -0.520883925243851, 5.58422550729504, 
+                                 0.0428993237779538, 444.73566599561, 0.150917871951769, 0.0263549890118426, 
+                                 0.502211628076133), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)", 
+                                                                                          "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days", 
+                                                                                          "cond.Cor.Days.(Intercept)"), c("2.5 %", "97.5 %")))
     expect_equal(ci.2NB, ci.2NB.expect, tolerance=1e-6)
     ## profile CI
     ## ... no RE
@@ -226,6 +219,30 @@ test_that("confint", {
     expect_equal(rownames(cc),
                  c("(Intercept)", "Illiteracy", "Population", "Area", "`HS Grad`"))
 
+})
+
+test_that("confint with theta/beta", {
+    set.seed(101)
+    n <- 1e2
+    bd <- data.frame(
+        year=factor(sample(2002:2018, size=n, replace=TRUE)),
+        class=factor(sample(1:20, size=n, replace=TRUE)),
+        x1 = rnorm(n),
+        x2 = rnorm(n),
+        x3 = factor(sample(c("low","reg","high"), size=n, replace=TRUE),
+                    levels=c("low","reg","high")),
+        count = rnbinom(n, mu = 3, size=1))
+
+    m1 <- glmmTMB(count~x1+x2+x3+(1|year/class),
+                  data = bd, zi = ~x2+x3+(1|year/class), family = truncated_nbinom2,
+                  )
+    expect_equal(rownames(confint(m1, "beta_")),
+                 c("cond.(Intercept)", "cond.x1", "cond.x2", "cond.x3reg", "cond.x3high", 
+                   "zi.(Intercept)", "zi.x2", "zi.x3reg", "zi.x3high"))
+
+    expect_equal(rownames(confint(m1, "theta_")),
+                          c("class:year.cond.Std.Dev.(Intercept)", "year.cond.Std.Dev.(Intercept)", 
+                            "class:year.zi.Std.Dev.(Intercept)", "year.zi.Std.Dev.(Intercept)"))
 })
 
 test_that("profile", {
@@ -347,8 +364,6 @@ test_that("simplified coef(.) printing", {
     options(op)
 })
 
-context("refit")
-
 ## weird stuff here with environments, testing ...
 test_that("various binomial response types work", {
     ## FIXME: test for factors, explicit cbind(.,.)
@@ -396,7 +411,8 @@ test_that("confint works for models with dispformula", {
                            1.46335165911997, 3.20286990552021, 1.38647555221182), .Dim = 2:3,
                          .Dimnames = list(c("disp.(Intercept)", "disp.sdten"),
                                           c("2.5 %", "97.5 %", "Estimate")))
-    expect_equal(tail(confint(m1),2), ref_val)
+    cc <- confint(m1)
+    expect_equal(cc[grep("^disp",rownames(cc)),], ref_val)
 })
 
 ## utility functions for checking truncated-distribution simulations

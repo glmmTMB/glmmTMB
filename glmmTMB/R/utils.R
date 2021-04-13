@@ -629,13 +629,15 @@ hasRandom <- function(x) {
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
 }
 
+## retrieve parameters by name or index
 getParms <- function(parm=NULL, object, full=FALSE) {
     vv <- vcov(object, full=TRUE)
     sds <- sqrt(diag(vv))
-    pnames <- names(sds) <- rownames(vv)
+    pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
     intnames <- names(object$obj$env$last.par) ## internal names
-    ## "beta" vals may be identified by object$obj$env$random, if REML
-    intnames <- intnames[intnames != "b"]
+    ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
+    ## counted as "random" if using REML
+    intnames <- intnames[!intnames %in% c("b","bzi")]
     if (length(pnames) != length(sds)) { ## shouldn't happen ...
         stop("length mismatch between internal and external parameter names")
     }
@@ -649,7 +651,7 @@ getParms <- function(parm=NULL, object, full=FALSE) {
     }
     if (is.character(parm)) {
         if (identical(parm,"theta_")) {
-            parm <- which(intnames=="theta")
+            parm <- grep("^theta",intnames)
         } else if (identical(parm,"beta_")) {
             if (trivialDisp(object)) {
                 ## include conditional and zi params
