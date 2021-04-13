@@ -1,10 +1,11 @@
 ---
 title: "Covariance structures with glmmTMB"
-author: "Kasper Kristensen"
+author: "Kasper Kristensen and Maeve McGillycuddy"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: glmmTMB.bib
 vignette: >
-  %\VignetteIndexEntry{random effect structures}
+  %\VignetteIndexEntry{Covariance structures with glmmTMB}
   %\VignettePackage{glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
@@ -63,6 +64,7 @@ Currently the available covariance structures are:
 | Spatial exponential              | `exp`         |  $2$            | Coordinates |
 | Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
 | Spatial Matern                   | `mat`         |  $3$            | Coordinates |
+| Reduced rank                     | `rr`          |  $nd-d(d-1)/2$  | rank (d)    |
 
 The word 'heterogeneous' refers to the marginal variances of the
 model. Beyond correlation parameters, a heterogeneous structure uses
@@ -588,4 +590,47 @@ mkfig(plot(tt2),"cs_profile_plot.png")
 ```{r fit.cs.profile_image,echo=FALSE,eval=TRUE}
 usefig("cs_profile_plot.png")
 ```
+
+## General latent variable model
+Consider a generalized linear mixed model
+
+\begin{equation}
+g(\boldsymbol{\mu}) = \boldsymbol{X\beta} + \boldsymbol{Zb}
+\end{equation}
+
+where $g(.)$ is the link function; $\boldsymbol{\beta}$ is a p-dimensional vector of regression coefficients related to the covariates; $\boldsymbol{X}$ is an $n \times p$ model matrix; and $\boldsymbol{Z}$ is the $n\times q$ model matrix for the $q$-dimensional vector-valued random effects variable $\boldsymbol{U}$ which is multivariate normal with mean zero and a parameterized $q \times q$ variance-covariance matrix, $\boldsymbol{\Sigma}$, i.e., $\boldsymbol{U} \sim N(\boldsymbol{0}, \boldsymbol{\Sigma})$.
+
+A general latent variable model (GLVM) requires many fewer parameters for the variance-covariance matrix, $\boldsymbol{\Sigma}$. To a fit a GLVM we add a *reduced-rank* (rr) covariance structure, so the model becomes
+<!-- -->
+\begin{align}
+g(\boldsymbol{\mu}) &= \boldsymbol{X\beta} + \boldsymbol{Z(I_n \otimes \Lambda)b} \\
+&= \boldsymbol{X\beta} + \boldsymbol{Zb_{new}}
+\end{align}
+<!-- -->
+where $\otimes$ is the Kronecker product and $\boldsymbol{\Lambda} = (\boldsymbol{\lambda_1}, \ldots, \boldsymbol{\lambda_d})'$ is the $q \times d$ matrix of factor loadings (with $d \ll q$). The upper triangular elements of  $\boldsymbol{\Lambda}$ are set to be zero to ensure parameter identifiability. Here we assume that the latent variables follow a multivariate standard normal distribution, $\boldsymbol{b} \sim N(\boldsymbol{0}, \boldsymbol{I})$.
+
+For GLVMs it is important to select initial starting values for the parameters because the observed likelihood may be multimodal, and maximization algorithms can end up in local maxima. @niku2019gllvm describe methods to enable faster and more reliable fits of latent variable models by carefully choosing starting values of the parameters.
+
+A similar method has been implemented in `glmmTMB`. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
+
+### Reduced rank
+
+One of our main motivations for adding this variance-covariance structure is to enable the analysis of multivariate abundance data, for example to model the abundance of different taxa across multiple sites. Typically an unstructured  random effect is assumed to account for correlation between taxa; however the number of parameters required quickly becomes large with increasing numbers of taxa. A GLVM is a flexible and more parsimonious way to account for correlation so that one can fit a joint model across many taxa.
+
+A GLVM can be fit by specifying a reduced rank (`rr`) covariance structure. For example, the code for modeling the mean abundance against taxa and to account for the correlation between taxa using two latent variables is as follows
+
+```{r rr_ex, eval = FALSE}
+fit.rr <- glmmTMB(abundance ~ taxa + rr(taxa + 0|site, d = 2))
+```
+
+The left hand side of the bar `taxa + 0` corresponds to a factor loading matrix that accounts for the correlations among taxa. The right hand side of the bar splits the above specification independently among sites. The `d` is a non-negative integer (which defaults to 2). 
+
+An option in `glmmTMBControl()` has been included to initialize the starting values for the parameters based on the approach mentioned above with the default set at `glmmTMBControl(start_method = list(method = NULL, jitter.sd = 0)`:
+
+- `method = "res"` initializes starting values from the results of fitting a GLM, and fitting a reduced rank model to the residuals to obtain starting values for the fixed coefficients, the latent variables and the factor loadings. 
+- `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
+
+For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining `$nd-d(d-3)/2$`, (i.e. `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. The rank of the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
+
+## References
 

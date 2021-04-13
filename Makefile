@@ -55,7 +55,7 @@ dochtml := $(rmd_vig:%=${docdir}/%.html)
 
 ## LaTeX/BibTeX must run in the same directory as the file ...
 $(vigdir)/%.pdf: $(vigdir)/%.[Rr]nw
-	cd $(vigdir); echo "knitr::knit2pdf(basename(\"$<\"))" | $(R) --slave
+	cd $(vigdir); export NOT_CRAN=true; echo "knitr::knit2pdf(basename(\"$<\"))" | $(R) --slave
 
 ## ditto for vignette building
 %.html: %.rmd
@@ -69,6 +69,11 @@ $(docdir)/%: $(vigdir)/%
 $(vigdir)/model_evaluation.html: $(vigdir)/model_evaluation.rmd texreg
 
 vignette-update: ${docpdf} ${dochtml}
+
+vigdatadir=glmmTMB/inst/vignette_data
+vignette-data: $(vigdatadir)/mcmc.rda $(vigdatadir)/troubleshooting.rda $(vigdatadir)/model_evaluation.rda
+## haven't figured out all of these rules yet
+## R CMD BATCH corresponding *.R files in vigdatadir ...
 
 
 ####

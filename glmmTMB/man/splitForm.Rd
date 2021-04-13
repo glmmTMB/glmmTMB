@@ -63,7 +63,10 @@ splitForm(~1+rr(f|g,n=2))
 noSpecials(y~1+us(1|f))
 noSpecials(y~1+us(1|f),delete=FALSE)
 noSpecials(y~us(1|f))
+noSpecials(y~us(1|f), delete=FALSE)
+noSpecials(y~us(1|f), debug=TRUE)
 noSpecials(y~us+1)  ## should *not* delete unless head of a function
+noSpecials(~us+1)   ## should work on a one-sided formula!
 }
 \author{
 Steve Walker

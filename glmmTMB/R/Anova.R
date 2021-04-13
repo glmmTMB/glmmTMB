@@ -163,7 +163,7 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
     if (intercept) names <- names[-1]
     n.terms <- length(names)
     p <- teststat <- df <- res.df <- rep(0, n.terms)
-    for (i in 1:n.terms){
+    for (i in seq_len(n.terms)) {
         hyp <- hyp.term(names[i])
         teststat[i] <- abs(hyp["statistic"])
         df[i] <- abs(hyp["df"])
@@ -184,9 +184,9 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
     intercept <- has.intercept(mod)
     p <- length(fixef(mod)[[component]])
     I.p <- diag(p)
-    names <- term.names.default(mod)
+    names <- term.names.default(mod, component=component)
     n.terms <- length(names)
-    assign <- attr(model.matrix(mod), "assign")
+    assign <- attr(model.matrix(mod, component=component), "assign")
     p <- teststat <- df <- res.df <- rep(0, n.terms)
     if (intercept) df[1] <- 1
     not.aliased <- !is.na(fixef(mod)[[component]])
@@ -195,7 +195,7 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
     if (!missing(vcov.)){
         vcov. <- vcov(mod, complete=FALSE)[[component]]
     }
-    for (term in 1:n.terms){
+    for (term in seq_len(n.terms)){
         subs <- which(assign == term - intercept)
         hyp.matrix <- I.p[subs,,drop=FALSE]
         hyp.matrix <- hyp.matrix[, not.aliased, drop=FALSE]
@@ -207,7 +207,8 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
         }
         else {
             hyp <- linearHypothesis_glmmTMB(mod, hyp.matrix, test=test,
-                                            vcov.=vcov., singular.ok=singular.ok, ...)
+                                            vcov.=vcov., singular.ok=singular.ok,
+                                            component=component, ...)
             teststat[term] <-  hyp$Chisq[2] 
             df[term] <- abs(hyp$Df[2])
             p[term] <- pchisq(teststat[term], df[term], lower.tail=FALSE) 

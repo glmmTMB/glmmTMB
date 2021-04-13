@@ -1,0 +1,84 @@
+## Specified variance matrices or correlation matrices
+
+It is sometimes useful to ...
+
+```{r}
+if (require("ade4") && require("ape")) {
+    library(nlme)
+    data(lizards)
+    tree <- read.tree(text=lizards$hprA)
+    dat <- lizards$traits[tree$tip.label, ]
+    mat <- vcv(tree, corr=TRUE)# construct matrix
+    fit <- gls(matur.L ~ age.mat,
+               correlation=corSymm(mat[lower.tri(mat)],fixed=TRUE),
+               data=dat)
+```
+
+```{r var_utils}
+## FIXME: move to utils?
+#' @param theta a numeric vector representing the parameters of an unstructured (general positive-definite) covariance matrix: the first n parameters are the log-standard deviations, the others are the components of the lower triangle (in rowwise matrix) of a Cholesky factor that determines the correlation matrix (see \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html})
+#' @return a covariance matrix
+as.vcov.theta <- function(theta) {
+    n <- (sqrt(8*length(theta)+1)-1)/2
+    if (!isTRUE(all.equal(n,round(n))))
+        stop("non-integer dimension: theta wrong length?")
+    n <- round(n)
+    logsd <- head(theta,n)
+    cor_pars <- tail(theta,-n)
+    C <- matrix(0,n,n)
+    diag(C) <- 1
+    ## unpack into *upper* to take advantage of R's column-major order
+    C[upper.tri(C)] <- cor_pars
+    Csq <- t(C) %*% C
+    wt <- diag(1/sqrt(diag(Csq)))
+    ret <- outer(exp(logsd),exp(logsd))*(wt %*% Csq %*% wt)
+    return(ret)
+}
+## from Balint Tamasi, TMB user's group list
+## FIXME: names based on dimnames of Sigma?
+#' @param Sigma a covariance matrix
+#' @param corrs.only return only values corresponding to the correlation matrix parameters?
+#' @return the corresponding \code{theta} parameter vector
+as.theta.vcov <- function(Sigma,corrs.only=FALSE) {
+    logsd <- log(diag(Sigma))/2
+    cr <- cov2cor(Sigma)
+    cc <- chol(cr)
+    cc <- cc %*% diag(1 / diag(cc))
+    corrs <- cc[upper.tri(cc)]
+    if (corrs.only) return(corrs)
+    ret <- c(logsd,corrs)
+    return(ret)
+}
+```
+
+In this case we have to tweak a few different things:
+
+- remove the residual variance (`dispformula=~0`; this actually sets the residual variance to a very small (non-zero) value, not zero ...)
+- add the species ID to the data frame, and set up a dummy grouping variable that includes the whole data set
+- fix all of the variances to be identical (in the `map` argument, assign a single factor value for the first `nsp` parameters)
+- fix the correlation matrix to a known value (in the `map` argument, assign a value of `NA` for the last `length(theta)-nsp` parameters; in the `start` argument, set the corresponding elements to their fixed values
+
+```{r}
+## spp _in order_ (same as tip order)
+dat$spp <- factor(rownames(dat), levels=rownames(dat))
+dat$dummy <- factor(0)
+nsp <- nrow(dat)
+## convert correlation parameters to their corresponding parameters
+corrs <- as.theta.vcov(mat, corrs.only=TRUE)
+fit2 <- glmmTMB(matur.L ~ age.mat + (0+spp|dummy),
+        data=dat,
+        dispformula=~0,
+        map=list(theta=factor(c(rep(1,nsp),rep(NA,length(corrs))))),
+        start=list(theta=c(rep(0,nsp),corrs)))
+## check equal coefficients to gls() fit
+all.equal(c(fixef(fit2)$cond),c(coef(fit)),
+          tolerance=5e-6)
+## check that correlation matrix is as intended
+cc <- cov2cor(VarCorr(fit2)$cond[[1]])
+cc <- matrix(c(cc),
+             dimnames=lapply(dimnames(cc),
+                             function(x) gsub("^spp","",x)),
+             nrow=nrow(cc))
+all.equal(cc,mat)
+```
+

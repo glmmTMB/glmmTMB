@@ -3,16 +3,78 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.1}{
-	\itemize{
-      \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)
-	}
+\section{CHANGES IN VERSION 1.0.2.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item truncated nbinom2 family now includes a \code{variance}
+      component
+    }
+  } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{Anova} with \code{type="III"} now handles
+      \code{component} argument correctly, more robust to trivial models
+      \item fixed a typo/omission in the type-3 Anova method that made
+      zi Anova break in some conditions (GH #674)
+      \item fixed bugs/inconsistencies in handling of mapped parameters
+      (GH #678)
+      \item mapped (fixed) variables could give incorrect predictions
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item "mapped" parameters (i.e., fixed by user rather than
+      optimized) are now given variances/standard deviations of NA rather
+      than 0 in \code{vcov(., include_mapped=TRUE)} and by extension in
+      \code{summary}; hence Z-statistics and P-values will also be NA for
+      these parameters
+      \item new \code{fast} flag for predictions decreases memory use
+      and computational time (only if \code{newdata}, \code{newparams}
+      not specified); default in \code{fitted()} method
+    }
+  }
 }
-\section{CHANGES IN VERSION 1.0.0}{
 
-The 1.0.0 release does not introduce any major changes or incompatibilities, 
+\section{CHANGES IN VERSION 1.0.2.1 (2020-07-02)}{
+  \itemize{
+    \item fix documentation links for CRAN checks
+  }
+}
+\section{CHANGES IN VERSION 1.0.2 (unreleased)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the \code{refit()} function is now re-exported (i.e., you no
+      longer need to load \code{lme4} to use it)
+      \item a \code{modelparm.glmmTMB} method is now provided (so that
+      \code{multcomp::glht} should work out of the box with
+      \code{glmmTMB} objects)
+    }
+  }
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new \code{sparseX} argument to specify sparse fixed-effect
+      model matrices for one or more components
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{summary} and model printing now work if
+      \code{control=glmmTMBControl(optimizer=optim)} is used (GH #589)
+      \item structured covariance models now work in zero-inflation components (GH #579)
+      \item documentation of formula for variance in beta family (GH #595)
+    }
+  } % bug fixes
+}
+\section{CHANGES IN VERSION 1.0.1 (2020-03-15)}{
+  \itemize{
+    \item updated for R-devel changes (R 4.0.0 will set stringsAsFactors=FALSE by default)
+  }
+}
+\section{CHANGES IN VERSION 1.0.0 (2020-02-03)}{
+
+The 1.0.0 release does not introduce any major changes or incompatibilities,
 but signifies that glmmTMB is considered stable and reliable for general use.
-	
+
   \subsection{NEW FEATURES}{
     \itemize{
       \item new \code{map} argument to \code{glmmTMB} allows for some
@@ -21,8 +83,8 @@ but signifies that glmmTMB is considered stable and reliable for general use.
       \item new \code{optimizer} and
       \code{optArgs} arguments to \code{glmmTMBControl} allow use of
       optimizers other than \code{nlminb}
-      \item \code{predict} can make population-level predictions 
-       (i.e., setting all random effects to zero). 
+      \item \code{predict} can make population-level predictions
+       (i.e., setting all random effects to zero).
        See \code{?predict.glmmTMB} for details.
        \item \code{beta_family} now allows zero-inflation;
        new \code{ziGamma} family (minor modification of
@@ -59,7 +121,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
   } % user-visible changes
 } % version 1.0.0
 
-\section{CHANGES IN VERSION 0.2.3}{
+\section{CHANGES IN VERSION 0.2.3 (2019-01-11)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{ranef} now returns information about conditional variances (as
@@ -76,7 +138,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
   } % new features
   \subsection{BUG FIXES}{
     \itemize{
-      \item models with multiple types of RE (e.g. ar1 and us) 
+      \item models with multiple types of RE (e.g. ar1 and us)
       may have failed previously (GH #329)
       \item \code{predict} was not handling data-dependent predictors (e.g. \code{poly}, \code{spline}, \code{scale}) correctly
       \item \code{profile} now works for models without random effects
@@ -91,12 +153,12 @@ but signifies that glmmTMB is considered stable and reliable for general use.
     } % itemize
   } % user-visible
 } % version 0.2.3
-\section{CHANGES IN VERSION 0.2.2}{
+\section{CHANGES IN VERSION 0.2.2 (2018-07-03)}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item REML is now an option (GH #352). It is typically only for 
-      Gaussian response variables, but can also be useful 
-      for some non-Gaussian response variables if used with caution 
+      \item REML is now an option (GH #352). It is typically only for
+      Gaussian response variables, but can also be useful
+      for some non-Gaussian response variables if used with caution
       (i.e. simulate a test case first).
     }
   }
@@ -111,7 +173,7 @@ but signifies that glmmTMB is considered stable and reliable for general use.
   }
 }
 
-\section{CHANGES IN VERSION 0.2.1}{
+\section{CHANGES IN VERSION 0.2.1 (2018-05-11)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item likelihood profiles (via \code{profile}) and likelihood
@@ -151,4 +213,4 @@ but signifies that glmmTMB is considered stable and reliable for general use.
      }
    }
  }
- 
+

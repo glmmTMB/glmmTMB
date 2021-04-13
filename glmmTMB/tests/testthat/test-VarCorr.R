@@ -4,9 +4,6 @@ stopifnot(require("testthat"),
 source(system.file("test_data/glmmTMB-test-funs.R",
                    package="glmmTMB", mustWork=TRUE))
 
-context("VarCorr")
-##       ---------------
-
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
 fm1C <-   lmer(distance ~ age + (age|Subject), data = Orthodont,
@@ -27,10 +24,14 @@ stripTMBVC <- function(x) {
     }
     return(r)
 }
-expect_equal(stripTMBVC(fm1),unclass(VarCorr(fm1C)),
-             tol=2e-3)
-expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
-             tol=5e-3)
+
+test_that("basic glmer vs glmmTMB", {
+    expect_equal(stripTMBVC(fm1),unclass(VarCorr(fm1C)),
+                 tol=2e-3)
+    expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
+                 tol=5e-3)
+})
+
 ## have to take only last 4 lines
 ## some white space diffs introduced in fancy-corr-printing
 pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=2)))
@@ -40,8 +41,12 @@ expect_equal(tail(pfun(fm1),4),
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
 complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)
-expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
-               "convergence problem")
+
+test_that("bad model convergence warning", {
+    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
+                   "convergence problem")
+})
+
 fmPix1B <-   lmer(complex_form, data = Pixel,
       control=lmerControl(check.conv.grad = .makeCC("warning", tol = 5e-3)))
 
@@ -86,14 +91,15 @@ xx <- xtabs(~ a + (sim_1 == 0), mydata)
 
 ## FIXME: actually need to fit this!
 
-## non-trivial dispersion model
-data(sleepstudy, package="lme4")
-fm3 <- glmmTMB(Reaction ~ Days +     (1|Subject),
-               dispformula=~ Days, sleepstudy)
-cc0 <- capture.output(print(fm3))
-cc1 <- capture.output(print(summary(fm3)))
-expect_true(any(grepl("Dispersion model:",cc0)))
-expect_true(any(grepl("Dispersion model:",cc1)))
+test_that("non-trivial dispersion model", {
+    data(sleepstudy, package="lme4")
+    fm3 <- glmmTMB(Reaction ~ Days +     (1|Subject),
+                   dispformula=~ Days, sleepstudy)
+    cc0 <- capture.output(print(fm3))
+    cc1 <- capture.output(print(summary(fm3)))
+    expect_true(any(grepl("Dispersion model:",cc0)))
+    expect_true(any(grepl("Dispersion model:",cc1)))
+})
 
 ## FIXME: slow ( ~ 49 seconds )
 ## ??? wrong context?

@@ -22,8 +22,6 @@ matchForm <- function(obj, objU, family=FALSE) {
   return(objU)
 }
 
-context("Very basic glmmTMB fitting")
-
 lm0 <- lm(Reaction~Days,sleepstudy)
 fm00 <- glmmTMB(Reaction ~ Days, sleepstudy)
 fm0 <- glmmTMB(Reaction ~ 1    + ( 1  | Subject), sleepstudy)
@@ -259,5 +257,22 @@ test_that("contrasts arg", {
                  tolerance=1e-4)
 })
 
-
-
+test_that("zero disp setting", {
+    skip_on_cran()
+    set.seed(101)
+    dd <- data.frame(y=rnorm(100),obs=1:100)
+    m0 <- glmmTMB(y~1, data=dd)
+    v0 <- sigma(m0)^2
+    m1 <- glmmTMB(y~1+(1|obs), data=dd)
+    tmpf <- function(x) c(sigma(x)^2,c(VarCorr(x)[["cond"]]$obs))
+    m <- -log10(sqrt(.Machine$double.eps))
+    pvec <- c(1,5,m,2*m,20)
+    res <- matrix(NA,ncol=2,nrow=length(pvec))
+    for (i in (seq_along(pvec))) {
+        mz <- update(m1,dispformula=~0,
+                     control=glmmTMBControl(zerodisp_val=log(10^(-pvec[i]))))
+        res[i,] <- tmpf(mz)
+    }
+    res <- rbind(res,tmpf(m1))
+    expect_true(var(res[,1]+res[,2])<1e-8)
+})

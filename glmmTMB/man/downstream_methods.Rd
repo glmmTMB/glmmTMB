@@ -3,10 +3,9 @@
 \name{Anova.glmmTMB}
 \alias{Anova.glmmTMB}
 \alias{Effect.glmmTMB}
-\alias{recover_data.glmmTMB}
-\alias{emm_basis.glmmTMB}
 \alias{downstream_methods}
-\title{Downstream methods for glmmTMB objects}
+\alias{emmeans.glmmTMB}
+\title{Downstream methods}
 \usage{
 Anova.glmmTMB(
   mod,
@@ -19,10 +18,6 @@ Anova.glmmTMB(
 )
 
 Effect.glmmTMB(focal.predictors, mod, ...)
-
-recover_data.glmmTMB(object, ...)
-
-emm_basis.glmmTMB(object, trms, xlev, grid, component = "cond", ...)
 }
 \arguments{
 \item{mod}{a glmmTMB model}
@@ -31,7 +26,7 @@ emm_basis.glmmTMB(object, trms, xlev, grid, component = "cond", ...)
 
 \item{test.statistic}{unused: only valid choice is "Chisq" (i.e., Wald chi-squared test)}
 
-\item{component}{which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))}
+\item{component}{which component of the model to test/analyze ("cond", "zi", or "disp")}
 
 \item{vcov.}{variance-covariance matrix (usually extracted automatically)}
 
@@ -41,34 +36,47 @@ emm_basis.glmmTMB(object, trms, xlev, grid, component = "cond", ...)
 
 \item{focal.predictors}{a character vector of one or more predictors in the
 model in any order.}
-
-\item{object}{a glmmTMB model}
-
-\item{trms}{The \code{terms} component of \code{object} (typically with the
-response deleted, e.g. via \code{\link{delete.response}}}
-
-\item{xlev}{Named list of factor levels (\emph{excluding} ones coerced to
-factors in the model formula)}
-
-\item{grid}{A \code{data.frame} (provided by \code{ref_grid}) containing the
-predictor settings needed in the reference grid}
 }
 \description{
 Methods have been written that allow \code{glmmTMB} objects to be used with
 several downstream packages that enable different forms of inference.
+For some methods (\code{Anova} and \code{emmeans}, but \emph{not} \code{effects} at present),
+set the \code{component} argument
+to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
+for the corresponding part of a \code{glmmTMB} model.
+
 In particular,
 \itemize{
 \item \code{car::Anova} constructs type-II and type-III Anova tables
-for the fixed effect parameters of the conditional model (this might work with the
-fixed effects of the zero-inflation or dispersion models, but has not been tested)
+for the fixed effect parameters of any component
+\item the \code{emmeans} package computes estimated marginal means (previously known as least-squares means)
+for the fixed effects of any component
 \item the \code{effects} package computes graphical tabular effect displays
-(again, for the fixed effects of the conditional component)
-\item the \code{emmeans} package computes estimated marginal means (aka least-squares means)
-for the fixed effects of the conditional component
+(only for the fixed effects of the conditional component)
 }
 }
 \details{
 While the examples below are disabled for earlier versions of
 R, they may still work; it may be necessary to refer to private
 versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
+}
+\examples{
+warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+salamander1 <- readRDS(system.file("example_files","salamander1.rds",package="glmmTMB"))
+if (require(emmeans)) {
+    emmeans(warp.lm, poly ~ tension | wool)
+    emmeans(salamander1, ~ mined, type="response")
+    emmeans(salamander1, ~ mined, component="zi", type="response")
+}
+if (getRversion() >= "3.6.0") {
+   if (require(car)) {
+       Anova(warp.lm,type="III")
+       Anova(salamander1)
+       Anova(salamander1, component="zi")
+   }
+   if (require(effects)) {
+       plot(allEffects(warp.lm))
+       plot(allEffects(salamander1))
+   }
+}
 }

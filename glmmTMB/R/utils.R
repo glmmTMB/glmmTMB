@@ -314,6 +314,7 @@ splitForm <- function(formula,
 
         reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
                            lapply(formSplitSpec, "[[", 2))
+        reTrmFormulas <- unlist(reTrmFormulas) # Fix me:: added for rr structure when it has n = 2, gives a list of list... quick fix
         reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
                           sapply(lapply(formSplitSpec, "[[", 1), as.character))
     } else {
@@ -334,7 +335,10 @@ splitForm <- function(formula,
 ##' noSpecials(y~1+us(1|f))
 ##' noSpecials(y~1+us(1|f),delete=FALSE)
 ##' noSpecials(y~us(1|f))
+##' noSpecials(y~us(1|f), delete=FALSE)
+##' noSpecials(y~us(1|f), debug=TRUE)
 ##' noSpecials(y~us+1)  ## should *not* delete unless head of a function
+##' noSpecials(~us+1)   ## should work on a one-sided formula!
 ##' @export
 ##' @keywords internal
 noSpecials <- function(term, delete=TRUE, debug=FALSE) {
@@ -344,35 +348,40 @@ noSpecials <- function(term, delete=TRUE, debug=FALSE) {
         ##    construct response~1 formula
         as.formula(substitute(R~1,list(R=nospec)),
                    env=environment(term))
-    } else
+    } else {
         nospec
+    }
 }
 
-
-## noSpecials_(y~1+us(1|f))
 noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
     if (debug) print(term)
     if (!anySpecial(term)) return(term)
     if (length(term)==1) return(term)  ## 'naked' specials
     if (isSpecial(term)) {
         if(delete) {
-            NULL
+            return(NULL)
         } else { ## careful to return  (1|f) and not  1|f:
-            substitute((TERM), list(TERM = term[[2]]))
+            return(substitute((TERM), list(TERM = term[[2]])))
         }
     } else {
-        nb2 <- noSpecials(term[[2]], delete=delete, debug=debug)
+        if (debug) print("not special")
+        nb2 <- noSpecials_(term[[2]], delete=delete, debug=debug)
         nb3 <- if (length(term)==3) {
-                   noSpecials(term[[3]], delete=delete, debug=debug)
+                   noSpecials_(term[[3]], delete=delete, debug=debug)
                } else NULL
-        if (is.null(nb2))
-            nb3
-        else if (is.null(nb3))
-            nb2
-        else {
+        if (is.null(nb2)) {
+            return(nb3)
+        } else if (is.null(nb3)) {
+            if (length(term)==2 && identical(term[[1]], quote(`~`))) { ## special case for one-sided formula
+                term[[2]] <- nb2
+                return(term)
+            } else {
+                return(nb2)
+            }
+        } else {  ## neither term completely disappears
             term[[2]] <- nb2
             term[[3]] <- nb3
-            term
+            return(term)
         }
     }
 }
@@ -427,13 +436,14 @@ inForm <- function(form,value) {
 ##' extractForm(~a+offset(b),quote(offset))
 ##' extractForm(~c,quote(offset))
 ##' extractForm(~a+offset(b)+offset(c),quote(offset))
+##' extractForm(~offset(x),quote(offset))
 ##' @export
 ##' @keywords internal
 extractForm <- function(term,value) {
     if (!inForm(term,value)) return(NULL)
     if (is.name(term) || !is.language(term)) return(NULL)
     if (identical(head(term),value)) {
-        return(term)
+        return(list(term))
     }
     if (length(term) == 2) {
         return(extractForm(term[[2]],value))
@@ -445,7 +455,7 @@ extractForm <- function(term,value) {
 ##' return a formula/expression with a given value stripped, where
 ##' it occurs as the head of a term
 ##' @rdname formFuns
-##' @examples 
+##' @examples
 ##' dropHead(~a+offset(b),quote(offset))
 ##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
 ##' @export
@@ -588,19 +598,19 @@ fix_predvars <- function(pv,tt) {
         tt <- RHSForm(tt, as.form=TRUE)
     }
     ## ugh, deparsing again ...
-    tt_vars <- vapply(attr(tt,"variables"),deparse,character(1))[-1]
+    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
     ## remove terminal paren - e.g. match term poly(x, 2) to
     ##   predvar poly(x, 2, <stuff>)
     ## beginning of string, including open-paren, colon
-    ##  and *first* comma but not arg ... 
+    ##  but not *first* comma nor arg ...
+    ##  could possibly try init_regexp <- "^([^,]+).*" ?
     init_regexp <- "^([(^:_.[:alnum:]]+).*"
     tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
     if (is.null(pv) || length(tt_vars)==0) return(NULL)
     new_pv <- quote(list())
-    ## maybe multiple variables per pv term ... [[-1]] ignores head
+    ## maybe multiple variables per pv term ... [-1] ignores head
     ## FIXME: test for really long predvar strings ????
-    pv_strings <- vapply(pv,deparse,FUN.VALUE=character(1),
-                         width.cutoff=500)[-1]
+    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
     pv_strings <- gsub(init_regexp,"\\1",pv_strings)
     for (i in seq_along(tt_vars)) {
         w <- match(tt_vars_short[[i]],pv_strings)
@@ -670,3 +680,67 @@ isREML <- function(x) {
     }
     return(REML)
 }
+
+## action: message, warning, stop
+check_dots <- function(..., action="stop") {
+    L <- list(...)
+    if (length(L)>0) {
+        FUN <- get(action)
+        FUN("unknown arguments: ",
+            paste(names(L), collapse=","))
+    }
+    return(NULL)
+}
+
+if (getRversion()<"4.0.0") {
+    deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...) {
+        paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+    }
+}
+
+## in case these are useful, we can document and export them later ...
+#' @importFrom stats rnbinom qnbinom dnbinom pnbinom
+
+rnbinom1 <- function(n, mu, phi) {
+    ## var = mu*(1+phi) = mu*(1+mu/k) -> k = mu/phi
+    rnbinom(n, mu=mu, size=mu/phi)
+}
+
+dnbinom1 <- function(x, mu, phi, ...) {
+    dnbinom(x, mu=mu, size=mu/phi, ...)
+}
+
+pnbinom1 <- function(q, mu, phi, ...) {
+    pnbinom(q, mu=mu, size=mu/phi, ...)
+}
+
+qnbinom1 <- function(p, mu, phi, ...) {
+    qnbinom(p, mu=mu, size=mu/phi, ...)
+}
+
+nullSparseMatrix <- function() {
+    argList <- list(
+        dims=c(0,0),
+        i=integer(0),
+        j=integer(0),
+        x=numeric(0))
+    if (utils::packageVersion("Matrix")<"1.3.0") {
+        do.call(Matrix::sparseMatrix, c(argList, list(giveCsparse=FALSE)))
+    } else {
+        do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
+    }
+}
+
+get_pars <- function(object, unlist=TRUE) {
+    ee <- object$obj$env
+    x <- ee$last.par.best
+    ## work around built-in default to parList, which
+    ##  is bad if no random component
+    if (length(ee$random)>0) x <- x[-ee$random]
+    p <- ee$parList(x=x)
+    if (!unlist) return(p)
+    p <- unlist(p[names(p)!="b"])  ## drop primary RE
+    names(p) <- gsub("[0-9]+$","",names(p)) ## remove disambiguators
+    return(p)
+}
+

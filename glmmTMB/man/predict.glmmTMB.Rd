@@ -14,6 +14,7 @@
   type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
   zitype = NULL,
   na.action = na.pass,
+  fast = NULL,
   debug = FALSE,
   ...
 )
@@ -52,6 +53,8 @@ the logit link function}
 
 \item{na.action}{how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 the default (\code{na.pass}) is to predict \code{NA}}
+
+\item{fast}{predict without expanding memory (default is TRUE if \code{newdata} and \code{newparams} are NULL and population-level prediction is not being done)}
 
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
 used internally for debugging?}

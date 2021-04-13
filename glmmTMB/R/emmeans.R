@@ -2,51 +2,60 @@
 
 ## NOTE: methods are dynamically exported by emmeans utility -- see code in zzz.R
 
-##' Downstream methods for glmmTMB objects
+##' Downstream methods
 ##' 
+##' @name downstream_methods
+##' @aliases emmeans.glmmTMB
+##' 
+##' @description
 ##' Methods have been written that allow \code{glmmTMB} objects to be used with
 ##' several downstream packages that enable different forms of inference.
+##' For some methods (\code{Anova} and \code{emmeans}, but \emph{not} \code{effects} at present),
+##' set the \code{component} argument
+##' to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
+##' for the corresponding part of a \code{glmmTMB} model.
+##' 
 ##' In particular,
 ##' \itemize{
 ##' \item \code{car::Anova} constructs type-II and type-III Anova tables
-##' for the fixed effect parameters of the conditional model (this might work with the
-##' fixed effects of the zero-inflation or dispersion models, but has not been tested)
+##' for the fixed effect parameters of any component
+##' \item the \code{emmeans} package computes estimated marginal means (previously known as least-squares means)
+##' for the fixed effects of any component
 ##' \item the \code{effects} package computes graphical tabular effect displays
-##' (again, for the fixed effects of the conditional component)
-##' \item the \code{emmeans} package computes estimated marginal means (aka least-squares means)
-##' for the fixed effects of the conditional component
+##' (only for the fixed effects of the conditional component)
 ##' }
-##' @rdname downstream_methods
 ##' @param mod a glmmTMB model
-##' @param object a glmmTMB model
-##' @param trms The \code{terms} component of \code{object} (typically with the
-##' response deleted, e.g. via \code{\link{delete.response}}
-##' @param xlev Named list of factor levels (\emph{excluding} ones coerced to
-##' factors in the model formula)
+##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##' @param \dots Additional parameters that may be supported by the method.
-##' @param grid A \code{data.frame} (provided by \code{ref_grid}) containing the
-##' predictor settings needed in the reference grid
 ##' @details While the examples below are disabled for earlier versions of
 ##' R, they may still work; it may be necessary to refer to private
 ##' versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
+##' @importFrom stats delete.response
 ##' @examples
 ##' warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
+##' salamander1 <- readRDS(system.file("example_files","salamander1.rds",package="glmmTMB"))
 ##' if (require(emmeans)) {
-##'     emmeans (warp.lm, poly ~ tension | wool)
+##'     emmeans(warp.lm, poly ~ tension | wool)
+##'     emmeans(salamander1, ~ mined, type="response")
+##'     emmeans(salamander1, ~ mined, component="zi", type="response")
 ##' }
 ##' if (getRversion() >= "3.6.0") {
 ##'    if (require(car)) {
 ##'        Anova(warp.lm,type="III")
+##'        Anova(salamander1)
+##'        Anova(salamander1, component="zi")
 ##'    }
-##'    if (require(effects) 
+##'    if (require(effects)) {
 ##'        plot(allEffects(warp.lm))
+##'        plot(allEffects(salamander1))
 ##'    }
 ##' }
+NULL  ## don't document the files here!
 
 
 ## recover_data method -- DO NOT export -- see zzz.R
+## do not document either
 
-#' @importFrom stats delete.response
 recover_data.glmmTMB <- function(object, ...) {
     fcall <- getCall(object)
     if (!requireNamespace("emmeans"))
@@ -56,16 +65,28 @@ recover_data.glmmTMB <- function(object, ...) {
 }
 
 
-## emm_basis method -- Dynamically exported, see zzz.R
 
-#' @rdname downstream_methods
-#' @aliases downstream_methods
-#' @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) {
-    ## Not needed anymore?
-    ## if (component != "cond") warning("only tested for conditional component")
-    V <- as.matrix(vcov(object)[[component]])
-    misc = list()
+## emm_basis method -- Dynamically exported, see zzz.R
+## don't document, causes confusion
+
+## @rdname downstream_methods
+## @aliases downstream_methods
+## @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
+## vcov. user-specified covariance matrix
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", vcov., ...) {
+    ## browser()
+    L <- list(...)
+    if (length(L)>0) {
+        ## don't warn: $misc and $options are always passed through ...
+        ## warning("ignored extra arguments to emm_basis.glmmTMB: ",
+        ## paste(names(L),collapse=", "))
+    }
+    if (missing(vcov.)) {
+        V <- as.matrix(vcov(object)[[component]])
+    } else {
+        V <- vcov.
+    }
+    misc <- list()
     if (family(object)$family=="gaussian") {
         dfargs = list(df = df.residual(object))
         dffun = function(k, dfargs) dfargs$df
@@ -75,30 +96,29 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", ...) 
         dfargs = list()
 
     }
-    fam = switch(component,
+    fam <- switch(component,
                  cond = family(object),
-                 zi = list(link = "logit"),
-                 disp = list(link = "log"))
+                 zi = list(link="logit"),
+                 disp = list(link="log"))
     
-    misc = emmeans::.std.link.labels(fam, misc)
+    misc <- emmeans::.std.link.labels(fam, misc)
     ## (used to populate the reminder of response scale)
-    contrasts = attr(model.matrix(object), "contrasts")
+    contrasts <- attr(model.matrix(object), "contrasts")
     ## keep only variables found in conditional fixed effects
-    contrasts = contrasts[names(contrasts) %in% all.vars(terms(object))]
-    m = model.frame(trms, grid, na.action = na.pass, xlev = xlev)
-    X = model.matrix(trms, m, contrasts.arg = contrasts)
-    bhat = fixef(object)[[component]]
+    contrasts <- contrasts[names(contrasts) %in% all.vars(terms(object))]
+    m <- model.frame(trms, grid, na.action=na.pass, xlev=xlev)
+    X <- model.matrix(trms, m, contrasts.arg=contrasts)
+    bhat <- fixef(object)[[component]]
     if (length(bhat) < ncol(X)) {
-        kept = match(names(bhat), dimnames(X)[[2]])
-        bhat = NA * X[1, ]
-        bhat[kept] = fixef(object)[[component]]
-        modmat = model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
-        nbasis = estimability::nonest.basis(modmat)
+        kept <- match(names(bhat), dimnames(X)[[2]])
+        bhat <- NA * X[1, ]
+        bhat[kept] <- fixef(object)[[component]]
+        modmat <- model.matrix(trms, model.frame(object), contrasts.arg=contrasts)
+        nbasis <- estimability::nonest.basis(modmat)
     }  else {
-        nbasis = estimability::all.estble
+        nbasis <- estimability::all.estble
     }
-    dfargs = list(df = df.residual(object))
-    dffun = function(k, dfargs) dfargs$df
-    list(X = X, bhat = bhat, nbasis = nbasis, V = V, dffun = dffun, 
-         dfargs = dfargs, misc = misc)
+    dfargs <- list(df=df.residual(object))
+    dffun <- function(k, dfargs) dfargs$df
+    namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
 }

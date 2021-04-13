@@ -1,238 +1,19 @@
 #include <TMB.hpp>
 #include "init.h"
+#include "distrib.h"
+
 // don't need to include omp.h; we get it via TMB.hpp
 
-
-
 namespace glmmtmb{
-  /* Not used anymore: */
-  template<class Type>
-  Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
-  {
-    /*
-      Wikipedia:
-      f(k|n,\alpha,\beta) =
-      \frac{\Gamma(n+1)}{\Gamma(k+1)\Gamma(n-k+1)}
-      \frac{\Gamma(k+\alpha)\Gamma(n-k+\beta)}{\Gamma(n+\alpha+\beta)}
-      \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}
-    */
-    Type logres =
-      lgamma(n + 1) - lgamma(y + 1)     - lgamma(n - y + 1) +
-      lgamma(y + a) + lgamma(n - y + b) - lgamma(n + a + b) +
-      lgamma(a + b) - lgamma(a)         - lgamma(b) ;
-    if(!give_log) return exp(logres);
-    else return logres;
-  }
-  /* R:
-    > identical(lgamma(exp(-150)), 150)
-    [1] TRUE
-    FIXME: Move 'logspace_gamma' to TMB.
-  */
-  namespace adaptive {
-    template<class T>
-    T logspace_gamma(const T &x) {
-      /* Tradeoff: The smaller x the better approximation *but* the higher
-         risk of psigamma() overflow */
-      if (x < -150)
-        return -x;
-      else
-        return lgamma(exp(x));
-    }
-  }
-  TMB_BIND_ATOMIC(logspace_gamma, 1, adaptive::logspace_gamma(x[0]))
-  template<class Type>
-  Type logspace_gamma(Type x) {
-    CppAD::vector<Type> args(2); // Last index reserved for derivative order
-    args[0] = x;
-    args[1] = 0;
-    return logspace_gamma(args)[0];
-  }
-  template<class Type>
-  Type dbetabinom_robust(Type y, Type loga, Type logb, Type n, int give_log=0)
-  {
-    Type a = exp(loga), b = exp(logb);
-    Type logy = log(y), lognmy = log(n - y); // May be -Inf
-    Type logres =
-      lgamma(n + 1) - lgamma(y + 1) - lgamma(n - y + 1) +
-      logspace_gamma(logspace_add(logy, loga)) +
-      logspace_gamma(logspace_add(lognmy, logb)) -
-      lgamma(n + a + b) +
-      lgamma(a + b) - logspace_gamma(loga) - logspace_gamma(logb);
-    if(!give_log) return exp(logres);
-    else return logres;
-  }
-  template<class Type>
-  Type dgenpois(Type y, Type theta, Type lambda, int give_log=0)
-  {
-    /*
-      f(y|\theta,\lambda) =
-      \frac{\theta(theta+\lambda y)^{y-1}e^{-\theta-\lambda y}}{y \!}
-    */
-    Type logres =
-      log(theta) + (y - 1) * log(theta + lambda * y) -
-      theta - lambda * y - lgamma(y + Type(1));
-    if(!give_log) return exp(logres);
-    else return logres;
-  }
-	
-  /* Simulate from generalized poisson distribution */
-  template<class Type>
-  Type rgenpois(Type theta, Type lambda) {
-    // Copied from R function HMMpa::rgenpois
-    Type ans = Type(0);
-    Type random_number = runif(Type(0), Type(1));
-    Type kum = dgenpois(Type(0), theta, lambda);
-    while (random_number > kum) {
-      ans = ans + Type(1);
-      kum += dgenpois(ans, theta, lambda);
-    }
-    return ans;
-  }
-	
-  /* Simulate from zero-truncated generalized poisson distribution */
-  template<class Type>
-  Type rtruncated_genpois(Type theta, Type lambda) {
-    int nloop = 10000;
-    int counter = 0;
-    Type ans = rgenpois(theta, lambda);
-    while(ans < Type(1) && counter < nloop) {
-      ans = rgenpois(theta, lambda);
-      counter++;
-    }
-    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
-    return ans;
-  }
-
-  template<class Type>
-  bool isNA(Type x){
-    return R_IsNA(asDouble(x));
-  }
-
-  extern "C" {
-    /* See 'R-API: entry points to C-code' (Writing R-extensions) */
-    double Rf_logspace_sub (double logx, double logy);
-    void   Rf_pnorm_both(double x, double *cum, double *ccum, int i_tail, int log_p);
-  }
-
-  /* y(x) = logit_invcloglog(x) := log( exp(exp(x)) - 1 ) = logspace_sub( exp(x), 0 )
-
-     y'(x) = exp(x) + exp(x-y) = exp( logspace_add(x, x-y) )
-
-   */
-  TMB_ATOMIC_VECTOR_FUNCTION(
-                             // ATOMIC_NAME
-                             logit_invcloglog
-                             ,
-                             // OUTPUT_DIM
-                             1,
-                             // ATOMIC_DOUBLE
-                             ty[0] = Rf_logspace_sub(exp(tx[0]), 0.);
-                             ,
-                             // ATOMIC_REVERSE
-                             px[0] = exp( logspace_add(tx[0], tx[0]-ty[0]) ) * py[0];
-                             )
-  template<class Type>
-  Type logit_invcloglog(Type x) {
-    CppAD::vector<Type> tx(1);
-    tx[0] = x;
-    return logit_invcloglog(tx)[0];
-  }
-
-  /* y(x) = logit_pnorm(x) := logit( pnorm(x) ) =
-     pnorm(x, lower.tail=TRUE,  log.p=TRUE) -
-     pnorm(x, lower.tail=FALSE, log.p=TRUE)
-
-     y'(x) = dnorm(x) * ( (1+exp(y)) + (1+exp(-y)) )
-
-  */
-  double logit_pnorm(double x) {
-    double log_p_lower, log_p_upper;
-    Rf_pnorm_both(x, &log_p_lower, &log_p_upper, 2 /* both tails */, 1 /* log_p */);
-    return log_p_lower - log_p_upper;
-  }
-  TMB_ATOMIC_VECTOR_FUNCTION(
-                             // ATOMIC_NAME
-                             logit_pnorm
-                             ,
-                             // OUTPUT_DIM
-                             1,
-                             // ATOMIC_DOUBLE
-                             ty[0] = logit_pnorm(tx[0])
-                             ,
-                             // ATOMIC_REVERSE
-                             Type zero = 0;
-                             Type tmp1 = logspace_add(zero, ty[0]);
-                             Type tmp2 = logspace_add(zero, -ty[0]);
-                             Type tmp3 = logspace_add(tmp1, tmp2);
-                             Type tmp4 = dnorm(tx[0], Type(0), Type(1), true) + tmp3;
-                             px[0] = exp( tmp4 ) * py[0];
-                             )
-  template<class Type>
-  Type logit_pnorm(Type x) {
-    CppAD::vector<Type> tx(1);
-    tx[0] = x;
-    return logit_pnorm(tx)[0];
-  }
-
-  /* Calculate variance in compois family using
-
-     V(X) = (logZ)''(loglambda)
-
-  */
-  double compois_calc_var(double mean, double nu){
-    using atomic::compois_utils::calc_loglambda;
-    using atomic::compois_utils::calc_logZ;
-    double loglambda = calc_loglambda(log(mean), nu);
-    typedef atomic::tiny_ad::variable<2, 1, double> ADdouble;
-    ADdouble loglambda_ (loglambda, 0);
-    ADdouble ans = calc_logZ<ADdouble>(loglambda_, nu);
-    return ans.getDeriv()[0];
-  }
-
-  /* Simulate from zero-truncated Conway-Maxwell-Poisson distribution */
-  template<class Type>
-  Type rtruncated_compois2(Type mean, Type nu) {
-    int nloop = 10000;
-    int counter = 0;
-    Type ans = rcompois2(mean, nu);
-    while(ans < 1. && counter < nloop) {
-      ans = rcompois2(mean, nu);
-      counter++;
-    }
-    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
-    return ans;
-  }
-
-  /* Simulate from tweedie distribution */
-  template<class Type>
-  Type rtweedie(Type mu, Type phi, Type p) {
-    // Copied from R function tweedie::rtweedie
-    Type lambda = pow(mu, 2. - p) / (phi * (2. - p));
-    Type alpha  = (2. - p) / (1. - p);
-    Type gam = phi * (p - 1.) * pow(mu, p - 1.);
-    int N = (int) asDouble(rpois(lambda));
-    Type ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
-    return ans;
-  }
+template<class Type>
+bool isNA(Type x){
+  return R_IsNA(asDouble(x));
 }
 
-/* Interface to compois variance */
-extern "C" {
-  SEXP compois_calc_var(SEXP mean, SEXP nu) {
-    if (LENGTH(mean) != LENGTH(nu))
-      error("'mean' and 'nu' must be vectors of same length.");
-    SEXP ans = PROTECT(allocVector(REALSXP, LENGTH(mean)));
-    for(int i=0; i<LENGTH(mean); i++)
-      REAL(ans)[i] = glmmtmb::compois_calc_var(REAL(mean)[i], REAL(nu)[i]);
-    UNPROTECT(1);
-    return ans;
-  }
+template<class Type>
+bool notFinite(Type x) {
+  return (!R_FINITE(asDouble(x)));
 }
-
-/* Quantile functions needed to simulate from truncated distributions */
-extern "C" {
-  double Rf_qnbinom(double p, double size, double prob, int lower_tail, int log_p);
-  double Rf_qpois(double p, double lambda, int lower_tail, int log_p);
 }
 
 enum valid_family {
@@ -274,7 +55,8 @@ enum valid_covStruct {
   exp_covstruct = 5,
   gau_covstruct = 6,
   mat_covstruct = 7,
-  toep_covstruct = 8
+  toep_covstruct = 8,
+  rr_covstruct = 9
 };
 
 enum valid_ziPredictCode {
@@ -366,6 +148,7 @@ struct per_term_info {
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
+  matrix<Type> fact_load; // For rr case
 };
 
 template <class Type>
@@ -588,6 +371,44 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd.resize(n);  // For report
     term.sd.fill(sd);
   }
+  else if (term.blockCode == rr_covstruct){
+    // case: reduced rank
+    for(int i = 0; i < term.blockReps; i++){
+      ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
+      if (do_simulate) {
+        U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+      }
+    }
+
+    int p = term.blockSize;
+    int nt = theta.size();
+    int rank = (2*p + 1 -  sqrt(pow(2*p + 1, 2) - 8*nt) ) / 2 ;
+    matrix<Type> Lambda(p, rank);
+    vector<Type> lam_diag = theta.head(rank);
+    vector<Type> lam_lower = theta.tail(nt - rank);
+    for (int j = 0; j < rank; j++){
+      for (int i = 0; i < p; i++){
+        if (j > i)
+          Lambda(i, j) = 0;
+        else if(i == j)
+          Lambda(i, j) = lam_diag(j);
+        else
+          Lambda(i, j) = lam_lower(j*p - (j + 1)*j/2 + i - 1 - j); //Fills by column
+      }
+    }
+
+    for(int i = 0; i < term.blockReps; i++){
+      vector<Type> usub = U.col(i).segment(0, rank);
+      U.col(i) = Lambda * usub;
+    }
+
+    term.fact_load = Lambda;
+    if(isDouble<Type>::value) {
+      term.corr = Lambda * Lambda.transpose();
+      term.sd = term.corr.diagonal().array().sqrt();
+      term.corr.array() /= term.sd * term.sd.transpose();
+    }
+  }
   else error("covStruct not implemented!");
   return ans;
 }
@@ -621,17 +442,14 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
-// DELETE when we're sure this is redundant ...
-// #ifdef _OPENMP
-// Set max number of OpenMP threads to help us optimize faster
-// max_parallel_regions = omp_get_max_threads();    
-// #endif
-
   DATA_MATRIX(X);
+  bool sparseX = X.rows()==0 && X.cols()==0;
   DATA_SPARSE_MATRIX(Z);
   DATA_MATRIX(Xzi);
+  bool sparseXzi = Xzi.rows()==0 && Xzi.cols()==0;
   DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
+  bool sparseXd = Xd.rows()==0 && Xd.cols()==0;
   DATA_VECTOR(yobs);
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
@@ -667,7 +485,6 @@ Type objective_function<Type>::operator() ()
   bool zi_flag = (betazi.size() > 0);
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
-
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
@@ -679,9 +496,27 @@ Type objective_function<Type>::operator() ()
   jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
-  vector<Type> eta = X * beta + Z * b + offset;
-  vector<Type> etazi = Xzi * betazi + Zzi * bzi + zioffset;
-  vector<Type> etad = Xd * betad + doffset;
+  vector<Type> eta = Z * b + offset;
+  if (!sparseX) {
+    eta += X*beta;
+  } else {
+    DATA_SPARSE_MATRIX(XS);
+    eta += XS*beta;
+  }
+  vector<Type> etazi = Zzi * bzi + zioffset;
+  if (!sparseXzi) {
+    etazi += Xzi*betazi;
+  } else {
+    DATA_SPARSE_MATRIX(XziS);
+    etazi += XziS*betazi;
+  }
+  vector<Type> etad = doffset;
+  if (!sparseXd) {
+    etad += Xd*betad;
+  } else {
+    DATA_SPARSE_MATRIX(XdS);
+    etad += XdS*betad;
+  }
 
   // Apply link
   vector<Type> mu(eta.size());
@@ -749,30 +584,25 @@ Type objective_function<Type>::operator() ()
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
-        SIMULATE {
-          s1 = mu(i);
-          s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-          yobs(i) = rnbinom2(s1, s2);
-        }
-        if( family == truncated_nbinom1_family ) {
-          // s3 := log( 1. + phi(i) )
-          s3 = logspace_add( Type(0), etad(i) );
+	if (family != truncated_nbinom1_family) {
+		SIMULATE {
+			s1 = mu(i);
+			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+			yobs(i) = rnbinom2(s1, s2);
+		}
+	} else {
+          s3 = logspace_add( Type(0), etad(i) );                // log(1. + phi(i)
           log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob;
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
           SIMULATE{
-            s1 = mu(i)/phi(i);//sz
-            s2 = 1/(1+phi(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+            s1 = mu(i)/phi(i); //sz
+	    yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(s1), 0, asDouble(mu(i)));
           }
         }
         break;
       case nbinom2_family:
       case truncated_nbinom2_family:
-        // Was:
-        //   s1 = mu(i);
-        //   s2 = mu(i) * (Type(1) + mu(i) / phi(i));
-        //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
@@ -788,25 +618,16 @@ Type objective_function<Type>::operator() ()
           tmp_loglik -= log_nzprob;
           tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
-            s1 = phi(i); //sz
-            s2 = phi(i)/(phi(i)+mu(i)); //pb
-            yobs(i) = Rf_qnbinom(asDouble(runif(dnbinom(Type(0), s1, s2), Type(1))), asDouble(s1), asDouble(s2), 1, 0);
+		  yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(phi(i)), 0, asDouble(mu(i)));
           }
         }
         break;
       case truncated_poisson_family:
-        // Was:
-        //   if (mu(i)<1e-6) {
-        //     nzprob = mu(i)*(1-mu(i)/2);
-        //   } else {
-        //     nzprob = 1-exp(-mu(i));
-        //   }
-        // log(nzprob) = log( 1 - exp(-mu(i)) )
-        log_nzprob = logspace_sub(Type(0), -mu(i));
+        log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i))) = P(x>0)
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
-          yobs(i) = Rf_qpois(asDouble(runif(dpois(Type(0), mu(i)), Type(1))), asDouble(mu(i)), 1, 0);
+		yobs(i) = glmmtmb::rtruncated_poisson(0, asDouble(mu(i)));
         }
         break;
      case genpois_family:
@@ -892,10 +713,19 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+  vector<matrix<Type> > fact_load(terms.size());
+  for(int i=0; i<terms.size(); i++){
+    // NOTE: Dummy terms reported as empty
+    if(terms(i).blockNumTheta > 0){
+      fact_load(i) = terms(i).fact_load;
+    }
+  }
+
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(fact_load);
   SIMULATE {
     REPORT(yobs);
     REPORT(b);
@@ -939,4 +769,6 @@ Type objective_function<Type>::operator() ()
 
   return jnll;
 }
+
+
 

@@ -10,7 +10,10 @@ glmmTMBControl(
   optimizer = nlminb,
   profile = FALSE,
   collect = FALSE,
-  parallel = NULL
+  parallel = NULL,
+  eigval_check = TRUE,
+  zerodisp_val = log(sqrt(.Machine$double.eps)),
+  start_method = list(method = NULL, jitter.sd = 0)
 )
 }
 \arguments{
@@ -28,6 +31,12 @@ recognizing duplicated observations.}
 
 \item{parallel}{Numeric; Setting number of OpenMP threads to evaluate
 the negative log-likelihood in parallel}
+
+\item{eigval_check}{Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)}
+
+\item{zerodisp_val}{value of the dispersion parameter when \code{dispformula=~0} is specified}
+
+\item{start_method}{List; Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when method = "res".}
 }
 \description{
 Control parameters for glmmTMB optimization
@@ -59,7 +68,9 @@ The \code{optimizer} argument can be any optimization (minimizing) function, pro
 \itemize{
 \item the first three arguments, in order, are the starting values, objective function, and gradient function;
 \item it also takes a \code{control} argument;
-\item it returns a list with elements (at least) \code{convergence} (0 if convergence is successful) and \code{message}
+\item it returns a list with elements (at least) \code{par}, \code{objective}, \code{convergence} (0 if convergence is successful) and \code{message}
+(the code internally handles output from \code{optim()}, by renaming the \code{value} component to \code{objective})
+
 }
 }
 \examples{
