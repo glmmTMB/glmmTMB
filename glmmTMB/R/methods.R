@@ -785,8 +785,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
                              full = FALSE,
-                             ...)
-{
+                             ...) {
     method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
@@ -836,6 +835,35 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }
         return(ci.tmp)
     }
+
+    wald_ci_comp <- function(component) {
+        ## VarCorr -> stddev
+        cfun <- function(x) {
+            ss <- attr(x, "stddev")
+            names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
+            cc <- attr(x,"correlation")
+            if (length(cc)>1) {
+                nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                cc <- cc[lower.tri(cc)]
+                nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                names(cc) <- nn
+                ss <- c(ss,cc)
+            }
+            return(ss)
+        }
+        reduce <- function(VC) sapply(VC[[component]], cfun)
+        ci.sd <- .CI_univariate_monotone(object,
+                                         VarCorr,
+                                         reduce = reduce,
+                                         level = level,
+                                         estimate = estimate)
+        ## would consider excluding mapped parameters here
+        ## (works automatically for fixed effects via vcov)
+        ## but tough because of theta <-> sd/corr mapping;
+        ## instead, eliminate rows below where lowerCI==upperCI
+        return(ci.sd)
+    }
+    
     if (method=="wald") {
         map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
@@ -844,34 +872,6 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ## variance and estimates
                 ci <- rbind(ci, wald_comp(component))
             }
-            ## VarCorr -> stddev
-            cfun <- function(x) {
-                ss <- attr(x, "stddev")
-                names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
-                cc <- attr(x,"correlation")
-                if (length(cc)>1) {
-                    nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
-                    cc <- cc[lower.tri(cc)]
-                    nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
-                    names(cc) <- nn
-                    ss <- c(ss,cc)
-                }
-                return(ss)
-            }
-            reduce <- function(VC) sapply(VC[[component]], cfun)
-            ci.sd <- .CI_univariate_monotone(object,
-                                                 VarCorr,
-                                                 reduce = reduce,
-                                                 level = level,
-                                                 ## name.prepend=paste(component,
-                                                 ## "Std.Dev.",
-                                                 ## sep="."),
-                                                 estimate = estimate)
-                ## would consider excluding mapped parameters here
-                ## (works automatically for fixed effects via vcov)
-                ## but tough because of theta <-> sd/corr mapping;
-                ## instead, eliminate rows below where lowerCI==upperCI
-                ci <- rbind(ci, ci.sd)
         } ## cond and zi components
         if (components.has("other")) {
             ## sigma
@@ -902,11 +902,20 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ci <- rbind(ci, ci.power)
             } ## tweedie
         }  ## model has 'other' component
+        ## NOW add 'theta' components (match order of params in vcov-full)
+        ## FIXME: better to have more robust ordering
+        for (component in c("cond", "zi") ) {
+            if (components.has(component) &&
+                length(ranef(object)[[component]])>0) {
+                ci <- rbind(ci, wald_ci_comp(component))
+            }
+        }
+            
         ## Take subset
         
         ## drop mapped values (where lower == upper)
         ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
-
+        
         ## now get selected parameters
         if (!is.null(parm)) {
             ci <- ci[parm, , drop=FALSE]
