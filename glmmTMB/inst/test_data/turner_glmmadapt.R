@@ -97,5 +97,5 @@ if (require("GLMMadaptive")) {
     par(las=1,bty="l")
     parmat <- res[-nrow(res),]
     matplot(nvec,t(parmat),type="l")
-    saveRDS(res,file="turner_bb_GLMMadaptive.RData")
+    saveRDS(res,file="turner_bb_GLMMadaptive.rds", version=2)
 }
