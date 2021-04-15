@@ -733,7 +733,7 @@ nullSparseMatrix <- function() {
 
 
 omp_check <- function() {
-    .Call("omp_check",package="glmmTMB")
+    .Call("omp_check", PACKAGE="glmmTMB")
 }
 
 get_pars <- function(object, unlist=TRUE) {
