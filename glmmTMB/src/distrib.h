@@ -3,6 +3,7 @@
 // FIXME: check proper syntax for including 
 namespace glmmtmb{
 	
+  /* Not used anymore: */
   template<class Type>
   Type dbetabinom(Type y, Type a, Type b, Type n, int give_log=0)
   {
@@ -17,6 +18,44 @@ namespace glmmtmb{
       lgamma(n + 1) - lgamma(y + 1)     - lgamma(n - y + 1) +
       lgamma(y + a) + lgamma(n - y + b) - lgamma(n + a + b) +
       lgamma(a + b) - lgamma(a)         - lgamma(b) ;
+    if(!give_log) return exp(logres);
+    else return logres;
+  }
+  /* R:
+    > identical(lgamma(exp(-150)), 150)
+    [1] TRUE
+    FIXME: Move 'logspace_gamma' to TMB.
+  */
+  namespace adaptive {
+    template<class T>
+    T logspace_gamma(const T &x) {
+      /* Tradeoff: The smaller x the better approximation *but* the higher
+         risk of psigamma() overflow */
+      if (x < -150)
+        return -x;
+      else
+        return lgamma(exp(x));
+    }
+  }
+  TMB_BIND_ATOMIC(logspace_gamma, 1, adaptive::logspace_gamma(x[0]))
+  template<class Type>
+  Type logspace_gamma(Type x) {
+    CppAD::vector<Type> args(2); // Last index reserved for derivative order
+    args[0] = x;
+    args[1] = 0;
+    return logspace_gamma(args)[0];
+  }
+  template<class Type>
+  Type dbetabinom_robust(Type y, Type loga, Type logb, Type n, int give_log=0)
+  {
+    Type a = exp(loga), b = exp(logb);
+    Type logy = log(y), lognmy = log(n - y); // May be -Inf
+    Type logres =
+      lgamma(n + 1) - lgamma(y + 1) - lgamma(n - y + 1) +
+      logspace_gamma(logspace_add(logy, loga)) +
+      logspace_gamma(logspace_add(lognmy, logb)) -
+      lgamma(n + a + b) +
+      lgamma(a + b) - logspace_gamma(loga) - logspace_gamma(logb);
     if(!give_log) return exp(logres);
     else return logres;
   }

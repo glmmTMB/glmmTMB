@@ -202,7 +202,7 @@ The "false convergence" warning comes from the `nlminb()` optimizer, and is [dif
 
 The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We'll try option 3 and refit with the BFGS option from `optim()`:
 
-```{r ss_mod2optim,eval=FALSE}
+```{r ss_mod2optim,eval=TRUE}
 mod2_optim <- update(mod2,
                 control=glmmTMBControl(optimizer=optim,
                                        optArgs=list(method="BFGS")))

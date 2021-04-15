@@ -18,6 +18,7 @@
       zi Anova break in some conditions (GH #674)
       \item fixed bugs/inconsistencies in handling of mapped parameters
       (GH #678)
+      \item mapped (fixed) variables could give incorrect predictions
     }
   }
   \subsection{USER-VISIBLE CHANGES}{
@@ -27,6 +28,12 @@
       than 0 in \code{vcov(., include_mapped=TRUE)} and by extension in
       \code{summary}; hence Z-statistics and P-values will also be NA for
       these parameters
+      \item new \code{fast} flag for predictions decreases memory use
+      and computational time (only if \code{newdata}, \code{newparams}
+      not specified); default in \code{fitted()} method
+      \item improved robustness of beta-binomial fits
+      (results of fitting such models may change slightly from previous
+      versions)
     }
   }
 }

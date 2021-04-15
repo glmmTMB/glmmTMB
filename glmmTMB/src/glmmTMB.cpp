@@ -7,12 +7,12 @@
 namespace glmmtmb{
 template<class Type>
 bool isNA(Type x){
-    return R_IsNA(asDouble(x));
-  }
+  return R_IsNA(asDouble(x));
+}
 
 template<class Type>
 bool notFinite(Type x) {
-	return (!R_FINITE(asDouble(x)));
+  return (!R_FINITE(asDouble(x)));
 }
 }
 
@@ -55,7 +55,8 @@ enum valid_covStruct {
   exp_covstruct = 5,
   gau_covstruct = 6,
   mat_covstruct = 7,
-  toep_covstruct = 8
+  toep_covstruct = 8,
+  rr_covstruct = 9
 };
 
 enum valid_ziPredictCode {
@@ -126,6 +127,9 @@ Type log_inverse_linkfun(Type eta, int link) {
   case log_link:
     ans = eta;
     break;
+  case logit_link:
+    ans = -logspace_add(Type(0), -eta);
+    break;
   default:
     ans = log( inverse_linkfun(eta, link) );
   } // End switch
@@ -144,6 +148,7 @@ struct per_term_info {
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
+  matrix<Type> fact_load; // For rr case
 };
 
 template <class Type>
@@ -366,6 +371,44 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd.resize(n);  // For report
     term.sd.fill(sd);
   }
+  else if (term.blockCode == rr_covstruct){
+    // case: reduced rank
+    for(int i = 0; i < term.blockReps; i++){
+      ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
+      if (do_simulate) {
+        U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+      }
+    }
+
+    int p = term.blockSize;
+    int nt = theta.size();
+    int rank = (2*p + 1 -  sqrt(pow(2*p + 1, 2) - 8*nt) ) / 2 ;
+    matrix<Type> Lambda(p, rank);
+    vector<Type> lam_diag = theta.head(rank);
+    vector<Type> lam_lower = theta.tail(nt - rank);
+    for (int j = 0; j < rank; j++){
+      for (int i = 0; i < p; i++){
+        if (j > i)
+          Lambda(i, j) = 0;
+        else if(i == j)
+          Lambda(i, j) = lam_diag(j);
+        else
+          Lambda(i, j) = lam_lower(j*p - (j + 1)*j/2 + i - 1 - j); //Fills by column
+      }
+    }
+
+    for(int i = 0; i < term.blockReps; i++){
+      vector<Type> usub = U.col(i).segment(0, rank);
+      U.col(i) = Lambda * usub;
+    }
+
+    term.fact_load = Lambda;
+    if(isDouble<Type>::value) {
+      term.corr = Lambda * Lambda.transpose();
+      term.sd = term.corr.diagonal().array().sqrt();
+      term.corr.array() /= term.sd * term.sd.transpose();
+    }
+  }
   else error("covStruct not implemented!");
   return ans;
 }
@@ -449,7 +492,6 @@ Type objective_function<Type>::operator() ()
   bool zi_flag = (betazi.size() > 0);
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
-
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
@@ -482,7 +524,7 @@ Type objective_function<Type>::operator() ()
     DATA_SPARSE_MATRIX(XdS);
     etad += XdS*betad;
   }
-  
+
   // Apply link
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
@@ -529,11 +571,15 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case betabinomial_family:
-        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
-        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
+        // Transform to logit scale independent of link
+        s3 = logit_inverse_linkfun(eta(i), link); // logit(p)
+        // Was: s1 = mu(i) * phi(i);
+        s1 = log_inverse_linkfun( s3, logit_link) + log(phi(i)); // s1 = log(mu*phi)
+        // Was: s2 = (Type(1) - mu(i)) * phi(i);
+        s2 = log_inverse_linkfun(-s3, logit_link) + log(phi(i)); // s2 = log((1-mu)*phi)
+        tmp_loglik = glmmtmb::dbetabinom_robust(yobs(i), s1, s2, size(i), true);
         SIMULATE {
-          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
+          yobs(i) = rbinom(size(i), rbeta(exp(s1), exp(s2)) );
         }
         break;
       case nbinom1_family:
@@ -547,7 +593,7 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	if (family != truncated_nbinom1_family) {
 		SIMULATE {
-			s1 = mu(i);  
+			s1 = mu(i);
 			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
 			yobs(i) = rnbinom2(s1, s2);
 		}
@@ -674,10 +720,19 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+  vector<matrix<Type> > fact_load(terms.size());
+  for(int i=0; i<terms.size(); i++){
+    // NOTE: Dummy terms reported as empty
+    if(terms(i).blockNumTheta > 0){
+      fact_load(i) = terms(i).fact_load;
+    }
+  }
+
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(fact_load);
   SIMULATE {
     REPORT(yobs);
     REPORT(b);

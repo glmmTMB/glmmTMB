@@ -36,7 +36,8 @@
   exp = 5,
   gau = 6,
   mat = 7,
-  toep = 8
+  toep = 8,
+  rr = 9
 )
 .valid_zipredictcode <- c(
   corrected = 0,

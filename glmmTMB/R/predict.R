@@ -1,8 +1,7 @@
 ## Helper function for predict.
 ## Assert that we can use old model (data.tmb0) as basis for
 ## predictions using the new data (data.tmb1):
-assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
-{
+assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) {
     ## Check terms. Only 'blockReps' and 'blockSize' are allowed to
     ## change.  Note that we allow e.g. spatial covariance matrices to
     ## change, while e.g. an unstrucured covariance must remain the
@@ -86,6 +85,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' @param re.form \code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
+##' @param fast predict without expanding memory (default is TRUE if \code{newdata} and \code{newparams} are NULL and population-level prediction is not being done)
 ##' @details
 ##' \itemize{
 ##' \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
@@ -110,7 +110,8 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
-predict.glmmTMB <- function(object,newdata=NULL,
+predict.glmmTMB <- function(object,
+                            newdata=NULL,
                             newparams=NULL,
                             se.fit=FALSE,
                             re.form=NULL, allow.new.levels=FALSE,
@@ -119,9 +120,9 @@ predict.glmmTMB <- function(object,newdata=NULL,
                                      "disp"),
                             zitype = NULL,
                             na.action = na.pass,
+                            fast=NULL,
                             debug=FALSE,
-                            ...)
-{
+                            ...) {
   ## FIXME: add re.form
 
   if (!is.null(zitype)) {
@@ -129,6 +130,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
      type <- zitype
   }
   type <- match.arg(type)
+    
   ## FIXME: better test? () around re.form==~0 are *necessary*
   ## could steal isRE from lme4 predict.R ...
   pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
@@ -137,6 +139,52 @@ predict.glmmTMB <- function(object,newdata=NULL,
       stop("re.form must equal NULL, NA, or ~0")
   }
 
+  ## match type arg with internal name
+  ## FIXME: warn if "link"  
+  ziPredNm <- switch(type,
+                     response   = "corrected",
+                     link       =,
+                     conditional= "uncorrected",
+                     zlink      = ,
+                     zprob      = "prob",
+                     disp       = "disp",#zi irrelevant; just reusing variable
+                     stop("unknown type ",type))
+  ziPredCode <- .valid_zipredictcode[ziPredNm]
+
+  ## oldPar <- get_pars(object)
+  oldPar <- object$fit$par
+  if (!is.null(newparams)) oldPar <- newparams
+
+  new_stuff <- !is.null(newdata) || !is.null(newparams) || pop_pred
+  if (!is.null(fast)) {
+     if (new_stuff) {
+         stop("fast=TRUE is not compatible with newdata/newparams/population-level prediction")
+     }
+   } else {
+     fast <- !new_stuff
+   }
+
+   if (fast) {
+    ee <- environment(object$obj$fn)       
+    lp <- ee$last.par.best                 ## used in $report() call below
+    dd <- ee$data         ## data object
+    orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]
+    dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
+    dd$doPredict <- as.numeric(se.fit)
+    dd$ziPredictCode <- ziPredCode
+    assign("data",dd, ee) ## stick this in the appropriate environment
+    newObj <- object$obj
+
+    ## restore original value
+    on.exit(add = TRUE,
+    {
+        for (i in names(orig_vals)) {
+            dd[[i]] <- orig_vals[[i]]
+            assign("data",dd, environment(object$obj$fn))
+        }
+    })
+  } else {
+    
   mc <- mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
@@ -237,17 +285,6 @@ predict.glmmTMB <- function(object,newdata=NULL,
   ## 'mkTMBStruc' further down.
   yobs <- augFr[[names(omi$respCol)]]
 
-  ## match type arg with internal name
-  ## FIXME: warn if "link"  
-  ziPredNm <- switch(type,
-                     response   = "corrected",
-                     link       =,
-                     conditional= "uncorrected",
-                     zlink      = ,
-                     zprob      = "prob",
-                     disp       = "disp",#zi irrelevant; just reusing variable
-                     stop("unknown type ",type))
-  ziPredCode <- .valid_zipredictcode[ziPredNm]
 
   ## need eval.parent() because we will do eval(mf) down below ...
   TMBStruc <-
@@ -279,7 +316,7 @@ predict.glmmTMB <- function(object,newdata=NULL,
                         object$obj$env$data, allow.new.levels)
                         
   ## Check that the necessary predictor variables are finite (not NA nor NaN)
-  if(se.fit) {
+  if (se.fit) {
     with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
                              any(!is.finite(Z@x)) |
                              any(!is.finite(Xzi)) |
@@ -291,8 +328,15 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   ## FIXME: what if newparams only has a subset of components?
 
-  oldPar <- object$fit$par
-  if (!is.null(newparams)) oldPar <- newparams
+  if (!is.null(maparg <- TMBStruc$mapArg)) {
+     full_pars <- get_pars(object, unlist=FALSE)     
+     for (i in names(maparg)) {
+         mapind <- which(is.na(maparg[[i]]))
+         if (length(mapind)>0) {
+             TMBStruc$parameters[[i]][mapind] <- full_pars[[i]][mapind]
+         }
+     }
+  }
 
   if (pop_pred) {
       TMBStruc <- within(TMBStruc, {
@@ -312,6 +356,8 @@ predict.glmmTMB <- function(object,newdata=NULL,
 
   newObj$fn(oldPar)  ## call once to update internal structures
   lp <- newObj$env$last.par
+
+  } ## NOT fast
 
   na.act <- attr(model.frame(object),"na.action")
   do.napred <- missing(newdata) && !is.null(na.act)
