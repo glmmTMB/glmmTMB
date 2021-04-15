@@ -31,6 +31,9 @@
       \item new \code{fast} flag for predictions decreases memory use
       and computational time (only if \code{newdata}, \code{newparams}
       not specified); default in \code{fitted()} method
+      \item improved robustness of beta-binomial fits
+      (results of fitting such models may change slightly from previous
+      versions)
     }
   }
 }
