@@ -181,6 +181,51 @@ test_that("dbetabinom", {
                   family=betabinomial(),
                   data=dd)
     expect_identical(m1$fit, m2$fit)
+    ## Rolf Turner example:
+    X <- readRDS(system.file("test_data","turner_bb.rds",package="glmmTMB"))
+    fmla <- cbind(Dead, Alive) ~ (Trt + 0)/Dose + (Dose | Rep)
+    ## baseline (binomial, not betabinomial)
+    fit0  <- glmmTMB(fmla, data = X, family = binomial(link = "cloglog"),
+                     dispformula = ~1)
+    fit1  <-  suppressWarnings(
+        ## NaN function evaluation;
+        ## non-pos-def Hessian;
+        ## false convergence warning from nlminb
+        glmmTMB(fmla, data = X, family = betabinomial(link = "cloglog"),
+                dispformula = ~1)
+    )
+    fit1_glmmA <- readRDS(system.file("test_data","turner_bb_GLMMadaptive.rds",
+                                      package="glmmTMB"))
+    suppressWarnings(
+        fit2  <- glmmTMB(fmla, data = X,
+                         family = betabinomial(link = "cloglog"),
+                         dispformula = ~1,
+                         start=list(beta=fixef(fit0)$cond))
+        ## non-pos-def Hessian warning
+        ## diagnose() suggests a singular fit
+        ## but fixed effects actually look OK
+    )
+    ff1 <- fixef(fit1)$cond
+    ff2 <- fixef(fit2)$cond
+
+    ## conclusions:
+    ## (1) glmmTMB fit from initial starting vals is bad
+    ## (2) glmmTMB fit from restart is OK (for fixed effects)
+    ## (3) GLMMadaptive matches OK **but not** for nAGQ=1 (which _should_
+    ##     fit) -- 
+    np <- length(ff1)
+    ff_GA <- fit1_glmmA[1:np,ncol(fit1_glmmA)]
+    expect_equal(ff_GA, ff2, tolerance=0.05)
+
+    if (FALSE) {
+        ## graphical exploration ...
+        cc <- cbind(ff1,ff2,fit1_glmmA[1:np,])
+        matplot(cc,type="b")
+        ## plot diffs between glmmTMB fit and GLMMadaptive for nAGQ>1
+        adiff <- sweep(fit1_glmmA[1:np,-1],1,ff2,"-")
+        matplot(adiff, type="b",
+                ylab="diff from glmmTMB")
+    }
 })
 
 test_that("truncated", {

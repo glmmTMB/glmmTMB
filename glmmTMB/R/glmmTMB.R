@@ -1323,7 +1323,6 @@ fitTMB <- function(TMBStruc) {
         fit$objective <- obj$fn(par)
         fit$newton.steps <- iter
     } else {
-
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
                               parameters,
@@ -1332,7 +1331,12 @@ fitTMB <- function(TMBStruc) {
                               profile = NULL,
                               silent = !verbose,
                               DLL = "glmmTMB"))
-
+        if (is.na(obj$fn(obj$par))) {
+            stop("negative log-likelihood is NaN at starting parameter values")
+        }
+        if (any(is.na(obj$gr(obj$par)))) {
+            stop("some elements of gradient are NaN at starting parameter values")
+        }
         optTime <- system.time(fit <- optfun())
     }
 
