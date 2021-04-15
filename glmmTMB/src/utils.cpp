@@ -5,11 +5,11 @@
 # endif
 
 /* check if openmp is enabled */
-SEXP ompcheck(void) {
+extern "C"
+SEXP omp_check(void) {
 #ifdef _OPENMP
     return ScalarLogical(1);
 #else
     return ScalarLogical(0);
 #endif
 }
-
