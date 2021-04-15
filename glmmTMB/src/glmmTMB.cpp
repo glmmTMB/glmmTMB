@@ -127,6 +127,9 @@ Type log_inverse_linkfun(Type eta, int link) {
   case log_link:
     ans = eta;
     break;
+  case logit_link:
+    ans = -logspace_add(Type(0), -eta);
+    break;
   default:
     ans = log( inverse_linkfun(eta, link) );
   } // End switch
@@ -561,11 +564,15 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case betabinomial_family:
-        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
-        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
+        // Transform to logit scale independent of link
+        s3 = logit_inverse_linkfun(eta(i), link); // logit(p)
+        // Was: s1 = mu(i) * phi(i);
+        s1 = log_inverse_linkfun( s3, logit_link) + log(phi(i)); // s1 = log(mu*phi)
+        // Was: s2 = (Type(1) - mu(i)) * phi(i);
+        s2 = log_inverse_linkfun(-s3, logit_link) + log(phi(i)); // s2 = log((1-mu)*phi)
+        tmp_loglik = glmmtmb::dbetabinom_robust(yobs(i), s1, s2, size(i), true);
         SIMULATE {
-          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
+          yobs(i) = rbinom(size(i), rbeta(exp(s1), exp(s2)) );
         }
         break;
       case nbinom1_family:

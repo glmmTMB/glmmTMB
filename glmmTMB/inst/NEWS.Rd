@@ -22,6 +22,7 @@
       \code{parm="theta_"} now work correctly with more complex models
       (e.g. including both zero inflation and random effects)
       (reported by @MKie45 on Stack Overflow)
+      \item mapped (fixed) variables could give incorrect predictions (GH #644)
     }
   }
   \subsection{USER-VISIBLE CHANGES}{
@@ -34,6 +35,12 @@
       \item row ordering has changed in \code{confint} output data
       frames (random effects parameters come \emph{last}, matching the
       row/column order in \code{vcov(., full=TRUE)})
+      \item new \code{fast} flag for predictions decreases memory use
+      and computational time (only if \code{newdata}, \code{newparams}
+      not specified); default in \code{fitted()} method
+      \item improved robustness of beta-binomial fits
+      (results of fitting such models may change slightly from previous
+      versions)
     }
   }
 }

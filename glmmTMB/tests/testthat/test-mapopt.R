@@ -34,9 +34,10 @@ test_that("basic mapping works", {
     expect_equal(fixef(m3)$zi[[1]], -1.0)
 })
 
+
 test_that("predict works with mapped params",
-          expect_equal(vapply(predict(m1,se.fit=TRUE),unique,numeric(1)),
-                       c(fit = -1.18646939995962, se.fit = 0.0342594326326737),
+          expect_equal(lapply(predict(m1,se.fit=TRUE),unique),
+                       list(fit = c(-1.18646939995962, 0.81353060004038), se.fit = 0.0342594326326739),
                        tolerance=1e-6)
           )
 
