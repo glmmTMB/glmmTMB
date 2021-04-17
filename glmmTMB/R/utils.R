@@ -736,7 +736,7 @@ nullSparseMatrix <- function() {
 ##'
 ##' Checks whether OpenMP has been successfully enabled for this
 ##' installation of the package. (Use the \code{parallel} argument
-##' to \code{\link{glmmTMBControl}}, or set \code{options(mc.core=[value])},
+##' to \code{\link{glmmTMBControl}}, or set \code{options(mc.cores=[value])},
 ##' to specify that computations should be done in parallel.)
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
 ##' @return \code{TRUE} or {FALSE} depending on availability of OpenMP
