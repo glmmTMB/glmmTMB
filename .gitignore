@@ -31,5 +31,5 @@ glmmTMB/src/Makevars
 doc-update
 *.Rcheck
 *.tar.gz
-project.Rproj
+glmmTMB.Rproj
 *.Rout
