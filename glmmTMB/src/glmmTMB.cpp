@@ -443,10 +443,10 @@ Type objective_function<Type>::operator() ()
 {
 #ifdef _OPENMP
   this -> max_parallel_regions = omp_get_max_threads();
-  std::cout << "OpenMP max_parallel_regions=" << this -> max_parallel_regions << "\n";
+  // std::cout << "OpenMP max_parallel_regions=" << this -> max_parallel_regions << "\n";
 #else
   this -> max_parallel_regions = 1;
-  std::cout << "no OpenMP (max_parallel_regions=1)\n";
+  // std::cout << "no OpenMP (max_parallel_regions=1)\n";
 #endif
 
   DATA_MATRIX(X);
