@@ -12,7 +12,7 @@ omp_check()
 \description{
 Checks whether OpenMP has been successfully enabled for this
 installation of the package. (Use the \code{parallel} argument
-to \code{\link{glmmTMBControl}}, or set \code{options(mc.cores=[value])},
+to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
 to specify that computations should be done in parallel.)
 }
 \seealso{
