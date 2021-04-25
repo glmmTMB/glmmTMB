@@ -103,11 +103,41 @@ test_that("VarCorr", {
 test_that("drop1", {
       dd <- drop1(fm2,test="Chisq")
       expect_equal(dd$AIC,c(1763.94,1785.48),tol=1e-4)              
-          })
+})
+
 test_that("anova", {
       aa <- anova(fm0,fm2)
       expect_equal(aa$AIC,c(1785.48,1763.94),tol=1e-4)
-          })
+})
+
+
+test_that("anova ML/REML checks", {
+    skip_on_cran()
+    ## FIXME: too slow?
+    ## speed up/save so we don't need to skip on CRAN
+    fmA1 <- glmmTMB(Reaction ~ Days + (Days | Subject), sleepstudy, REML = TRUE)
+    fmA2 <- glmmTMB(Reaction ~ Days + diag(Days | Subject), sleepstudy, REML = TRUE)
+    fmA3 <- glmmTMB(Reaction ~ 1 + (1 | Subject), sleepstudy, REML = TRUE)
+    fmA4 <- glmmTMB(Reaction ~ Days + (1 | Subject), sleepstudy, REML = FALSE)
+    fmA5 <- glmmTMB(Reaction ~ 1 + (1 | Subject), sleepstudy, REML = FALSE)
+
+    dd <- data.frame(y=rnorm(100),a=rnorm(100), b=rnorm(100))
+    fmA6 <- glmmTMB(y~a*b, data=dd, REML=TRUE)
+    fmA7 <- glmmTMB(y~b*a, data=dd, REML=TRUE)
+
+    ## ML, differing fixed effects
+    expect_equal(class(anova(fmA4,fmA5)), c("anova", "data.frame"))
+    ## REML, differing RE
+    expect_equal(class(anova(fmA1,fmA2)), c("anova", "data.frame"))
+    ## REML, FE in different order
+    expect_equal(class(anova(fmA6,fmA7)), c("anova", "data.frame"))
+    expect_false(identical(attr(terms(fmA6),"term.labels"),
+                           attr(terms(fmA7),"term.labels")))
+    ## REML, differing fixed
+    expect_error(anova(fmA1,fmA3), "Can't compare REML fits with different")
+    ## REML vs ML
+    expect_error(anova(fmA1,fmA4), "Can't compare REML and ML")
+})
 
 test_that("terms", {
     ## test whether terms() are returned with predvars for doing

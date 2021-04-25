@@ -1006,16 +1006,42 @@ extractAIC.glmmTMB <- function(fit, scale, k = 2, ...) {
 }
 
 ## deparse(.) returning \bold{one} string
-## copied from lme4/R/utilities.R
+## previously safeDeparse; 
 ## Protects against the possibility that results from deparse() will be
 ##       split after 'width.cutoff' (by default 60, maximally 500)
-safeDeparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)
+## R >= 4.0.0's deparse1() is a generalization
+if((Rv <- getRversion()) < "4.1.0") {
+  deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...)
+      paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+}
 
 abbrDeparse <- function(x, width=60) {
     r <- deparse(x, width)
     if(length(r) > 1) paste(r[1], "...") else r
 }
 
+sort_termlabs <- function(labs) {
+     if (length(labs)==0) return(labs)
+     ss <- strsplit(labs, ":")
+     ss <- sapply(ss, function(s) { if (length(s)==1) return(s); return(paste(sort(s),collapse=":")) })
+     return(sort(ss)) ## sort vector
+}
+
+## see whether mod1, mod2 are appropriate for Likelihood ratio testing
+CompareFixef <- function (mod1, mod2, component="cond") {
+     mr1 <- mod1$modelInfo$REML     
+     mr2 <- mod2$modelInfo$REML
+     if (mr1 != mr2) {
+        stop("Can't compare REML and ML fits", call.=FALSE)
+     }  
+     if (mr1 && mr2) {
+           tmpf <- function(obj) {   sort_termlabs(attr(terms(obj, component=component),"term.labels")) }
+           if (!identical(tmpf(mod1), tmpf(mod2))) {
+                stop("Can't compare REML fits with different fixed-effect components", call.=FALSE) 
+           }
+     }
+     return(TRUE) ## OK
+}
 
 ##' @importFrom methods is
 ##' @importFrom stats var getCall pchisq anova
@@ -1024,17 +1050,21 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 {
     mCall <- match.call(expand.dots = TRUE)
     dots <- list(...)
+    ## 'consistent' sapply, i.e. always unlist
     .sapply <- function(L, FUN, ...) unlist(lapply(L, FUN, ...))
     ## detect multiple models, i.e. models in ...
-    modp <- as.logical(vapply(dots, is, NA, "glmmTMB"))
+    modp <- as.logical(vapply(dots, FUN=is, "glmmTMB", FUN.VALUE=NA))
     if (any(modp)) {
         mods <- c(list(object), dots[modp])
         nobs.vec <- vapply(mods, nobs, 1L)
+        ## compare all models against first for being fitted consistently;
+        ## if all REML, fixed effects must be identical
+        vapply(mods[-1], CompareFixef, mod1=mods[[1]], FUN.VALUE=TRUE)
         if (var(nobs.vec) > 0)
             stop("models were not all fitted to the same size of dataset")
         if (is.null(mNms <- model.names))
             mNms <- vapply(as.list(mCall)[c(FALSE, TRUE, modp)],
-                           safeDeparse, "")
+                           deparse1, "")
         if (any(duplicated(mNms))) {
             warning("failed to find unique model names, assigning generic names")
             mNms <- paste0("MODEL", seq_along(mNms))
