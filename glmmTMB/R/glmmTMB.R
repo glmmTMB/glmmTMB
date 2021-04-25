@@ -1089,46 +1089,47 @@ glmmTMB <- function(
 ##' Control parameters for glmmTMB optimization
 ##' @param optCtrl   Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}
 ##' @param optArgs   additional arguments to be passed to optimizer function (e.g.: \code{list(method="BFGS")} when \code{optimizer=optim})
-##' @param profile   Logical; Experimental option to improve speed and
+##' @param profile   (logical) Experimental option to improve speed and
 ##'                  robustness when a model has many fixed effects
-##' @param collect   Logical; Experimental option to improve speed by
+##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
-##' @param parallel  Numeric; Setting number of OpenMP threads to evaluate
-##'                  the negative log-likelihood in parallel
+##' @param parallel  (integer) Set number of OpenMP threads to evaluate
+##' the negative log-likelihood in parallel. The default is to evaluate
+##' models serially (i.e. single-threaded); users can set a default value
+##' for an R session via \code{options(glmmTMB.cores=<value>)}.
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
-##' @param start_method List; Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when method = "res".
+##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
 ##' @importFrom TMB openmp
 ##' @details
-##' The general non-linear optimizer \code{nlminb} is used by
-##' \code{\link{glmmTMB}} for parameter estimation. It may sometimes be
-##' necessary to tweak some tolerances in order to make a model
+##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
+##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
+##' need to adjust optimizer settings in order to get models to
 ##' converge. For instance, the warning \sQuote{iteration limit reached
 ##' without convergence} may be fixed by increasing the number of
-##' iterations using something like
+##' iterations using (e.g.)
 ##'
 ##' \code{glmmTMBControl(optCtrl=list(iter.max=1e3,eval.max=1e3))}.
 ##'
-##' The argument \code{profile} allows \code{glmmTMB} to use some special
+##' Setting \code{profile=TRUE} allows \code{glmmTMB} to use some special
 ##' properties of the optimization problem in order to speed up estimation
-##' in cases with many fixed effects. Enable this option using
+##' in cases with many fixed effects.
 ##'
-##' \code{glmmTMBControl(profile=TRUE)}.
+##' Control parameters may depend on the model specification. The value
+##' of the controls is evaluated inside an R object that is derived from
+##' the output of the \code{\link{mkTMBStruc}} function. For example,
+##' to specify that \code{profile} should be enabled if the model has
+##' more than 5 fixed-effect parameters, specify
 ##'
-##' Control parameters may depend on the model specification, because each
-##' control component is evaluated inside \code{TMBStruc}, the output
-##' of \code{mkTMBStruc}.  To specify that \code{profile} should be
-##' enabled for more than 5 fixed effects one can use
-##'
-##' \code{glmmTMBControl(profile=quote(length(parameters$beta)>=5))}.
+##' \code{profile=quote(length(parameters$beta)>=5)}
 ##'
 ##' The \code{optimizer} argument can be any optimization (minimizing) function, provided that:
 ##' \itemize{
 ##' \item the first three arguments, in order, are the starting values, objective function, and gradient function;
-##' \item it also takes a \code{control} argument;
-##' \item it returns a list with elements (at least) \code{par}, \code{objective}, \code{convergence} (0 if convergence is successful) and \code{message}
-##' (the code internally handles output from \code{optim()}, by renaming the \code{value} component to \code{objective})
+##' \item the function also takes a \code{control} argument;
+##' \item the function returns a list with elements (at least) \code{par}, \code{objective}, \code{convergence} (0 if convergence is successful) and \code{message}
+##' (\code{glmmTMB} automatically handles output from \code{optim()}, by renaming the \code{value} component to \code{objective})
 ##'
 ##' }
 ##' @examples
@@ -1144,7 +1145,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = NULL,
+                           parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0)) {
@@ -1231,15 +1232,20 @@ fitTMB <- function(TMBStruc) {
     control <- TMBStruc$control
 
     ## Assign OpenMP threads
-    if (!is.null(control$parallel)) {
-        n_orig <- TMB::openmp(NULL)
-        ## will warn if OpenMP not supported
-        ## only proceed farther if OpenMP *is* supported ...
-        ## (avoid extra warnings)
-        if (n_orig>0) {
-            TMB::openmp(n = control$parallel)
-            on.exit(TMB::openmp(n = n_orig))
-        }
+    ## Warn if OpenMP not supported and threads>1
+    ## FIXME: custom warning?
+    n_orig <- withCallingHandlers(
+        warning=function(cnd) {
+            if (control$parallel==1) {
+                invokeRestart("muffleWarning")
+            }
+        },
+        TMB::openmp(NULL)
+    )    
+    ## Only proceed farther if OpenMP *is* supported ...
+    if (n_orig>0) {
+        TMB::openmp(n = control$parallel)
+        on.exit(TMB::openmp(n = n_orig))
     }
 
     if (control $ collect) {

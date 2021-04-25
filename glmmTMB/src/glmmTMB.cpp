@@ -441,6 +441,13 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
+#ifdef _OPENMP
+  this -> max_parallel_regions = omp_get_max_threads();
+  // std::cout << "OpenMP max_parallel_regions=" << this -> max_parallel_regions << "\n";
+#else
+  this -> max_parallel_regions = 1;
+  // std::cout << "no OpenMP (max_parallel_regions=1)\n";
+#endif
 
   DATA_MATRIX(X);
   bool sparseX = X.rows()==0 && X.cols()==0;
@@ -489,11 +496,11 @@ Type objective_function<Type>::operator() ()
   DATA_VECTOR_INDICATOR(keep, yobs);
 
   // Joint negative log-likelihood
-  parallel_accumulator<Type> jnll(this);
+  Type jnll=0;
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms, this->do_simulate);
-  jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = Z * b + offset;
@@ -534,7 +541,7 @@ Type objective_function<Type>::operator() ()
   // Observation likelihood
   Type s1, s2, s3, log_nzprob;
   Type tmp_loglik;
-  for (int i=0; i < yobs.size(); i++){
+  for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
