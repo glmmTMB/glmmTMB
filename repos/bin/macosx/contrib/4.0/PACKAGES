@@ -11,3 +11,12 @@ Suggests: knitr, rmarkdown, testthat, MASS, lattice, ggplot2 (>=
         plyr, png, boot, texreg, xtable, huxtable, mvabund
 License: AGPL-3
 MD5sum: fb1d13488a388e554ee49499046cee6e
+
+Package: TMB
+Version: 1.7.20
+Depends: R (>= 3.0.0)
+Imports: graphics, methods, stats, utils, Matrix (>= 1.0-12)
+LinkingTo: Matrix
+Suggests: numDeriv, parallel
+License: GPL-2
+MD5sum: 234a1530f8233ab7e082aca3a20d1dae
