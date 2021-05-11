@@ -25,3 +25,11 @@ install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos")
 ```
 
 If (1) this doesn't work, (2) you really need the development version, (3) you can't install from source as above, please contact the maintainers.
+
+## Updated versions of TMB
+
+Windows and MacOS binaries of TMB built with newer versions of the `Matrix` package *may* be available here as well. Try:
+
+```r
+install.packages("TMB", repos="https://glmmTMB.github.io/glmmTMB/repos")
+```
