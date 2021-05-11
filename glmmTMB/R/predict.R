@@ -175,15 +175,19 @@ predict.glmmTMB <- function(object,
     assign("data",dd, ee) ## stick this in the appropriate environment
     newObj <- object$obj
 
-    ## restore original value
-    on.exit(add = TRUE,
-    {
-        for (i in names(orig_vals)) {
-            dd[[i]] <- orig_vals[[i]]
-            assign("data",dd, environment(object$obj$fn))
-        }
-    })
-  } else {
+    ## restore original values to environment of the object
+    ## putting add=TRUE first would be more readable,
+    ##  but that tickles a bug in R < 4.0.2
+    on.exit(
+        expr=    {
+            for (i in names(orig_vals)) {
+                dd[[i]] <- orig_vals[[i]]
+                assign("data",dd, environment(object$obj$fn))
+            }
+        },
+        add = TRUE)
+    ## end of 'fast predict'
+   }  else {
     
   mc <- mf <- object$call
   ## FIXME: DRY so much
