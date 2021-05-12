@@ -11,8 +11,10 @@ library(drat)
 ## use rhub::platforms() to see which platforms are available
 releases <- c("windows-x86_64-release","macos-highsierra-release")
 email <- "bbolker@gmail.com"  ## set this to your e-mail!
+oldrel <- "windows-x86_64-oldrel"
 
 check(platform=releases,email=email)
+check(platform=oldrel,email=email)
 
 ## extract appropriate hashes/tmpdirs from the email you get back
 ## mhash <- "3a60fd03bbd74c7f9c48e1054dc018f4"
