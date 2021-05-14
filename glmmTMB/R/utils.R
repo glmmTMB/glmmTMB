@@ -727,6 +727,20 @@ nullSparseMatrix <- function() {
     }
 }
 
+
+##' Check OpenMP status
+##'
+##' Checks whether OpenMP has been successfully enabled for this
+##' installation of the package. (Use the \code{parallel} argument
+##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
+##' to specify that computations should be done in parallel.)
+##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
+##' @return \code{TRUE} or {FALSE} depending on availability of OpenMP
+##' @export
+omp_check <- function() {
+    .Call("omp_check", PACKAGE="glmmTMB")
+}
+
 get_pars <- function(object, unlist=TRUE) {
     ee <- object$obj$env
     x <- ee$last.par.best

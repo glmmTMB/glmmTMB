@@ -21,10 +21,12 @@
 extern "C" {
 
   SEXP compois_calc_var(SEXP mean, SEXP nu);
+  SEXP omp_check();
 
   const static R_CallMethodDef R_CallDef[] = {
     TMB_CALLDEFS,
     CALLDEF(compois_calc_var, 2),
+    CALLDEF(omp_check, 0),
     {NULL, NULL, 0}
   };
 
