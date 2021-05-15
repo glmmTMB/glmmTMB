@@ -39,18 +39,12 @@ RHSForm <- function(form,as.form=FALSE) {
     formula
 }
 
-## Random Effects formula only
-## reOnly <- function(f,response=FALSE) {
-##    response <- if (response && length(f)==3) f[[2]] else NULL
-##    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"),
-##                response=response)
-## }
 
 sumTerms <- function(termList) {
     Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),termList)
 }
 
-## better version -- operates on language objects (no deparse())
+## extract random effects component of formula
 reOnly <- function(f,response=FALSE,bracket=TRUE) {
     ff <- f
     if (bracket)
