@@ -156,16 +156,14 @@ predict.glmmTMB <- function(object,
   if (!is.null(newparams)) oldPar <- newparams
 
   new_stuff <- !is.null(newdata) || !is.null(newparams) || pop_pred
-  if (!is.null(fast)) {
-     if (new_stuff) {
-         stop("fast=TRUE is not compatible with newdata/newparams/population-level prediction")
-     }
-   } else {
-     fast <- !new_stuff
-   }
+  if (isTRUE(fast) && new_stuff) {
+    stop("fast=TRUE is not compatible with newdata/newparams/population-level prediction")
+  }
 
-   if (fast) {
-    ee <- environment(object$obj$fn)       
+  if (is.null(fast)) fast <- !new_stuff
+
+  if (fast) {
+    ee <- environment(object$obj$fn)
     lp <- ee$last.par.best                 ## used in $report() call below
     dd <- ee$data         ## data object
     orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]

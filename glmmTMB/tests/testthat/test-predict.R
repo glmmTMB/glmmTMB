@@ -292,3 +292,10 @@ test_that("fast prediction", {
     ## handling NAs etc.
     expect_equal(pp_ex, predict(fm2_ex, fast=FALSE))
 })
+
+test_that("fast prediction not allowed with NA (correct errors)", {
+  expect_error(predict(fm2, re.form=NA, fast=TRUE),
+               "fast=TRUE is not compatible")
+  expect_equal(predict(fm2, re.form=NA, fast=FALSE),
+               predict(fm2, re.form=NA, fast=NULL))
+})
