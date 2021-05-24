@@ -156,8 +156,8 @@ test_that("type='zlink'", {
 test_that("deprecated zitype parameter", {
     expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
 })
-    
-    
+
+
 ## context("complex bases")
 data("sleepstudy",package="lme4")
 nd <- data.frame(Days=0,
@@ -284,11 +284,26 @@ test_that("offset-only model (GH #625)", {
 
 test_that("fast prediction", {
     ## use tighter-than-default tolerances
-    ## 
+    ##
     expect_equal(predict(fm2,fast=FALSE),predict(fm2,fast=TRUE), tolerance=1e-13)
     expect_equal(predict(fm2, type="response",fast=FALSE),
                  predict(fm2, type="response", fast=TRUE),
                  tolerance=1e-13)
     ## handling NAs etc.
     expect_equal(pp_ex, predict(fm2_ex, fast=FALSE))
+})
+
+test_that("inverse-link prediction", {
+  ## example from John Maindonald (GH #696)
+  ## this highlights a particular case where the prediction on the (cloglog) link scale
+  ## is large (3.98), which leads to a prediction of 1.0 unless the cloglog-inverse-link
+  ## function is clamped (as in make.link("cloglog")'s version)
+  ffly <- read.csv(system.file("test_data", "ffly.csv", package="glmmTMB"))
+  ffly$obs <- factor(ffly$obs)
+  form1 <- cbind(Dead,Live)~0+trtGp/TrtTime+(1|obs)+(1|trtGpRep)
+  ObsTMB.cll <- glmmTMB(form1, family=binomial(link="cloglog"), data=ffly)
+  p0 <- predict(ObsTMB.cll, re.form=NA)[63]
+  p0R <- make.link("cloglog")$linkinv(p0)
+  p1 <- predict(ObsTMB.cll, re.form=NA, type="response")[63]
+  expect_equal(p0R, p1)
 })

@@ -94,7 +94,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 
 ##' \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
 ##' }
-##' 
+##'
 ##' @examples
 ##' data(sleepstudy,package="lme4")
 ##' g0 <- glmmTMB(Reaction~Days+(Days|Subject),sleepstudy)
@@ -130,7 +130,7 @@ predict.glmmTMB <- function(object,
      type <- zitype
   }
   type <- match.arg(type)
-    
+
   ## FIXME: better test? () around re.form==~0 are *necessary*
   ## could steal isRE from lme4 predict.R ...
   pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
@@ -140,7 +140,7 @@ predict.glmmTMB <- function(object,
   }
 
   ## match type arg with internal name
-  ## FIXME: warn if "link"  
+  ## FIXME: warn if "link"
   ziPredNm <- switch(type,
                      response   = "corrected",
                      link       =,
@@ -165,7 +165,7 @@ predict.glmmTMB <- function(object,
    }
 
    if (fast) {
-    ee <- environment(object$obj$fn)       
+    ee <- environment(object$obj$fn)
     lp <- ee$last.par.best                 ## used in $report() call below
     dd <- ee$data         ## data object
     orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]
@@ -188,7 +188,7 @@ predict.glmmTMB <- function(object,
         add = TRUE)
     ## end of 'fast predict'
    }  else {
-    
+
   mc <- mf <- object$call
   ## FIXME: DRY so much
   ## now work on evaluating model frame
@@ -203,7 +203,7 @@ predict.glmmTMB <- function(object,
   mf$drop.unused.levels <- TRUE
   mf[[1]] <- as.name("model.frame")
   ## substitute *combined* data frame, in hopes of getting all of the
-  ##  bits we need for any of the model frames ...  
+  ##  bits we need for any of the model frames ...
   tt <- terms(object$modelInfo$allForm$combForm)
   pv <- attr(terms(model.frame(object)),"predvars")
   attr(tt,"predvars") <- fix_predvars(pv,tt)
@@ -214,13 +214,13 @@ predict.glmmTMB <- function(object,
   ## to formulas/terms for individual components
   ## {conditional, zi, disp} * {fixed, random}
   ## and fix things downstream, where the actual model matrices
-  ## are constructed.  
+  ## are constructed.
   ##
   ## There's a fairly high chance of breakage with crazy/unforeseen
   ## usage of data-dependent bases (e.g. polynomials or splines with
   ## different arguments in different parts of the model ...)
   ## Can we detect/warn about these?
-  ##   
+  ##
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
     newFr <- object$frame
@@ -243,7 +243,7 @@ predict.glmmTMB <- function(object,
   ## rbind loses attributes!
   ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
   ## at this point I'm not even sure if contrasts are actually *used*
-  ## for anything in the prediction process: do mismatches even matter?  
+  ## for anything in the prediction process: do mismatches even matter?
   safe_contrasts <- function(x) {
       if (length(levels(x))<2) return(NULL) else return(contrasts(x))
   }
@@ -318,7 +318,7 @@ predict.glmmTMB <- function(object,
   ## Check that the model specification is unchanged:
   assertIdenticalModels(TMBStruc$data.tmb,
                         object$obj$env$data, allow.new.levels)
-                        
+
   ## Check that the necessary predictor variables are finite (not NA nor NaN)
   if (se.fit) {
     with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
@@ -333,7 +333,7 @@ predict.glmmTMB <- function(object,
   ## FIXME: what if newparams only has a subset of components?
 
   if (!is.null(maparg <- TMBStruc$mapArg)) {
-     full_pars <- get_pars(object, unlist=FALSE)     
+     full_pars <- get_pars(object, unlist=FALSE)
      for (i in names(maparg)) {
          mapind <- which(is.na(maparg[[i]]))
          if (length(mapind)>0) {
@@ -344,7 +344,7 @@ predict.glmmTMB <- function(object,
 
   if (pop_pred) {
       TMBStruc <- within(TMBStruc, {
-          parameters$b[] <- 0       
+          parameters$b[] <- 0
           mapArg$b <- factor(rep(NA,length(parameters$b)))
       })
   }
@@ -365,31 +365,27 @@ predict.glmmTMB <- function(object,
 
   na.act <- attr(model.frame(object),"na.action")
   do.napred <- missing(newdata) && !is.null(na.act)
+  return_eta <- type %in% c("zlink", "link")
   if (!se.fit) {
-      pred <- newObj$report(lp)$mu_predict
+    rr <- newObj$report(lp)
+    pred <- if (return_eta) rr$eta_predict else rr$mu_predict
   } else {
-      H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
-      ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
-      ##        call to fix memory issue (requires recent TMB version)
-      ## Fixed! (but do we want a flag to get it ? ...)
-      sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
-      sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
-      pred <- sdrsum[,"Estimate"]
-      se <- sdrsum[,"Std. Error"]
+    H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
+    ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
+    ##        call to fix memory issue (requires recent TMB version)
+    ## Fixed! (but do we want a flag to get it ? ...)
+    sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
+    sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
+    w <- if (return_eta) "eta_predict" else "mu_predict"
+    ## multiple rows with identical names; naive indexing
+    ## e.g. sdrsum["mu_predict", ...] returns only the first instance
+    w <- which(rownames(sdrsum)==w)
+    pred <- sdrsum[w,"Estimate"]
+    se <- sdrsum[w,"Std. Error"]
   }
   if (do.napred) {
       pred <- napredict(na.act,pred)
       if (se.fit) se <- napredict(na.act,se)
   }
-  if (type %in% c("zlink","link")) {
-     ff <- object$modelInfo$family
-     if (!(type=="link" && ff$link=="identity")) {
-         if (type=="zlink") {
-             ff <- make.link("logit")
-         }
-         pred <- ff$linkfun(pred)
-         if (se.fit) se <- se/ff$mu.eta(pred) ## do this after transforming pred!
-     } ## if not identity link  
-  } ## if link or zlink
   if (!se.fit) return(pred) else return(list(fit=pred,se.fit=se))
 }
