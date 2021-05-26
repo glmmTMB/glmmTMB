@@ -306,6 +306,4 @@ test_that("inverse-link prediction", {
   p0R <- make.link("cloglog")$linkinv(p0)
   p1 <- predict(ObsTMB.cll, re.form=NA, type="response")[63]
   expect_equal(p0R, p1)
-  ## check that clamping on cloglog invlink is implemented ...
-  expect_gt(1-p1,0)
 })

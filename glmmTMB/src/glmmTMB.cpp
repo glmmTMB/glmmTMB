@@ -66,11 +66,8 @@ enum valid_ziPredictCode {
   disp_zipredictcode = 3
 };
 
-
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
-  Type double_eps=2.2e-16;
-  Type double_eps_c=1.0-2.2e-16;
   Type ans;
   switch (link) {
   case log_link:
@@ -86,9 +83,7 @@ Type inverse_linkfun(Type eta, int link) {
     ans = pnorm(eta);
     break;
   case cloglog_link:
-     ans = Type(1) - exp(-exp(eta));
-     ans = CppAD::CondExpGe(ans, double_eps, ans, double_eps);
-     ans = CppAD::CondExpLe(ans, double_eps_c, ans, double_eps_c);
+    ans = Type(1) - exp(-exp(eta));
     break;
   case inverse_link:
     ans = Type(1) / eta;
