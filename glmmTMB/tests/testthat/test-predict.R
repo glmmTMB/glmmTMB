@@ -307,3 +307,10 @@ test_that("inverse-link prediction", {
   p1 <- predict(ObsTMB.cll, re.form=NA, type="response")[63]
   expect_equal(p0R, p1)
 })
+
+test_that("fast prediction not allowed with NA (correct errors)", {
+  expect_error(predict(fm2, re.form=NA, fast=TRUE),
+               "fast=TRUE is not compatible")
+  expect_equal(predict(fm2, re.form=NA, fast=FALSE),
+               predict(fm2, re.form=NA, fast=NULL))
+})
