@@ -774,8 +774,9 @@ Type objective_function<Type>::operator() ()
   REPORT(mu_predict);
   REPORT(eta_predict);
   // ADREPORT expensive for long vectors - only needed by predict() method
-  if (doPredict) {
+  if (doPredict==1) {
 	  ADREPORT(mu_predict);
+  } else if (doPredict == 2) {
 	  ADREPORT(eta_predict);
   }
 

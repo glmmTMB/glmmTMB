@@ -162,13 +162,19 @@ predict.glmmTMB <- function(object,
 
   if (is.null(fast)) fast <- !new_stuff
 
+  ## what to ADREPORT:
+  ## 0 = no pred; 1 = response scale; 2 = link scale
+  do_pred_val <- if (!se.fit) 0 else if (!grepl("link",type)) 1 else 2
+
   if (fast) {
     ee <- environment(object$obj$fn)
     lp <- ee$last.par.best                 ## used in $report() call below
     dd <- ee$data         ## data object
     orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
-    dd$doPredict <- as.numeric(se.fit)
+    if (se.fit) {
+      dd$doPredict <- do_pred_val
+    }
     dd$ziPredictCode <- ziPredCode
     assign("data",dd, ee) ## stick this in the appropriate environment
     newObj <- object$obj
@@ -304,7 +310,7 @@ predict.glmmTMB <- function(object,
                                contrasts=omi$contrasts,
                                family=omi$family,
                                ziPredictCode=ziPredNm,
-                               doPredict=as.integer(se.fit),
+                               doPredict=do_pred_val,
                                whichPredict=w,
                                REML=omi$REML,
                                map=omi$map,
