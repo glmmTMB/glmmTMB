@@ -760,7 +760,8 @@ Type objective_function<Type>::operator() ()
       //mu = mu; // Predict mean of 'family' //comented out for clang 7.0.0. with no effect
       break;
     case prob_zipredictcode:
-      mu = pz; // Predict zi probability
+      mu = pz;     // Predict zi probability
+      eta = etazi; // want to return linear pred for zi
       break;
     default:
       error("Invalid 'ziPredictCode'");
@@ -769,10 +770,15 @@ Type objective_function<Type>::operator() ()
 
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
+  vector<Type> eta_predict = eta(whichPredict);
   REPORT(mu_predict);
-  // ADREPORT expensive for long vectors - only needed by predict()
-  // method.
-  if (doPredict) ADREPORT(mu_predict);
+  REPORT(eta_predict);
+  // ADREPORT expensive for long vectors - only needed by predict() method
+  if (doPredict==1) {
+	  ADREPORT(mu_predict);
+  } else if (doPredict == 2) {
+	  ADREPORT(eta_predict);
+  }
 
   return jnll;
 }
