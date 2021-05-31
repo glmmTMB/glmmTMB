@@ -269,9 +269,12 @@ The \code{broom} and \code{broom.mixed} packages are designed to extract informa
 
 <<broom_mixed,fig.height=3,fig.width=5>>=
 if (requireNamespace("broom.mixed") && requireNamespace("dotwhisker")) {
-  (t1 <- broom.mixed::tidy(owls_nb1, conf.int = TRUE))
+  t1 <- broom.mixed::tidy(owls_nb1, conf.int = TRUE)
+  t1 <- transform(t1,
+                  term=sprintf("%s.%s", component, term))
+
   if (packageVersion("dotwhisker")>"0.4.1") {
-    dw <- dwplot(owls_nb1)
+    dw <- dwplot(t1)
   } else {
     owls_nb1$coefficients <- TRUE  ## hack!
     dw <- dwplot(owls_nb1,by_2sd=FALSE)
