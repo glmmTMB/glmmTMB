@@ -1380,6 +1380,7 @@ fitTMB <- function(TMBStruc) {
               par <- par[-rr]
           }
           h <- numDeriv::jacobian(obj$gr, par)
+          h <- .5 * (h + t(h))
           eigs <- eigen(h)
           ev <- e_complex_check(eigs$values)
           if (min(ev)>.Machine$double.eps) {
