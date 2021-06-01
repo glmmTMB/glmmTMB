@@ -1,3 +1,9 @@
+## Cache fitted objects that are used many times
+## (rebuilt on every new installation *but* shared between e.g. different archs)
+if (!file.exists(system.file("test_data", "models.rda", package="glmmTMB"))) {
+  make_ex <- system.file("test_data", "make_ex.R", package="glmmTMB", mustWork=TRUE)
+  source(make_ex, chdir=TRUE, echo=TRUE)
+}
 if(require("testthat")) {
     pkg <- "glmmTMB"
     require(pkg, character.only=TRUE)
