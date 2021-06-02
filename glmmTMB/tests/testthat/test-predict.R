@@ -1,9 +1,6 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-## load these data first, masks sleepstudy
-load(system.file("test_data","models.rda", package="glmmTMB", mustWork=TRUE))
-
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))

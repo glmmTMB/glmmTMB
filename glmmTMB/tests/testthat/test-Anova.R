@@ -2,8 +2,7 @@ require(glmmTMB)
 require(testthat)
 
 data(sleepstudy,package="lme4")
-m <- load(system.file("test_data","models.rda",package="glmmTMB",
-                      mustWork=TRUE))
+## m <- load(system.file("test_data","models.rda",package="glmmTMB", mustWork=TRUE))
 if (require(car) && getRversion()>="3.6.0") {
     ## only testing on recent R: see comments
     ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
@@ -56,17 +55,17 @@ if (require(car) && getRversion()>="3.6.0") {
 
         expect_true(max(match(az,ac))>length(az)-1)
         expect_equal(Anova(m673, type=3),
-                     structure(list(Chisq = c(9.61229896219151, 43.6023716865556, 
-10.880414540324), Df = c(1, 1, 4), `Pr(>Chisq)` = c(0.00193278528775503, 
-4.02351135879168e-11, 0.0279413796944278)), class = c("anova", 
-"data.frame"), row.names = c("(Intercept)", "x", "f"), heading = c("Analysis of Deviance Table (Type III Wald chisquare tests)\n", 
+                     structure(list(Chisq = c(9.61229896219151, 43.6023716865556,
+10.880414540324), Df = c(1, 1, 4), `Pr(>Chisq)` = c(0.00193278528775503,
+4.02351135879168e-11, 0.0279413796944278)), class = c("anova",
+"data.frame"), row.names = c("(Intercept)", "x", "f"), heading = c("Analysis of Deviance Table (Type III Wald chisquare tests)\n",
 "Response: z")))
 
         expect_equal(Anova(m673, type=3, component="zi"),
-                     structure(list(Chisq = c(1.66987565287872, 12.4629514668969, 
-0.888720602608306), Df = c(1, 1, 1), `Pr(>Chisq)` = c(0.196275190560059, 
-0.000415103515329875, 0.345824248063703)), class = c("anova", 
-"data.frame"), row.names = c("(Intercept)", "x", "y"), heading = c("Analysis of Deviance Table (Type III Wald chisquare tests)\n", 
+                     structure(list(Chisq = c(1.66987565287872, 12.4629514668969,
+0.888720602608306), Df = c(1, 1, 1), `Pr(>Chisq)` = c(0.196275190560059,
+0.000415103515329875, 0.345824248063703)), class = c("anova",
+"data.frame"), row.names = c("(Intercept)", "x", "y"), heading = c("Analysis of Deviance Table (Type III Wald chisquare tests)\n",
 "Response: z")))
 
     }
