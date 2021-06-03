@@ -1241,7 +1241,7 @@ fitTMB <- function(TMBStruc) {
             }
         },
         TMB::openmp(NULL)
-    )    
+    )
     ## Only proceed farther if OpenMP *is* supported ...
     if (n_orig>0) {
         TMB::openmp(n = control$parallel)
@@ -1380,7 +1380,10 @@ fitTMB <- function(TMBStruc) {
               par <- par[-rr]
           }
           h <- numDeriv::jacobian(obj$gr, par)
+          h <- .5 * (h + t(h))  ## symmetrize
           eigs <- eigen(h)
+          ## complex-values check should be unnecessary because we
+          ## now symmetrize the hessian, but who knows ... ?
           ev <- e_complex_check(eigs$values)
           if (min(ev)>.Machine$double.eps) {
               ## apparently fit is OK after all ...
