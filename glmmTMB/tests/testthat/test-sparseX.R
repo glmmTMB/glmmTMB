@@ -1,8 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-load(system.file("test_data", "models.rda", package="glmmTMB",
-                 mustWork=TRUE))
+## load(system.file("test_data", "models.rda", package="glmmTMB", mustWork=TRUE))
 
 context("sparse X models")
 

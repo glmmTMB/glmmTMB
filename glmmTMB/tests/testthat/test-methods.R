@@ -5,13 +5,12 @@ data(sleepstudy, cbpp, Pastes,
      package = "lme4")
 
 if (getRversion() < "3.3.0") {
-    sigma.default <- function (object, use.fallback = TRUE, ...) 
-        sqrt(deviance(object, ...)/(nobs(object, use.fallback = use.fallback) - 
+    sigma.default <- function (object, use.fallback = TRUE, ...)
+        sqrt(deviance(object, ...)/(nobs(object, use.fallback = use.fallback) -
                                     length(coef(object))))
 }
 
-load(system.file("test_data", "models.rda", package="glmmTMB",
-                 mustWork=TRUE))
+## load(system.file("test_data", "models.rda", package="glmmTMB", mustWork=TRUE))
 
 context("basic methods")
 
@@ -57,7 +56,7 @@ test_that("Fitted and residuals", {
     napos <- 51
     b[napos] <- NA
     y.na <- y
-    y.na[napos] <- NA 
+    y.na[napos] <- NA
     mod.ex <- glmmTMB(y ~ b, family = "poisson", na.action = "na.exclude")
     ## Get predictions/resids
     pr.ex <- predict(mod.ex, type = "response") # SEEMS to work fine
@@ -85,7 +84,7 @@ test_that("Predict", {
     ## predict without response in newdata
     expect_equal(predict(fm2),
                  predict(fm2,newdata=sleepstudy[,c("Days","Subject")]))
-    
+
 })
 
 
@@ -102,7 +101,7 @@ test_that("VarCorr", {
 
 test_that("drop1", {
       dd <- drop1(fm2,test="Chisq")
-      expect_equal(dd$AIC,c(1763.94,1785.48),tol=1e-4)              
+      expect_equal(dd$AIC,c(1763.94,1785.48),tol=1e-4)
 })
 
 test_that("anova", {
@@ -149,7 +148,7 @@ test_that("terms", {
     ## if predvars is not properly attached to term, this will
     ## fail as it tries to construct a 3-knot spline from a single point
     expect_equal(model.matrix(delete.response(terms(m)),data=data.frame(x=1)),
-      structure(c(1, 0, 0, 0), .Dim = c(1L, 4L), .Dimnames = list("1", 
+      structure(c(1, 0, 0, 0), .Dim = c(1L, 4L), .Dimnames = list("1",
     c("(Intercept)", "ns(x, 3)1", "ns(x, 3)2", "ns(x, 3)3")),
     assign = c(0L, 1L, 1L, 1L)))
 })
@@ -161,7 +160,7 @@ test_that("terms back-compatibility", {
                               mustWork=TRUE))
     expect_true(!is.null(terms(f0)))
 })
-    
+
 test_that("summary_print", {
     getVal <- function(x,tag="Dispersion") {
         cc <- capture.output(print(summary(x)))
@@ -200,27 +199,27 @@ test_that("confint", {
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
     ci.2G <- confint(fm2G, full=TRUE, estimate=FALSE)
-    ci.2G.expect <- structure(c(5.48101734463434, 0.0247781469519971, 0.0720456818285145, 
-                                0.0676097041325336, 0.0115949839239226, -0.518916569224983, 5.58401849103742, 
-                                0.0429217639958554, 0.0907365112607892, 0.150456372082291, 0.026437653590095, 
-                                0.481694558589466), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)", 
-                                                                                         "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days", 
+    ci.2G.expect <- structure(c(5.48101734463434, 0.0247781469519971, 0.0720456818285145,
+                                0.0676097041325336, 0.0115949839239226, -0.518916569224983, 5.58401849103742,
+                                0.0429217639958554, 0.0907365112607892, 0.150456372082291, 0.026437653590095,
+                                0.481694558589466), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)",
+                                                                                         "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days",
                                                                                          "cond.Cor.Days.(Intercept)"), c("2.5 %", "97.5 %")))
     expect_equal(ci.2G, ci.2G.expect, tolerance=1e-6)
     ## nbinom2 test Std.Dev and sigma
     ci.2NB <- confint(fm2NB, full=TRUE, estimate=FALSE)
-    ci.2NB.expect <- structure(c(5.48098712803496, 0.0248163866132581, 183.810585063238, 
-                                 0.0661772559176498, 0.0113436359250623, -0.520883925243851, 5.58422550729504, 
-                                 0.0428993237779538, 444.73566599561, 0.150917871951769, 0.0263549890118426, 
-                                 0.502211628076133), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)", 
-                                                                                          "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days", 
+    ci.2NB.expect <- structure(c(5.48098712803496, 0.0248163866132581, 183.810585063238,
+                                 0.0661772559176498, 0.0113436359250623, -0.520883925243851, 5.58422550729504,
+                                 0.0428993237779538, 444.73566599561, 0.150917871951769, 0.0263549890118426,
+                                 0.502211628076133), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)",
+                                                                                          "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days",
                                                                                           "cond.Cor.Days.(Intercept)"), c("2.5 %", "97.5 %")))
     expect_equal(ci.2NB, ci.2NB.expect, tolerance=1e-6)
     ## profile CI
     ## ... no RE
     ci.prof0 <- confint(fm_noRE, full=TRUE, method="profile", npts=3)
     expect_equal(ci.prof0,
-                 structure(c(238.216039176535, 7.99674863649355, 7.51779308310198, 
+                 structure(c(238.216039176535, 7.99674863649355, 7.51779308310198,
                              264.368471102549, 12.8955469713508, 7.93347860201449),
                            .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "d~(Intercept)"),
                                                         c("2.5 %", "97.5 %"))),
@@ -267,11 +266,11 @@ test_that("confint with theta/beta", {
                   data = bd, zi = ~x2+x3+(1|year/class), family = truncated_nbinom2,
                   )
     expect_equal(rownames(confint(m1, "beta_")),
-                 c("cond.(Intercept)", "cond.x1", "cond.x2", "cond.x3reg", "cond.x3high", 
+                 c("cond.(Intercept)", "cond.x1", "cond.x2", "cond.x3reg", "cond.x3high",
                    "zi.(Intercept)", "zi.x2", "zi.x3reg", "zi.x3high"))
 
     expect_equal(rownames(confint(m1, "theta_")),
-                          c("class:year.cond.Std.Dev.(Intercept)", "year.cond.Std.Dev.(Intercept)", 
+                          c("class:year.cond.Std.Dev.(Intercept)", "year.cond.Std.Dev.(Intercept)",
                             "class:year.zi.Std.Dev.(Intercept)", "year.zi.Std.Dev.(Intercept)"))
 })
 
@@ -389,7 +388,7 @@ test_that("coef(.) works", {
 
 test_that("simplified coef(.) printing", {
     op <- options(digits=2)
-    cc <- capture.output(print(coef(fm0)))          
+    cc <- capture.output(print(coef(fm0)))
     expect_equal(cc[1:3],c("$Subject", "    Days (Intercept)", "308 20.6         249"))
     options(op)
 })
@@ -437,7 +436,7 @@ test_that("confint works for models with dispformula", {
     d2$sd <- "five"
     dat <- rbind(d1, d2)
     m1 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
-    ref_val <- structure(c(3.14851028784965, 1.30959944530366, 3.25722952319077, 
+    ref_val <- structure(c(3.14851028784965, 1.30959944530366, 3.25722952319077,
                            1.46335165911997, 3.20286990552021, 1.38647555221182), .Dim = 2:3,
                          .Dimnames = list(c("disp.(Intercept)", "disp.sdten"),
                                           c("2.5 %", "97.5 %", "Estimate")))
@@ -518,7 +517,7 @@ test_that("trunc nbinom simulation", {
         ## should NOT get NaN (or zero) for the first group if hack/fix is working
         expect_equal(unname(unlist(simulate(m1,seed=101))),c(1,1))
     }
-    
+
 })
 
 test_that("trunc nbinom sim 2", {
@@ -527,7 +526,7 @@ test_that("trunc nbinom sim 2", {
                       y=1)
     t1 <- ntab(family="truncated_nbinom1", data=dd)
     t2 <- ntab(family="truncated_nbinom2", data=dd)
-    if (FALSE) { 
+    if (FALSE) {
         op <- par(ask=TRUE)
         for (i in 1:nrow(t1)) pfun(i,tab=t1,dist="nbinom1",data=dd)
         for (i in 1:nrow(t2)) pfun(i,tab=t2,dist="nbinom2",data=dd)
@@ -544,7 +543,7 @@ test_that("trunc poisson simulation", {
     expect_equal(unname(t3[1,1:6]),
                  c(5829L, 2905L, 963L, 242L, 56L, 5L))
     ## explore
-    if (FALSE) { 
+    if (FALSE) {
         op <- par(ask=TRUE)
         for (i in 1:nrow(t3)) pfun(i,tab=t3,dist="poisson",data=dd)
         par(op)

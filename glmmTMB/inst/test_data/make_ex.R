@@ -1,4 +1,5 @@
 library("glmmTMB")
+save_image <- FALSE
 
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
@@ -45,4 +46,5 @@ f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
 f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
                    data=ddb)
 
-save.image(file="models.rda", version=2)
+if (save_image) save.image(file="models.rda", version=2)
+
