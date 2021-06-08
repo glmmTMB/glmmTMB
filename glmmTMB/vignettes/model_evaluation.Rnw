@@ -116,7 +116,7 @@ L <- load(system.file("vignette_data","model_evaluation.rda",
 A couple of example models:
 
 % don't need to evaluate this since we have loaded owls_nb1 from model_evaluation.rda
-<<examples,eval=FALSE>>=
+<<examples,eval=TRUE>>=
 owls_nb1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                         (1|Nest)+offset(log(BroodSize)),
                     contrasts=list(FoodTreatment="contr.sum",
