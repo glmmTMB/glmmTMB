@@ -51,6 +51,7 @@
       versions)
       \item consistent predictions between link and inverse-link (GH #696)
       \item improved vignette titles
+      \item The \code{emm_basis} method for \code{glmmTMB} objects now accepts a user-specified covariance matrix (\code{vcov.} argument)
     }
   }
 }
