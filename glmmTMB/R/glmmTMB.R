@@ -78,13 +78,11 @@ startParams <- function(parameters,
     resid[is.infinite(resid)] <- 0; resid[is.nan(resid)] <- 0
     resid <- as.data.frame(resid)
 
-    get_rank <- function(x){
-      if(x[["blockCode"]]==9){
-        p <- x$blockSize
-        nt <- x$blockNumTheta
-        rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
-      }else
-        rank <- 0
+    get_rank <- function(x) {
+      if (x[["blockCode"]] != .valid_covstruct[["rr"]]) return(0)
+      p <- x$blockSize
+      nt <- x$blockNumTheta
+      rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
       return(rank)
     }
 
@@ -560,9 +558,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             res <- tryCatch(eval(payload, envir = environment(formula)),
                             error = function(e)
                               stop("can't evaluate reduced-rank dimension ",
-                                   sQuote(deparse(payload))))
-            if (is.na(as.numeric(res))) {
-              stop("non-numeric value for reduced-rank dimension")
+                                   sQuote(deparse(payload)),
+                                   .call = FALSE))
+            if (is.na(suppressWarnings(as.numeric(res)))) {
+                stop("non-numeric value for reduced-rank dimension",
+                     call. = FALSE)
             }
             return(res)
         }
@@ -1236,9 +1236,18 @@ fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
 
-  ## check data.tmb$terms for names(terms[[i]]$blockCode  == "rr")
-  ## is this reliable?
+    has_any_rr <- function(x) {
+        any(vapply(x, function(z) z$blockCode == .valid_covstruct[["rr"]],
+                   FUN.VALUE = logical(1)))
+    }
 
+    if ((has_any_rr(TMBStruc$condReStruc) ||
+        has_any_rr(TMBStruc$ziReStruc)) &&
+        TMBStruc$control$parallel > 1) {
+        warning("rr() not compatible with parallel execution: setting ncores to 1")
+        TMBStruc$control$parallel <- 1
+    }
+        
     ## Assign OpenMP threads
     ## Warn if OpenMP not supported and threads>1
     ## FIXME: custom warning?
