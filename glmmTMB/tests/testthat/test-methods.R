@@ -441,7 +441,7 @@ test_that("confint works for models with dispformula", {
                          .Dimnames = list(c("disp.(Intercept)", "disp.sdten"),
                                           c("2.5 %", "97.5 %", "Estimate")))
     cc <- confint(m1)
-    expect_equal(cc[grep("^disp",rownames(cc)),], ref_val)
+    expect_equal(cc[grep("^disp",rownames(cc)),], ref_val, tolerance = 1e-6)
 })
 
 ## utility functions for checking truncated-distribution simulations
