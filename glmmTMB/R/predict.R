@@ -361,14 +361,23 @@ predict.glmmTMB <- function(object,
                            profile = NULL, # TODO: Optionally "beta"
                            silent = TRUE,
                            DLL = "glmmTMB"))
-
   newObj$fn(oldPar)  ## call once to update internal structures
   lp <- newObj$env$last.par
 
-  } ## NOT fast
+  }  ## NOT fast
 
   na.act <- attr(model.frame(object),"na.action")
   do.napred <- missing(newdata) && !is.null(na.act)
+
+  ## set TMB threads to value from original model fit/reset on exit
+  if (!is.null(parallel <- object$modelInfo$parallel)) {
+    n_orig <- suppressWarnings(TMB::openmp(NULL))
+    if (debug_openmp) cat("resetting TMB threads to ",  parallel, "\n")
+    TMB::openmp(parallel)
+    on.exit(TMB::openmp(n = n_orig), add = TRUE)
+  }
+
+  if (debug_openmp) cat("TMB threads currently set to ", TMB::openmp(NULL), "\n")
   return_eta <- type %in% c("zlink", "link")
   if (!se.fit) {
     rr <- newObj$report(lp)

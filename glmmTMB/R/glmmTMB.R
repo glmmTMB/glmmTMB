@@ -1,3 +1,6 @@
+## internal flag for debugging OpenMP behaviour
+debug_openmp <- FALSE
+
 ##' Change starting parameters, either by residual method or by user input (start)
 ##' @inheritParams mkTMBStruc
 ##' @param formula current formula, containing both fixed & random effects
@@ -1250,7 +1253,7 @@ fitTMB <- function(TMBStruc) {
         warning("rr() not compatible with parallel execution: setting ncores to 1")
         TMBStruc$control$parallel <- 1
     }
-        
+
     ## Assign OpenMP threads
     ## Warn if OpenMP not supported and threads>1
     ## FIXME: custom warning?
@@ -1263,9 +1266,13 @@ fitTMB <- function(TMBStruc) {
         TMB::openmp(NULL)
     )
     ## Only proceed farther if OpenMP *is* supported ...
-    if (n_orig>0) {
+  if (n_orig>0) {
+    if (debug_openmp) cat("setting OpenMP threads to ", control$parallel, "\n")
         TMB::openmp(n = control$parallel)
-        on.exit(TMB::openmp(n = n_orig))
+        on.exit({
+          if (debug_openmp) cat("resetting OpenMP threads to ", n_orig, "\n")
+          TMB::openmp(n = n_orig)
+          })
     }
 
     if (control $ collect) {
@@ -1453,7 +1460,8 @@ fitTMB <- function(TMBStruc) {
                                 allForm,
                                 REML,
                                 map,
-                                sparseX))
+                                sparseX,
+                                parallel = control$parallel))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
