@@ -1101,7 +1101,10 @@ glmmTMB <- function(
 ##' @param parallel  (integer) Set number of OpenMP threads to evaluate
 ##' the negative log-likelihood in parallel. The default is to evaluate
 ##' models serially (i.e. single-threaded); users can set a default value
-##' for an R session via \code{options(glmmTMB.cores=<value>)}.
+##' for an R session via \code{options(glmmTMB.cores=<value>)}. At present
+##' reduced-rank models (i.e., a covariance structure using \code{rr(...)})
+##' cannot be fitted in parallel; the number of threads will be automatically
+##' set to 1, with a warning if this overrides the user-specified value.
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
