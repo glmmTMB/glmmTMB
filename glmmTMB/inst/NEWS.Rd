@@ -3,9 +3,13 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.2.9000}{
+\section{CHANGES IN VERSION 1.1.0}{
   \subsection{NEW FEATURES}{
     \itemize{
+      \item reduced rank covariance for GLVMs implemented by M.McGillycuddy 
+      (see covstruct vignette for details)
+      \item \code{diagnose} function to investigate potential causes of convergence problems
+      \item improved parallel processing (GH #620 #652)
       \item truncated nbinom2 family now includes a \code{variance}
       component
     }
@@ -22,7 +26,11 @@
       \code{parm="theta_"} now work correctly with more complex models
       (e.g. including both zero inflation and random effects)
       (reported by @MKie45 on Stack Overflow)
+      \item \code{confint} works for single-parameter models and those 
+      with a \code{dispformula} (GH #622)
       \item mapped (fixed) variables could give incorrect predictions (GH #644)
+      \item \code{simulate} is more robust for truncated_nbinom1 and 
+      truncated_nbinom2 (GH #572) 
     }
   }
   \subsection{USER-VISIBLE CHANGES}{
@@ -41,6 +49,9 @@
       \item improved robustness of beta-binomial fits
       (results of fitting such models may change slightly from previous
       versions)
+      \item consistent predictions between link and inverse-link (GH #696)
+      \item improved vignette titles
+      \item The \code{emm_basis} method for \code{glmmTMB} objects now accepts a user-specified covariance matrix (\code{vcov.} argument)
     }
   }
 }
