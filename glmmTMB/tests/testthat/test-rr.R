@@ -3,21 +3,25 @@ stopifnot(require("testthat"),
 
 if (require(mvabund)) {
 
-    data(spider)
-    sppTot <- sort(colSums(spider$abund), decreasing = T)
-    tmp <- cbind(spider$abund, spider$x)
-    tmp$id <- 1:nrow(tmp)
-    spiderDat <- reshape(tmp,  idvar = "id",
-                     timevar = "Species", times =  colnames(spider$abund),
-                     varying = list(colnames(spider$abund)), v.names = "abund",
-                     direction = "long")
-    spiderDat <- with(spiderDat, spiderDat[Species %in% names(sppTot[1:4]), ])
+  data(spider)
+  sppTot <- sort(colSums(spider$abund), decreasing = TRUE)
+  tmp <- cbind(spider$abund, spider$x)
+  tmp$id <- 1:nrow(tmp)
+  spiderDat <- reshape(tmp,
+                       idvar = "id",
+                       timevar = "Species",
+                       times =  colnames(spider$abund),
+                       varying = list(colnames(spider$abund)),
+                       v.names = "abund",
+                       direction = "long")
+  spiderDat_common <- subset(spiderDat, Species %in% names(sppTot)[1:4])
+
 
 test_that("rr model fit", {
     ## Fit poison model with rr
     spider_p1 <<- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
                          family = poisson,
-                         data=spiderDat)
+                         data=spiderDat_common)
     spider_p2 <<- update(spider_p1,
                         control = glmmTMBControl(start_method = list(method = "res", jitter.sd = 0.2)))
     expect_equal(as.numeric(logLik(spider_p1)), c(-736.0022),

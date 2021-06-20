@@ -552,14 +552,19 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         ##    allow for more different covstruct types that have additional arguments
         ##  e.g. phylo(.,tree); fixed(.,Sigma)
         # FIX ME: use NA rather than 0 as a placeholder in aa?
-        ## FIXME: make sure that eval() happens in the right environment
+        ## FIXME: make sure that eval() happens in the right environment/
+        ##    document potential issues
         get_num <- function(v) {
-            if (length(v)==1) return(NA_real_)
+            if (length(v) == 1) return(NA_real_)
             payload <- v[[2]]
-            if (is.na(as.numeric(deparse(payload)))) {
-                stop("we only handle numeric constants right now")
+            res <- tryCatch(eval(payload, envir = environment(formula)),
+                            error = function(e)
+                              stop("can't evaluate reduced-rank dimension ",
+                                   sQuote(deparse(payload))))
+            if (is.na(as.numeric(res))) {
+              stop("non-numeric value for reduced-rank dimension")
             }
-            return(eval(payload))
+            return(res)
         }
         aa <- ifelse(ss$reTrmClass=="rr",
                      vapply(ss$reTrmAddArgs,
@@ -1230,6 +1235,9 @@ glmmTMBControl <- function(optCtrl=NULL,
 fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
+
+  ## check data.tmb$terms for names(terms[[i]]$blockCode  == "rr")
+  ## is this reliable?
 
     ## Assign OpenMP threads
     ## Warn if OpenMP not supported and threads>1
