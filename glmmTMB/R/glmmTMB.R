@@ -1,3 +1,6 @@
+## internal flag for debugging OpenMP behaviour
+debug_openmp <- FALSE
+
 ##' Change starting parameters, either by residual method or by user input (start)
 ##' @inheritParams mkTMBStruc
 ##' @param formula current formula, containing both fixed & random effects
@@ -78,13 +81,11 @@ startParams <- function(parameters,
     resid[is.infinite(resid)] <- 0; resid[is.nan(resid)] <- 0
     resid <- as.data.frame(resid)
 
-    get_rank <- function(x){
-      if(x[["blockCode"]]==9){
-        p <- x$blockSize
-        nt <- x$blockNumTheta
-        rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
-      }else
-        rank <- 0
+    get_rank <- function(x) {
+      if (x[["blockCode"]] != .valid_covstruct[["rr"]]) return(0)
+      p <- x$blockSize
+      nt <- x$blockNumTheta
+      rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
       return(rank)
     }
 
@@ -560,9 +561,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             res <- tryCatch(eval(payload, envir = environment(formula)),
                             error = function(e)
                               stop("can't evaluate reduced-rank dimension ",
-                                   sQuote(deparse(payload))))
-            if (is.na(as.numeric(res))) {
-              stop("non-numeric value for reduced-rank dimension")
+                                   sQuote(deparse(payload)),
+                                   .call = FALSE))
+            if (is.na(suppressWarnings(as.numeric(res)))) {
+                stop("non-numeric value for reduced-rank dimension",
+                     call. = FALSE)
             }
             return(res)
         }
@@ -1101,7 +1104,10 @@ glmmTMB <- function(
 ##' @param parallel  (integer) Set number of OpenMP threads to evaluate
 ##' the negative log-likelihood in parallel. The default is to evaluate
 ##' models serially (i.e. single-threaded); users can set a default value
-##' for an R session via \code{options(glmmTMB.cores=<value>)}.
+##' for an R session via \code{options(glmmTMB.cores=<value>)}. At present
+##' reduced-rank models (i.e., a covariance structure using \code{rr(...)})
+##' cannot be fitted in parallel; the number of threads will be automatically
+##' set to 1, with a warning if this overrides the user-specified value.
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
@@ -1236,8 +1242,17 @@ fitTMB <- function(TMBStruc) {
 
     control <- TMBStruc$control
 
-  ## check data.tmb$terms for names(terms[[i]]$blockCode  == "rr")
-  ## is this reliable?
+    has_any_rr <- function(x) {
+        any(vapply(x, function(z) z$blockCode == .valid_covstruct[["rr"]],
+                   FUN.VALUE = logical(1)))
+    }
+
+    if ((has_any_rr(TMBStruc$condReStruc) ||
+        has_any_rr(TMBStruc$ziReStruc)) &&
+        TMBStruc$control$parallel > 1) {
+        warning("rr() not compatible with parallel execution: setting ncores to 1")
+        TMBStruc$control$parallel <- 1
+    }
 
     ## Assign OpenMP threads
     ## Warn if OpenMP not supported and threads>1
@@ -1251,9 +1266,13 @@ fitTMB <- function(TMBStruc) {
         TMB::openmp(NULL)
     )
     ## Only proceed farther if OpenMP *is* supported ...
-    if (n_orig>0) {
+  if (n_orig>0) {
+    if (debug_openmp) cat("setting OpenMP threads to ", control$parallel, "\n")
         TMB::openmp(n = control$parallel)
-        on.exit(TMB::openmp(n = n_orig))
+        on.exit({
+          if (debug_openmp) cat("resetting OpenMP threads to ", n_orig, "\n")
+          TMB::openmp(n = n_orig)
+          })
     }
 
     if (control $ collect) {
@@ -1441,7 +1460,8 @@ fitTMB <- function(TMBStruc) {
                                 allForm,
                                 REML,
                                 map,
-                                sparseX))
+                                sparseX,
+                                parallel = control$parallel))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
