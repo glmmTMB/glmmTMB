@@ -4,6 +4,27 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 \section{CHANGES IN VERSION 1.1.0}{
+  \strong{NOTE on OpenMP parallelization:} due to difficulties with
+  OpenMP parallelization for some combinations of Windows
+  versions/compiler/etc., we have temporarily disabled OpenMP
+  in this release. To re-enable it, users can (1) add the lines
+  \code{PKG_LIBS += $(SHLIB_OPENMP_CXXFLAGS); PKG_CXXFLAGS +=
+    $(SHLIB_OPENMP_CXXFLAGS)} to the \code{.R/Makevars} file in their
+  home directory before installing from source or (2) install via
+  \preformatted{  
+    withr::with_makevars(
+    assignment = "+=",
+    c(PKG_LIBS = "$(SHLIB_OPENMP_CXXFLAGS)",
+    PKG_CXXFLAGS = "$(SHLIB_OPENMP_CXXFLAGS)"),
+    remotes::install_github("glmmTMB/glmmTMB/glmmTMB@cran_v_1.1.0"))
+  }
+  Users will need development tools installed (compilers etc.)
+  in order to install from source.
+  
+  As soon as the problem is resolved we hope to
+  provide pre-built binaries at \url{https://glmmTMB.github.io/glmmTMB}
+  and/or release a new minor version.
+
   \subsection{NEW FEATURES}{
     \itemize{
       \item reduced rank covariance for GLVMs implemented by M.McGillycuddy 
