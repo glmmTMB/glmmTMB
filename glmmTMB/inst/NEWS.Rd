@@ -22,7 +22,7 @@
   in order to install from source.
   
   As soon as the problem is resolved we hope to
-  provide pre-built binaries at \url{https://glmmTMB.github.io/glmmTMB}
+  provide pre-built binaries at \url{https://glmmTMB.github.io/glmmTMB/}
   and/or release a new minor version.
 
   \subsection{NEW FEATURES}{
