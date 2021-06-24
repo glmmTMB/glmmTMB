@@ -1,6 +1,12 @@
 ## internal flag for debugging OpenMP behaviour
 debug_openmp <- FALSE
 
+## glmmTMB openmp controller copied from TMB (Windows needs it).
+openmp <- function (n = NULL) {
+    if (!is.null(n)) n <- as.integer(n)
+    .Call("omp_num_threads", n, PACKAGE = "glmmTMB")
+}
+
 ##' Change starting parameters, either by residual method or by user input (start)
 ##' @inheritParams mkTMBStruc
 ##' @param formula current formula, containing both fixed & random effects
@@ -1112,7 +1118,6 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
-##' @importFrom TMB openmp
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
