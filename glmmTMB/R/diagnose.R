@@ -15,13 +15,13 @@
 ##' advisable to try to deal with problems in order, e.g. address problems with
 ##' complete separation first, then re-run the diagnostics to see whether
 ##' Hessian problems persist.
-##' 
+##'
 ##' @param fit a \code{glmmTMB} fit
 ##' @param eval_eps numeric tolerance for 'bad' eigenvalues
 ##' @param evec_eps numeric tolerance for 'bad' eigenvector elements
 ##' @param big_coef numeric tolerance for large coefficients
 ##' @param big_sd_log10 numeric tolerance for badly scaled parameters (log10 scale), i.e. for default value of 3, predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)
-##' @param big_zstat numeric tolerance for Z-statistic 
+##' @param small_zstat numeric tolerance for Z-statistic
 ##' @param check_coefs identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)
 ##' @param check_hessian identify non-positive-definite Hessian components?
 ##' @param check_zstats identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.
@@ -34,7 +34,7 @@
 diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
                      big_coef=10,
                      big_sd_log10=3,
-                     big_zstat=5,
+                     small_zstat=0.01,
                      check_coefs=TRUE,
                      check_zstats=TRUE,
                      check_hessian=TRUE,
@@ -89,14 +89,14 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
         }
     }
     if (check_zstats) {
-        z <- ss[,"Std. Error"]/ss[,"Estimate"]
-        bigz <- z[abs(z)>big_zstat]
-        if (length(bigz)>0) {
+        z <- ss[,"Estimate"]/ss[,"Std. Error"]
+        smallz <- z[!is.na(z) & abs(z)<small_zstat]
+        if (length(smallz)>0) {
             model_OK <- FALSE
-            cat(sprintf("Unusually large Z-statistics (|x|>%g):\n\n",big_zstat))
-            print(bigz)
+            cat(sprintf("Unusually small Z-statistics (|x|<%g):\n\n", small_zstat))
+            print(smallz)
             cat("\n")
-            cat(strwrap(paste("Large Z-statistics (estimate/std err) suggest a failure ",
+            cat(strwrap(paste("Extremely small Z-statistics (estimate/std err) suggest a failure ",
                               "of the Wald approximation - often also associated with ",
                               "parameters that are at or near the edge of their range ",
                               "(e.g. random-effects standard deviations approaching 0). ",

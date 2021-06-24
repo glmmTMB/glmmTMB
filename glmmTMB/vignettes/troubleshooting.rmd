@@ -46,6 +46,10 @@ Consider this example:
 zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
+> Warning message:<br>
+> In fitTMB(TMBStruc) :<br>
+>   Model convergence problem; non-positive-definite Hessian matrix. See vignette('troubleshooting')
+
 First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for a logit link, this
 implies probabilities very close to 0 or 1; for a log link, this implies mean counts that are close to 0 or extremely large).
 
@@ -55,7 +59,7 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
-**FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below)
+<!-- **FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below) -->
 
 The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
 are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
