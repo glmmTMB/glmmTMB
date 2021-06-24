@@ -1268,15 +1268,15 @@ fitTMB <- function(TMBStruc) {
                 invokeRestart("muffleWarning")
             }
         },
-        TMB::openmp(NULL)
+        openmp(NULL)
     )
     ## Only proceed farther if OpenMP *is* supported ...
   if (n_orig>0) {
     if (debug_openmp) cat("setting OpenMP threads to ", control$parallel, "\n")
-        TMB::openmp(n = control$parallel)
+        openmp(n = control$parallel)
         on.exit({
           if (debug_openmp) cat("resetting OpenMP threads to ", n_orig, "\n")
-          TMB::openmp(n = n_orig)
+          openmp(n = n_orig)
           })
     }
 
