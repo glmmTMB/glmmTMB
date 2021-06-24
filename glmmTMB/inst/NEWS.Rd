@@ -3,7 +3,16 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.1.0}{
+
+\section{CHANGES IN VERSION 1.1.0.9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item resolved OpenMP thread-safety issues on Windows
+    }
+  }
+}
+
+\section{CHANGES IN VERSION 1.1.0 (2021-06-24)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item reduced rank covariance for GLVMs implemented by M.McGillycuddy 
