@@ -87,7 +87,7 @@ Now we fit the same model, but using `r nt` threads. The speed-up is more notice
 
 From [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support):
 
-> Apple builds of clang on macOS currently have no OpenMP support, but CRAN binary packages are built with a clang-based toolchain which supports OpenMP. http://www.openmp.org/resources/openmp-compilers-tools gives some idea of what compilers support what versions.
+> Apple builds of clang on macOS currently have no OpenMP support, but CRAN binary packages are built with a clang-based toolchain which supports OpenMP. https://www.openmp.org/resources/openmp-compilers-tools gives some idea of what compilers support what versions.
 
 > The performance of OpenMP varies substantially between platforms. The Windows implementation has substantial overheads, so is only beneficial if quite substantial tasks are run in parallel. Also, on Windows new threads are started with the default FPU control word, so computations done on OpenMP threads will not make use of extended-precision arithmetic which is the default for the main process. 
 ## System information
