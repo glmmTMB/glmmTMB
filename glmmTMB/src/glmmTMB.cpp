@@ -382,7 +382,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
 
     int p = term.blockSize;
     int nt = theta.size();
-    int rank = (2*p + 1 -  sqrt(pow(2*p + 1, 2) - 8*nt) ) / 2 ;
+    int rank = (2*p + 1 -  (int)sqrt(pow(2.0*p + 1, 2) - 8*nt) ) / 2 ;
     matrix<Type> Lambda(p, rank);
     vector<Type> lam_diag = theta.head(rank);
     vector<Type> lam_lower = theta.tail(nt - rank);
