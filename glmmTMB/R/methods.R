@@ -9,7 +9,7 @@
 ##' be extracted.
 ##' @param \dots optional additional arguments. Currently none are used in any
 ##' methods.
-##' @return an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients 
+##' @return an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients
 ##' @keywords models
 ##' @details The print method for \code{fixef.glmmTMB} object \emph{only displays non-trivial components}: in particular, the dispersion parameter estimate is not printed for models with a single (intercept) dispersion parameter (see examples)
 ##' @examples
@@ -151,33 +151,32 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
   ## FIXME: add condVar, make sure format matches lme4
-  arrange <- function(x, sd, listname)
-  {
-    cnms <- object$modelInfo$reTrms[[listname]]$cnms
-    flist <- object$modelInfo$reTrms[[listname]]$flist
-    if (!is.null(cnms)) {
-      levs <- lapply(fl <- flist, levels)
-      asgn <- attr(fl, "assign")
-      nc <- vapply(cnms, length, 1L)     ## number of columns (terms) per RE
-      nb <- nc * vapply(levs, length, 1L)[asgn] ## number of elements per RE
-      nbseq <- rep.int(seq_along(nb), nb)       ## splitting vector
+  arrange <- function(x, sd, listname) {
+    cnms <- object$modelInfo$reTrms[[listname]]$cnms   ## list of (named) terms and X columns
+    reStruc <- object$modelInfo$reStruc[[paste0(listname, "ReStruc")]] ## random-effects structure
+    flist <- object$modelInfo$reTrms[[listname]]$flist ## list of grouping variables
+    levs <- lapply(flist, levels)
+    if (!is.null(cnms)) {  ## FIXME: better test?
+      asgn <- attr(flist, "assign")
+      ## FIXME: blockReps/blockSize etc. _should_ be stored as integers ...
+      nc <- vapply(reStruc, function(x) x$blockSize, numeric(1)) ## number of RE params per block
+      nb <- vapply(reStruc, function(x) x$blockReps, numeric(1)) ## number of blocks per RE (may != nlevs in some cases)
+      nbseq <- rep.int(seq_along(nb), nb * nc)       ## splitting vector
       ml <- split(x, nbseq)
       for (i in seq_along(ml)) {
-          ml[[i]] <- matrix(ml[[i]], ncol=nc[i], byrow=TRUE,
-                            dimnames=list(NULL, cnms[[i]]))
+          ml[[i]] <- matrix(ml[[i]], ncol = nc[i], byrow = TRUE,
+                            dimnames = list(NULL, cnms[[i]]))
       }
       if (!is.null(sd)) {
-          sd <- split(sd,nbseq)
+          sd <- split(sd, nbseq)
           for (i in seq_along(sd)) {
-              ii <- asgn[i]
-              nr <- length(levs[[ii]])
-              a <- array(NA,dim=c(nc[i],nc[i],nr))
+              a <- array(NA, dim=c(nc[i], nc[i], nb[i]))
               ## fill in diagonals: off-diagonals will stay NA (!)
               ## unless we bother to retrieve conditional covariance info
               ## from the fit
               ## when nc>1, what order is the sd vector in?
               ## guessing, level-wise
-              for (j in seq(nr)) {
+              for (j in seq(nb[i])) {
                   a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
                       (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
               }
@@ -185,9 +184,20 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
           }
       }
       ## combine RE matrices from all terms with the same grouping factor
-      x <- lapply(seq_along(fl), function(i) {
-          d <- data.frame(do.call(cbind, ml[asgn==i]), row.names=levs[[i]],
-                          check.names=FALSE)
+      x <- lapply(seq_along(flist),
+                  function(i) {
+                    m <- ml[asgn == i]
+                    b2 <- vapply(m, nrow, numeric(1))
+                    ub2 <- unique(b2)
+                    if (length(ub2)>1)
+                      stop("differing numbers of b per group")
+                    ## if number of sets of modes != number of levels (e.g. Gaussian process/phyloglmm),
+                    ##   generate numeric sequence for names
+                    rnms <- if (ub2==length(levs[[i]])) levs[[i]] else seq(ub2)
+                    d <- data.frame(do.call(cbind, m),
+                               row.names = rnms,
+                               check.names = FALSE)
+
           if (!is.null(sd)) {
               ## attach conditional variance info
               ## called "condVar", *not* "postVar" (contrast to lme4)
@@ -197,8 +207,8 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
                                   } else sd[[w]]  ## else just the array
           }
           return(d)
-      })      
-      names(x) <- names(fl)
+      })
+      names(x) <- names(flist)
       return(x)
     } ## if !is.null(cnms)
     else {
@@ -332,7 +342,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   ## don't check_dots, car::Anova tries to pass 'complete'
-  ## check_dots(...)  
+  ## check_dots(...)
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
@@ -417,7 +427,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
       names(covList) <- names(cNames) ## component names
-      parnms <- c("beta","betazi", "betad")     ## parameter names 
+      parnms <- c("beta","betazi", "betad")     ## parameter names
       for (i in seq_along(covList)) {
           nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
@@ -740,8 +750,8 @@ format.perc <- function (probs, digits) {
 ##' scale: for each random effect, the first set of parameter values
 ##' are standard deviations on the log scale, while remaining parameters
 ##' represent correlations on the scaled Cholesky scale (see the
-##' 
-##' 
+##'
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
@@ -809,7 +819,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     ci <- matrix(NA, nrow=0, ncol=2 + estimate,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
-    
+
     if (!is.null(parm) || method!="wald") {
         parm <- getParms(parm, object, full)
     }
@@ -863,7 +873,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## instead, eliminate rows below where lowerCI==upperCI
         return(ci.sd)
     }
-    
+
     if (method=="wald") {
         map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
@@ -910,12 +920,12 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ci <- rbind(ci, wald_ci_comp(component))
             }
         }
-            
+
         ## Take subset
-        
+
         ## drop mapped values (where lower == upper)
         ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
-        
+
         ## now get selected parameters
         if (!is.null(parm)) {
             ci <- ci[parm, , drop=FALSE]
@@ -1006,7 +1016,7 @@ extractAIC.glmmTMB <- function(fit, scale, k = 2, ...) {
 }
 
 ## deparse(.) returning \bold{one} string
-## previously safeDeparse; 
+## previously safeDeparse;
 ## Protects against the possibility that results from deparse() will be
 ##       split after 'width.cutoff' (by default 60, maximally 500)
 ## R >= 4.0.0's deparse1() is a generalization
@@ -1029,15 +1039,15 @@ sort_termlabs <- function(labs) {
 
 ## see whether mod1, mod2 are appropriate for Likelihood ratio testing
 CompareFixef <- function (mod1, mod2, component="cond") {
-     mr1 <- mod1$modelInfo$REML     
+     mr1 <- mod1$modelInfo$REML
      mr2 <- mod2$modelInfo$REML
      if (mr1 != mr2) {
         stop("Can't compare REML and ML fits", call.=FALSE)
-     }  
+     }
      if (mr1 && mr2) {
            tmpf <- function(obj) {   sort_termlabs(attr(terms(obj, component=component),"term.labels")) }
            if (!identical(tmpf(mod1), tmpf(mod2))) {
-                stop("Can't compare REML fits with different fixed-effect components", call.=FALSE) 
+                stop("Can't compare REML fits with different fixed-effect components", call.=FALSE)
            }
      }
      return(TRUE) ## OK
@@ -1139,9 +1149,9 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     	stop("Simulation code has not been implemented for this family")
     }
     ## copied from stats::simulate.lm
-    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) 
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
         runif(1)
-    if (is.null(seed)) 
+    if (is.null(seed))
         RNGstate <- get(".Random.seed", envir = .GlobalEnv)
     else {
         R.seed <- get(".Random.seed", envir = .GlobalEnv)
@@ -1289,9 +1299,9 @@ lme4::refit
 #'     }
 #' }
 #' }
-#' @details 
+#' @details
 #' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
-#' 
+#'
 refit.glmmTMB <- function(object, newresp, ...) {
   cc <- getCall(object)
   newdata <- eval.parent(cc$data)
@@ -1432,7 +1442,7 @@ weights.glmmTMB <- function(object, type="prior", ...) {
 # extract model parameters
 #
 # This is a utility function for multcomp::glht
-# 
+#
 ## @param model fitted glmmTMB model
 ## @param coef. function for retrieving coefficients
 ## @param vcov. function for retrieving covariance matrix
