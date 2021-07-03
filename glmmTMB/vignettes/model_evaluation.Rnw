@@ -24,7 +24,9 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{graphicx}
-\usepackage{siunitx}
+%% siunitx is needed for *some* huxtable functions,
+%%  but messes up Solaris tests
+%% \usepackage{siunitx}
 \usepackage{colortbl}
 \usepackage{multirow}
 \usepackage{hhline}
@@ -106,8 +108,7 @@ library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)
-## temporarily disabled: causes problems with <<caranova1>> chunk?
-## library(huxtable)
+library(huxtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",
                       package="glmmTMB"))
@@ -232,7 +233,7 @@ Since this takes a little while (45 seconds or so), we've instead loaded some pr
 
 % stored in vignette_data/model_evaluation.rda ...
 <<dredge1>>=
-owls_nb1_dredge
+print(owls_nb1_dredge)
 @
 
 <<plot_dredge1,fig.width=8,fig.height=8>>=
@@ -250,7 +251,7 @@ model.avg(owls_nb1_dredge)
 \subsubsection{issues}
 
 \begin{itemize}
-\item may not work for Beta models because the \code{family} component ("beta") is not identical to the name of the family function (\code{beta_family()})? (Kamil Bartoń, pers. comm.)
+\item may not work for Beta models because the \code{family} component (``beta") is not identical to the name of the family function (\code{beta_family()})? (Kamil Bartoń, pers. comm.)
 \end{itemize}
 
 
@@ -292,7 +293,7 @@ if (requireNamespace("broom.mixed") && requireNamespace("dotwhisker")) {
 \begin{itemize}
 \item use black rather than color(1) when there's only a single model, i.e. only add aes(colour=model) conditionally?
 - draw points even if std err / confint are NA (draw \code{geom_point()} as well as \code{geom_pointrange()}? need to apply all aesthetics, dodging, etc. to both ...)
-\item for glmmTMB models, allow labeling by component? or should this be done by manipulating the tidied frame first? (i.e.: \code{tidy(.) \%>\% tidyr::unite(term,c(component,term))})
+\item for glmmTMB models, allow labeling by component? or should this be done by manipulating the tidied frame first? (i.e.: \verb+tidy(.) \%>\% tidyr::unite(term,c(component,term))+)
 \end{itemize}
 
 \subsection{coefficient tables with \tcode{xtable}}
@@ -339,9 +340,9 @@ See output in Table~\ref{tab:owls}.
 
 \subsection{coefficient tables with \tcode{huxtable}}
 
-The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX. \emph{The current version (5.0.0) is giving us a little bit of trouble, so we've temporarily disabled evaluation of this code chunk \ldots}
+The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX.
 
-<<huxtable,results="asis",eval=FALSE>>=
+<<huxtable,results="asis">>=
 ## library("huxtable")
 cc <- c("intercept (mean)"="(Intercept)",
         "food treatment (starvation)"="FoodTreatment1",
