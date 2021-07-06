@@ -36,7 +36,8 @@
 <<setopts,echo=FALSE,message=FALSE>>=
 library("knitr")
 opts_chunk$set(fig.width=5,fig.height=5,
-               out.width="0.8\\textwidth",echo=TRUE)
+               out.width="0.8\\textwidth",
+               echo = TRUE, error = FALSE)
 Rver <- paste(R.version$major,R.version$minor,sep=".")
 used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 @
@@ -86,7 +87,11 @@ In order to fit a model in \code{glmmTMB} you need to:
   \code{1|site/block} if block labels are reused across multiple sites, or \code{(1|site)+ (1|block)} if the nesting structure is explicit in the data and each level of block only occurs within one site. A model of crossed random effects
   (block and year) would be \code{(1|block)+(1|year)}.
   \item choose the error distribution by specifying the family (\code{family} argument). In general, you can specify the function (\code{binomial}, \code{gaussian}, \code{poisson}, \code{Gamma} from base R, or one of the options listed at \code{family\_glmmTMB} [\code{nbinom2}, \code{beta\_family()}, \code{betabinomial}, \ldots])).
-\item choose the error distribution by specifying the family (\code{family} argument). For standard GLM families implemented in R, you can use the function name (\code{binomial}, \code{gaussian}, \code{poisson}, \code{Gamma}). Otherwise, you should specify the family argument as a list containing (at least) the (character) elements \code{family} and \code{link}, e.g. \code{family=list(family="nbinom2",link="log")}.
+  \item choose the error distribution by specifying the family (\code{family} argument). You can choose among
+    \begin{itemize}
+    \item Distributions defined in base R and documented in \code{?family}, \emph{except} the inverse Gaussian and quasi- families
+    \item Distributions defined in \code{?glmmTMB::family\_glmmTMB}
+    \end{itemize}
 \item optionally specify a zero-inflation model (via the \code{ziformula} argument) with fixed and/or random effects
 \item optionally specify a dispersion model with fixed effects
 \end{itemize}
@@ -171,13 +176,6 @@ Now fit some models:
 
 The basic \code{glmmTMB} fit --- a zero-inflated Poisson model with a single zero-inflation parameter applying to all observations (\verb+ziformula~1+).  (Excluding zero-inflation is \code{glmmTMB}'s default:
 to exclude it explicitly, use \verb+ziformula~0+.)
-<<time1,echo=FALSE,cache=TRUE>>=
-gt1 <- system.time(glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
-                                     offset(log(BroodSize))+(1|Nest),
-                                     ziformula=~1,
-                                     data=Owls,
-                                     family=poisson))
-@
 
 <<glmmTMBfit>>=
 fit_zipoisson <- glmmTMB(NCalls~(FT+ArrivalTime)*SexParent+
@@ -254,16 +252,19 @@ sampling zeros.
 \code{glmmTMB} includes truncated
 Poisson and negative binomial familes and hence can fit hurdle models.
 
-<<glmmTMBnbinomhfit,cache=TRUE>>=
+<<glmmTMBnbinomhfit>>=
 fit_hnbinom1 <-  update(fit_zinbinom1_bs,
                         ziformula=~.,
                         data=Owls,
-                        family=list(family="truncated_nbinom1",link="log"))
+                        family=truncated_nbinom1)
 @
 
 Then we can use \code{AICtab} to compare all the models.
+
 <<hurdle_AIC>>=
-AICtab(fit_zipoisson,fit_zinbinom,fit_zinbinom1,fit_zinbinom1_bs,fit_hnbinom1)
+AICtab(fit_zipoisson,fit_zinbinom,
+       fit_zinbinom1,fit_zinbinom1_bs,
+       fit_hnbinom1)
 @
 
 \section{Sample timings}
@@ -293,12 +294,18 @@ On average, \code{glmmTMB} is about \Sexpr{round(meandiff,1)} times
 faster than \code{glmer} for this problem.
 
 <<contraception,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting the replicated Contraception data set.">>=
-ggplot(tmatContraception,aes(n,time,colour=pkg))+geom_point()+
-  scale_y_log10(breaks=c(1,2,5,10,20,50,100))+
-  scale_x_log10(breaks=c(1,2,4,10,20,40))+
-  labs(x="Replication (x 1934 obs.)",y="Elapsed time (s)")+
-  geom_smooth(method="lm")+
-  scale_colour_brewer(palette="Set1")
+## lm_nowarn <- function(...) suppressWarnings(lm(...))
+suppressWarnings(
+    ## NaN from geom_smooth because glmmADMB only has two points/
+    ## can't compute confidence intervals
+    ## suppressWarnings() doesn't actually work within ggplot ...
+ggplot(tmatContraception, aes(n, time, colour=pkg)) + geom_point() +
+  scale_y_log10(breaks=c(1,2,5,10,20,50,100)) +
+  scale_x_log10(breaks=c(1,2,4,10,20,40)) +
+  labs(x="Replication (x 1934 obs.)",y="Elapsed time (s)") +
+  geom_smooth(method="lm_nowarn", formula = y ~ x) +
+scale_colour_brewer(palette="Set1")
+)
 @
 
 
@@ -312,7 +319,7 @@ ggplot(tmatInstEval,aes(n,time,colour=pkg))+geom_point()+
       scale_x_log10(breaks=c(0.1,0.2,0.5,1.0))+
   labs(x=sprintf("Replication (x %d obs.)",n_InstEval),
        y="Elapsed time (s)")+
-  geom_smooth(method="lm")+
+  geom_smooth(method="lm", formula = y ~ x)+
   scale_colour_brewer(palette="Set1")
 @
 
