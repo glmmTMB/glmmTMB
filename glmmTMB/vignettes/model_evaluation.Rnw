@@ -346,22 +346,33 @@ See output in Table~\ref{tab:owls}.
 
 The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX.
 
+<<solaris_check, echo=FALSE>>=
+## https://stackoverflow.com/questions/23840523/check-if-os-is-solaris
+is.solaris <- function() {
+  grepl('SunOS', Sys.info()['sysname'])
+}
+@
+
+
 <<huxtable,results="asis">>=
-## library("huxtable")
-cc <- c("intercept (mean)"="(Intercept)",
-        "food treatment (starvation)"="FoodTreatment1",
-        "parental sex (M)"="SexParent1",
-        "food $\\times$ sex"="FoodTreatment1:SexParent1")
-h0 <- huxreg(" "=owls_nb1, # give model blank name so we don't get '(1)'
-             tidy_args=list(effects="fixed"),
-             coefs=cc,
-             error_pos="right",
-             statistics="nobs" # don't include logLik and AIC
-             )
-names(h0)[2:3] <- c("estimate","std. err.")
-## allow use of math notation in name
-h1 <- set_cell_properties(h0,row=5,col=1,escape_contents=FALSE)
-cat(to_latex(h1,tabular_only=TRUE))
+if (is.solaris()) {
+  cat("Sorry, huxtable+LaTeX is unreliable on Solaris\n")
+} else {
+  cc <- c("intercept (mean)"="(Intercept)",
+          "food treatment (starvation)"="FoodTreatment1",
+          "parental sex (M)"="SexParent1",
+          "food $\\times$ sex"="FoodTreatment1:SexParent1")
+  h0 <- huxreg(" " = owls_nb1, # give model blank name so we don't get '(1)'
+               tidy_args = list(effects="fixed"),
+               coefs = cc,
+               error_pos = "right",
+               statistics = "nobs" # don't include logLik and AIC
+               )
+  names(h0)[2:3] <- c("estimate", "std. err.")
+  ## allow use of math notation in name
+  h1 <- set_cell_properties(h0,row=5,col=1,escape_contents=FALSE)
+  cat(to_latex(h1,tabular_only=TRUE))
+}
 @    
 
 
