@@ -101,7 +101,7 @@ library(emmeans)
 library(effects)
 library(multcomp)
 library(MuMIn)
-library(DHARMa)
+require(DHARMa, quietly = TRUE) ## may be missing ...
 library(broom)
 library(broom.mixed)
 library(dotwhisker)
@@ -151,8 +151,12 @@ owls_nb1_simres <- simulateResiduals(owls_nb1)
 
 you can plot the results:
 
-<<dharma_plotfig,fig.width=8,fig.height=4>>=
+<<fake_dharma_plotfig, eval=FALSE>>=
 plot(owls_nb1_simres)
+@
+
+<<dharma_plotfig,fig.width=8,fig.height=4, echo=FALSE>>=
+if (require(DHARMa, quietly = TRUE)) plot(owls_nb1_simres)
 @
 
 \code{DHARMa} provides lots of other methods based on the simulated residuals:
