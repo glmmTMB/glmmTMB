@@ -86,6 +86,13 @@ Rver <- paste(R.version$major,R.version$minor,sep=".")
 used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 @ 
 
+<<solaris_check, echo=FALSE>>=
+## https://stackoverflow.com/questions/23840523/check-if-os-is-solaris
+is.solaris <- function() {
+  grepl('SunOS', Sys.info()['sysname'])
+}
+@
+
 The purpose of this vignette is to describe (and test) the
 functions in various downstream packages that are available for summarizing
 and otherwise interpreting glmmTMB fits.
@@ -108,7 +115,7 @@ library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)
-library(huxtable)
+if (!is.solaris()) library(huxtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",
                       package="glmmTMB"))
@@ -177,7 +184,7 @@ We can use \code{car::Anova()} to get traditional ANOVA-style tables from \code{
 \begin{itemize}
 \item these tables use Wald $\chi^2$ statistics for comparisons (neither likelihood ratio tests nor $F$ tests)
 \item they apply to the fixed effects of the conditional component of the model only (other components \emph{might} work, but haven't been tested at all)
-\item as always, if you want to do type 3 tests, you should probably set sum-to-zero contrasts on factors and center numerical covariates (see contrasts argument above)
+\item as always, if you want to do type 3 tests, you should probably set sum-to-zero contrasts on factors and center numerical covariates (see \code{contrasts} argument above)
 \end{itemize}
 
 <<caranova1>>=
@@ -345,13 +352,6 @@ See output in Table~\ref{tab:owls}.
 \subsection{coefficient tables with \tcode{huxtable}}
 
 The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX.
-
-<<solaris_check, echo=FALSE>>=
-## https://stackoverflow.com/questions/23840523/check-if-os-is-solaris
-is.solaris <- function() {
-  grepl('SunOS', Sys.info()['sysname'])
-}
-@
 
 
 <<huxtable,results="asis">>=
