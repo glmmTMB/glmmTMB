@@ -24,7 +24,9 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{graphicx}
-\usepackage{siunitx}
+%% siunitx is needed for *some* huxtable functions,
+%%  but messes up Solaris tests
+%% \usepackage{siunitx}
 \usepackage{colortbl}
 \usepackage{multirow}
 \usepackage{hhline}
@@ -84,6 +86,13 @@ Rver <- paste(R.version$major,R.version$minor,sep=".")
 used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 @ 
 
+<<solaris_check, echo=FALSE>>=
+## https://stackoverflow.com/questions/23840523/check-if-os-is-solaris
+is.solaris <- function() {
+  grepl('SunOS', Sys.info()['sysname'])
+}
+@
+
 The purpose of this vignette is to describe (and test) the
 functions in various downstream packages that are available for summarizing
 and otherwise interpreting glmmTMB fits.
@@ -99,15 +108,14 @@ library(emmeans)
 library(effects)
 library(multcomp)
 library(MuMIn)
-library(DHARMa)
+require(DHARMa, quietly = TRUE) ## may be missing ...
 library(broom)
 library(broom.mixed)
 library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)
-## temporarily disabled: causes problems with <<caranova1>> chunk?
-## library(huxtable)
+if (!is.solaris()) library(huxtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",
                       package="glmmTMB"))
@@ -150,8 +158,12 @@ owls_nb1_simres <- simulateResiduals(owls_nb1)
 
 you can plot the results:
 
-<<dharma_plotfig,fig.width=8,fig.height=4>>=
+<<fake_dharma_plotfig, eval=FALSE>>=
 plot(owls_nb1_simres)
+@
+
+<<dharma_plotfig,fig.width=8,fig.height=4, echo=FALSE>>=
+if (require(DHARMa, quietly = TRUE)) plot(owls_nb1_simres)
 @
 
 \code{DHARMa} provides lots of other methods based on the simulated residuals:
@@ -172,7 +184,7 @@ We can use \code{car::Anova()} to get traditional ANOVA-style tables from \code{
 \begin{itemize}
 \item these tables use Wald $\chi^2$ statistics for comparisons (neither likelihood ratio tests nor $F$ tests)
 \item they apply to the fixed effects of the conditional component of the model only (other components \emph{might} work, but haven't been tested at all)
-\item as always, if you want to do type 3 tests, you should probably set sum-to-zero contrasts on factors and center numerical covariates (see contrasts argument above)
+\item as always, if you want to do type 3 tests, you should probably set sum-to-zero contrasts on factors and center numerical covariates (see \code{contrasts} argument above)
 \end{itemize}
 
 <<caranova1>>=
@@ -232,7 +244,7 @@ Since this takes a little while (45 seconds or so), we've instead loaded some pr
 
 % stored in vignette_data/model_evaluation.rda ...
 <<dredge1>>=
-owls_nb1_dredge
+print(owls_nb1_dredge)
 @
 
 <<plot_dredge1,fig.width=8,fig.height=8>>=
@@ -250,7 +262,7 @@ model.avg(owls_nb1_dredge)
 \subsubsection{issues}
 
 \begin{itemize}
-\item may not work for Beta models because the \code{family} component ("beta") is not identical to the name of the family function (\code{beta_family()})? (Kamil Bartoń, pers. comm.)
+\item may not work for Beta models because the \code{family} component (``beta") is not identical to the name of the family function (\code{beta_family()})? (Kamil Bartoń, pers. comm.)
 \end{itemize}
 
 
@@ -292,7 +304,7 @@ if (requireNamespace("broom.mixed") && requireNamespace("dotwhisker")) {
 \begin{itemize}
 \item use black rather than color(1) when there's only a single model, i.e. only add aes(colour=model) conditionally?
 - draw points even if std err / confint are NA (draw \code{geom_point()} as well as \code{geom_pointrange()}? need to apply all aesthetics, dodging, etc. to both ...)
-\item for glmmTMB models, allow labeling by component? or should this be done by manipulating the tidied frame first? (i.e.: \code{tidy(.) \%>\% tidyr::unite(term,c(component,term))})
+\item for glmmTMB models, allow labeling by component? or should this be done by manipulating the tidied frame first? (i.e.: \verb+tidy(.) \%>\% tidyr::unite(term,c(component,term))+)
 \end{itemize}
 
 \subsection{coefficient tables with \tcode{xtable}}
@@ -339,24 +351,28 @@ See output in Table~\ref{tab:owls}.
 
 \subsection{coefficient tables with \tcode{huxtable}}
 
-The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX. \emph{The current version (5.0.0) is giving us a little bit of trouble, so we've temporarily disabled evaluation of this code chunk \ldots}
+The \code{huxtable} package allows output in either \LaTeX\ or HTML: this example is tuned for \LaTeX.
 
-<<huxtable,results="asis",eval=FALSE>>=
-## library("huxtable")
-cc <- c("intercept (mean)"="(Intercept)",
-        "food treatment (starvation)"="FoodTreatment1",
-        "parental sex (M)"="SexParent1",
-        "food $\\times$ sex"="FoodTreatment1:SexParent1")
-h0 <- huxreg(" "=owls_nb1, # give model blank name so we don't get '(1)'
-             tidy_args=list(effects="fixed"),
-             coefs=cc,
-             error_pos="right",
-             statistics="nobs" # don't include logLik and AIC
-             )
-names(h0)[2:3] <- c("estimate","std. err.")
-## allow use of math notation in name
-h1 <- set_cell_properties(h0,row=5,col=1,escape_contents=FALSE)
-cat(to_latex(h1,tabular_only=TRUE))
+
+<<huxtable,results="asis">>=
+if (is.solaris()) {
+  cat("Sorry, huxtable+LaTeX is unreliable on Solaris\n")
+} else {
+  cc <- c("intercept (mean)"="(Intercept)",
+          "food treatment (starvation)"="FoodTreatment1",
+          "parental sex (M)"="SexParent1",
+          "food $\\times$ sex"="FoodTreatment1:SexParent1")
+  h0 <- huxreg(" " = owls_nb1, # give model blank name so we don't get '(1)'
+               tidy_args = list(effects="fixed"),
+               coefs = cc,
+               error_pos = "right",
+               statistics = "nobs" # don't include logLik and AIC
+               )
+  names(h0)[2:3] <- c("estimate", "std. err.")
+  ## allow use of math notation in name
+  h1 <- set_cell_properties(h0,row=5,col=1,escape_contents=FALSE)
+  cat(to_latex(h1,tabular_only=TRUE))
+}
 @    
 
 
