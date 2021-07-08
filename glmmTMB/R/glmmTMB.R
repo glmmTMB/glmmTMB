@@ -3,6 +3,9 @@ debug_openmp <- FALSE
 
 ## glmmTMB openmp controller copied from TMB (Windows needs it).
 openmp <- function (n = NULL) {
+    if (debug_openmp && !is.null(n)) {
+        cat("setting OpenMP threads to ", n, "\n")
+    }
     if (!is.null(n)) n <- as.integer(n)
     .Call("omp_num_threads", n, PACKAGE = "glmmTMB")
 }
@@ -1272,10 +1275,8 @@ fitTMB <- function(TMBStruc) {
     )
     ## Only proceed farther if OpenMP *is* supported ...
   if (n_orig>0) {
-    if (debug_openmp) cat("setting OpenMP threads to ", control$parallel, "\n")
         openmp(n = control$parallel)
         on.exit({
-          if (debug_openmp) cat("resetting OpenMP threads to ", n_orig, "\n")
           openmp(n = n_orig)
           })
     }
