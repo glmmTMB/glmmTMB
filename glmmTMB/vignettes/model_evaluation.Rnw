@@ -361,7 +361,7 @@ The \code{huxtable} package allows output in either \LaTeX\ or HTML: this exampl
 
 
 <<huxtable,results="asis">>=
-if (is.solaris() || (is.cran() && is.windows()) {
+if (is.solaris() || (is.cran() && is.windows())) {
   cat("Sorry, huxtable+LaTeX is unreliable on this platform; skipping\n")
 } else {
   cc <- c("intercept (mean)"="(Intercept)",
