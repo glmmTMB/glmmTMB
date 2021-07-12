@@ -115,7 +115,7 @@ print(citation("glmmTMB"),style="latex")
 \section{Preliminaries: packages and data}
 
 Load required packages:
-<<pkgs,message=FALSE>>=
+<<pkgs,message=FALSE, eval=TRUE>>=
 library("glmmTMB")
 library("bbmle")    ## for AICtab
 library("ggplot2")
