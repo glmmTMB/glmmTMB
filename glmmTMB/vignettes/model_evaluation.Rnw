@@ -91,6 +91,13 @@ used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 is.solaris <- function() {
   grepl('SunOS', Sys.info()['sysname'])
 }
+is.windows <- function() {
+  .Platform$OS.type == "windows"
+}
+is.cran <- function() {
+  !identical(Sys.getenv("NOT_CRAN"), "true")
+}
+huxtable_OK <- (!is.solaris()) && !(is.windows() && is.cran())
 @
 
 The purpose of this vignette is to describe (and test) the
@@ -115,7 +122,7 @@ library(dotwhisker)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)
-if (!is.solaris()) library(huxtable)
+if (huxtable_OK) library(huxtable)
 ## retrieve slow stuff
 L <- load(system.file("vignette_data","model_evaluation.rda",
                       package="glmmTMB"))
@@ -355,8 +362,8 @@ The \code{huxtable} package allows output in either \LaTeX\ or HTML: this exampl
 
 
 <<huxtable,results="asis">>=
-if (is.solaris()) {
-  cat("Sorry, huxtable+LaTeX is unreliable on Solaris\n")
+if (!huxtable_OK) {
+  cat("Sorry, huxtable+LaTeX is unreliable on this platform; skipping\n")
 } else {
   cc <- c("intercept (mean)"="(Intercept)",
           "food treatment (starvation)"="FoodTreatment1",

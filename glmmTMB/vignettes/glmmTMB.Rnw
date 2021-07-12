@@ -37,7 +37,8 @@
 library("knitr")
 opts_chunk$set(fig.width=5,fig.height=5,
                out.width="0.8\\textwidth",
-               echo = TRUE, error = FALSE)
+               echo = TRUE, error = FALSE,
+               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
 Rver <- paste(R.version$major,R.version$minor,sep=".")
 used.pkgs <- c("glmmTMB","bbmle")  ## packages to report below
 @
@@ -114,7 +115,7 @@ print(citation("glmmTMB"),style="latex")
 \section{Preliminaries: packages and data}
 
 Load required packages:
-<<pkgs,message=FALSE>>=
+<<pkgs,message=FALSE, eval=TRUE>>=
 library("glmmTMB")
 library("bbmle")    ## for AICtab
 library("ggplot2")
@@ -275,7 +276,7 @@ we try a few standard problems, enlarging the data sets by
 cloning the original data set (making multiple copies and
 sticking them together).
 
-<<contraception_sum,echo=FALSE>>=
+<<contraception_sum,echo=FALSE, eval=TRUE>>=
 data("Contraception",package="mlmRev")
 nc <- nrow(Contraception)
 nl <- length(levels(Contraception$district))
@@ -309,7 +310,7 @@ scale_colour_brewer(palette="Set1")
 @
 
 
-<<insteval,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting subsets of the InstEval data set.">>=
+<<insteval,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting subsets of the InstEval data set.", eval = TRUE>>=
 load("InstEvalTimings.rda")
 n_InstEval <- 73421L  ## seems silly to require lme4 just to get this number
 meandiff_inst2 <- with(tmatInstEval,

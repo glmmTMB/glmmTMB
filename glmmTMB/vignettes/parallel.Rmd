@@ -15,11 +15,12 @@ If your OS supports OpenMP parallelization and R was installed using OpenMP, `gl
 
 ```{r setup, include=FALSE, message=FALSE}
 library(knitr)
+opts_chunk$set(eval = identical(Sys.getenv("NOT_CRAN"), "true"))
 ```
 
 Load packages:
 
-```{r libs,message=FALSE}
+```{r libs,message=FALSE, eval=TRUE}
 library(glmmTMB)
 set.seed(1)
 nt <- min(parallel::detectCores(),5)
