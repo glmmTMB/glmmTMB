@@ -374,7 +374,7 @@ predict.glmmTMB <- function(object,
 
   ## set TMB threads to value from original model fit/reset on exit
   if (!is.null(parallel <- object$modelInfo$parallel)) {
-    n_orig <- suppressWarnings(openmp(NULL))
+    n_orig <- openmp(NULL)
     if (debug_openmp) cat("resetting TMB threads to ",  parallel, "\n")
     openmp(parallel)
     on.exit(openmp(n = n_orig), add = TRUE)

@@ -6,11 +6,12 @@ openmp <- function (n = NULL) {
     if (debug_openmp && !is.null(n)) {
         cat("setting OpenMP threads to ", n, "\n")
     }
+    ## FIXME: redundant with integer-setting within omp_num_threads C++ def in utils.cpp
     null_arg <- is.null(n)
     if (!null_arg) n <- as.integer(n)
     ## only want to warn if attempt to set >1 threads in absence
     ## of OpenMP support ..
-    if (null_arg || n == 1) {
+    if (null_arg || n <= 1) {
       w <- options(warn = -1)
       on.exit(options(warn = w[["warn"]]))
     }
