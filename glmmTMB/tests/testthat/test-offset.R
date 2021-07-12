@@ -26,7 +26,7 @@ m.lm <- lm(y1~x, offset=o, dat)
 m.lm0 <- lm(y1~x, dat)
 
 test_that("LM with offset as argument", {
-    m1 <- glmmTMB(y1~x, offset=o, dat) 
+    m1 <- glmmTMB(y1~x, offset=o, dat)
     expect_equal(fixef(m1)[[1]], coef(m.lm), tol=1e-6)
     m3 <- glmmTMB(y1~x, offset=o)
     expect_equal(fixef(m3)[[1]], coef(m.lm), tol=1e-6)
@@ -56,7 +56,7 @@ test_that("LM with offset in dispersion formula", {
     expect_equal(sigma(glmmTMB(y1~x, dat)),
                  sigma(glmmTMB(y2~x,disp=~1+offset(log(o2)*2), dat)),
                  tolerance=1e-3)
-    
+
 })
 
 test_that("LM with multiple offsets (cond/dispersion)", {

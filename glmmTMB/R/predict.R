@@ -353,6 +353,9 @@ predict.glmmTMB <- function(object,
       })
   }
 
+  n_orig <- openmp(n = object$modelInfo$parallel)
+  on.exit(openmp(n_orig), add = TRUE)
+
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,

@@ -6,7 +6,14 @@ openmp <- function (n = NULL) {
     if (debug_openmp && !is.null(n)) {
         cat("setting OpenMP threads to ", n, "\n")
     }
-    if (!is.null(n)) n <- as.integer(n)
+    null_arg <- is.null(n)
+    if (!null_arg) n <- as.integer(n)
+    ## only want to warn if attempt to set >1 threads in absence
+    ## of OpenMP support ..
+    if (null_arg || n == 1) {
+      w <- options(warn = -1)
+      on.exit(options(warn = w[["warn"]]))
+    }
     .Call("omp_num_threads", n, PACKAGE = "glmmTMB")
 }
 
@@ -1263,18 +1270,9 @@ fitTMB <- function(TMBStruc) {
     }
 
     ## Assign OpenMP threads
-    ## Warn if OpenMP not supported and threads>1
-    ## FIXME: custom warning?
-    n_orig <- withCallingHandlers(
-        warning=function(cnd) {
-            if (control$parallel==1) {
-                invokeRestart("muffleWarning")
-            }
-        },
-        openmp(NULL)
-    )
+    n_orig <- openmp(NULL)
     ## Only proceed farther if OpenMP *is* supported ...
-  if (n_orig>0) {
+    if (n_orig > 0) {
         openmp(n = control$parallel)
         on.exit({
           openmp(n = n_orig)
