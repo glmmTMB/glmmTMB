@@ -2,7 +2,7 @@ stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
 
-cat("ON CRAN:", testthat:::on_cran(), "\n")
+## cat("ON CRAN:", testthat:::on_cran(), "\n")
 context("bootMer")
 
 fun <- function(x) predict(x)[1]

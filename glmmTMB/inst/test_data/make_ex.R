@@ -1,8 +1,8 @@
 if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
   load(system.file("test_data", "models.rda", package = "glmmTMB"))
 } else {
- library(glmmTMB)
- save_image <- FALSE
+  library(glmmTMB)
+ save_image <- TRUE
 
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
@@ -54,6 +54,34 @@ gm0 <- glmmTMB(cbind(incidence, size-incidence) ~ 1 +      (1|herd),
 gm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd),
                data = cbpp, family=binomial())
 
+ ## covariance structures
+
+  fsleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
+                        row=factor(seq(nrow(sleepstudy))))
+
+ ## two equivalent diagonal constructions
+fm_diag1 <- glmmTMB(Reaction ~ Days + diag(Days| Subject), fsleepstudy)
+fm_diag2 <- glmmTMB(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
+               fsleepstudy)
+fm_diag2_lmer <- lme4::lmer(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
+               fsleepstudy, REML=FALSE)
+
+fm_us1 <- glmmTMB(Reaction ~ Days + (Days| Subject), fsleepstudy)
+fm_cs1 <- glmmTMB(Reaction ~ Days + cs(Days| Subject), fsleepstudy)
+fm_us1_lmer <- lme4::lmer(Reaction ~ Days + ( Days  | Subject),
+               fsleepstudy, REML=FALSE)
+
+fm_cs2 <- glmmTMB(Reaction ~ Days + cs(fDays| Subject), fsleepstudy)
+
+## these would be equivalent to a compound symmetry model with *homog* variance
+fm_nest <- glmmTMB(Reaction ~ Days + (1| Subject/fDays), fsleepstudy)
+fm_nest_lmer <- lme4::lmer(Reaction ~ Days + (1|Subject/fDays), fsleepstudy,
+             REML=FALSE)
+
+## model with ~ Days + ... gives non-pos-def Hessian
+fm_ar1 <- glmmTMB(Reaction ~ 1 +
+                      (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+
 if (save_image) save.image(file="models.rda", version=2)
 
-} ## if not on CRAN
+ } ## if not on CRAN
