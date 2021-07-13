@@ -88,12 +88,12 @@ For backward compatibility, the \code{family} argument can also be specified as 
 For more information about the \pkg{glmmTMB} package, see Brooks et al. (2017) and the \code{vignette(package="glmmTMB")} collection. For the underlying \pkg{TMB} package that performs the model estimation, see Kristensen et al. (2016).
 }
 \examples{
+\donttest{
 (m1 <- glmmTMB(count ~ mined + (1|site),
   zi=~mined,
   family=poisson, data=Salamanders))
 summary(m1)
-\donttest{
-## Zero-inflated negative binomial model
+##' ## Zero-inflated negative binomial model
 (m2 <- glmmTMB(count ~ spp + mined + (1|site),
   zi=~spp + mined,
   family=nbinom2, data=Salamanders))
@@ -127,12 +127,13 @@ dat <- rbind(d1, d2)
 m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 fixef(m0)$disp
 c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
-}
+
 
 ## Using 'map' to fix random-effects SD to 10
 m1_map <- update(m1, map=list(theta=factor(NA)),
                  start=list(theta=log(10)))
 VarCorr(m1_map)
+}
 }
 \references{
 Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., Nielsen, A., Skaug, H. J., Mächler, M. and Bolker, B. M. (2017). glmmTMB balances speed and flexibility among packages for zero-inflated generalized linear mixed modeling. \emph{The R Journal}, \bold{9}(2), 378--400.

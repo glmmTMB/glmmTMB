@@ -841,12 +841,12 @@ binomialType <- function(x) {
 ##' @importFrom stats update
 ##' @export
 ##' @examples
+##' \donttest{
 ##' (m1 <- glmmTMB(count ~ mined + (1|site),
 ##'   zi=~mined,
 ##'   family=poisson, data=Salamanders))
 ##' summary(m1)
-##' \donttest{
-##' ## Zero-inflated negative binomial model
+##' ##' ## Zero-inflated negative binomial model
 ##' (m2 <- glmmTMB(count ~ spp + mined + (1|site),
 ##'   zi=~spp + mined,
 ##'   family=nbinom2, data=Salamanders))
@@ -880,12 +880,13 @@ binomialType <- function(x) {
 ##' m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 ##' fixef(m0)$disp
 ##' c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
-##' }
+##'
 ##'
 ##' ## Using 'map' to fix random-effects SD to 10
 ##' m1_map <- update(m1, map=list(theta=factor(NA)),
 ##'                  start=list(theta=log(10)))
 ##' VarCorr(m1_map)
+##' }
 glmmTMB <- function(
     formula,
     data = NULL,

@@ -4,15 +4,21 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.2(2021-07-07}{
+\section{CHANGES IN VERSION 1.1.2 (2021-07-13}{
   \subsection{BUG FIXES}{
     \itemize{
       \item resolved OpenMP thread-safety issues on Windows
       \item resolved bug that caused Tweedie models to crash on Solaris
       \item resolved problems with vignettes on Solaris (GH #721)
     }
-  }
-}
+  } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item improved control of OpenMP threading for prediction,
+      profiling etc.
+    }
+  } % user-visible changes
+} % version 1.1.2
   
 \section{CHANGES IN VERSION 1.1.0 (2021-06-24)}{
   \subsection{NEW FEATURES}{
