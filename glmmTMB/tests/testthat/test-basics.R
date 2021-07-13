@@ -180,6 +180,7 @@ Owls <- transform(Owls,
                    NCalls= SiblingNegotiation)
 
 test_that("basic zero inflation", {
+       skip_on_cran()
 	expect_true(require("pscl"))
 	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
                               offset(logBroodSize),

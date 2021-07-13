@@ -1,0 +1,932 @@
+% \iffalse meta-comment
+%<=*COPYRIGHT>
+%% Copyright (C) 2012 by Martin Scharrer <martin@scharrer-online.de>
+%% --------------------------------------------------------------------
+%% This work may be distributed and/or modified under the
+%% conditions of the LaTeX Project Public License, either version 1.3
+%% of this license or (at your option) any later version.
+%% The latest version of this license is in
+%%   http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 2005/12/01 or later.
+%%
+%% This work has the LPPL maintenance status `maintained'.
+%%
+%% The Current Maintainer of this work is Martin Scharrer.
+%%
+%% This work consists of the files collectbox.dtx and collectbox.ins
+%% and the derived filebase collectbox.sty.
+%%
+%<=/COPYRIGHT>
+% \fi
+%
+% \iffalse
+%<*driver>
+\ProvidesFile{collectbox.dtx}[%
+%<=*DATE>
+    2012/05/17
+%<=/DATE>
+%<=*VERSION>
+    v0.4b
+%<=/VERSION>
+    DTX File of collectbox]
+\documentclass{ydoc}
+\GetFileInfo{collectbox.dtx}
+\usepackage{collectbox}[\filedate]
+\EnableCrossrefs
+\CodelineIndex
+\RecordChanges
+\OnlyDescription
+\begin{document}
+  \DocInput{collectbox.dtx}
+  \PrintChanges
+  \PrintIndex
+\end{document}
+%</driver>
+% \fi
+%
+% \CheckSum{465}
+%
+% \CharacterTable
+%  {Upper-case    \A\B\C\D\E\F\G\H\I\J\K\L\M\N\O\P\Q\R\S\T\U\V\W\X\Y\Z
+%   Lower-case    \a\b\c\d\e\f\g\h\i\j\k\l\m\n\o\p\q\r\s\t\u\v\w\x\y\z
+%   Digits        \0\1\2\3\4\5\6\7\8\9
+%   Exclamation   \!     Double quote  \"     Hash (number) \#
+%   Dollar        \$     Percent       \%     Ampersand     \&
+%   Acute accent  \'     Left paren    \(     Right paren   \)
+%   Asterisk      \*     Plus          \+     Comma         \,
+%   Minus         \-     Point         \.     Solidus       \/
+%   Colon         \:     Semicolon     \;     Less than     \<
+%   Equals        \=     Greater than  \>     Question mark \?
+%   Commercial at \@     Left bracket  \[     Backslash     \\
+%   Right bracket \]     Circumflex    \^     Underscore    \_
+%   Grave accent  \`     Left brace    \{     Vertical bar  \|
+%   Right brace   \}     Tilde         \~}
+%
+%
+% \changes{v0.1}{2011/07/18}{First release.}
+% \changes{v0.2}{2011/07/20}{Added \cs{collectboxto} and \cs{@collectboxto} macros.}
+% \changes{v0.2}{2011/07/23}{Added \cs{collectboxcheckenv}.}
+% \changes{v0.2a}{2011/07/30}{Small bugfix.}
+% \changes{v0.3}{2011/08/06}{Some internal modifications required by related packages.}
+% \changes{v0.3a}{2011/08/11}{Fixed issue with collectbox macros in the end-code of a collectbox environment.}
+% \changes{v0.4}{2011/08/23}{In environment-mode the begin and end are now placed directly around the content to allow tabular-like environments.
+%                            Added support for tabular-like environments in macro-mode.}
+% \changes{v0.4a}{2012/05/13}{Made use of \cs{noindent} by the environment version optional.}
+% \changes{v0.4b}{2012/05/17}{Added \cs{@Collectbox} macro.}
+%
+%
+% \DoNotIndex{\newcommand,\newenvironment}
+%
+% \GetFileInfo{collectbox.dtx}
+% \author{Martin Scharrer}
+% \email{martin@scharrer-online.de}
+% \repository{https://bitbucket.org/martin_scharrer/collectbox}
+% \maketitle
+%
+% \begin{abstract}
+% This package provides macros to collect and process an macro argument (i.e.\ something which looks like a macro argument)
+% as horizontal box instead as a real macro argument.
+% These ``arguments'' will be stored like when using \Macro\savebox, \Macro\sbox or the \env{lrbox} environment
+% and allow verbatim or other special code.
+% Instead of explicit braces also implicit braces in the form of \Macro\bgroup
+% and \Macro\egroup are supported. This allows to split the begin and end over different macros or to place them
+% in the begin and end code of an environment.
+% The provided macros are mainly intended to be used inside other macros or environments.
+% \end{abstract}
+%
+% \section{Quick overview}
+% The following macros are provided for users (document authors) and \LaTeX\ package authors/programmers and described in the following sections.
+% The \MacroArgs* and \MacroArgs[<\ldots>] arguments are as always optional. The \MacroArgs{<box content>} can also be written as
+% \Macro\bgroup<box content>\AlsoMacro\egroup and be split across macro boundaries.
+%
+% \begingroup
+% \descindent=\parindent
+% \DescribeMacro\collectbox*[<code at begin>]{<code>}[<code at end>]{<box content>}
+% \DescribeMacro\collectboxto{<box register>}{<code>}{<box content>}
+% \DescribeMacro\collectboxcheckenv{<name>}
+%
+% \DescribeMacro\collectbox@{<code at begin>}{<code>}{<code at end>}{<box content>}
+% \DescribeMacro\@collectbox{<code>}{<box content>}
+% \DescribeMacro\@Collectbox{<code>}{<content>}
+% \DescribeMacro\@collectboxto{<box register>}{<token>}{<box content>}
+% \DescribeMacro\nocollectbox@{<code at begin>}{<code>}{<code at end>}
+% \endgroup
+%
+% \section{Dependencies, Compatibility and Installation}
+% This package does not depend on any other \LaTeX\ package or class.
+% It should be compatible with all versions of \LaTeX (DVI-\LaTeX, pdf\LaTeX, Xe\LaTeX\ and Lua\LaTeX).
+% Colored content will be correctly handled.
+%
+% This package should be (soon) part of the standard distributions TeXLive and MikTeX and can be installed over the
+% provided package manager (i.e.\ with TeXLive: |tlmgr install collectcell|).
+% This package can be also manually unpacked from |collectbox.dtx| by compiling the file |collectbox.ins| with \LaTeX\ or \TeX.
+% This documentation can be created by compiling |collectbox.dtx| using pdf\LaTeX\ in DVI or PDF mode.
+% The unpackaged package file |collectbox.sty| should be copied to a newly created directory named |$TEXMF/tex/latex/collectbox/| under Linux
+% or |%TEXMF%\tex\latex\collectbox\| under MS Windows where |$TEXMF| and |%TEXMF%| represents the local \TeX\ tree.
+% The documentation and README file can be copied to |$TEXMF/doc/latex/collectbox/|.
+% Some \TeX\ distributions require to update the list of files in the \TeX\ tree, e.g.\ by running |texmf $TEXMF| afterwards.
+% MikTeX users can use the graphical interface of the package manager.
+%
+%
+% \section{User Interface}
+% The following macros are provided on the user level.
+%
+% \subsection{Macros to collect boxes}
+% \DescribeMacro\collectbox{<code>}{<box content>}
+% \DescribeMacro\collectbox{<code>}\AlsoMacro\bgroup<box content>\AlsoMacro\egroup
+% In its basic form this macro is written as \Macro\collectbox{<code>} and collects the following `group' in explicit (|{ .. }|) or implicit (|\bgroup .. \egroup|) braces
+% as box (here represented as \MacroArgs{<box content>}). Afterwards the user provided \MacroArgs<code> is executed. This code is processed inside an internal group
+% and has access to the just collected content using \Macro\BOXCONTENT and other macros described further below. Usually the code does some calculations and/or modifications
+% on the collected box and then typesets it using \Macro\BOXCONTENT.
+%
+% An example is
+% \codeline{\Macro\collectbox{\AlsoMacro\fbox{\AlsoMacro\BOXCONTENT}}'{\verb+verbatim stuff \space\empty+}'}
+% which results in
+% \codeline{\collectbox{\fbox{\BOXCONTENT}}{\verb+verbatim stuff \space\empty+}}
+%
+% \DescribeMacro\collectbox*{<code>}{<box content>}
+% \DescribeMacro\collectbox*{<code>}\AlsoMacro\bgroup<box content>\AlsoMacro\egroup
+% Because very often the \Macro\BOXCONTENT is simply fed as argument to a macro at the end of the \MacroArgs<code> a star version exists which adds \MacroArgs{\AlsoMacro\BOXCONTENT} automatically
+% to the end of the code.
+%
+% An above example can be therefore simplified as:
+% \codeline{\Macro\collectbox*{\AlsoMacro\fbox}'{\verb+verbatim stuff \space\empty+}'}
+% which results in:
+% \codeline{\collectbox*{\fbox}{\verb+verbatim stuff \space\empty+}}
+%
+% \noindent
+% Using this macro a \Macro\fbox variant can be defined which reads its content as real box and not as macro argument:
+% \codeline{\Macro\newcommand{\AlsoMacro\Fbox}{\AlsoMacro\collectbox*{\AlsoMacro\fbox}}}
+%
+% \DescribeMacro\collectbox [<code at begin>]{<code>}[<code at end>]{<box content>}
+% \DescribeMacro\collectbox [<code at begin>]{<code>}[<code at end>]\AlsoMacro\bgroup<box content>\AlsoMacro\egroup
+% \DescribeMacro\collectbox*[<code at begin>]{<code>}[<code at end>]{<box content>}
+% \DescribeMacro\collectbox*[<code at begin>]{<code>}[<code at end>]\AlsoMacro\bgroup<box content>\AlsoMacro\egroup
+% Finally two optional arguments exists which allow the placement of further code at the beginning and end of the collected box.
+% This code is part of the box and is expanded before the main \MacroArgs<code> which is expanded after the box is fully collected.
+% In other words \Macro\collectbox!\optionaloff! [<code at begin>]{<code>}[<code at end>]{<box content>} is basically the same as
+% \Macro\collectbox{<code>}{<code at begin><.><box content><.><code at end>}, with the difference that the first form allows an user defined macro
+% to set the begin and end code while the box content is provided by the user.
+% Note that there is also some internal code \meta{.} between \meta{code at begin} and \meta{box content} as well as between \meta{box content} and \meta{code at end}.
+%
+% \paragraph{Example:} \leavevmode\Macro\fbox like macro which reads its ``argument'' as box and sets it green first:
+% \begin{macroquote}
+%  \newcommand!\optionaloff!{\AlsoMacro\GFbox}{\AlsoMacro\collectbox*[\AlsoMacro\color{green}]{\AlsoMacro\fbox}}\\
+%  \GFbox{'test $a=4$ \verb|\relax|'}
+% \end{macroquote}
+% will result in:
+% {\newcommand{\GFbox}{\collectbox*[\color{green}]{\fbox}}%
+%  \GFbox{test $a=4$ \verb|\relax|}}
+%
+%
+% \DescribeMacro\collectedbox
+% This macro represents the box register defined by \Macro\newsavebox\relax which holds the collected box.
+% It can be used with the \LaTeX's macro \Macro\usebox{<box register>} or with plain\TeX\
+% macros like \Macro\box, \Macro\copy, \Macro\unhbox or \Macro\unhcopy.
+%
+% \DescribeMacro\BOXCONTENT
+% This macro is short for \Macro\usebox{\AlsoMacro\collectedbox} and will place the collected box into the document. It can be used multiple times inside \MacroArgs<code>.
+%
+% \DescribeMacro\width
+% \DescribeMacro\height
+% \DescribeMacro\depth
+% \DescribeMacro\totalheight
+% These macros represent the dimension of the collected box and can be used inside \MacroArgs<code>\relax. Here \Macro\height is the height of the box above the baseline
+% and \Macro\depth the lengths how far the box is going below the baseline. Both values added together are provides as \Macro\totalheight.
+% The box width is given by \Macro\width.
+%
+%
+% \DescribeMacro\collectboxto{<box register>}[<code at begin>]{<code>}[<code at end>]{<box content>}
+% \DescribeMacro\collectboxto{<box register>}[<code at begin>]{<code>}[<code at end>]\AlsoMacro\bgroup<box content>\AlsoMacro\egroup
+% This macro collects its last ``argument'' as horizontal box and stores into into the user provided \meta{box register}.
+% The \meta{code at begin} and \meta{code at end} are executed at begin and end of the \meta{box content} as part of the box.
+% Afterwards the user provided \meta{code} is executed. In contrast to \Macro\collectbox no group is added for both the box register assignment or the code
+% and also none of the above auxiliary macros for the box dimensions and content can be used. The collected box can be typeset using \Macro\usebox{<box register>}
+% and its width, height and depth dimensions can be accessed using the \TeX\ primitives \Macro\wd<box register>, \Macro\ht<box register>, \Macro\dp<box register>.
+%
+% Appropriate grouping must be added manually if the overall code should be kept local. Proper places to open and close the group is somewhere before
+% the \Macro\collectboxto macro and in the \meta{code} after the box was used, respectively.
+% The box register must be declared beforehand using \Macro\newsavebox\relax (\LaTeX) or \Macro\newbox (\TeX).
+% The provided box register \Macro\collectedbox can be used here but will be overwritten by further usages of most of the macros of this package.
+% The \LaTeX\ code also provides \Macro\@tempboxa for temporary usages.
+%
+% This macro can be used to create macros which collect more than one argument as box. For this two box registers are required and the \meta{code} of the
+% first \Macro\collectboxto usage must call it second time. The second \meta{code} then typesets the two boxes.
+%
+% \subsection{Support for environments}
+%
+% \DescribeMacro\collectboxcheckenv{<name>}
+% This macro allows macros which use \Macro\collectbox to also be used as an environment.
+% For this \Macro\collectboxcheckenv must be used before \Macro\collectbox with the macro name as argument.
+% It then detects if the macro is used by itself or is called by \Macro\begin{<name>} and adjusts the internal configuration
+% accordantly. In macro-mode it does not change anything, but in environment-mode a \Macro\begingroup is used to keep the configuration changes local.
+% The corresponding \Macro\end<name> macro need to close then both the box group using \Macro\egroup and then close the outer group \Macro\engroup.
+% A suitable version is automatically defined if this macro doesn't exists yet.
+% In environment-mode starting and trailing spaces are ignored which is also the normal behaviour of similar environments like \env{minipage}.
+%
+% \paragraph{Example:} Defines \Macro\foobar macro which can also be used as \env{foobar} environment.
+% \begin{codequote}
+%     \AlsoMacro\newcommand'*'{\Macro\foobar}'{%'\\
+%     !\mbox{}!~~~~\AlsoMacro\collectboxcheckenv{foobar}'%'\\
+%     !\mbox{}!~~~~\AlsoMacro\collectbox'*'{\Macro\fbox}'%'\\
+%     '}'%
+% \end{codequote}
+%
+%
+% \section{Programmers Interface}
+%
+% For the package author/programmer and more advanced users the following internal macros are provided.
+% If used inside a document file they must be wrapped inside \Macro\makeatletter and \Macro\makeatother\relax (outside the macro which uses them).
+%
+% \DescribeMacro\collectbox@{<code at begin>}{<code>}{<code at end>}{<box content>}
+% This macro is the internal form of \Macro\collectbox with the optional arguments replaced by mandatory ones.
+% The \Macro\collectbox macro itself uses it after checking for and reading the optional arguments.
+% If this macro is to be used in other macros this overhead can be avoided by using the internal form directly.
+% Not used optional arguments can be simply kept empty. The star version is not supported but can be easily substituted by
+% manually placing the \MacroArgs{\Macro\BOXCONTENT} at the end of \MacroArgs<code>.
+%
+% The above example can therefore be written in the faster processed form:
+% \begin{macroquote}
+%  \makeatletter\\
+%  \newcommand!\optionaloff!{\AlsoMacro\GFbox}{\AlsoMacro\collectbox@{\AlsoMacro\color{green}}{\AlsoMacro\fbox}{}}\\
+%  \makeatother\\
+%  \GFbox{test $a=4$ \verb|\relax|}%
+% \end{macroquote}
+% which results in:
+% {\makeatletter
+%  \newcommand{\GFbox}{\collectbox@{\color{green}}{\fbox{\BOXCONTENT}}{}}%
+%  \makeatother
+%  \GFbox{test $a=4$ \verb|\relax|}%
+% }
+%
+%
+% \DescribeMacro\@collectbox{<code>}{<box content>}
+% This macro is a short version of \Macro\collectbox and only accepts one argument \MacroArgs<code> besides the later \meta{box content}.
+% It is intended for quick version for macros which do not need to insert code at begin or after the box content.
+%
+% \DescribeMacro\@Collectbox{<code>}{<content>}
+% This macro is similar to \Macro\@collectbox but reads the content as macro argument and
+% not as a box. This is more efficient but does not allow for special content like verbatim text.
+% This macro is indented for applications when an already boxed but now modified content needs
+% to be boxed again, like it is done by \pkg{adjustbox}.
+%
+%
+% \DescribeMacro\collectboxto@{<code at begin>}{<code>}{<code at end>}{<box content>}
+% This macro is the internal form of \Macro\collectboxto with the optional arguments replaced by mandatory ones.
+% The \Macro\collectboxto macro itself uses it after checking for and reading the optional arguments.
+% If this macro is to be used in other macros this overhead can be avoided by using the internal form directly.
+% Not used optional arguments can be simply kept empty.
+%
+% \DescribeMacro\@collectboxto{<box register>}{<code>}{<box content>}
+% This macro is a short version of \Macro\collectboxto and only accepts one \meta{code} argument.
+% It is intended for quick version for macros which do not need to insert code at begin or after the box content.
+%
+% \DescribeMacro\nocollectbox@{<code at begin>}{<code>}{<code at end>}
+% Turns a following brace group into basically \Macro\hbox{<code at begin><content><code at end>}<code>.
+% This is useful if a box needs to be build like that but no actual processing of the content is required, e.g.\ for horizontal alignment only.
+% Note that there are some internal code between the three code arguments.
+%
+%
+% \StopEventually{}
+%
+% \section{Implementation}
+%
+% \iffalse
+%<*collectbox.sty>
+% \fi
+%    \begin{macrocode}
+%<!COPYRIGHT>
+\NeedsTeXFormat{LaTeX2e}[1999/12/01]
+\ProvidesPackage{collectbox}[%
+%<!DATE>
+%<!VERSION>
+%<*DRIVER>
+    2099/01/01 develop
+%</DRIVER>
+    Collect macro arguments as boxes]
+%    \end{macrocode}
+%
+% \begin{macro}{\collectedbox}
+% Box register used to store collected box.
+%    \begin{macrocode}
+\newsavebox\collectedbox
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\collectbox}
+% User level interface. Scans for potential star and optional arguments.
+%    \begin{macrocode}
+\newcommand*\collectbox{%
+    \@ifstar
+        {\collectbox@a{{\BOXCONTENT}}}%
+        {\collectbox@a{}}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@a}
+%    \begin{macrocode}
+\long\def\collectbox@a#1{%
+    \@ifnextchar[%
+        {\collectbox@b{#1}}%
+        {\collectbox@b{#1}[]}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@b}
+%    \begin{macrocode}
+\long\def\collectbox@b#1[#2]#3{%
+    \@ifnextchar[%
+        {\collectbox@c{#2}{#3#1}}%
+        {\collectbox@c{#2}{#3#1}[]}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@c}
+%    \begin{macrocode}
+\long\def\collectbox@c#1#2[#3]{%
+    \collectbox@{#1}{#2}{#3}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\collect@box}
+% The box primitive used. Might be locally redefined to \Macro\vbox if required.
+%    \begin{macrocode}
+\let\collect@box\hbox
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\collectbox@mode}
+%
+%    \begin{macrocode}
+\let\collectbox@mode\leavevmode
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\collectbox@}
+% The box is saved using |\setbox|. Color is supported by using |\collectbox@setgroup|.
+% A brace group is then opened using |\bgroup| which will replace the opening brace of the
+% ``argument''. The end code is installed in this group using |\aftergroup|.
+% The opening brace written by the user is then removed by assigning it as token to a dummy variable.
+% If no |{| or |\bgroup| follows the next token is taken as sole content.
+%    \begin{macrocode}
+\newcommand\collectbox@[3]{%
+    \begingroup
+    \collectbox@mode
+    \@temptokena{#3\collectbox@end#2\endgroup}%
+    \setbox\collectedbox\collect@box\bgroup
+       \collectbox@setgroup
+       #1\bgroup
+       \aftergroup\the
+       \aftergroup\@temptokena
+       \collectbox@bgroup
+}
+\let\collectbox@macro\collectbox@
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\collectbox@env}
+%    \begin{macrocode}
+\newcommand\collectbox@env[3]{%
+    \collectbox@mode
+    \def\collectboxenvend{#3\collectbox@end#2\collectbox@currenvir}%
+    \setbox\collectedbox\collect@box\bgroup
+       \collectbox@setgroup
+       \collectbox@reset
+       \ignorespaces
+       #1%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@currenenvir}
+%    \begin{macrocode}
+\def\collectbox@currenvir{%
+    \edef\@currenvir{\@currenvir}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@bgroup}
+%    \begin{macrocode}
+\def\collectbox@macro@bgroup{%
+    \@ifnextchar\bgroup
+        {\let\@let@token=}%
+        {\collectbox@arg}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \begin{macro}{\collectbox@env@bgroup}
+%    \begin{macrocode}
+\def\collectbox@env@bgroup{%
+    \collectbox@reset
+    \ignorespaces
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\let\collectbox@bgroup\collectbox@macro@bgroup
+%    \end{macrocode}
+%
+%
+% \begin{macro}{\collectbox@setgroup}
+% Used at the very begin of the stored box.
+%    \begin{macrocode}
+\def\collectbox@setgroup{%
+    \color@setgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@endgroup}
+% Used at the very end of the stored box.
+%    \begin{macrocode}
+\def\collectbox@endgroup{%
+    \collectbox@endcode
+    \color@endgroup
+}
+\let\collectbox@endcode\relax
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\@collectbox}
+% Simpler and quicker version of \Macro\collectbox.
+%    \begin{macrocode}
+\newcommand\@collectbox[1]{%
+    \begingroup
+    \collectbox@mode
+    \@temptokena{\collectbox@end#1\endgroup}%
+    \setbox\collectedbox\collect@box\bgroup
+       \collectbox@setgroup\bgroup
+       \aftergroup\the
+       \aftergroup\@temptokena
+       \collectbox@bgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\@Collectbox}
+% Specialised version of \Macro\@collectbox which
+% reads the content as macro argument.
+% This form should (only) be used if reading the content
+% as box is not required, i.e.\ if the content
+% was already boxed before and is now boxed again,
+% as it is done by e.g.\ \pkg{adjustbox}.
+%    \begin{macrocode}
+\newcommand\@Collectbox[2]{%
+    \begingroup
+    \collectbox@mode
+    \sbox\collectedbox{#2}%
+    \collectbox@setdims
+    #1%
+    \endgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+%
+% \begin{macro}{\collectbox@arg}
+% Supports |\collectbox{<code>}\somemacro| in addition to
+% |\collectbox{<code>}{\somemacro}|. The first following token is read and the inner brace group is closed
+% to trigger the |\aftergroup| code.
+%    \begin{macrocode}
+\def\collectbox@arg#1{%
+    #1\egroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@end}
+% The color group is first closed, followed by the closing brace of the |\setbox| command.
+% The user dimension macros are then defined.
+% Direct after this code the users code is processed and concluded with a |\endgroup|.
+%    \begin{macrocode}
+\def\collectbox@end{%
+    \collectbox@endgroup
+    \egroup
+    \collectbox@setdims
+    \ifcollectboxenv
+        \collectbox@reset
+        \collectbox@currenvir
+    \fi
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@setdims}
+%    \begin{macrocode}
+\def\collectbox@setdims{%
+    \collectbox@protecteddef\BOXCONTENT{\usebox\collectedbox}%
+    \collectbox@protecteddef\width{\wd\collectedbox}%
+    \collectbox@protecteddef\height{\ht\collectedbox}%
+    \collectbox@protecteddef\depth{\dp\collectedbox}%
+    \collectbox@protecteddef\totalheight{\@ovri}%
+    \totalheight\height
+    \advance\totalheight\depth
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@reset}
+%    \begin{macrocode}
+\def\collectbox@reset{%
+    \let\collectbox@endcode\relax
+    \let\collectbox@bgroup\collectbox@macro@bgroup
+    \let\collectbox@\collectbox@macro
+    \collectboxenvfalse
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@protecteddef}
+%    \begin{macrocode}
+\begingroup
+\expandafter\ifx\csname protected\endcsname\relax
+    \let\collectbox@protecteddef\def%
+\else
+    \gdef\collectbox@protecteddef{\protected\def}%
+\fi
+\endgroup
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@code}
+% Global storage macro for user code.
+%    \begin{macrocode}
+\let\collectbox@code\empty
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxto}
+% User level interface. Reads box register and checks for optional argument.
+%    \begin{macrocode}
+\newcommand\collectboxto[1]{%
+    \@ifnextchar[%
+        {\collectboxto@a{#1}}%
+        {\collectboxto@a{#1}[]}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxto@a}
+% Reads first optional and next mandatory arguments.
+%    \begin{macrocode}
+\long\def\collectboxto@a#1[#2]#3{%
+    \@ifnextchar[%
+        {\collectboxto@b{#1}{#2}{#3}}%
+        {\collectboxto@b{#1}{#2}{#3}[]}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxto@b}
+% Reads second optional argument.
+%    \begin{macrocode}
+\long\def\collectboxto@b#1#2#3[#4]{%
+    \collectboxto@{#1}{#2}{#3}{#4}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxto@}[4]{box register}{code at begin}{code}{code at end}
+% Installs code and starts to collect the box.
+%    \begin{macrocode}
+\newcommand\collectboxto@[4]{%
+    \collectbox@mode
+    \setbox#1\collect@box\bgroup
+       \def\collectbox@code{#4\collectbox@endgroup\egroup#3}%
+       \collectbox@setgroup#2\bgroup
+       \aftergroup\collectbox@code
+       \collectbox@bgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\@collectboxto}
+% Collects the next brace group as hbox into box register |#1| and executes token |#2| afterwards.
+%    \begin{macrocode}
+\newcommand\@collectboxto[2]{%
+    \collectbox@mode
+    \setbox#1\collect@box\bgroup
+       \def\collectbox@code{\collectbox@endgroup\egroup#2}%
+       \collectbox@setgroup\bgroup
+       \aftergroup\collectbox@code
+       \collectbox@bgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\nocollectbox@}[3]{<code at begin>}{<code>}{<code at end>}
+% Turns a brace group into \Macro\hbox{<code at begin><content><code at end>}<code>.
+%    \begin{macrocode}
+\newcommand\nocollectbox@[3]{%
+    \collectbox@mode
+    \collect@box\bgroup
+       \def\collectbox@code{#3\egroup#2}%
+       #1\bgroup
+       \aftergroup\collectbox@code
+       \collectbox@bgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\nocollectbox@to}[4]{<length>}{<code at begin>}{<code>}{<code at end>}
+% Turns a brace group into \Macro\hbox' to '<length>{<code at begin><content><code at end>}<code>.
+%    \begin{macrocode}
+\newcommand\nocollectbox@to[4]{%
+    \collectbox@mode
+    \collect@box to #1\bgroup
+       \def\collectbox@code{#4\egroup#3}%
+       #2\bgroup
+       \aftergroup\collectbox@code
+       \collectbox@bgroup
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxcheckenv}
+% Checks if current macro is used as environment given by |#1|.
+% If so the |bgroup| eating macro is redefined.
+% A suitable end-macro is provided if non exists. All of this is done inside
+% a group to keep thing local.
+% The \Macro\@currenvir macro is redefined to contain \Macro\empty so that
+% macros with the same name can be used inside the environment without collisions.
+% This requires an extra internal group so that this change is reverted before the
+% \Macro\end macro.
+%    \begin{macrocode}
+\newcommand*\collectboxcheckenv[1]{%
+    \begingroup
+    \def\@tempa{#1}%
+    \expandafter\endgroup
+    \ifx\@currenvir\@tempa
+        \@collectboxisenv{#1}%
+    \fi
+}
+\def\@collectboxisenv#1{%
+    \collectbox@noindent
+    \collectboxenvtrue
+    \edef\@currenvir{\@currenvir\noexpand\empty}%
+    \let\collectbox@bgroup\collectbox@env@bgroup
+    \let\collectbox@endcode\collectbox@env@endcode
+    \let\collectbox@\collectbox@env
+    \expandafter\ifx\csname end#1\endcsname\relax
+        \expandafter\let\csname end#1\endcsname\collectbox@envend
+    \fi
+}
+\newif\ifcollectboxenv
+\let\collectbox@noindent\noindent
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@env@endcode}
+%    \begin{macrocode}
+\def\collectbox@env@endcode{\ifhmode\unskip\fi}%
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@envend}
+%    \begin{macrocode}
+\def\collectbox@envend{\collectboxenvend}%
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxenvend}
+%    \begin{macrocode}
+\def\collectboxenvend{%
+    \egroup
+    \collectbox@currenvir
+}%
+%    \end{macrocode}
+% \end{macro}
+%
+% \subsection{Tabular collection}
+%
+% \begin{macro}{\collectboxtabular}
+%    \begin{macrocode}
+\newcommand\collectboxtabular[3][c]{%
+    \collectbox@tab{tabular}{[#1]{#2}}{}{#3}{}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxtabularstar}
+%    \begin{macrocode}
+\newcommand\collectboxtabularstar[4][c]{%
+    \collectbox@tab{tabular*}{[#1]{#2}{#3}}{}{#4}{}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectboxarray}
+%    \begin{macrocode}
+\newcommand\collectboxarray[2]{%
+    \collectbox@tab{array}{{#1}}{\(}{#2}{\)}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@checkarray}
+%    \begin{macrocode}
+\def\collectbox@checkarray{%
+\@ifpackageloaded{array}{%
+    \let\collectbox@realarraycr\@arraycr
+    \def\collectbox@setarraycr{%
+        \let\@arraycr\collebox@cr
+        \def\ialign{\let\@arraycr\collectbox@realarraycr \everycr {}\tabskip \z@skip \halign}%
+    }%
+}{%
+    \let\collectbox@realarraycr\@tabularcr
+    \def\collectbox@setarraycr{%
+        \let\@tabularcr\collebox@cr
+        \def\ialign{\let\noexpand\@tabularcr\noexpand\collectbox@realarraycr \everycr {}\tabskip \z@skip \halign}%
+    }%
+}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\collectbox@checkarray
+\AtBeginDocument{\collectbox@checkarray}%
+%    \end{macrocode}
+%
+% \begin{macro}{\collectbox@dorealarraycr}
+%    \begin{macrocode}
+\def\collectbox@dorealarraycr{%
+    \expandafter\collectbox@realarraycr\collectbox@aftercrstuff
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%    \begin{macrocode}
+\let\collectbox@aftercrstuff\empty
+%    \end{macrocode}
+%
+% \begin{macro}{\collectbox@tab}
+%    \begin{macrocode}
+\def\collectbox@tab#1#2#3#4#5{%
+    \begingroup
+    \collectbox@mode
+    \def\collectbox@codeafter{#4\endgroup}%
+    \def\collectbox@endtabenv{\end{#1}#5\collectbox@end}%
+    \def\collectbox@dotab{#3\begin{#1}#2}%
+    \setbox\collectedbox\collect@box\bgroup
+       \collectbox@setgroup
+       \collectbox@setarraycr
+       \afterassignment\collectbox@dotab
+       \let\@let@token=%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collebox@cr}
+%    \begin{macrocode}
+\def\collebox@cr{%
+    \@ifstar\collebox@@cr\collebox@@cr%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collebox@@cr}
+%    \begin{macrocode}
+\def\collebox@@cr{%
+    \@ifnextchar[%
+        \collebox@@cr@opt
+        {\collebox@@@cr{}}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collebox@@cr@opt}
+%    \begin{macrocode}
+\def\collebox@@cr@opt[#1]{%
+    \collebox@@@cr{[#1]}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collebox@@@cr}
+%    \begin{macrocode}
+\def\collebox@@@cr#1{%
+    \def\collectbox@aftercrstuff{#1}%
+    \expandafter\collebox@@@@cr
+    \romannumeral-`0%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collebox@@@@cr}
+%    \begin{macrocode}
+\def\collebox@@@@cr{%
+    \@ifnextchar\egroup{\collectbox@dorealarraycr\collectbox@aftertab}{%
+        \ifx\@let@token\noalign
+            \expandafter\collectbox@handlenoalign
+        \else
+            \expandafter\collectbox@dorealarraycr
+        \fi
+    }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@handlenoalign}
+%    \begin{macrocode}
+\def\collectbox@handlenoalign#1#2{%
+    \collectbox@dorealarraycr
+    \noalign{\bgroup\aftergroup\collectbox@afternoalign#2}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@handlenextnoalign}
+%    \begin{macrocode}
+\def\collectbox@handlenextnoalign#1#2{%
+    \egroup
+    \noalign{\bgroup\aftergroup\collectbox@afternoalign#2}%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@afternoalign}
+%    \begin{macrocode}
+\def\collectbox@afternoalign{%
+    \expandafter\collectbox@@afternoalign
+    \romannumeral-`0%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@@afternoalign}
+%    \begin{macrocode}
+\def\collectbox@@afternoalign{%
+    \@ifnextchar\egroup{\egroup\collectbox@aftertab}{%
+        \ifx\@let@token\noalign
+            \expandafter\collectbox@handlenextnoalign
+        \else
+            \expandafter\egroup
+        \fi
+    }%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+%
+% \begin{macro}{\collectbox@aftertab}
+%    \begin{macrocode}
+\def\collectbox@aftertab{%
+    \collectbox@endtabenv
+    \afterassignment\collectbox@codeafter
+    \let\@let@token=%
+}
+%    \end{macrocode}
+% \end{macro}
+%
+% \iffalse
+%</collectbox.sty>
+% \fi
+%
+% \Finale
+% \endinput

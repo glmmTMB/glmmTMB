@@ -13,7 +13,7 @@ distFits <- function(fit1, fit2) {
 }
 
 test_that("profile method", {
-
+  skip_on_cran()
     myfit <- function(...) {
         glmmTMB(count ~ mined * spp + (1|site),
                 family = poisson,
@@ -47,6 +47,7 @@ test_that("profile method", {
 
 test_that("parallel regions", {
 
+  skip_on_cran()
 
   myfit <- function(...) {
     glmmTMB(count ~ mined * spp + (1|site),

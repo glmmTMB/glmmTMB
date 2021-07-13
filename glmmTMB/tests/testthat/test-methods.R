@@ -395,6 +395,7 @@ test_that("simplified coef(.) printing", {
 
 ## weird stuff here with environments, testing ...
 test_that("various binomial response types work", {
+  skip_on_cran()
     ## FIXME: test for factors, explicit cbind(.,.)
     ## do we need to define this within this scope?
     ddb <- data.frame(y=I(yb))

@@ -85,6 +85,7 @@ test_that("count distributions", {
 
 context("fitting exotic families")
 test_that("beta", {
+  skip_on_cran()
     set.seed(101)
     nobs <- 200; eps <- 0.001; phi <- 0.1
     dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
@@ -106,6 +107,7 @@ test_that("beta", {
  })
 
 test_that("nbinom", {
+    skip_on_cran()
     nobs <- 200; phi <- 0.1
     set.seed(101)
     dd0 <- simfun0(nobs=nobs)
@@ -160,6 +162,7 @@ test_that("nbinom", {
  })
 
 test_that("dbetabinom", {
+    skip_on_cran()
     set.seed(101)
     nobs <- 200; eps <- 0.001; phi <- 0.1
     dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
@@ -232,6 +235,7 @@ test_that("dbetabinom", {
 })
 
 test_that("truncated", {
+    skip_on_cran()
     ## Poisson
     set.seed(101)
     z_tp <<- rpois(1000,lambda=exp(1))
@@ -308,6 +312,7 @@ test_that("truncated", {
 
 ##Genpois
 test_that("truncated_genpois",{
+  skip_on_cran()
     tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_genpois())
     tgpdat <<- data.frame(y=simulate(tgp1)[,1])
     tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
@@ -324,6 +329,7 @@ test_that("truncated_genpois",{
 context("trunc compois")
 ##Compois
 test_that("truncated_compois",{
+    skip_on_cran()
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	tcmp1 <<- glmmTMB(y~f, cmpdat, family= truncated_compois())
@@ -334,6 +340,7 @@ test_that("truncated_compois",{
 
 context("compois")
 test_that("compois", {
+    skip_on_cran()
 #	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 #	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	cmp1 <<- glmmTMB(y~f, cmpdat, family=compois())
@@ -344,6 +351,7 @@ test_that("compois", {
 
 context("genpois")
 test_that("genpois", {
+    skip_on_cran()
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
 	gen1 <<- glmmTMB(y~1, family=genpois(), gendat)
 	expect_equal(unname(fixef(gen1)$cond), 2.251292, tol=1e-6)
@@ -352,6 +360,7 @@ test_that("genpois", {
 
 context("tweedie")
 test_that("tweedie", {
+    skip_on_cran()
     ## Boiled down tweedie:::rtweedie :
     rtweedie <- function (n, xi = power, mu, phi, power = NULL)
     {
