@@ -54,6 +54,7 @@ test_that("Basic Gaussian Sleepdata examples", {
 })
 
 test_that("Update Gaussian", {
+  skip_on_cran()
   ## call doesn't match (formula gets mangled?)
   ## timing different
   fm1u <- update(fm0, . ~ . + Days)
@@ -62,6 +63,7 @@ test_that("Update Gaussian", {
 
 
 test_that("Variance structures", {
+  skip_on_cran()
   ## above: fm2     <- glmmTMB(Reaction ~ Days +     (Days| Subject), sleepstudy)
   expect_is(fm2us   <- glmmTMB(Reaction ~ Days +   us(Days| Subject), sleepstudy), "glmmTMB")
   expect_is(fm2cs   <- glmmTMB(Reaction ~ Days +   cs(Days| Subject), sleepstudy), "glmmTMB")
@@ -77,13 +79,7 @@ test_that("Sleepdata Variance components", {
                  tolerance=1e-5)
 })
 
-gm0 <<- glmmTMB(cbind(incidence, size-incidence) ~ 1 +      (1|herd),
-               data = cbpp, family=binomial())
-gm1 <<- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd),
-               data = cbpp, family=binomial())
-
 test_that("Basic Binomial CBPP examples", {
-
     ## Basic Binomial CBPP examples ---- intercept-only fixed effect
     expect_is(gm0, "glmmTMB")
     expect_is(gm1, "glmmTMB")
@@ -181,21 +177,21 @@ data(Owls)
 ## is <<- necessary ... ?
 Owls <- transform(Owls,
                    ArrivalTime=scale(ArrivalTime,center=TRUE,scale=FALSE),
-                   NCalls= SiblingNegotiation) 
+                   NCalls= SiblingNegotiation)
 
 test_that("basic zero inflation", {
 	expect_true(require("pscl"))
-	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
-                              offset(logBroodSize), 
+	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
+                              offset(logBroodSize),
                           ziformula=~1, data = Owls,
                           family=poisson(link = "log"))
-	o0.pscl <-zeroinfl(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
+	o0.pscl <-zeroinfl(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
         offset(logBroodSize)|1, data = Owls)
     expect_equal(summary(o0.pscl)$coefficients$count, summary(o0.tmb)$coefficients$cond, tolerance=1e-5)
     expect_equal(summary(o0.pscl)$coefficients$zero, summary(o0.tmb)$coefficients$zi, tolerance=1e-5)
- 
-    o1.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent + 
-        offset(logBroodSize) + diag(1 | Nest), 
+
+    o1.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
+        offset(logBroodSize) + diag(1 | Nest),
         ziformula=~1, data = Owls, family=poisson(link = "log"))
 	expect_equal(ranef(o1.tmb)$cond$Nest[1,1], -0.484, tolerance=1e-2) #glmmADMB gave -0.4842771
 })
@@ -208,7 +204,7 @@ test_that("alternative binomial model specifications", {
     m1 <- glmmTMB((y>5)~1,data=d,family=binomial)
     m2 <- glmmTMB(factor(y>5)~1,data=d,family=binomial)
     expect_equal(c(unname(logLik(m1))),-6.931472,tol=1e-6)
-    expect_equal(c(unname(logLik(m2))),-6.931472,tol=1e-6)          
+    expect_equal(c(unname(logLik(m2))),-6.931472,tol=1e-6)
 
 })
 

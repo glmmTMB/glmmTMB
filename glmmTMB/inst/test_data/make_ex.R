@@ -1,5 +1,8 @@
-library("glmmTMB")
-save_image <- FALSE
+if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
+  load(system.file("test_data", "models.rda", package = "glmmTMB"))
+} else {
+ library(glmmTMB)
+ save_image <- FALSE
 
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
@@ -46,5 +49,11 @@ f3b <- glmmTMB(prop ~ 1, weights=w, family=binomial(),
 f4b <- glmmTMB(y[,1]/w ~ 1, weights=w, family=binomial(),
                    data=ddb)
 
+gm0 <- glmmTMB(cbind(incidence, size-incidence) ~ 1 +      (1|herd),
+               data = cbpp, family=binomial())
+gm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd),
+               data = cbpp, family=binomial())
+
 if (save_image) save.image(file="models.rda", version=2)
 
+} ## if not on CRAN
