@@ -22,6 +22,8 @@ binary
 passive
 cd R-devel
 put $tarball
+cd ../R-release
+put $tarball
 bye
 EOT
 git checkout -- glmmTMB/DESCRIPTION
