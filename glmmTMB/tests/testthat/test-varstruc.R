@@ -4,35 +4,12 @@ stopifnot(require("testthat"),
 source(system.file("test_data/glmmTMB-test-funs.R",
                    package="glmmTMB", mustWork=TRUE))
 
-data(sleepstudy, cbpp,
-     package = "lme4")
-sleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
-                        row=factor(seq(nrow(sleepstudy))))
+data(sleepstudy, cbpp, package = "lme4")
+
+## fsleepstudy and fitted models come from inst/test_data/models.rda
+## OR running inst/test_data/make_ex.R
 
 context("variance structures")
-
-## two equivalent diagonal constructions
-fm_diag1 <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy)
-fm_diag2 <- glmmTMB(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
-               sleepstudy)
-fm_diag2_lmer <- lmer(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subject),
-               sleepstudy, REML=FALSE)
-
-fm_us1 <- glmmTMB(Reaction ~ Days + (Days| Subject), sleepstudy)
-fm_cs1 <- glmmTMB(Reaction ~ Days + cs(Days| Subject), sleepstudy)
-fm_us1_lmer <- lmer(Reaction ~ Days + ( Days  | Subject),
-               sleepstudy, REML=FALSE)
-
-fm_cs2 <- glmmTMB(Reaction ~ Days + cs(fDays| Subject), sleepstudy)
-
-## these would be equivalent to a compound symmetry model with *homog* variance
-fm_nest <- glmmTMB(Reaction ~ Days + (1| Subject/fDays), sleepstudy)
-fm_nest_lmer <- lmer(Reaction ~ Days + (1|Subject/fDays), sleepstudy,
-             REML=FALSE)
-
-## model with ~ Days + ... gives non-pos-def Hessian
-fm_ar1 <- glmmTMB(Reaction ~ 1 +
-                      (1|Subject) + ar1(row+0| Subject), sleepstudy)
 
 test_that("diag", {
    ## two formulations of diag and lme4 all give same log-lik
@@ -66,19 +43,20 @@ test_that("print ar1 (>1 RE)", {
                 trimws(capture.output(print(summary(fm_ar1),digits=1))))
     expect_equal(cco[12:14],
                  c("Subject (Intercept) 4e-01 0.6",
-                   "Subject.1 row1 4e+03 60.8 0.87 (ar1)", 
+                   "Subject.1 row1 4e+03 60.8 0.87 (ar1)",
                    "Residual 8e+01 8.9"))
 
 })
 
 test_that("ar1 requires factor time", {
+  skip_on_cran()
     expect_error(glmmTMB(Reaction ~ 1 +
-                             (1|Subject) + ar1(as.numeric(row)+0| Subject), sleepstudy),
+                             (1|Subject) + ar1(as.numeric(row)+0| Subject), fsleepstudy),
                  "expects a single")
     ## works even when the factor is a weird/hard-to-recognize component
     expect_is(glmmTMB(Reaction ~ 1 +
                           (1|Subject) + ar1(relevel(factor(row),"2")+0| Subject),
-                      sleepstudy),
+                      fsleepstudy),
               "glmmTMB")
 })
 
@@ -91,6 +69,7 @@ get_vcout <- function(x,g="\\bSubject\\b") {
 }
 
 test_that("varcorr_print", {
+    skip_on_cran()
     ss <- get_vcout(fm_cs1)
     expect_equal(length(ss),5)
     expect_equal(ss[4:5],c("0.081","(cs)"))
@@ -109,13 +88,14 @@ test_that("varcorr_print", {
     cc <- squash_white(capture.output(print(VarCorr(m1),digits=2)))
     expect_equal(cc,
         c("Conditional model:", "Groups Name Std.Dev. Corr",
-          "w (Intercept) 3.1e-05", 
+          "w (Intercept) 3.1e-05",
           "c2 4.9e-06 0.98",
           "s (Intercept) 3.4e-05",
           "Residual 9.6e-01"))
 })
 
 test_that("cov_struct_order", {
+    skip_on_cran()
     ff <- system.file("test_data","cov_struct_order.rds",package="glmmTMB")
     if (nchar(ff)>0) {
         dat <- readRDS(ff)
@@ -130,7 +110,7 @@ test_that("cov_struct_order", {
                             Time = rep(1:nt, times = ns),
                             blockeff = rep(rnorm(nb, 0, .5), each = ns/nb*nt),
                             standeff = rep(rnorm(ns, 0, .8), each = nt),
-                            resid = c(t(MASS::mvrnorm(ns, mu = rep(0, nt), 
+                            resid = c(t(MASS::mvrnorm(ns, mu = rep(0, nt),
                                                       Sigma = 1.2*cor^abs(outer(0:(nt-1),0:(nt-1),"-"))))))
         dat$y  <-  with(dat, 5 + blockeff + standeff + resid)+rnorm(nrow(dat), 0, .1)
         dat$Time  <-  factor(dat$Time)
@@ -138,6 +118,6 @@ test_that("cov_struct_order", {
     }
 
     fit1  <-  glmmTMB(y ~ (1|Block) + (1|Stand)+ ar1(Time +0|Stand), data = dat)
-    expect_equal(unname(fit1$fit$par), 
+    expect_equal(unname(fit1$fit$par),
 		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
 })

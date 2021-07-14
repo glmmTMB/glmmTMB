@@ -3,7 +3,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-    
+
 simfun0 <- function(beta=c(2,1),
                    sd.re=5,
                    ngrp=10,nobs=200,
@@ -43,7 +43,7 @@ test_that("binomial", {
     expect_equal( logLik(mod6)[[1]]     , logLik(mod6.glm)[[1]] )
     expect_equal( logLik(mod7)[[1]]     , logLik(mod7.glm)[[1]] )
     expect_equal( fixef(mod6)$cond , fixef(mod7)$cond )
-		
+
     ## Test TRUE/FALSE specification
     x <- c(TRUE, TRUE, FALSE)
     m1 <- glmmTMB(x~1, family=binomial())
@@ -85,6 +85,7 @@ test_that("count distributions", {
 
 context("fitting exotic families")
 test_that("beta", {
+  skip_on_cran()
     set.seed(101)
     nobs <- 200; eps <- 0.001; phi <- 0.1
     dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
@@ -102,10 +103,11 @@ test_that("beta", {
     expect_warning(m2 <- glmmTMB(y~x+(1|f),family="beta",
                   data=dd),"please use")
     expect_equal(coef(summary(m1)),coef(summary(m2)))
-    
+
  })
 
 test_that("nbinom", {
+    skip_on_cran()
     nobs <- 200; phi <- 0.1
     set.seed(101)
     dd0 <- simfun0(nobs=nobs)
@@ -160,6 +162,7 @@ test_that("nbinom", {
  })
 
 test_that("dbetabinom", {
+    skip_on_cran()
     set.seed(101)
     nobs <- 200; eps <- 0.001; phi <- 0.1
     dd0 <- simfun0(nobs=nobs,sd.re=1,invlink=plogis)
@@ -187,6 +190,9 @@ test_that("dbetabinom", {
     ## baseline (binomial, not betabinomial)
     fit0  <- glmmTMB(fmla, data = X, family = binomial(link = "cloglog"),
                      dispformula = ~1)
+    skip_on_cran()
+    ## fails ATLAS tests with failure in inner optimization
+    ## loop ("gradient function must return a numeric vector of length 16")
     fit1  <-  suppressWarnings(
         ## NaN function evaluation;
         ## non-pos-def Hessian;
@@ -212,7 +218,7 @@ test_that("dbetabinom", {
     ## (1) glmmTMB fit from initial starting vals is bad
     ## (2) glmmTMB fit from restart is OK (for fixed effects)
     ## (3) GLMMadaptive matches OK **but not** for nAGQ=1 (which _should_
-    ##     fit) -- 
+    ##     fit) --
     np <- length(ff1)
     ff_GA <- fit1_glmmA[1:np,ncol(fit1_glmmA)]
     expect_equal(ff_GA, ff2, tolerance=0.05)
@@ -229,6 +235,7 @@ test_that("dbetabinom", {
 })
 
 test_that("truncated", {
+    skip_on_cran()
     ## Poisson
     set.seed(101)
     z_tp <<- rpois(1000,lambda=exp(1))
@@ -305,6 +312,7 @@ test_that("truncated", {
 
 ##Genpois
 test_that("truncated_genpois",{
+  skip_on_cran()
     tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_genpois())
     tgpdat <<- data.frame(y=simulate(tgp1)[,1])
     tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
@@ -321,16 +329,18 @@ test_that("truncated_genpois",{
 context("trunc compois")
 ##Compois
 test_that("truncated_compois",{
+    skip_on_cran()
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	tcmp1 <<- glmmTMB(y~f, cmpdat, family= truncated_compois())
 	expect_equal(unname(fixef(tcmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
 	expect_equal(sigma(tcmp1), 0.1833339, tol=1e-6)
-	expect_equal(predict(tcmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)    
+	expect_equal(predict(tcmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
 })
 
 context("compois")
 test_that("compois", {
+    skip_on_cran()
 #	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 #	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	cmp1 <<- glmmTMB(y~f, cmpdat, family=compois())
@@ -341,6 +351,7 @@ test_that("compois", {
 
 context("genpois")
 test_that("genpois", {
+    skip_on_cran()
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
 	gen1 <<- glmmTMB(y~1, family=genpois(), gendat)
 	expect_equal(unname(fixef(gen1)$cond), 2.251292, tol=1e-6)
@@ -349,6 +360,7 @@ test_that("genpois", {
 
 context("tweedie")
 test_that("tweedie", {
+    skip_on_cran()
     ## Boiled down tweedie:::rtweedie :
     rtweedie <- function (n, xi = power, mu, phi, power = NULL)
     {

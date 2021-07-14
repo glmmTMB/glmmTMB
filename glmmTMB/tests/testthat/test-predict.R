@@ -37,18 +37,21 @@ test_that("population-level prediction", {
 })
 
 test_that("new levels of fixed effect factor", {
+    skip_on_cran()
     g1 <- glmmTMB(Reaction ~ Days + Subject, sleepstudy)
     expect_error( predict(g1, nd),
                  "Prediction is not possible for unknown fixed effects")
 })
 
 test_that("new levels in RE term", {
+    skip_on_cran()
     g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
     expect_error( predict(g2, nd),
                  "Prediction is not possible for terms")
 })
 
 test_that("new levels in AR1 (OK)", {
+    skip_on_cran()
     g3 <- glmmTMB(Reaction ~ ar1(DaysFac + 0| Subject), sleepstudy)
     expect_warning( predict(g3, nd),
                    ## OK: AR1 does not introduce new parameters
@@ -58,6 +61,7 @@ test_that("new levels in AR1 (OK)", {
 context("Predict two-column response case")
 
 test_that("two-column response", {
+    skip_on_cran()
     fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial,
                   data=Salamanders)
     expect_equal(predict(fm, type="response"),
@@ -65,6 +69,7 @@ test_that("two-column response", {
 })
 
 test_that("Prediction with dispformula=~0", {
+    skip_on_cran()
     y <- 1:10
     f <- glmmTMB(y ~ 1, dispformula=~0)
     expect_equal(predict(f), rep(5.5, 10))
@@ -178,6 +183,7 @@ test_that("splines", {
 })
 
 test_that("scale", {
+    skip_on_cran()
     g3 <- glmmTMB(Reaction~scale(Days), sleepstudy)
     expect_equal(predict(g3, newdata=data.frame(Days=0)),
                  251.40507651, tolerance=1e-5)
@@ -199,12 +205,14 @@ test_that("splines_RE", {
 })
 
 test_that("scale_RE", {
+    skip_on_cran()
     g3 <- glmmTMB(Reaction~(1|Subject) + scale(Days), sleepstudy)
     expect_equal(predict(g3, newdata=nd, allow.new.levels=TRUE),
                  173.83923026, tolerance=1e-5)
 })
 
 test_that("complex bases in dispformula", {
+    skip_on_cran()
     g4A <- glmmTMB(Reaction~1, sleepstudy)
     g4B <- glmmTMB(Reaction~1,
                    disp=~poly(Days,2), sleepstudy)
@@ -216,6 +224,7 @@ test_that("complex bases in dispformula", {
 })
 
 test_that("fix_predvars works for I(x^2)", {
+    skip_on_cran()
     ## GH512; @strengejacke
     set.seed(123)
     n <- 500
@@ -235,6 +244,7 @@ test_that("fix_predvars works for I(x^2)", {
 })
 
 test_that("contrasts carried over", {
+    skip_on_cran()
     ## GH 439, @cvoeten
     iris2 <- transform(iris,
                        grp=factor(c("a","b")))
@@ -273,6 +283,7 @@ test_that("dispersion", {
 })
 
 test_that("offset-only model (GH #625)", {
+    skip_on_cran()
     owls_nb0 <- glmmTMB(SiblingNegotiation ~ offset(log(BroodSize)),
                         family = nbinom2(),
                         data=Owls)
@@ -291,6 +302,7 @@ test_that("fast prediction", {
 })
 
 test_that("inverse-link prediction", {
+  skip_on_cran()
   ## example from John Maindonald (GH #696)
   ## this highlights a particular case where the prediction on the (cloglog) link scale
   ## is large (3.98), which leads to a prediction of 1.0 unless the cloglog-inverse-link

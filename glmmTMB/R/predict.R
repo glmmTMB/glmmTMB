@@ -353,6 +353,9 @@ predict.glmmTMB <- function(object,
       })
   }
 
+  n_orig <- openmp(n = object$modelInfo$parallel)
+  on.exit(openmp(n_orig), add = TRUE)
+
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
@@ -371,7 +374,7 @@ predict.glmmTMB <- function(object,
 
   ## set TMB threads to value from original model fit/reset on exit
   if (!is.null(parallel <- object$modelInfo$parallel)) {
-    n_orig <- suppressWarnings(openmp(NULL))
+    n_orig <- openmp(NULL)
     if (debug_openmp) cat("resetting TMB threads to ",  parallel, "\n")
     openmp(parallel)
     on.exit(openmp(n = n_orig), add = TRUE)

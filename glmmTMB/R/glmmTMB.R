@@ -3,7 +3,18 @@ debug_openmp <- FALSE
 
 ## glmmTMB openmp controller copied from TMB (Windows needs it).
 openmp <- function (n = NULL) {
-    if (!is.null(n)) n <- as.integer(n)
+    if (debug_openmp && !is.null(n)) {
+        cat("setting OpenMP threads to ", n, "\n")
+    }
+    ## FIXME: redundant with integer-setting within omp_num_threads C++ def in utils.cpp
+    null_arg <- is.null(n)
+    if (!null_arg) n <- as.integer(n)
+    ## only want to warn if attempt to set >1 threads in absence
+    ## of OpenMP support ..
+    if (null_arg || n <= 1) {
+      w <- options(warn = -1)
+      on.exit(options(warn = w[["warn"]]))
+    }
     .Call("omp_num_threads", n, PACKAGE = "glmmTMB")
 }
 
@@ -830,12 +841,12 @@ binomialType <- function(x) {
 ##' @importFrom stats update
 ##' @export
 ##' @examples
+##' \donttest{
 ##' (m1 <- glmmTMB(count ~ mined + (1|site),
 ##'   zi=~mined,
 ##'   family=poisson, data=Salamanders))
 ##' summary(m1)
-##' \donttest{
-##' ## Zero-inflated negative binomial model
+##' ##' ## Zero-inflated negative binomial model
 ##' (m2 <- glmmTMB(count ~ spp + mined + (1|site),
 ##'   zi=~spp + mined,
 ##'   family=nbinom2, data=Salamanders))
@@ -869,12 +880,13 @@ binomialType <- function(x) {
 ##' m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 ##' fixef(m0)$disp
 ##' c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
-##' }
+##'
 ##'
 ##' ## Using 'map' to fix random-effects SD to 10
 ##' m1_map <- update(m1, map=list(theta=factor(NA)),
 ##'                  start=list(theta=log(10)))
 ##' VarCorr(m1_map)
+##' }
 glmmTMB <- function(
     formula,
     data = NULL,
@@ -1260,22 +1272,11 @@ fitTMB <- function(TMBStruc) {
     }
 
     ## Assign OpenMP threads
-    ## Warn if OpenMP not supported and threads>1
-    ## FIXME: custom warning?
-    n_orig <- withCallingHandlers(
-        warning=function(cnd) {
-            if (control$parallel==1) {
-                invokeRestart("muffleWarning")
-            }
-        },
-        openmp(NULL)
-    )
+    n_orig <- openmp(NULL)
     ## Only proceed farther if OpenMP *is* supported ...
-  if (n_orig>0) {
-    if (debug_openmp) cat("setting OpenMP threads to ", control$parallel, "\n")
+    if (n_orig > 0) {
         openmp(n = control$parallel)
         on.exit({
-          if (debug_openmp) cat("resetting OpenMP threads to ", n_orig, "\n")
           openmp(n = n_orig)
           })
     }

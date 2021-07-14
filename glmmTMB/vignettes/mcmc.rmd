@@ -19,7 +19,8 @@ One commonly requested feature is to be able to run a *post hoc* Markov chain Mo
 
 ```{r knitr_setup, include=FALSE, message=FALSE}
 library(knitr)
-opts_chunk$set(echo = TRUE)
+opts_chunk$set(echo = TRUE,
+               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
 rc <- knitr::read_chunk
 rc(system.file("vignette_data","mcmc.R",package="glmmTMB"))
 ```
@@ -53,7 +54,7 @@ Run the chain:
 ```{r do_run_MCMC,eval=FALSE}
 ```
 
-```{r load_MCMC, echo=FALSE}
+```{r load_MCMC, echo=FALSE, eval=TRUE}
 L <- load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
 ```
 (running this chain takes `r round(t1["elapsed"],1)` seconds)

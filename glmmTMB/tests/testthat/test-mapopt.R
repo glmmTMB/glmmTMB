@@ -3,6 +3,7 @@ stopifnot(require("testthat"),
 
 data(Salamanders, package = "glmmTMB")
 
+if (identical(Sys.getenv("NOT_CRAN"), "true")) {
 m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders,
               start=list(beta=c(0,2)),
               map=list(beta=factor(c(1,NA))))
@@ -17,10 +18,10 @@ m3 <- glmmTMB(count~ mined + (1|site),
               map=list(theta=factor(NA),
                        betazi=factor(NA)))
 
-m4_nomap <- glmmTMB(count~ mined + (1|site), 
+m4_nomap <- glmmTMB(count~ mined + (1|site),
               zi=~mined,  family=poisson, data=Salamanders)
 
-m4 <- glmmTMB(count~ mined + (1|site), 
+m4 <- glmmTMB(count~ mined + (1|site),
               zi=~mined,  family=poisson, data=Salamanders,
               map=list(theta=factor(NA)),
               start = list(theta=log(10)))
@@ -91,4 +92,5 @@ test_that("summary", {
 
 })
 
-        
+
+} ## skip on CRAN
