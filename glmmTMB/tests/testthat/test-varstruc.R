@@ -49,6 +49,7 @@ test_that("print ar1 (>1 RE)", {
 })
 
 test_that("ar1 requires factor time", {
+  skip_on_cran()
     expect_error(glmmTMB(Reaction ~ 1 +
                              (1|Subject) + ar1(as.numeric(row)+0| Subject), fsleepstudy),
                  "expects a single")
@@ -68,6 +69,7 @@ get_vcout <- function(x,g="\\bSubject\\b") {
 }
 
 test_that("varcorr_print", {
+    skip_on_cran()
     ss <- get_vcout(fm_cs1)
     expect_equal(length(ss),5)
     expect_equal(ss[4:5],c("0.081","(cs)"))
@@ -93,6 +95,7 @@ test_that("varcorr_print", {
 })
 
 test_that("cov_struct_order", {
+    skip_on_cran()
     ff <- system.file("test_data","cov_struct_order.rds",package="glmmTMB")
     if (nchar(ff)>0) {
         dat <- readRDS(ff)

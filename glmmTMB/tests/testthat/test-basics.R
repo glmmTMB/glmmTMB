@@ -93,7 +93,7 @@ test_that("Basic Binomial CBPP examples", {
 
 test_that("Multiple RE, reordering", {
     ### Multiple RE,  reordering
-
+     skip_on_cran()
     tmb1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd) + (1|obs),
                     data = cbpp, family=binomial())
     tmb2 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|obs) + (1|herd),
@@ -128,6 +128,7 @@ test_that("internal structures", {
 })
 
 test_that("close to lme4 results", {
+    skip_on_cran()
     expect_true(require("lme4"))
     L <- load(system.file("testdata", "lme-tst-fits.rda",
                           package="lme4", mustWork=TRUE))
@@ -198,6 +199,7 @@ test_that("basic zero inflation", {
 })
 
 test_that("alternative binomial model specifications", {
+    skip_on_cran()
     d <<- data.frame(y=1:10,N=20,x=1) ## n.b. global assignment for testthat
     m0 <- suppressWarnings(glmmTMB(cbind(y,N-y) ~ 1, data=d, family=binomial()))
     m3 <- glmmTMB(y/N ~ 1, weights=N, data=d, family=binomial())
@@ -218,6 +220,7 @@ test_that("formula expansion", {
 })
 
 test_that("NA handling", {
+    skip_on_cran()
     data(sleepstudy,package="lme4")
     ss <- sleepstudy
     ss$Days[c(2,20,30)] <- NA
@@ -235,6 +238,7 @@ test_that("NA handling", {
 })
 
 test_that("quine NB fit", {
+    skip_on_cran()
     quine.nb1 <- MASS::glm.nb(Days ~ Sex/(Age + Eth*Lrn), data = quine)
     quine.nb2 <- glmmTMB(Days ~ Sex/(Age + Eth*Lrn), data = quine,
                          family=nbinom2())
@@ -245,6 +249,7 @@ test_that("quine NB fit", {
 ##                     family=nbinom2())
 
 test_that("contrasts arg", {
+    skip_on_cran()
     quine.nb1 <- MASS::glm.nb(Days ~ Sex*Age, data = quine,
                               contrasts=list(Sex="contr.sum",Age="contr.sum"))
     quine.nb2 <- glmmTMB(Days ~ Sex*Age, data = quine,
