@@ -6,13 +6,17 @@ while (!require("rhub")) {
     remotes::install_github("r-hub/rhub")
 }
 library(drat)
+library(rhub) ## redundant
 
 ## run check/build binaries for Windows and MacOS with the current R release
 ## use rhub::platforms() to see which platforms are available
 releases <- c("windows-x86_64-release","macos-highsierra-release")
+## maybe macos-highsierra-release-cran? shouldn't make much difference
+##   for building binaries ... ?
 email <- "bbolker@gmail.com"  ## set this to your e-mail!
 oldrel <- "windows-x86_64-oldrel"
 
+## assuming working directory = glmmTMB package directory
 check(platform=releases,email=email)
 check(platform=oldrel,email=email)
 
@@ -20,6 +24,10 @@ check(platform=oldrel,email=email)
 ## mhash <- "3a60fd03bbd74c7f9c48e1054dc018f4"
 ## whash <- "4cc959649991463f94a340380bf10b86"
 ## pkg_version <- "1.0.2.9000"
+
+mhash <- "09f2a6a3d51847e19eabcf005e99f715"
+whash <- "5b768de377c94f12a264deff0924553f"
+pkg_version <- "1.1.2"
 
 
 ## helper fun for constructing URLs
