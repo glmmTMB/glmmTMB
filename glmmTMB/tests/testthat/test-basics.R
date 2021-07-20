@@ -118,7 +118,7 @@ test_that("Update Binomial", {
   ## matchForm(): call doesn't match (formula gets mangled?)
   ## timing different
   gm1u <- update(gm0, . ~ . + period)
-  expect_equal(gm1, matchForm(gm1, gm1u))
+  expect_equal(gm1, matchForm(gm1, gm1u), tolerance = 3e-8)
 })
 
 test_that("internal structures", {
