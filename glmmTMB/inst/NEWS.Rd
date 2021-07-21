@@ -4,7 +4,12 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.2 (2021-07-13}{
+\section{CHANGES IN VERSION 1.1.2.1 (2021-07-22)}{
+    This is an administrative release (loosen some test tolerances to pass
+    CRAN checks).
+}
+  
+\section{CHANGES IN VERSION 1.1.2 (2021-07-20)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item resolved OpenMP thread-safety issues on Windows
