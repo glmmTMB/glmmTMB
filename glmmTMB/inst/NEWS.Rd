@@ -5,8 +5,10 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.2.1 (2021-07-22)}{
-    This is an administrative release (loosen some test tolerances to pass
+  \itemize{
+    \item This is an administrative release (loosen some test tolerances to pass
     CRAN checks).
+  }
 }
   
 \section{CHANGES IN VERSION 1.1.2 (2021-07-20)}{

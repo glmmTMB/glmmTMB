@@ -118,7 +118,7 @@ library(MuMIn)
 require(DHARMa, quietly = TRUE) ## may be missing ...
 library(broom)
 library(broom.mixed)
-library(dotwhisker)
+require(dotwhisker, quietly = TRUE)
 library(ggplot2); theme_set(theme_bw())
 library(texreg)
 library(xtable)

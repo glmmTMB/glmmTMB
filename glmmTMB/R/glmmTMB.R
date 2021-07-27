@@ -60,7 +60,7 @@ startParams <- function(parameters,
 
     # get either dunn-smyth residuals or
     fam <- family$family
-    res.families <- c("poisson", "nbinom2", "binomial", "guassian")
+    res.families <- c("poisson", "nbinom2", "binomial", "gaussian")
     if (fam %in% res.families) {
       #### Get the dunn smyth residuals
       if (fam == "poisson") {
@@ -116,7 +116,7 @@ startParams <- function(parameters,
     names(par.list) <- c("theta", "b", "fact_load")
     # Use glmmTMB to get initial starting values for factor loadings and latent variables
     fr.res <- cbind(fr, resid)
-    ranForm <- findbars(RHSForm(formula))
+    ranForm <- no_specials(findbars_x(RHSForm(formula)))
     nrr <- length(namBlk)
     rrTrm <- lapply(1:length(namBlk), function(x) as.character(ranForm[ranForm == namBlk][[x]]))
     x <- sapply(1:nrr, function(x) paste(rrTrm[[x]][2], rrTrm[[x]][1], rrTrm[[x]][3]))
@@ -523,9 +523,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         if (!sparse) {
-            X <- model.matrix(drop.special2(fixedform), fr, contrasts)
+            X <- model.matrix(drop.special(fixedform), fr, contrasts)
         } else {
-            X <- Matrix::sparse.model.matrix(drop.special2(fixedform), fr, contrasts)
+            X <- Matrix::sparse.model.matrix(drop.special(fixedform), fr, contrasts)
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
@@ -551,7 +551,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## important to COPY formula (and its environment)?
     ranform <- formula
 
-    if (is.null(findbars(ranform))) {
+    if (is.null(findbars_x(ranform))) {
         reTrms <- reXterms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         aa <- integer(0) #added for rr to get rank
@@ -563,7 +563,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
         mf$formula <- ranform
-        reTrms <- mkReTrms(findbars(RHSForm(formula)), fr, reorder.terms=FALSE)
+        reTrms <- mkReTrms(no_specials(findbars_x(formula)),
+                           fr, reorder.terms=FALSE)
 
         ss <- splitForm(formula)
         # FIX ME: migrate this (or something like it) down to reTrms,
@@ -991,7 +992,7 @@ glmmTMB <- function(
     ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
         ziformula <-
-            update(RHSForm(drop.special2(formula),as.form=TRUE),
+            update(RHSForm(drop.special(formula),as.form=TRUE),
                    ziformula)
     }
 
