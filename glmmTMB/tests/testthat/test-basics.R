@@ -278,3 +278,15 @@ test_that("zero disp setting", {
     res <- rbind(res,tmpf(m1))
     expect_true(var(res[,1]+res[,2])<1e-8)
 })
+
+test_that("dollar/no data arg warning", {
+    expect_warning(glmmTMB(Reaction ~ sleepstudy$Days, data = sleepstudy),
+                   "is not recommended")
+    attach(sleepstudy)
+    expect_warning(glmmTMB(Reaction ~ Days), "is recommended")
+    op <- options(warn = 2)
+    ## check that warning is suppressed
+    expect_is(glmmTMB(Reaction ~ Days, data = NULL), "glmmTMB")
+    detach(sleepstudy)
+    options(op)
+})
