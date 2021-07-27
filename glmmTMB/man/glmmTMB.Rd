@@ -27,7 +27,7 @@ glmmTMB(
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4 syntax.}
 
-\item{data}{optional data frame containing model variables.}
+\item{data}{data frame containing model variables. Not required, but strongly recommended: see}
 
 \item{family}{a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See \code{\link{family}} for a generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.}
 
@@ -63,13 +63,12 @@ glmmTMB(
 Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 }
 \details{
-Binomial models with more than one trial (i.e., not binary/Bernoulli) can either be specified in the form \code{prob ~ ..., weights = N}, or in the more typical two-column matrix \code{cbind(successes,failures)~...} form.
-
-Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify.
-
-Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, one would need to multiply by \code{sqrt(nobs(fit) / (1+df.residual(fit)))} when comparing with \code{lm}.
-
-By default, vector-valued random effects are fitted with unstructured (general positive definite) variance-covariance matrices. Structured variance-covariance matrices can be specified in the form \code{struc(terms|group)}, where \code{struc} is one of
+\itemize{
+\item Binomial models with more than one trial (i.e., not binary/Bernoulli) can either be specified in the form \code{prob ~ ..., weights = N}, or in the more typical two-column matrix \code{cbind(successes,failures)~...} form.
+\item Behavior of \code{REML=TRUE} for Gaussian responses matches \code{lme4::lmer}. It may also be useful in some cases with non-Gaussian responses (Millar 2011). Simulations should be done first to verify.
+\item Because the \code{\link{df.residual}} method for \code{glmmTMB} currently counts the dispersion parameter, users should multiply this value by \code{sqrt(nobs(fit) / (1+df.residual(fit)))} when comparing with \code{lm}.
+\item Although models can be fitted without specifying a \code{data} argument, its use is strongly recommended; drawing model components from the global environment, or using \code{df$var} notation within model formulae, can lead to confusing (and sometimes hard-to-detect) errors.
+\item By default, vector-valued random effects are fitted with unstructured (general symmetric positive definite) variance-covariance matrices. Structured variance-covariance matrices can be specified in the form \code{struc(terms|group)}, where \code{struc} is one of
 \itemize{
 \item \code{diag} (diagonal, heterogeneous variance)
 \item \code{ar1} (autoregressive order-1, homogeneous variance)
@@ -80,9 +79,9 @@ By default, vector-valued random effects are fitted with unstructured (general p
 \item \code{mat} (* Matérn process correlation)
 \item \code{toep} (* Toeplitz)
 }
-Structures marked with * are experimental/untested.
-
-For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
+Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
+\item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
+}
 }
 \note{
 For more information about the \pkg{glmmTMB} package, see Brooks et al. (2017) and the \code{vignette(package="glmmTMB")} collection. For the underlying \pkg{TMB} package that performs the model estimation, see Kristensen et al. (2016).
