@@ -678,10 +678,13 @@ isREML <- function(x) {
 }
 
 ## action: message, warning, stop
-check_dots <- function(..., action="stop") {
+check_dots <- function(..., .ignore = NULL, .action="stop") {
     L <- list(...)
+    if (length(.ignore)>0) {
+        L <- L[!names(L) %in% .ignore]
+    }
     if (length(L)>0) {
-        FUN <- get(action)
+        FUN <- get(.action)
         FUN("unknown arguments: ",
             paste(names(L), collapse=","))
     }
