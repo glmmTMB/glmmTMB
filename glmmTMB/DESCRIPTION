@@ -79,4 +79,3 @@ BugReports: https://github.com/glmmTMB/glmmTMB/issues
 RoxygenNote: 7.1.1
 NeedsCompilation: yes
 Encoding: UTF-8
-Remotes: cran/RcppEigen@0.3.3.7.0
