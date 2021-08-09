@@ -295,18 +295,19 @@ On average, \code{glmmTMB} is about \Sexpr{round(meandiff,1)} times
 faster than \code{glmer} for this problem.
 
 <<contraception,echo=FALSE,warning=FALSE,fig.cap="Timing for fitting the replicated Contraception data set.">>=
-## lm_nowarn <- function(...) suppressWarnings(lm(...))
-suppressWarnings(
-    ## NaN from geom_smooth because glmmADMB only has two points/
-    ## can't compute confidence intervals
-    ## suppressWarnings() doesn't actually work within ggplot ...
-ggplot(tmatContraception, aes(n, time, colour=pkg)) + geom_point() +
-  scale_y_log10(breaks=c(1,2,5,10,20,50,100)) +
-  scale_x_log10(breaks=c(1,2,4,10,20,40)) +
-  labs(x="Replication (x 1934 obs.)",y="Elapsed time (s)") +
-  geom_smooth(method="lm", formula = y ~ x) +
-scale_colour_brewer(palette="Set1")
-)
+## NaN from geom_smooth because glmmADMB only has two points/
+## can't compute confidence intervals
+## suppressWarnings() doesn't actually work within ggplot ...
+## instead set/reset options("warn")
+op <- options(warn = -1)
+ggplot(tmatContraception,
+       aes(n, time, colour=pkg)) + geom_point() +
+    scale_y_log10(breaks=c(1,2,5,10,20,50,100)) +
+    scale_x_log10(breaks=c(1,2,4,10,20,40)) +
+    labs(x="Replication (x 1934 obs.)",y="Elapsed time (s)") +
+    geom_smooth(method="lm", formula = y ~ x) +
+    scale_colour_brewer(palette="Set1")
+options(op)
 @
 
 
