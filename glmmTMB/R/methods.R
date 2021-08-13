@@ -341,8 +341,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
-  ## don't check_dots, car::Anova tries to pass 'complete'
-  ## check_dots(...)
+  check_dots(..., .ignore = "complete")
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
@@ -1247,7 +1246,7 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
 ##' @rdname ranef.glmmTMB
 ##' @param x a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)
 as.data.frame.ranef.glmmTMB <- function(x, ...) {
-    check_dots(...)
+    check_dots(..., .ignore = "stringsAsFactors")
     tmpf <- function(x) do.call(rbind,lapply(names(x),asDf0,x=x,id=TRUE))
     x0 <- lapply(x,tmpf)
     x1 <- Map(function(x,n) {
