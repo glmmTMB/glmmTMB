@@ -4,6 +4,19 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.2.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Double-bar notation (\code{(x+y||g)}) is now translated to a
+  diagonal-covariance term (\code{diag(x+y|g)}) rather than being split 
+  into separate random effects terms as in  \code{lme4}. This should not
+  change modeling results, but may change their
+  presentation/ordering/etc.. (This is also a bug fix, as double-bar
+  notation was not working in several previous versions.)
+    }
+  }
+}
+  
 \section{CHANGES IN VERSION 1.1.2.2 (2021-07-29)}{
   \itemize{
     \item This is an administrative release (minor revisions for CRAN).

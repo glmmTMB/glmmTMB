@@ -278,3 +278,11 @@ test_that("zero disp setting", {
     res <- rbind(res,tmpf(m1))
     expect_true(var(res[,1]+res[,2])<1e-8)
 })
+
+test_that("double bar notation", {
+    data("sleepstudy", package="lme4")
+    m1 <- glmmTMB(Reaction ~ 1 + (Days || Subject), sleepstudy)
+    expect_equal(c(VarCorr(m1)$cond$Subject),
+                 c(564.340387730194, 0, 0, 140.874101713108),
+                 tolerance = 1e-6)
+})
