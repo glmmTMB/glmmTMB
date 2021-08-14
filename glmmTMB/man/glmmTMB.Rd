@@ -27,7 +27,7 @@ glmmTMB(
 \arguments{
 \item{formula}{combined fixed and random effects formula, following lme4 syntax.}
 
-\item{data}{data frame containing model variables. Not required, but strongly recommended: see}
+\item{data}{data frame (tibbles are OK) containing model variables. Not required, but strongly recommended; if \code{data} is not specified, downstream methods such as prediction with new data (\code{predict(fitted_model, newdata = ...)}) will fail. If it is necessary to call \code{glmmTMB} with model variables taken from the environment rather than from a data frame, specifying \code{data=NULL} will suppress the warning message.}
 
 \item{family}{a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See \code{\link{family}} for a generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.}
 
@@ -79,7 +79,7 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{mat} (* Matérn process correlation)
 \item \code{toep} (* Toeplitz)
 }
-Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
+Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")}< for more information.
 \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
 }
 }

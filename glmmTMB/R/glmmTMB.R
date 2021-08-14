@@ -788,7 +788,7 @@ binomialType <- function(x) {
 ##'
 ##' Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 ##' @param formula combined fixed and random effects formula, following lme4 syntax.
-##' @param data data frame containing model variables. Not required, but strongly recommended: see 
+##' @param data data frame (tibbles are OK) containing model variables. Not required, but strongly recommended; if \code{data} is not specified, downstream methods such as prediction with new data (\code{predict(fitted_model, newdata = ...)}) will fail. If it is necessary to call \code{glmmTMB} with model variables taken from the environment rather than from a data frame, specifying \code{data=NULL} will suppress the warning message.
 ##' @param family a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See \code{\link{family}} for a generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.
 ##' @param ziformula a \emph{one-sided} (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default \code{~0} specifies no zero-inflation. Specifying \code{~.} sets the zero-inflation formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}. The zero-inflation model uses a logit link.
 ##' @param dispformula a \emph{one-sided} formula for dispersion containing only fixed effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via \code{control=glmmTMBControl(zero_dispval=...)}; the default value is \code{sqrt(.Machine$double.eps)}.
@@ -951,7 +951,7 @@ glmmTMB <- function(
     }
 
     if (missing(data)) {
-        warning("use of the ", sQuote("data"), " argument is recommended (to suppress this warning, you can explicitly specify ", sQuote("data = NULL"))
+        warning("use of the ", sQuote("data"), " argument is recommended", sQuote("data = NULL"))
     }
     
     ## extract family and link information from family object
