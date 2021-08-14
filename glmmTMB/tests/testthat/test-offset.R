@@ -74,8 +74,8 @@ test_that("LM with multiple offsets (cond/dispersion)", {
 ## this was broken by an earlier multiple-offset formulation
 test_that("LM with random crap in the formula", {
     skip_on_cran()
-    m1 <<- glmmTMB(y0~dat$x, data = dat)
-    m2 <<- glmmTMB(y0~x, dat, data = NULL)
+    m1 <<- suppressWarnings(glmmTMB(y0~dat$x, data = dat))
+    m2 <<- glmmTMB(y0~x, data = dat)
     expect_equal(unname(fixef(m1)$cond), unname(fixef(m2)$cond))
 })
 
