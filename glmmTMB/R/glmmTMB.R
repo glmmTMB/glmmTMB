@@ -795,7 +795,15 @@ binomialType <- function(x) {
 ##' @param weights weights, as in \code{glm}. Not automatically scaled to have sum 1.
 ##' @param offset offset for conditional model (only).
 ##' @param contrasts an optional list, e.g., \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.
-##' @param na.action how to handle missing values, see \code{\link{na.action}} and \code{\link{model.frame}}. From \code{\link{lm}}: \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset. The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}
+##' @param na.action a function that specifies how to handle observations
+##' containing \code{NA}s.  The default action (\code{na.omit},
+##' inherited from the 'factory fresh' value of
+##' \code{getOption("na.action")}) strips any observations with any
+##' missing values in any variables. Using \code{na.action = na.exclude}
+##' will similarly drop observations with missing values while fitting the model,
+##' but will fill in \code{NA} values for the predicted and residual
+##' values for cases that were excluded during the fitting process
+##' because of missingness.
 ##' @param se whether to return standard errors.
 ##' @param verbose whether progress indication should be printed to the console.
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects, without fitting the model.
@@ -896,7 +904,7 @@ glmmTMB <- function(
     weights=NULL,
     offset=NULL,
     contrasts=NULL,
-    na.action=na.fail,
+    na.action,
     se=TRUE,
     verbose=FALSE,
     doFit=TRUE,
