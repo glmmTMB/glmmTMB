@@ -13,7 +13,7 @@ glmmTMB(
   weights = NULL,
   offset = NULL,
   contrasts = NULL,
-  na.action = na.fail,
+  na.action,
   se = TRUE,
   verbose = FALSE,
   doFit = TRUE,
@@ -41,7 +41,15 @@ glmmTMB(
 
 \item{contrasts}{an optional list, e.g., \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.}
 
-\item{na.action}{how to handle missing values, see \code{\link{na.action}} and \code{\link{model.frame}}. From \code{\link{lm}}: \dQuote{The default is set by the \code{\link{na.action}} setting of \code{\link{options}}, and is \code{\link{na.fail}} if that is unset. The \sQuote{factory-fresh} default is \code{\link{na.omit}}.}}
+\item{na.action}{a function that specifies how to handle observations
+containing \code{NA}s.  The default action (\code{na.omit},
+inherited from the 'factory fresh' value of
+\code{getOption("na.action")}) strips any observations with any
+missing values in any variables. Using \code{na.action = na.exclude}
+will similarly drop observations with missing values while fitting the model,
+but will fill in \code{NA} values for the predicted and residual
+values for cases that were excluded during the fitting process
+because of missingness.}
 
 \item{se}{whether to return standard errors.}
 
