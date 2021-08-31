@@ -62,8 +62,8 @@ test_that("binomial", {
     prop <- c(.1, .2, .3)  ## weights=1 => prop * weights non integers
     expect_warning( glmmTMB(prop~1, family=binomial()) )   ## Warning as glm
     x <- c(1, 2, 3)        ## weights=1 => x > weights !
-    expect_error  ( glmmTMB(x~1, family=binomial()),
-                    data = data.frame(x))      ## Error as glm
+    expect_error  ( glmmTMB(x~1, family=binomial(),
+                    data = data.frame(x)))      ## Error as glm
 })
 
 context("non-integer count warnings")

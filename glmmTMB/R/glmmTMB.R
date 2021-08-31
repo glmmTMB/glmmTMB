@@ -951,7 +951,7 @@ glmmTMB <- function(
     }
 
     if (missing(data)) {
-        warning("use of the ", sQuote("data"), " argument is recommended", sQuote("data = NULL"))
+        warning("use of the ", sQuote("data"), " argument is recommended")
     }
     
     ## extract family and link information from family object
