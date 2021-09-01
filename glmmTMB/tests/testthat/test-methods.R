@@ -57,7 +57,8 @@ test_that("Fitted and residuals", {
     b[napos] <- NA
     y.na <- y
     y.na[napos] <- NA
-    mod.ex <- glmmTMB(y ~ b, family = "poisson", na.action = "na.exclude")
+    mod.ex <- glmmTMB(y ~ b, family = "poisson", na.action = "na.exclude",
+                      data = NULL)
     ## Get predictions/resids
     pr.ex <- predict(mod.ex, type = "response") # SEEMS to work fine
     expect_equal(which(is.na(pr.ex)),napos)

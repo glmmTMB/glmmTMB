@@ -27,17 +27,17 @@ m.lm0 <- lm(y1~x, dat)
 
 test_that("LM with offset as argument", {
   skip_on_cran()
-    m1 <- glmmTMB(y1~x, offset=o, dat)
+    m1 <- glmmTMB(y1~x, offset=o, data = dat)
     expect_equal(fixef(m1)[[1]], coef(m.lm), tol=1e-6)
-    m3 <- glmmTMB(y1~x, offset=o)
+    m3 <- glmmTMB(y1~x, offset=o, data = NULL)
     expect_equal(fixef(m3)[[1]], coef(m.lm), tol=1e-6)
 })
 
 test_that("LM with offset in formula", {
     skip_on_cran()
-    m2 <- glmmTMB(y1~x+offset(o), dat)
+    m2 <- glmmTMB(y1~x+offset(o), data = dat)
     expect_equal(fixef(m2)[[1]], coef(m.lm), tol=1e-6)
-    m4 <- glmmTMB(y1~x+offset(o))
+    m4 <- glmmTMB(y1~x+offset(o), data = NULL)
     expect_equal(fixef(m4)[[1]], coef(m.lm), tol=1e-6)
 })
 
@@ -74,9 +74,9 @@ test_that("LM with multiple offsets (cond/dispersion)", {
 ## this was broken by an earlier multiple-offset formulation
 test_that("LM with random crap in the formula", {
     skip_on_cran()
-    m1 <<- glmmTMB(y0~dat$x, dat)
-    m2 <<- glmmTMB(y0~x, dat)
-    expect_equal(unname(fixef(m1)$cond),unname(fixef(m2)$cond))
+    m1 <<- suppressWarnings(glmmTMB(y0~dat$x, data = dat))
+    m2 <<- glmmTMB(y0~x, data = dat)
+    expect_equal(unname(fixef(m1)$cond), unname(fixef(m2)$cond))
 })
 
 test_that("offset in do.call", {

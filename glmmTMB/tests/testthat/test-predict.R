@@ -71,7 +71,7 @@ test_that("two-column response", {
 test_that("Prediction with dispformula=~0", {
     skip_on_cran()
     y <- 1:10
-    f <- glmmTMB(y ~ 1, dispformula=~0)
+    f <- glmmTMB(y ~ 1, dispformula=~0, data = NULL)
     expect_equal(predict(f), rep(5.5, 10))
 })
 

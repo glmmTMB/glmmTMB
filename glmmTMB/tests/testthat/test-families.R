@@ -46,8 +46,9 @@ test_that("binomial", {
 
     ## Test TRUE/FALSE specification
     x <- c(TRUE, TRUE, FALSE)
-    m1 <- glmmTMB(x~1, family=binomial())
-    m2 <- glm    (x~1, family=binomial())
+    dx <- data.frame(x)
+    m1 <- glmmTMB(x~1, family=binomial(), data=dx)
+    m2 <- glm    (x~1, family=binomial(), data=dx)
     expect_equal(
         as.numeric(logLik(m1)),
         as.numeric(logLik(m2))
@@ -61,7 +62,8 @@ test_that("binomial", {
     prop <- c(.1, .2, .3)  ## weights=1 => prop * weights non integers
     expect_warning( glmmTMB(prop~1, family=binomial()) )   ## Warning as glm
     x <- c(1, 2, 3)        ## weights=1 => x > weights !
-    expect_error  ( glmmTMB(x~1, family=binomial()) )      ## Error as glm
+    expect_error  ( glmmTMB(x~1, family=binomial(),
+                    data = data.frame(x)))      ## Error as glm
 })
 
 context("non-integer count warnings")
@@ -381,7 +383,7 @@ test_that("tweedie", {
     nobs <- 2000; mu <- 4; phi <- 2; p <- 1.7
     set.seed(101)
     y <- rtweedie(nobs, mu=mu, phi=phi, power=p)
-    twm <- glmmTMB(y ~ 1, family=tweedie())
+    twm <- glmmTMB(y ~ 1, family=tweedie(), data = NULL)
     ## Check mu
     expect_equal(unname( exp(fixef(twm)$cond) ),
                  mu,
@@ -396,7 +398,7 @@ test_that("tweedie", {
                  tolerance = .01)
     ## Check internal rtweedie used by simulate
     y2 <- c(simulate(twm)[,1],simulate(twm)[,1])
-    twm2 <- glmmTMB(y2 ~ 1, family=tweedie())
+    twm2 <- glmmTMB(y2 ~ 1, family=tweedie(), data = NULL)
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
 })
