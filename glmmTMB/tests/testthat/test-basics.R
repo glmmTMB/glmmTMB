@@ -279,6 +279,18 @@ test_that("zero disp setting", {
     expect_true(var(res[,1]+res[,2])<1e-8)
 })
 
+test_that("dollar/no data arg warning", {
+    expect_warning(glmmTMB(Reaction ~ sleepstudy$Days, data = sleepstudy),
+                   "is not recommended")
+    attach(sleepstudy)
+    expect_warning(glmmTMB(Reaction ~ Days), "is recommended")
+    op <- options(warn = 2)
+    ## check that warning is suppressed
+    expect_is(glmmTMB(Reaction ~ Days, data = NULL), "glmmTMB")
+    detach(sleepstudy)
+    options(op)
+})
+
 test_that("double bar notation", {
     data("sleepstudy", package="lme4")
     m1 <- glmmTMB(Reaction ~ 1 + (Days || Subject), sleepstudy)
