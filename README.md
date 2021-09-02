@@ -66,7 +66,7 @@ while (!require("checkpoint")) install.packages("checkpoint")
 ## retrieve build date of installed version of TMB
 bd <- as.character(asDateBuilt(packageDescription("TMB",fields="Built")))
 oldrepo <- getOption("repos")
-setSnapshot(bd)
+use_mran_snapshot(bd) ## was setSnapshot() before version 1.0.0 of checkpoint
 install.packages("Matrix")
 options(repos=oldrepo) ## restore original repo
 ```
