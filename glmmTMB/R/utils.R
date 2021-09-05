@@ -241,3 +241,43 @@ get_pars <- function(object, unlist=TRUE) {
     return(p)
 }
 
+
+up2date <- function(oldfit) {
+  if (TMB:::isNullPointer(oldfit$obj$env$ADFun$ptr)) {
+    obj <- oldfit$obj
+    oldfit$obj <- TMB::MakeADFun(obj$env$data,
+                                 obj$env$parameters, 
+                                 map = obj$env$map,
+                                 random = obj$env$random, 
+                                 silent = obj$env$silent,
+                                 DLL = "glmmTMB")
+    oldfit$obj$env$last.par.best <- obj$env$last.par.best
+  }
+  oldfit
+}
+
+#' Load data from system file, updating glmmTMB objects
+#' 
+#' @param fn partial path to system file (e.g. test_data/foo.rda)
+#' @param verbose print names of updated objects?
+#' @param mustWork fail if file not found?
+#' @export
+gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
+    sf <- system.file(fn, package = "glmmTMB")
+    found_file <- file.exists(sf)
+    if (mustWork && !found_file) {
+        stop("couldn't find system file ", sf)
+    }
+    
+    L <- load(sf)
+    for (m in L) {
+        if (inherits(m, "glmmTMB")) {
+            if (verbose) cat(m,"\n")
+            m <- up2date(get(m))
+        }
+        assign(m, get(m), parent.env(), parent.frame())
+    }
+    return(found_file)
+}
+
+    

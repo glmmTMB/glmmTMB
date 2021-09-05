@@ -14,20 +14,9 @@ up2date <- function(oldfit) {
   }
   oldfit
 }
-saved_ex <- system.file("test_data", "models.rda", package="glmmTMB")
-cat(sprintf("%s exists=%s, not_cran=%s\n",saved_ex,file.exists(saved_ex), not_cran))
-if (file.exists(saved_ex)) {
-    cat("loading and updating test examples\n")
-    L <- load(saved_ex)
-    for (m in L) {
-        if (inherits(m, "glmmTMB")) {
-            cat(m,"\n")
-            assign(m, up2date(get(m)))
-        }
-    }
-} else {
-  make_ex <- system.file("test_data", "make_ex.R", package="glmmTMB", mustWork = TRUE)
-  cat("running fits to build test examples ...\n")
-  source(make_ex, chdir = TRUE, echo = FALSE)
-  
+file_ok <- gt_load("test_data/models.rda")
+if (!file_ok) {
+    make_ex <- system.file("test_data", "make_ex.R", package="glmmTMB", mustWork = TRUE)
+    cat("running fits to build test examples ...\n")
+    source(make_ex, chdir = TRUE, echo = FALSE)
 }
