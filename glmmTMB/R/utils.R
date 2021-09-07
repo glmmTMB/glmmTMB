@@ -271,11 +271,11 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
     
     L <- load(sf)
     for (m in L) {
-        if (inherits(m, "glmmTMB")) {
+        if (inherits(get(m), "glmmTMB")) {
             if (verbose) cat(m,"\n")
-            m <- up2date(get(m))
+            assign(m, up2date(get(m)))
         }
-        assign(m, get(m), parent.env(), parent.frame())
+        assign(m, get(m), parent.env(), envir = parent.frame())
     }
     return(found_file)
 }
