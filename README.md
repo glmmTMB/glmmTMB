@@ -5,11 +5,13 @@
 [![total downloads](http://cranlogs.r-pkg.org/badges/grand-total/glmmTMB)](http://cranlogs.r-pkg.org/badges/grand-total/glmmTMB)
 [![R-CMD-check](https://github.com/glmmTMB/glmmTMB/workflows/R-CMD-check/badge.svg)](https://github.com/glmmTMB/glmmTMB/actions)
 
-`glmmTMB` is an R package for fitting generalized linear mixed models (GLMMs) and extensions, built on [Template Model Builder](https://github.com/kaskr/adcomp), which is in turn built on [CppAD](https://www.coin-or.org/CppAD/) and [Eigen](eigen.tuxfamily.org/). It is intended to handle a wide range of statistical distributions (Gaussian, Poisson, binomial, negative binomial, Beta ...) as well as model extensions such as zero-inflation, heteroscedasticity, and autocorrelation. Fixed and random effects models can be specified for the conditional and zero-inflated components of the model, as well as fixed effects models for the dispersion parameter.
+[GitHub pages site](https://glmmTMB.github.io/glmmTMB/)
+
+`glmmTMB` is an R package for fitting generalized linear mixed models (GLMMs) and extensions, built on [Template Model Builder](https://github.com/kaskr/adcomp), which is in turn built on [CppAD](https://www.coin-or.org/CppAD/) and [Eigen](eigen.tuxfamily.org/). It handles a wide range of statistical distributions (Gaussian, Poisson, binomial, negative binomial, Beta ...) as well as model extensions such as zero-inflation, heteroscedasticity, and autocorrelation. Fixed and random effects models can be specified for the conditional and zero-inflated components of the model, as well as fixed effects models for the dispersion parameter.
 
 ## Where to ask questions
 
-- the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) for general questions about `glmmTMB` usage and mixed models (please subscribe to the list before posting)
+- the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) for general questions about `glmmTMB` usage and mixed models (please [subscribe to the list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) before posting)
 - the [glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues) for bug, infelicity, and wishlist reporting
 - the [TMB users forum](https://groups.google.com/forum/#!forum/tmb-users) for TMB-specific questions
 - maintainer e-mail only for urgent/private communications
@@ -33,6 +35,16 @@ devtools::install_github("glmmTMB/glmmTMB/glmmTMB")
 
 Recent versions of `glmmTMB` enable parallel (threaded) computations based on `OpenMP` (see the [parallel vignette](glmmTMB/vignettes/parallel.Rmd) for more information). OpenMP will be available automatically if your system supports it, but this may depend on the details of your operating system, compiler, compilation flags used when your R executable was built, etc.; in particular, see [here](https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac) for tips on enabling OpenMP for older (<= El Capitan/10.11.4) MacOS systems. (That page suggests using optimization level `-O3`, which [may cause problems for glmmTMB](https://github.com/glmmTMB/glmmTMB/issues/297).)
 
+The maximum number of threads used defaults to 48; to increase this value when installing from source, you can use
+
+```r
+withr::with_makevars(c(PKG_CPPFLAGS="-DCPPAD_MAX_NUM_THREADS=128"), {
+  remotes::install_github("glmmTMB/glmmTMB/glmmTMB")
+}, assignment="+="
+)
+```
+(or the equivalent for `remotes::install_cran()`).
+
 ### Handling TMB/Matrix/glmmTMB mismatches
 
 When loading `glmmTMB` you may encounter this message:
@@ -54,7 +66,7 @@ while (!require("checkpoint")) install.packages("checkpoint")
 ## retrieve build date of installed version of TMB
 bd <- as.character(asDateBuilt(packageDescription("TMB",fields="Built")))
 oldrepo <- getOption("repos")
-setSnapshot(bd)
+use_mran_snapshot(bd) ## was setSnapshot() before version 1.0.0 of checkpoint
 install.packages("Matrix")
 options(repos=oldrepo) ## restore original repo
 ```

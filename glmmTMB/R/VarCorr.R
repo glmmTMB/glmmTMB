@@ -26,10 +26,10 @@ getParList <- function(object) {
 ##'      \item{gaussian}{returns the \emph{maximum likelihood} estimate
 ##'          of the standard deviation (i.e., smaller than the results of
 ##'                                  \code{sigma(lm(...))} by a factor of (n-1)/n)}
-##'      \item{nbinom1}{returns an overdispersion parameter
+##'      \item{nbinom1}{returns a dispersion parameter
 ##'          (usually denoted \eqn{\alpha}{alpha} as in Hardin and Hilbe (2007)):
 ##'          such that the variance equals \eqn{\mu(1+\alpha)}{mu(1+alpha)}.}
-##'      \item{nbinom2}{returns an overdispersion parameter
+##'      \item{nbinom2}{returns a dispersion parameter
 ##'          (usually denoted \eqn{\theta}{theta} or \eqn{k}); in contrast to
 ##'          most other families, larger \eqn{\theta}{theta} corresponds to a \emph{lower}
 ##'          variance which is \eqn{\mu(1+\mu/\theta)}{mu(1+mu/theta)}.}
@@ -37,9 +37,9 @@ getParList <- function(object) {
 ##'          and a shape parameter; sigma is estimated as (1/sqrt(shape)),
 ##'          which will typically be close (but not identical to) that estimated
 ##'          by \code{stats:::sigma.default}, which uses sqrt(deviance/df.residual)}
-##'      \item{beta}{returns the value of \eqn{\phi}{phi}, 
+##'      \item{beta}{returns the value of \eqn{\phi}{phi},
 ##'          where the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)}{mu*(1-mu)/(1+phi)}
-##'          (i.e., increasing \eqn{\phi}{phi} decreases the variance.) 
+##'          (i.e., increasing \eqn{\phi}{phi} decreases the variance.)
 ##'          This parameterization follows Ferrari and Cribari-Neto (2004)
 ##'          (and the \code{betareg} package):}
 ##'      \item{betabinomial}{This family uses the same parameterization (governing
@@ -48,7 +48,7 @@ getParList <- function(object) {
 ##'           where the variance is \eqn{\mu\phi^2}{mu*phi^2} (Consul & Famoye 1992)}
 ##'      \item{compois}{returns the value of \eqn{1/\nu}{1/nu},
 ##'           When \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
-##'           There is no closed form equation for the variance, but 
+##'           There is no closed form equation for the variance, but
 ##'           it is approximately undersidpersed when \eqn{1/\nu <1}{1/nu <1}
 ##'           and approximately oversidpersed when \eqn{1/\nu >1}{1/nu>1}.
 ##'           In this implementation, \eqn{\mu}{mu} is exactly the mean (Huang 2017), which
@@ -58,11 +58,11 @@ getParList <- function(object) {
 ##'           The value of \eqn{p} can be extracted using the internal
 ##'           function \code{glmmTMB:::.tweedie_power}.}
 ##' }
-##' 
-##'  The most commonly used GLM families 
-##'  (\code{binomial}, \code{poisson}) have fixed dispersion parameters which are 
+##'
+##'  The most commonly used GLM families
+##'  (\code{binomial}, \code{poisson}) have fixed dispersion parameters which are
 ##'  internally ignored.
-##' 
+##'
 ##' @references
 ##' \itemize{
 ##' \item Consul PC, and Famoye F (1992). "Generalized Poisson regression model. Communications in Statistics: Theory and Methods" 21:89–109.
@@ -132,7 +132,6 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
     ss
 }
 
-
 ##' Extract variance and correlation components
 ##'
 ##' @aliases VarCorr
@@ -160,7 +159,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' @details For an unstructured variance-covariance matrix, the internal parameters
 ##' are structured as follows: the first n parameters are the log-standard-deviations,
 ##' while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
-##' of the correlation matrix, filled in column-wise order 
+##' of the correlation matrix, filled in column-wise order
 ##' (see the \href{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}{TMB documentation}
 ##' for further details).
 ##' @keywords internal
@@ -297,14 +296,14 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         }
         return(r)
     }  ## getCorSD
-        
+
     ## get std devs:
     reStdDev <- lapply(varcor, getCorSD)
-    ## need correlations if 
+    ## need correlations if
     useCor <- (sapply(varcor,getCovstruct)!="us" |
                sapply(reStdDev,length)>1)
     cnms <- Map(function(x,n) colnames(x)[seq(n)], varcor, lengths(reStdDev))
-                
+
     if(useScale) {
         reStdDev <- c(reStdDev,
                       list(Residual = unname(attr(varcor, "sc"))))
@@ -326,7 +325,7 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
 	corr <-
 	    do.call(rbind,lapply(varcor, getCorSD,
                                          type="correlation", maxlen=maxlen))
-        ## add blank values as necessary 
+        ## add blank values as necessary
 	if (nrow(corr) < nrow(reMat))
 	    corr <- rbind(corr, matrix("", nrow(reMat) - nrow(corr), ncol(corr)))
 	colnames(corr) <- c("Corr", rep.int("", max(0L, ncol(corr)-1L)))

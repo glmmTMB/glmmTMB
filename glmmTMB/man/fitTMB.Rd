@@ -15,7 +15,7 @@ the actual model optimization, after all of the appropriate structures
 have been set up. It can be useful to run \code{\link{glmmTMB}} with
 \code{doFit=TRUE}, adjust the components as required, and then
 finish the fitting process with \code{fitTMB} (however, it is the
-user's responsibility to make sure that any modifications 
+user's responsibility to make sure that any modifications
 create an internally consistent final fitted object).
 }
 \examples{

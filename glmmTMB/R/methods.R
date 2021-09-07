@@ -9,7 +9,7 @@
 ##' be extracted.
 ##' @param \dots optional additional arguments. Currently none are used in any
 ##' methods.
-##' @return an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients 
+##' @return an object of class \code{fixef.glmmTMB} comprising a list of components (\code{cond}, \code{zi}, \code{disp}), each containing a (possibly zero-length) numeric vector of coefficients
 ##' @keywords models
 ##' @details The print method for \code{fixef.glmmTMB} object \emph{only displays non-trivial components}: in particular, the dispersion parameter estimate is not printed for models with a single (intercept) dispersion parameter (see examples)
 ##' @examples
@@ -151,33 +151,32 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
   ## FIXME: add condVar, make sure format matches lme4
-  arrange <- function(x, sd, listname)
-  {
-    cnms <- object$modelInfo$reTrms[[listname]]$cnms
-    flist <- object$modelInfo$reTrms[[listname]]$flist
-    if (!is.null(cnms)) {
-      levs <- lapply(fl <- flist, levels)
-      asgn <- attr(fl, "assign")
-      nc <- vapply(cnms, length, 1L)     ## number of columns (terms) per RE
-      nb <- nc * vapply(levs, length, 1L)[asgn] ## number of elements per RE
-      nbseq <- rep.int(seq_along(nb), nb)       ## splitting vector
+  arrange <- function(x, sd, listname) {
+    cnms <- object$modelInfo$reTrms[[listname]]$cnms   ## list of (named) terms and X columns
+    reStruc <- object$modelInfo$reStruc[[paste0(listname, "ReStruc")]] ## random-effects structure
+    flist <- object$modelInfo$reTrms[[listname]]$flist ## list of grouping variables
+    levs <- lapply(flist, levels)
+    if (!is.null(cnms)) {  ## FIXME: better test?
+      asgn <- attr(flist, "assign")
+      ## FIXME: blockReps/blockSize etc. _should_ be stored as integers ...
+      nc <- vapply(reStruc, function(x) x$blockSize, numeric(1)) ## number of RE params per block
+      nb <- vapply(reStruc, function(x) x$blockReps, numeric(1)) ## number of blocks per RE (may != nlevs in some cases)
+      nbseq <- rep.int(seq_along(nb), nb * nc)       ## splitting vector
       ml <- split(x, nbseq)
       for (i in seq_along(ml)) {
-          ml[[i]] <- matrix(ml[[i]], ncol=nc[i], byrow=TRUE,
-                            dimnames=list(NULL, cnms[[i]]))
+          ml[[i]] <- matrix(ml[[i]], ncol = nc[i], byrow = TRUE,
+                            dimnames = list(NULL, cnms[[i]]))
       }
       if (!is.null(sd)) {
-          sd <- split(sd,nbseq)
+          sd <- split(sd, nbseq)
           for (i in seq_along(sd)) {
-              ii <- asgn[i]
-              nr <- length(levs[[ii]])
-              a <- array(NA,dim=c(nc[i],nc[i],nr))
+              a <- array(NA, dim=c(nc[i], nc[i], nb[i]))
               ## fill in diagonals: off-diagonals will stay NA (!)
               ## unless we bother to retrieve conditional covariance info
               ## from the fit
               ## when nc>1, what order is the sd vector in?
               ## guessing, level-wise
-              for (j in seq(nr)) {
+              for (j in seq(nb[i])) {
                   a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
                       (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
               }
@@ -185,9 +184,20 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
           }
       }
       ## combine RE matrices from all terms with the same grouping factor
-      x <- lapply(seq_along(fl), function(i) {
-          d <- data.frame(do.call(cbind, ml[asgn==i]), row.names=levs[[i]],
-                          check.names=FALSE)
+      x <- lapply(seq_along(flist),
+                  function(i) {
+                    m <- ml[asgn == i]
+                    b2 <- vapply(m, nrow, numeric(1))
+                    ub2 <- unique(b2)
+                    if (length(ub2)>1)
+                      stop("differing numbers of b per group")
+                    ## if number of sets of modes != number of levels (e.g. Gaussian process/phyloglmm),
+                    ##   generate numeric sequence for names
+                    rnms <- if (ub2==length(levs[[i]])) levs[[i]] else seq(ub2)
+                    d <- data.frame(do.call(cbind, m),
+                               row.names = rnms,
+                               check.names = FALSE)
+
           if (!is.null(sd)) {
               ## attach conditional variance info
               ## called "condVar", *not* "postVar" (contrast to lme4)
@@ -197,8 +207,8 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
                                   } else sd[[w]]  ## else just the array
           }
           return(d)
-      })      
-      names(x) <- names(fl)
+      })
+      names(x) <- names(flist)
       return(x)
     } ## if !is.null(cnms)
     else {
@@ -324,15 +334,14 @@ df.residual.glmmTMB <- function(object, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
-##' @param include_mapped include mapped variables (these will be given variances and covariances of 0)
+##' @param include_mapped include mapped variables? (these will be given variances and covariances of NA)
 ##' @param \dots ignored, for method compatibility
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
-  ## don't check_dots, car::Anova tries to pass 'complete'
-  ## check_dots(...)  
+  check_dots(..., .ignore = "complete")
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
@@ -392,7 +401,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   ## drop NA-mapped variables
 
   ## for matching map names vs nameList components ...
-  par_components <- c("beta","betazi","betad","theta","thetazi")
+  par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
 
   fullNameList <- nameList
   map <- object$obj$env$map
@@ -410,32 +419,31 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   }
 
   if (full) {
-   colnames(covF) <- rownames(covF) <- unlist(nameList)
+        colnames(covF) <- rownames(covF) <- unlist(nameList)
       res <- covF        ## return just a matrix in this case
   } else {
       ## extract block-diagonal matrix
       ss <- split(seq_along(colnames(covF)), colnames(covF))
-      cl_names <- names(cNames)[match(names(ss),c("beta","betazi","betad"))]
-      covList <- vector("list",length(ss))
-      names(covList) <- names(ss) <- cl_names
-      for (nm in names(covList)) {
+      covList <- vector("list",3)
+      names(covList) <- names(cNames) ## component names
+      parnms <- c("beta","betazi", "betad")     ## parameter names
+      for (i in seq_along(covList)) {
+          nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
-          if (length(xnms <- nameList[[nm]])==0) {
-              covList[[nm]] <- NULL
+          cnm <- names(covList)[[i]]
+          xnms <- nameList[[cnm]]
+          if (!include_mapped || length(map)==0) {
+              dimnames(m) <- list(xnms,xnms)
           } else {
-              if (!include_mapped || length(map)==0) {
-                  dimnames(m) <- list(xnms,xnms)
-              } else {
-                  fnm <- fullNameList[[nm]]
-                  mm <- matrix(0,length(fnm),length(fnm),
-                               dimnames=list(fnm,fnm))
-                  mm[nameList[[nm]],nameList[[nm]]] <- m
-                  m <- mm
-              }
-              covList[[nm]] <- m
+              fnm <- fullNameList[[cnm]]
+              mm <- matrix(NA_real_,length(fnm),length(fnm),
+                           dimnames=list(fnm,fnm))
+              mm[nameList[[cnm]],nameList[[cnm]]] <- m
+              m <- mm
           }
+          covList[[i]] <- m
       }
-      res <- covList
+      res <- covList[lengths(covList)>0]
       ##  FIXME: should vcov always return a three-element list
       ## (with NULL values for trivial models)?
       class(res) <- c("vcov.glmmTMB","matrix")
@@ -534,7 +542,7 @@ printDispersion <- function(ff,s) {
             sname <- "sigma^2"
             sval <- s^2
         } else {
-            dname <- "Overdispersion parameter"
+            dname <- "Dispersion parameter"
             sname <- ""
             sval <- s
         }
@@ -546,7 +554,7 @@ printDispersion <- function(ff,s) {
 }
 
 .tweedie_power <- function(object) {
-    unname(plogis(object$fit$par["thetaf"]) + 1)
+    unname(plogis(get_pars(object)["thetaf"]) + 1)
 }
 
 ## Print family specific parameters
@@ -741,8 +749,8 @@ format.perc <- function (probs, digits) {
 ##' scale: for each random effect, the first set of parameter values
 ##' are standard deviations on the log scale, while remaining parameters
 ##' represent correlations on the scaled Cholesky scale (see the
-##' 
-##' 
+##'
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
@@ -786,8 +794,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
                              full = FALSE,
-                             ...)
-{
+                             ...) {
     method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
@@ -811,7 +818,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     ci <- matrix(NA, nrow=0, ncol=2 + estimate,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
-    
+
     if (!is.null(parm) || method!="wald") {
         parm <- getParms(parm, object, full)
     }
@@ -837,6 +844,35 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }
         return(ci.tmp)
     }
+
+    wald_ci_comp <- function(component) {
+        ## VarCorr -> stddev
+        cfun <- function(x) {
+            ss <- attr(x, "stddev")
+            names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
+            cc <- attr(x,"correlation")
+            if (length(cc)>1) {
+                nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                cc <- cc[lower.tri(cc)]
+                nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                names(cc) <- nn
+                ss <- c(ss,cc)
+            }
+            return(ss)
+        }
+        reduce <- function(VC) sapply(VC[[component]], cfun)
+        ci.sd <- .CI_univariate_monotone(object,
+                                         VarCorr,
+                                         reduce = reduce,
+                                         level = level,
+                                         estimate = estimate)
+        ## would consider excluding mapped parameters here
+        ## (works automatically for fixed effects via vcov)
+        ## but tough because of theta <-> sd/corr mapping;
+        ## instead, eliminate rows below where lowerCI==upperCI
+        return(ci.sd)
+    }
+
     if (method=="wald") {
         map <- object$modelInfo$map
         for (component in c("cond", "zi") ) {
@@ -845,34 +881,6 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ## variance and estimates
                 ci <- rbind(ci, wald_comp(component))
             }
-            ## VarCorr -> stddev
-            cfun <- function(x) {
-                ss <- attr(x, "stddev")
-                names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
-                cc <- attr(x,"correlation")
-                if (length(cc)>1) {
-                    nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
-                    cc <- cc[lower.tri(cc)]
-                    nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
-                    names(cc) <- nn
-                    ss <- c(ss,cc)
-                }
-                return(ss)
-            }
-            reduce <- function(VC) sapply(VC[[component]], cfun)
-            ci.sd <- .CI_univariate_monotone(object,
-                                                 VarCorr,
-                                                 reduce = reduce,
-                                                 level = level,
-                                                 ## name.prepend=paste(component,
-                                                 ## "Std.Dev.",
-                                                 ## sep="."),
-                                                 estimate = estimate)
-                ## would consider excluding mapped parameters here
-                ## (works automatically for fixed effects via vcov)
-                ## but tough because of theta <-> sd/corr mapping;
-                ## instead, eliminate rows below where lowerCI==upperCI
-                ci <- rbind(ci, ci.sd)
         } ## cond and zi components
         if (components.has("other")) {
             ## sigma
@@ -903,8 +911,17 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ci <- rbind(ci, ci.power)
             } ## tweedie
         }  ## model has 'other' component
+        ## NOW add 'theta' components (match order of params in vcov-full)
+        ## FIXME: better to have more robust ordering
+        for (component in c("cond", "zi") ) {
+            if (components.has(component) &&
+                length(ranef(object)[[component]])>0) {
+                ci <- rbind(ci, wald_ci_comp(component))
+            }
+        }
+
         ## Take subset
-        
+
         ## drop mapped values (where lower == upper)
         ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
 
@@ -927,8 +944,10 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
         FUN <- function(n) {
-            TMB::tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
-                    ...)
+          n_orig <- openmp(n = object$modelInfo$parallel)
+          on.exit(openmp(n_orig))
+          TMB::tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
+                       ...)
         }
         if (do_parallel) {
             if (parallel == "multicore") {
@@ -998,16 +1017,42 @@ extractAIC.glmmTMB <- function(fit, scale, k = 2, ...) {
 }
 
 ## deparse(.) returning \bold{one} string
-## copied from lme4/R/utilities.R
+## previously safeDeparse;
 ## Protects against the possibility that results from deparse() will be
 ##       split after 'width.cutoff' (by default 60, maximally 500)
-safeDeparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)
+## R >= 4.0.0's deparse1() is a generalization
+if((Rv <- getRversion()) < "4.1.0") {
+  deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...)
+      paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+}
 
 abbrDeparse <- function(x, width=60) {
     r <- deparse(x, width)
     if(length(r) > 1) paste(r[1], "...") else r
 }
 
+sort_termlabs <- function(labs) {
+     if (length(labs)==0) return(labs)
+     ss <- strsplit(labs, ":")
+     ss <- sapply(ss, function(s) { if (length(s)==1) return(s); return(paste(sort(s),collapse=":")) })
+     return(sort(ss)) ## sort vector
+}
+
+## see whether mod1, mod2 are appropriate for Likelihood ratio testing
+CompareFixef <- function (mod1, mod2, component="cond") {
+     mr1 <- mod1$modelInfo$REML
+     mr2 <- mod2$modelInfo$REML
+     if (mr1 != mr2) {
+        stop("Can't compare REML and ML fits", call.=FALSE)
+     }
+     if (mr1 && mr2) {
+           tmpf <- function(obj) {   sort_termlabs(attr(terms(obj, component=component),"term.labels")) }
+           if (!identical(tmpf(mod1), tmpf(mod2))) {
+                stop("Can't compare REML fits with different fixed-effect components", call.=FALSE)
+           }
+     }
+     return(TRUE) ## OK
+}
 
 ##' @importFrom methods is
 ##' @importFrom stats var getCall pchisq anova
@@ -1016,17 +1061,21 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 {
     mCall <- match.call(expand.dots = TRUE)
     dots <- list(...)
+    ## 'consistent' sapply, i.e. always unlist
     .sapply <- function(L, FUN, ...) unlist(lapply(L, FUN, ...))
     ## detect multiple models, i.e. models in ...
-    modp <- as.logical(vapply(dots, is, NA, "glmmTMB"))
+    modp <- as.logical(vapply(dots, FUN=is, "glmmTMB", FUN.VALUE=NA))
     if (any(modp)) {
         mods <- c(list(object), dots[modp])
         nobs.vec <- vapply(mods, nobs, 1L)
+        ## compare all models against first for being fitted consistently;
+        ## if all REML, fixed effects must be identical
+        vapply(mods[-1], CompareFixef, mod1=mods[[1]], FUN.VALUE=TRUE)
         if (var(nobs.vec) > 0)
             stop("models were not all fitted to the same size of dataset")
         if (is.null(mNms <- model.names))
             mNms <- vapply(as.list(mCall)[c(FALSE, TRUE, modp)],
-                           safeDeparse, "")
+                           deparse1, "")
         if (any(duplicated(mNms))) {
             warning("failed to find unique model names, assigning generic names")
             mNms <- paste0("MODEL", seq_along(mNms))
@@ -1073,7 +1122,7 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
 #' @importFrom stats predict
 #' @export
 fitted.glmmTMB <- function(object, ...) {
-    predict(object,type="response")
+    predict(object,type="response", fast=TRUE)
 }
 
 .noSimFamilies <- NULL
@@ -1101,9 +1150,9 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
     	stop("Simulation code has not been implemented for this family")
     }
     ## copied from stats::simulate.lm
-    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) 
+    if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
         runif(1)
-    if (is.null(seed)) 
+    if (is.null(seed))
         RNGstate <- get(".Random.seed", envir = .GlobalEnv)
     else {
         R.seed <- get(".Random.seed", envir = .GlobalEnv)
@@ -1197,7 +1246,7 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
 ##' @rdname ranef.glmmTMB
 ##' @param x a \code{ranef.glmmTMB} object (i.e., the result of running \code{ranef} on a fitted \code{glmmTMB} model)
 as.data.frame.ranef.glmmTMB <- function(x, ...) {
-    check_dots(...)
+    check_dots(..., .ignore = "stringsAsFactors")
     tmpf <- function(x) do.call(rbind,lapply(names(x),asDf0,x=x,id=TRUE))
     x0 <- lapply(x,tmpf)
     x1 <- Map(function(x,n) {
@@ -1251,9 +1300,9 @@ lme4::refit
 #'     }
 #' }
 #' }
-#' @details 
+#' @details
 #' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
-#' 
+#'
 refit.glmmTMB <- function(object, newresp, ...) {
   cc <- getCall(object)
   newdata <- eval.parent(cc$data)
@@ -1394,7 +1443,7 @@ weights.glmmTMB <- function(object, type="prior", ...) {
 # extract model parameters
 #
 # This is a utility function for multcomp::glht
-# 
+#
 ## @param model fitted glmmTMB model
 ## @param coef. function for retrieving coefficients
 ## @param vcov. function for retrieving covariance matrix

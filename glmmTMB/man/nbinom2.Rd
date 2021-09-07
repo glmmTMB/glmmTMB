@@ -68,13 +68,13 @@ and the predicted mean as \eqn{\mu}{mu}:
       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
-     \item{truncated_nbinom2}{Zero-truncated version of nbinom2: variance expression from Shonkwiler2016.}
+     \item{truncated_nbinom2}{Zero-truncated version of nbinom2: variance expression from Shonkwiler 2016. Simulation code (for this and the other truncated count distributions) is taken from C. Geyer's functions in the \code{aster} package; the algorithms are described in \href{https://cran.r-project.org/package=aster/vignettes/trunc.pdf}{this vignette}.}
      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
-     \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.)}
+     \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.) Our implementation is taken from the \code{HMMpa} package, based on Joe and Zhu (2005) and implemented by Vitali Witowski.}
      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
 and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
-     \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}}
+     \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
 }
 }
 \references{
@@ -83,6 +83,7 @@ and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)
 \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts." \emph{Statistical Modelling} 17(6), 1-22.
+\item Joe H, Zhu R (2005). "Generalized Poisson Distribution: The Property of Mixture of Poisson and Comparison with Negative Binomial Distribution." \emph{Biometrical Journal} 47(2): 219–29. doi:10.1002/bimj.200410102.
 \item Morris  W (1997). "Disentangling Effects of Induced Plant Defenses and Food Quantity on Herbivores by Fitting Nonlinear Models." \emph{American Naturalist} 150:299-327.
 \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
 \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. https://doi.org/10.1214/09-AOAS306.

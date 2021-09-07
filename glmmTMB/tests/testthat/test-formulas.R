@@ -22,8 +22,8 @@ test_that("slash terms", {
   sf5 <- splitForm(~x+y+(1|f/g)) 
   sf6 <- splitForm(~x+y+(1|f/g/h))
   sf7 <- splitForm(~x+y+(1|(f/g)/h)) 
-  expect_equal(sf5$reTrmClasses,rep("us",2))
-  expect_equal(sf6$reTrmClasses,rep("us",3))
+  expect_equal(sf5$reTrmClasses, rep("us",2))
+  expect_equal(sf6$reTrmClasses, rep("us",3))
   expect_equal(sf6,sf7)
 })
 

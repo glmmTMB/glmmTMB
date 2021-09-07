@@ -2,9 +2,7 @@ require(glmmTMB)
 require(testthat)
 
 data(sleepstudy,package="lme4")
-m <- load(system.file("test_data","models.rda",package="glmmTMB",
-                      mustWork=TRUE))
-
+## m <- load(system.file("test_data","models.rda",package="glmmTMB", mustWork=TRUE))
 if (require(emmeans)) {
     context("emmeans")
     m1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
@@ -19,7 +17,7 @@ if (require(emmeans)) {
                     capture.output(print(em2)))))
     expect_equal(summary(em1[[2]])$estimate[1], -0.8586306, tolerance=1e-4)
     expect_equal(summary(em2[[2]])$ratio[1], 0.42374, tolerance=1e-4)
-    
+
     m2 <- glmmTMB(count ~ spp + mined + (1|site),
                   zi=~spp + mined,
                   family=nbinom2, data=Salamanders)
@@ -27,7 +25,7 @@ if (require(emmeans)) {
     expect_is(rgc, "emmGrid")
     expect_equal(predict(rgc)[2], -1.574079, tolerance=1e-4)
     expect_equal(predict(rgc, type="response")[2], 0.207198, tolerance=1e-4)
-    
+
     rgz <- ref_grid(m2, component = "zi")
     expect_is(rgz, "emmGrid")
     expect_equal(predict(rgz)[2], 2.071444, tolerance=1e-4)
@@ -44,38 +42,6 @@ if (require(emmeans)) {
                  c(0, 0.366598230362198))
 }
 
-if (require(car) && getRversion()>="3.6.0") {
-    ## only testing on recent R: see comments
-    ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
-    ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
-    context("car::Anova")
-    fm1 <- glmmTMB(Reaction~Days+(1|Subject),sleepstudy)
-    ## lme4 is imported so we don't need to explicitly require() it
-    fm0 <- lme4::lmer(Reaction~Days+(1|Subject),sleepstudy,REML=FALSE)
-    expect_equal(Anova(fm1),Anova(fm0),tolerance=3e-6)
-    expect_equal(Anova(fm1,type="III"),Anova(fm0,type="III"),tolerance=3e-6)
-    ## test Anova on various components
-    fmd <- glmmTMB(Reaction~Days+(1|Subject),
-                   disp=~I(Days>5), sleepstudy, REML=FALSE)
-    ad <- Anova(fmd,component="disp")
-    expect_equal(ad[1,1],18.767,tolerance=1e-5)
-    expect_equal(rownames(ad), "I(Days > 5)")
-    ac <- Anova(fmd,component="cond")
-    expect_equal(ac[1,1], 160.1628, tolerance=1e-5)
-    expect_equal(rownames(ac), "Days")
-    expect_error(Anova(fmd,component="zi"), "trivial fixed effect")
-
-    ## test that zi and cond tests are different
-    a1 <- Anova(fm3ZIP)
-    a2 <- Anova(fm3ZIP, component="zi")
-    a3 <- Anova(fm3ZIP, type="III")
-    a4 <- Anova(fm3ZIP, type="III",component="zi")
-    get_pval <- function(x) c(na.omit(x$`Pr(>Chisq)`))
-    expect_equal(get_pval(a1),1.82693150434104e-13)
-    expect_equal(get_pval(a2),numeric(0))
-    expect_equal(get_pval(a3),c(0, 1.82693150434104e-13))
-    expect_equal(get_pval(a4),0.81337346580467)
-}
 
 if (require(effects)) {
     context("effects")
@@ -93,7 +59,7 @@ if (require(effects)) {
         ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
         ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
         expect_equal(f(fm2_tmb),f(fm2_lmer),tolerance=2e-5)
-        ## 
+        ##
         set.seed(101)
         dd <<- data.frame(y=rnbinom(1000,mu=4,size=1),
                           x = rnorm(1000),

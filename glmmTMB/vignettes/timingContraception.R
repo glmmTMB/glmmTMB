@@ -1,29 +1,33 @@
-source("timingFuns.R")
-data(Contraception,package="mlmRev")
-library("lme4")
-library("glmmTMB")
-library("glmmADMB")
-library("plyr")  ## load before dplyr; for ldply()
-library("tidyr")
-library("dplyr")
+if (file.exists("timingFuns.R")) {
+  ## don't run if this utility file can't be found
+  ## (_should_ exist if source()ing from vignettes directory, but
+  ## not found on r-hub Debian platform ...)
+  source("timingFuns.R")
+  data(Contraception,package="mlmRev")
+  library("lme4")
+  library("glmmTMB")
+  library("glmmADMB")
+  library("plyr")  ## load before dplyr; for ldply()
+  library("tidyr")
+  library("dplyr")
 
-## make sure this is run with optimized build of glmmTMB,
-## i.e. "make install" rather than "make quick-install/quick-check"
-## (or at least document)
-nmax <- 40     ## max replications for glmer/glmmTMB
-nmaxADMB <- 2  ## max reps for glmmadmb (much slower)
- 
-## slow enough that I should consider using something with 
-## checkpointing instead ...
-tmat <- ldply(seq(nmax),getTimes)  
-tmatADMB <- ldply(seq(nmaxADMB),getTimes,which="glmmadmb")
+  ## make sure this is run with optimized build of glmmTMB,
+  ## i.e. "make install" rather than "make quick-install/quick-check"
+  ## (or at least document)
+  nmax <- 40     ## max replications for glmer/glmmTMB
+  nmaxADMB <- 2  ## max reps for glmmadmb (much slower)
 
-## reshape: wide-to-long, add n values
-ff <- function(dd,n=seq(nrow(dd))) {
-   mutate(dd,n=n) %>%
-    gather(pkg,time,-n)
-}
-tmatContraception <- rbind(ff(tmat),ff(tmatADMB))
+  ## slow enough that I should consider using something with
+  ## checkpointing instead ...
+  tmat <- ldply(seq(nmax),getTimes)
+  tmatADMB <- ldply(seq(nmaxADMB),getTimes,which="glmmadmb")
 
-save("tmatContraception",file="contraceptionTimings.rda")
+  ## reshape: wide-to-long, add n values
+  ff <- function(dd,n=seq(nrow(dd))) {
+    mutate(dd,n=n) %>%
+      gather(pkg,time,-n)
+  }
+  tmatContraception <- rbind(ff(tmat),ff(tmatADMB))
 
+  save("tmatContraception",file="contraceptionTimings.rda")
+}  ## if auxiliary file available

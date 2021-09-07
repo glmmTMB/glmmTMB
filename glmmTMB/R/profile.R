@@ -26,7 +26,7 @@
 #' @importFrom stats profile
 #' @examples
 #' \dontrun{
-#' m1 <- glmmTMB(count~ mined + (1|site), 
+#' m1 <- glmmTMB(count~ mined + (1|site),
 #'        zi=~mined, family=poisson, data=Salamanders)
 #' salamander_prof1 <- profile(m1, parallel="multicore",
 #'                             ncpus=2, trace=1)
@@ -34,7 +34,7 @@
 #' salamander_prof1 <- profile(m1, trace=1,parm=1)
 #' salamander_prof1M <- profile(m1, trace=1,parm=1, npts = 4)
 #' salamander_prof2 <- profile(m1, parm="theta_")
-#' 
+#'
 #' }
 #' salamander_prof1 <- readRDS(system.file("example_files","salamander_prof1.rds",package="glmmTMB"))
 #' if (require("ggplot2")) {
@@ -61,7 +61,7 @@ profile.glmmTMB <- function(fitted,
     plist <- parallel_default(parallel,ncpus)
     parallel <- plist$parallel
     do_parallel <- plist$do_parallel
-    
+
     trace <- as.numeric(trace)
 
     ytol <- qchisq(level_max,1)
@@ -109,6 +109,9 @@ profile.glmmTMB <- function(fitted,
     FUN <- local({
         function(p,s) {
             if (trace>0) cat("parameter",p,"\n")
+            n_orig <- openmp(NULL)
+            openmp(n = fitted$modelInfo$parallel)
+            on.exit(openmp(n_orig))
             return(tmbprofile(fitted$obj,
                               name=p,
                               h=s/4,

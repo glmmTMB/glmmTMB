@@ -3,9 +3,49 @@
 \name{NEWS}
 \title{glmmTMB News}
 \encoding{UTF-8}
-\section{CHANGES IN VERSION 1.0.2.9000}{
+
+\section{CHANGES IN VERSION 1.1.2.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Double-bar notation (\code{(x+y||g)}) is now translated to a
+  diagonal-covariance term (\code{diag(x+y|g)}) rather than being split 
+  into separate random effects terms as in  \code{lme4}. This should not
+  change modeling results, but may change their
+  presentation/ordering/etc.. (This is also a bug fix, as double-bar
+  notation was not working in several previous versions.)
+    }
+  }
+}
+  
+\section{CHANGES IN VERSION 1.1.2.2 (2021-07-29)}{
+  \itemize{
+    \item This is an administrative release (minor revisions for CRAN).
+  }
+}
+  
+\section{CHANGES IN VERSION 1.1.2 (2021-07-20)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item resolved OpenMP thread-safety issues on Windows
+      \item resolved bug that caused Tweedie models to crash on Solaris
+      \item resolved problems with vignettes on Solaris (GH #721)
+    }
+  } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item improved control of OpenMP threading for prediction,
+      profiling etc.
+    }
+  } % user-visible changes
+} % version 1.1.2
+  
+\section{CHANGES IN VERSION 1.1.0 (2021-06-24)}{
   \subsection{NEW FEATURES}{
     \itemize{
+      \item reduced rank covariance for GLVMs implemented by M.McGillycuddy 
+      (see covstruct vignette for details)
+      \item \code{diagnose} function to investigate potential causes of convergence problems
+      \item improved parallel processing (GH #620 #652)
       \item truncated nbinom2 family now includes a \code{variance}
       component
     }
@@ -14,6 +54,40 @@
     \itemize{
       \item \code{Anova} with \code{type="III"} now handles
       \code{component} argument correctly, more robust to trivial models
+      \item fixed a typo/omission in the type-3 Anova method that made
+      zi Anova break in some conditions (GH #674)
+      \item fixed bugs/inconsistencies in handling of mapped parameters
+      (GH #678)
+      \item \code{confint} with \code{parm="beta_"} or
+      \code{parm="theta_"} now work correctly with more complex models
+      (e.g. including both zero inflation and random effects)
+      (reported by @MKie45 on Stack Overflow)
+      \item \code{confint} works for single-parameter models and those 
+      with a \code{dispformula} (GH #622)
+      \item mapped (fixed) variables could give incorrect predictions (GH #644)
+      \item \code{simulate} is more robust for truncated_nbinom1 and 
+      truncated_nbinom2 (GH #572) 
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item "mapped" parameters (i.e., fixed by user rather than
+      optimized) are now given variances/standard deviations of NA rather
+      than 0 in \code{vcov(., include_mapped=TRUE)} and by extension in
+      \code{summary}; hence Z-statistics and P-values will also be NA for
+      these parameters
+      \item row ordering has changed in \code{confint} output data
+      frames (random effects parameters come \emph{last}, matching the
+      row/column order in \code{vcov(., full=TRUE)})
+      \item new \code{fast} flag for predictions decreases memory use
+      and computational time (only if \code{newdata}, \code{newparams}
+      not specified); default in \code{fitted()} method
+      \item improved robustness of beta-binomial fits
+      (results of fitting such models may change slightly from previous
+      versions)
+      \item consistent predictions between link and inverse-link (GH #696)
+      \item improved vignette titles
+      \item The \code{emm_basis} method for \code{glmmTMB} objects now accepts a user-specified covariance matrix (\code{vcov.} argument)
     }
   }
 }

@@ -9,6 +9,7 @@ context("ZI models")
 data(Owls)
 
 test_that("zi", {
+  skip_on_cran()
     ## Fit negative binomial model with "constant" Zero Inflation :
     owls_nb1 <<- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                              (1|Nest)+offset(log(BroodSize)),
@@ -19,7 +20,7 @@ test_that("zi", {
     owls_nb3 <<- update(owls_nb1,ziformula=~.)
 
     expect_equal(fixef(owls_nb2),
-  structure(list(cond = structure(c(0.812028613585629, -0.342496105044418, 
+  structure(list(cond = structure(c(0.812028613585629, -0.342496105044418,
       -0.0751681324132088, 0.122484981295054),
       .Names = c("(Intercept)", "FoodTreatmentSatiated", "SexParentMale",
                  "FoodTreatmentSatiated:SexParentMale")),
@@ -33,6 +34,7 @@ test_that("zi", {
 })
 
 test_that("zi beta and Gamma", {
+    skip_on_cran()
     suppressWarnings(RNGversion("3.5.1"))
     set.seed(101)
     dd <- data.frame(yb=c(rbeta(100,shape1=2,shape2=1),rep(0,10)),

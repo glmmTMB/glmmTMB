@@ -101,3 +101,54 @@ url = {http://www.sciencedirect.com/science/article/B6W9W-4PK8B6H-8/2/e43cfbaad4
 	year = {2011},
 	keywords = {Computers / Mathematical \& Statistical Software, Mathematics / Probability \& Statistics / General}
 }
+
+
+@article{niku2019gllvm,
+	title = {gllvm: {Fast} analysis of multivariate abundance data with generalized linear latent variable models in {R}},
+	volume = {10},
+	issn = {2041-210X},
+	shorttitle = {gllvm},
+	url = {https://besjournals.onlinelibrary.wiley.com/doi/abs/10.1111/2041-210X.13303},
+	doi = {https://doi.org/10.1111/2041-210X.13303},
+	abstract = {There has been rapid development in tools for multivariate analysis based on fully specified statistical models or 'joint models'. One approach attracting a lot of attention is generalized linear latent variable models (GLLVMs). However, software for fitting these models is typically slow and not practical for large datasets. The R package gllvm offers relatively fast methods to fit GLLVMs via maximum likelihood, along with tools for model checking, visualization and inference. The main advantage of the package over other implementations is speed, for example, being two orders of magnitude faster, and capable of handling thousands of response variables. These advances come from using variational approximations to simplify the likelihood expression to be maximized, automatic differentiation software for model-fitting (via the TMB package) and careful choice of initial values for parameters. Examples are used to illustrate the main features and functionality of the package, such as constrained or unconstrained ordination, including functional traits in 'fourth corner' models, and (if the number of environmental coefficients is not large) make inferences about environmental associations.},
+	language = {en},
+	number = {12},
+	urldate = {2021-03-17},
+	journal = {Methods in Ecology and Evolution},
+	author = {Niku, Jenni and Hui, Francis K. C. and Taskinen, Sara and Warton, David I.},
+	year = {2019},
+	note = {\_eprint: https://besjournals.onlinelibrary.wiley.com/doi/pdf/10.1111/2041-210X.13303},
+	keywords = {abundance data, generalized linear latent variable models, high-dimensional data, joint modelling, maximum likelihood, multivariate analysis, ordination, species interactions},
+	pages = {2173--2182}
+}
+
+@article{hui2015model,
+	title={Model-based approaches to unconstrained ordination},
+	volume={6},
+	url = {https://besjournals.onlinelibrary.wiley.com/doi/abs/10.1111/2041-210X.12236},
+	doi = {https://doi.org/10.1111/2041-210X.12236},
+	abstract = {Summary
+1. Unconstrained ordination is commonly used in ecology to visualize multivariate data, in particular, to visualize
+themain trends between different sites in terms of their species composition or relative abundance.
+2. Methods of unconstrained ordination currently used, such as non-metric multidimensional scaling, are algorithm-
+based techniques developed and implemented without directly accommodating the statistical properties of
+the data at hand. Failure to account for these key data properties can lead to misleading results.
+3. A model-based approach to unconstrained ordination can address this issue, and in this study, two types of
+models for ordination are proposed based on finite mixture models and latent variable models. Each method is
+capable of handling different data types and different forms of species response to latent gradients. Further
+strengths of the models are demonstrated via example and simulation.
+4. Advantages of model-based approaches to ordination include the following: residual analysis tools for checking
+assumptions to ensure the fitted model is appropriate for the data; model selection tools to choose the most
+appropriate model for ordination; methods for formal statistical inference to draw conclusions from the ordination;
+and improved efficiency, that is model-based ordination better recovers true relationships between sites,
+when used appropriately.},
+	language = {en},
+	number={4},
+	urldate = {2021-03-23},
+	journal={Methods in Ecology and Evolution},
+	author={Hui, Francis KC and Taskinen, Sara and Pledger, Shirley and Foster, Scott D and Warton, David I},
+	year={2015},
+	keywords = {correspondence analysis, latent variable model, mixture model, multivariate analysis,
+non-metric multidimensional scaling},
+  pages={399--411}
+}

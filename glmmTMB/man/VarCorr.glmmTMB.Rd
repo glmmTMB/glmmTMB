@@ -21,7 +21,7 @@ Extract variance and correlation components
 For an unstructured variance-covariance matrix, the internal parameters
 are structured as follows: the first n parameters are the log-standard-deviations,
 while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
-of the correlation matrix, filled in column-wise order 
+of the correlation matrix, filled in column-wise order
 (see the \href{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}{TMB documentation}
 for further details).
 }
