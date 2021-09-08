@@ -256,6 +256,20 @@ up2date <- function(oldfit) {
   oldfit
 }
 
+isNullPointer <- function(x) { attributes(x) <- NULL; identical(x, new("externalptr")) }
+
+force_up2date <- function(oldfit) {
+  if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
+    newfit <- list()
+    newfit$obj <- with(oldfit$obj$env,
+                       TMB::MakeADFun(data, parameters, map = map, random = random, silent = silent,
+                                      DLL = "glmmTMB"))
+    newfit$obj$env$last.par.best <- oldfit$obj$env$last.par.best
+    .Call("obj_swap", newfit, oldfit)
+  }
+  NULL
+}
+
 #' Load data from system file, updating glmmTMB objects
 #' 
 #' @param fn partial path to system file (e.g. test_data/foo.rda)
