@@ -28,3 +28,13 @@ SEXP omp_num_threads(SEXP x) {
   return ScalarInteger( 0 );
 #endif
 }
+
+/* Swap x$obj and y$obj (assumes obj is 1st component!) */
+extern "C"
+SEXP obj_swap(SEXP x, SEXP y) {
+  SEXP x_obj = VECTOR_ELT(x, 0);
+  SEXP y_obj = VECTOR_ELT(y, 0);
+  SET_VECTOR_ELT(x, 0, y_obj);
+  SET_VECTOR_ELT(y, 0, x_obj);
+  return R_NilValue;
+}
