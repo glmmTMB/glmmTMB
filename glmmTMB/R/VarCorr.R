@@ -9,6 +9,7 @@ family.glmmTMB <- function(object, ...) {
 ## don't quite know why this (rather than just ...$parList()) is
 ## necessary -- used in ranef.glmmTMB and sigma.glmmTMB
 getParList <- function(object) {
+    force_up2date(object)
     object$obj$env$parList(object$fit$par, object$fit$parfull)
 }
 
@@ -165,6 +166,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' @keywords internal
 VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 {
+    force_up2date(x)
     ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
     ## FIXME:: do we need 'sigma' any more (now that nlme generic
     ##         doesn't have it?)

@@ -24,6 +24,7 @@
 ##' @export fixef
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
+  force_up2date(object)
   getXnm <- function(suffix) {
       nm <- paste0("X",suffix)
       return(colnames(getME(object, nm)))
@@ -147,6 +148,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...
 ##' @export ranef
 ##' @export
 ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
+  force_up2date(object)
   check_dots(...)
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
@@ -259,6 +261,7 @@ getME.glmmTMB <- function(object,
                                    "Xd", "theta", "beta"),
                           ...)
 {
+  force_up2date(object)
   if(missing(name)) stop("'name' must not be missing")
   ## Deal with multiple names -- "FIXME" is inefficiently redoing things
   if (length(name <- as.character(name)) > 1) {
@@ -341,6 +344,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom stats vcov
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
+  force_up2date(object)
   check_dots(..., .ignore = "complete")
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
@@ -795,6 +799,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              cl = NULL,
                              full = FALSE,
                              ...) {
+    force_up2date(object)
     method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)

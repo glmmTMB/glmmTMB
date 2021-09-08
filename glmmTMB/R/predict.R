@@ -123,6 +123,7 @@ predict.glmmTMB <- function(object,
                             fast=NULL,
                             debug=FALSE,
                             ...) {
+  force_up2date(object)
   ## FIXME: add re.form
 
   if (!is.null(zitype)) {
