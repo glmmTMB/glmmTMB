@@ -311,6 +311,7 @@ dtruncated_nbinom2 <- function(x, size, mu, k=0, log=FALSE) {
 
 #' @rdname dtruncated_nbinom2
 #' @param lambda mean parameter
+#' @importFrom stats dpois
 #' @export
 dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
     y <- ifelse(x<=k,-Inf,
