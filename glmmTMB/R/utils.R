@@ -292,4 +292,43 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
     return(found_file)
 }
 
-    
+#' truncated distributions
+#'
+#' Probability functions for k-truncated Poisson and negative binomial distributions. 
+#' @param x value
+#' @param size number of trials/overdispersion parameter
+#' @param mu mean parameter
+#' @param k truncation parameter
+#' @param log (logical) return log-probability?
+#' @export
+dtruncated_nbinom2 <- function(x, size, mu, k=0, log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x, mu=mu, size=size, log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+#' @rdname dtruncated_nbinom2
+#' @param lambda mean parameter
+#' @export
+dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dpois(x,lambda,log=TRUE) -
+                ppois(k, lambda=lambda, lower.tail=FALSE,
+                      log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+#' @rdname dtruncated_nbinom2
+#' @param phi overdispersion parameter
+#' @export
+dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
+    ## V=mu*(1+phi) = mu*(1+mu/k) -> k=mu/phi
+    size <- mu/phi
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x,mu=mu, size=size,log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}

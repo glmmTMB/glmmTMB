@@ -445,34 +445,6 @@ test_that("confint works for models with dispformula", {
     expect_equal(cc[grep("^disp",rownames(cc)),], ref_val, tolerance = 1e-6)
 })
 
-## utility functions for checking truncated-distribution simulations
-## FIXME: add to utils.R?
-dtruncated_nbinom2 <- function(x,size,mu,k=0,log=FALSE) {
-    y <- ifelse(x<=k,-Inf,
-                dnbinom(x,mu=mu, size=size,log=TRUE) -
-                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
-                        log.p=TRUE))
-    if (log) return(y) else return(exp(y))
-}
-
-dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
-    y <- ifelse(x<=k,-Inf,
-                dpois(x,lambda,log=TRUE) -
-                ppois(k, lambda=lambda, lower.tail=FALSE,
-                      log.p=TRUE))
-    if (log) return(y) else return(exp(y))
-}
-
-dtruncated_nbinom1 <- function(x,phi,mu,k=0,log=FALSE) {
-    ## V=mu*(1+phi) = mu*(1+mu/k) -> k=mu/phi
-    size <- mu/phi
-    y <- ifelse(x<=k,-Inf,
-                dnbinom(x,mu=mu, size=size,log=TRUE) -
-                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
-                        log.p=TRUE))
-    if (log) return(y) else return(exp(y))
-}
-
 simfun <- function(formula, family, data, beta=c(0,1)) {
     ss <- list(beta=beta)
     if (grepl("nbinom",family)) ss$betad <- 0
@@ -490,16 +462,18 @@ ntab <- function(formula=y~x, family, data, seed=101) {
     return(table(exp(data$x),unlist(simulate(m1))))
 }
 
-pfun <- function(i,tab, dist="nbinom2", data) {
+pfun <- function(i,tab, dist="nbinom2", data, plot=TRUE) {
     n <- as.numeric(names(tab[i,]))
-    plot(n,tab[i,]/sum(tab[i,]))
+    s_tab <- tab[i,]/sum(tab[i,])
+    if (plot) plot(n,s_tab)
     m <- exp(data$x)[i]
     argList <- switch(dist,
                       nbinom1=list(n, phi=1, mu=m),
                       nbinom2=list(n, size=1, mu=m),
                       poisson=list(n, lambda=m))
     expected <- do.call(paste0("dtruncated_",dist), argList)
-    lines(n,expected)
+    if (plot) lines(n,expected)
+    return(list(n = n, obs = s_tab, exp = expected))
 }
 
 test_that("trunc nbinom simulation", {
@@ -522,11 +496,16 @@ test_that("trunc nbinom simulation", {
 })
 
 test_that("trunc nbinom sim 2", {
+    set.seed(101)
     dd <- expand.grid(x=log(1:5),
                       rep=1:10000,
                       y=1)
     t1 <- ntab(family="truncated_nbinom1", data=dd)
     t2 <- ntab(family="truncated_nbinom2", data=dd)
+    p1 <- pfun(1,tab=t1,dist="nbinom1",data=dd, plot=FALSE)
+    p2 <- pfun(1,tab=t2,dist="nbinom2",data=dd, plot=FALSE)
+    expect_equal(unname(p1$obs), p1$exp, tolerance = 0.01)
+    expect_equal(unname(p2$obs), p2$exp, tolerance = 0.01)
     if (FALSE) {
         op <- par(ask=TRUE)
         for (i in 1:nrow(t1)) pfun(i,tab=t1,dist="nbinom1",data=dd)
