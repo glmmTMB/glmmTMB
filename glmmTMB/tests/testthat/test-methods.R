@@ -155,10 +155,9 @@ test_that("terms", {
 })
 
 test_that("terms back-compatibility", {
-    skip("skip until TMB fits are back-compatible")
-    f0 <- readRDS(system.file("test_data", "oldfit.rds",
+    f0 <- up2date(readRDS(system.file("test_data", "oldfit.rds",
                               package="glmmTMB",
-                              mustWork=TRUE))
+                              mustWork=TRUE)))
     expect_true(!is.null(terms(f0)))
 })
 
