@@ -242,19 +242,31 @@ get_pars <- function(object, unlist=TRUE) {
 }
 
 
+## replacement for (unexported) TMB:::isNullPointer
+isNullPointer <- function(x) {
+    attributes(x) <- NULL
+    identical(x, new("externalptr"))
+}
+
+#' conditionally update glmmTMB object fitted with an old TMB version
+#' 
+#' @rdname gt_load
+#' @param oldfit a fitted glmmTMB object
 up2date <- function(oldfit) {
-  if (TMB:::isNullPointer(oldfit$obj$env$ADFun$ptr)) {
+  if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
     obj <- oldfit$obj
-    oldfit$obj <- TMB::MakeADFun(obj$env$data,
-                                 obj$env$parameters, 
-                                 map = obj$env$map,
-                                 random = obj$env$random, 
-                                 silent = obj$env$silent,
-                                 DLL = "glmmTMB")
+    oldfit$obj <- with(obj$env,
+                       TMB::MakeADFun(data,
+                                      parameters,
+                                      map = map,
+                                      random = random,
+                                      silent = silent,
+                                      DLL = "glmmTMB"))
     oldfit$obj$env$last.par.best <- obj$env$last.par.best
   }
-  oldfit
+  return(oldfit)
 }
+
 
 #' Load data from system file, updating glmmTMB objects
 #' 
