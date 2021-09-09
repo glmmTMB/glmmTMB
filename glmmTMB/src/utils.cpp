@@ -1,8 +1,9 @@
-# include <R.h>
-# include <Rinternals.h>
+/* as per BDR/CRAN, system headers must come before R headers */
 # ifdef _OPENMP
 #include <omp.h>
 # endif
+# include <R.h>
+# include <Rinternals.h>
 
 /* check if openmp is enabled */
 extern "C"
