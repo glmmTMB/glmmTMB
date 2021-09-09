@@ -241,3 +241,95 @@ get_pars <- function(object, unlist=TRUE) {
     return(p)
 }
 
+
+## replacement for (unexported) TMB:::isNullPointer
+isNullPointer <- function(x) {
+    attributes(x) <- NULL
+    identical(x, new("externalptr"))
+}
+
+#' conditionally update glmmTMB object fitted with an old TMB version
+#' 
+#' @rdname gt_load
+#' @param oldfit a fitted glmmTMB object
+up2date <- function(oldfit) {
+  if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
+    obj <- oldfit$obj
+    oldfit$obj <- with(obj$env,
+                       TMB::MakeADFun(data,
+                                      parameters,
+                                      map = map,
+                                      random = random,
+                                      silent = silent,
+                                      DLL = "glmmTMB"))
+    oldfit$obj$env$last.par.best <- obj$env$last.par.best
+  }
+  return(oldfit)
+}
+
+
+#' Load data from system file, updating glmmTMB objects
+#' 
+#' @param fn partial path to system file (e.g. test_data/foo.rda)
+#' @param verbose print names of updated objects?
+#' @param mustWork fail if file not found?
+#' @export
+gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
+    sf <- system.file(fn, package = "glmmTMB")
+    found_file <- file.exists(sf)
+    if (mustWork && !found_file) {
+        stop("couldn't find system file ", sf)
+    }
+    
+    L <- load(sf)
+    for (m in L) {
+        if (inherits(get(m), "glmmTMB")) {
+            if (verbose) cat(m,"\n")
+            assign(m, up2date(get(m)))
+        }
+        assign(m, get(m), parent.env(), envir = parent.frame())
+    }
+    return(found_file)
+}
+
+#' truncated distributions
+#'
+#' Probability functions for k-truncated Poisson and negative binomial distributions. 
+#' @param x value
+#' @param size number of trials/overdispersion parameter
+#' @param mu mean parameter
+#' @param k truncation parameter
+#' @param log (logical) return log-probability?
+#' @export
+dtruncated_nbinom2 <- function(x, size, mu, k=0, log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x, mu=mu, size=size, log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+#' @rdname dtruncated_nbinom2
+#' @param lambda mean parameter
+#' @importFrom stats dpois
+#' @export
+dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dpois(x,lambda,log=TRUE) -
+                ppois(k, lambda=lambda, lower.tail=FALSE,
+                      log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+#' @rdname dtruncated_nbinom2
+#' @param phi overdispersion parameter
+#' @export
+dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
+    ## V=mu*(1+phi) = mu*(1+mu/k) -> k=mu/phi
+    size <- mu/phi
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x,mu=mu, size=size,log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}

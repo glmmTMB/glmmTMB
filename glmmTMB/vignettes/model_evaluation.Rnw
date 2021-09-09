@@ -124,8 +124,7 @@ library(texreg)
 library(xtable)
 if (huxtable_OK) library(huxtable)
 ## retrieve slow stuff
-L <- load(system.file("vignette_data","model_evaluation.rda",
-                      package="glmmTMB"))
+L <- gt_load("vignette_data/model_evaluation.rda")
 @
 
 A couple of example models:

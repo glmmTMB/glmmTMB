@@ -1,6 +1,10 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
+## loaded by gt_load() in setup_makeex.R, but need to do this
+##  again to get it to work in devtools::check() environment (ugh)
+gm0 <- up2date(gm0)
+
 data(sleepstudy, cbpp,
      package = "lme4")
 
@@ -13,12 +17,18 @@ cbpp <<- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 
 ## utility: hack/replace parts of the updated result that will
 ##  be cosmetically different
-matchForm <- function(obj, objU, family=FALSE) {
+matchForm <- function(obj, objU, family=FALSE, fn = FALSE) {
   for(cmp in c("call","frame")) # <- more?
      objU[[cmp]] <- obj[[cmp]]
      ## Q: why are formulas equivalent but not identical?  A: their environments may differ
   objU$modelInfo$allForm <- obj$modelInfo$allForm
   if (family)  objU$modelInfo$family <- obj$modelInfo$family
+  ## objective function/gradient may change between TMB versions
+  if (fn)  {
+      for (f in c("fn","gr","he","retape","env","report","simulate")) {
+          objU$obj[[f]] <- obj$obj[[f]]
+      }
+  }
   return(objU)
 }
 
@@ -58,7 +68,7 @@ test_that("Update Gaussian", {
   ## call doesn't match (formula gets mangled?)
   ## timing different
   fm1u <- update(fm0, . ~ . + Days)
-  expect_equal(fm1, matchForm(fm1, fm1u))
+  expect_equal(fm1, matchForm(fm1, fm1u, fn=TRUE))
 })
 
 
@@ -105,12 +115,12 @@ test_that("Multiple RE, reordering", {
 test_that("Alternative family specifications [via update(.)]", {
     ## intercept-only fixed effect
 
-    res_chr <- matchForm(gm0, update(gm0, family= "binomial"))
+    res_chr <- matchForm(gm0, update(gm0, family= "binomial"), fn  = TRUE)
     expect_equal(gm0, res_chr)
-    expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial())))
+    expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial()), fn = TRUE))
     expect_warning(res_list <- matchForm(gm0, update(gm0, family= list(family = "binomial",
                                                        link = "logit")),
-                                         family=TRUE))
+                                         family=TRUE, fn=TRUE))
     expect_equal(gm0, res_list)
 })
 
@@ -118,7 +128,7 @@ test_that("Update Binomial", {
   ## matchForm(): call doesn't match (formula gets mangled?)
   ## timing different
   gm1u <- update(gm0, . ~ . + period)
-  expect_equal(gm1, matchForm(gm1, gm1u), tolerance = 5e-8)
+  expect_equal(gm1, matchForm(gm1, gm1u, fn=TRUE), tolerance = 5e-8)
 })
 
 test_that("internal structures", {
