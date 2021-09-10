@@ -33,3 +33,4 @@ doc-update
 *.tar.gz
 glmmTMB.Rproj
 *.Rout
+glmmTMB/inst/*-version

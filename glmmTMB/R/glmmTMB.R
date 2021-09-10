@@ -923,6 +923,8 @@ glmmTMB <- function(
     ##                       control = glmerControl(), ...) {
     call <- mf <- mc <- match.call()
 
+    checkDepPackageVersion(dep_pkg="TMB")
+    
     if (is.character(family)) {
         if (family=="beta") {
             family <- "beta_family"

@@ -1,2 +1,8 @@
 PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS)
 PKG_CXXFLAGS=$(SHLIB_OPENMP_CXXFLAGS)
+
+all: $(SHLIB) pkgver
+
+pkgver:
+	"$(R_HOME)/bin$(R_ARCH_BIN)/Rscript" -e "cat(as.character(packageVersion('TMB')), '\n', sep="", file='../inst/TMB-version')"
+	"$(R_HOME)/bin$(R_ARCH_BIN)/Rscript" -e "cat(as.character(packageVersion('Matrix')), '\n', sep="", file='../inst/Matrix-version')"
