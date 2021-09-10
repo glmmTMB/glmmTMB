@@ -253,8 +253,8 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
 #' i.e. a version that has been compiled with the updated version of the upstream
 #' package.
 #' \itemize{
-#' \item If you have development tools (compilers etc.) installed, then you
-#' can re-install a binary-compatible version of the package by running
+#' \item If you have development tools (compilers etc.) installed, you
+#' should be able to re-install a binary-compatible version of the package by running
 #' \code{install.packages("glmmTMB", type="source")}. If you want to install
 #' the development version of \code{glmmTMB} instead, you can use
 #' \code{remotes::install_github("glmmTMB/glmmTMB/glmmTMB")}.
@@ -264,14 +264,30 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
 #' 
 #' \item If you do \emph{not} have development tools and can't/don't want to
 #' install them (and so can't install packages with compiled code from source),
-#' you have two choices: (1) revert the upstream package(s)
-#' to their previous binary version (the \code{checkpoint} package may be
-#' useful); (2) hope that the glmmTMB maintainers have posted a binary
+#' you have two choices:
+#' \itemize{
+#' \item revert the upstream package(s) to their previous binary version. For example, using the
+#' \code{checkpoint} package:
+#' \preformatted{
+#' ## load (installing if necessary) the checkpoint package
+#' while (!require("checkpoint")) install.packages("checkpoint")
+#' ## retrieve build date of installed version of glmmTMB
+#' bd <- as.character(asDateBuilt(
+#'       packageDescription("glmmTMB",fields="Built")))
+#' oldrepo <- getOption("repos")
+#' use_mran_snapshot(bd) ## was setSnapshot() pre-checkpoint v1.0.0
+#' install.packages("TMB")
+#' options(repos=oldrepo) ## restore original repo
+#' }
+#' A similar recipe (substituting \code{Matrix} for \code{TMB} and \code{TMB} for \code{glmmTMB})
+#' can be used if you get warnings about an incompatibility between \code{TMB} and \code{Matrix}.
+#' \item hope that the glmmTMB maintainers have posted a binary
 #' version of the package that works with your system; try installing it via
-#' \code{install.packages("glmmTMB",repos="https://github.com/glmmTMB/glmmTMB/tree/master/repos",type="binary")}
+#' \code{install.packages("glmmTMB",repos="https://glmmTMB.github.io/glmmTMB/repos",type="binary")}
 #' If this doesn't work, please file an issue (with full details about your
-#' operating system and R version) requesting that the maintainers build and
+#' operating system and R version) asking the maintainers to build and
 #' post an appropriate binary version of the package.
+#' }
 #' }
 NULL
                  
