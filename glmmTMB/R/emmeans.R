@@ -33,7 +33,7 @@
 ##' @importFrom stats delete.response
 ##' @examples
 ##' warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
-##' salamander1 <- readRDS(system.file("example_files","salamander1.rds",package="glmmTMB"))
+##' salamander1 <- up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
 ##' if (require(emmeans)) {
 ##'     emmeans(warp.lm, poly ~ tension | wool)
 ##'     emmeans(salamander1, ~ mined, type="response")
