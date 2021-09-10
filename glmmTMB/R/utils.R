@@ -328,6 +328,7 @@ isNullPointer <- function(x) {
 #' 
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
+#' @export
 up2date <- function(oldfit) {
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
     obj <- oldfit$obj
