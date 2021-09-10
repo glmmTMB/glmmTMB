@@ -9,4 +9,5 @@
         }
         emmeans::.emm_register("glmmTMB", pkgname)
     }
+    checkDepPackageVersion(dep_pkg="TMB")
 }
