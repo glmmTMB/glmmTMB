@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.2.9000}{
+\section{CHANGES IN VERSION 1.1.3}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item Double-bar notation (\code{(x+y||g)}) is now translated to a

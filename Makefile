@@ -139,3 +139,6 @@ unlock:
 
 clean:
 	\rm -f install doc-update
+
+revdep_check:
+	Rscript -e 'library("revdepcheck"); revdep_reset("glmmTMB"); revdep_check("glmmTMB", num_workers = 2, timeout = as.difftime(60, units="mins"))'
