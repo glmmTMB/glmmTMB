@@ -13,5 +13,5 @@
 }
 
 .onUnload <- function(libpath) {
-  library.dynam.unload("TMB", libpath)
+  library.dynam.unload("glmmTMB", libpath)
 }
