@@ -308,3 +308,20 @@ test_that("double bar notation", {
                  c(564.340387730194, 0, 0, 140.874101713108),
                  tolerance = 1e-6)
 })
+
+test_that("bar/double-bar bug with gaussian response", {
+  set.seed(1)
+  n <- 100
+  xdata <- data.frame(
+      rfac1 = as.factor(sample(letters[1:10], n, replace = TRUE)),
+      rfac2 = as.factor(sample(letters[1:10], n, replace = TRUE)),
+      cov = rnorm(n),
+      rv = rpois(n, lambda = 2)
+  )
+  m2 <- glmmTMB(rv~cov+(1+cov||rfac1)+(1|rfac2), family=gaussian, data=xdata)
+  ## previously failed with "'names' attribute [3] must be the same length as the vector [1]"
+  expect_is(m2, "glmmTMB")
+  expect_equal(fixef(m2)$cond,
+               c(`(Intercept)` = 2.09164503130437, cov = -0.0228597948394547))
+
+})
