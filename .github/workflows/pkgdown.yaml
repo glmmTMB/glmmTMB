@@ -34,25 +34,23 @@ jobs:
           install.packages('remotes') 
           remotes::install_github("HenrikBengtsson/pkgdown.extras")
         shell: Rscript {0}
-      - name: Query dependencies 
+      - name: Query dependencies
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
           install.packages('remotes') 
-          saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2) 
+          saveRDS(remotes::dev_package_deps(pkgdir="glmmTMB",dependencies = TRUE), ".github/depends.Rds", version = 2) 
           writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
-        working-directory: ./glmmTMB
         shell: Rscript {0} 
       - name: Cache core R package dependencies
-        working-directory: ./glmmTMB
         if: runner.os != 'Windows' 
         uses: actions/cache@v1.0.1 # Caches not supported for dispatch event
         with: 
           path: ${{ env.R_LIBS_USER }} 
           key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }} 
-          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1- 
+          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1
       - name: Install dependencies
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
           install.packages(c("remotes", "devtools"))
-          remotes::install_deps(dependencies = TRUE)
+          remotes::install_deps(pkgdir="glmmTMB",dependencies = TRUE)
           remotes::install_github("bbolker/bbmle")
           install.packages('tinytex')
           tinytex::install_tinytex()
@@ -66,7 +64,7 @@ jobs:
         shell: Rscript {0}
         working-directory: ./glmmTMB
       - name: Install glmmTMB
-        run: devtools::install()
+        run: devtools::install(pkg="glmmTMB")
         shell: Rscript {0}
       - name: Rebuild site 
         run: |
