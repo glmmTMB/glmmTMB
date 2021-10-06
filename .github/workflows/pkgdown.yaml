@@ -1,0 +1,78 @@
+# For help debugging build failures open an issue on the RStudio community with the 'github-actions' tag.
+# https://community.rstudio.com/new-topic?category=Package%20development&tags=github-actions
+# using https://github.com/r-lib/actions/tree/master/setup-pandoc
+# https://github.com/marketplace/actions/ci-skip-action
+on:
+  workflow_dispatch
+#  push:
+#    branches:
+#      - main
+#      - master
+
+name: pkgdown
+
+jobs:
+  pkgdown:
+ #   if: "contains(github.event.head_commit.message, '[rebuild site]')"
+    runs-on: macOS-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: '0'
+      - uses: actions/checkout@master
+      - uses: r-lib/actions/setup-pandoc@v1
+        with:
+          pandoc-version: '2.7.3' # The pandoc version to download (if necessary) and use
+      - name: Install pandoc
+        run: echo "# Test" | pandoc -t html
+      - uses: r-lib/actions/setup-r@v1
+      - name: Install pkgdown.extras and remotes
+        run: |
+          install.packages('remotes') 
+          remotes::install_github("HenrikBengtsson/pkgdown.extras")
+        shell: Rscript {0}
+      - name: Query dependencies 
+        run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
+          install.packages('remotes') 
+          saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2) 
+          writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version") 
+        shell: Rscript {0} 
+      - name: Cache core R package dependencies
+        if: runner.os != 'Windows' 
+        uses: actions/cache@v1.0.1 # Caches not supported for dispatch event
+        with: 
+          path: ${{ env.R_LIBS_USER }} 
+          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }} 
+          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1- 
+      - name: Install dependencies
+        run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
+          install.packages(c("remotes", "devtools"))
+          remotes::install_deps(dependencies = TRUE)
+          remotes::install_github("bbolker/bbmle")
+          install.packages('tinytex')
+          tinytex::install_tinytex()
+          tinytex::tlmgr_install("koma-script") # for scrtime.sty
+          tinytex::tlmgr_install("amscls")      # for amsthm.sty
+          tinytex::tlmgr_install(c("multirow","colortbl","siunitx","setspace"))
+          tinytex::tlmgr_install(c("lineno","fancyhdr","ulem","caption"))
+          tinytex::tlmgr_install("babel-english")
+          tinytex::tlmgr_install("pgf") # tikz
+          tinytex::tlmgr_install(c("placeins","lastpage","cleveref","listings"))
+        shell: Rscript {0}
+      - name: Install McMasterPandemic
+        run: devtools::install()
+        shell: Rscript {0}
+      - name: Rebuild site 
+        run: |
+          pkgdown.extras::build_site(preview=FALSE)
+        shell: Rscript {0}
+      - name: Commit site
+        run: |
+          git config --global user.name 'pkgdown-bot'
+          git config --global user.email 'pkgdown-bot@users.noreply.github.com'
+          git add --all
+          git commit -am "Site rebuild [skip ci]"
+          git push
