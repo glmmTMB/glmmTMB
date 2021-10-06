@@ -1,0 +1,8 @@
+Package: TMB
+Version: 1.7.20
+Depends: R (>= 3.0.0)
+Imports: graphics, methods, stats, utils, Matrix (>= 1.0-12)
+LinkingTo: Matrix
+Suggests: numDeriv, parallel
+License: GPL-2
+Archs: i386, x64
