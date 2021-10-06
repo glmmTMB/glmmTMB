@@ -38,9 +38,11 @@ jobs:
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
           install.packages('remotes') 
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), ".github/depends.Rds", version = 2) 
-          writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version") 
+          writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
+        working-directory: ./glmmTMB
         shell: Rscript {0} 
       - name: Cache core R package dependencies
+        working-directory: ./glmmTMB
         if: runner.os != 'Windows' 
         uses: actions/cache@v1.0.1 # Caches not supported for dispatch event
         with: 
@@ -62,7 +64,8 @@ jobs:
           tinytex::tlmgr_install("pgf") # tikz
           tinytex::tlmgr_install(c("placeins","lastpage","cleveref","listings"))
         shell: Rscript {0}
-      - name: Install McMasterPandemic
+        working-directory: ./glmmTMB
+      - name: Install glmmTMB
         run: devtools::install()
         shell: Rscript {0}
       - name: Rebuild site 
