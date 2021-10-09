@@ -31,8 +31,8 @@ jobs:
       - uses: r-lib/actions/setup-r@v1
       - name: Install pkgdown.extras and remotes
         run: |
-          install.packages('remotes') 
-          remotes::install_github("HenrikBengtsson/pkgdown.extras")
+          install.packages('remotes')
+          remotes::install_github("bbolker/pkgdown.extras") # use BMB fork, for now
         shell: Rscript {0}
       - name: Query dependencies
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
@@ -50,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
           install.packages(c("remotes", "devtools"))
-          remotes::install_deps(pkgdir="glmmTMB",dependencies = TRUE)
+          remotes::install_deps(pkgdir="glmmTMB", dependencies = TRUE)
           remotes::install_github("bbolker/bbmle")
           install.packages('tinytex')
           tinytex::install_tinytex()
@@ -67,7 +67,7 @@ jobs:
         shell: Rscript {0}
       - name: Rebuild site 
         run: |
-          pkgdown.extras::build_site(preview=FALSE)
+          pkgdown.extras::build_site(pkg="glmmTMB", preview=FALSE)
         shell: Rscript {0}
       - name: Commit site
         run: |
