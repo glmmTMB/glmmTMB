@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+<meta name="date" content="2021-10-10" />
+
+<title>Troubleshooting with glmmTMB</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
+  }
+});
+</script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+
+<style type="text/css">
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
+<h4 class="date">2021-10-10</h4>
+
+
+
+<p>This vignette covers common problems that occur while using <code>glmmTMB</code>. The contents will expand with experience.</p>
+<p>If your problem is not covered below, there’s a chance it has been solved in the development version; try updating to the latest version of <code>glmmTMB</code> on GitHub.</p>
+<div id="warnings" class="section level1">
+<h1>Warnings</h1>
+<div id="model-convergence-problem-non-positive-definite-hessian-matrix-na-values-for-likelihoodaicetc." class="section level2">
+<h2>Model convergence problem; non-positive-definite Hessian matrix; NA values for likelihood/AIC/etc.</h2>
+<p>This warning (<code>Model convergence problem; non-positive-definite Hessian matrix</code>) states that at <code>glmmTMB</code>’s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with <code>glmmTMB</code> really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).</p>
+<p>It will usually be accompanied by <code>NA</code> values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run <code>summary()</code> on the resulting model, you’ll get the warning <code>In sqrt(diag(vcov)) : NaNs produced</code>.</p>
+<p>These problems are most likely:</p>
+<ul>
+<li>when a model is overparameterized (i.e. the data does not contain enough information to estimate the parameters reliably)</li>
+<li>when a random-effect variance is estimated to be zero, or random-effect terms are estimated to be perfectly correlated (“singular fit”: often caused by having too few levels of the random-effect grouping variable)</li>
+<li>when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)</li>
+<li>when dispersion is estimated to be near zero</li>
+<li>when <em>complete separation</em> occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1</li>
+</ul>
+<p>How do we diagnose the problem?</p>
+<div id="example-1." class="section level3">
+<h3>Example 1.</h3>
+<p>Consider this example:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a>zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>spp, Salamanders, <span class="dt">family=</span>nbinom2)</span></code></pre></div>
+<p>First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for a logit link, this implies probabilities very close to 0 or 1; for a log link, this implies mean counts that are close to 0 or extremely large).</p>
+<p>Inspecting the fixed-effect estimates for this model:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm0)</span></code></pre></div>
+<p><strong>FIXME</strong>: don’t hard-code, use inline expressions instead (search for “zi1” below)</p>
+<p>The zero-inflation intercept parameter is tiny (<span class="math inline">\(\approx -17\)</span>): since the parameters are estimated on the logit scale, we back-transform with <code>plogis(-17)</code> to see the at the zero-inflation probability for the baseline level is about <span class="math inline">\(4 \times 10^{-8}\)</span>)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>ff &lt;-<span class="st"> </span><span class="kw">fixef</span>(zinbm0)<span class="op">$</span>zi</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="kw">round</span>(<span class="kw">plogis</span>(<span class="kw">c</span>(<span class="dt">sppGP=</span><span class="kw">unname</span>(ff[<span class="dv">1</span>]),ff[<span class="op">-</span><span class="dv">1</span>]<span class="op">+</span>ff[<span class="dv">1</span>])),<span class="dv">3</span>)</span></code></pre></div>
+<p>Since the baseline probability is already effectively zero, making the intercept parameter larger or smaller will have very little effect - the likelihood is flat, which leads to the non-positive-definite warning.</p>
+<p>Now that we suspect the problem is in the zero-inflation component, we can try to come up with ways of simplifying the model: for example, we could use a model that compared the first species (“GP”) to the rest:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>Salamanders &lt;-<span class="st"> </span><span class="kw">transform</span>(Salamanders, <span class="dt">GP=</span><span class="kw">as.numeric</span>(spp<span class="op">==</span><span class="st">&quot;GP&quot;</span>))</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>zinbm0_A =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span><span class="op">~</span>GP)</span></code></pre></div>
+<p>This fits without a warning, although the GP zero-inflation parameter is still extreme:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm0_A)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<p>Another possibility would be to fit the variation among species in the zero-inflation parameter as a random effect, rather than a fixed effect: this is slightly more parsimonious. This again fits without an error, although both the average level of zero-inflation and the among-species variation are estimated as very small:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>zinbm0_B =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span><span class="op">~</span>(<span class="dv">1</span><span class="op">|</span>spp))</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm0_B)[[<span class="st">&quot;zi&quot;</span>]]</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a><span class="kw">VarCorr</span>(zinbm0_B)</span></code></pre></div>
+<!-- FIXME: updating here does weird things
+zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
+-->
+<p>The original analysis considered variation in zero-inflation by site status (mined or not mined) rather than by species - this simpler model only tries to estimate two parameters (mined + difference between mined and no-mining) rather than 7 (one per species) for the zero-inflation model.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>zinbm1 =<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>mined, Salamanders, <span class="dt">family=</span>nbinom2)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm1)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<p>This again fits without a warning, but we see that the zero-inflation is effectively zero in the unmined (“minedno”) condition (<code>plogis(0.38-17.5)</code> is approximately <span class="math inline">\(4 \times 10^{-8}\)</span>). We can estimate the confidence interval, but it takes some extra work: the default Wald standard errors and confidence intervals are useless in this case.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="co">## at present we need to specify the parameter by number; for</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="co">##  extreme cases need to specify the parameter range</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a><span class="co">## (not sure why the upper bound needs to be so high ... ?)</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>cc =<span class="st"> </span><span class="kw">confint</span>(zinbm1,<span class="dt">method=</span><span class="st">&quot;uniroot&quot;</span>,<span class="dt">parm=</span><span class="dv">9</span>, <span class="dt">parm.range=</span><span class="kw">c</span>(<span class="op">-</span><span class="dv">20</span>,<span class="dv">20</span>))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a><span class="kw">print</span>(cc)</span></code></pre></div>
+<p>The lower CI is not defined; the upper CI is -2.08, i.e. we can state that the zero-inflation probability is less than <code>plogis(-2.08)</code> = 0.11.</p>
+<p>More broadly, general inspection of the data (e.g., plotting the response against potential covariates) should help to diagnose overly complex models.</p>
+</div>
+<div id="example-2." class="section level3">
+<h3>Example 2.</h3>
+<p>In some cases, scaling predictor variables may help. For example, in this example from <span class="citation">@phisanti</span>, the results of <code>glm</code> and <code>glmmTMB</code> applied to a scaled version of the data set agree, while <code>glmmTMB</code> applied to the raw data set gives a non-positive-definite Hessian warning. (<strong>FIXME: This is no longer true now that we try harder to compute an accurate Hessian … we need another example …</strong>)</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="co">## data taken from gamlss.data:plasma, originally</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="co">## http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/plasma.html</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a><span class="kw">gt_load</span>(<span class="st">&quot;vignette_data/plasma.rda&quot;</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a>m4<span class="fl">.1</span> &lt;-<span class="st"> </span><span class="kw">glm</span>(calories <span class="op">~</span><span class="st"> </span>fat<span class="op">*</span>fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>m4<span class="fl">.2</span> &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(calories <span class="op">~</span><span class="st"> </span>fat<span class="op">*</span>fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a>ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span class="dt">fat=</span><span class="kw">scale</span>(fat,<span class="dt">center=</span><span class="ot">FALSE</span>),<span class="dt">fiber=</span><span class="kw">scale</span>(fiber,<span class="dt">center=</span><span class="ot">FALSE</span>))</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>m4<span class="fl">.3</span> &lt;-<span class="st"> </span><span class="kw">update</span>(m4<span class="fl">.2</span>, <span class="dt">data=</span>ps)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a><span class="co">## scaling factor for back-transforming standard deviations</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a>ss &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a>        fatsc &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">attr</span>(ps<span class="op">$</span>fat,<span class="st">&quot;scaled:scale&quot;</span>),</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a>        fibsc &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">attr</span>(ps<span class="op">$</span>fiber,<span class="st">&quot;scaled:scale&quot;</span>),</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a>        fatsc<span class="op">*</span>fibsc)</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a><span class="co">## combine SEs, suppressing the warning from the unscaled model</span></span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a>s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">glm=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.1</span>))),</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>                <span class="dt">glmmTMB_unsc=</span><span class="kw">suppressWarnings</span>(<span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)<span class="op">$</span>cond))),</span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>                <span class="dt">glmmTMB_sc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.3</span>)<span class="op">$</span>cond))<span class="op">*</span>ss)</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a><span class="kw">print</span>(s_vals,<span class="dt">digits=</span><span class="dv">3</span>)</span></code></pre></div>
+</div>
+</div>
+<div id="example-3." class="section level2">
+<h2>Example 3.</h2>
+<p>Here is another example (from Samantha Sherman):</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>L &lt;-<span class="st"> </span><span class="kw">gt_load</span>(<span class="st">&quot;vignette_data/sherman.rda&quot;</span>)</span></code></pre></div>
+<p>The first model gives the warning: “non-integer counts in an nbinom1 model” (indicating that we probably should use a different response distribution, or round the values if that seems appropriate).</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="kw">summary</span>(mod1)</span></code></pre></div>
+<p>We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.</p>
+<p>Running diagnostics on the model, these are the only problems reported.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a>d1 &lt;-<span class="st"> </span><span class="kw">diagnose</span>(mod1)</span></code></pre></div>
+<p>Let’s try dropping the zero-inflation term:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>mod2 &lt;-<span class="st"> </span><span class="kw">update</span>(mod1, <span class="dt">ziformula=</span><span class="op">~</span><span class="dv">0</span>)</span></code></pre></div>
+<p>We also get a “false convergence (8)” warning; see below.</p>
+<p><strong>FIXME</strong>: this anticipates/duplicates some of the discussion near the end.</p>
+<p>The <code>summary()</code> and <code>diagnose()</code> functions reveal only the large, negative dispersion parameter:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="kw">summary</span>(mod2)</span></code></pre></div>
+<p>Diagnose:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="kw">diagnose</span>(mod2)</span></code></pre></div>
+<p>The “false convergence” warning comes from the <code>nlminb()</code> optimizer, and is <a href="https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean">difficult to interpret and resolve</a>. The documentation says that the cause of this warning is that:</p>
+<blockquote>
+<p>the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x.</p>
+</blockquote>
+<p>The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We’ll try option 3 and refit with the BFGS option from <code>optim()</code>:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a>mod2_optim &lt;-<span class="st"> </span><span class="kw">update</span>(mod2,</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a>                <span class="dt">control=</span><span class="kw">glmmTMBControl</span>(<span class="dt">optimizer=</span>optim,</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a>                                       <span class="dt">optArgs=</span><span class="kw">list</span>(<span class="dt">method=</span><span class="st">&quot;BFGS&quot;</span>)))</span></code></pre></div>
+<pre><code>## Warning in glmmTMB(formula = taeCPUE ~ Avg.Relief + (1 | site.name/reef.name), :
+## non-integer counts in a nbinom1 model</code></pre>
+<p>BFGS doesn’t give us any warnings. Comparing the parameter estimates:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a>(parcomp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">nlminb=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2)),</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>                  <span class="dt">optim=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2_optim))))</span></code></pre></div>
+<pre><code>##                       nlminb       optim
+## cond.(Intercept)  -4.6150738  -4.6152081
+## cond.Avg.Relief    0.1674507   0.1674755
+## disp.(Intercept) -17.3339441 -11.4800820</code></pre>
+<p>The conditional-model parameters are practically identical. The dispersion parameters <em>look</em> quite different (-17.3 vs. -11.5), but if we back-transform from the log scale (via <code>exp()</code>) we can see that they are both extremely small (<span class="math inline">\(2.96\times 10^{-8}\)</span> vs. <span class="math inline">\(1.03\times 10^{-5}\)</span>).</p>
+<p>Simplify the model by switching from NB1 to Poisson:</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a>mod3 &lt;-<span class="st"> </span><span class="kw">update</span>(mod2, <span class="dt">family=</span>poisson)</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="kw">summary</span>(mod3)</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a><span class="kw">diagnose</span>(mod3)</span></code></pre></div>
+<p>You can also check directly whether the Hessian (curvature) of the model is OK by examining the <code>pdHess</code> (“positive-definite Hessian”) component of the <code>sdr</code> (“standard deviation report”) component of the model:</p>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a>mod3<span class="op">$</span>sdr<span class="op">$</span>pdHess                       </span></code></pre></div>
+<p>In general models with non-positive definite Hessian matrices should be excluded from further consideration.</p>
+</div>
+<div id="model-convergence-problem-eigenvalue-problems" class="section level2">
+<h2>Model convergence problem: eigenvalue problems</h2>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a>m1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>mined <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>mined, Salamanders, <span class="dt">family=</span>genpois)</span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a><span class="kw">diagnose</span>(m1)</span></code></pre></div>
+<p>In this example, the fixed-effect covariance matrix is <code>NaN</code>. It may have to do with the generalized Poisson (<code>genpois</code>) distribution, which is known to have convergence problems; luckily, the negative binomial (<code>nbinom1</code> and <code>nbinom2</code>) and/or Conway-Maxwell Poisson (<code>compois</code>) are good alternatives.</p>
+<p>Models with convergence problems should be excluded from further consideration, in general.</p>
+<p>In some cases, extreme eigenvalues may be caused by having predictor variables that are on very different scales: try rescaling, and centering, continuous predictors in the model.</p>
+</div>
+<div id="nanan-function-evaluation" class="section level2">
+<h2>NA/NaN function evaluation</h2>
+<blockquote>
+<p>Warning in nlminb(start = par, objective = fn, gradient = gr) : NA/NaN function evaluation</p>
+</blockquote>
+<p>This warning occurs when the optimizer visits a region of parameter space that is invalid. It is not a problem as long as the optimizer has left that region of parameter space upon convergence, which is indicated by an absence of the model convergence warnings described above.</p>
+<p>The following warnings indicate possibly-transient numerical problems with the fit, and can be treated in the same way (i.e. ignored if there are no errors or convergence warnings about the final fitted model).</p>
+<blockquote>
+<p>Cholmod warning ‘matrix not positive definite’</p>
+</blockquote>
+<p>In older versions of R (&lt; 3.6.0):</p>
+<blockquote>
+<p>Warning in f(par, order = order, …) : value out of range in ‘lgamma’</p>
+</blockquote>
+</div>
+<div id="false-convergence" class="section level2">
+<h2>false convergence</h2>
+<p>This warning:</p>
+<blockquote>
+<p>false convergence: the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x</p>
+</blockquote>
+<p>comes from the <code>nlminb</code> optimizer used by default in <code>glmmTMB</code>. It’s usually hard to diagnose the source of this warning (this <a href="https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean">Stack Overflow answer</a> explains a bit more about what it means). Reasonable methods for making sure your model is OK are:</p>
+<ul>
+<li>restart the model at the estimated fitted values</li>
+<li>try using a different optimizer, e.g. <code>control=glmmTMBControl(optimizer=optim, optArgs=list(method=&quot;BFGS&quot;))</code></li>
+</ul>
+<p>and see if the results are sufficiently similar to the original fit.</p>
+</div>
+</div>
+<div id="errors" class="section level1">
+<h1>Errors</h1>
+<div id="nanan-gradient-evaluation" class="section level2">
+<h2>NA/NaN gradient evaluation</h2>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true"></a>dat1 =<span class="st"> </span><span class="kw">expand.grid</span>(<span class="dt">y=</span><span class="op">-</span><span class="dv">1</span><span class="op">:</span><span class="dv">1</span>, <span class="dt">rep=</span><span class="dv">1</span><span class="op">:</span><span class="dv">10</span>)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true"></a>m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y<span class="op">~</span><span class="dv">1</span>, dat1, <span class="dt">family=</span>nbinom2)</span></code></pre></div>
+<p><strong>FIXME</strong>: this is no longer a “gradient evaluation” error …</p>
+<p>The error occurs here because the negative binomial distribution is inappropriate for data with negative values.</p>
+<p>If you see this error, check that the response variable meets the assumptions of the specified distribution.</p>
+</div>
+<div id="gradient-length" class="section level2">
+<h2>gradient length</h2>
+<blockquote>
+<p>Error in <code>nlminb(start = par, objective = fn, gradient = gr)</code> : gradient function must return a numeric vector of length x</p>
+</blockquote>
+<blockquote>
+<p>Error in <code>optimHess(par.fixed, obj$fn, obj$gr)</code>: gradient in optim evaluated to length x</p>
+</blockquote>
+<p>Try rescaling predictor variables. Try a simpler model and build up. (If you have a simple reproducible example of these errors, please post them to the issues list.)</p>
+</div>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
