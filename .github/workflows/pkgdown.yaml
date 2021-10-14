@@ -33,7 +33,7 @@ jobs:
         run: |
           install.packages('remotes')
           remotes::install_github("bbolker/pkgdown.extras") # use BMB fork, for now
-	  remotes::install_github("r-lib/textshaping")      # not sure why we need it but ...
+          remotes::install_github("r-lib/textshaping")      # not sure why we need it but ...
 
         shell: Rscript {0}
       - name: Query dependencies
