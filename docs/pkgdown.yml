@@ -1,4 +1,4 @@
-pandoc: 2.9.2.1
+pandoc: 2.7.3
 pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
@@ -10,5 +10,5 @@ articles:
   parallel: parallel.html
   sim: sim.html
   troubleshooting: troubleshooting.html
-last_built: 2021-10-10T21:28Z
+last_built: 2021-10-14T20:42Z
 
