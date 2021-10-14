@@ -7,7 +7,7 @@
 [![R-CMD-check](https://github.com/glmmTMB/glmmTMB/workflows/R-CMD-check/badge.svg)](https://github.com/glmmTMB/glmmTMB/actions)
 <!-- badges: end -->
 
-Most user-level information has migrated to the [GitHub pages site](https://glmmTMB.github.io/glmmTMB/); please check there.
+**Note** Most user-level information has migrated to the [GitHub pages site](https://glmmTMB.github.io/glmmTMB/); please check there.
 
 `glmmTMB` is an R package for fitting generalized linear mixed models (GLMMs) and extensions, built on [Template Model Builder](https://github.com/kaskr/adcomp), which is in turn built on [CppAD](https://www.coin-or.org/CppAD/) and [Eigen](eigen.tuxfamily.org/). It handles a wide range of statistical distributions (Gaussian, Poisson, binomial, negative binomial, Beta ...) as well as model extensions such as zero-inflation, heteroscedasticity, and autocorrelation. Fixed and random effects models can be specified for the conditional and zero-inflated components of the model, as well as fixed effects models for the dispersion parameter.
 

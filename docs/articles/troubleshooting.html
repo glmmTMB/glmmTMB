@@ -11,23 +11,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2021-10-10" />
+<meta name="date" content="2021-10-14" />
 
 <title>Troubleshooting with glmmTMB</title>
 
-<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
-// be compatible with the behavior of Pandoc < 2.8).
-document.addEventListener('DOMContentLoaded', function(e) {
-  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
-  var i, h, a;
-  for (i = 0; i < hs.length; i++) {
-    h = hs[i];
-    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
-    a = h.attributes;
-    while (a.length > 0) h.removeAttribute(a[0].name);
-  }
-});
-</script>
 <script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
 // v0.0.1
 // Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
@@ -64,18 +51,19 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 </style>
 <style type="text/css" data-origin="pandoc">
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
 @media screen {
 div.sourceCode { overflow: auto; }
 }
 @media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -95,7 +83,7 @@ pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-le
 div.sourceCode
   {   }
 @media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
@@ -346,7 +334,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
-<h4 class="date">2021-10-10</h4>
+<h4 class="date">2021-10-14</h4>
 
 
 
@@ -370,108 +358,291 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <div id="example-1." class="section level3">
 <h3>Example 1.</h3>
 <p>Consider this example:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a>zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>spp, Salamanders, <span class="dt">family=</span>nbinom2)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a>zinbm0 =<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>spp, Salamanders, <span class="dt">family=</span>nbinom2)</span></code></pre></div>
 <p>First, see if any of the estimated coefficients are extreme. If you’re using a non-identity link function (e.g. log, logit), then parameter values with <span class="math inline">\(|\beta|&gt;10\)</span> are suspect (for a logit link, this implies probabilities very close to 0 or 1; for a log link, this implies mean counts that are close to 0 or extremely large).</p>
 <p>Inspecting the fixed-effect estimates for this model:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm0)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="kw">fixef</span>(zinbm0)</span></code></pre></div>
+<pre><code>## 
+## Conditional model:
+## (Intercept)        sppPR        sppDM      sppEC-A      sppEC-L     sppDES-L  
+##     -0.5377      -0.6531       0.3303      -0.2001       0.6615       0.7993  
+##       sppDF  
+##      0.3714  
+## 
+## Zero-inflation model:
+## (Intercept)        sppPR        sppDM      sppEC-A      sppEC-L     sppDES-L  
+##     -17.825       17.852       -5.202       17.486       15.431       14.708  
+##       sppDF  
+##      15.485</code></pre>
 <p><strong>FIXME</strong>: don’t hard-code, use inline expressions instead (search for “zi1” below)</p>
 <p>The zero-inflation intercept parameter is tiny (<span class="math inline">\(\approx -17\)</span>): since the parameters are estimated on the logit scale, we back-transform with <code>plogis(-17)</code> to see the at the zero-inflation probability for the baseline level is about <span class="math inline">\(4 \times 10^{-8}\)</span>)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a>ff &lt;-<span class="st"> </span><span class="kw">fixef</span>(zinbm0)<span class="op">$</span>zi</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a><span class="kw">round</span>(<span class="kw">plogis</span>(<span class="kw">c</span>(<span class="dt">sppGP=</span><span class="kw">unname</span>(ff[<span class="dv">1</span>]),ff[<span class="op">-</span><span class="dv">1</span>]<span class="op">+</span>ff[<span class="dv">1</span>])),<span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a>ff &lt;-<span class="st"> </span><span class="kw">fixef</span>(zinbm0)<span class="op">$</span>zi</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="kw">round</span>(<span class="kw">plogis</span>(<span class="kw">c</span>(<span class="dt">sppGP=</span><span class="kw">unname</span>(ff[<span class="dv">1</span>]),ff[<span class="op">-</span><span class="dv">1</span>]<span class="op">+</span>ff[<span class="dv">1</span>])),<span class="dv">3</span>)</span></code></pre></div>
+<pre><code>##    sppGP    sppPR    sppDM  sppEC-A  sppEC-L sppDES-L    sppDF 
+##    0.000    0.507    0.000    0.416    0.084    0.042    0.088</code></pre>
 <p>Since the baseline probability is already effectively zero, making the intercept parameter larger or smaller will have very little effect - the likelihood is flat, which leads to the non-positive-definite warning.</p>
 <p>Now that we suspect the problem is in the zero-inflation component, we can try to come up with ways of simplifying the model: for example, we could use a model that compared the first species (“GP”) to the rest:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a>Salamanders &lt;-<span class="st"> </span><span class="kw">transform</span>(Salamanders, <span class="dt">GP=</span><span class="kw">as.numeric</span>(spp<span class="op">==</span><span class="st">&quot;GP&quot;</span>))</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a>zinbm0_A =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span><span class="op">~</span>GP)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>Salamanders &lt;-<span class="st"> </span><span class="kw">transform</span>(Salamanders, <span class="dt">GP=</span><span class="kw">as.numeric</span>(spp<span class="op">==</span><span class="st">&quot;GP&quot;</span>))</span>
+<span id="cb6-2"><a href="#cb6-2"></a>zinbm0_A =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span><span class="op">~</span>GP)</span></code></pre></div>
 <p>This fits without a warning, although the GP zero-inflation parameter is still extreme:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm0_A)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">fixef</span>(zinbm0_A)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<pre><code>## (Intercept)          GP 
+##   -2.890515  -15.414542</code></pre>
 <p>Another possibility would be to fit the variation among species in the zero-inflation parameter as a random effect, rather than a fixed effect: this is slightly more parsimonious. This again fits without an error, although both the average level of zero-inflation and the among-species variation are estimated as very small:</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a>zinbm0_B =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span><span class="op">~</span>(<span class="dv">1</span><span class="op">|</span>spp))</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm0_B)[[<span class="st">&quot;zi&quot;</span>]]</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true"></a><span class="kw">VarCorr</span>(zinbm0_B)</span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>zinbm0_B =<span class="st"> </span><span class="kw">update</span>(zinbm0, <span class="dt">ziformula=</span><span class="op">~</span>(<span class="dv">1</span><span class="op">|</span>spp))</span>
+<span id="cb9-2"><a href="#cb9-2"></a><span class="kw">fixef</span>(zinbm0_B)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<pre><code>## (Intercept) 
+##   -16.54352</code></pre>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">VarCorr</span>(zinbm0_B)</span></code></pre></div>
+<pre><code>## 
+## Conditional model:
+##  Groups Name        Std.Dev.
+##  site   (Intercept) 1.3894  
+## 
+## Zero-inflation model:
+##  Groups Name        Std.Dev. 
+##  spp    (Intercept) 0.0078215</code></pre>
 <!-- FIXME: updating here does weird things
 zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 -->
 <p>The original analysis considered variation in zero-inflation by site status (mined or not mined) rather than by species - this simpler model only tries to estimate two parameters (mined + difference between mined and no-mining) rather than 7 (one per species) for the zero-inflation model.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a>zinbm1 =<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>mined, Salamanders, <span class="dt">family=</span>nbinom2)</span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true"></a><span class="kw">fixef</span>(zinbm1)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a>zinbm1 =<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>mined, Salamanders, <span class="dt">family=</span>nbinom2)</span>
+<span id="cb13-2"><a href="#cb13-2"></a><span class="kw">fixef</span>(zinbm1)[[<span class="st">&quot;zi&quot;</span>]]</span></code></pre></div>
+<pre><code>## (Intercept)     minedno 
+##   0.3787986 -17.5118413</code></pre>
 <p>This again fits without a warning, but we see that the zero-inflation is effectively zero in the unmined (“minedno”) condition (<code>plogis(0.38-17.5)</code> is approximately <span class="math inline">\(4 \times 10^{-8}\)</span>). We can estimate the confidence interval, but it takes some extra work: the default Wald standard errors and confidence intervals are useless in this case.</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="co">## at present we need to specify the parameter by number; for</span></span>
-<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="co">##  extreme cases need to specify the parameter range</span></span>
-<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a><span class="co">## (not sure why the upper bound needs to be so high ... ?)</span></span>
-<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a>cc =<span class="st"> </span><span class="kw">confint</span>(zinbm1,<span class="dt">method=</span><span class="st">&quot;uniroot&quot;</span>,<span class="dt">parm=</span><span class="dv">9</span>, <span class="dt">parm.range=</span><span class="kw">c</span>(<span class="op">-</span><span class="dv">20</span>,<span class="dv">20</span>))</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a><span class="kw">print</span>(cc)</span></code></pre></div>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a><span class="co">## at present we need to specify the parameter by number; for</span></span>
+<span id="cb15-2"><a href="#cb15-2"></a><span class="co">##  extreme cases need to specify the parameter range</span></span>
+<span id="cb15-3"><a href="#cb15-3"></a><span class="co">## (not sure why the upper bound needs to be so high ... ?)</span></span>
+<span id="cb15-4"><a href="#cb15-4"></a>cc =<span class="st"> </span><span class="kw">confint</span>(zinbm1,<span class="dt">method=</span><span class="st">&quot;uniroot&quot;</span>,<span class="dt">parm=</span><span class="dv">9</span>, <span class="dt">parm.range=</span><span class="kw">c</span>(<span class="op">-</span><span class="dv">20</span>,<span class="dv">20</span>))</span>
+<span id="cb15-5"><a href="#cb15-5"></a><span class="kw">print</span>(cc)</span></code></pre></div>
+<pre><code>##            2.5 %    97.5 %  Estimate
+## zi~minedno    NA -2.083725 -17.51184</code></pre>
 <p>The lower CI is not defined; the upper CI is -2.08, i.e. we can state that the zero-inflation probability is less than <code>plogis(-2.08)</code> = 0.11.</p>
 <p>More broadly, general inspection of the data (e.g., plotting the response against potential covariates) should help to diagnose overly complex models.</p>
 </div>
 <div id="example-2." class="section level3">
 <h3>Example 2.</h3>
 <p>In some cases, scaling predictor variables may help. For example, in this example from <span class="citation">@phisanti</span>, the results of <code>glm</code> and <code>glmmTMB</code> applied to a scaled version of the data set agree, while <code>glmmTMB</code> applied to the raw data set gives a non-positive-definite Hessian warning. (<strong>FIXME: This is no longer true now that we try harder to compute an accurate Hessian … we need another example …</strong>)</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="co">## data taken from gamlss.data:plasma, originally</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true"></a><span class="co">## http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/plasma.html</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true"></a><span class="kw">gt_load</span>(<span class="st">&quot;vignette_data/plasma.rda&quot;</span>)</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true"></a>m4<span class="fl">.1</span> &lt;-<span class="st"> </span><span class="kw">glm</span>(calories <span class="op">~</span><span class="st"> </span>fat<span class="op">*</span>fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true"></a>m4<span class="fl">.2</span> &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(calories <span class="op">~</span><span class="st"> </span>fat<span class="op">*</span>fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true"></a>ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span class="dt">fat=</span><span class="kw">scale</span>(fat,<span class="dt">center=</span><span class="ot">FALSE</span>),<span class="dt">fiber=</span><span class="kw">scale</span>(fiber,<span class="dt">center=</span><span class="ot">FALSE</span>))</span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true"></a>m4<span class="fl">.3</span> &lt;-<span class="st"> </span><span class="kw">update</span>(m4<span class="fl">.2</span>, <span class="dt">data=</span>ps)</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true"></a><span class="co">## scaling factor for back-transforming standard deviations</span></span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true"></a>ss &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true"></a>        fatsc &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">attr</span>(ps<span class="op">$</span>fat,<span class="st">&quot;scaled:scale&quot;</span>),</span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true"></a>        fibsc &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">attr</span>(ps<span class="op">$</span>fiber,<span class="st">&quot;scaled:scale&quot;</span>),</span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true"></a>        fatsc<span class="op">*</span>fibsc)</span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true"></a><span class="co">## combine SEs, suppressing the warning from the unscaled model</span></span>
-<span id="cb9-14"><a href="#cb9-14" aria-hidden="true"></a>s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">glm=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.1</span>))),</span>
-<span id="cb9-15"><a href="#cb9-15" aria-hidden="true"></a>                <span class="dt">glmmTMB_unsc=</span><span class="kw">suppressWarnings</span>(<span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)<span class="op">$</span>cond))),</span>
-<span id="cb9-16"><a href="#cb9-16" aria-hidden="true"></a>                <span class="dt">glmmTMB_sc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.3</span>)<span class="op">$</span>cond))<span class="op">*</span>ss)</span>
-<span id="cb9-17"><a href="#cb9-17" aria-hidden="true"></a><span class="kw">print</span>(s_vals,<span class="dt">digits=</span><span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a><span class="co">## data taken from gamlss.data:plasma, originally</span></span>
+<span id="cb17-2"><a href="#cb17-2"></a><span class="co">## http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/plasma.html</span></span>
+<span id="cb17-3"><a href="#cb17-3"></a><span class="kw">gt_load</span>(<span class="st">&quot;vignette_data/plasma.rda&quot;</span>)</span></code></pre></div>
+<pre><code>## [1] TRUE</code></pre>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1"></a>m4<span class="fl">.1</span> &lt;-<span class="st"> </span><span class="kw">glm</span>(calories <span class="op">~</span><span class="st"> </span>fat<span class="op">*</span>fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</span>
+<span id="cb19-2"><a href="#cb19-2"></a>m4<span class="fl">.2</span> &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(calories <span class="op">~</span><span class="st"> </span>fat<span class="op">*</span>fiber, <span class="dt">family =</span> <span class="kw">Gamma</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">data =</span> plasma)</span>
+<span id="cb19-3"><a href="#cb19-3"></a>ps  &lt;-<span class="st"> </span><span class="kw">transform</span>(plasma,<span class="dt">fat=</span><span class="kw">scale</span>(fat,<span class="dt">center=</span><span class="ot">FALSE</span>),<span class="dt">fiber=</span><span class="kw">scale</span>(fiber,<span class="dt">center=</span><span class="ot">FALSE</span>))</span>
+<span id="cb19-4"><a href="#cb19-4"></a>m4<span class="fl">.3</span> &lt;-<span class="st"> </span><span class="kw">update</span>(m4<span class="fl">.2</span>, <span class="dt">data=</span>ps)</span>
+<span id="cb19-5"><a href="#cb19-5"></a><span class="co">## scaling factor for back-transforming standard deviations</span></span>
+<span id="cb19-6"><a href="#cb19-6"></a>ss &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,</span>
+<span id="cb19-7"><a href="#cb19-7"></a>        fatsc &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">attr</span>(ps<span class="op">$</span>fat,<span class="st">&quot;scaled:scale&quot;</span>),</span>
+<span id="cb19-8"><a href="#cb19-8"></a>        fibsc &lt;-<span class="st"> </span><span class="dv">1</span><span class="op">/</span><span class="kw">attr</span>(ps<span class="op">$</span>fiber,<span class="st">&quot;scaled:scale&quot;</span>),</span>
+<span id="cb19-9"><a href="#cb19-9"></a>        fatsc<span class="op">*</span>fibsc)</span>
+<span id="cb19-10"><a href="#cb19-10"></a><span class="co">## combine SEs, suppressing the warning from the unscaled model</span></span>
+<span id="cb19-11"><a href="#cb19-11"></a>s_vals &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">glm=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.1</span>))),</span>
+<span id="cb19-12"><a href="#cb19-12"></a>                <span class="dt">glmmTMB_unsc=</span><span class="kw">suppressWarnings</span>(<span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.2</span>)<span class="op">$</span>cond))),</span>
+<span id="cb19-13"><a href="#cb19-13"></a>                <span class="dt">glmmTMB_sc=</span><span class="kw">sqrt</span>(<span class="kw">diag</span>(<span class="kw">vcov</span>(m4<span class="fl">.3</span>)<span class="op">$</span>cond))<span class="op">*</span>ss)</span>
+<span id="cb19-14"><a href="#cb19-14"></a><span class="kw">print</span>(s_vals,<span class="dt">digits=</span><span class="dv">3</span>)</span></code></pre></div>
+<pre><code>##                  glm glmmTMB_unsc glmmTMB_sc
+## (Intercept) 5.11e-02     5.21e-02   5.21e-02
+## fat         6.69e-04     6.77e-04   6.77e-04
+## fiber       3.70e-03     3.79e-03   3.79e-03
+## fat:fiber   4.48e-05     4.54e-05   4.54e-05</code></pre>
 </div>
 </div>
 <div id="example-3." class="section level2">
 <h2>Example 3.</h2>
 <p>Here is another example (from Samantha Sherman):</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a>L &lt;-<span class="st"> </span><span class="kw">gt_load</span>(<span class="st">&quot;vignette_data/sherman.rda&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1"></a>L &lt;-<span class="st"> </span><span class="kw">gt_load</span>(<span class="st">&quot;vignette_data/sherman.rda&quot;</span>)</span></code></pre></div>
 <p>The first model gives the warning: “non-integer counts in an nbinom1 model” (indicating that we probably should use a different response distribution, or round the values if that seems appropriate).</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="kw">summary</span>(mod1)</span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1"></a><span class="kw">summary</span>(mod1)</span></code></pre></div>
+<pre><code>##  Family: nbinom1  ( log )
+## Formula:          taeCPUE ~ Avg.Relief + (1 | site.name/reef.name)
+## Zero inflation:           ~1
+## Data: dd
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##       NA       NA       NA       NA     3401 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups              Name        Variance Std.Dev.
+##  reef.name:site.name (Intercept) 0.168    0.4098  
+##  site.name           (Intercept) 3.544    1.8825  
+## Number of obs: 3407, groups:  reef.name:site.name, 70; site.name, 39
+## 
+## Dispersion parameter for nbinom1 family (): 1.08e-09 
+## 
+## Conditional model:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -4.61496    0.42395  -10.89  &lt; 2e-16 ***
+## Avg.Relief   0.16745    0.05896    2.84  0.00451 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Zero-inflation model:
+##             Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept)   -19.60      16.81  -1.166    0.244</code></pre>
 <p>We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.</p>
 <p>Running diagnostics on the model, these are the only problems reported.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a>d1 &lt;-<span class="st"> </span><span class="kw">diagnose</span>(mod1)</span></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1"></a>d1 &lt;-<span class="st"> </span><span class="kw">diagnose</span>(mod1)</span></code></pre></div>
+<pre><code>## Non-positive definite Hessian
+## 
+## parameters with non-finite standard deviations:
+## 
+## 
+## 
+## maximum Hessian eigenvalue = 369 
+## Hessian eigenvalue 3 = -75.2 (relative val = -0.204) 
+##    bad elements: (Intercept) Avg.Relief zi~(Intercept) d~(Intercept) theta_1|reef.name:site.name.1 theta_1|site.name.1 
+## Hessian eigenvalue 5 = -19.7 (relative val = -0.0532) 
+##    bad elements: (Intercept) Avg.Relief zi~(Intercept) d~(Intercept) theta_1|reef.name:site.name.1 theta_1|site.name.1</code></pre>
 <p>Let’s try dropping the zero-inflation term:</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a>mod2 &lt;-<span class="st"> </span><span class="kw">update</span>(mod1, <span class="dt">ziformula=</span><span class="op">~</span><span class="dv">0</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1"></a>mod2 &lt;-<span class="st"> </span><span class="kw">update</span>(mod1, <span class="dt">ziformula=</span><span class="op">~</span><span class="dv">0</span>)</span></code></pre></div>
 <p>We also get a “false convergence (8)” warning; see below.</p>
 <p><strong>FIXME</strong>: this anticipates/duplicates some of the discussion near the end.</p>
 <p>The <code>summary()</code> and <code>diagnose()</code> functions reveal only the large, negative dispersion parameter:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="kw">summary</span>(mod2)</span></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1"></a><span class="kw">summary</span>(mod2)</span></code></pre></div>
+<pre><code>##  Family: nbinom1  ( log )
+## Formula:          taeCPUE ~ Avg.Relief + (1 | site.name/reef.name)
+## Data: dd
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##       NA       NA       NA       NA     3402 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups              Name        Variance Std.Dev.
+##  reef.name:site.name (Intercept) 0.168    0.4099  
+##  site.name           (Intercept) 3.544    1.8826  
+## Number of obs: 3407, groups:  reef.name:site.name, 70; site.name, 39
+## 
+## Dispersion parameter for nbinom1 family (): 2.96e-08 
+## 
+## Conditional model:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -4.61507    0.43803 -10.536  &lt; 2e-16 ***
+## Avg.Relief   0.16745    0.05898   2.839  0.00452 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
 <p>Diagnose:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="kw">diagnose</span>(mod2)</span></code></pre></div>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1"></a><span class="kw">diagnose</span>(mod2)</span></code></pre></div>
+<pre><code>## Warning in sqrt(diag(object$cov.fixed)): NaNs produced</code></pre>
+<pre><code>## Unusually large Z-statistics (|x|&gt;5):
+## 
+## &lt;NA&gt; 
+##   NA 
+## 
+## Large Z-statistics (estimate/std err) suggest a failure of the Wald
+## approximation - often also associated with parameters that are at or
+## near the edge of their range (e.g. random-effects standard deviations
+## approaching 0).  While the Wald p-values and standard errors listed in
+## summary() are unreliable, profile confidence intervals (see
+## ?confint.glmmTMB) and likelihood ratio test p-values derived by
+## comparing models (e.g. ?drop1) may still be OK.  (Note that the LRT is
+## conservative when the null value is on the boundary, e.g. a variance or
+## zero-inflation value of 0 (Self and Liang 1987; Stram and Lee 1994;
+## Goldman and Whelan 2000); in simple cases the p-value is approximately
+## twice as large as it should be.)
+## 
+## 
+## Non-positive definite Hessian
+## 
+## parameters with non-finite standard deviations:
+## d~(Intercept)
+## 
+## 
+## maximum Hessian eigenvalue = 471 
+## Hessian eigenvalue 2 = -128 (relative val = -0.272) 
+##    bad elements: (Intercept) Avg.Relief d~(Intercept) theta_1|reef.name:site.name.1 theta_1|site.name.1 
+## Hessian eigenvalue 4 = -22.9 (relative val = -0.0486) 
+##    bad elements: (Intercept) Avg.Relief d~(Intercept) theta_1|reef.name:site.name.1 theta_1|site.name.1</code></pre>
 <p>The “false convergence” warning comes from the <code>nlminb()</code> optimizer, and is <a href="https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean">difficult to interpret and resolve</a>. The documentation says that the cause of this warning is that:</p>
 <blockquote>
 <p>the gradient ∇f(x) may be computed incorrectly, the other stopping tolerances may be too tight, or either f or ∇f may be discontinuous near the current iterate x.</p>
 </blockquote>
 <p>The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We’ll try option 3 and refit with the BFGS option from <code>optim()</code>:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a>mod2_optim &lt;-<span class="st"> </span><span class="kw">update</span>(mod2,</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true"></a>                <span class="dt">control=</span><span class="kw">glmmTMBControl</span>(<span class="dt">optimizer=</span>optim,</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true"></a>                                       <span class="dt">optArgs=</span><span class="kw">list</span>(<span class="dt">method=</span><span class="st">&quot;BFGS&quot;</span>)))</span></code></pre></div>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1"></a>mod2_optim &lt;-<span class="st"> </span><span class="kw">update</span>(mod2,</span>
+<span id="cb32-2"><a href="#cb32-2"></a>                <span class="dt">control=</span><span class="kw">glmmTMBControl</span>(<span class="dt">optimizer=</span>optim,</span>
+<span id="cb32-3"><a href="#cb32-3"></a>                                       <span class="dt">optArgs=</span><span class="kw">list</span>(<span class="dt">method=</span><span class="st">&quot;BFGS&quot;</span>)))</span></code></pre></div>
 <pre><code>## Warning in glmmTMB(formula = taeCPUE ~ Avg.Relief + (1 | site.name/reef.name), :
 ## non-integer counts in a nbinom1 model</code></pre>
 <p>BFGS doesn’t give us any warnings. Comparing the parameter estimates:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a>(parcomp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">nlminb=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2)),</span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a>                  <span class="dt">optim=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2_optim))))</span></code></pre></div>
+<div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1"></a>(parcomp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">nlminb=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2)),</span>
+<span id="cb34-2"><a href="#cb34-2"></a>                  <span class="dt">optim=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2_optim))))</span></code></pre></div>
 <pre><code>##                       nlminb       optim
 ## cond.(Intercept)  -4.6150738  -4.6152081
 ## cond.Avg.Relief    0.1674507   0.1674755
-## disp.(Intercept) -17.3339441 -11.4800820</code></pre>
+## disp.(Intercept) -17.3339441 -11.4800819</code></pre>
 <p>The conditional-model parameters are practically identical. The dispersion parameters <em>look</em> quite different (-17.3 vs. -11.5), but if we back-transform from the log scale (via <code>exp()</code>) we can see that they are both extremely small (<span class="math inline">\(2.96\times 10^{-8}\)</span> vs. <span class="math inline">\(1.03\times 10^{-5}\)</span>).</p>
 <p>Simplify the model by switching from NB1 to Poisson:</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true"></a>mod3 &lt;-<span class="st"> </span><span class="kw">update</span>(mod2, <span class="dt">family=</span>poisson)</span></code></pre></div>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="kw">summary</span>(mod3)</span></code></pre></div>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true"></a><span class="kw">diagnose</span>(mod3)</span></code></pre></div>
+<div class="sourceCode" id="cb36"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1"></a>mod3 &lt;-<span class="st"> </span><span class="kw">update</span>(mod2, <span class="dt">family=</span>poisson)</span></code></pre></div>
+<div class="sourceCode" id="cb37"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1"></a><span class="kw">summary</span>(mod3)</span></code></pre></div>
+<pre><code>##  Family: poisson  ( log )
+## Formula:          taeCPUE ~ Avg.Relief + (1 | site.name/reef.name)
+## Data: dd
+## 
+##      AIC      BIC   logLik deviance df.resid 
+##   1562.5   1587.0   -777.2   1554.5     3403 
+## 
+## Random effects:
+## 
+## Conditional model:
+##  Groups              Name        Variance Std.Dev.
+##  reef.name:site.name (Intercept) 0.168    0.4099  
+##  site.name           (Intercept) 3.544    1.8826  
+## Number of obs: 3407, groups:  reef.name:site.name, 70; site.name, 39
+## 
+## Conditional model:
+##             Estimate Std. Error z value Pr(&gt;|z|)    
+## (Intercept) -4.61507    0.43804 -10.536  &lt; 2e-16 ***
+## Avg.Relief   0.16745    0.05898   2.839  0.00452 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<div class="sourceCode" id="cb39"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1"></a><span class="kw">diagnose</span>(mod3)</span></code></pre></div>
+<pre><code>## model looks OK!</code></pre>
 <p>You can also check directly whether the Hessian (curvature) of the model is OK by examining the <code>pdHess</code> (“positive-definite Hessian”) component of the <code>sdr</code> (“standard deviation report”) component of the model:</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true"></a>mod3<span class="op">$</span>sdr<span class="op">$</span>pdHess                       </span></code></pre></div>
+<div class="sourceCode" id="cb41"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1"></a>mod3<span class="op">$</span>sdr<span class="op">$</span>pdHess                       </span></code></pre></div>
+<pre><code>## [1] TRUE</code></pre>
 <p>In general models with non-positive definite Hessian matrices should be excluded from further consideration.</p>
 </div>
 <div id="model-convergence-problem-eigenvalue-problems" class="section level2">
 <h2>Model convergence problem: eigenvalue problems</h2>
-<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a>m1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>mined <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>mined, Salamanders, <span class="dt">family=</span>genpois)</span></code></pre></div>
-<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a><span class="kw">diagnose</span>(m1)</span></code></pre></div>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1"></a>m1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(count<span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>mined <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span><span class="op">|</span>site), <span class="dt">zi=</span><span class="op">~</span>spp <span class="op">+</span><span class="st"> </span>mined, Salamanders, <span class="dt">family=</span>genpois)</span></code></pre></div>
+<pre><code>## Warning in fitTMB(TMBStruc): Model convergence problem; extreme or very small
+## eigenvalues detected. See vignette(&#39;troubleshooting&#39;)</code></pre>
+<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1"></a><span class="kw">diagnose</span>(m1)</span></code></pre></div>
+<pre><code>## Unusually large coefficients (|x|&gt;10):
+## 
+##   zi~sppPR   zi~sppDF zi~minedno 
+##  -35.20726  -24.18082  -20.16418 
+## 
+## Large negative coefficients in zi (log-odds of zero-inflation),
+## dispersion, or random effects (log-standard deviations) suggest
+## unnecessary components (converging to zero on the constrained scale);
+## large negative and/or positive components in binomial or Poisson
+## conditional parameters suggest (quasi-)complete separation
+## 
+## 
+## Unusually large Z-statistics (|x|&gt;5):
+## 
+## &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; &lt;NA&gt; 
+##   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA   NA 
+## &lt;NA&gt; &lt;NA&gt; 
+##   NA   NA 
+## 
+## Large Z-statistics (estimate/std err) suggest a failure of the Wald
+## approximation - often also associated with parameters that are at or
+## near the edge of their range (e.g. random-effects standard deviations
+## approaching 0).  While the Wald p-values and standard errors listed in
+## summary() are unreliable, profile confidence intervals (see
+## ?confint.glmmTMB) and likelihood ratio test p-values derived by
+## comparing models (e.g. ?drop1) may still be OK.  (Note that the LRT is
+## conservative when the null value is on the boundary, e.g. a variance or
+## zero-inflation value of 0 (Self and Liang 1987; Stram and Lee 1994;
+## Goldman and Whelan 2000); in simple cases the p-value is approximately
+## twice as large as it should be.)</code></pre>
 <p>In this example, the fixed-effect covariance matrix is <code>NaN</code>. It may have to do with the generalized Poisson (<code>genpois</code>) distribution, which is known to have convergence problems; luckily, the negative binomial (<code>nbinom1</code> and <code>nbinom2</code>) and/or Conway-Maxwell Poisson (<code>compois</code>) are good alternatives.</p>
 <p>Models with convergence problems should be excluded from further consideration, in general.</p>
 <p>In some cases, extreme eigenvalues may be caused by having predictor variables that are on very different scales: try rescaling, and centering, continuous predictors in the model.</p>
@@ -509,8 +680,9 @@ zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 <h1>Errors</h1>
 <div id="nanan-gradient-evaluation" class="section level2">
 <h2>NA/NaN gradient evaluation</h2>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true"></a>dat1 =<span class="st"> </span><span class="kw">expand.grid</span>(<span class="dt">y=</span><span class="op">-</span><span class="dv">1</span><span class="op">:</span><span class="dv">1</span>, <span class="dt">rep=</span><span class="dv">1</span><span class="op">:</span><span class="dv">10</span>)</span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true"></a>m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y<span class="op">~</span><span class="dv">1</span>, dat1, <span class="dt">family=</span>nbinom2)</span></code></pre></div>
+<div class="sourceCode" id="cb47"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1"></a>dat1 =<span class="st"> </span><span class="kw">expand.grid</span>(<span class="dt">y=</span><span class="op">-</span><span class="dv">1</span><span class="op">:</span><span class="dv">1</span>, <span class="dt">rep=</span><span class="dv">1</span><span class="op">:</span><span class="dv">10</span>)</span>
+<span id="cb47-2"><a href="#cb47-2"></a>m1 =<span class="st"> </span><span class="kw">glmmTMB</span>(y<span class="op">~</span><span class="dv">1</span>, dat1, <span class="dt">family=</span>nbinom2)</span></code></pre></div>
+<pre><code>## Error in eval(family$initialize): negative values not allowed for the negative binomial family</code></pre>
 <p><strong>FIXME</strong>: this is no longer a “gradient evaluation” error …</p>
 <p>The error occurs here because the negative binomial distribution is inappropriate for data with negative values.</p>
 <p>If you see this error, check that the response variable meets the assumptions of the specified distribution.</p>

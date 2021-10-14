@@ -29,6 +29,9 @@ jobs:
       - name: Install pandoc
         run: echo "# Test" | pandoc -t html
       - uses: r-lib/actions/setup-r@v1
+      - name: textshaping dependencies for MacOS
+      # for some reason we insist on installing newer version of textshaping from source, so we need these ...
+        run: brew install harfbuzz fribidi 
       - name: Install pkgdown.extras and remotes
         run: |
           install.packages('remotes')
@@ -60,7 +63,7 @@ jobs:
           tinytex::tlmgr_install(c("lineno","fancyhdr","ulem","caption"))
           tinytex::tlmgr_install("babel-english")
           tinytex::tlmgr_install("pgf") # tikz
-          tinytex::tlmgr_install(c("placeins","lastpage","cleveref","listings","threeparttable","wrapfig"))
+          tinytex::tlmgr_install(c("placeins","lastpage","cleveref","listings","threeparttable","wrapfig","adjustbox","hyperref","tabularx","collectbox"))
         shell: Rscript {0}
       - name: Install glmmTMB
         run: devtools::install(pkg="glmmTMB")
