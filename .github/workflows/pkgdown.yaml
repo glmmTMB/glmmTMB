@@ -29,6 +29,8 @@ jobs:
       - name: Install pandoc
         run: echo "# Test" | pandoc -t html
       - uses: r-lib/actions/setup-r@v1
+      - name: textshaping dependencies for MacOS
+        run: brew install harfbuzz fribidi 
       - name: Install pkgdown.extras and remotes
         run: |
           install.packages('remotes')
