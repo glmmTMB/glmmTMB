@@ -60,7 +60,7 @@ jobs:
           tinytex::tlmgr_install(c("lineno","fancyhdr","ulem","caption"))
           tinytex::tlmgr_install("babel-english")
           tinytex::tlmgr_install("pgf") # tikz
-          tinytex::tlmgr_install(c("placeins","lastpage","cleveref","listings","threeparttable","wrapfig"))
+          tinytex::tlmgr_install(c("placeins","lastpage","cleveref","listings","threeparttable","wrapfig","adjustbox","hyperref","tabularx"))
         shell: Rscript {0}
       - name: Install glmmTMB
         run: devtools::install(pkg="glmmTMB")
