@@ -5,7 +5,6 @@
 [![downloads](http://cranlogs.r-pkg.org/badges/glmmTMB)](http://cranlogs.r-pkg.org/badges/glmmTMB)
 [![total downloads](http://cranlogs.r-pkg.org/badges/grand-total/glmmTMB)](http://cranlogs.r-pkg.org/badges/grand-total/glmmTMB)
 [![R-CMD-check](https://github.com/glmmTMB/glmmTMB/workflows/R-CMD-check/badge.svg)](https://github.com/glmmTMB/glmmTMB/actions)
-[![build stats](https://github.com/glmmTMB/glmmTMB/workflows/glmmTMB/badge.svg)](https://github.com/glmmTMB/glmmTMB/actions)
 <!-- badges: end -->
 
 Most user-level information has migrated to the [GitHub pages site](https://glmmTMB.github.io/glmmTMB/); please check there.
