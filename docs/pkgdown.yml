@@ -3,17 +3,12 @@ pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
   covstruct: covstruct.html
-  covstruct: covstruct.html
   glmmTMB: glmmTMB.html
   mcmc: mcmc.html
-  mcmc: mcmc.html
-  miscEx: miscEx.html
   miscEx: miscEx.html
   model_evaluation: model_evaluation.html
   parallel: parallel.html
   sim: sim.html
-  sim: sim.html
-  troubleshooting: troubleshooting.html
   troubleshooting: troubleshooting.html
 last_built: 2021-10-10T21:28Z
 
