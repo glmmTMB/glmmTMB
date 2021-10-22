@@ -79,6 +79,6 @@ VignetteBuilder: knitr
 URL: https://github.com/glmmTMB/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 NeedsCompilation: yes
 Encoding: UTF-8
