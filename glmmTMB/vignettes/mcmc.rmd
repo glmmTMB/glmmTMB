@@ -65,7 +65,7 @@ Add more informative names and transform correlation parameter (see vignette on 
 colnames(m1) <- c(names(fixef(fm1)[[1]]),
                   "log(sigma)",
                   c("log(sd_Intercept)","log(sd_Days)","cor"))
-m1[,"cor"] <- sapply(m1[,"cor"],get_cor)
+m1[,"cor"] <- sapply(m1[,"cor"], get_cor)
 ```
 
 ```{r traceplot,fig.width=7}
