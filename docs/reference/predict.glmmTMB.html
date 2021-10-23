@@ -61,7 +61,7 @@
   <body data-spy="scroll" data-target="#toc">
     <div class="container template-reference-topic">
       <header>
-      <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+      <div class="navbar navbar-standard navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
@@ -101,7 +101,16 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
@@ -116,6 +125,12 @@
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+    </li>
+    <li>
+      <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
     </li>
   </ul>
@@ -123,9 +138,17 @@
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/glmmTMB/glmmTMB/">
-    <span class="fab fa-github fa-lg"></span>
+  <a href="../repos/index.html">
+    <span class="fa fa-database fa-lg"></span>
      
+    binary packages
+  </a>
+</li>
+<li>
+  <a href="https://github.com/glmmTMB/glmmTMB">
+    <span class="fa fa-github fa-lg"></span>
+     
+    github
   </a>
 </li>
       </ul>
@@ -251,28 +274,28 @@ However, to ensure intentional usage, a warning is triggered if <code>allow.new.
     <pre class="examples"><div class='input'><span class='fu'><a href='https://rdrr.io/r/utils/data.html'>data</a></span><span class='op'>(</span><span class='va'>sleepstudy</span>,package<span class='op'>=</span><span class='st'>"lme4"</span><span class='op'>)</span>
 <span class='va'>g0</span> <span class='op'>&lt;-</span> <span class='fu'><a href='glmmTMB.html'>glmmTMB</a></span><span class='op'>(</span><span class='va'>Reaction</span><span class='op'>~</span><span class='va'>Days</span><span class='op'>+</span><span class='op'>(</span><span class='va'>Days</span><span class='op'>|</span><span class='va'>Subject</span><span class='op'>)</span>,<span class='va'>sleepstudy</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>g0</span>, <span class='va'>sleepstudy</span><span class='op'>)</span>
-</div><div class='output co'>#&gt;   [1] 254.2209 273.7637 293.3065 312.8493 332.3921 351.9349 371.4777 391.0205
-#&gt;   [9] 410.5633 430.1061 211.3566 213.1798 215.0030 216.8263 218.6495 220.4727
-#&gt;  [17] 222.2959 224.1191 225.9424 227.7656 212.9720 217.9259 222.8798 227.8337
-#&gt;  [25] 232.7876 237.7415 242.6954 247.6493 252.6032 257.5571 274.2373 280.0459
-#&gt;  [33] 285.8544 291.6630 297.4715 303.2801 309.0886 314.8972 320.7057 326.5143
-#&gt;  [41] 272.9551 280.4778 288.0006 295.5234 303.0462 310.5689 318.0917 325.6145
-#&gt;  [49] 333.1372 340.6600 260.2207 270.4528 280.6848 290.9169 301.1490 311.3811
+</div><div class='output co'>#&gt;   [1] 254.2208 273.7636 293.3064 312.8492 332.3921 351.9349 371.4777 391.0205
+#&gt;   [9] 410.5633 430.1062 211.3566 213.1798 215.0030 216.8263 218.6495 220.4727
+#&gt;  [17] 222.2959 224.1191 225.9424 227.7656 212.9719 217.9258 222.8797 227.8337
+#&gt;  [25] 232.7876 237.7415 242.6954 247.6493 252.6032 257.5571 274.2374 280.0460
+#&gt;  [33] 285.8545 291.6630 297.4716 303.2801 309.0886 314.8971 320.7057 326.5142
+#&gt;  [41] 272.9551 280.4779 288.0006 295.5234 303.0462 310.5689 318.0917 325.6145
+#&gt;  [49] 333.1372 340.6600 260.2207 270.4528 280.6849 290.9169 301.1490 311.3811
 #&gt;  [57] 321.6132 331.8452 342.0773 352.3094 267.8471 278.1556 288.4640 298.7725
-#&gt;  [65] 309.0809 319.3894 329.6979 340.0063 350.3148 360.6233 244.4084 255.9084
-#&gt;  [73] 267.4085 278.9085 290.4085 301.9085 313.4085 324.9085 336.4085 347.9086
-#&gt;  [81] 250.3676 250.2354 250.1033 249.9712 249.8390 249.7069 249.5747 249.4426
-#&gt;  [89] 249.3105 249.1783 286.0715 305.1711 324.2708 343.3704 362.4701 381.5697
-#&gt;  [97] 400.6694 419.7691 438.8687 457.9684 226.8470 238.3787 249.9104 261.4420
-#&gt; [105] 272.9737 284.5054 296.0371 307.5687 319.1004 330.6321 239.0706 256.0095
-#&gt; [113] 272.9485 289.8875 306.8265 323.7654 340.7044 357.6434 374.5823 391.5213
-#&gt; [121] 255.6792 263.1911 270.7030 278.2150 285.7269 293.2389 300.7508 308.2628
-#&gt; [129] 315.7747 323.2867 272.0274 286.0563 300.0853 314.1143 328.1433 342.1723
-#&gt; [137] 356.2013 370.2303 384.2592 398.2882 254.6637 266.0027 277.3416 288.6806
-#&gt; [145] 300.0196 311.3586 322.6976 334.0366 345.3756 356.7146 226.6949 241.8219
-#&gt; [153] 256.9489 272.0759 287.2029 302.3299 317.4569 332.5839 347.7109 362.8379
-#&gt; [161] 252.1284 261.6246 271.1209 280.6171 290.1133 299.6095 309.1058 318.6020
-#&gt; [169] 328.0982 337.5944 263.5241 275.3020 287.0800 298.8580 310.6360 322.4139
+#&gt;  [65] 309.0809 319.3894 329.6979 340.0063 350.3148 360.6232 244.4084 255.9084
+#&gt;  [73] 267.4084 278.9084 290.4085 301.9085 313.4085 324.9085 336.4086 347.9086
+#&gt;  [81] 250.3677 250.2355 250.1034 249.9712 249.8391 249.7069 249.5747 249.4426
+#&gt;  [89] 249.3104 249.1783 286.0714 305.1711 324.2708 343.3704 362.4701 381.5697
+#&gt;  [97] 400.6694 419.7691 438.8687 457.9684 226.8469 238.3786 249.9103 261.4420
+#&gt; [105] 272.9737 284.5054 296.0371 307.5688 319.1004 330.6321 239.0705 256.0094
+#&gt; [113] 272.9484 289.8874 306.8264 323.7654 340.7044 357.6434 374.5824 391.5214
+#&gt; [121] 255.6792 263.1911 270.7031 278.2150 285.7269 293.2389 300.7508 308.2628
+#&gt; [129] 315.7747 323.2866 272.0273 286.0563 300.0853 314.1143 328.1433 342.1723
+#&gt; [137] 356.2013 370.2303 384.2592 398.2882 254.6636 266.0026 277.3416 288.6806
+#&gt; [145] 300.0196 311.3586 322.6976 334.0366 345.3756 356.7146 226.6947 241.8218
+#&gt; [153] 256.9488 272.0758 287.2028 302.3299 317.4569 332.5839 347.7109 362.8380
+#&gt; [161] 252.1284 261.6246 271.1208 280.6171 290.1133 299.6095 309.1058 318.6020
+#&gt; [169] 328.0982 337.5945 263.5241 275.3020 287.0800 298.8580 310.6360 322.4139
 #&gt; [177] 334.1919 345.9699 357.7479 369.5258</div><div class='input'><span class='co'>## Predict new Subject</span>
 <span class='va'>nd</span> <span class='op'>&lt;-</span> <span class='va'>sleepstudy</span><span class='op'>[</span><span class='fl'>1</span>,<span class='op'>]</span>
 <span class='va'>nd</span><span class='op'>$</span><span class='va'>Subject</span> <span class='op'>&lt;-</span> <span class='st'>"new"</span>
@@ -281,7 +304,7 @@ However, to ensure intentional usage, a warning is triggered if <code>allow.new.
 <span class='va'>nd_pop</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/data.frame.html'>data.frame</a></span><span class='op'>(</span>Days<span class='op'>=</span><span class='fu'><a href='https://rdrr.io/r/base/unique.html'>unique</a></span><span class='op'>(</span><span class='va'>sleepstudy</span><span class='op'>$</span><span class='va'>Days</span><span class='op'>)</span>,
                      Subject<span class='op'>=</span><span class='cn'>NA</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/stats/predict.html'>predict</a></span><span class='op'>(</span><span class='va'>g0</span>, newdata<span class='op'>=</span><span class='va'>nd_pop</span><span class='op'>)</span>
-</div><div class='output co'>#&gt;  [1] 251.4051 261.8724 272.3397 282.8070 293.2742 303.7415 314.2088 324.6760
+</div><div class='output co'>#&gt;  [1] 251.4051 261.8724 272.3397 282.8069 293.2742 303.7415 314.2088 324.6761
 #&gt;  [9] 335.1433 345.6106</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
