@@ -99,7 +99,7 @@ post an appropriate binary version of the package.
   <body data-spy="scroll" data-target="#toc">
     <div class="container template-reference-topic">
       <header>
-      <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+      <div class="navbar navbar-standard navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
@@ -139,7 +139,16 @@ post an appropriate binary version of the package.
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
@@ -154,6 +163,12 @@ post an appropriate binary version of the package.
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+    </li>
+    <li>
+      <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
     </li>
   </ul>
@@ -161,9 +176,17 @@ post an appropriate binary version of the package.
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/glmmTMB/glmmTMB/">
-    <span class="fab fa-github fa-lg"></span>
+  <a href="../repos/index.html">
+    <span class="fa fa-database fa-lg"></span>
      
+    binary packages
+  </a>
+</li>
+<li>
+  <a href="https://github.com/glmmTMB/glmmTMB">
+    <span class="fa fa-github fa-lg"></span>
+     
+    github
   </a>
 </li>
       </ul>
@@ -205,12 +228,12 @@ you have two choices:</p><ul>
 <li><p>revert the upstream package(s) to their previous binary version. For example, using the
 <code>checkpoint</code> package:</p><pre>
 <span class='co'>## load (installing if necessary) the checkpoint package</span>
-<span class='kw'>while</span> <span class='op'>(</span><span class='op'>!</span><span class='kw'><a href='https://rdrr.io/r/base/library.html'>require</a></span><span class='op'>(</span><span class='st'>"checkpoint"</span><span class='op'>)</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/utils/install.packages.html'>install.packages</a></span><span class='op'>(</span><span class='st'>"checkpoint"</span><span class='op'>)</span>
+<span class='kw'>while</span> <span class='op'>(</span><span class='op'>!</span><span class='kw'><a href='https://rdrr.io/r/base/library.html'>require</a></span><span class='op'>(</span><span class='st'><a href='https://github.com/RevolutionAnalytics/checkpoint'>"checkpoint"</a></span><span class='op'>)</span><span class='op'>)</span> <span class='fu'><a href='https://rdrr.io/r/utils/install.packages.html'>install.packages</a></span><span class='op'>(</span><span class='st'>"checkpoint"</span><span class='op'>)</span>
 <span class='co'>## retrieve build date of installed version of glmmTMB</span>
 <span class='va'>bd</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/character.html'>as.character</a></span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/utils/packageDescription.html'>asDateBuilt</a></span><span class='op'>(</span>
       <span class='fu'><a href='https://rdrr.io/r/utils/packageDescription.html'>packageDescription</a></span><span class='op'>(</span><span class='st'>"glmmTMB"</span>,fields<span class='op'>=</span><span class='st'>"Built"</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>
 <span class='va'>oldrepo</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/options.html'>getOption</a></span><span class='op'>(</span><span class='st'>"repos"</span><span class='op'>)</span>
-<span class='fu'>use_mran_snapshot</span><span class='op'>(</span><span class='va'>bd</span><span class='op'>)</span> <span class='co'>## was setSnapshot() pre-checkpoint v1.0.0</span>
+<span class='fu'><a href='https://rdrr.io/pkg/checkpoint/man/mran.html'>use_mran_snapshot</a></span><span class='op'>(</span><span class='va'>bd</span><span class='op'>)</span> <span class='co'>## was setSnapshot() pre-checkpoint v1.0.0</span>
 <span class='fu'><a href='https://rdrr.io/r/utils/install.packages.html'>install.packages</a></span><span class='op'>(</span><span class='st'>"TMB"</span><span class='op'>)</span>
 <span class='fu'><a href='https://rdrr.io/r/base/options.html'>options</a></span><span class='op'>(</span>repos<span class='op'>=</span><span class='va'>oldrepo</span><span class='op'>)</span> <span class='co'>## restore original repo</span>
 </pre><p>A similar recipe (substituting <code>Matrix</code> for <code>TMB</code> and <code>TMB</code> for <code>glmmTMB</code>)

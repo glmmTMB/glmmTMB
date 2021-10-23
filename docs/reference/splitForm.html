@@ -62,7 +62,7 @@ treating 'special' terms (of the form foo(x|g[,m])) appropriately" />
   <body data-spy="scroll" data-target="#toc">
     <div class="container template-reference-topic">
       <header>
-      <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+      <div class="navbar navbar-standard navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
@@ -102,7 +102,16 @@ treating 'special' terms (of the form foo(x|g[,m])) appropriately" />
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
@@ -117,6 +126,12 @@ treating 'special' terms (of the form foo(x|g[,m])) appropriately" />
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+    </li>
+    <li>
+      <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
     </li>
   </ul>
@@ -124,9 +139,17 @@ treating 'special' terms (of the form foo(x|g[,m])) appropriately" />
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="https://github.com/glmmTMB/glmmTMB/">
-    <span class="fab fa-github fa-lg"></span>
+  <a href="../repos/index.html">
+    <span class="fa fa-database fa-lg"></span>
      
+    binary packages
+  </a>
+</li>
+<li>
+  <a href="https://github.com/glmmTMB/glmmTMB">
+    <span class="fa fa-github fa-lg"></span>
+     
+    github
   </a>
 </li>
       </ul>
@@ -209,7 +232,7 @@ ultimately from the flexLambda branch of lme4
     <pre class="examples"><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>)</span>                     <span class='co'>## no specials or RE</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; NULL
@@ -222,7 +245,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='va'>f</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>)</span>               <span class='co'>## no specials</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -239,7 +262,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='fu'><a href='https://rdrr.io/r/base/diag.html'>diag</a></span><span class='op'>(</span><span class='va'>f</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>)</span>           <span class='co'>## one special</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -256,7 +279,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='fu'><a href='https://rdrr.io/r/base/diag.html'>diag</a></span><span class='op'>(</span><span class='va'>f</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>         <span class='co'>## 'hidden' special</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -273,7 +296,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='va'>f</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>+</span><span class='fu'>cs</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>)</span>       <span class='co'>## combination</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -296,7 +319,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>/</span><span class='va'>g</span><span class='op'>)</span><span class='op'>)</span>             <span class='co'>## 'slash'; term</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -319,7 +342,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>/</span><span class='va'>g</span><span class='op'>/</span><span class='va'>h</span><span class='op'>)</span><span class='op'>)</span>             <span class='co'>## 'slash'; term</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -348,7 +371,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='op'>(</span><span class='va'>f</span><span class='op'>/</span><span class='va'>g</span><span class='op'>)</span><span class='op'>/</span><span class='va'>h</span><span class='op'>)</span><span class='op'>)</span>             <span class='co'>## 'slash'; term</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -377,7 +400,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>+</span><span class='op'>(</span><span class='va'>f</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>+</span><span class='fu'>cs</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>g</span><span class='op'>)</span><span class='op'>+</span><span class='fu'>cs</span><span class='op'>(</span><span class='va'>a</span><span class='op'>|</span><span class='va'>b</span>,<span class='va'>stuff</span><span class='op'>)</span><span class='op'>)</span>  <span class='co'>## complex special</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~x + y
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -406,7 +429,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='op'>(</span><span class='op'>(</span><span class='op'>(</span><span class='va'>x</span><span class='op'>+</span><span class='va'>y</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span><span class='op'>)</span>               <span class='co'>## lots of parentheses</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~(((x + y)))
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; NULL
@@ -419,7 +442,7 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'><span class='fu'>splitForm</span><span class='op'>(</span><span class='op'>~</span><span class='fl'>1</span><span class='op'>+</span><span class='fu'>rr</span><span class='op'>(</span><span class='va'>f</span><span class='op'>|</span><span class='va'>g</span>,n<span class='op'>=</span><span class='fl'>2</span><span class='op'>)</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; $fixedFormula
 #&gt; ~1
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; 
 #&gt; $reTrmFormulas
 #&gt; $reTrmFormulas[[1]]
@@ -436,23 +459,23 @@ ultimately from the flexLambda branch of lme4
 #&gt; </div><div class='input'>
 <span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fl'>1</span><span class='op'>+</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; y ~ 1
-#&gt; &lt;environment: 0x7fece7383098&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fl'>1</span><span class='op'>+</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span>,delete<span class='op'>=</span><span class='cn'>FALSE</span><span class='op'>)</span>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fl'>1</span><span class='op'>+</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span>,delete<span class='op'>=</span><span class='cn'>FALSE</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; y ~ 1 + (1 | f)
-#&gt; &lt;environment: 0x7fece7383098&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span><span class='op'>)</span>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; y ~ 1
-#&gt; &lt;environment: 0x7fece7383098&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span>, delete<span class='op'>=</span><span class='cn'>FALSE</span><span class='op'>)</span>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span>, delete<span class='op'>=</span><span class='cn'>FALSE</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; y ~ (1 | f)
-#&gt; &lt;environment: 0x7fece7383098&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span>, debug<span class='op'>=</span><span class='cn'>TRUE</span><span class='op'>)</span>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='fu'>us</span><span class='op'>(</span><span class='fl'>1</span><span class='op'>|</span><span class='va'>f</span><span class='op'>)</span>, debug<span class='op'>=</span><span class='cn'>TRUE</span><span class='op'>)</span>
 </div><div class='output co'>#&gt; y ~ us(1 | f)
-#&gt; &lt;environment: 0x7fece7383098&gt;
+#&gt; &lt;environment: 0x560b60b46fe0&gt;
 #&gt; [1] "not special"
 #&gt; y
 #&gt; us(1 | f)</div><div class='output co'>#&gt; y ~ 1
-#&gt; &lt;environment: 0x7fece7383098&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='va'>us</span><span class='op'>+</span><span class='fl'>1</span><span class='op'>)</span>  <span class='co'>## should *not* delete unless head of a function</span>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='va'>y</span><span class='op'>~</span><span class='va'>us</span><span class='op'>+</span><span class='fl'>1</span><span class='op'>)</span>  <span class='co'>## should *not* delete unless head of a function</span>
 </div><div class='output co'>#&gt; y ~ us + 1
-#&gt; &lt;environment: 0x7fece7383098&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='op'>~</span><span class='va'>us</span><span class='op'>+</span><span class='fl'>1</span><span class='op'>)</span>   <span class='co'>## should work on a one-sided formula!</span>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div><div class='input'><span class='fu'>noSpecials</span><span class='op'>(</span><span class='op'>~</span><span class='va'>us</span><span class='op'>+</span><span class='fl'>1</span><span class='op'>)</span>   <span class='co'>## should work on a one-sided formula!</span>
 </div><div class='output co'>#&gt; ~us + 1
-#&gt; &lt;environment: 0x7fece7383098&gt;</div></pre>
+#&gt; &lt;environment: 0x560b60b46fe0&gt;</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
