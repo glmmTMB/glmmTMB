@@ -11,23 +11,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2021-10-23" />
+<meta name="date" content="2021-10-14" />
 
 <title>Miscellaneous examples</title>
 
-<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
-// be compatible with the behavior of Pandoc < 2.8).
-document.addEventListener('DOMContentLoaded', function(e) {
-  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
-  var i, h, a;
-  for (i = 0; i < hs.length; i++) {
-    h = hs[i];
-    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
-    a = h.attributes;
-    while (a.length > 0) h.removeAttribute(a[0].name);
-  }
-});
-</script>
 <script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
 // v0.0.1
 // Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
@@ -64,18 +51,19 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 </style>
 <style type="text/css" data-origin="pandoc">
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
 @media screen {
 div.sourceCode { overflow: auto; }
 }
 @media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -95,7 +83,7 @@ pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-le
 div.sourceCode
   {   }
 @media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
 code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
@@ -346,29 +334,29 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Miscellaneous examples</h1>
-<h4 class="date">2021-10-23</h4>
+<h4 class="date">2021-10-14</h4>
 
 
 
 <div id="beta-dispersion-model" class="section level2">
 <h2>Beta dispersion model</h2>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="kw">set.seed</span>(<span class="dv">1001</span>)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a>N &lt;-<span class="st"> </span><span class="dv">1000</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>mean_pars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>disp_pars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>dd &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">x=</span><span class="kw">rnorm</span>(N))</span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>m &lt;-<span class="st"> </span><span class="kw">plogis</span>(mean_pars[<span class="dv">1</span>]<span class="op">+</span>mean_pars[<span class="dv">2</span>]<span class="op">*</span>dd<span class="op">$</span>x)</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>d &lt;-<span class="st"> </span><span class="kw">exp</span>(disp_pars[<span class="dv">1</span>]<span class="op">+</span>disp_pars[<span class="dv">2</span>]<span class="op">*</span>dd<span class="op">$</span>x)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>dd<span class="op">$</span>y &lt;-<span class="st"> </span><span class="kw">rbeta</span>(N,<span class="dt">shape1=</span>m<span class="op">*</span>d,<span class="dt">shape2=</span>(<span class="dv">1</span><span class="op">-</span>m)<span class="op">*</span>d)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">set.seed</span>(<span class="dv">1001</span>)</span>
+<span id="cb1-2"><a href="#cb1-2"></a>N &lt;-<span class="st"> </span><span class="dv">1000</span></span>
+<span id="cb1-3"><a href="#cb1-3"></a>mean_pars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>)</span>
+<span id="cb1-4"><a href="#cb1-4"></a>disp_pars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">2</span>)</span>
+<span id="cb1-5"><a href="#cb1-5"></a>dd &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">x=</span><span class="kw">rnorm</span>(N))</span>
+<span id="cb1-6"><a href="#cb1-6"></a>m &lt;-<span class="st"> </span><span class="kw">plogis</span>(mean_pars[<span class="dv">1</span>]<span class="op">+</span>mean_pars[<span class="dv">2</span>]<span class="op">*</span>dd<span class="op">$</span>x)</span>
+<span id="cb1-7"><a href="#cb1-7"></a>d &lt;-<span class="st"> </span><span class="kw">exp</span>(disp_pars[<span class="dv">1</span>]<span class="op">+</span>disp_pars[<span class="dv">2</span>]<span class="op">*</span>dd<span class="op">$</span>x)</span>
+<span id="cb1-8"><a href="#cb1-8"></a>dd<span class="op">$</span>y &lt;-<span class="st"> </span><span class="kw">rbeta</span>(N,<span class="dt">shape1=</span>m<span class="op">*</span>d,<span class="dt">shape2=</span>(<span class="dv">1</span><span class="op">-</span>m)<span class="op">*</span>d)</span></code></pre></div>
 <p>Fit models:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="co">## location only</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>m1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(y<span class="op">~</span>x,</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a>              <span class="dt">family=</span><span class="kw">beta_family</span>(),</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a>              <span class="dt">data=</span>dd)</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a><span class="co">## add model for dispersion</span></span>
-<span id="cb2-6"><a href="#cb2-6" aria-hidden="true"></a>m2 &lt;-<span class="st"> </span><span class="kw">update</span>(m1,<span class="dt">dispformula=</span><span class="op">~</span>x)</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a><span class="co">## location only</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a>m1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(y<span class="op">~</span>x,</span>
+<span id="cb2-3"><a href="#cb2-3"></a>              <span class="dt">family=</span><span class="kw">beta_family</span>(),</span>
+<span id="cb2-4"><a href="#cb2-4"></a>              <span class="dt">data=</span>dd)</span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="co">## add model for dispersion</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a>m2 &lt;-<span class="st"> </span><span class="kw">update</span>(m1,<span class="dt">dispformula=</span><span class="op">~</span>x)</span></code></pre></div>
 <p>Fixed effects look close to theoretical values:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="kw">fixef</span>(m2)</span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">fixef</span>(m2)</span></code></pre></div>
 <pre><code>## 
 ## Conditional model:
 ## (Intercept)            x  
@@ -378,7 +366,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 ## (Intercept)            x  
 ##       1.064        1.962</code></pre>
 <p>AIC is insanely much better for the model with dispersion varying:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a>bbmle<span class="op">::</span><span class="kw">AICtab</span>(m1,m2)</span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a>bbmle<span class="op">::</span><span class="kw">AICtab</span>(m1,m2)</span></code></pre></div>
 <pre><code>##    dAIC   df
 ## m2    0.0 4 
 ## m1 1491.6 3</code></pre>

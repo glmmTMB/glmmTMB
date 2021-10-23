@@ -61,7 +61,7 @@
   <body data-spy="scroll" data-target="#toc">
     <div class="container template-reference-topic">
       <header>
-      <div class="navbar navbar-standard navbar-fixed-top" role="navigation">
+      <div class="navbar navbar-default navbar-fixed-top" role="navigation">
   <div class="container">
     <div class="navbar-header">
       <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false">
@@ -101,16 +101,7 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
-    </li>
-    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
@@ -125,12 +116,6 @@
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
-    </li>
-    <li>
-      <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
-    </li>
-    <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
     </li>
   </ul>
@@ -138,17 +123,9 @@
       </ul>
       <ul class="nav navbar-nav navbar-right">
         <li>
-  <a href="../repos/index.html">
-    <span class="fa fa-database fa-lg"></span>
+  <a href="https://github.com/glmmTMB/glmmTMB/">
+    <span class="fab fa-github fa-lg"></span>
      
-    binary packages
-  </a>
-</li>
-<li>
-  <a href="https://github.com/glmmTMB/glmmTMB">
-    <span class="fa fa-github fa-lg"></span>
-     
-    github
   </a>
 </li>
       </ul>
@@ -208,15 +185,15 @@ for further details).</p>
 <span class='va'>fm4</span> <span class='op'>&lt;-</span> <span class='fu'><a href='glmmTMB.html'>glmmTMB</a></span><span class='op'>(</span><span class='va'>Reaction</span> <span class='op'>~</span> <span class='va'>Days</span> <span class='op'>+</span> <span class='op'>(</span><span class='va'>Days</span><span class='op'>|</span><span class='va'>Subject</span><span class='op'>)</span>, <span class='va'>sleepstudy</span><span class='op'>)</span>
 <span class='fu'>VarCorr</span><span class='op'>(</span><span class='va'>fm4</span><span class='op'>)</span><span class='op'>[[</span><span class='fu'><a href='https://rdrr.io/r/base/c.html'>c</a></span><span class='op'>(</span><span class='st'>"cond"</span>,<span class='st'>"Subject"</span><span class='op'>)</span><span class='op'>]</span><span class='op'>]</span>
 </div><div class='output co'>#&gt;             (Intercept)     Days
-#&gt; (Intercept)   565.51737 11.05538
-#&gt; Days           11.05538 32.68222
+#&gt; (Intercept)   565.51573 11.05626
+#&gt; Days           11.05626 32.68204
 #&gt; attr(,"stddev")
 #&gt; (Intercept)        Days 
-#&gt;   23.780609    5.716836 
+#&gt;   23.780575    5.716821 
 #&gt; attr(,"correlation")
 #&gt;             (Intercept)       Days
-#&gt; (Intercept)  1.00000000 0.08131952
-#&gt; Days         0.08131952 1.00000000
+#&gt; (Intercept)  1.00000000 0.08132635
+#&gt; Days         0.08132635 1.00000000
 #&gt; attr(,"blockCode")
 #&gt; us 
 #&gt;  1 </div><div class='input'><span class='co'>## hand calculation</span>
@@ -228,9 +205,9 @@ for further details).</p>
 <span class='fu'><a href='https://rdrr.io/r/base/diag.html'>diag</a></span><span class='op'>(</span><span class='va'>C</span><span class='op'>)</span> <span class='op'>&lt;-</span> <span class='fl'>1</span>
 <span class='va'>sdvec</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/Log.html'>exp</a></span><span class='op'>(</span><span class='va'>pars</span><span class='op'>[</span><span class='fl'>1</span><span class='op'>:</span><span class='fl'>2</span><span class='op'>]</span><span class='op'>)</span>
 <span class='op'>(</span><span class='va'>V</span> <span class='op'>&lt;-</span> <span class='fu'><a href='https://rdrr.io/r/base/outer.html'>outer</a></span><span class='op'>(</span><span class='va'>sdvec</span>,<span class='va'>sdvec</span><span class='op'>)</span> <span class='op'>*</span> <span class='va'>C</span><span class='op'>)</span>
-</div><div class='output co'>#&gt;           [,1]     [,2]
-#&gt; [1,] 565.51737 11.09211
-#&gt; [2,]  11.09211 32.68222</div></pre>
+</div><div class='output co'>#&gt;          [,1]     [,2]
+#&gt; [1,] 565.5157 11.09300
+#&gt; [2,]  11.0930 32.68204</div></pre>
   </div>
   <div class="col-md-3 hidden-xs hidden-sm" id="pkgdown-sidebar">
     <nav id="toc" data-toggle="toc" class="sticky-top">
