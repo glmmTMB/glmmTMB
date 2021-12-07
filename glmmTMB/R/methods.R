@@ -69,10 +69,10 @@ trivialFixef <- function(xnm,nm) {
 
 ##' @method print fixef.glmmTMB
 ##' @export
-print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), printTrivials = FALSE, ...)
+print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), print_trivials = FALSE, ...)
 {
   for(nm in names(x)) {
-      if (printTrivials | !trivialFixef(names(x[[nm]]),nm)) {
+      if (print_trivials || !trivialFixef(names(x[[nm]]),nm)) {
           cat(sprintf("\n%s:\n", cNames[[nm]]))
           print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
       }
