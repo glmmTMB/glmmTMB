@@ -24,6 +24,7 @@
   nbinom2 =501,
   truncated_nbinom1 =502,
   truncated_nbinom2 =503,
+  truncated_nbinom2_2 =504,
   t =600,
   tweedie = 700
 )

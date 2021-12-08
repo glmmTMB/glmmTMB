@@ -32,6 +32,7 @@ enum valid_family {
   nbinom2_family =501,
   truncated_nbinom1_family =502,
   truncated_nbinom2_family =503,
+  truncated_nbinom2_2_family =504,
   t_family =600,
   tweedie_family = 700
 };
@@ -610,6 +611,7 @@ Type objective_function<Type>::operator() ()
         break;
       case nbinom2_family:
       case truncated_nbinom2_family:
+      case truncated_nbinom2_2_family:
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
         s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
@@ -625,10 +627,19 @@ Type objective_function<Type>::operator() ()
           tmp_loglik -= log_nzprob;
           tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
-		  yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(phi(i)), 0, asDouble(mu(i)));
+						yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(phi(i)), 0, asDouble(mu(i)));
           }
-        }
-        break;
+				} else if (family == truncated_nbinom2_2_family) {
+					int trunc_pt = 2;
+					if (yobs(i) <= trunc_pt) error("observed value below truncation point");
+					s3 = Type(0);
+					for (int i = 0; i <= trunc_pt; i++) {
+						// subtract dbinom probs to get (1- sum_{i=0 to trunc} dnbinom(i))
+						s3 = logspace_sub(s3, dnbinom_robust(Type(i), s1, s2, true));
+					}
+					tmp_loglik -= s3;
+				} // if trunc2
+				break;
       case truncated_poisson_family:
         log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i))) = P(x>0)
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
