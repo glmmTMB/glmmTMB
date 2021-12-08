@@ -51,11 +51,15 @@ formComp <- function(object,type="dispformula",target) {
 ## dispersion model without a (... ?)
 
 trivialDisp <- function(object) {
-    formComp(object,"dispformula",~1)
+    formComp(object, "dispformula", ~1)
 }
 
 zeroDisp <- function(object) {
-    formComp(object,"dispformula",~0)
+    formComp(object, "dispformula", ~0)
+}
+
+noZI <- function(object) {
+  formComp(object, "ziformula", ~0)
 }
 
 ## no roxygen for now ...
@@ -632,8 +636,8 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     type <- match.arg(type)
-    if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
-        stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
+    if (type == "pearson" && (!noZI(object) || !trivialDisp(object))) {
+      stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act,model.response(object$frame))
@@ -659,7 +663,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
                         " Pearson residuals")
                vv <- switch(length(formals(v)),
                             v(fitted(object)),
-                            v(fitted(object),sigma(object)),
+                            v(fitted(object), sigma(object)),
                             stop("variance function should take 1 or 2 arguments"))
                r <- r/sqrt(vv)
                if (!is.null(wts)) {
