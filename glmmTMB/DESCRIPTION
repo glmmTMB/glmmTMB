@@ -80,3 +80,4 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
+RoxygenNote: 7.1.2
