@@ -15,7 +15,8 @@
   \subsection{NEW FEATURES}{
     \itemize{
       \item implemented working residuals (\code{residuals(., type =
-  "working")}; GH #776, @lionel68)
+	"working")}; GH #776, @lionel68)
+    }
   }
 }
 \section{CHANGES IN VERSION 1.1.2.3 (2021-09-20)}{
