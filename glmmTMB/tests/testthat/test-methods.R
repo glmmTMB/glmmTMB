@@ -10,14 +10,10 @@ if (getRversion() < "3.3.0") {
                                     length(coef(object))))
 }
 
-## load(system.file("test_data", "models.rda", package="glmmTMB", mustWork=TRUE))
-
-context("basic methods")
-
 test_that("Fitted and residuals", {
-    expect_equal(length(fitted(fm2)),nrow(sleepstudy))
-    expect_equal(mean(fitted(fm2)),298.507891)
-    expect_equal(mean(residuals(fm2)),0,tol=1e-5)
+    expect_equal(length(fitted(fm2)), nrow(sleepstudy))
+    expect_equal(mean(fitted(fm2)), 298.507891)
+    expect_equal(mean(residuals(fm2)), 0, tol=1e-5)
     ## Pearson and response are the same for a Gaussian model
     expect_equal(residuals(fm2,type="response"),
                  residuals(fm2,type="pearson"))
@@ -45,8 +41,13 @@ test_that("Fitted and residuals", {
     ## two-column responses give vector of residuals GH 307
     tmbm6 <- glmmTMB(cbind(incidence,size-incidence) ~ period,
                      data = cbpp, family = binomial)
+    glm6 <- glm(cbind(incidence,size-incidence) ~ period,
+                     data = cbpp, family = binomial)
     expect_equal(residuals(tmbm4,type="pearson"),
-                 residuals(tmbm6,type="pearson"),tolerance=1e-6)
+                 residuals(tmbm6,type="pearson"), tolerance=1e-6)
+    ## working residuals; compare with glm (GH #776)
+    expect_equal(residuals(tmbm6, type  = "working"),
+                 residuals(glm6, type = "working"), tolerance = 1e-6)
 
     ## predict handles na.exclude correctly
     ## GH 568
@@ -66,6 +67,7 @@ test_that("Fitted and residuals", {
     expect_equal(unname(which(is.na(rs.ex))),napos)
     pr.rs.ex <- pr.ex + rs.ex
     expect_equal(unname(pr.rs.ex), y.na)
+    
 })
 
 test_that("Predict", {
