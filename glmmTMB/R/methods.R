@@ -634,7 +634,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @param \dots ignored, for method compatibility
 ##' @importFrom stats fitted model.response residuals
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), ...) {
     type <- match.arg(type)
     if (type == "pearson" && (!noZI(object) || !trivialDisp(object))) {
       stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
@@ -656,7 +656,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     r <- mr - fitted(object)
     res <- switch(type,
            response=r,
-           pearson={
+           working = {
+               mu.eta <- family(object)$mu.eta
+               p <- predict(object, type = "link", fast = TRUE)
+               r/mu.eta(p)
+           },
+           pearson = {
                if (is.null(v <- family(object)$variance))
                    stop("variance function undefined for family ",
                         sQuote(family(object)$family),"; cannot compute",
