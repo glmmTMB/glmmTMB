@@ -3,10 +3,10 @@
 ## NOTE: methods are dynamically exported by emmeans utility -- see code in zzz.R
 
 ##' Downstream methods
-##' 
+##'
 ##' @name downstream_methods
 ##' @aliases emmeans.glmmTMB
-##' 
+##'
 ##' @description
 ##' Methods have been written that allow \code{glmmTMB} objects to be used with
 ##' several downstream packages that enable different forms of inference.
@@ -14,7 +14,7 @@
 ##' set the \code{component} argument
 ##' to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
 ##' for the corresponding part of a \code{glmmTMB} model.
-##' 
+##'
 ##' In particular,
 ##' \itemize{
 ##' \item \code{car::Anova} constructs type-II and type-III Anova tables
@@ -56,12 +56,14 @@ NULL  ## don't document the files here!
 ## recover_data method -- DO NOT export -- see zzz.R
 ## do not document either
 
-recover_data.glmmTMB <- function(object, ...) {
+recover_data.glmmTMB <- function(object, component = "cond", ...) {
     fcall <- getCall(object)
     if (!requireNamespace("emmeans"))
         stop("please install (if necessary) and load the emmeans package")
-    emmeans::recover_data(fcall,delete.response(terms(object)),
-                 attr(model.frame(object),"na.action"), ...)
+    emmeans::recover_data(fcall,
+                          delete.response(terms(object,
+                                                component = component)),
+                          attr(model.frame(object),"na.action"), ...)
 }
 
 
@@ -100,7 +102,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", vcov.
                  cond = family(object),
                  zi = list(link="logit"),
                  disp = list(link="log"))
-    
+
     misc <- emmeans::.std.link.labels(fam, misc)
     ## (used to populate the reminder of response scale)
     contrasts <- attr(model.matrix(object), "contrasts")

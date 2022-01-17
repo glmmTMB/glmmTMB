@@ -10,6 +10,8 @@
       \item offset variables with attributes now work properly
       (previously threw an error; now stripped before being passed to
       TMB)
+      \item \code{emmeans} methods now work when \code{component}
+      is non-default (GH #780, @rvlenth/@marosteg)
     }
   }
   \subsection{NEW FEATURES}{
