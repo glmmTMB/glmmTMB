@@ -271,7 +271,7 @@ beta_family <- function(link="logit") {
 ##  scaling is n*(theta+n)/(theta+1) (vs. simply n for the binomial)
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
-              variance=function(mu,phi) {
+              variance = function(mu, phi) {
                   mu*(1-mu)
               },
               initialize = binomial()$initialize)

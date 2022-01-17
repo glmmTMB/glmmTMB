@@ -51,11 +51,15 @@ formComp <- function(object,type="dispformula",target) {
 ## dispersion model without a (... ?)
 
 trivialDisp <- function(object) {
-    formComp(object,"dispformula",~1)
+    formComp(object, "dispformula", ~1)
 }
 
 zeroDisp <- function(object) {
-    formComp(object,"dispformula",~0)
+    formComp(object, "dispformula", ~0)
+}
+
+noZI <- function(object) {
+  formComp(object, "ziformula", ~0)
 }
 
 ## no roxygen for now ...
@@ -69,10 +73,10 @@ trivialFixef <- function(xnm,nm) {
 
 ##' @method print fixef.glmmTMB
 ##' @export
-print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), ...)
+print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), print_trivials = FALSE, ...)
 {
   for(nm in names(x)) {
-      if (!trivialFixef(names(x[[nm]]),nm)) {
+      if (print_trivials || !trivialFixef(names(x[[nm]]),nm)) {
           cat(sprintf("\n%s:\n", cNames[[nm]]))
           print.default(format(x[[nm]], digits=digits), print.gap = 2L, quote = FALSE)
       }
@@ -630,10 +634,10 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @param \dots ignored, for method compatibility
 ##' @importFrom stats fitted model.response residuals
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), ...) {
     type <- match.arg(type)
-    if(type=="pearson" &((object$call$ziformula != ~0)|(object$call$dispformula != ~1))) {
-        stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
+    if (type == "pearson" && (!noZI(object) || !trivialDisp(object))) {
+      stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
     }
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act,model.response(object$frame))
@@ -652,14 +656,19 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson"), ...) {
     r <- mr - fitted(object)
     res <- switch(type,
            response=r,
-           pearson={
+           working = {
+               mu.eta <- family(object)$mu.eta
+               p <- predict(object, type = "link", fast = TRUE)
+               r/mu.eta(p)
+           },
+           pearson = {
                if (is.null(v <- family(object)$variance))
                    stop("variance function undefined for family ",
                         sQuote(family(object)$family),"; cannot compute",
                         " Pearson residuals")
                vv <- switch(length(formals(v)),
                             v(fitted(object)),
-                            v(fitted(object),sigma(object)),
+                            v(fitted(object), sigma(object)),
                             stop("variance function should take 1 or 2 arguments"))
                r <- r/sqrt(vv)
                if (!is.null(wts)) {

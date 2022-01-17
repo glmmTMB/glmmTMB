@@ -1,0 +1,9 @@
+navbar:
+  type: standard
+  right:
+   - icon: fa-database fa-lg
+     text: "binary packages"
+     href: repos/index.html
+   - icon: fa-github fa-lg
+     text: "github"
+     href: https://github.com/glmmTMB/glmmTMB

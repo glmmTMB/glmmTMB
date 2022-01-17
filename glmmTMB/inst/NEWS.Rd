@@ -4,7 +4,22 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.3}{
+\section{CHANGES IN VERSION 1.1.2.9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item offset variables with attributes now work properly
+      (previously threw an error; now stripped before being passed to
+      TMB)
+    }
+  }
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item implemented working residuals (\code{residuals(., type =
+	"working")}; GH #776, @lionel68)
+    }
+  }
+}
+\section{CHANGES IN VERSION 1.1.2.3 (2021-09-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item Double-bar notation (\code{(x+y||g)}) is now translated to a

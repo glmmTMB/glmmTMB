@@ -2,8 +2,6 @@ stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
 
-context("offsets")
-
 set.seed(101)
 n <- 10000
 mux <- 10
@@ -96,4 +94,13 @@ test_that("LONG offset in do.call", {
     m1 <- glmmTMB(Reaction ~ Days,ss,offset=off) #works
     m2 <- do.call(glmmTMB,list(Reaction ~ Days,ss,offset=off)) #breaks
     expect_equal(coef(m1),coef(m2))
+})
+
+# GH 773
+test_that("offset works with attributes", {
+  skip_on_cran()
+  dat$o <- drop(scale(dat$o))
+  m2 <- glmmTMB(y1~x + offset(o), data = dat)
+  expect_equal(unname(fixef(m2)$cond),
+               c(101.0121, 1.999318), tol = 1e-4)
 })

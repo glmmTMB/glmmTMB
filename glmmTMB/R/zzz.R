@@ -11,3 +11,7 @@
     }
     checkDepPackageVersion(dep_pkg="TMB")
 }
+
+.onUnload <- function(libpath) {
+  library.dynam.unload("glmmTMB", libpath)
+}

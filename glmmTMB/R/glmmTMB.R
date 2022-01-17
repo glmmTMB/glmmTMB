@@ -380,9 +380,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ##  (which confuse MakeADFun)
     yobs = c(yobs),
     respCol,
-    offset = condList$offset,
-    zioffset = ziList$offset,
-    doffset = dispList$offset,
+    ## strip attributes from offset terms
+    offset = c(condList$offset),
+    zioffset = c(ziList$offset),
+    doffset = c(dispList$offset),
     weights,
     size = c(size),
     ## information about random effects structure
@@ -931,19 +932,19 @@ glmmTMB <- function(
         }
         family <- get(family, mode = "function", envir = parent.frame())
     }
-    
+
     if (is.function(family)) {
         ## call family with no arguments
         family <- family()
     }
-    
+
     ## FIXME: what is this doing? call to a function that's not really
     ##  a family creation function?
     if (is.null(family$family)) {
       print(family)
       stop("'family' not recognized")
     }
-    
+
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
@@ -961,7 +962,7 @@ glmmTMB <- function(
     if (missing(data)) {
         warning("use of the ", sQuote("data"), " argument is recommended")
     }
-    
+
     ## extract family and link information from family object
     link <- family$link
 

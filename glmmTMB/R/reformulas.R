@@ -166,7 +166,10 @@ expandGrpVar <- function(f) {
 
 ##' expand interactions/combinations of grouping variables
 ##'
-##' Modeled after lme4:::expandSlash, by Doug Bates
+##' Modeled after lme4:::expandSlash, by Doug Bates. However,
+##' all formula operators that apply to factors (\code{*}, \code{/}, \code{+})
+##' are applicable: the results are expanded into a list of independent (additive)
+##' random effect terms
 ##' @param bb a list of naked grouping variables, i.e. 1 | f
 ##' @examples
 ##' ff <- lme4::findbars(y~1+(x|f/g))
@@ -174,6 +177,8 @@ expandGrpVar <- function(f) {
 ##' expandAllGrpVar(quote(1|(f/g)/h))
 ##' expandAllGrpVar(quote(1|f/g/h))
 ##' expandAllGrpVar(quote(1|f*g))
+##' expandAllGrpVar(quote(1|f+g))
+##' expandAllGrpVar(quote(a+b|f+g+h*i))
 ##' @importFrom utils head
 ##' @rdname formfuns
 ##' @export
