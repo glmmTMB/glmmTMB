@@ -41,15 +41,15 @@ if (require(emmeans)) {
                  c(0.38902257366905, 0.177884950308125))
     expect_equal(as.data.frame(emmeans(m2, ~mined, component="cond", vcov.=V))[["SE"]],
                  c(0, 0.366598230362198))
+
+    ## GH780
+    test3 <- glmmTMB(count ~ spp,
+                     zi=~spp + mined,
+                     family=truncated_nbinom2, data=Salamanders)
+
+    e1 <- emmeans(test3,c("spp","mined"),component="zi",type="response")
+    expect_is(e1, "emmGrid")
   }
-
-  # GH780
-  test3 <- glmmTMB(count ~ spp,
-                 zi=~spp + mined,
-                 family=truncated_nbinom2, data=Salamanders)
-
-  e1 <- emmeans(test3,c("spp","mined"),component="zi",type="response")
-  expect_is(e1, "emmGrid")
   ) ## test_that
 }
 
