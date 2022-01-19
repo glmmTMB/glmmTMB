@@ -137,12 +137,12 @@ getVCText <- function(obj,...) {
 }
 
 ##expect_equal(c1,c("", "Conditional model:",
-##                  " Groups   Name        Std.Dev. Corr  ", 
+##                  " Groups   Name        Std.Dev. Corr  ",
 ##                  " Subject  (Intercept) 2.19409        ",
 ##                  "          age         0.21492  -0.581",
 ##                  " Residual             1.31004        "))
 expect_equal(getVCText(vc),
-             structure(list(V3 = c(2.1941, 0.21492, 1.31004),
+             structure(list(V3 = c(2.19412, 0.21493, 1.31004),
                             V4 = c(NA, -0.581, NA)),
                        .Names = c("V3", "V4"),
                        class = "data.frame", row.names = c(NA, -3L)),
@@ -153,25 +153,25 @@ c2 <- getVCText(vc,comp=c("Variance","Std.Dev."),digits=2)
 ## c2 <- capture.output(print(vc,comp=c("Variance","Std.Dev."),digits=2))
 ## expect_equal(c2,
 ##              c("", "Conditional model:",
-##                " Groups   Name        Variance Std.Dev. Corr ", 
+##                " Groups   Name        Variance Std.Dev. Corr ",
 ##                " Subject  (Intercept) 4.814    2.19          ",
-##                "          age         0.046    0.21     -0.58", 
+##                "          age         0.046    0.21     -0.58",
 ##                " Residual             1.716    1.31          "))
 expect_equal(c2,
-             structure(list(V3 = c(4.814, 0.046, 1.716), V4 = c(2.19, 0.21, 
-1.31)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA, 
+             structure(list(V3 = c(4.814, 0.046, 1.716), V4 = c(2.19, 0.21,
+1.31)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA,
 -3L)))
 ## variance only
 c3 <- getVCText(vc,comp=c("Variance"))
 ## c3 <- capture.output(print(vc,))
 ## expect_equal(c3,
 ##              c("", "Conditional model:",
-##               " Groups   Name        Variance Corr  ", 
+##               " Groups   Name        Variance Corr  ",
 ##               " Subject  (Intercept) 4.814050       ",
 ##               "          age         0.046192 -0.581",
 ##               " Residual             1.716203       "))
-expect_equal(c3,structure(list(V3 = c(4.814071, 0.046192, 1.716208), V4 = c(NA, 
--0.581, NA)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA, 
+expect_equal(c3,structure(list(V3 = c(4.814071, 0.046192, 1.716208), V4 = c(NA,
+-0.581, NA)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA,
 -3L)),
 tolerance=5e-5)
 
