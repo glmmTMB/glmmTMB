@@ -7,7 +7,7 @@
 get_cor(theta)
 }
 \arguments{
-\item{theta}{vector of internal correlation parameters}
+\item{theta}{vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)}
 }
 \value{
 a vector of correlation values

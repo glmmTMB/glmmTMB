@@ -45,7 +45,7 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 }
 
 ##' translate vector of correlation parameters to correlation values
-##' @param theta vector of internal correlation parameters
+##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
 ##' @return a vector of correlation values
 ##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}:
 ##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
@@ -55,13 +55,13 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 ##' get_cor(c(0.5,0.2,0.5))
 ##' @export
 get_cor <- function(theta) {
-    n <- round((1  + sqrt(1+8*length(theta)))/2) ## dim of cor matrix
-    L <- diag(n)
-    L[lower.tri(L)] <- theta
-    cL <- tcrossprod(L)
-    Dh <- diag(1/sqrt(diag(cL)))
-    cc <- Dh %*% cL %*% Dh
-    return(cc[lower.tri(cc)])
+  n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
+  R <- diag(n)
+  R[upper.tri(R)] <- theta
+  R[] <- crossprod(R) # R <- t(R) %*% R
+  scale <- 1 / sqrt(diag(R))
+  R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
+  R[lower.tri(R)]
 }
 
 match_which <- function(x,y) {
@@ -213,7 +213,7 @@ nullSparseMatrix <- function() {
         do.call(Matrix::sparseMatrix, c(argList, list(repr="T")))
     }
 }
-    
+
 ## Check for version mismatch in dependent binary packages
 #' @importFrom utils packageVersion
 checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=FALSE) {
@@ -245,7 +245,7 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
 #' @name reinstalling
 #' @rdname reinstalling
 #' @title Reinstalling binary dependencies
-#' 
+#'
 #' @description The \code{glmmTMB} package depends on several upstream packages, which it
 #' uses in a way that depends heavily on their internal (binary) structure.
 #' Sometimes, therefore, installing an update to one of these packages will
@@ -261,7 +261,7 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
 #' (On Windows, you can install development tools following the instructions at
 #' \url{https://cran.r-project.org/bin/windows/Rtools/}; on MacOS, see
 #' \url{https://mac.r-project.org/tools/}.)
-#' 
+#'
 #' \item If you do \emph{not} have development tools and can't/don't want to
 #' install them (and so can't install packages with compiled code from source),
 #' you have two choices:
@@ -290,7 +290,7 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
 #' }
 #' }
 NULL
-                 
+
 #' Check OpenMP status
 ##'
 ##' Checks whether OpenMP has been successfully enabled for this
@@ -325,7 +325,7 @@ isNullPointer <- function(x) {
 }
 
 #' conditionally update glmmTMB object fitted with an old TMB version
-#' 
+#'
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
 #' @export
@@ -346,7 +346,7 @@ up2date <- function(oldfit) {
 
 
 #' Load data from system file, updating glmmTMB objects
-#' 
+#'
 #' @param fn partial path to system file (e.g. test_data/foo.rda)
 #' @param verbose print names of updated objects?
 #' @param mustWork fail if file not found?
@@ -357,7 +357,7 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
     if (mustWork && !found_file) {
         stop("couldn't find system file ", sf)
     }
-    
+
     L <- load(sf)
     for (m in L) {
         if (inherits(get(m), "glmmTMB")) {
@@ -371,7 +371,7 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
 
 #' truncated distributions
 #'
-#' Probability functions for k-truncated Poisson and negative binomial distributions. 
+#' Probability functions for k-truncated Poisson and negative binomial distributions.
 #' @param x value
 #' @param size number of trials/overdispersion parameter
 #' @param mu mean parameter

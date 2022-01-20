@@ -26,7 +26,8 @@ Authors@R: c(person("Mollie","Brooks",
             person("Russ","Lenth", role="ctb"),
 	    person("Joseph", "O'Brien", role = "ctb",
 		       comment = c(ORCID = "0000-0001-9851-5077")),
-            person("Charles J.","Geyer", role="ctb")
+            person("Charles J.","Geyer", role="ctb"),
+	    person("Mikael","Jagan", role="ctb")
 		   )
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
@@ -80,4 +81,3 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
-RoxygenNote: 7.1.2
