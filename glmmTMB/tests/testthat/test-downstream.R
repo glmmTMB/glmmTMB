@@ -1,10 +1,11 @@
-require(glmmTMB)
-require(testthat)
+stopifnot(require("testthat"),
+          require("glmmTMB"))
 
 data(sleepstudy,package="lme4")
 ## m <- load(system.file("test_data","models.rda",package="glmmTMB", mustWork=TRUE))
 if (require(emmeans)) {
-    context("emmeans")
+  test_that("emmeans", {
+    skip_on_cran()
     m1 <- glmmTMB(SiblingNegotiation ~ FoodTreatment*SexParent +
                 (1|Nest)+offset(log(BroodSize)),
                 family = nbinom1(), zi = ~1, data=Owls)
@@ -40,11 +41,20 @@ if (require(emmeans)) {
                  c(0.38902257366905, 0.177884950308125))
     expect_equal(as.data.frame(emmeans(m2, ~mined, component="cond", vcov.=V))[["SE"]],
                  c(0, 0.366598230362198))
+
+    ## GH780
+    test3 <- glmmTMB(count ~ spp,
+                     zi=~spp + mined,
+                     family=truncated_nbinom2, data=Salamanders)
+
+    e1 <- emmeans(test3,c("spp","mined"),component="zi",type="response")
+    expect_is(e1, "emmGrid")
+  }
+  ) ## test_that
 }
 
 
 if (require(effects)) {
-    context("effects")
     ## pass dd: some kind of scoping issue in testthat context
     f <- function(x,dd) {
         sapply(allEffects(x),
