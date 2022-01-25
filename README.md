@@ -13,9 +13,16 @@
 
 ## Where to ask questions
 
-- the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) for general questions about `glmmTMB` usage and mixed models (please [subscribe to the list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) before posting)
-- the [glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues) for bug, infelicity, and wishlist reporting
-- the [TMB users forum](https://groups.google.com/forum/#!forum/tmb-users) for TMB-specific questions
+- for questions about mixed models and data analysis:
+    - the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) (please [subscribe to the list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) before posting) or 
+	- [CrossValidated](https://stats.stackexchange.com)  
+The mailing list has more people who know about using mixed models in R; CrossValidated has a larger overall audience and a nicer question/answer format (allows pictures, code formatting, etc.).
+- for questions about `glmmTMB` usage:
+    - `r-sig-mixed-models@r-project.org` or 
+	- [StackOverflow](https://stackoverflow.com)  
+	(similar pros/cons as the previous point)
+- for bug, infelicity, and wishlist reporting: the [glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues) 
+- for TMB-specific questions: the [TMB users forum](https://groups.google.com/forum/#!forum/tmb-users) 
 - maintainer e-mail only for urgent/private communications
 
 Please do **not** cross-post, i.e. ask the same question in more than one forum, unless it's suggested that you have posted in the wrong place, or unless you receive total silence in one forum. In the latter case it may be better to send a reminder/"bump" message to the original forum; in any case you should mention in your new message where/when you've previously asked the question.
