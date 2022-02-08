@@ -14,7 +14,8 @@ diagnose(
   check_coefs = TRUE,
   check_zstats = TRUE,
   check_hessian = TRUE,
-  check_scales = TRUE
+  check_scales = TRUE,
+  explain = TRUE
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ diagnose(
 \item{check_hessian}{identify non-positive-definite Hessian components?}
 
 \item{check_scales}{identify predictors with unusually small or large scales?}
+
+\item{explain}{provide detailed explanation of each test?}
 }
 \value{
 a logical value based on whether anything questionable was found

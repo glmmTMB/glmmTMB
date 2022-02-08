@@ -15,17 +15,18 @@
 ##' advisable to try to deal with problems in order, e.g. address problems with
 ##' complete separation first, then re-run the diagnostics to see whether
 ##' Hessian problems persist.
-##' 
+##'
 ##' @param fit a \code{glmmTMB} fit
 ##' @param eval_eps numeric tolerance for 'bad' eigenvalues
 ##' @param evec_eps numeric tolerance for 'bad' eigenvector elements
 ##' @param big_coef numeric tolerance for large coefficients
 ##' @param big_sd_log10 numeric tolerance for badly scaled parameters (log10 scale), i.e. for default value of 3, predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)
-##' @param big_zstat numeric tolerance for Z-statistic 
+##' @param big_zstat numeric tolerance for Z-statistic
 ##' @param check_coefs identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)
 ##' @param check_hessian identify non-positive-definite Hessian components?
 ##' @param check_zstats identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.
 ##' @param check_scales identify predictors with unusually small or large scales?
+##' @param explain provide detailed explanation of each test?
 ##' @return a logical value based on whether anything questionable was found
 ##' @importFrom numDeriv jacobian hessian
 ##' @importFrom stats sd
@@ -38,7 +39,8 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
                      check_coefs=TRUE,
                      check_zstats=TRUE,
                      check_hessian=TRUE,
-                     check_scales=TRUE) {
+                     check_scales=TRUE,
+                     explain = TRUE) {
     model_OK <- TRUE
     ## pull out the TMB object from the fit
     obj <- fit$obj
@@ -63,7 +65,7 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
             cat(sprintf("Unusually large coefficients (|x|>%g):\n\n",big_coef))
             print(bigcoef)
             cat("\n")
-            cat(strwrap(paste("Large negative coefficients in zi (log-odds of zero-inflation), dispersion, or random effects (log-standard deviations) suggest",
+            if (explain) cat(strwrap(paste("Large negative coefficients in zi (log-odds of zero-inflation), dispersion, or random effects (log-standard deviations) suggest",
                               "unnecessary components (converging to zero on the constrained scale); large negative and/or positive",
                               "components in binomial or Poisson conditional parameters suggest (quasi-)complete separation",
                               collapse="")),"\n",sep="\n")
@@ -82,7 +84,7 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
             model_OK <- FALSE
             cat(sprintf("\npredictors with unusually large or small standard deviations (|log10(sd)|>%g):\n\n",sdvec))
             print(sdvec)
-            cat("\n",strwrap(paste("Predictor variables with very narrow or wide ranges generally give rise to parameters with very large or",
+            if (explain) cat("\n",strwrap(paste("Predictor variables with very narrow or wide ranges generally give rise to parameters with very large or",
                                    "small magnitudes, which can sometimes exacerbate numerical instability, and may also be appear",
                                    "(incorrectly) to be indicating a poorly defined optimum (i.e., a non-positive definite Hessian",
                                    collapse=" ")),sep="\n")
@@ -90,13 +92,13 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
     }
     if (check_zstats) {
         z <- ss[,"Std. Error"]/ss[,"Estimate"]
-        bigz <- z[abs(z)>big_zstat]
+        bigz <- z[!is.na(z) & abs(z)>big_zstat]
         if (length(bigz)>0) {
             model_OK <- FALSE
             cat(sprintf("Unusually large Z-statistics (|x|>%g):\n\n",big_zstat))
             print(bigz)
             cat("\n")
-            cat(strwrap(paste("Large Z-statistics (estimate/std err) suggest a failure ",
+            if (explain) cat(strwrap(paste("Large Z-statistics (estimate/std err) suggest a failure ",
                               "of the Wald approximation - often also associated with ",
                               "parameters that are at or near the edge of their range ",
                               "(e.g. random-effects standard deviations approaching 0). ",
@@ -119,10 +121,16 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
             model_OK <- FALSE
             cat("Non-positive definite Hessian\n\n")
             cat("parameters with non-finite standard deviations:\n")
-            cat(strwrap(paste(nn[!is.finite(suppressWarnings(sqrt(diag(fit$sdr$cov.fixed))))],
-                              collapse=", ")),"\n",sep="\n")
+            nonfinite_sd <- !is.finite(suppressWarnings(sqrt(diag(fit$sdr$cov.fixed))))
+            if (all(nonfinite_sd)) {
+              cat("(all of them!)\n\n")
+            } else {
+              cat(strwrap(paste(nn[nonfinite_sd],
+                                collapse=", ")),"\n\n",sep="\n")
+            }
             h <- numDeriv::jacobian(obj$gr, pp)
             ## FIXME: consider SVD?
+            ## FIXME: add explanation
             eigs <- eigen(h)
             ## non-positive definite means some of the eigenvectors are <= 0
             bad <- which(eigs$values/max(eigs$values)<=eval_eps)
