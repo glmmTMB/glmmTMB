@@ -32,7 +32,9 @@
 ##' @importFrom stats sd
 ##' @export
 ##'
-diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
+diagnose <- function(fit,
+                     eval_eps=1e-5,
+                     evec_eps=1e-2,
                      big_coef=10,
                      big_sd_log10=3,
                      big_zstat=5,
@@ -41,6 +43,13 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
                      check_hessian=TRUE,
                      check_scales=TRUE,
                      explain = TRUE) {
+    prt_explain <- function(...) {
+      if (explain) {
+        s <- do.call(paste, c(list(...), list(collapse = "")))
+        cat(strwrap(s), "\n", sep = "\n")
+      }
+      return(invisible(NULL))
+    }
     model_OK <- TRUE
     ## pull out the TMB object from the fit
     obj <- fit$obj
@@ -65,10 +74,9 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
             cat(sprintf("Unusually large coefficients (|x|>%g):\n\n",big_coef))
             print(bigcoef)
             cat("\n")
-            if (explain) cat(strwrap(paste("Large negative coefficients in zi (log-odds of zero-inflation), dispersion, or random effects (log-standard deviations) suggest",
-                              "unnecessary components (converging to zero on the constrained scale); large negative and/or positive",
-                              "components in binomial or Poisson conditional parameters suggest (quasi-)complete separation",
-                              collapse="")),"\n",sep="\n")
+            prt_explain("Large negative coefficients in zi (log-odds of zero-inflation), dispersion, or random effects (log-standard deviations) suggest",
+                        "unnecessary components (converging to zero on the constrained scale); large negative and/or positive",
+                        "components in binomial or Poisson conditional parameters suggest (quasi-)complete separation")
         }
     } ## check_coefs
     if (check_scales) {
@@ -84,10 +92,9 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
             model_OK <- FALSE
             cat(sprintf("\npredictors with unusually large or small standard deviations (|log10(sd)|>%g):\n\n",sdvec))
             print(sdvec)
-            if (explain) cat("\n",strwrap(paste("Predictor variables with very narrow or wide ranges generally give rise to parameters with very large or",
-                                   "small magnitudes, which can sometimes exacerbate numerical instability, and may also be appear",
-                                   "(incorrectly) to be indicating a poorly defined optimum (i.e., a non-positive definite Hessian",
-                                   collapse=" ")),sep="\n")
+            prt_explain("Predictor variables with very narrow or wide ranges generally give rise to parameters with very large or",
+                        "small magnitudes, which can sometimes exacerbate numerical instability, and may also be appear",
+                        "(incorrectly) to be indicating a poorly defined optimum (i.e., a non-positive definite Hessian")
         }
     }
     if (check_zstats) {
@@ -98,19 +105,18 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
             cat(sprintf("Unusually large Z-statistics (|x|>%g):\n\n",big_zstat))
             print(bigz)
             cat("\n")
-            if (explain) cat(strwrap(paste("Large Z-statistics (estimate/std err) suggest a failure ",
-                              "of the Wald approximation - often also associated with ",
-                              "parameters that are at or near the edge of their range ",
-                              "(e.g. random-effects standard deviations approaching 0). ",
-                              "While the Wald p-values and standard errors listed in ",
-                              "summary() are unreliable, profile confidence intervals ",
-                              "(see ?confint.glmmTMB) and likelihood ratio test p-values ",
-                              "derived by comparing models (e.g. ?drop1) may still be OK. ",
-                              "(Note that the LRT is conservative when the null value is ",
-                              "on the boundary, e.g. a variance or zero-inflation value of 0 ",
-                              "(Self and Liang 1987; Stram and Lee 1994; Goldman and Whelan 2000); ",
-                              "in simple cases the p-value is approximately twice as large as it should be.)",
-                              collapse="")),"\n",sep="\n")
+            prt_explain("Large Z-statistics (estimate/std err) suggest a failure ",
+                        "of the Wald approximation - often also associated with ",
+                        "parameters that are at or near the edge of their range ",
+                        "(e.g. random-effects standard deviations approaching 0). ",
+                        "While the Wald p-values and standard errors listed in ",
+                        "summary() are unreliable, profile confidence intervals ",
+                        "(see ?confint.glmmTMB) and likelihood ratio test p-values ",
+                        "derived by comparing models (e.g. ?drop1) may still be OK. ",
+                        "(Note that the LRT is conservative when the null value is ",
+                        "on the boundary, e.g. a variance or zero-inflation value of 0 ",
+                        "(Self and Liang 1987; Stram and Lee 1994; Goldman and Whelan 2000); ",
+                        "in simple cases the p-value is approximately twice as large as it should be.)")
         }
     }
     if (check_hessian) {
@@ -120,6 +126,12 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
         if ("sdr" %in% names(fit) && !fit$sdr$pdHess) {
             model_OK <- FALSE
             cat("Non-positive definite Hessian\n\n")
+            prt_explain("The Hessian matrix represents the curvature of the",
+                        "log-likelihood surface at the maximum likelihood estimate (MLE) of the parameters",
+                        "(its inverse is the estimate of the parameter covariance matrix). ",
+                        "A non-positive-definite Hessian means that the likelihood surface is approximately flat ",
+                        "(or upward-curving) at the MLE, which means the model is overfitted or poorly posed ",
+                        "in some way.")
             cat("parameters with non-finite standard deviations:\n")
             nonfinite_sd <- !is.finite(suppressWarnings(sqrt(diag(fit$sdr$cov.fixed))))
             if (all(nonfinite_sd)) {
@@ -128,16 +140,26 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
               cat(strwrap(paste(nn[nonfinite_sd],
                                 collapse=", ")),"\n\n",sep="\n")
             }
+            ## fit hessian with Richardson extrapolation (more accurate/slower than built-in optimHess)
             h <- numDeriv::jacobian(obj$gr, pp)
             ## FIXME: consider SVD?
             ## FIXME: add explanation
             eigs <- eigen(h)
             ## non-positive definite means some of the eigenvectors are <= 0
-            bad <- which(eigs$values/max(eigs$values)<=eval_eps)
-            if (length(bad)==0) {
-                cat("Hessian seems OK\n")
-                return(invisible(h))
+            bad <- which(eigs$values/max(eigs$values) <= eval_eps)
+            if (length(bad) == 0) {
+              cat("Hessian seems OK\n")
+              prt_explain("glmmTMB's internal calculations suggested that the Hessian was bad/non-positive definite;",
+                          "however, a slower and more precise calculation suggests that it's actually OK. Your model",
+                          "may be somewhat numerically unstable.")
+              return(invisible(h)) ## bail out here
             }
+            prt_explain("The next set of diagnostics attempts to determine which elements of the Hessian",
+                        "are causing the non-positive-definiteness. ",
+                        "Components with very small eigenvalues represent 'flat' directions, ",
+                        "i.e., combinations of parameters for which the data may contain very little information. ",
+                        sprintf("So-called 'bad elements' represent the dominant components (absolute values >%1.3g)", evec_eps),
+                        "of the eigenvectors corresponding to the 'flat' directions")
             cat(sprintf("maximum Hessian eigenvalue = %1.3g",eigs$values[1]),"\n")
             ## there could be more than one 'bad' direction/eigenvector ..
             for (b in bad) {
@@ -145,7 +167,7 @@ diagnose <- function(fit, eval_eps=1e-5,evec_eps=1e-2,
                             b,eigs$values[b],eigs$values[b]/eigs$values[1]),"\n")
                 bad_vec <- eigs$vectors[,b]
                 bad_elements <- which(abs(bad_vec)>evec_eps)
-                cat("   bad elements:",nn[bad_elements],"\n")
+                cat("   bad elements:", nn[bad_elements], "\n")
             }
         } ## bad hessian
     } ## check hessian
