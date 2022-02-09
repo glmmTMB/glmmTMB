@@ -53,21 +53,23 @@ diagnose <- function(fit,
     model_OK <- TRUE
     ## pull out the TMB object from the fit
     obj <- fit$obj
-    ee <- environment(obj$fn)
+    ee <- obj$env
     ## extract parameters
-    pp <- ee$last.par[-ee$random]
+    pp <- ee$last.par.best[-ee$random]
     ss <- summary(fit$sdr)
-    ss <- ss[grepl("^(beta|theta)",rownames(ss)),]
+    ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
-    nn <- tryCatch(colnames(vcov(fit,full=TRUE)),
+    nn <- tryCatch(colnames(vcov(fit, full=TRUE)),
                    ## fall-back position
                    error = function(e) make.unique(names(pp)))
     nn0 <- names(pp)
     names(pp) <- rownames(ss) <- nn
     ## check coefficients
     if (check_coefs) {
+        ## logic: if link function for *conditional* model is unitless then all parameters need checking
+        ## otherwise only check parameters *other* than conditional model parameters ("betad", "betazi", "theta")
         link_par <- (nn0 != "beta" |
-                     family(fit)$link %in% c("log","cloglog","logit","probit"))
+                     family(fit)$link %in% c("log", "cloglog", "logit", "probit"))
         bigcoef <- (pp[abs(pp)>big_coef & link_par])
         if (length(bigcoef)>0) {
             model_OK <- FALSE
@@ -132,13 +134,15 @@ diagnose <- function(fit,
                         "A non-positive-definite Hessian means that the likelihood surface is approximately flat ",
                         "(or upward-curving) at the MLE, which means the model is overfitted or poorly posed ",
                         "in some way.")
-            cat("parameters with non-finite standard deviations:\n")
             nonfinite_sd <- !is.finite(suppressWarnings(sqrt(diag(fit$sdr$cov.fixed))))
-            if (all(nonfinite_sd)) {
-              cat("(all of them!)\n\n")
-            } else {
-              cat(strwrap(paste(nn[nonfinite_sd],
-                                collapse=", ")),"\n\n",sep="\n")
+            if (any(nonfinite_sd)) {
+              cat("parameters with non-finite standard deviations:\n")
+              if (all(nonfinite_sd)) {
+                cat("(all of them!)\n\n")
+              } else {
+                cat(strwrap(paste(nn[nonfinite_sd],
+                                  collapse=", ")),"\n\n",sep="\n")
+              }
             }
             ## fit hessian with Richardson extrapolation (more accurate/slower than built-in optimHess)
             h <- numDeriv::jacobian(obj$gr, pp)
