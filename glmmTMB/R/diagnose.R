@@ -55,7 +55,9 @@ diagnose <- function(fit,
     obj <- fit$obj
     ee <- obj$env
     ## extract parameters
-    pp <- ee$last.par.best[-ee$random]
+    pp0 <- ee$last.par.best
+    keep_pars <- names(pp0) == "beta" | !seq_along(pp0) %in% ee$random
+    pp <- pp0[keep_pars]
     ss <- summary(fit$sdr)
     ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
@@ -146,6 +148,8 @@ diagnose <- function(fit,
             }
             ## fit hessian with Richardson extrapolation (more accurate/slower than built-in optimHess)
             h <- numDeriv::jacobian(obj$gr, pp)
+            ## hack for REML: not all
+            h <- h[, colSums(h) != 0]
             ## FIXME: consider SVD?
             ## FIXME: add explanation
             eigs <- eigen(h)

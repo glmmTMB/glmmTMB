@@ -410,16 +410,16 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   fullNameList <- nameList
   map <- object$obj$env$map
   if (length(map)>0) {
-        ## fullNameList for all variables, including mapped vars
-      ## (nameList will get reduced shortly)
-      for (m in seq_along(map)) {
-          if (length(NAmap <- which(is.na(map[[m]])))>0) {
-              w <- match(names(map)[m],par_components) ##
-              if (length(nameList)>=w) { ## may not exist if !full
-                  nameList[[w]] <- nameList[[w]][-NAmap]
-              }
-          }
+    ## fullNameList for all variables, including mapped vars
+    ## (nameList will get reduced shortly)
+    for (m in seq_along(map)) {
+      if (length(NAmap <- which(is.na(map[[m]]))) > 0) {
+        w <- match(names(map)[m], par_components) ##
+        if (length(nameList)>=w) { ## may not exist if !full
+          nameList[[w]] <- nameList[[w]][-NAmap]
+        }
       }
+    }
   }
 
   if (full) {
