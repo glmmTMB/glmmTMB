@@ -2,21 +2,19 @@ stopifnot(require("testthat"),
           require("glmmTMB"),
           require("MASS"))
 
-context("weight")
-
-set.seed(1) 
+set.seed(1)
 nrep <- 20
 nsim <- 5
 sdi <- .1
 sdii <- .2
 rho <- -.1
-slope <- .8 
+slope <- .8
 ni<-100
 
 dat <- expand.grid(i=1:ni, rep=1:nrep , x=c(0 ,.2, .4))
-RE <- MASS::mvrnorm(n = ni, mu =c(0, 0), 
-		Sigma = matrix(c(sdi*sdi, rho*sdi*sdii, rho*sdi*sdii ,sdii*sdii),2,2)) 
-inddat <- transform(dat, y=rpois(n=nrow(dat), 
+RE <- MASS::mvrnorm(n = ni, mu =c(0, 0),
+		Sigma = matrix(c(sdi*sdi, rho*sdi*sdii, rho*sdi*sdii ,sdii*sdii),2,2))
+inddat <- transform(dat, y=rpois(n=nrow(dat),
                                 lambda = exp(RE[i,1] + x*(slope + RE[i,2]))))
 
 ## aggdat = ddply(inddat, ~i+x+y, summarize, freq=length(rep))
@@ -43,9 +41,9 @@ test_that("Weights can be an argument", {
 test_that("Return weights", {
   expect_equal(weights(wei_glmmtmb), aggdat$Freq)
   expect_equal(weights(wei_glmmtmb, type="prior"), aggdat$Freq)
-  ## partial matching  
-  expect_equal(weights(wei_glmmtmb, type="prio"), aggdat$Freq)
-  expect_error(weights(wei_glmmtmb, type = "working"),"should be one of")
+  ## partial matching
+  expect_equal(weights(wei_glmmtmb, type="prior"), aggdat$Freq)
+  expect_error(weights(wei_glmmtmb, type = "working"), "should be")
   expect_warning(weights(wei_glmmtmb, junk = "abc"),
                  "unused arguments ignored")
 })
