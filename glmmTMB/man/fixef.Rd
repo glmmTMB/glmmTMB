@@ -31,8 +31,8 @@ data(sleepstudy, package = "lme4")
 fm1 <- glmmTMB(Reaction ~ Days, sleepstudy)
 (f1 <- fixef(fm1))
 f1$cond
-## show full coefficients, including dispersion parameter
-unlist(f1)
-print.default(f1)
+## show full coefficients, including empty z-i model and
+## constant dispersion parameter
+print(f1, print_trivials = TRUE)
 }
 \keyword{models}
