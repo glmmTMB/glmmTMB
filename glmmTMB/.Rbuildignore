@@ -13,3 +13,4 @@ cache$
 revdep/
 TAGS
 _pkgdown.yaml
+.gitsum/.*$
