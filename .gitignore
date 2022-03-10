@@ -34,3 +34,4 @@ doc-update
 glmmTMB.Rproj
 *.Rout
 glmmTMB/inst/*-version
+glmmTMB/.gitsum
