@@ -11,3 +11,17 @@ Suggests: knitr, rmarkdown, testthat, MASS, lattice, ggplot2 (>=
         plyr, png, boot, texreg, xtable, huxtable, mvabund
 License: AGPL-3
 Archs: i386, x64
+
+Package: glmmTMB
+Version: 1.1.3
+Depends: R (>= 3.2.0)
+Imports: methods, TMB (>= 1.7.14), lme4 (>= 1.1-18.9000), Matrix, nlme,
+        numDeriv
+LinkingTo: TMB, RcppEigen
+Suggests: knitr, rmarkdown, testthat, MASS, lattice, ggplot2 (>=
+        2.2.1), mlmRev, bbmle (>= 1.0.19), pscl, coda, reshape2, car
+        (>= 3.0.6), emmeans (>= 1.4), estimability, DHARMa, multcomp,
+        MuMIn, effects (>= 4.0-1), dotwhisker, broom, broom.mixed,
+        plyr, png, boot, texreg, xtable, huxtable, mvabund
+License: AGPL-3
+Archs: i386, x64
