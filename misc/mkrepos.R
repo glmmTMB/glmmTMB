@@ -43,10 +43,10 @@ ufun <- function(pkg_ver=pkg_version,hash,ext,base_dir=FALSE) {
 }
 
 src <- sprintf("glmmTMB_%s.tar.gz", pkg_version)
-macbin <- sprintf("glmmTMB_%s.tgz",pkg_version)
-winbin <- sprintf("glmmTMB_%s.zip",pkg_version)
-download.file(ufun(hash=mhash, ext="tgz"), dest=macbin)
-download.file(ufun(hash=whash,ext="zip"), dest=winbin)
+macbin <- sprintf("glmmTMB_%s.tgz", pkg_version)
+winbin <- sprintf("glmmTMB_%s.zip", pkg_version)
+download.file(ufun(hash=mhash, ext="tgz"), dest = macbin)
+download.file(ufun(hash=whash, ext="zip"), dest = winbin)
 
 ## system("git checkout master")
 ## system('R CMD build --compact-vignettes="both" glmmTMB')
@@ -54,19 +54,19 @@ system("git checkout gh-pages")
 
 ## put stuff in the right place
 insertPackage(macbin, "repos")
-insertPackage(winbin,"repos")
-insertPackage(src,"repos")
+insertPackage(winbin, "repos")
+insertPackage(src, "repos")
 
 ## to test installation (if you are on MacOS or Windows)
 if (FALSE) {
     install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos",
-                 type="binary")
+                 type = "binary")
 }
 
 ## test installation from source:
 if (FALSE) {
-    install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos",
-                     type="source")
+    install.packages("glmmTMB", repos = "https://glmmTMB.github.io/glmmTMB/repos",
+                     type = "source")
 }
 
 ## clean up
