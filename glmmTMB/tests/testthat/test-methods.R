@@ -157,6 +157,7 @@ test_that("terms", {
 })
 
 test_that("terms back-compatibility", {
+     skip_on_os("windows")
     f0 <- up2date(readRDS(system.file("test_data", "oldfit.rds",
                               package="glmmTMB",
                               mustWork=TRUE)))

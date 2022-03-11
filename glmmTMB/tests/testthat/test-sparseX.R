@@ -18,6 +18,7 @@ test_that("basic fits", {
 })
 
 test_that("back-compatibility", {
+	skip_on_os("windows")
     x <- up2date(readRDS(system.file("test_data","oldfit.rds",
                              package="glmmTMB")))
     expect_is(VarCorr(x),"VarCorr.glmmTMB")

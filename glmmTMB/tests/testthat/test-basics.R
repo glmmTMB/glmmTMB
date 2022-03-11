@@ -3,7 +3,10 @@ stopifnot(require("testthat"),
 
 ## loaded by gt_load() in setup_makeex.R, but need to do this
 ##  again to get it to work in devtools::check() environment (ugh)
-gm0 <- up2date(gm0)
+test_that("skip on windows",{
+	skip_on_os("windows")
+	gm0 <- up2date(gm0)
+})
 
 data(sleepstudy, cbpp,
      package = "lme4")
@@ -90,6 +93,7 @@ test_that("Sleepdata Variance components", {
 })
 
 test_that("Basic Binomial CBPP examples", {
+     skip_on_os("windows")
     ## Basic Binomial CBPP examples ---- intercept-only fixed effect
     expect_is(gm0, "glmmTMB")
     expect_is(gm1, "glmmTMB")
@@ -114,7 +118,7 @@ test_that("Multiple RE, reordering", {
 
 test_that("Alternative family specifications [via update(.)]", {
     ## intercept-only fixed effect
-
+    skip_on_os("windows")
     res_chr <- matchForm(gm0, update(gm0, family= "binomial"), fn  = TRUE)
     expect_equal(gm0, res_chr)
     expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial()), fn = TRUE))
@@ -127,6 +131,7 @@ test_that("Alternative family specifications [via update(.)]", {
 test_that("Update Binomial", {
   ## matchForm(): call doesn't match (formula gets mangled?)
   ## timing different
+  skip_on_os("windows")
   gm1u <- update(gm0, . ~ . + period)
   expect_equal(gm1, matchForm(gm1, gm1u, fn=TRUE), tolerance = 5e-8)
 })
