@@ -1364,19 +1364,19 @@ fitTMB <- function(TMBStruc) {
         max.newton.steps <- 5
         newton.tol <- 1e-10
         if (sdr$pdHess) {
-            ## pdHess can be FALSE
-            ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
-            ##    * Option 1: Fall back to old method
-            ##    * Option 2: Skip Newton iterations
-            for (iter in seq_len(max.newton.steps)) {
-                g <- as.numeric( obj$gr(par) )
-                if (any(is.na(g)) || max(abs(g)) < newton.tol) break
-                par <- par - solve(h, g)
-            }
-        }
-        if (any(is.na(g))) {
+          ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
+          ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
+          ##    * Option 1: Fall back to old method
+          ##    * Option 2: Skip Newton iterations
+          for (iter in seq_len(max.newton.steps)) {
+            g <- as.numeric( obj$gr(par) )
+            if (any(is.na(g)) || max(abs(g)) < newton.tol) break
+            par <- par - solve(h, g)
+          }
+          if (any(is.na(g))) {
             warning("a Newton step failed in profiling")
             par <- oldpar
+          }
         }
         fit$par <- par
         fit$objective <- obj$fn(par)
