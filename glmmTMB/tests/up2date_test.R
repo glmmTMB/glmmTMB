@@ -23,13 +23,22 @@ isNullPointer <- function (x) {
     identical(x, new("externalptr"))
 }
 
+## attempt to check/control OpenMP parallelization
+## ¿¿ we should have this set up so it's safe by default, but maybe not ??
+
+glmmTMB:::openmp()
+glmmTMB:::openmp(1)
+glmmTMB:::openmp()
+
 ## guts of up2date()
 print(isNullPointer(oldfit$obj$env$ADFun$ptr))
 obj <- oldfit$obj
 oldfit$obj <- with(obj$env, TMB::MakeADFun(data, parameters,
                                            map = map,
                                            random = random,
-                                           silent = FALSE, DLL = "glmmTMB"))
+                                           autopar = FALSE,
+                                           silent = FALSE,
+                                           DLL = "glmmTMB"))
 print(class(oldfit$obj))
 oldfit2 <- readRDS(system.file("example_files","salamander1.rds",package="glmmTMB"))
 
