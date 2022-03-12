@@ -2,30 +2,46 @@
 ## script to modify the maintainer email of current branch,
 ## build the tarball, and upload to win-builder
 ## run from head directory
+## arg 1: which platform to test (both, release, or devel) ?
+whichrel=${1:-both}
+echo $whichrel
 MY_EMAIL=bbolker@gmail.com
 MAINTAINER_EMAIL=mollieebrooks@gmail.com
 version=`grep 'Version' glmmTMB/DESCRIPTION | sed -e 's/Version: //'`
 echo "glmmTMB version $version"
 tarball="glmmTMB_${version}.tar.gz"
+## substitute e-mail in DESCRIPTION file and build tarball
 sed -i -e "s/$MAINTAINER_EMAIL/$MY_EMAIL/" glmmTMB/DESCRIPTION
 R CMD build glmmTMB
 tar zxvfO $tarball glmmTMB/DESCRIPTION | grep Maintainer
 echo "tarball: $tarball"
-echo "uploading to win-builder"
 ## https://serverfault.com/questions/279176/ftp-uploading-in-bash-script
 HOST=win-builder.r-project.org
 USER=ftp
 PASS=$MY_EMAIL
+if [ $whichrel == "both" ] || [ $whichrel == "devel" ]; then
+echo "uploading to win-builder/devel"
 ftp -inv $HOST << EOT
 
 user $USER $PASS
 binary
 cd R-devel
 put $tarball
-cd ../R-release
+bye 
+EOT
+fi
+if [ $whichrel == "both" ] || [ $whichrel == "release" ]; then
+echo "uploading to win-builder/release"
+## upload to R-release
+ftp -inv $HOST << EOT
+
+user $USER $PASS
+binary
+cd R-release
 put $tarball
 bye
 EOT
+fi
 ## revert changes to DESCRIPTION file
 git checkout -- glmmTMB/DESCRIPTION
 ## check status
