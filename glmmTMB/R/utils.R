@@ -330,6 +330,7 @@ isNullPointer <- function(x) {
 #' @param oldfit a fitted glmmTMB object
 #' @export
 up2date <- function(oldfit) {
+  openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
     obj <- oldfit$obj
     oldfit$obj <- with(obj$env,
