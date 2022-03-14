@@ -4,7 +4,12 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.3}{
+\section{CHANGES IN VERSION 1.1.3.9000}{
+  \subsection{BUG FIXES}{
+  }
+}
+
+\section{CHANGES IN VERSION 1.1.3 (2022-03-13)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item minor improvements in \code{diagnose()}
