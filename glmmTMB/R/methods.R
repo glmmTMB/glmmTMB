@@ -666,10 +666,23 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                    stop("variance function undefined for family ",
                         sQuote(family(object)$family),"; cannot compute",
                         " Pearson residuals")
-               vv <- switch(length(formals(v)),
-                            v(fitted(object)),
-                            v(fitted(object), sigma(object)),
-                            stop("variance function should take 1 or 2 arguments"))
+               vformals <- names(formals(v))
+               # construct argument list for variance function based on its formals
+               # some argument names vary across families
+               vargs <- list(
+                 mu = predict(object, type = "conditional"),
+                 theta = predict(object, type = "disp"),
+                 shape = glmmTMB:::.tweedie_power(object) # FIXME: Change this to a general shape() extractor
+               )
+               # FIXME: this is a workaround for the current bug in predict(type = "zprob") that returns "repsonse"
+               # values for non-ZI models
+               vargs$zprob <- ifelse(noZI(object), rep(0, length(vargs$mu)), predict(object, type = "zprob"))
+               vargs$lambda <- vars$mu
+               vargs$phi <- vargs$alpha <- vargs$theta
+               vargs$p <- vargs$shape # FIXME: Should we rename the p argument in tweedie()$shape ?
+               # subset to only the arguments used by the variance function
+               vargs <- vargs[vformals]
+               vv <- do.call(v, args = vargs)
                r <- r/sqrt(vv)
                if (!is.null(wts)) {
                    r <- r*sqrt(wts)
