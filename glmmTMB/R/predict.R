@@ -72,10 +72,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' and \code{mu} otherwise}
 ##' \item{"conditional"}{mean of the conditional response; \code{mu} for all models
 ##' (i.e., synonymous with \code{"response"} in the absence of zero-inflation}
-##' \item{"zprob"}{the probability of a structural zero (gives an error
-##' for non-zero-inflated models)}
+##' \item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 ##' \item{"zlink"}{predicted zero-inflation probability on the scale of
-##' the logit link function}
+##' the logit link function (returns \code{-Inf} for non-zero-inflated models)}
 ##' \item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
@@ -116,7 +115,7 @@ predict.glmmTMB <- function(object,
                             se.fit=FALSE,
                             re.form=NULL, allow.new.levels=FALSE,
                             type = c("link", "response",
-                                     "conditional","zprob","zlink",
+                                     "conditional", "zprob", "zlink",
                                      "disp"),
                             zitype = NULL,
                             na.action = na.pass,
@@ -147,7 +146,7 @@ predict.glmmTMB <- function(object,
                      conditional= "uncorrected",
                      zlink      = ,
                      zprob      = "prob",
-                     disp       = "disp",#zi irrelevant; just reusing variable
+                     disp       = "disp", #zi irrelevant; just reusing variable
                      stop("unknown type ",type))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
@@ -170,7 +169,7 @@ predict.glmmTMB <- function(object,
     ee <- environment(object$obj$fn)
     lp <- ee$last.par.best                 ## used in $report() call below
     dd <- ee$data         ## data object
-    orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]
+    orig_vals <- dd[c("whichPredict", "doPredict", "ziPredictCode")]
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
     if (se.fit) {
       dd$doPredict <- do_pred_val
