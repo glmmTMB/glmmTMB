@@ -165,6 +165,24 @@ predict.glmmTMB <- function(object,
   ## 0 = no pred; 1 = response scale; 2 = link scale
   do_pred_val <- if (!se.fit) 0 else if (!grepl("link",type)) 1 else 2
 
+  na.act <- attr(model.frame(object),"na.action")
+  do.napred <- missing(newdata) && !is.null(na.act)
+
+  ## DRY: there is a little bit of repeated code here but didn't
+  ## want to make a giant if-block
+  ## ('goto' would be handy here ...)
+  if (noZI(object) && type %in% c("zprob", "zlink")) {
+    dd <- if (!is.null(newdata)) newdata else object$obj$env$data$Xd
+    pred <- se <- setNames(numeric(nrow(dd)), rownames(dd))
+    se[] <- NA_real_
+    pred[] <- if (type == "zprob") 0 else -Inf
+    if (do.napred) {
+      pred <- napredict(na.act, pred)
+      if (se.fit) se <- napredict(na.act,se)
+    }
+    if (!se.fit) return(pred) else return(list(fit=pred, se.fit=se))
+  }
+
   if (fast) {
     ee <- environment(object$obj$fn)
     lp <- ee$last.par.best                 ## used in $report() call below
@@ -367,9 +385,6 @@ predict.glmmTMB <- function(object,
   lp <- newObj$env$last.par
 
   }  ## NOT fast
-
-  na.act <- attr(model.frame(object),"na.action")
-  do.napred <- missing(newdata) && !is.null(na.act)
 
   ## set TMB threads to value from original model fit/reset on exit
   if (!is.null(parallel <- object$modelInfo$parallel)) {
