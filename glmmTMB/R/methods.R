@@ -667,7 +667,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                # construct argument list for variance function based on its formals
                # some argument names vary across families
                mu <- predict(object, type = "conditional")
-               theta <- predict(object, type = "disp"),
+               theta <- predict(object, type = "disp")
                shape <- glmmTMB:::.tweedie_power(object) # FIXME: Change this to a general shape() extractor
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
