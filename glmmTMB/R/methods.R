@@ -636,9 +636,6 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), ...) {
     type <- match.arg(type)
-    if (type == "pearson" && (!noZI(object) || !trivialDisp(object))) {
-      stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
-    }
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act,model.response(object$frame))
     wts <- model.weights(model.frame(object))
@@ -669,23 +666,29 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                vformals <- names(formals(v))
                # construct argument list for variance function based on its formals
                # some argument names vary across families
+               mu <- predict(object, type = "conditional") # separate so that we can refer to later for ZI models
                vargs <- list(
-                 mu = predict(object, type = "conditional"),
+                 mu = mu,
                  theta = predict(object, type = "disp"),
                  shape = glmmTMB:::.tweedie_power(object) # FIXME: Change this to a general shape() extractor
                )
-               # FIXME: this is a workaround for the current bug in predict(type = "zprob") that returns "repsonse"
-               # values for non-ZI models
-               vargs$zprob <- ifelse(noZI(object), rep(0, length(vargs$mu)), predict(object, type = "zprob"))
-               vargs$lambda <- vars$mu
+               vargs$lambda <- vargs$mu
                vargs$phi <- vargs$alpha <- vargs$theta
                vargs$p <- vargs$shape # FIXME: Should we rename the p argument in tweedie()$shape ?
                # subset to only the arguments used by the variance function
                vargs <- vargs[vformals]
                vv <- do.call(v, args = vargs)
+               if (!noZI(object)) {
+                 zprob <- predict(object, type = "zprob")
+                 # if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
+                 #   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
+                 #          = Var[X] * E[B] + E[X]^2 * Var[B]
+                 #          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
+                 vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
+               }
                r <- r/sqrt(vv)
                if (!is.null(wts)) {
-                   r <- r*sqrt(wts)
+                   r <- r * sqrt(wts)
                }
                r
     })
