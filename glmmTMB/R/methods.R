@@ -672,7 +672,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
                vargs$theta <- vargs$phi <- vargs$alpha <- theta
-               vargs$shape <- vargs$p <- shape # FIXME: Should we rename the p argument in tweedie()$shape ?
+               vargs$shape <- vargs$power <- shape
                # subset to only the arguments used by the variance function
                vargs <- vargs[vformals]
                vv <- do.call(v, args = vargs)
