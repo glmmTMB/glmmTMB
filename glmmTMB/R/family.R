@@ -74,7 +74,7 @@ make_family <- function(x,link) {
 ##'      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
 ##' and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
 ##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
-##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
+##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^power}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
 ##' }
 ##' @references
 ##' \itemize{
@@ -282,8 +282,8 @@ betabinomial <- function(link="logit") {
 #' @export
 tweedie <- function(link="log") {
     r <- list(family="tweedie",
-           variance = function(mu, phi, p) {
-               phi * mu ^ p
+           variance = function(mu, phi, power) {
+               phi * mu ^ power
          })
     return(make_family(r,link))
 }
