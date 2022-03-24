@@ -214,19 +214,29 @@ nullSparseMatrix <- function() {
     }
 }
 
-## Check for version mismatch in dependent binary packages
+#' Check for version mismatch in dependent binary packages
+#' @param dep_pkg upstream package
+#' @param this_pkg downstream package
+#' @param write_file (logical) write version file and quit?
+#' @param warn give warning?
+#' @return logical: TRUE if the binary versions match
 #' @importFrom utils packageVersion
-checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=FALSE) {
+#' @export
+checkDepPackageVersion <- function(dep_pkg = "TMB",
+                                   this_pkg = "glmmTMB",
+                                   write_file = FALSE,
+                                   warn = TRUE) {
     cur_dep_version <- as.character(packageVersion(dep_pkg))
-    fn <- sprintf("%s-version",dep_pkg)
+    fn <- sprintf("%s-version", dep_pkg)
     if (write_file) {
-        cat(sprintf("current %s version=%s: writing file\n",dep_pkg,cur_dep_version))
+        cat(sprintf("current %s version=%s: writing file\n", dep_pkg, cur_dep_version))
         writeLines(cur_dep_version, con = fn)
         return(cur_dep_version)
     }
-    fn <- system.file(fn,package=this_pkg)
+    fn <- system.file(fn, package=this_pkg)
     built_dep_version <- scan(file=fn, what=character(), quiet=TRUE)
-    if(!identical(built_dep_version, cur_dep_version)) {
+    result_ok <- identical(built_dep_version, cur_dep_version)
+    if(warn && !result_ok) {
         warning(
             "Package version inconsistency detected.\n",
             sprintf("%s was built with %s version %s",
@@ -240,6 +250,7 @@ checkDepPackageVersion <- function(dep_pkg="TMB",this_pkg="glmmTMB",write_file=F
             sQuote(dep_pkg), " package (see '?reinstalling' for more information)"
         )
     }
+    return(result_ok)
 }
 
 #' @name reinstalling
