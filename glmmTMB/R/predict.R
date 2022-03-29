@@ -72,10 +72,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' and \code{mu} otherwise}
 ##' \item{"conditional"}{mean of the conditional response; \code{mu} for all models
 ##' (i.e., synonymous with \code{"response"} in the absence of zero-inflation}
-##' \item{"zprob"}{the probability of a structural zero (gives an error
-##' for non-zero-inflated models)}
+##' \item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 ##' \item{"zlink"}{predicted zero-inflation probability on the scale of
-##' the logit link function}
+##' the logit link function (returns \code{-Inf} for non-zero-inflated models)}
 ##' \item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
@@ -116,7 +115,7 @@ predict.glmmTMB <- function(object,
                             se.fit=FALSE,
                             re.form=NULL, allow.new.levels=FALSE,
                             type = c("link", "response",
-                                     "conditional","zprob","zlink",
+                                     "conditional", "zprob", "zlink",
                                      "disp"),
                             zitype = NULL,
                             na.action = na.pass,
@@ -147,7 +146,7 @@ predict.glmmTMB <- function(object,
                      conditional= "uncorrected",
                      zlink      = ,
                      zprob      = "prob",
-                     disp       = "disp",#zi irrelevant; just reusing variable
+                     disp       = "disp", #zi irrelevant; just reusing variable
                      stop("unknown type ",type))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
@@ -166,11 +165,29 @@ predict.glmmTMB <- function(object,
   ## 0 = no pred; 1 = response scale; 2 = link scale
   do_pred_val <- if (!se.fit) 0 else if (!grepl("link",type)) 1 else 2
 
+  na.act <- attr(model.frame(object),"na.action")
+  do.napred <- missing(newdata) && !is.null(na.act)
+
+  ## DRY: there is a little bit of repeated code here but didn't
+  ## want to make a giant if-block
+  ## ('goto' would be handy here ...)
+  if (noZI(object) && type %in% c("zprob", "zlink")) {
+    dd <- if (!is.null(newdata)) newdata else object$obj$env$data$Xd
+    pred <- se <- setNames(numeric(nrow(dd)), rownames(dd))
+    se[] <- NA_real_
+    pred[] <- if (type == "zprob") 0 else -Inf
+    if (do.napred) {
+      pred <- napredict(na.act, pred)
+      if (se.fit) se <- napredict(na.act,se)
+    }
+    if (!se.fit) return(pred) else return(list(fit=pred, se.fit=se))
+  }
+
   if (fast) {
     ee <- environment(object$obj$fn)
     lp <- ee$last.par.best                 ## used in $report() call below
     dd <- ee$data         ## data object
-    orig_vals <- dd[c("whichPredict","doPredict","ziPredictCode")]
+    orig_vals <- dd[c("whichPredict", "doPredict", "ziPredictCode")]
     dd$whichPredict <- as.numeric(seq(nobs(object)))  ## replace 'whichPredict' entry
     if (se.fit) {
       dd$doPredict <- do_pred_val
@@ -368,9 +385,6 @@ predict.glmmTMB <- function(object,
   lp <- newObj$env$last.par
 
   }  ## NOT fast
-
-  na.act <- attr(model.frame(object),"na.action")
-  do.napred <- missing(newdata) && !is.null(na.act)
 
   ## set TMB threads to value from original model fit/reset on exit
   if (!is.null(parallel <- object$modelInfo$parallel)) {

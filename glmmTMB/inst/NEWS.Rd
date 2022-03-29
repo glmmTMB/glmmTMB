@@ -6,8 +6,15 @@
 
 \section{CHANGES IN VERSION 1.1.3.9000}{
   \subsection{BUG FIXES}{
-  }
-}
+    \itemize{
+      \item \code{predict(., "zprob")} now returns 0 and
+  \code{predict(., "zlink")} returns \code{-Inf} for all observations
+  for models without zero-inflation (GH #798, Brenton Wiernik) [was
+  previously supposed to throw an error, but incorrectly returned
+  conditional values]
+    }
+  } % bug fixes
+} % version 1.1.3.9000
 
 \section{CHANGES IN VERSION 1.1.3 (2022-03-13)}{
   \subsection{USER-VISIBLE CHANGES}{

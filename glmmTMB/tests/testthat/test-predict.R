@@ -5,9 +5,6 @@ sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
 
-
-
-
 data(cbpp, package = "lme4")
 set.seed(101)
 cbpp_zi <- cbpp
@@ -322,4 +319,13 @@ test_that("fast prediction not allowed with NA (correct errors)", {
                "fast=TRUE is not compatible")
   expect_equal(predict(fm2, re.form=NA, fast=FALSE),
                predict(fm2, re.form=NA, fast=NULL))
+})
+
+test_that("zlink/zprob return appropriate values with non-ZI model (GH#798)", {
+  p1 <- predict(fm2, type = "zlink")
+  expect_equal(length(p1), nrow(sleepstudy))
+  expect_true(all(p1 == -Inf))
+  p2 <- predict(fm2, type = "zprob")
+  expect_equal(length(p2), nrow(sleepstudy))
+  expect_true(all(p2 == 0))
 })
