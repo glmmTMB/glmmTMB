@@ -146,7 +146,7 @@ expect_equal(getVCText(vc),
                             V4 = c(NA, -0.581, NA)),
                        .Names = c("V3", "V4"),
                        class = "data.frame", row.names = c(NA, -3L)),
-             tolerance=1e-5)
+             tolerance=1.5e-5)
 
 ## both variance and std.dev.
 c2 <- getVCText(vc,comp=c("Variance","Std.Dev."),digits=2)
