@@ -209,6 +209,13 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
+    double lambda = 1.0e-8;
+    double alpha = 2.0;
+    // penalization according to Chung et al (Gamma with lambda -> 0, alpha = 2)
+    ans += logsd.sum();
+    // normalized; just use a minimal value of lambda
+    // or: pow(lambda, alpha)
+    
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
   }
