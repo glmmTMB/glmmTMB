@@ -56,7 +56,7 @@ diagnose <- function(fit,
     ee <- obj$env
     ## extract parameters
     pp <- ee$last.par.best[-ee$random]
-    ss <- summary(fit$sdr)
+    ss <- suppressWarnings(summary(fit$sdr))
     ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
     nn <- tryCatch(colnames(vcov(fit, full=TRUE)),
@@ -76,9 +76,13 @@ diagnose <- function(fit,
             cat(sprintf("Unusually large coefficients (|x|>%g):\n\n",big_coef))
             print(bigcoef)
             cat("\n")
+            ## FIXME: could do more for the user by checking
+            ## for the user *which* elements were large/small
+            ## rather than giving them the explanation of all possible cases
             prt_explain("Large negative coefficients in zi (log-odds of zero-inflation), dispersion, or random effects (log-standard deviations) suggest",
                         "unnecessary components (converging to zero on the constrained scale); large negative and/or positive",
-                        "components in binomial or Poisson conditional parameters suggest (quasi-)complete separation")
+                        "components in binomial or Poisson conditional parameters suggest (quasi-)complete separation.",
+                        "Large values of nbinom2 dispersion suggest that you should use a Poisson model instead.")
         }
     } ## check_coefs
     if (check_scales) {
@@ -127,13 +131,16 @@ diagnose <- function(fit,
         }
         if ("sdr" %in% names(fit) && !fit$sdr$pdHess) {
             model_OK <- FALSE
-            cat("Non-positive definite Hessian\n\n")
+            cat("Non-positive definite (NPD) Hessian\n\n")
             prt_explain("The Hessian matrix represents the curvature of the",
                         "log-likelihood surface at the maximum likelihood estimate (MLE) of the parameters",
                         "(its inverse is the estimate of the parameter covariance matrix). ",
                         "A non-positive-definite Hessian means that the likelihood surface is approximately flat ",
                         "(or upward-curving) at the MLE, which means the model is overfitted or poorly posed ",
-                        "in some way.")
+                        "in some way.",
+                        "NPD Hessians are often associated with extreme parameter estimates."
+
+                        )
             nonfinite_sd <- !is.finite(suppressWarnings(sqrt(diag(fit$sdr$cov.fixed))))
             if (any(nonfinite_sd)) {
               cat("parameters with non-finite standard deviations:\n")
@@ -145,34 +152,48 @@ diagnose <- function(fit,
               }
             }
             ## fit hessian with Richardson extrapolation (more accurate/slower than built-in optimHess)
+            cat("recomputing Hessian via Richardson extrapolation.",
+                "If this is too slow, consider setting check_hessian = FALSE",
+                "\n\n")
             h <- numDeriv::jacobian(obj$gr, pp)
             ## FIXME: consider SVD?
             ## FIXME: add explanation
             eigs <- eigen(h)
             ## non-positive definite means some of the eigenvectors are <= 0
-            bad <- which(eigs$values/max(eigs$values) <= eval_eps)
-            if (length(bad) == 0) {
+            complex_eigs <- is.complex(eigs$values)
+            if (!complex_eigs) {
+              bad <- which(eigs$values/max(eigs$values) <= eval_eps)
+            }
+            if (!complex_eigs && length(bad) == 0) {
               cat("Hessian seems OK\n")
               prt_explain("glmmTMB's internal calculations suggested that the Hessian was bad/non-positive definite;",
                           "however, a slower and more precise calculation suggests that it's actually OK. Your model",
                           "may be somewhat numerically unstable.")
               return(invisible(h)) ## bail out here
             }
-            prt_explain("The next set of diagnostics attempts to determine which elements of the Hessian",
-                        "are causing the non-positive-definiteness. ",
-                        "Components with very small eigenvalues represent 'flat' directions, ",
-                        "i.e., combinations of parameters for which the data may contain very little information. ",
-                        sprintf("So-called 'bad elements' represent the dominant components (absolute values >%1.3g)", evec_eps),
-                        "of the eigenvectors corresponding to the 'flat' directions")
-            cat(sprintf("maximum Hessian eigenvalue = %1.3g",eigs$values[1]),"\n")
-            ## there could be more than one 'bad' direction/eigenvector ..
-            for (b in bad) {
+            if (complex_eigs) {
+              cat("Hessian has complex eigenvalues\n\n")
+              prt_explain("We would have used the smallest eigenvalues of the ",
+                          "Hessian to determine which components were bad",
+                          "but instead we got complex eigenvalues.",
+                          "(Not really sure what to do with this ...)")
+            } else {
+              prt_explain("The next set of diagnostics attempts to determine which elements of the Hessian",
+                          "are causing the non-positive-definiteness. ",
+                          "Components with very small eigenvalues represent 'flat' directions, ",
+                          "i.e., combinations of parameters for which the data may contain very little information. ",
+                          sprintf("So-called 'bad elements' represent the dominant components (absolute values >%1.3g)", evec_eps),
+                          "of the eigenvectors corresponding to the 'flat' directions")
+              cat(sprintf("maximum Hessian eigenvalue = %1.3g",eigs$values[1]),"\n")
+              ## there could be more than one 'bad' direction/eigenvector ..
+              for (b in bad) {
                 cat(sprintf("Hessian eigenvalue %d = %1.3g (relative val = %1.3g)",
                             b,eigs$values[b],eigs$values[b]/eigs$values[1]),"\n")
                 bad_vec <- eigs$vectors[,b]
                 bad_elements <- which(abs(bad_vec)>evec_eps)
                 cat("   bad elements:", nn[bad_elements], "\n")
             }
+            } ## hessian has real eigs
         } ## bad hessian
     } ## check hessian
     if (model_OK) cat("model looks OK!\n")
