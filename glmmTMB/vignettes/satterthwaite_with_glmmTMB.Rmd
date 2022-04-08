@@ -1,0 +1,510 @@
+---
+title: "Satterthwaite's Method for Degrees of Freedom in Normal Models Fitted With `glmmTMB`"
+author: "Daniel Sabanes Bove and Ben Bolker"
+date: "Apr 2022 -- last edit: `r Sys.Date()`"
+output:
+  html_document:
+    keep_md: yes
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+
+# Introduction
+
+In [1] the Satterthwaite's method for degrees of freedom
+approximation based on normal models is well detailed and the computational
+approach for models fitted with the `lme4` package is explained. Here we 
+would like to follow their notation and explain the implementation with the
+`glmmTMB` package.
+
+# Computational approach
+
+The computational challenge is essentially to evaluate the denominator in the expression for $\hat\nu(\hat\tau)$, which amounts to computing the gradient $f{'}(\hat\tau)$ of $f(\tau) = L^\top \mathsf V_{\tau}(\hat\beta) L$ (for a given
+contrast matrix $L$) and the variance-covariance matrix $\mathsf{V}(\hat\tau)$ of the variance parameter vector $\tau$. Having computed $\mathsf{V}(\hat\tau)$ and the Jacobian $\mathcal J$ it is only a matter of putting the different quantities together to obtain the gradient and then to compute the estimate of the denominator
+degrees of freedom. We will now address these challenges in turn.
+
+## Variance-covariance matrix
+
+The variance-covariance matrix of the variance parameter vector $\mathsf{V}(\hat\tau)$ can be computed as the inverse of the Hessian of the negative log-likelihood function with respect to the variance-parameters.
+Conveniently the `glmmTMB` package provides a simple way to extract a deviance function from a linear mixed model fit. Using the `hessian` function from the `numDeriv` package conveniently and accurately evaluates the Hessian numerically.
+
+## Jacobian and Gradient
+
+The variance-covariance matrix of $\beta$, $\mathsf V_{\tau}(\hat\beta)$ can also
+be expressed as a function of the variance parameters. Using the `jacobian` function
+from `numDeriv` allows us to numerically evaluate the Jacobian $\mathcal J$ at the
+estimated $\hat\tau$. Then the gradient is a function of the Jacobian and the contrast
+matrix $L$. The advantage of this is that we don't need to do any new numeric
+derivatives when computing other contrasts with other matrices $L$ - we can always
+use the same Jacobian.
+
+# Example: Computing denominator df for a $t$-test using `glmmTMB`
+
+We would like to replicate the example from `lmerTest` here. 
+
+## Toy example 
+
+So let's first look at that again:
+
+```{r}
+library(lme4)
+data(ham, package="lmerTest")
+set.seed(12345)
+df <- ham[sample(x=1:nrow(ham), size=580, replace=FALSE), ]
+model_lme4 <- lmer(Informed.liking ~ Product + (1|Consumer), data = df)
+summary(model_lme4, corr=FALSE)
+```
+
+Now with `glmmTMB`: 
+
+```{r}
+library(glmmTMB)
+model <- glmmTMB(Informed.liking ~ Product + (1|Consumer), data = df, REML = TRUE)
+summary(model)
+```
+
+So we see that we get the same results (up to 4 digits even for the standard 
+errors).
+
+Suppose now that we are interested in the contrast
+```{r}
+L <- c(0, 1, 0, 0) 
+```
+which simply picks out the second coefficient; the estimate of the difference between product 2 and product 1. 
+
+The estimate of this contrast $L^\top \beta$ is then computed with:
+```{r}
+(estimate_lme4 <- drop(t(L) %*% fixef(model_lme4)))
+```
+
+or for `glmmTMB`:
+
+```{r}
+(estimate <- drop(t(L) %*% fixef(model)$cond))
+```
+
+## Variance-covariance matrix
+
+Let's first try to get the variance-covariance matrix of the variance
+parameter vector.
+
+### With `lme4`
+
+Here we just reproduce the approach from [1].
+
+```{r}
+devfun <- update(model_lme4, devFunOnly = TRUE)
+varpar_opt <- c(getME(model_lme4, "theta"), sigma(model_lme4))
+devfun_varpar <- function(varpar, devfun, reml) {
+  # Computes deviance as a function of 'varpar=c(theta, sigma)'
+  # devfun: deviance function as a function of theta only.
+  # reml: TRUE if REML; FALSE if ML
+  nvarpar <- length(varpar)
+  sigma2 <- varpar[nvarpar]^2
+  theta <- varpar[-nvarpar]
+  df_envir <- environment(devfun)
+  devfun(theta) # Evaluate deviance function at varpar
+  n <- nrow(df_envir$pp$V)
+  # Compute deviance for ML:
+  dev <- df_envir$pp$ldL2() + (df_envir$resp$wrss() + df_envir$pp$sqrL(1))/sigma2 + 
+    n * log(2 * pi * sigma2)
+  if(!reml) return(dev)
+  # Adjust of REML is used:
+  RX <- df_envir$pp$RX() # X'V^{-1}X ~ crossprod(RX^{-1}) = cov(beta)^{-1} / sigma^2
+  dev + 2*c(determinant(RX)$modulus) - ncol(RX) * log(2 * pi * sigma2)
+}
+library(numDeriv)
+h_lme4 <- hessian(func=devfun_varpar, x=varpar_opt, devfun=devfun, reml=TRUE)  
+eig_h_lme4 <- eigen(h_lme4, symmetric=TRUE)
+h_lme4_inv <- with(eig_h_lme4, vectors %*% diag(1/values) %*% t(vectors))
+(cov_varpar_lme4 <- 2 * h_lme4_inv)
+```
+
+Again note that here the original deviance function needed to be wrapped
+in another function since $\sigma$ was profiled out originally. So it needed
+to be added back in here.
+
+On the other hand, the relative variance parameter $\theta = \sigma_c / \sigma$ 
+is being kept here for the implementation. So we are looking above at the
+variance-covariance matrix for $\tau = (\theta, \sigma)'$ and 
+not $(\sigma_c, \sigma)$ (as we might have guessed from reading the text).
+
+### With `lmerTest` 
+
+Now let's try to obtain this matrix directly using the `lmerTest` implementation.
+
+```{r}
+model_lmerTest <- lmerTest::lmer(Informed.liking ~ Product + (1|Consumer), data = df)
+model_lmerTest@vcov_varpar
+```
+
+So this is exactly the same, which is confirming our understanding of `lmerTest`.
+
+### With `glmmTMB`
+
+Here the variance-covariance matrix is already available for a specific choice
+of the variance parameters:
+
+```{r}
+model_vcov <- vcov(model, full = TRUE)
+(vcov_kappa <- model_vcov[5:6, 5:6])
+```
+
+So here we see different numbers than above. This is because a different 
+function of the variance parameters above is used. 
+
+Let's try to understand this
+a bit more. The code below is from [2] and is simpler here
+because we just have a single random intercept in the model (for `Consumer`).
+Therefore we don't have any correlation parameters.
+
+Let's first look at the "naked" variance-covariance matrix of the random effects, 
+which again is simpler here as it is just a single $\sigma_c^2$:
+
+```{r}
+vv0 <- VarCorr(model)
+vv1 <- vv0$cond$Consumer 
+vv1
+sigma_c2 <- unname(diag(vv1))
+```
+
+We can also look at the variance parameter used in the model and show that 
+this is the log standard deviation, so $\theta = \log(\sigma_c)$ 
+or $\sigma_c^2 = \exp(\theta)^2$:
+
+```{r}
+theta <- getME(model, "theta")
+all.equal(sigma_c2, exp(theta)^2)
+```
+
+Furthermore, we can look at the other model parameters, which are used to model
+the fixed effects and the dispersion (I guess it is called $\beta_d$):
+
+```{r}
+betas <- getME(model, "beta")
+(betad <- unname(betas["betad"]))
+```
+
+Now this estimated parameter is the log of the error variance $\sigma^2$,
+so $\beta_d = \log(\sigma^2) = 2 \log(\sigma)$:
+
+```{r}
+all.equal(betad, 2*log(sigma(model)))
+```
+
+Altogether we can assume that the variance parameter vector, where we can
+get the variance-covariance matrix above, is equal to 
+$\kappa = (2\log(\sigma), \log(\sigma_c))'$.
+
+### Numeric derivative
+
+Let's try to apply the numeric derivative strategy with `glmmTMB` too.
+First let's use the original parametrization $\kappa$ and try to reproduce the
+provided variance-covariance matrix:
+
+```{r}
+kappa_opt <- model$fit$par
+devfun_kappa <- model$obj$fn
+h_kappa <- hessian(func = devfun_kappa, x = kappa_opt)  
+eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
+h_kappa_inv <- with(eig_h_kappa, vectors %*% diag(1/values) %*% t(vectors))
+(cov_varpar_kappa <- h_kappa_inv)
+```
+
+So this looks good:
+
+```{r}
+all.equal(unname(vcov_kappa), cov_varpar_kappa, tol = 1e-4)
+```
+
+Knowing how this works now, we can of course also reparametrize using 
+\[
+\kappa =  (2\log(\sigma), \log(\sigma_c))' = (2\log(\tau_2), \log(\tau_1\tau_2))'
+\]
+Note that this is a bijective transformation. Let's try that.
+
+```{r}
+get_kappa <- function(tau) {
+  c(2 * log(tau[2]), sum(log(tau)))
+}
+devfun_tau <- function(varpar_tau) {
+  kappa <- get_kappa(varpar_tau)
+  devfun_kappa(kappa)
+}
+h_tau <- hessian(func = devfun_tau, x = varpar_opt)  
+eig_h_tau <- eigen(h_tau, symmetric = TRUE)
+h_tau_inv <- with(eig_h_tau, vectors %*% diag(1/values) %*% t(vectors))
+(cov_varpar_tau <- h_tau_inv)
+```
+
+And with this we are indeed back with the same result as above using `lme4`
+and `lmerTest`. The interesting question below will be whether the parametrization
+makes a difference for the final Satterthwaite approximated degrees of freedom,
+or not.
+
+## Jacobian and Gradient
+
+### With `lme4`
+
+Again here we just reproduce the approach from [1].
+
+The first step is to implement $\mathsf V_\tau(\hat\beta)$ as a function of
+$\tau$. Note that here specifics of the deviance functions are used. 
+The environment of the function is looked at after evaluating it, which means
+that we have access to the variables evaluated during the function call which
+happens earlier. We can see from looking at the [`C++` source code](https://github.com/lme4/lme4/blob/9c673edb76ae19165ffe0a45b375737bb02f1fc3/R/AllClass.R#L117) that `RXi` is the inverse of the Cholesky factor for the 
+fixed-effects parameters (see equation 18 in the lme4 JSS paper).
+So this is $R_X^{-1}$ and we can obtain
+\[
+\mathsf V_\tau(\hat\beta) = \sigma^2 R_X^{-1}R_X^{-T} = \sigma^2 (R_X^{T}R_X)^{-1}
+\]
+
+```{r}
+covbeta_varpar <- function(varpar, devfun) {
+  # Compute cov(beta) as a function of varpar
+  # varpar: c(theta, sigma)
+  # devfun: deviance function, ie. update(model, devFunOnly=TRUE) - a function of theta
+  nvarpar <- length(varpar)
+  sigma <- varpar[nvarpar] # residual std.dev.
+  theta <- varpar[-nvarpar] # ranef var-par
+  devfun(theta) # evaluate REML or ML deviance 'criterion'
+  df_envir <- environment(devfun) # extract model environment
+  sigma^2 * tcrossprod(df_envir$pp$RXi()) # vcov(beta)
+}
+```
+
+Let's try this out:
+
+```{r}
+all.equal(covbeta_varpar(varpar_opt, devfun), unname(as.matrix(vcov(model_lme4))))
+```
+
+So this works as expected.
+
+Then we can evaluate the gradient of this matrix valued function, which 
+is therefore the Jacobian, with regards to $\tau$, 
+$\mathcal J = \nabla_\tau \mathsf V_\tau(\hat\beta)$ numerically using the `jacobian` function
+from the `numDeriv` package and organize it as a list (of length $k$ where $k$ is the dimension
+of the variance parameter vector $\tau$) of $p\times p$ matrices where $p$ is the dimension of
+$\beta$: 
+
+```{r}
+get_jac_list <- function(covbeta_fun, x_opt, ...){
+  jac_matrix <- jacobian(
+    func = covbeta_fun, 
+    x = x_opt, 
+    # does not help anything - but seems precision is already good enough:
+    # method.args = list(r = 6),
+    ...
+  )
+  lapply(
+    seq_len(ncol(jac_matrix)), # for each variance parameter
+    FUN = function(i) {
+      # this column contains the pxp entries
+      jac_col <- jac_matrix[, i]
+      p <- sqrt(length(jac_col))
+      # get p x p matrix
+      matrix(jac_col, nrow = p, ncol = p)
+    }
+  )
+}
+Jac_varpar_list <- get_jac_list(covbeta_varpar, varpar_opt, devfun = devfun)
+```
+
+### With `lmerTest`
+
+So this Jacobian is then the same as returned by the `lmerTest` function:
+
+```{r}
+all.equal(Jac_varpar_list, model_lmerTest@Jac_list)
+```
+
+### With `glmmTMB`
+
+Unfortunately the Hessian is not yet implemented for models with random effects:
+
+```{r}
+if (FALSE) {
+  model$obj$he(kappa_opt)
+}
+```
+
+So let's see if we can find anything in the environment of the negative 
+log-likelihood maybe.
+
+```{r}
+devfun_kappa(kappa_opt)
+df_kappa_envir <- environment(devfun_kappa)
+```
+
+It turns out that there is a lot of stuff in there, but it is not clear what
+would be helpful.
+
+We can have a look at `glmmTMB:::vcov.glmmTMB()` to see what we might want to look for.
+There we see that the `TMB::sdreport()` function seems crucial. The important
+feature here is that we can use different $\kappa$ inputs via the 
+`par.fixed` argument. So let's try something with that.
+We can write the covariance matrix of $\beta$ as a function of $\kappa$:
+
+```{r}
+covbeta_kappa <- function(kappa) {
+  sdr <- TMB::sdreport(
+    model$obj, 
+    par.fixed = kappa, 
+    getJointPrecision = TRUE
+  )
+  q_mat <- sdr$jointPrecision
+  which_fixed <- which(rownames(q_mat) == "beta")
+  q_marginal <- unname(glmmTMB:::GMRFmarginal(q_mat, which_fixed))
+  solve(as.matrix(q_marginal))
+}
+```
+
+Let's try it out:
+
+```{r}
+covbeta_kappa(kappa_opt)
+all.equal(covbeta_kappa(kappa_opt), unname(vcov(model)$cond))
+```
+
+So that works!
+Then we can apply the Jacobian on it:
+
+```{r}
+(jac_kappa <- get_jac_list(covbeta_kappa, kappa_opt))
+```
+
+Now we cannot compare that yet directly with the result from `lme4`
+due to the different variance parameter choices. But we can easily
+change again the parametrization from $\kappa$ to $\tau$ 
+and then compare the result:
+
+```{r}
+covbeta_tau <- function(tau) {
+  kappa <- get_kappa(tau)
+  covbeta_kappa(kappa)
+}
+all.equal(covbeta_tau(varpar_opt), covbeta_varpar(varpar_opt, devfun), tol = 1e-4)
+
+jac_tau <- get_jac_list(covbeta_tau, varpar_opt)
+all.equal(jac_tau, Jac_varpar_list)
+```
+
+We have slightly larger relative differences here, which likely comes from the
+numerical differentiation. I tried above to make the `method.args` of `jacobian`
+more "precise" but at least when playing for a few minutes it did not help anything.
+I guess it is not a problem.
+
+### Gradient calculation
+
+Left and right multiplying each matrix by $L^\top$ and $L$ respectively gives the gradient vector (of length $k$, i.e. dimension is the same as the variance parameters
+in this case of a simple one-dimensional contrast):
+
+```{r}
+get_gradient <- function(jac, L) {
+  vapply(
+    jac, 
+    function(x) sum(L * x %*% L), # = {L' Jac L}_i
+    numeric(1L)
+  ) 
+}
+grad_tau <- get_gradient(jac_tau, L)
+all.equal(get_gradient(Jac_varpar_list, L), grad_tau, tol = 1e-4)
+(grad_kappa <- get_gradient(jac_kappa, L))
+```
+
+## Putting it all together
+
+Finally we can put it all together to obtain the Satterthwaite adjusted degrees
+of freedom:
+\[
+\hat\nu(\hat\tau) = \frac{2f(\hat\tau)^2}{f{'}(\hat\tau)^\top \mathsf{V}(\hat\tau) f{'}(\hat\tau)}
+\]
+where $f(\tau) = L^\top \mathsf V_{\tau}(\hat\beta) L$ is in the numerator.
+
+### Numerator
+
+The numerator is fortunately simple to compute, and independent of the variance
+parameter choice:
+
+```{r}
+var_Lbeta <- drop(t(L) %*% vcov(model)$cond %*% L)
+(v_numerator <- 2 * var_Lbeta ^ 2)
+```
+
+### Denominator
+
+Here we are especially interested in comparing the results from the $\tau$ and the
+$\kappa$ parametrizations.
+
+```{r}
+# calculate the quadratic forms, one time for tau and one time for kappa:
+(v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa)))
+(v_denominator_tau <- sum(grad_tau * (cov_varpar_tau %*% grad_tau)))
+
+all.equal(v_denominator_kappa, v_denominator_tau)
+```
+
+So the relative difference between these is negligible. (I am sure we could prove
+this mathematically that these should be same, so any difference is purely due
+to numerical precision.)
+
+### Coefficient table
+
+Collecting all elements gives the following coefficient table:
+
+```{r}
+se_estimate <- sqrt(var_Lbeta)
+ddf_kappa <- v_numerator / v_denominator_kappa
+ddf_tau <- v_numerator / v_denominator_tau
+tstat <- estimate / se_estimate
+pvalue_kappa <- 2 * pt(abs(tstat), df = ddf_kappa, lower.tail = FALSE)
+pvalue_tau <- 2 * pt(abs(tstat), df = ddf_tau, lower.tail = FALSE)
+(coef_tab_glmmTMB <- data.frame(
+  estimate, 
+  se = se_estimate, 
+  tstat, 
+  ddf_kappa = ddf_kappa, 
+  ddf_tau = ddf_tau,
+  pvalue_kappa = pvalue_kappa,
+  pvalue_tau = pvalue_tau
+))
+```
+
+So great to see that the parametrization does not matter and we can stay 
+with the native `glmmTMB` $\kappa$ parametrization.
+
+We can then finally compare this with the result from `lmerTest`:
+
+```{r}
+library(lmerTest)
+coef_tab_lmerTest <- summary(model_lmerTest)$coefficients
+(coef_tab_lmerTest <- coef_tab_lmerTest[as.logical(L), , drop = FALSE])
+coef_tab_glmmTMB
+all.equal(coef_tab_lmerTest[, "df"], coef_tab_glmmTMB[, "ddf_kappa"])
+```
+
+So we are in the numerical accuracy range here - degrees of freedom 
+are matching up to that. 
+
+# Example: Computing denominator df for an $F$-test using `glmmTMB`
+
+This is the next step. But it should basically work identically to `lme4`
+as done in [1].
+
+# References
+
+[1] Christensen, R. H. B. (2018). "Satterthwaite's Method for Degrees of Freedom in
+Linear Mixed Models." Notes in the `glmmTMB` package. 
+(https://github.com/runehaubo/lmerTestR/blob/master/pkg_notes/Satterthwaite_for_LMMs.pdf)
+
+[2] Kristensen, K., McGillycuddy, M. (2021). "Covariance structures with glmmTMB."
+Articles in the `glmmTMB` package. (https://glmmtmb.github.io/glmmTMB/articles/covstruct.html)
