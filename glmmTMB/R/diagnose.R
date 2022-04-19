@@ -104,7 +104,7 @@ diagnose <- function(fit,
         }
     }
     if (check_zstats) {
-        z <- ss[,"Std. Error"]/ss[,"Estimate"]
+        z <- ss[,"Estimate"]/ss[,"Std. Error"]
         bigz <- z[!is.na(z) & abs(z)>big_zstat]
         if (length(bigz)>0) {
             model_OK <- FALSE
