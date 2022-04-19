@@ -55,7 +55,8 @@ diagnose <- function(fit,
     obj <- fit$obj
     ee <- obj$env
     ## extract parameters
-    pp <- ee$last.par.best[-ee$random]
+    pp <- ee$last.par.best
+    if (!is.null(r <- ee$random)) { pp <- pp[-r] }
     ss <- suppressWarnings(summary(fit$sdr))
     ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
