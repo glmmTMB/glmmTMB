@@ -112,18 +112,19 @@ diagnose <- function(fit,
             cat(sprintf("Unusually large Z-statistics (|x|>%g):\n\n",big_zstat))
             print(bigz)
             cat("\n")
-            prt_explain("Large Z-statistics (estimate/std err) suggest a failure ",
+            prt_explain("Large Z-statistics (estimate/std err) suggest a *possible* failure ",
                         "of the Wald approximation - often also associated with ",
                         "parameters that are at or near the edge of their range ",
-                        "(e.g. random-effects standard deviations approaching 0). ",
+                        "(e.g. random-effects standard deviations approaching 0).",
+                        " (Alternately, they may simply represent very well-estimated parameters.)",
                         "While the Wald p-values and standard errors listed in ",
-                        "summary() are unreliable, profile confidence intervals ",
+                        "summary() may be unreliable, profile confidence intervals ",
                         "(see ?confint.glmmTMB) and likelihood ratio test p-values ",
-                        "derived by comparing models (e.g. ?drop1) may still be OK. ",
+                        "derived by comparing models (e.g. ?drop1) are probably still OK. ",
                         "(Note that the LRT is conservative when the null value is ",
                         "on the boundary, e.g. a variance or zero-inflation value of 0 ",
                         "(Self and Liang 1987; Stram and Lee 1994; Goldman and Whelan 2000); ",
-                        "in simple cases the p-value is approximately twice as large as it should be.)")
+                        "in simple cases these p-values are approximately twice as large as they should be.)")
         }
     }
     if (check_hessian) {
