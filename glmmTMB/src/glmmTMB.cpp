@@ -441,13 +441,6 @@ Type allterms_nll(vector<Type> &u, vector<Type> theta,
 template<class Type>
 Type objective_function<Type>::operator() ()
 {
-#ifdef _OPENMP
-  this -> max_parallel_regions = omp_get_max_threads();
-  // std::cout << "OpenMP max_parallel_regions=" << this -> max_parallel_regions << "\n";
-#else
-  this -> max_parallel_regions = 1;
-  // std::cout << "no OpenMP (max_parallel_regions=1)\n";
-#endif
 
   DATA_MATRIX(X);
   bool sparseX = X.rows()==0 && X.cols()==0;
