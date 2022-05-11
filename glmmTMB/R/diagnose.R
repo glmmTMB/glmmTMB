@@ -60,11 +60,19 @@ diagnose <- function(fit,
     ss <- suppressWarnings(summary(fit$sdr))
     ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
-    nn <- tryCatch(colnames(vcov(fit, full=TRUE)),
-                   ## fall-back position
-                   error = function(e) make.unique(names(pp)))
+    vv <- try(vcov(fit, full = TRUE))
+    if (!inherits(vv, "try-error")) {
+        nn <- colnames(vcov(fit, full = TRUE))
+    } else {
+        nn <- make.unique(names(pp))
+        if (isREML(fit)) warning("bad vcov/REML combination is not tested, may fail")
+    }
     nn0 <- names(pp)
-    names(pp) <- rownames(ss) <- nn
+    if (isREML(fit)) {
+        ss <- ss[rownames(ss) != "beta",]
+        nn <- nn[!startsWith(names(nn), "cond")]
+    }
+    rownames(ss) <- names(pp) <- nn
     ## check coefficients
     if (check_coefs) {
         ## logic: if link function for *conditional* model is unitless then all parameters need checking
@@ -116,7 +124,8 @@ diagnose <- function(fit,
                         "of the Wald approximation - often also associated with ",
                         "parameters that are at or near the edge of their range ",
                         "(e.g. random-effects standard deviations approaching 0).",
-                        " (Alternately, they may simply represent very well-estimated parameters.)",
+                        " (Alternately, they may simply represent very well-estimated parameters;",
+                        "intercepts of non-centered models may fall in this category.)",
                         "While the Wald p-values and standard errors listed in ",
                         "summary() may be unreliable, profile confidence intervals ",
                         "(see ?confint.glmmTMB) and likelihood ratio test p-values ",
