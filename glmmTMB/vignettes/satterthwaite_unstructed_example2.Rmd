@@ -1,0 +1,341 @@
+---
+title: "Satterthwaite's Method on Unstructured Correlation Example"
+author: "Daniel Sabanes Bove, Ben Bolker"
+date: "May 2022 -- compiled: `r Sys.Date()`"
+output:
+  html_document:
+    keep_md: yes
+    toc: yes
+    toc_depth: 4
+  pdf_document:
+    toc: yes
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
+```
+
+# Unstructured correlation example 
+
+We want to check if the approach that worked well in the random intercept
+model example also works in a more complex unstructured correlation model.
+
+```{r, message = FALSE}
+library(glmmTMB)
+library(mmrm)  # from https://github.com/openpharma/mmrm for the data set
+
+df <- mmrm::fev_data 
+df$AVISIT <- relevel(df$AVISIT, ref = "VIS4") # Only needed for same coding as in SAS.
+form <- FEV1 ~ ARMCD * AVISIT + RACE + SEX + us(0 + AVISIT | USUBJID)
+```
+
+## SAS results
+
+Let's check what SAS would deliver for this example. (Note that this calls
+some internal package/server so won't work like this, but at least you have
+the code here and I saved the results in the separate file.)
+
+Note that we here set the `AVISIT` reference level to the last one `VIS4`
+to not be confused by the covariance matrix shape in the results - SAS always
+puts the reference last.
+
+```{r, results = 'hide', eval = FALSE}
+sascode <- list(
+  # "show" = "
+  #   PROC CONTENTS DATA = ana.dat;
+  #   RUN;
+  # "
+  "test" = "
+    PROC MIXED DATA = ana.dat cl method=reml;
+      CLASS RACE(ref = 'Asian') AVISIT(ref = 'VIS4') SEX(ref = 'Male') ARMCD(ref = 'PBO') USUBJID;
+      MODEL FEV1 = ARMCD AVISIT ARMCD*AVISIT RACE SEX / ddfm=satterthwaite solution chisq;
+      REPEATED AVISIT / subject=USUBJID type=un r rcorr;
+    RUN;
+      "
+)
+result <- r2stream::bee_sas(data = list("dat" = df), sascode = sascode)
+result$test$sas_log
+writeLines(result$test$sas_out, con = "sas_log.txt")
+```
+
+OK so this converges, we get a deviance of 
+
+```{r}
+sas_deviance <- 3386.4
+```
+
+and a covariance estimate:
+
+```{r}
+sas_lower_cov <- rbind(
+  c(40.5509, 0, 0, 0),
+  c(14.3982, 26.5692, 0, 0),
+  c(4.9744, 2.7851, 14.8970, 0),
+  c(13.3731, 7.4790, 0.9017, 95.5528)
+)
+sas_cov <- sas_lower_cov + t(sas_lower_cov) - diag(diag(sas_lower_cov))
+sas_cov
+solve(sas_cov)
+rownames(sas_cov) <- paste0("AVISITVIS", 1:4)
+colnames(sas_cov) <- rownames(sas_cov)
+```
+
+Interesting is that we also get confidence intervals for the covariance 
+entries. Maybe this will be helpful later to further compare the results.
+
+The intercept estimate is (just as one example):
+
+```{r}
+sas_beta <- data.frame(
+  parameter = "intercept", est = 45.8311, se = 1.2760, df = 171, t = 35.92
+)
+```
+
+## `model0`: Forcing 0 residual variance
+
+In `model0` we force the residual variance to be 0. 
+The idea is that otherwise we have one parameter too much in the model.
+
+```{r}
+model0 <- glmmTMB(
+  formula = form,
+  data = df,
+  dispformula = ~ 0,
+  REML = TRUE
+)
+```
+
+It says here it does not converge ("false convergence"). A classic annoying 
+error due to some legacy optimization code hidden somewhere :-).
+
+But the log likelihood is ok, we get a deviance of:
+
+```{r}
+- 2 * logLik(model0)
+all.equal(sas_deviance, - 2 * as.numeric(logLik(model0)))
+```
+
+which matches numerically what we get with SAS.
+
+**FIXME**: 
+- why do we get "false convergence"?
+- Do we want to make these easier for users to fix/work around?
+
+## `model1`: Forcing fixed residual variance at 1
+
+As the documentation says, $\sigma$ is actually a fixed small non-zero value 
+(by default `sqrt(.Machine$double.eps)`).
+Therefore here we fix the residual variance and standard deviation at 0.001.
+
+```{r}
+model1 <- glmmTMB(
+  formula = form,
+  data = df,
+  dispformula = ~ 0,
+  control = glmmTMB::glmmTMBControl(
+    zerodisp_val = 0.001
+  ),
+  REML = TRUE
+)
+```
+
+Now this actually does converge. It is surprising that `model0` does not deliver
+the same though.
+
+```{r}
+- 2 * logLik(model1)
+all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model0)))
+```
+
+## `model2`: Leaving residual variance in the model
+
+We can also try to leave the residual variance in the model.
+
+```{r}
+model2 <- glmmTMB(
+  formula = form,
+  data = df,
+  dispformula = ~ 1,
+  REML = TRUE,
+  control = glmmTMB::glmmTMBControl(
+    zerodisp_val = 1
+  )
+)
+```
+
+Also this converges, and gives the same log-likelihood.
+
+```{r}
+all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model2)))
+```
+
+## `lme4`
+
+This model can also be fitted with `lme4` and `lmerTest` as follows:
+
+```{r, message = FALSE}
+library(lmerTest)
+form_lmerTest <- FEV1 ~ ARMCD * AVISIT + RACE + SEX + (0 + AVISIT | USUBJID)
+model2_lmerTest <- lmer(
+  formula = form_lmerTest,
+  data = df,
+  REML = TRUE,
+  control = lmerControl(check.nobs.vs.nRE = "ignore", optimizer = "nloptwrap")
+)
+```
+
+Here we can sometimes see the problem that `lme4` does not converge. Not right now
+but before when we did not put `AVIS4` as reference we had this problem...
+
+## Comparing the models
+
+Now we can compare the results.
+
+### Fixed effects: Intercept
+
+The fixed effect estimates are numerically very close, and the intercept estimate
+in `model0` is numerically equal to the SAS result:
+
+```{r}
+beta_model0 <- fixef(model0)$cond[1]
+beta_model1 <- fixef(model1)$cond[1]
+beta_model2 <- fixef(model2)$cond[1]
+beta_model2_lmerTest <- fixef(model2_lmerTest)[1]
+
+all.equal(sas_beta$est, as.numeric(beta_model0))
+all.equal(beta_model0, beta_model1)
+all.equal(beta_model1, beta_model2)
+all.equal(beta_model2, beta_model2_lmerTest)
+```
+
+### Covariance structure
+
+Let's look at the covariance estimates. Here we realize that now the order
+of the visits in R is the other way around as in SAS ...
+
+```{r}
+sas_cov_index <- as.matrix(expand.grid(rownames(sas_cov), colnames(sas_cov)))
+turn <- function(x) {
+  matrix(
+    data = x[sas_cov_index], 
+    nrow = nrow(x), 
+    ncol = ncol(x),
+    dimnames = dimnames(sas_cov)
+  )
+}
+
+cov_model0 <- turn(VarCorr(model0)$cond[[1]])
+cov_model1 <- turn(VarCorr(model1)$cond[[1]])
+cov_model2 <- turn(VarCorr(model2)$cond[[1]])
+cov_model2_lmerTest <- turn(VarCorr(model2_lmerTest)[[1]])
+
+all.equal(sas_cov, cov_model0, check.attributes = FALSE)
+all.equal(cov_model0, cov_model1, check.attributes = FALSE)
+all.equal(sas_cov, cov_model1, check.attributes = FALSE)
+all.equal(cov_model1, cov_model2, check.attributes = FALSE)
+all.equal(sas_cov, cov_model2, check.attributes = FALSE)
+all.equal(cov_model0, cov_model2, check.attributes = FALSE)
+all.equal(cov_model2, cov_model2_lmerTest, check.attributes = FALSE)
+all.equal(sas_cov, cov_model2_lmerTest, check.attributes = FALSE)
+```
+
+It is surprising that `model0` and `model1` don't yield the same covariance
+estimate. Both fix the residual variance at a constant, but then the remaining
+variance parameters should compensate accordingly.
+
+There are some numerical differences, but fortunately the SAS result is close
+to the `model0` result (slightly more than `1e-4`).
+
+# Calculating the Satterthwaite degrees of freedom
+
+Now let's calculate the Satterthwaite d.f. for the intercept estimate, and we try
+this for the different models from above. We hope for the `model0` from above 
+since it worked best so far (it converged
+with the automatic differentation and gave the closest covariance matrix).
+
+Let's see if we can recover approximately the SAS result with `glmmTMB`. 
+The code here is very closely following what we have been doing with the
+random intercept example earlier.
+
+```{r}
+get_df <- function(model) {
+  model_theta_vcov <- vcov(model, full = TRUE)[-(1:11), -(1:11)]
+  model_theta_est <- getME(model, "theta")
+  model_beta_vcov <- vcov(model)$cond
+  model_covbeta_theta <- function(theta) {
+    sdr <- TMB::sdreport(
+      model$obj, 
+      par.fixed = theta, 
+      getJointPrecision = TRUE
+    )
+    q_mat <- sdr$jointPrecision
+    which_fixed <- which(rownames(q_mat) == "beta")
+    q_marginal <- unname(glmmTMB:::GMRFmarginal(q_mat, which_fixed))
+    solve(as.matrix(q_marginal))
+  }
+  all.equal(unname(model_beta_vcov), model_covbeta_theta(model_theta_est))
+  get_jac_list <- function(covbeta_fun, x_opt, ...){
+    jac_matrix <- numDeriv::jacobian(
+      func = covbeta_fun, 
+      x = x_opt, 
+      ...
+    )
+    lapply(
+      seq_len(ncol(jac_matrix)), # for each variance parameter
+      FUN = function(i) {
+        # this column contains the pxp entries
+        jac_col <- jac_matrix[, i]
+        p <- sqrt(length(jac_col))
+        # get p x p matrix
+        matrix(jac_col, nrow = p, ncol = p)
+      }
+    )
+  }
+  model_jac_theta <- get_jac_list(model_covbeta_theta, model_theta_est)
+  get_gradient <- function(jac, L) {
+    vapply(
+      jac, 
+      function(x) sum(L * x %*% L), # = {L' Jac L}_i
+      numeric(1L)
+    ) 
+  }
+  L <- c(1, rep(0, 10)) # get the intercept only.
+  model_grad_theta <- get_gradient(model_jac_theta, L)
+  model_var_contrast <- drop(t(L) %*% model_beta_vcov %*% L)
+  model_v_numerator <- 2 * model_var_contrast ^ 2
+  model_v_denominator <- sum(model_grad_theta * (model_theta_vcov %*% model_grad_theta))
+  model_df_contrast <- model_v_numerator / model_v_denominator
+  model_df_contrast
+}
+```
+
+Let's try this on the different models:
+
+```{r}
+df_model0 <- get_df(model0) # gives 0.01316441
+df_model1 <- get_df(model1) # gives 167.8286
+sas_beta$df # expected: 171
+```
+
+Actually we cannot fit it on `model2` easily without adapting the code above
+because it contains the additional $\sigma$.
+
+So `model0` seems completely off whereas `model1` seems reasonable but 
+imprecise (probably also because of the different covariance matrix etc.)
+
+Questions:
+
+0) Why is the Satterthwaite in `model0` completely off? Is it because of the
+   "false convergence" or something else?
+
+1) Can we set sigma exactly to zero to improve this? (by modifying `glmmTMB`) 
+
+2) Why do we get "false convergence" with the default little epsilon used for $\sigma$
+   in `model0`?
+
+3) Could we potentially perform the Jacobian calculation with (another version of) `TMB`?
+
+
+

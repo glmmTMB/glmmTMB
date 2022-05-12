@@ -1,0 +1,198 @@
+                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   1
+
+                                                        The Mixed Procedure
+
+                                                         Model Information
+
+                                       Data Set                     ANA.DAT                  
+                                       Dependent Variable           FEV1                     
+                                       Covariance Structure         Unstructured             
+                                       Subject Effect               USUBJID                  
+                                       Estimation Method            REML                     
+                                       Residual Variance Method     None                     
+                                       Fixed Effects SE Method      Model-Based              
+                                       Degrees of Freedom Method    Satterthwaite            
+
+
+                                                      Class Level Information
+ 
+                                        Class      Levels    Values
+
+                                        RACE            3    Black or African American     
+                                                             White Asian                   
+                                        AVISIT          4    VIS1 VIS2 VIS3 VIS4           
+                                        SEX             2    Female Male                   
+                                        ARMCD           2    TRT PBO                       
+                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   2
+
+                                                        The Mixed Procedure
+
+                                                      Class Level Information
+ 
+                                        Class      Levels    Values
+
+                                        USUBJID       200    PT1 PT10 PT100 PT101 PT102    
+                                                             PT103 PT104 PT105 PT106 PT107 
+                                                             PT108 PT109 PT11 PT110 PT111  
+                                                             PT112 PT113 PT114 PT115 PT116 
+                                                             PT117 PT118 PT119 PT12 PT120  
+                                                             PT121 PT122 PT123 PT124 PT125 
+                                                             PT126 PT127 PT128 PT129 PT13  
+                                                             PT130 PT131 PT132 PT133 PT134 
+                                                             PT135 PT136 PT137 PT138 PT139 
+                                                             PT14 PT140 PT141 PT142 PT143  
+                                                             PT144 PT145 PT146 PT147 PT148 
+                                                             PT149 PT15 PT150 PT151 PT152  
+                                                             PT153 PT154 PT155 PT156 PT157 
+                                                             PT158 PT159 PT16 PT160 PT161  
+                                                             PT162 PT163 PT164 PT165 PT166 
+                                                             PT167 PT168 PT169 PT17 PT170  
+                                                             PT171 PT172 PT173 PT174 PT175 
+                                                             PT176 PT177 PT178 PT179 PT18  
+                                                             PT180 PT181 PT182 PT183 PT184 
+                                                             PT185 PT186 PT187 PT188 PT189 
+                                                             PT19 PT190 PT191 PT192 PT193  
+                                                             PT194 PT195 PT196 PT197 PT198 
+                                                             PT199 PT2 PT20 PT200 PT21 PT22
+                                                             PT23 PT24 PT25 PT26 PT27 PT28 
+                                                             PT29 PT3 PT30 PT31 PT32 PT33  
+                                                             PT34 PT35 PT36 PT37 PT38 PT39 
+                                                             PT4 PT40 PT41 PT42 PT43 PT44  
+                                                             PT45 PT46 PT47 PT48 PT49 PT5  
+                                                             PT50 PT51 PT52 PT53 PT54 PT55 
+                                                             PT56 PT57 PT58 PT59 PT6 PT60  
+                                                             PT61 PT62 PT63 PT64 PT65 PT66 
+                                                             PT67 PT68 PT69 PT7 PT70 PT71  
+                                                             PT72 PT73 PT74 PT75 PT76 PT77 
+                                                             PT78 PT79 PT8 PT80 PT81 PT82  
+                                                             PT83 PT84 PT85 PT86 PT87 PT88 
+                                                             PT89 PT9 PT90 PT91 PT92 PT93  
+                                                             PT94 PT95 PT96 PT97 PT98 PT99 
+
+
+                                                            Dimensions
+
+                                                Covariance Parameters            10
+                                                Columns in X                     20
+                                                Columns in Z                      0
+                                                Subjects                        200
+                                                Max Obs per Subject               4
+
+
+                                                      Number of Observations
+
+                                            Number of Observations Read             800
+                                            Number of Observations Used             537
+                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   3
+
+                                                        The Mixed Procedure
+
+                                                      Number of Observations
+
+                                            Number of Observations Not Used         263
+
+
+                                                         Iteration History
+ 
+                                    Iteration    Evaluations    -2 Res Log Like       Criterion
+
+                                            0              1      3535.97413376                
+                                            1              2      3386.46126144      0.00000927
+                                            2              1      3386.44987722      0.00000001
+
+
+                                                     Convergence criteria met.                    
+
+
+                                                         Estimated R Matrix
+                                                           for USUBJID PT1
+ 
+                                                     Row        Col1        Col2
+
+                                                       1     26.5692      7.4790
+                                                       2      7.4790     95.5528
+
+
+                                                       Estimated R Correlation
+                                                       Matrix for USUBJID PT1
+ 
+                                                     Row        Col1        Col2
+
+                                                       1      1.0000      0.1484
+                                                       2      0.1484      1.0000
+
+
+                                                  Covariance Parameter Estimates
+ 
+                                 Cov Parm    Subject    Estimate     Alpha       Lower       Upper
+
+                                 UN(1,1)     USUBJID     40.5509      0.05     32.3836     52.2687
+                                 UN(2,1)     USUBJID     14.3982      0.05      8.0430     20.7533
+                                 UN(2,2)     USUBJID     26.5692      0.05     21.2242     34.2340
+                                 UN(3,1)     USUBJID      4.9744      0.05    -0.06856     10.0174
+                                 UN(3,2)     USUBJID      2.7851      0.05     -1.2137      6.7838
+                                 UN(3,3)     USUBJID     14.8970      0.05     11.8032     19.3965
+                                 UN(4,1)     USUBJID     13.3731      0.05     -1.2381     27.9843
+                                 UN(4,2)     USUBJID      7.4790      0.05     -1.6955     16.6534
+                                 UN(4,3)     USUBJID      0.9017      0.05     -7.0667      8.8701
+                                 UN(4,4)     USUBJID     95.5528      0.05     75.9677      123.87
+
+
+                                                          Fit Statistics
+
+                                               -2 Res Log Likelihood          3386.4
+                                               AIC (Smaller is Better)        3406.4
+                                               AICC (Smaller is Better)       3406.9
+                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   4
+
+                                                        The Mixed Procedure
+
+                                                          Fit Statistics
+
+                                               BIC (Smaller is Better)        3439.4
+
+
+                                                  Null Model Likelihood Ratio Test
+ 
+                                                    DF    Chi-Square      Pr > ChiSq
+
+                                                     9        149.52          <.0001
+
+
+                                                    Solution for Fixed Effects
+ 
+                                                                                         Standard
+   Effect          RACE                         AVISIT    SEX       ARMCD    Estimate       Error      DF    t Value    Pr > |t|
+
+   Intercept                                                                  45.8311      1.2760     171      35.92      <.0001
+   ARMCD                                                            TRT        4.3985      1.6805     133       2.62      0.0099
+   ARMCD                                                            PBO             0           .       .        .         .    
+   AVISIT                                       VIS1                         -15.0537      1.3129     138     -11.47      <.0001
+   AVISIT                                       VIS2                         -10.2141      1.2765     154      -8.00      <.0001
+   AVISIT                                       VIS3                          -4.7116      1.2636     149      -3.73      0.0003
+   AVISIT                                       VIS4                                0           .       .        .         .    
+   AVISIT*ARMCD                                 VIS1                TRT       -0.6240      1.8510     130      -0.34      0.7366
+   AVISIT*ARMCD                                 VIS1                PBO             0           .       .        .         .    
+   AVISIT*ARMCD                                 VIS2                TRT       -0.6663      1.8009     150      -0.37      0.7119
+   AVISIT*ARMCD                                 VIS2                PBO             0           .       .        .         .    
+   AVISIT*ARMCD                                 VIS3                TRT       -1.3179      1.8010     148      -0.73      0.4654
+   AVISIT*ARMCD                                 VIS3                PBO             0           .       .        .         .    
+   AVISIT*ARMCD                                 VIS4                TRT             0           .       .        .         .    
+   AVISIT*ARMCD                                 VIS4                PBO             0           .       .        .         .    
+   RACE            Black or African American                                   1.5305      0.6244     169       2.45      0.0153
+   RACE            White                                                       5.6436      0.6656     157       8.48      <.0001
+   RACE            Asian                                                            0           .       .        .         .    
+   SEX                                                    Female               0.3262      0.5319     166       0.61      0.5406
+   SEX                                                    Male                      0           .       .        .         .    
+
+
+                                                   Type 3 Tests of Fixed Effects
+ 
+                                           Num     Den
+                          Effect            DF      DF    Chi-Square    F Value      Pr > ChiSq    Pr > F
+
+                          ARMCD              1     169         31.67      31.67          <.0001    <.0001
+                          AVISIT             3     144        426.32     142.11          <.0001    <.0001
+                          AVISIT*ARMCD       3     144          0.77       0.26          0.8556    0.8555
+                          RACE               2     166         73.83      36.92          <.0001    <.0001
+                          SEX                1     166          0.38       0.38          0.5398    0.5406

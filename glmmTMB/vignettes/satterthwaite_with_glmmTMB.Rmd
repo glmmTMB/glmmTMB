@@ -1,5 +1,3 @@
-
- 
 ---
 title: "Satterthwaite's Method for Degrees of Freedom in Normal Models Fitted With `glmmTMB`"
 author: "Daniel Sabanes Bove and Ben Bolker"
