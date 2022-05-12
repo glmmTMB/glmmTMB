@@ -1,7 +1,9 @@
+
+ 
 ---
 title: "Satterthwaite's Method for Degrees of Freedom in Normal Models Fitted With `glmmTMB`"
 author: "Daniel Sabanes Bove and Ben Bolker"
-date: "Apr 2022 -- last edit: `r Sys.Date()`"
+date: "Apr 2022 -- compiled: `r Sys.Date()`"
 output:
   html_document:
     keep_md: yes
@@ -50,7 +52,7 @@ use the same Jacobian.
 
 We would like to replicate the example from `lmerTest` here. 
 
-## Toy example 
+## Toy example 1: Random Intercept
 
 So let's first look at that again:
 
@@ -393,7 +395,6 @@ covbeta_tau <- function(tau) {
   covbeta_kappa(kappa)
 }
 all.equal(covbeta_tau(varpar_opt), covbeta_varpar(varpar_opt, devfun), tol = 1e-4)
-
 jac_tau <- get_jac_list(covbeta_tau, varpar_opt)
 all.equal(jac_tau, Jac_varpar_list)
 ```
@@ -449,7 +450,6 @@ $\kappa$ parametrizations.
 # calculate the quadratic forms, one time for tau and one time for kappa:
 (v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa)))
 (v_denominator_tau <- sum(grad_tau * (cov_varpar_tau %*% grad_tau)))
-
 all.equal(v_denominator_kappa, v_denominator_tau)
 ```
 
@@ -497,8 +497,110 @@ are matching up to that.
 
 # Example: Computing denominator df for an $F$-test using `glmmTMB`
 
-This is the next step. But it should basically work identically to `lme4`
-as done in [1].
+In this section again we follow [1] and try to reproduce it with `glmmTMB`.
+We look at a hypothesis test using a $q\times p$ contrast matrix $L$ 
+which has rank $q$ with $1 < q \leq p$, and $p$ is again the length of the
+$\beta$ vector. We would like to obtain an approximate F distribution
+to compare the corresponding F test statistic with:
+\[
+F = \frac{1}{q} (L\hat\beta)^\top (L \mathsf V_{\hat\tau}(\hat\beta)L^\top)^{-1} (L\hat\beta)
+\]
+We are interested in estimating an appropriate denominator degrees of freedom for $F$,
+while assuming $q$ numerator degrees of freedom.
+
+In the example we would like to test $\beta_2 = \beta_3 = 0$, which we can
+specify with the following $2x4$ contrast matrix $L$:
+
+```{r}
+L <- rbind(c(0, 1, 0, 0),
+           c(0, 0, 1, 0))
+```
+
+## With `glmmTMB`
+
+Easily we can compute the estimate and the covariance of the estimated contrast
+vector using 
+$\mathsf{V}_{\hat\tau} (L\hat\beta) = L \mathsf{V}_{\hat\tau} (\hat\beta) L^\top$:
+
+```{r}
+(Lbeta <- drop(L %*% fixef(model)$cond))
+cov_Lbeta <- L %*% vcov(model)$cond %*% t(L)
+```
+
+We then compute the eigen-decomposition and extract the rank, 
+eigenvectors and eigenvalues:
+
+```{r}
+eig_VLbeta <- eigen(cov_Lbeta)
+positive <- eig_VLbeta$values > 1e-8
+q <- sum(positive) 
+stopifnot(q == 2)
+(P <- eig_VLbeta$vectors)
+(d <- eig_VLbeta$values)
+```
+
+The rotated contrast vectors are then:
+
+```{r}
+PtL <- crossprod(P, L) # q x p matrix
+```
+
+from which we can compute the $t^2$ values and $F$-statistic:
+
+```{r}
+t2 <- drop(PtL %*% fixef(model)$cond)^2 / d
+Fvalue <- sum(t2) / q
+```
+
+Let's compare this value with the more vanilla computation of the $F$-statistic:
+
+```{r}
+Fvalue_vanilla <- drop(1/q * t(Lbeta) %*% solve(cov_Lbeta) %*% Lbeta)
+all.equal(Fvalue, Fvalue_vanilla)
+```
+
+So this is really the same.
+For the new contrast vectors $\tilde L_m = (P^\top L)_m$ for $m =1,\ldots, q$ we
+compute the gradient $f'(\hat\kappa)_m$:
+```{r}
+grad_PLcov <- lapply(1:q, function(m) {
+  vapply(jac_kappa, function(J) sum(PtL[m, ] * J %*% PtL[m, ]), numeric(1L))  
+})
+```
+The $m$'th denominator degree of freedom estimate is then:
+```{r}
+nu_m <- vapply(1:2, function(m) {
+  denom <- sum(grad_PLcov[[m]] * (cov_varpar_kappa %*% grad_PLcov[[m]])) # g'Ag
+  2*(d[m])^2 / denom # 2d_m^2 / g'Ag
+}, numeric(1L))
+nu_m
+```
+From $\mathsf E(Q)$ we then evaluate the estimated denominator degrees of freedom for the $F$-statistic:
+```{r}
+EQ <- sum(nu_m / (nu_m - 2))
+(ddf <- 2 * EQ / (EQ - q)) # nu
+```
+In summary we have the following approximate $F$-test:
+```{r}
+pvalue <- pf(q=Fvalue, df1=q, df2=ddf, lower.tail=FALSE)
+f_tab_glmmTMB <- data.frame(
+  'F value'=Fvalue, 
+  ndf=q, 
+  ddf=ddf, 
+  'p-value'=pvalue, 
+  check.names = FALSE
+)
+f_tab_glmmTMB
+```
+## With `lmerTest`
+We can compare this result with what we get from `lmerTest`:
+```{r}
+f_tab_lmerTest <- contest(model_lmerTest, L)
+f_tab_lmerTest
+all.equal(f_tab_glmmTMB$`p-value`, f_tab_lmerTest$`Pr(>F)`)
+all.equal(f_tab_glmmTMB$ddf, f_tab_lmerTest$DenDF)
+```
+So the results are reasonably close.
 
 # References
 
