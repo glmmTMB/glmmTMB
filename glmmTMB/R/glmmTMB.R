@@ -756,7 +756,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
     }
 }
 
-.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "zero_resid")
 
 ## BMB: why not just sigma(x)!=1.0 ... ? (redundant with sigma.glmmTMB)
 usesDispersion <- function(x) {

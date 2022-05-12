@@ -18,6 +18,7 @@ bool notFinite(Type x) {
 
 enum valid_family {
   gaussian_family = 0,
+  zero_resid_family = 10, // Gaussian (or whatever) with zero residual variance
   binomial_family = 100,
   betabinomial_family =101,
   beta_family =200,
@@ -547,6 +548,10 @@ Type objective_function<Type>::operator() ()
       case gaussian_family:
         tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
         SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
+        break;
+      case zero_resid_family:
+        tmp_loglik = Type(0);
+        SIMULATE{yobs(i) = mu(i);}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);

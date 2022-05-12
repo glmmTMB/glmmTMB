@@ -27,7 +27,8 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 	echo ".valid_family <- c(" >> $@
-	grep _family.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_family//g >> $@
+## second sed removes C++ comments
+	grep _family.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_family//g | sed -e "s#//.*##g" >> $@
 	echo ")" >> $@
 
 	echo ".valid_covstruct <- c(" >> $@

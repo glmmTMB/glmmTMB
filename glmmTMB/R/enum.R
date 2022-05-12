@@ -10,6 +10,7 @@
 )
 .valid_family <- c(
   gaussian = 0,
+  zero_resid = 10, 
   binomial = 100,
   betabinomial =101,
   beta =200,

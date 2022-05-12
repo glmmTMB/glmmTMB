@@ -288,6 +288,12 @@ tweedie <- function(link="log") {
     return(make_family(r,link))
 }
 
+zero_resid <- function(link="identity") {
+    r <- list(family="zero_resid",
+              variance = function(mu) 0) ## could be 1?
+    return(make_family(r, link))
+}
+
 ## t not yet implemented
 ## t_family <- function(link="identity") {
 ##     ## FIXME: right now t behaves just like gaussian(); variance()
