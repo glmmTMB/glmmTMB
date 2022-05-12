@@ -636,9 +636,6 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), ...) {
     type <- match.arg(type)
-    if (type == "pearson" && (!noZI(object) || !trivialDisp(object))) {
-      stop("pearson residuals are not implemented for models with zero-inflation or variable dispersion")
-    }
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act,model.response(object$frame))
     wts <- model.weights(model.frame(object))
@@ -666,13 +663,39 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                    stop("variance function undefined for family ",
                         sQuote(family(object)$family),"; cannot compute",
                         " Pearson residuals")
-               vv <- switch(length(formals(v)),
-                            v(fitted(object)),
-                            v(fitted(object), sigma(object)),
-                            stop("variance function should take 1 or 2 arguments"))
+               vformals <- names(formals(v))
+               # construct argument list for variance function based on its formals
+               # some argument names vary across families
+               mu <- predict(object, type = "conditional")
+               theta <- predict(object, type = "disp")
+               shape <- .tweedie_power(object) # FIXME: Change this to a general shape() extractor
+               vargs <- list()
+               vargs$mu <- vargs$lambda <- mu
+               vargs$theta <- vargs$phi <- vargs$alpha <- theta
+               vargs$shape <- vargs$power <- shape
+               # subset to only the arguments used by the variance function
+               vargs <- vargs[vformals]
+               vv <- do.call(v, args = vargs)
+               if (!noZI(object)) {
+                 if (length(vformals) == 1) {
+                   # handle families where variance() returns the scaled variance
+                   vv <- vv * theta^2
+                 }
+                 zprob <- predict(object, type = "zprob")
+                 # if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
+                 #   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
+                 #          = Var[X] * E[B] + E[X]^2 * Var[B]
+                 #          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
+                 vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
+               } else {
+                 if (length(vformals) == 1) {
+                   # handle families where variance() returns the scaled variance
+                   vv <- vv * (theta / sigma(object))^2
+                 }
+               }
                r <- r/sqrt(vv)
                if (!is.null(wts)) {
-                   r <- r*sqrt(wts)
+                   r <- r * sqrt(wts)
                }
                r
     })

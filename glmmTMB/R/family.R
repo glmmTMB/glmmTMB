@@ -12,7 +12,7 @@ family_factory <- function(default_link,family,variance) {
 }
 
 ## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
-utils::globalVariables(".Theta") 
+utils::globalVariables(".Theta")
 
 ## attempt to guess whether calling function has been called from glm.fit ...
 in_glm_fit <- function() {
@@ -48,7 +48,7 @@ make_family <- function(x,link) {
 ##' Family functions for glmmTMB
 ##'
 ##'
-##' 
+##'
 ##' @aliases family_glmmTMB
 ##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")
 ##' @return returns a list with (at least) components
@@ -60,7 +60,7 @@ make_family <- function(x,link) {
 ##' }
 ##' @details
 ##' If specified, the dispersion model uses a log link. Denoting the variance as \eqn{V}, the dispersion parameter
-##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model), 
+##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 ##' and the predicted mean as \eqn{\mu}{mu}:
 ##'  \describe{
 ##'      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
@@ -74,7 +74,7 @@ make_family <- function(x,link) {
 ##'      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
 ##' and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
 ##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
-##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
+##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^power}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
 ##' }
 ##' @references
 ##' \itemize{
@@ -111,7 +111,7 @@ nbinom2 <- function(link="log") {
               ## full versions needed for effects::mer.to.glm
               ## (so we can evaluate a glm)
               initialize = expression({
-                  if (any(y < 0)) 
+                  if (any(y < 0))
                       stop("negative values not allowed for the negative binomial family")
                   n <- rep(1, nobs)
                   mustart <- y + (y == 0)/6
@@ -198,7 +198,7 @@ truncated_poisson <- function(link="log") {
 
 #' @rdname nbinom2
 #' @importFrom stats dnbinom pnbinom
-#' @export	       	
+#' @export
 truncated_nbinom2 <- function(link="log") {
     theta_errstr <- "theta (nbinom parameter) neither passed as an argument nor stored in enviroment"
     missing_theta <- "one" ## or "stop" or "na"
@@ -206,7 +206,7 @@ truncated_nbinom2 <- function(link="log") {
               variance=function(mu,theta) {
                       if (missing(theta)) {
                           if (!exists(".Theta")) {
-                              theta <- switch(missing_theta, one = 1, na = NA_real_, 
+                              theta <- switch(missing_theta, one = 1, na = NA_real_,
                                               stop = stop(theta_errstr))
                           }
                           else {
@@ -249,7 +249,7 @@ beta_family <- function(link="logit") {
                           stop("y values must be 0 <= y < 1")
                       }
                   } else {
-                      if (any(y <= 0 | y >= 1)) 
+                      if (any(y <= 0 | y >= 1))
                           stop("y values must be 0 < y < 1")
                   }
                   mustart <- y
@@ -282,13 +282,13 @@ betabinomial <- function(link="logit") {
 #' @export
 tweedie <- function(link="log") {
     r <- list(family="tweedie",
-           variance=function(mu,phi,p) {
-               stop("variance for tweedie family not yet implemented")
+           variance = function(mu, phi, power) {
+               phi * mu ^ power
          })
     return(make_family(r,link))
 }
 
-## t not yet implemented in 
+## t not yet implemented
 ## t_family <- function(link="identity") {
 ##     ## FIXME: right now t behaves just like gaussian(); variance()
 ##     ## returns a value *proportional* to the variance
@@ -305,7 +305,7 @@ tweedie <- function(link="log") {
 #' ("all","family","link","covstruct")
 #' @param check (logical) do brute-force checking to test whether families are really implemented (only available for \code{what="family"})
 #' @return if \code{check==FALSE}, returns a vector of the names (or a list of name vectors) of allowable entries; if \code{check==TRUE}, returns a logical vector of working families
-#' 
+#'
 #' @export
 getCapabilities <- function(what="all",check=FALSE) {
     if (!check) {

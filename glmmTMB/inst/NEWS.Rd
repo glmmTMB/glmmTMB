@@ -12,7 +12,9 @@
   for models without zero-inflation (GH #798, Brenton Wiernik) [was
   previously supposed to throw an error, but incorrectly returned
   conditional values]
-    }
+  \item bug fixes for \code{diagnose} (inverted Z-score; now handles
+  models without random effects)
+} % itemize
   } % bug fixes
 } % version 1.1.3.9000
 
