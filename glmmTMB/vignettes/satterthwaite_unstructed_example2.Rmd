@@ -22,11 +22,14 @@ knitr::opts_chunk$set(echo = TRUE, collapse = TRUE)
 We want to check if the approach that worked well in the random intercept
 model example also works in a more complex unstructured correlation model.
 
-```{r, message = FALSE}
+```{r pkgs, message = FALSE}
 library(glmmTMB)
-library(mmrm)  # from https://github.com/openpharma/mmrm for the data set
-
-df <- mmrm::fev_data 
+df <- readRDS(system.file("vignette_data", "fev_data.rds", package = "glmmTMB"))
+## data originally from mmrm package,
+##  https://github.com/openpharma/mmrm
+## remotes::install_github("openpharma/mmrm")
+## save (using version = 2 for back-compatibility)
+## saveRDS(fev_data, file = "../inst/vignette_data/fev_data.rds", version = 2)
 df$AVISIT <- relevel(df$AVISIT, ref = "VIS4") # Only needed for same coding as in SAS.
 form <- FEV1 ~ ARMCD * AVISIT + RACE + SEX + us(0 + AVISIT | USUBJID)
 ```
@@ -41,7 +44,7 @@ Note that we here set the `AVISIT` reference level to the last one `VIS4`
 to not be confused by the covariance matrix shape in the results - SAS always
 puts the reference last.
 
-```{r, results = 'hide', eval = FALSE}
+```{r run_sas_code, results = 'hide', eval = FALSE}
 sascode <- list(
   # "show" = "
   #   PROC CONTENTS DATA = ana.dat;
@@ -62,13 +65,13 @@ writeLines(result$test$sas_out, con = "sas_log.txt")
 
 OK so this converges, we get a deviance of 
 
-```{r}
+```{r sas_deviance}
 sas_deviance <- 3386.4
 ```
 
 and a covariance estimate:
 
-```{r}
+```{r sas_cov}
 sas_lower_cov <- rbind(
   c(40.5509, 0, 0, 0),
   c(14.3982, 26.5692, 0, 0),
@@ -87,7 +90,7 @@ entries. Maybe this will be helpful later to further compare the results.
 
 The intercept estimate is (just as one example):
 
-```{r}
+```{r sas_beta}
 sas_beta <- data.frame(
   parameter = "intercept", est = 45.8311, se = 1.2760, df = 171, t = 35.92
 )
@@ -98,7 +101,7 @@ sas_beta <- data.frame(
 In `model0` we force the residual variance to be 0. 
 The idea is that otherwise we have one parameter too much in the model.
 
-```{r}
+```{r model0}
 model0 <- glmmTMB(
   formula = form,
   data = df,
@@ -112,7 +115,7 @@ error due to some legacy optimization code hidden somewhere :-).
 
 But the log likelihood is ok, we get a deviance of:
 
-```{r}
+```{r model0_loglik}
 - 2 * logLik(model0)
 all.equal(sas_deviance, - 2 * as.numeric(logLik(model0)))
 ```
@@ -129,7 +132,7 @@ As the documentation says, $\sigma$ is actually a fixed small non-zero value
 (by default `sqrt(.Machine$double.eps)`).
 Therefore here we fix the residual variance and standard deviation at 0.001.
 
-```{r}
+```{r model1}
 model1 <- glmmTMB(
   formula = form,
   data = df,
@@ -144,7 +147,7 @@ model1 <- glmmTMB(
 Now this actually does converge. It is surprising that `model0` does not deliver
 the same though.
 
-```{r}
+```{r model1_loglik}
 - 2 * logLik(model1)
 all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model0)))
 ```
@@ -153,7 +156,7 @@ all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model0)))
 
 We can also try to leave the residual variance in the model.
 
-```{r}
+```{r model2}
 model2 <- glmmTMB(
   formula = form,
   data = df,
@@ -167,7 +170,7 @@ model2 <- glmmTMB(
 
 Also this converges, and gives the same log-likelihood.
 
-```{r}
+```{r model2_loglik}
 all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model2)))
 ```
 
@@ -175,7 +178,7 @@ all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model2)))
 
 This model can also be fitted with `lme4` and `lmerTest` as follows:
 
-```{r, message = FALSE}
+```{r model2_lmer, message = FALSE}
 library(lmerTest)
 form_lmerTest <- FEV1 ~ ARMCD * AVISIT + RACE + SEX + (0 + AVISIT | USUBJID)
 model2_lmerTest <- lmer(
@@ -198,7 +201,7 @@ Now we can compare the results.
 The fixed effect estimates are numerically very close, and the intercept estimate
 in `model0` is numerically equal to the SAS result:
 
-```{r}
+```{r comp_beta}
 beta_model0 <- fixef(model0)$cond[1]
 beta_model1 <- fixef(model1)$cond[1]
 beta_model2 <- fixef(model2)$cond[1]
@@ -215,7 +218,7 @@ all.equal(beta_model2, beta_model2_lmerTest)
 Let's look at the covariance estimates. Here we realize that now the order
 of the visits in R is the other way around as in SAS ...
 
-```{r}
+```{r comp_cov}
 sas_cov_index <- as.matrix(expand.grid(rownames(sas_cov), colnames(sas_cov)))
 turn <- function(x) {
   matrix(
@@ -259,7 +262,7 @@ Let's see if we can recover approximately the SAS result with `glmmTMB`.
 The code here is very closely following what we have been doing with the
 random intercept example earlier.
 
-```{r}
+```{r satt_funs}
 get_df <- function(model) {
   model_theta_vcov <- vcov(model, full = TRUE)[-(1:11), -(1:11)]
   model_theta_est <- getME(model, "theta")
@@ -313,7 +316,7 @@ get_df <- function(model) {
 
 Let's try this on the different models:
 
-```{r}
+```{r calc_satt, cache=TRUE}
 df_model0 <- get_df(model0) # gives 0.01316441
 df_model1 <- get_df(model1) # gives 167.8286
 sas_beta$df # expected: 171
