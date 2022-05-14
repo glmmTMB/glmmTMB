@@ -264,7 +264,9 @@ random intercept example earlier.
 
 ```{r satt_funs}
 get_df <- function(model) {
-  model_theta_vcov <- vcov(model, full = TRUE)[-(1:11), -(1:11)]
+  model_theta_vcov <- vcov(model, full = TRUE)
+  re_ind <- grepl("^theta", rownames(model_theta_vcov))
+  model_theta_vcov <- model_theta_vcov[re_ind, re_ind]
   model_theta_est <- getME(model, "theta")
   model_beta_vcov <- vcov(model)$cond
   model_covbeta_theta <- function(theta) {
@@ -278,7 +280,10 @@ get_df <- function(model) {
     q_marginal <- unname(glmmTMB:::GMRFmarginal(q_mat, which_fixed))
     solve(as.matrix(q_marginal))
   }
-  all.equal(unname(model_beta_vcov), model_covbeta_theta(model_theta_est))
+  ## FIXME: allow user-set tolerance?
+  ## for this example, 2.8e-05
+  stopifnot(all.equal(unname(model_beta_vcov), model_covbeta_theta(model_theta_est)),
+            tolerance = 1e-4)
   get_jac_list <- function(covbeta_fun, x_opt, ...){
     jac_matrix <- numDeriv::jacobian(
       func = covbeta_fun, 
@@ -315,6 +320,8 @@ get_df <- function(model) {
 ```
 
 Let's try this on the different models:
+
+**fixme/caution**: if not controlling number of OpenMP threads (e.g. `export OMP_NUM_THREADS=1` in parent shell), this can go crazy ...
 
 ```{r calc_satt, cache=TRUE}
 df_model0 <- get_df(model0) # gives 0.01316441
