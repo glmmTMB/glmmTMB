@@ -1285,24 +1285,22 @@ Type objective_function<Type>::operator() ()
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
 
-<<<<<<< HEAD
-=======
   DATA_FACTOR(aggregate);
   if (aggregate.size() > 0) {
     if (aggregate.size() != mu_predict.size())
       Rf_error("'aggregate' wrong size");
-    vector<Type> mu_sum(NLEVELS(aggregate));
-    mu_sum.setZero();
+    vector<Type> tmp(NLEVELS(aggregate));
+    tmp.setZero();
     for (int i=0; i<aggregate.size(); i++) {
-      mu_sum[aggregate[i]] += mu_predict[i];
+      tmp[aggregate[i]] += mu_predict[i];
     }
-    mu_predict = mu_sum;
-    for (int i=0; i<mu_predict.size(); i++) {
-      eta_predict[i] = linkfun(mu_predict[i], link);
+    mu_predict = tmp;
+    for (int i=0; i<tmp.size(); i++) {
+      tmp[i] = linkfun(tmp[i], link);
     }
+    eta_predict = tmp;
   }
 
->>>>>>> 934513d5 (aggregate restructure)
   REPORT(mu_predict);
   REPORT(eta_predict);
   // ADREPORT expensive for long vectors - only needed by predict() method
