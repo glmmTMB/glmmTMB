@@ -228,6 +228,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        ziPredictCode="corrected",
                        doPredict=0,
                        whichPredict=integer(0),
+                       aggregate=factor(),
                        REML=FALSE,
                        start=NULL,
                        map=NULL,
@@ -409,7 +410,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict,
-    aggregate = factor()
+    aggregate = aggregate
   )
 
     ## add prior info
