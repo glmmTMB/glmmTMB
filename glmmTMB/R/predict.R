@@ -122,14 +122,16 @@ predict.glmmTMB <- function(object,
                             fast=NULL,
                             debug=FALSE,
                             aggregate=NULL,
+                            do.bias.correct=FALSE,
+                            bias.correct.control = list(sd = TRUE),
                             ...) {
-  if (!is.null(aggregate)) {
-      se.fit <- TRUE
-      type <- "response"
-      fast <- FALSE
-  }
   ## FIXME: add re.form
-
+  if (length(aggregate) > 0) {
+    fast <- FALSE
+  }
+  if (do.bias.correct) {
+    se.fit <- TRUE
+  }
   if (!is.null(zitype)) {
      warning("zitype is deprecated: please use type instead")
      type <- zitype
@@ -335,6 +337,7 @@ predict.glmmTMB <- function(object,
                                ziPredictCode=ziPredNm,
                                doPredict=do_pred_val,
                                whichPredict=w,
+                               aggregate=aggregate,
                                REML=omi$REML,
                                map=omi$map,
                                sparseX=omi$sparseX))
@@ -379,8 +382,6 @@ predict.glmmTMB <- function(object,
   n_orig <- openmp(n = object$modelInfo$parallel)
   on.exit(openmp(n_orig), add = TRUE)
 
-  if (length(aggregate) == 0) aggregate <- factor()
-  TMBStruc$data.tmb$aggregate <- aggregate
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
@@ -412,10 +413,6 @@ predict.glmmTMB <- function(object,
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
-    do.bias.correct <- (length(aggregate) > 0)
-    bias.correct.control <- if (do.bias.correct)
-                                list(sd = TRUE)
-                            else NULL
     sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
     sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
     w <- if (return_eta) "eta_predict" else "mu_predict"

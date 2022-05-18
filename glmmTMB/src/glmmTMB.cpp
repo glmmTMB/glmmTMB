@@ -808,15 +808,16 @@ Type objective_function<Type>::operator() ()
   if (aggregate.size() > 0) {
     if (aggregate.size() != mu_predict.size())
       Rf_error("'aggregate' wrong size");
-    vector<Type> mu_sum(NLEVELS(aggregate));
-    mu_sum.setZero();
+    vector<Type> tmp(NLEVELS(aggregate));
+    tmp.setZero();
     for (int i=0; i<aggregate.size(); i++) {
-      mu_sum[aggregate[i]] += mu_predict[i];
+      tmp[aggregate[i]] += mu_predict[i];
     }
-    mu_predict = mu_sum;
-    for (int i=0; i<mu_predict.size(); i++) {
-      eta_predict[i] = linkfun(mu_predict[i], link);
+    mu_predict = tmp;
+    for (int i=0; i<tmp.size(); i++) {
+      tmp[i] = linkfun(tmp[i], link);
     }
+    eta_predict = tmp;
   }
 
   REPORT(mu_predict);
