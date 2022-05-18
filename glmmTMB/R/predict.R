@@ -132,6 +132,7 @@ predict.glmmTMB <- function(object,
                             na.action = na.pass,
                             fast=NULL,
                             debug=FALSE,
+                            aggregate=NULL,
                             ...) {
   ## FIXME: implement 'complete' re.form (e.g. identify elements of Z or b that need to be zeroed out)
 
@@ -141,7 +142,12 @@ predict.glmmTMB <- function(object,
       if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
       se.fit <- TRUE
   }
-
+  if (!is.null(aggregate)) {
+      se.fit <- TRUE
+      type <- "response"
+      fast <- FALSE
+  }
+  ## FIXME: add re.form
   if (!is.null(zitype)) {
      warning("zitype is deprecated: please use type instead")
      type <- zitype
@@ -438,6 +444,8 @@ predict.glmmTMB <- function(object,
   }
   on.exit(do.call(openmp, n_orig), add = TRUE)
 
+  if (length(aggregate) == 0) aggregate <- factor()
+  TMBStruc$data.tmb$aggregate <- aggregate
   newObj <- with(TMBStruc,
                  MakeADFun(data.tmb,
                            parameters,
@@ -476,17 +484,24 @@ predict.glmmTMB <- function(object,
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
+
+    do.bias.correct <- (length(aggregate) > 0)
+    bias.correct.control <- if (do.bias.correct)
+                                list(sd = TRUE)
+                            else NULL
     if (cov.fit) {
-        sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
-        covfit <- sdr$cov
-    } else sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
-    sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
-    ## split summary matrix by parameter name
-    sdrsplit <- split.data.frame(sdrsum, rownames(sdrsum))
-    pred <- sdrsplit[[return_par]][,"Estimate"]
-    se <- sdrsplit[[return_par]][,"Std. Error"]
-    w <- which(rownames(sdrsum) == return_par)
-    if (cov.fit) covfit <- covfit[w, w]
+    	sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
+    	covfit <- sdr$cov
+    } else sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
+   	sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
+   	## split summary matrix by parameter name
+   	sdrsplit <- split.data.frame(sdrsum, rownames(sdrsum))
+   	pred <- sdrsplit[[return_par]][,"Estimate"]
+   	se <- sdrsplit[[return_par]][,"Std. Error"]
+   	w <- which(rownames(sdrsum) == return_par)
+   	if (do.bias.correct) {
+        return (sdrsum[w,])
+    }
   }
   if (do.napred) {
       pred <- napredict(na.act,pred)
