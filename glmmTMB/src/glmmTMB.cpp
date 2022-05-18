@@ -775,6 +775,17 @@ Type objective_function<Type>::operator() ()
   REPORT(eta_predict);
   // ADREPORT expensive for long vectors - only needed by predict() method
   if (doPredict==1) {
+    DATA_FACTOR(aggregate);
+    if (aggregate.size() > 0) {
+      if (aggregate.size() != mu_predict.size())
+        Rf_error("'aggregate' wrong size");
+      vector<Type> mu_sum(NLEVELS(aggregate));
+      mu_sum.setZero();
+      for (int i=0; i<aggregate.size(); i++) {
+        mu_sum[aggregate[i]] += mu_predict[i];
+      }
+      mu_predict = mu_sum;
+    }
 	  ADREPORT(mu_predict);
   } else if (doPredict == 2) {
 	  ADREPORT(eta_predict);
