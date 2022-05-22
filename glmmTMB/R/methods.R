@@ -1377,8 +1377,31 @@ refit.glmmTMB <- function(object, newresp, ...) {
   return(eval(cc))
 }
 
+fast_refit.glmmTMB <- function(object, newresp, update_start = TRUE, ...) {
+    obj <- object$obj
+    ee <- obj$env
+    ## FIXME: check for weird binomial input (factors, logical, two-column matrix ...)
+    ##  and do something appropriate
+    dd <- ee$data
+    dd$yobs <- newresp
+    assign("data", dd, ee) ## stick this in the appropriate environment
+    obj$retape()
+    ## retrieve optimization machinery from original call (should store evaluated version
+    ##  of glmmTMBControl() in model ... !
+    call <- getCall(object)
+    cc <- call$control
+    cc <- if (is.null(cc)) glmmTMBControl() else eval.parent(cc)
+    if (cc$profile) stop("can't currently handle profile = TRUE")
+    fit <- optfun(obj, cc)
+    sdr <- sdreport(obj, getJointPrecision=isREML(object))
+    ret <- structure(namedList(obj, fit, sdr, call=call,
+                               frame=object$frame, modelInfo = object$modelInfo,
+                               fitted),
+                     class = "glmmTMB")
+    return(ret)
+}
 
-## copied from lme4, with addition of 'component' argument
+    ## copied from lme4, with addition of 'component' argument
 ## FIXME: migrate back to lme4? component is NULL for back-compat.
 ## FIXME:
 ## coef() method for all kinds of "mer", "*merMod", ... objects

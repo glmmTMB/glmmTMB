@@ -1,6 +1,29 @@
 ## internal flag for debugging OpenMP behaviour
 debug_openmp <- FALSE
 
+## avoid repetition; rely on environment for parameters
+optfun <- function(obj, control) {
+    res <- with(obj,
+                if( length(par) ) {
+                    do.call(control$optimizer,
+                            c(list(par, fn, gr,
+                                   control = control $ optCtrl),
+                              control $ optArgs))
+                } else {
+                    list( par=par, objective=fn(par))
+                })
+    ## make optim() results look like nlminb() results (which is
+    ## what glmmTMB is expecting downstream)
+    ## FIXME: what does nloptr output look like?
+    ## nlminb components: par, objective, convergence, message
+    ## optim components: par, value, counts, convergence, message
+    if ("value" %in% names(res)) {
+        res$objective <- res$value
+        res$value <- NULL
+    }
+    return(res)
+}
+
 ## glmmTMB openmp controller copied from TMB (Windows needs it).
 openmp <- function (n = NULL) {
     if (debug_openmp && !is.null(n)) {
@@ -1308,29 +1331,6 @@ fitTMB <- function(TMBStruc) {
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
     }
 
-    ## avoid repetition; rely on environment for parameters
-    optfun <- function() {
-        res <- with(obj,
-             if( length(par) ) {
-                 do.call(control$optimizer,
-                         c(list(par, fn, gr,
-                                control = control $ optCtrl),
-                           control $ optArgs))
-             } else {
-                 list( par=par, objective=fn(par))
-             })
-        ## make optim() results look like nlminb() results (which is
-        ## what glmmTMB is expecting downstream)
-        ## FIXME: what does nloptr output look like?
-        ## nlminb components: par, objective, convergence, message
-        ## optim components: par, value, counts, convergence, message
-        if ("value" %in% names(res)) {
-            res$objective <- res$value
-            res$value <- NULL
-        }
-        return(res)
-    }
-
     if (control $ profile) {
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
@@ -1340,7 +1340,7 @@ fitTMB <- function(TMBStruc) {
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
-        optTime <- system.time(fit <- optfun())
+        optTime <- system.time(fit <- optfun(obj, control))
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
@@ -1396,11 +1396,12 @@ fitTMB <- function(TMBStruc) {
         if (any(is.na(obj$gr(obj$par)))) {
             stop("some elements of gradient are NaN at starting parameter values")
         }
-        optTime <- system.time(fit <- optfun())
+        optTime <- system.time(fit <- optfun(obj, control))
     }
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
+    ## FIXME: what is this doing?? vestigial??
     fitted <- NULL
 
     if (TMBStruc$se) {
