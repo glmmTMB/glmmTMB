@@ -40,7 +40,7 @@ License: AGPL-3
 Depends: R (>= 3.2.0)
 Imports:
     methods,
-    TMB (>= 1.7.14),
+    TMB (>= 1.9.0),
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
