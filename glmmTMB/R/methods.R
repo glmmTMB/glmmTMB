@@ -1377,6 +1377,23 @@ refit.glmmTMB <- function(object, newresp, ...) {
   return(eval(cc))
 }
 
+#' refit (smarter)
+#' An \strong{experimental} improved refit method; modifies
+#' fitted glmmTMB object rather than constructing it from scratch
+#' Current limitations:
+#' \itemize{
+#' \item Doesn't do any convergence checking/warning
+#' \item Doesn't work with \code{profile = TRUE}
+#' \item Doesn't handle "exotic" responses (i.e. anything but a
+#' numeric vector, such as a two-column matrix or factor-valued response
+#' for a binomial model)
+#' \item Still requires access to the original environment, for reconstructing
+#' control options
+#' }
+#' @param object fitted glmmTMB model
+#' @param newresp new response vector
+#' @param update_start set starting parameters to previously fitted values?
+#' 
 fast_refit.glmmTMB <- function(object, newresp, update_start = TRUE, ...) {
     obj <- object$obj
     ee <- obj$env
@@ -1385,6 +1402,13 @@ fast_refit.glmmTMB <- function(object, newresp, update_start = TRUE, ...) {
     dd <- ee$data
     dd$yobs <- newresp
     assign("data", dd, ee) ## stick this in the appropriate environment
+    if (update_start) {
+        p <- ee$last.par.best
+        if (length(ee$random)>0) {
+            p <- p[-ee$random]
+        }
+        obj$par <- p
+    }
     obj$retape()
     ## retrieve optimization machinery from original call (should store evaluated version
     ##  of glmmTMBControl() in model ... !
