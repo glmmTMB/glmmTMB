@@ -8,14 +8,20 @@
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{predict(., "zprob")} now returns 0 and
-  \code{predict(., "zlink")} returns \code{-Inf} for all observations
-  for models without zero-inflation (GH #798, Brenton Wiernik) [was
-  previously supposed to throw an error, but incorrectly returned
-  conditional values]
-  \item bug fixes for \code{diagnose} (inverted Z-score; now handles
-  models without random effects)
-} % itemize
+      \code{predict(., "zlink")} returns \code{-Inf} for all observations
+      for models without zero-inflation (GH #798, Brenton Wiernik) [was
+      previously supposed to throw an error, but incorrectly returned
+      conditional values]
+      \item bug fixes and other improvements for \code{diagnose} (inverted Z-score; now handles
+      models without random effects)
+    } % itemize
   } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item now provides Pearson residuals for zero-inflated and
+      variable-dispersion models (Brenton Wiernik)
+    }
+  } % new features
 } % version 1.1.4
 
 \section{CHANGES IN VERSION 1.1.3 (2022-03-13)}{
