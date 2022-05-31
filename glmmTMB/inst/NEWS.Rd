@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.3.9000}{
+\section{CHANGES IN VERSION 1.1.4}{
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{predict(., "zprob")} now returns 0 and
@@ -16,7 +16,7 @@
   models without random effects)
 } % itemize
   } % bug fixes
-} % version 1.1.3.9000
+} % version 1.1.4
 
 \section{CHANGES IN VERSION 1.1.3 (2022-03-13)}{
   \subsection{USER-VISIBLE CHANGES}{
