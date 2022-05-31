@@ -29,7 +29,7 @@ Authors@R: c(person("Mollie","Brooks",
 	person("Charles J.","Geyer", role="ctb"),
 	person("Mikael","Jagan", role="ctb",
 		comment = c(ORCID = "0000-0002-3542-2938")),
-	person("Brenton", "Wiernik", role="ctb"
+	person("Brenton", "Wiernik", role="ctb",
 		comment = c(ORCID = "0000-0001-9560-6336"))
 	)
 Description: Fit linear and generalized linear mixed models with various
