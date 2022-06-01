@@ -60,12 +60,12 @@ sascode <- list(
 )
 result <- r2stream::bee_sas(data = list("dat" = df), sascode = sascode)
 result$test$sas_log
-writeLines(result$test$sas_out, con = "sas_log.txt")
+writeLines(result$test$sas_out, con = system.file("vignettes", "sas_log.txt", package = "glmmTMB"))
 ```
 
 OK so this converges, we get a deviance of 
 
-```{r sas_deviance}
+```{r sas_dev}
 sas_deviance <- 3386.4
 ```
 
@@ -80,7 +80,7 @@ sas_lower_cov <- rbind(
 )
 sas_cov <- sas_lower_cov + t(sas_lower_cov) - diag(diag(sas_lower_cov))
 sas_cov
-solve(sas_cov)
+stopifnot(all(eigen(sas_cov)$values > 0)) # Check positive definiteness.
 rownames(sas_cov) <- paste0("AVISITVIS", 1:4)
 colnames(sas_cov) <- rownames(sas_cov)
 ```
@@ -102,11 +102,15 @@ In `model0` we force the residual variance to be 0.
 The idea is that otherwise we have one parameter too much in the model.
 
 ```{r model0}
-model0 <- glmmTMB(
-  formula = form,
-  data = df,
-  dispformula = ~ 0,
-  REML = TRUE
+library(testthat)
+expect_warning(
+  model0 <- glmmTMB(
+    formula = form,
+    data = df,
+    dispformula = ~ 0,
+    REML = TRUE
+  ),
+  "false convergence"
 )
 ```
 
@@ -115,16 +119,39 @@ error due to some legacy optimization code hidden somewhere :-).
 
 But the log likelihood is ok, we get a deviance of:
 
-```{r model0_loglik}
-- 2 * logLik(model0)
-all.equal(sas_deviance, - 2 * as.numeric(logLik(model0)))
+```{r model0_dev}
+(model0_deviance <- - 2 * as.numeric(logLik(model0)))
+all.equal(sas_deviance, model0_deviance, tol = 1e-4)
 ```
 
 which matches numerically what we get with SAS.
 
 **FIXME**: 
-- why do we get "false convergence"?
-- Do we want to make these easier for users to fix/work around?
+- Why do we get "false convergence"?
+  -> Could this just be because the dispersion is estimated to be near zero?
+- How can this be fixed?
+- Do we want to make this easier for users to fix or work around?
+
+Let's try quickly to use `optim()` instead and see if that helps:
+
+```{r model0_optim}
+model0_optim <- update(
+  model0,
+  control = glmmTMBControl(
+    optimizer = optim,
+    optArgs = list(method = "BFGS")
+  )
+)
+```
+
+So this does not give this warning, which is nice. Let's confirm that the deviance
+and estimated variance parameters are numerically equal:
+
+```{r model0_optim_compare}
+(model0_optim_deviance <- - 2 * as.numeric(logLik(model0_optim)))
+all.equal(model0_optim_deviance, model0_deviance)
+all.equal(getME(model0, "theta"), getME(model0_optim, "theta"), tol = 1e-4)
+```
 
 ## `model1`: Forcing fixed residual variance at 1
 
@@ -138,18 +165,18 @@ model1 <- glmmTMB(
   data = df,
   dispformula = ~ 0,
   control = glmmTMB::glmmTMBControl(
-    zerodisp_val = 0.001
+    zerodisp_val = log(0.001)
   ),
   REML = TRUE
 )
 ```
 
-Now this actually does converge. It is surprising that `model0` does not deliver
-the same though.
+Now this actually does converge, also with the default `nlminb` optimizer. 
+It is surprising that `model0` does not deliver the same though.
 
-```{r model1_loglik}
-- 2 * logLik(model1)
-all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model0)))
+```{r model1_dev}
+(model1_deviance <- - 2 * as.numeric(logLik(model1)))
+all.equal(model0_deviance, model1_deviance, tol = 1e-4)
 ```
 
 ## `model2`: Leaving residual variance in the model
@@ -161,22 +188,20 @@ model2 <- glmmTMB(
   formula = form,
   data = df,
   dispformula = ~ 1,
-  REML = TRUE,
-  control = glmmTMB::glmmTMBControl(
-    zerodisp_val = 1
-  )
+  REML = TRUE
 )
 ```
 
 Also this converges, and gives the same log-likelihood.
 
-```{r model2_loglik}
+```{r model2_dev}
 all.equal(- 2 * as.numeric(logLik(model1)), - 2 * as.numeric(logLik(model2)))
 ```
 
 ## `lme4`
 
-This model can also be fitted with `lme4` and `lmerTest` as follows:
+This model (i.e. including the residual variance) can also be fitted with 
+`lme4` and `lmerTest` as follows:
 
 ```{r model2_lmer, message = FALSE}
 library(lmerTest)
@@ -189,8 +214,8 @@ model2_lmerTest <- lmer(
 )
 ```
 
-Here we can sometimes see the problem that `lme4` does not converge. Not right now
-but before when we did not put `AVIS4` as reference we had this problem...
+Here we can sometimes see the problem that `lme4` does not converge. (Not right now
+but before when we did not put `AVIS4` as reference we had this problem.)
 
 ## Comparing the models
 
@@ -203,14 +228,16 @@ in `model0` is numerically equal to the SAS result:
 
 ```{r comp_beta}
 beta_model0 <- fixef(model0)$cond[1]
+beta_model0_optim <- fixef(model0_optim)$cond[1]
 beta_model1 <- fixef(model1)$cond[1]
 beta_model2 <- fixef(model2)$cond[1]
 beta_model2_lmerTest <- fixef(model2_lmerTest)[1]
 
-all.equal(sas_beta$est, as.numeric(beta_model0))
-all.equal(beta_model0, beta_model1)
-all.equal(beta_model1, beta_model2)
-all.equal(beta_model2, beta_model2_lmerTest)
+all.equal(sas_beta$est, as.numeric(beta_model0), tol = 1e-5)
+all.equal(sas_beta$est, as.numeric(beta_model0_optim), tol = 1e-5)
+all.equal(beta_model0, beta_model1, tol = 1e-5)
+all.equal(beta_model1, beta_model2, tol = 1e-7)
+all.equal(beta_model2, beta_model2_lmerTest, tol = 1e-6)
 ```
 
 ### Covariance structure
@@ -230,26 +257,30 @@ turn <- function(x) {
 }
 
 cov_model0 <- turn(VarCorr(model0)$cond[[1]])
+cov_model0_optim <- turn(VarCorr(model0_optim)$cond[[1]])
 cov_model1 <- turn(VarCorr(model1)$cond[[1]])
 cov_model2 <- turn(VarCorr(model2)$cond[[1]])
 cov_model2_lmerTest <- turn(VarCorr(model2_lmerTest)[[1]])
 
-all.equal(sas_cov, cov_model0, check.attributes = FALSE)
+all.equal(sas_cov, cov_model0, check.attributes = FALSE, tol = 1e-3)
+all.equal(sas_cov, cov_model0_optim, check.attributes = FALSE, tol = 1e-3)
 all.equal(cov_model0, cov_model1, check.attributes = FALSE)
-all.equal(sas_cov, cov_model1, check.attributes = FALSE)
-all.equal(cov_model1, cov_model2, check.attributes = FALSE)
-all.equal(sas_cov, cov_model2, check.attributes = FALSE)
-all.equal(cov_model0, cov_model2, check.attributes = FALSE)
-all.equal(cov_model2, cov_model2_lmerTest, check.attributes = FALSE)
-all.equal(sas_cov, cov_model2_lmerTest, check.attributes = FALSE)
+all.equal(cov_model0, cov_model0_optim, check.attributes = FALSE)
+all.equal(sas_cov, cov_model1, check.attributes = FALSE, tol = 1e-3)
+all.equal(cov_model1, cov_model2, check.attributes = FALSE, tol = 1e-3)
+all.equal(sas_cov, cov_model2, check.attributes = FALSE, tol = 1e-3)
+all.equal(cov_model0, cov_model2, check.attributes = FALSE, tol = 1e-3)
+all.equal(cov_model2, cov_model2_lmerTest, check.attributes = FALSE, tol = 1e-3)
+all.equal(sas_cov, cov_model2_lmerTest, check.attributes = FALSE, tol = 1e-3)
 ```
 
-It is surprising that `model0` and `model1` don't yield the same covariance
+It is interesting that `model0` and `model1` don't yield exactly the same covariance
 estimate. Both fix the residual variance at a constant, but then the remaining
-variance parameters should compensate accordingly.
+variance parameters should compensate accordingly. I guess this is just because
+of numerical optimization path differences.
 
 There are some numerical differences, but fortunately the SAS result is close
-to the `model0` result (slightly more than `1e-4`).
+to the `model0` and `model0_optim` results (slightly more than `1e-4`).
 
 # Calculating the Satterthwaite degrees of freedom
 
