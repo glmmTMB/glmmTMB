@@ -1,4 +1,4 @@
-                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   1
+                                                           The SAS System                   Wednesday, June  1, 2022 10:16:00 AM   1
 
                                                         The Mixed Procedure
 
@@ -23,7 +23,7 @@
                                         AVISIT          4    VIS1 VIS2 VIS3 VIS4           
                                         SEX             2    Female Male                   
                                         ARMCD           2    TRT PBO                       
-                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   2
+                                                           The SAS System                   Wednesday, June  1, 2022 10:16:00 AM   2
 
                                                         The Mixed Procedure
 
@@ -83,7 +83,7 @@
 
                                             Number of Observations Read             800
                                             Number of Observations Used             537
-                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   3
+                                                           The SAS System                   Wednesday, June  1, 2022 10:16:00 AM   3
 
                                                         The Mixed Procedure
 
@@ -143,7 +143,7 @@
                                                -2 Res Log Likelihood          3386.4
                                                AIC (Smaller is Better)        3406.4
                                                AICC (Smaller is Better)       3406.9
-                                                           The SAS System                     Thursday, May 12, 2022 09:49:00 PM   4
+                                                           The SAS System                   Wednesday, June  1, 2022 10:16:00 AM   4
 
                                                         The Mixed Procedure
 
