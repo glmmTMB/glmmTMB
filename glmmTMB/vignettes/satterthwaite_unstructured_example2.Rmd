@@ -353,6 +353,11 @@ get_df <- function(model, L, vcov_tolerance = 1e-4) {
 }
 ```
 
+Problem: the residual variance $\sigma^2$ appears in both the numerator and 
+denominator. 
+We can try to take out the residual variance manually so that we don't have to
+depend on the limiting behavior.
+
 Let's try this on the different models:
 
 **fixme/caution**: if not controlling number of OpenMP threads 
@@ -390,23 +395,32 @@ Questions:
 3) Could we potentially perform the Jacobian calculation with (another version of) `TMB`?
   (so that we don't have to use numeric differentiation but can actually use
    automatic differentiation).
+  -> Yes, see below
 
 ### Another way to get `model_covbeta_theta()`
 
 Brainstorming:
 
 - `sdreport`: After optimization of an AD model, `sdreport` is used to calculate standard deviations of all model parameters, *including non linear functions of random effects and parameters* specified through the `ADREPORT()` macro from the user template.
-
-- Cov matrix: Can the new AD library `TMBad` help potentially? This is a new AD framework (previously `CppAD`). See `?TMB::compile`. From https://github.com/glmmTMB/glmmTMB/issues/803 it seems to me that the AD hessian of the log-likelihood function could be helpful? As this would give more a closed form representation of the covariance matrix?
+-> not useful I guess
 
 - Manual covariance matrix: We could try to manually calculate the
 covariance matrix, based on the marginal model. We would just
 need to know where in `glmmTMB` object the design matrices are
 for the random and fixed effects etc.
+-> not so interesting since it does not address the core problem.
 
-- Jacobian: In principle TMB supports Jacobian calculations, see 
+- Cov matrix: Can the new AD library `TMBad` help potentially? This is a new AD framework (previously `CppAD`). See `?TMB::compile`. From https://github.com/glmmTMB/glmmTMB/issues/803 it seems to me that the AD hessian of the log-likelihood function could be helpful? As this would give more a closed form representation of the covariance matrix?
+-> maybe interesting
+
+- Jacobian: In principle `TMB` supports Jacobian calculations, see 
 https://github.com/kaskr/adcomp/blob/d6bb3f238ddee243745658e331d07853a3c9d673/TMB/inst/include/tmbutils/autodiff.hpp#L143 ff.
+-> Promising! We could also ask Kasper Kristensen for help with this.
 
-- I wonder if trying out a simple TMB-only prototype of the 
+- I wonder if trying out a simple `TMB`-only prototype of the 
 unstructured covariance model could be instructive? (so basically
 bare-bones without nice R interface etc.)
+-> It could be nice to have vector-valued random effects example for TMB anyway...
+and we could then try to add the Jacobian calculation on top. That should be instructive
+before trying to put this together with `glmmTMB`.
+
