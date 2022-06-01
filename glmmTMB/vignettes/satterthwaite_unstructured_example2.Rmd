@@ -391,5 +391,22 @@ Questions:
   (so that we don't have to use numeric differentiation but can actually use
    automatic differentiation).
 
+### Another way to get `model_covbeta_theta()`
 
+Brainstorming:
 
+- `sdreport`: After optimization of an AD model, `sdreport` is used to calculate standard deviations of all model parameters, *including non linear functions of random effects and parameters* specified through the `ADREPORT()` macro from the user template.
+
+- Cov matrix: Can the new AD library `TMBad` help potentially? This is a new AD framework (previously `CppAD`). See `?TMB::compile`. From https://github.com/glmmTMB/glmmTMB/issues/803 it seems to me that the AD hessian of the log-likelihood function could be helpful? As this would give more a closed form representation of the covariance matrix?
+
+- Manual covariance matrix: We could try to manually calculate the
+covariance matrix, based on the marginal model. We would just
+need to know where in `glmmTMB` object the design matrices are
+for the random and fixed effects etc.
+
+- Jacobian: In principle TMB supports Jacobian calculations, see 
+https://github.com/kaskr/adcomp/blob/d6bb3f238ddee243745658e331d07853a3c9d673/TMB/inst/include/tmbutils/autodiff.hpp#L143 ff.
+
+- I wonder if trying out a simple TMB-only prototype of the 
+unstructured covariance model could be instructive? (so basically
+bare-bones without nice R interface etc.)
