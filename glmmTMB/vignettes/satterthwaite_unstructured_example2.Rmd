@@ -285,16 +285,19 @@ to the `model0` and `model0_optim` results (slightly more than `1e-4`).
 # Calculating the Satterthwaite degrees of freedom
 
 Now let's calculate the Satterthwaite d.f. for the intercept estimate, and we try
-this for the different models from above. We hope for the `model0` from above 
-since it worked best so far (it converged
-with the automatic differentation and gave the closest covariance matrix).
+this for the different models from above. We hope for the `model0_optim` from above 
+since it worked best so far (it converged using `optim`
+with the automatic differentiation and gave the closest covariance matrix).
 
 Let's see if we can recover approximately the SAS result with `glmmTMB`. 
 The code here is very closely following what we have been doing with the
 random intercept example earlier.
 
 ```{r satt_funs}
-get_df <- function(model) {
+get_df <- function(model, L, vcov_tolerance = 1e-4) {
+  stopifnot(is(model, "glmmTMB"))
+  stopifnot(is.numeric(L))
+  
   model_theta_vcov <- vcov(model, full = TRUE)
   re_ind <- grepl("^theta", rownames(model_theta_vcov))
   model_theta_vcov <- model_theta_vcov[re_ind, re_ind]
@@ -311,10 +314,11 @@ get_df <- function(model) {
     q_marginal <- unname(glmmTMB:::GMRFmarginal(q_mat, which_fixed))
     solve(as.matrix(q_marginal))
   }
-  ## FIXME: allow user-set tolerance?
-  ## for this example, 2.8e-05
-  stopifnot(all.equal(unname(model_beta_vcov), model_covbeta_theta(model_theta_est)),
-            tolerance = 1e-4)
+  stopifnot(all.equal(
+    unname(model_beta_vcov), 
+    model_covbeta_theta(model_theta_est),
+    tolerance = vcov_tolerance
+  ))
   get_jac_list <- function(covbeta_fun, x_opt, ...){
     jac_matrix <- numDeriv::jacobian(
       func = covbeta_fun, 
@@ -322,12 +326,12 @@ get_df <- function(model) {
       ...
     )
     lapply(
-      seq_len(ncol(jac_matrix)), # for each variance parameter
+      seq_len(ncol(jac_matrix)), # For each variance parameter.
       FUN = function(i) {
-        # this column contains the pxp entries
+        # This column contains the p x p entries:
         jac_col <- jac_matrix[, i]
         p <- sqrt(length(jac_col))
-        # get p x p matrix
+        # Get p x p matrix.
         matrix(jac_col, nrow = p, ncol = p)
       }
     )
@@ -340,7 +344,6 @@ get_df <- function(model) {
       numeric(1L)
     ) 
   }
-  L <- c(1, rep(0, 10)) # get the intercept only.
   model_grad_theta <- get_gradient(model_jac_theta, L)
   model_var_contrast <- drop(t(L) %*% model_beta_vcov %*% L)
   model_v_numerator <- 2 * model_var_contrast ^ 2
@@ -352,11 +355,14 @@ get_df <- function(model) {
 
 Let's try this on the different models:
 
-**fixme/caution**: if not controlling number of OpenMP threads (e.g. `export OMP_NUM_THREADS=1` in parent shell), this can go crazy ...
+**fixme/caution**: if not controlling number of OpenMP threads 
+(e.g. `export OMP_NUM_THREADS=1` in parent shell), this can go crazy ...
 
 ```{r calc_satt, cache=TRUE}
-df_model0 <- get_df(model0) # gives 0.01316441
-df_model1 <- get_df(model1) # gives 167.8286
+L <- c(1, rep(0, 10)) # get the intercept only.
+(df_model0 <- get_df(model0, L, vcov_tolerance = 1e-3)) # gives 0.01316441
+(df_model0_optim <- get_df(model0_optim, L)) # gives 0.09962662
+(df_model1 <- get_df(model1, L)) # gives 167.8286
 sas_beta$df # expected: 171
 ```
 
@@ -370,13 +376,20 @@ Questions:
 
 0) Why is the Satterthwaite in `model0` completely off? Is it because of the
    "false convergence" or something else?
+  -> It is not because of "false convergence", since also `model0_optim` is 
+     completely off.
+  -> How can we improve the function `model_covbeta_theta()`?
 
 1) Can we set sigma exactly to zero to improve this? (by modifying `glmmTMB`) 
+  -> See the feature branch `zero_resids`.
 
 2) Why do we get "false convergence" with the default little epsilon used for $\sigma$
    in `model0`?
+  -> I would guess it is because the very small `sigma` used there.
 
 3) Could we potentially perform the Jacobian calculation with (another version of) `TMB`?
+  (so that we don't have to use numeric differentiation but can actually use
+   automatic differentiation).
 
 
 
