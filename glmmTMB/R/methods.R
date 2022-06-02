@@ -955,7 +955,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## Take subset
 
         ## drop mapped values (where lower == upper)
-        ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
+        ## can get confused by failed stderr calculation
+        ##  (both lwr and upr CIs are NA/NaN)
+        mapped <- !(is.na(ci[,1] & is.na(ci[,2]))) &
+            (ci[,2] == ci[,1])
+        ci <- ci[!mapped, , drop=FALSE]
 
         ## now get selected parameters
         if (!is.null(parm)) {
