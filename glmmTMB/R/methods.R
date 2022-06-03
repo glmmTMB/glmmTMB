@@ -892,7 +892,12 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             }
             return(ss)
         }
-        reduce <- function(VC) sapply(VC[[component]], cfun)
+        reduce <- function(VC) {
+            L <- lapply(VC[[component]], cfun)
+            L2 <- Map(function(x, n) setNames(x, paste(names(x), n, sep = "|")),
+                      L, names(L))
+            return(unlist(unname(L2)))
+        }
         ci.sd <- .CI_univariate_monotone(object,
                                          VarCorr,
                                          reduce = reduce,
