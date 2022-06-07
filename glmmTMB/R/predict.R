@@ -126,7 +126,10 @@ predict.glmmTMB <- function(object,
                             ...) {
   ## FIXME: add re.form
     
-  if (cov.fit) se.fit <- TRUE
+  if (cov.fit) {
+      if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
+      se.fit <- TRUE
+  }
 
   if (!is.null(zitype)) {
      warning("zitype is deprecated: please use type instead")
@@ -419,7 +422,7 @@ predict.glmmTMB <- function(object,
     ## e.g. sdrsum["mu_predict", ...] returns only the first instance
     w <- which(rownames(sdrsum)==w)
     pred <- sdrsum[w,"Estimate"]
-    se <- sdrsum[w ,"Std. Error"]
+    se <- sdrsum[w,"Std. Error"]
     if (cov.fit) covfit <- covfit[w, w]
   }
   if (do.napred) {
