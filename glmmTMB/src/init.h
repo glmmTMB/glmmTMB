@@ -22,13 +22,11 @@ extern "C" {
 
   SEXP compois_calc_var(SEXP mean, SEXP nu);
   SEXP omp_check();
-  SEXP omp_num_threads(SEXP);
 
   const static R_CallMethodDef R_CallDef[] = {
     TMB_CALLDEFS,
     CALLDEF(compois_calc_var, 2),
     CALLDEF(omp_check, 0),
-    CALLDEF(omp_num_threads, 1),
     {NULL, NULL, 0}
   };
 

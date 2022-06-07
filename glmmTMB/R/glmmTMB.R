@@ -15,7 +15,7 @@ openmp <- function (n = NULL) {
       w <- options(warn = -1)
       on.exit(options(warn = w[["warn"]]))
     }
-    .Call("omp_num_threads", n, PACKAGE = "glmmTMB")
+    TMB::openmp(n, DLL="glmmTMB")
 }
 
 ##' Change starting parameters, either by residual method or by user input (start)
