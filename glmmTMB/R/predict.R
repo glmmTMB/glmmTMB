@@ -61,6 +61,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' @param newdata new data for prediction
 ##' @param newparams new parameters for prediction
 ##' @param se.fit return the standard errors of the predicted values?
+##' @param cov.fit return the covariance matrix of the predicted values?                        
 ##' @param zitype deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}
 ##' @param type Denoting \eqn{mu} as the mean of the conditional distribution and
 ##' \code{p} as the zero-inflation probability,
@@ -113,6 +114,7 @@ predict.glmmTMB <- function(object,
                             newdata=NULL,
                             newparams=NULL,
                             se.fit=FALSE,
+                            cov.fit=FALSE,
                             re.form=NULL, allow.new.levels=FALSE,
                             type = c("link", "response",
                                      "conditional", "zprob", "zlink",
@@ -123,6 +125,8 @@ predict.glmmTMB <- function(object,
                             debug=FALSE,
                             ...) {
   ## FIXME: add re.form
+    
+  if (cov.fit) se.fit <- TRUE
 
   if (!is.null(zitype)) {
      warning("zitype is deprecated: please use type instead")
@@ -180,7 +184,8 @@ predict.glmmTMB <- function(object,
       pred <- napredict(na.act, pred)
       if (se.fit) se <- napredict(na.act,se)
     }
-    if (!se.fit) return(pred) else return(list(fit=pred, se.fit=se))
+    if (cov.fit) covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
+    if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))
   }
 
   if (fast) {
@@ -348,7 +353,7 @@ predict.glmmTMB <- function(object,
                              any(!is.finite(Zzi@x)) |
                              any(!is.finite(Xd))
     ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
-           This is currently incompatible with se.fit=TRUE."))
+           This is currently incompatible with se.fit=TRUE or cov.fit=TRUE."))
   }
 
   ## FIXME: what if newparams only has a subset of components?
@@ -404,18 +409,27 @@ predict.glmmTMB <- function(object,
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
-    sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
+    if (cov.fit) {
+        sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
+        covfit <- sdr$cov
+    } else sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
     sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
     w <- if (return_eta) "eta_predict" else "mu_predict"
     ## multiple rows with identical names; naive indexing
     ## e.g. sdrsum["mu_predict", ...] returns only the first instance
     w <- which(rownames(sdrsum)==w)
     pred <- sdrsum[w,"Estimate"]
-    se <- sdrsum[w,"Std. Error"]
+    se <- sdrsum[w ,"Std. Error"]
+    if (cov.fit) covfit <- covfit[w, w]
   }
   if (do.napred) {
       pred <- napredict(na.act,pred)
       if (se.fit) se <- napredict(na.act,se)
+      if (cov.fit) {
+          tmp <- covfit
+          covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
+          covfit[!is.na(covfit)] <- as.vector(tmp)
+      }
   }
-  if (!se.fit) return(pred) else return(list(fit=pred,se.fit=se))
+  if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))
 }
