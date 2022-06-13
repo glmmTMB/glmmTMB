@@ -9,6 +9,7 @@
   newdata = NULL,
   newparams = NULL,
   se.fit = FALSE,
+  cov.fit = FALSE,
   re.form = NULL,
   allow.new.levels = FALSE,
   type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
@@ -27,6 +28,8 @@
 \item{newparams}{new parameters for prediction}
 
 \item{se.fit}{return the standard errors of the predicted values?}
+  
+\item{cov.fit}{return the covariance matrix of the predicted values?}
 
 \item{re.form}{\code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)}
 
