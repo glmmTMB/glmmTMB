@@ -805,6 +805,7 @@ format.perc <- function (probs, digits) {
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
+##' @param include.mapped include dummy rows for mapped (i.e. fixed-value) parameters?
 ##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
@@ -822,6 +823,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                       "uniroot"),
                              component = c("all", "cond", "zi", "other"),
                              estimate = TRUE,
+                             include.mapped = FALSE,
                              parallel = c("no", "multicore", "snow"),
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
@@ -1032,6 +1034,14 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         rownames(ci) <- sub("^cond\\.","",rownames(ci))
     }
     return(ci)
+}
+
+## return a list of parameter values 
+map.match <- function(obj) {
+    ee <- object$obj$env
+    ## full parameter list
+    pl_full <- ee$parList(object$fit$par, object$fit$parfull)
+    pl_est <- split(ee$last.par.best, names(ee$last.par.best))
 }
 
 ##' @rdname glmmTMB_methods
