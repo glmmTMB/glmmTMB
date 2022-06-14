@@ -108,8 +108,8 @@ hasRandom <- function(x) {
 }
 
 ## retrieve parameters by name or index
-getParms <- function(parm=NULL, object, full=FALSE) {
-    vv <- vcov(object, full=TRUE)
+getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
+    vv <- vcov(object, full=TRUE, include_mapped = include_mapped)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
     intnames <- names(object$obj$env$last.par) ## internal names
