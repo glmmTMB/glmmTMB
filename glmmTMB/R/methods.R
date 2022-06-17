@@ -423,8 +423,16 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   }
 
   if (full) {
-        colnames(covF) <- rownames(covF) <- unlist(nameList)
-      res <- covF        ## return just a matrix in this case
+      nl <- unlist(nameList)
+      fnl <- unlist(fullNameList)
+      if (identical(nl, fnl)) {
+          colnames(covF) <- rownames(covF) <- unlist(nameList)
+          res <- covF        ## return just a matrix in this case
+      } else {
+          res <- matrix(NA_real_, length(fnl), length(fnl),
+                        dimnames = list(fnl, fnl))
+          res[nl, nl] <- covF
+      }
   } else {
       ## extract block-diagonal matrix
       ss <- split(seq_along(colnames(covF)), colnames(covF))
