@@ -425,7 +425,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   if (full) {
       nl <- unlist(nameList)
       fnl <- unlist(fullNameList)
-      if (identical(nl, fnl)) {
+      if (!include_mapped || identical(nl, fnl)) {
           colnames(covF) <- rownames(covF) <- unlist(nameList)
           res <- covF        ## return just a matrix in this case
       } else {
@@ -861,11 +861,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                if (!estimate) pct else c(pct, "Estimate")))
 
     if (!is.null(parm) || method!="wald") {
-        parm <- getParms(parm, object, full)
+        parm <- getParms(parm, object, full, include_mapped = include_mapped)
     }
 
     wald_comp <- function(component) {
-        vv <- vcov(object)[[component]]
+        vv <- vcov(object, include_mapped = include_mapped)[[component]]
         cf <- fixef(object)[[component]]
         ## strip tag (only really necessary for zi~, d~)
         tag <- if (component=="disp") "d" else component
@@ -890,12 +890,12 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## VarCorr -> stddev
         cfun <- function(x) {
             ss <- attr(x, "stddev")
-            names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
-            cc <- attr(x,"correlation")
+            names(ss) <- paste(component, "Std.Dev", names(ss),sep=".")
+            cc <- attr(x, "correlation")
             if (length(cc)>1) {
-                nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                nn <- outer(colnames(cc), rownames(cc), paste, sep=".")
                 cc <- cc[lower.tri(cc)]
-                nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                nn <- paste(component, "Cor", nn[lower.tri(nn)], sep=".")
                 names(cc) <- nn
                 ss <- c(ss,cc)
             }
@@ -912,6 +912,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                          reduce = reduce,
                                          level = level,
                                          estimate = estimate)
+        
         ## would consider excluding mapped parameters here
         ## (works automatically for fixed effects via vcov)
         ## but tough because of theta <-> sd/corr mapping;
@@ -967,21 +968,24 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }
 
         ## Take subset
-
-        ## drop mapped values (where lower == upper)
-        ## can get confused by failed stderr calculation
-        ##  (both lwr and upr CIs are NA/NaN)
-        mapped <- !(is.na(ci[,1] & is.na(ci[,2]))) &
-            (ci[,2] == ci[,1])
-        ci <- ci[!mapped, , drop=FALSE]
-
+        
+        mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
+        if (!include_mapped) {
+            ## drop mapped values (where lower == upper)
+            ## can get confused by failed stderr calculation
+            ##  (both lwr and upr CIs are NA/NaN)
+            ci <- ci[!mapped, , drop=FALSE]
+        } else {
+            ci[mapped, 1:2] <- NA_real_
+        }
+        
         ## now get selected parameters
         if (!is.null(parm)) {
             ci <- ci[parm, , drop=FALSE]
         } else {
             ## drop residual std dev/trivial dispersion parameter
             if (!full) {
-                ci <- ci[rownames(ci)!="sigma",, drop=FALSE]
+                ci <- ci[rownames(ci) != "sigma",, drop=FALSE]
             }
         }
 

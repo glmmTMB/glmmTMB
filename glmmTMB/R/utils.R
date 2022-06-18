@@ -107,15 +107,27 @@ hasRandom <- function(x) {
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
 }
 
-## retrieve parameters by name or index
+##' retrieve parameters by name or index
+##' @param parm parameter specifier
+##' @param object fitted glmmTMB object
+##' @param full
+##' @param include_mapped
+##' @noRd
 getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
     vv <- vcov(object, full=TRUE, include_mapped = include_mapped)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
-    intnames <- names(object$obj$env$last.par) ## internal names
+    ee <- object$obj$env
+
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
-    intnames <- intnames[!intnames %in% c("b","bzi")]
+    drop_rand <- function(x) x[!x %in% c("b", "bzi")]
+    if (!include_mapped) {
+        intnames <- drop_rand(names(ee$last.par))
+    } else {
+        pl <- ee$parList()
+        intnames <- drop_rand(rep(names(pl), lengths(pl)))
+    }
     if (length(pnames) != length(sds)) { ## shouldn't happen ...
         stop("length mismatch between internal and external parameter names")
     }

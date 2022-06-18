@@ -302,6 +302,58 @@ test_that("confint with multiple REs", {
     }
 })
 
+test_that("confint with mapped parameters", {
+    data(randu)
+    randu$A <- factor(rep(c(1,2), 200))
+    randu$B <- factor(rep(c(1,2,3,4), 100))
+
+    test0 <- glmmTMB(y ~ x + z + (0 +x|A) + (1|B), family="gaussian", data=randu)
+    test1 <- update(test0,
+                    start = list(theta = c(0,log(1e3))),
+                    map = list(theta = factor(c(1,NA))))
+    test2 <- update(test0,
+                    start = list(beta = c(1,0,0)),
+                    map = list(beta = factor(c(1,NA,2))))
+    ## getParms() not exported ...
+    ## expect_equal(getParms("beta_", test2), 1:2)
+    ## expect_equal(getParms("beta_", test2, include_mapped = TRUE), 1:3)
+    v1 <- vcov(test2, include_mapped = TRUE)
+    expect_equal(dim(v1$cond), c(3,3))
+    expect_true(all(is.na(v1$cond["x",] )))
+    c1 <- confint(test2, parm = "beta_", include_mapped = TRUE)
+    expect_equal(nrow(c1), 3)
+    expect_equal(unname(unlist(c1["x",])), c(NA_real_, NA_real_, 0))
+
+
+    ## getParms("theta_", test2) ## 4:5
+    ## getParms("theta_", test2, include_mapped = TRUE) ## 5:6
+
+    c3 <- confint(test2)
+    expect_equal(nrow(c3), 4)
+    expect_equal(rownames(c3),
+                 c("(Intercept)", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
+    c4 <- confint(test2, include_mapped = TRUE)
+    expect_equal(confint(test2, include_mapped = TRUE, parm = "theta_"),
+                 confint(test2, parm = "theta_"))
+    c5 <- confint(test2, parm = "sigma")
+
+    ## expect_equal(getParms("theta_", test1), 5L)
+    ## expect_equal(getParms("theta_", test1, include_mapped = TRUE), 5:6)
+    v2 <- vcov(test1, include_mapped = TRUE, full = TRUE)
+    expect_equal(dim(v2), c(6,6))
+    expect_true(all(is.na(v2["theta_1|B.1",])))
+
+    c6 <- confint(test1, include_mapped = TRUE)
+    expect_equal(rownames(c6),
+                 c("(Intercept)", "x", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
+    c7 <- confint(test1, parm = "theta_")
+    expect_equal(rownames(c7), "Std.Dev.x|A")
+    c8 <- confint(test1, parm = "theta_", include_mapped = TRUE)
+    expect_equal(rownames(c8), c("Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
+    expect_equal(unname(c8["Std.Dev.(Intercept)|B", 1:2]), rep(NA_real_, 2))
+})
+
+
 test_that("profile", {
     p1_th <- profile(fm1,parm="theta_",npts=4)
     expect_true(all(p1_th$.par=="theta_1|Subject.1"))
