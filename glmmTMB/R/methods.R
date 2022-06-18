@@ -860,7 +860,8 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
 
-    if (!is.null(parm) || method!="wald") {
+    if (!is.null(parm) || method != "wald") {
+        parm0 <- parm
         parm <- getParms(parm, object, full, include_mapped = include_mapped)
     }
 
@@ -968,12 +969,12 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }
 
         ## Take subset
-        
+
+        ## identify mapped values: lwr and upr CIs equal but *not NaN
+        ##  (which indicates a failed fit instead)
         mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
         if (!include_mapped) {
             ## drop mapped values (where lower == upper)
-            ## can get confused by failed stderr calculation
-            ##  (both lwr and upr CIs are NA/NaN)
             ci <- ci[!mapped, , drop=FALSE]
         } else {
             ci[mapped, 1:2] <- NA_real_
@@ -991,6 +992,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
         ## end Wald method
     } else if (method=="uniroot") {
+        if (include_mapped) warning("uniroot confint unreliable with mapped parameters: check your results")
         if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
@@ -1035,6 +1037,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ci <- rbind(ci,L) ## really just adding column names!
     }
     else {  ## profile CIs
+        parm <- getParms(parm0, object, full, include_mapped = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
                       parallel=parallel,ncpus=ncpus,
                       ...)
