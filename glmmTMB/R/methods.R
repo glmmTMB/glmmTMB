@@ -367,60 +367,12 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   to_keep <- grep(keepTag,colnames(cov.all.parms)) # only keep betas
   covF <- cov.all.parms[to_keep,to_keep,drop=FALSE]
 
-  mkNames <- function(tag) {
-      X <- getME(object,paste0("X",tag))
-      if (trivialFixef(nn <- colnames(X),tag)
-          ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" &&
-               (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
-          return(character(0))
-      }
-      return(paste(tag,nn,sep="~"))
-  }
-
-  nameList <- setNames(list(colnames(getME(object,"X")),
-                       mkNames("zi"),
-                       mkNames("d")),
-                names(cNames))
-
-  if(full) {
-      ## FIXME: haven't really decided if we should drop the
-      ##   trivial variance-covariance dispersion parameter ??
-      ## if (trivialDisp(object))
-      ##    res <- covF[-nrow(covF),-nrow(covF)]
-
-      reNames <- function(tag) {
-        re <- object$modelInfo$reStruc[[paste0(tag,"ReStruc")]]
-        num_theta <- vapply(re,"[[","blockNumTheta", FUN.VALUE = numeric(1))
-        nn <- mapply(function(n,L) paste(n, seq(L), sep="."),
-                     names(re), num_theta)
-        if (length(nn) == 0) return(nn)
-        return(paste("theta",gsub(" ", "", unlist(nn)), sep="_"))
-      }
-      ## nameList for estimated variables;
-      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
-  }
-
 
   ## drop NA-mapped variables
 
-  ## for matching map names vs nameList components ...
-  par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
 
-  fullNameList <- nameList
-  map <- object$obj$env$map
-  if (length(map)>0) {
-        ## fullNameList for all variables, including mapped vars
-      ## (nameList will get reduced shortly)
-      for (m in seq_along(map)) {
-          if (length(NAmap <- which(is.na(map[[m]])))>0) {
-              w <- match(names(map)[m],par_components) ##
-              if (length(nameList)>=w) { ## may not exist if !full
-                  nameList[[w]] <- nameList[[w]][-NAmap]
-              }
-          }
-      }
-  }
+  fullNameList <- getAllParnames(object, full)
+  nameList <- getEstParnames(object, full)
 
   if (full) {
       nl <- unlist(nameList)
@@ -444,12 +396,13 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
           xnms <- nameList[[cnm]]
+          map <- object$obj$env$map
           if (!include_mapped || length(map)==0) {
               dimnames(m) <- list(xnms,xnms)
           } else {
               fnm <- fullNameList[[cnm]]
-              mm <- matrix(NA_real_,length(fnm),length(fnm),
-                           dimnames=list(fnm,fnm))
+              mm <- matrix(NA_real_, length(fnm), length(fnm),
+                           dimnames=list(fnm, fnm))
               mm[nameList[[cnm]],nameList[[cnm]]] <- m
               m <- mm
           }
