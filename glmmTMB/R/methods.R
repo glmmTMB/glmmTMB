@@ -789,6 +789,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              cl = NULL,
                              full = FALSE,
                              ...) {
+    
     method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
@@ -804,6 +805,17 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     components <- match.arg(component, several.ok = TRUE)
     components.has <- function(x)
         any(match(c(x, "all"), components, nomatch=0L)) > 0L
+
+    ## expand CI matrix to include mapped parameters
+    expand_ci_with_mapped <- function(ci, parm0) {
+        parm_all <- getParms(parm0, object, full, include_mapped = TRUE)
+        pn <- unlist(getAllParnames(object, full))[parm_all]
+        ci_full <- matrix(NA_real_, ncol = 2, nrow = length(parm_all),
+                          dimnames = list(pn, colnames(ci)))
+        ci_full[rownames(ci), ] <- ci
+        return(ci_full)
+    }
+    
     a <- (1 - level)/2
     a <- c(a, 1 - a)
     pct <- format.perc(a, 3)
@@ -945,7 +957,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
         ## end Wald method
     } else if (method=="uniroot") {
-        if (include_mapped) warning("uniroot confint unreliable with mapped parameters: check your results")
+        parm <- getParms(parm0, object, full, include_mapped = FALSE)
         if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
@@ -988,6 +1000,9 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- cbind(L,par)
         }
         ci <- rbind(ci,L) ## really just adding column names!
+        if (include_mapped) {
+            ci <- expand_ci_with_mapped(ci, parm0)
+        }
     }
     else {  ## profile CIs
         parm <- getParms(parm0, object, full, include_mapped = FALSE)
@@ -995,6 +1010,9 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                       parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
+        if (include_mapped) {
+            ci <- expand_ci_with_mapped(ci, parm0)
+        }
     }
     ## if only conditional, strip component prefix
     if (all(substr(rownames(ci),1,5)=="cond.")) {
