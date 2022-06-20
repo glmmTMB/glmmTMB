@@ -60,7 +60,7 @@ Family functions for glmmTMB
 }
 \details{
 If specified, the dispersion model uses a log link. Denoting the variance as \eqn{V}, the dispersion parameter
-as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model), 
+as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 and the predicted mean as \eqn{\mu}{mu}:
  \describe{
      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
@@ -74,7 +74,7 @@ and the predicted mean as \eqn{\mu}{mu}:
      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
 and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
-     \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
+     \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^power}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
 }
 }
 \references{

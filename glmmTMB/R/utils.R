@@ -107,15 +107,27 @@ hasRandom <- function(x) {
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
 }
 
-## retrieve parameters by name or index
-getParms <- function(parm=NULL, object, full=FALSE) {
-    vv <- vcov(object, full=TRUE)
+##' retrieve parameters by name or index
+##' @param parm parameter specifier
+##' @param object fitted glmmTMB object
+##' @param full
+##' @param include_mapped
+##' @noRd
+getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
+    vv <- vcov(object, full=TRUE, include_mapped = include_mapped)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
-    intnames <- names(object$obj$env$last.par) ## internal names
+    ee <- object$obj$env
+
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
-    intnames <- intnames[!intnames %in% c("b","bzi")]
+    drop_rand <- function(x) x[!x %in% c("b", "bzi")]
+    if (!include_mapped) {
+        intnames <- drop_rand(names(ee$last.par))
+    } else {
+        pl <- ee$parList()
+        intnames <- drop_rand(rep(names(pl), lengths(pl)))
+    }
     if (length(pnames) != length(sds)) { ## shouldn't happen ...
         stop("length mismatch between internal and external parameter names")
     }
@@ -421,4 +433,68 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
                 pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
                         log.p=TRUE))
     if (log) return(y) else return(exp(y))
+}
+
+
+## utilities for constructing lists of parameter names
+
+## for matching map names vs nameList components ...
+par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
+
+getAllParnames <- function(object, full) {
+                           
+  mkNames <- function(tag) {
+      X <- getME(object,paste0("X",tag))
+      if (trivialFixef(nn <- colnames(X),tag)
+          ## if 'full', keep disp even if trivial, if used by family
+          && !(full && tag =="d" &&
+               (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
+          return(character(0))
+      }
+      return(paste(tag,nn,sep="~"))
+  }
+
+  nameList <- setNames(list(colnames(getME(object,"X")),
+                       mkNames("zi"),
+                       mkNames("d")),
+                names(cNames))
+
+  if(full) {
+      ## FIXME: haven't really decided if we should drop the
+      ##   trivial variance-covariance dispersion parameter ??
+      ## if (trivialDisp(object))
+      ##    res <- covF[-nrow(covF),-nrow(covF)]
+
+      reNames <- function(tag) {
+        re <- object$modelInfo$reStruc[[paste0(tag,"ReStruc")]]
+        num_theta <- vapply(re,"[[","blockNumTheta", FUN.VALUE = numeric(1))
+        nn <- mapply(function(n,L) paste(n, seq(L), sep="."),
+                     names(re), num_theta)
+        if (length(nn) == 0) return(nn)
+        return(paste("theta",gsub(" ", "", unlist(nn)), sep="_"))
+      }
+      ## nameList for estimated variables;
+      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
+  }
+
+    return(nameList)
+}
+
+
+getEstParnames <- function(object, full) {
+    nameList <- getAllParnames(object, full)
+    map <- object$obj$env$map
+    if (length(map)>0) {
+        ## fullNameList for all variables, including mapped vars
+        ## (nameList will get reduced shortly)
+        for (m in seq_along(map)) {
+            if (length(NAmap <- which(is.na(map[[m]])))>0) {
+                w <- match(names(map)[m],par_components) ##
+                if (length(nameList)>=w) { ## may not exist if !full
+                    nameList[[w]] <- nameList[[w]][-NAmap]
+                }
+            }
+        }
+    }
+    return(nameList)
 }

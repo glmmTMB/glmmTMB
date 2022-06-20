@@ -201,21 +201,24 @@ test_that("confint", {
                    "extra arguments ignored")
     ## Gamma test Std.Dev and sigma
     ci.2G <- confint(fm2G, full=TRUE, estimate=FALSE)
-    ci.2G.expect <- structure(c(5.48101734463434, 0.0247781469519971, 0.0720456818285145,
-                                0.0676097041325336, 0.0115949839239226, -0.518916569224983, 5.58401849103742,
-                                0.0429217639958554, 0.0907365112607892, 0.150456372082291, 0.026437653590095,
-                                0.481694558589466), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)",
-                                                                                         "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days",
-                                                                                         "cond.Cor.Days.(Intercept)"), c("2.5 %", "97.5 %")))
+    ci.2G.expect <-
+structure(c(5.48101734463302, 0.0247781469514953, 0.0720456818212051, 
+0.0676097041346203, 0.011594983924248, -0.518916569196735, 5.58401849103819, 
+0.0429217639953163, 0.0907365112688002, 0.150456372085535, 0.0264376535893084, 
+0.481694558546289), dim = c(6L, 2L), dimnames = list(c("cond.(Intercept)", 
+"cond.Days", "sigma", "cond.Std.Dev.(Intercept)|Subject", "cond.Std.Dev.Days|Subject", 
+"cond.Cor.Days.(Intercept)|Subject"), c("2.5 %", "97.5 %")))
+    
     expect_equal(ci.2G, ci.2G.expect, tolerance=1e-6)
     ## nbinom2 test Std.Dev and sigma
     ci.2NB <- confint(fm2NB, full=TRUE, estimate=FALSE)
-    ci.2NB.expect <- structure(c(5.48098712803496, 0.0248163866132581, 183.810585063238,
-                                 0.0661772559176498, 0.0113436359250623, -0.520883925243851, 5.58422550729504,
-                                 0.0428993237779538, 444.73566599561, 0.150917871951769, 0.0263549890118426,
-                                 0.502211628076133), .Dim = c(6L, 2L), .Dimnames = list(c("cond.(Intercept)",
-                                                                                          "cond.Days", "sigma", "cond.Std.Dev.(Intercept)", "cond.Std.Dev.Days",
-                                                                                          "cond.Cor.Days.(Intercept)"), c("2.5 %", "97.5 %")))
+    ci.2NB.expect <-
+structure(c(5.48098713179567, 0.0248163864044954, 183.810584890723, 
+0.0661772532477245, 0.0113436358430644, -0.520883898564637, 5.58422550744882, 
+0.0428993234541745, 444.735666513929, 0.150917865012838, 0.0263549887724962, 
+0.502211643318002), dim = c(6L, 2L), dimnames = list(c("cond.(Intercept)", 
+"cond.Days", "sigma", "cond.Std.Dev.(Intercept)|Subject", "cond.Std.Dev.Days|Subject", 
+"cond.Cor.Days.(Intercept)|Subject"), c("2.5 %", "97.5 %")))
     expect_equal(ci.2NB, ci.2NB.expect, tolerance=1e-6)
     ## profile CI
     ## ... no RE
@@ -272,9 +275,84 @@ test_that("confint with theta/beta", {
                    "zi.(Intercept)", "zi.x2", "zi.x3reg", "zi.x3high"))
 
     expect_equal(rownames(confint(m1, "theta_")),
-                          c("class:year.cond.Std.Dev.(Intercept)", "year.cond.Std.Dev.(Intercept)",
-                            "class:year.zi.Std.Dev.(Intercept)", "year.zi.Std.Dev.(Intercept)"))
+                 c("cond.Std.Dev.(Intercept)|class:year", "cond.Std.Dev.(Intercept)|year", 
+                   "zi.Std.Dev.(Intercept)|class:year", "zi.Std.Dev.(Intercept)|year"))
+
+
 })
+
+test_that("confint with multiple REs", {
+    if (requireNamespace("lme4")) {
+        dd <- expand.grid(r = 1:10, a = factor(1:2), b = factor(1:3),
+                          f = factor(1:5), g = factor(1:6))
+        dd$y <- simulate(
+            seed = 101,
+            ~ 1 + (a|f) + (b|g),
+            newdata = dd,
+            newparams = list(beta = 1,
+                             theta = rep(1,9),
+                             sigma = 1),
+            family = gaussian)[[1]]
+        res <- glmmTMB(y~ 1 + (a+0|f) + (b+0|g), data = dd)
+        cc <- confint(res)
+        expect_identical(rownames(cc),
+                         c("(Intercept)", "Std.Dev.a1|f", "Std.Dev.a2|f", "Cor.a2.a1|f", 
+                           "Std.Dev.b1|g", "Std.Dev.b2|g", "Std.Dev.b3|g", "Cor.b2.b1|g", 
+                           "Cor.b3.b1|g", "Cor.b3.b2|g"))
+    }
+})
+
+test_that("confint with mapped parameters", {
+    data(randu)
+    randu$A <- factor(rep(c(1,2), 200))
+    randu$B <- factor(rep(c(1,2,3,4), 100))
+
+    test0 <- glmmTMB(y ~ x + z + (0 +x|A) + (1|B), family="gaussian", data=randu)
+    test1 <- update(test0,
+                    start = list(theta = c(0,log(1e3))),
+                    map = list(theta = factor(c(1,NA))))
+    test2 <- update(test0,
+                    start = list(beta = c(1,0,0)),
+                    map = list(beta = factor(c(1,NA,2))))
+    ## getParms() not exported ...
+    ## expect_equal(getParms("beta_", test2), 1:2)
+    ## expect_equal(getParms("beta_", test2, include_mapped = TRUE), 1:3)
+    v1 <- vcov(test2, include_mapped = TRUE)
+    expect_equal(dim(v1$cond), c(3,3))
+    expect_true(all(is.na(v1$cond["x",] )))
+    c1 <- confint(test2, parm = "beta_", include_mapped = TRUE)
+    expect_equal(nrow(c1), 3)
+    expect_equal(unname(unlist(c1["x",])), c(NA_real_, NA_real_, 0))
+
+
+    ## getParms("theta_", test2) ## 4:5
+    ## getParms("theta_", test2, include_mapped = TRUE) ## 5:6
+
+    c3 <- confint(test2)
+    expect_equal(nrow(c3), 4)
+    expect_equal(rownames(c3),
+                 c("(Intercept)", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
+    c4 <- confint(test2, include_mapped = TRUE)
+    expect_equal(confint(test2, include_mapped = TRUE, parm = "theta_"),
+                 confint(test2, parm = "theta_"))
+    c5 <- confint(test2, parm = "sigma")
+
+    ## expect_equal(getParms("theta_", test1), 5L)
+    ## expect_equal(getParms("theta_", test1, include_mapped = TRUE), 5:6)
+    v2 <- vcov(test1, include_mapped = TRUE, full = TRUE)
+    expect_equal(dim(v2), c(6,6))
+    expect_true(all(is.na(v2["theta_1|B.1",])))
+
+    c6 <- confint(test1, include_mapped = TRUE)
+    expect_equal(rownames(c6),
+                 c("(Intercept)", "x", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
+    c7 <- confint(test1, parm = "theta_")
+    expect_equal(rownames(c7), "Std.Dev.x|A")
+    c8 <- confint(test1, parm = "theta_", include_mapped = TRUE)
+    expect_equal(rownames(c8), c("Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
+    expect_equal(unname(c8["Std.Dev.(Intercept)|B", 1:2]), rep(NA_real_, 2))
+})
+
 
 test_that("profile", {
     p1_th <- profile(fm1,parm="theta_",npts=4)
