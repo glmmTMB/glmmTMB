@@ -1377,6 +1377,19 @@ refit.glmmTMB <- function(object, newresp, ...) {
   return(eval(cc))
 }
 
+## old, new: data variables
+## FUN: get data characteristic
+## val_name: name of data char
+## val_fmt: sprintf format
+mismatch_fun <- function(old, new, FUN, val_name, val_fmt) {
+    oldval <- FUN(old)
+    newval <- FUN(new)
+    if (oldval != newval) {
+        ## have to insert format string weirdly
+        str <- sprintf("old response %%s (%s) doesn't match new %%s (%s)", val_fmt, val_fmt)
+        stop(sprintf(str, val_name, oldval, val_name, newval), call. = FALSE)
+    }
+}
 #' refit (smarter)
 #' An \strong{experimental} improved refit method; modifies
 #' fitted glmmTMB object rather than constructing it from scratch
@@ -1393,13 +1406,17 @@ refit.glmmTMB <- function(object, newresp, ...) {
 #' @param object fitted glmmTMB model
 #' @param newresp new response vector
 #' @param update_start set starting parameters to previously fitted values?
-#' 
+#'
 fast_refit.glmmTMB <- function(object, newresp, update_start = TRUE, ...) {
     obj <- object$obj
     ee <- obj$env
     ## FIXME: check for weird binomial input (factors, logical, two-column matrix ...)
     ##  and do something appropriate
     dd <- ee$data
+
+    mismatch_fun(dd$yobs, newresp, length, "length", "%d")
+    mismatch_fun(dd$yobs, newresp, storage.mode, "storage mode", "%s") 
+
     dd$yobs <- newresp
     assign("data", dd, ee) ## stick this in the appropriate environment
     if (update_start) {
@@ -1417,6 +1434,7 @@ fast_refit.glmmTMB <- function(object, newresp, update_start = TRUE, ...) {
     cc <- if (is.null(cc)) glmmTMBControl() else eval.parent(cc)
     if (cc$profile) stop("can't currently handle profile = TRUE")
     fit <- optfun(obj, cc)
+    fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
     sdr <- sdreport(obj, getJointPrecision=isREML(object))
     ret <- structure(namedList(obj, fit, sdr, call=call,
                                frame=object$frame, modelInfo = object$modelInfo,
