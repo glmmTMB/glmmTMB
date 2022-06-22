@@ -110,8 +110,8 @@ hasRandom <- function(x) {
 ##' retrieve parameters by name or index
 ##' @param parm parameter specifier
 ##' @param object fitted glmmTMB object
-##' @param full
-##' @param include_mapped
+##' @param full include simple dispersion parameter?
+##' @param include_mapped include mapped parameter indices?
 ##' @noRd
 getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
     vv <- vcov(object, full=TRUE, include_mapped = include_mapped)

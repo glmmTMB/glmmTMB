@@ -741,8 +741,14 @@ format.perc <- function (probs, digits) {
 ##' "profile" and "uniroot" report them on the underlying ("theta")
 ##' scale: for each random effect, the first set of parameter values
 ##' are standard deviations on the log scale, while remaining parameters
-##' represent correlations on the scaled Cholesky scale (see the
-##'
+##' represent correlations on the scaled Cholesky scale. For a random
+##' effects model with two elements (such as a random-slopes model,
+##' or a random effect of factor with two levels), there is a single
+##' correlation parameter \eqn{\theta}{theta}; the correlation is
+##' equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
+##' For random-effects terms with more than two elements, the mapping
+##' is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
+##' 
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
