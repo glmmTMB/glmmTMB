@@ -1314,6 +1314,8 @@ lme4::refit
 #' @export
 #' @rdname bootmer_methods
 #' @importFrom stats formula
+#' @param fast (logical) [EXPERIMENTAL] refit by modifying existing TMB object?
+#' @param update_start (logical) use fitted coefficients as starting value?
 #' @param ... additional arguments (for generic consistency; ignored)
 #' @examples
 #' if (requireNamespace("lme4")) {
@@ -1333,9 +1335,29 @@ lme4::refit
 #' }
 #' }
 #' @details
-#' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
-#'
-refit.glmmTMB <- function(object, newresp, ...) {
+#' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.
+#' \itemize{
+#' \item By default (if \code{fast=FALSE}), works by copying and replacing the original response column in the data frame passed to \code{glmmTMB} and re-evaluating the original model call so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
+#' \item If \code{fast=TRUE}, \emph{or} if \code{options(glmmTMB.fast_refit=TRUE)} is set (this feature allows use of fast refitting with \code{bootMer} from the \code{lme4} package), this works by modifying the data in the environment of the underlying TMB object and re-optimizing. Current limitations:
+#' \itemize{
+#' \item Doesn't do any convergence checking/warning
+#' \item Doesn't work with \code{profile = TRUE}
+#' \item Doesn't handle "exotic" responses (i.e. anything but a
+#' numeric vector, such as a two-column matrix or factor-valued response
+#' for a binomial model)
+#' \item Still requires access to the original environment, for reconstructing
+#' control options
+#' }
+#' }
+refit.glmmTMB <- function(object, newresp, fast = FALSE, update_start = TRUE, ...) {
+  if (missing(fast)) {
+      fast <- getOption("glmmTMB.fast_refit", FALSE)
+  }
+        
+  if (fast) return(fast_refit(object, newresp, update_start, ...))
+  if (!missing(update_start) && update_start) {
+      warning("update_start argument ignored")
+  }
   cc <- getCall(object)
   newdata <- eval.parent(cc$data)
   if (is.null(newdata)) stop("can't locate original 'data' value")
@@ -1390,24 +1412,9 @@ mismatch_fun <- function(old, new, FUN, val_name, val_fmt) {
         stop(sprintf(str, val_name, oldval, val_name, newval), call. = FALSE)
     }
 }
-#' refit (smarter)
-#' An \strong{experimental} improved refit method; modifies
-#' fitted glmmTMB object rather than constructing it from scratch
-#' Current limitations:
-#' \itemize{
-#' \item Doesn't do any convergence checking/warning
-#' \item Doesn't work with \code{profile = TRUE}
-#' \item Doesn't handle "exotic" responses (i.e. anything but a
-#' numeric vector, such as a two-column matrix or factor-valued response
-#' for a binomial model)
-#' \item Still requires access to the original environment, for reconstructing
-#' control options
-#' }
-#' @param object fitted glmmTMB model
-#' @param newresp new response vector
-#' @param update_start set starting parameters to previously fitted values?
-#'
-fast_refit.glmmTMB <- function(object, newresp, update_start = TRUE, ...) {
+
+
+fast_refit <- function(object, newresp, update_start = TRUE, ...) {
     obj <- object$obj
     ee <- obj$env
     ## FIXME: check for weird binomial input (factors, logical, two-column matrix ...)

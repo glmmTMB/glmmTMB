@@ -7,12 +7,16 @@
 \usage{
 \method{isLMM}{glmmTMB}(object)
 
-\method{refit}{glmmTMB}(object, newresp, ...)
+\method{refit}{glmmTMB}(object, newresp, fast = FALSE, update_start = TRUE, ...)
 }
 \arguments{
 \item{object}{a fitted glmmTMB object}
 
 \item{newresp}{a new response vector}
+
+\item{fast}{(logical) [EXPERIMENTAL] refit by modifying existing TMB object?}
+
+\item{update_start}{(logical) use fitted coefficients as starting value?}
 
 \item{...}{additional arguments (for generic consistency; ignored)}
 }
@@ -20,7 +24,20 @@
 see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details
 }
 \details{
-These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
+These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.
+\itemize{
+\item By default (if \code{fast=FALSE}), works by copying and replacing the original response column in the data frame passed to \code{glmmTMB} and re-evaluating the original model call so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
+\item If \code{fast=TRUE}, \emph{or} if \code{options(glmmTMB.fast_refit=TRUE)} is set (this feature allows use of fast refitting with \code{bootMer} from the \code{lme4} package), this works by modifying the data in the environment of the underlying TMB object and re-optimizing. Current limitations:
+\itemize{
+\item Doesn't do any convergence checking/warning
+\item Doesn't work with \code{profile = TRUE}
+\item Doesn't handle "exotic" responses (i.e. anything but a
+numeric vector, such as a two-column matrix or factor-valued response
+for a binomial model)
+\item Still requires access to the original environment, for reconstructing
+control options
+}
+}
 }
 \examples{
 if (requireNamespace("lme4")) {
