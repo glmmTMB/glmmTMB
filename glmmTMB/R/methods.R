@@ -1027,17 +1027,6 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     return(ci)
 }
 
-## return a list of parameter values 
-map.match <- function(obj) {
-    ee <- object$obj$env
-    ## full parameter list
-    pl_full <- ee$parList(object$fit$par, object$fit$parfull)
-    pl_full <- unlist(pl_full)
-    pl_full <- pl_full[!grepl("^b[0-9]",names(pl_full))]
-    pl_est <- split(ee$last.par.best, names(ee$last.par.best))
-
-}
-
 ##' @rdname glmmTMB_methods
 ##' @param x a fitted \code{glmmTMB} object
 ##' @export
