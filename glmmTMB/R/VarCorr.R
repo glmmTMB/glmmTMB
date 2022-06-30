@@ -160,7 +160,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' are structured as follows: the first n parameters are the log-standard-deviations,
 ##' while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
 ##' of the correlation matrix, filled in column-wise order
-##' (see the \href{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}{TMB documentation}
+##' (see the \href{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}{TMB documentation}
 ##' for further details).
 ##' @keywords internal
 VarCorr.glmmTMB <- function(x, sigma = 1, ... )
