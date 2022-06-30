@@ -47,7 +47,7 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
 ##' @return a vector of correlation values
-##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}:
+##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
 ##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
