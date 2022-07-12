@@ -5,6 +5,15 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.4}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item row names of \code{confint} output for random effects
+      parameters have changed (new format is
+      \code{Std.Dev} . (term) | (grouping variable) for standard
+      deviations, \code{Cor} . (term1) . (term2) | (grouping variable)
+      for correlations)
+    } % itemize
+  } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{predict(., "zprob")} now returns 0 and
@@ -14,13 +23,17 @@
       conditional values]
       \item bug fixes and other improvements for \code{diagnose} (inverted Z-score; now handles
       models without random effects)
+      \item \code{confint} now works for models with more than one
+      random effect
+      \item \code{confint} works better (although not completely) for
+  models with mapped parameters
     } % itemize
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
       \item now provides Pearson residuals for zero-inflated and
       variable-dispersion models (Brenton Wiernik)
-    }
+    } % itemize
   } % new features
 } % version 1.1.4
 
