@@ -355,9 +355,13 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
-      whichNotRandom <- which( ! rownames(Q) %in% c("b", "bzi") )
+      if (is.null(rownames(Q))) { ## may be missing??
+          dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
+      }
+      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi") )
       Qm <- GMRFmarginal(Q, whichNotRandom)
       cov.all.parms <- solve(as.matrix(Qm))
+      
   } else {
       cov.all.parms <- sdr$cov.fixed
   }
