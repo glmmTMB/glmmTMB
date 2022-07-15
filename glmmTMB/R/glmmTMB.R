@@ -364,16 +364,30 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   sparseXval <- function(component,lst) {
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
+  denseXdroppedval <- function(component,lst) {
+    if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$Xdropped
+  }
+  ## need a 'dgTMatrix' (double, general, Triplet representation)
+  sparseXdroppedval <- function(component,lst) {
+    if (sparseX[[component]]) lst$Xdropped else nullSparseMatrix()
+  }
+
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
+    Xdropped = denseXdroppedval("cond",condList),
+    XdroppedS = sparseXdroppedval("cond",condList),
     Z = condList$Z,
     Xzi = denseXval("zi",ziList),
     XziS = sparseXval("zi",ziList),
+    Xzidropped = denseXdroppedval("cond",ziList),
+    XzidroppedS = sparseXdroppedval("cond",ziList),
     Zzi = ziList$Z,
     Xd = denseXval("disp",dispList),
     XdS = sparseXval("disp",dispList),
+    Xddropped = denseXdroppedval("cond",dispList),
+    XddroppedS = sparseXdroppedval("cond",dispList),
 
     ## Zdisp=dispList$Z,
     ## use c() on yobs, size to strip attributes such as 'AsIs'
@@ -626,10 +640,18 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ##     scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
     ## X <- checkScaleX(X, kind=scaleX.chk)
 
+    Qr <- qr(X)
+    if(Qr$rank < ncol(X)){
+      Xdropped <- X[,(Qr$rank+1):ncol(X),drop=FALSE]
+      X <- X[,1:Qr$rank,drop=FALSE]
+    }else{
+      Xdropped <- matrix(nrow=0,ncol=0)
+    }
+    
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms)
+    namedList(X, Xdropped, Z, reTrms, ss, aa, terms, offset, reXterms)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -1495,6 +1517,8 @@ fitTMB <- function(TMBStruc) {
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
 
+    ## FIXME: we need to add Xdropped columns somewhere in ret to use them in the summary, etc
+
     ret <- structure(namedList(obj, fit, sdr, call=TMBStruc$call,
                         frame=TMBStruc$fr, modelInfo,
                         fitted),
@@ -1581,6 +1605,8 @@ summary.glmmTMB <- function(object,...)
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),
                       names(ff))
+
+    # FIXME: add something for dropped predictors
 
     llAIC <- llikAIC(object)
 
