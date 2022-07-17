@@ -312,11 +312,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts, sparse=sparseX[["cond"]])
-    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts, sparse=sparseX[["zi"]])
+    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts, sparse=sparseX[["cond"]], rank_check=control$rank_check)
+    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts, sparse=sparseX[["zi"]], rank_check=control$rank_check)
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
-                            contrasts=contrasts, sparse=sparseX[["disp"]])
+                            contrasts=contrasts, sparse=sparseX[["disp"]], rank_check=control$rank_check)
 
     condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr))
@@ -364,30 +364,17 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   sparseXval <- function(component,lst) {
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
-  denseXdroppedval <- function(component,lst) {
-    if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$Xdropped
-  }
-  ## need a 'dgTMatrix' (double, general, Triplet representation)
-  sparseXdroppedval <- function(component,lst) {
-    if (sparseX[[component]]) lst$Xdropped else nullSparseMatrix()
-  }
 
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
-    Xdropped = denseXdroppedval("cond",condList),
-    XdroppedS = sparseXdroppedval("cond",condList),
     Z = condList$Z,
     Xzi = denseXval("zi",ziList),
     XziS = sparseXval("zi",ziList),
-    Xzidropped = denseXdroppedval("cond",ziList),
-    XzidroppedS = sparseXdroppedval("cond",ziList),
     Zzi = ziList$Z,
     Xd = denseXval("disp",dispList),
     XdS = sparseXval("disp",dispList),
-    Xddropped = denseXdroppedval("cond",dispList),
-    XddroppedS = sparseXdroppedval("cond",dispList),
 
     ## Zdisp=dispList$Z,
     ## use c() on yobs, size to strip attributes such as 'AsIs'
@@ -495,8 +482,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param type label for model type
 ##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @param sparse (logical) return sparse model matrix?
+##' @param rank_check (logical) check identifiability of fixed effects?
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
+##' \item{Xdropped}{design matrix for non-identifiable fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
 ##' \item{ss}{splitform of the formula}
@@ -508,7 +497,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE) {
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE, rank_check=FALSE) {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -636,18 +625,24 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## if(is.null(rankX.chk <- control[["check.rankX"]]))
     ## rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
     ## X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
+
+    # FIXME (rank_check): when predictors are dropped, should we keep the
+    #  whole matrix or just the column names?
+    # FIXME (rank_check): does terms need to be altered too? I cannot figure
+    #  out where it gets used downstream
+    Xdropped <- matrix(nrow=0,ncol=0)
+    if(rank_check){
+      Qr <- qr(X, tol = 1e-7)
+      if(Qr$rank < ncol(X)){
+        Xdropped <- X[,(Qr$rank+1):ncol(X),drop=FALSE]
+        X <- X[,1:Qr$rank,drop=FALSE]
+      }
+    }
+
     ## if(is.null(scaleX.chk <- control[["check.scaleX"]]))
     ##     scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
     ## X <- checkScaleX(X, kind=scaleX.chk)
 
-    Qr <- qr(X)
-    if(Qr$rank < ncol(X)){
-      Xdropped <- X[,(Qr$rank+1):ncol(X),drop=FALSE]
-      X <- X[,1:Qr$rank,drop=FALSE]
-    }else{
-      Xdropped <- matrix(nrow=0,ncol=0)
-    }
-    
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
@@ -1172,6 +1167,7 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
+##' @param rank_check (logical) Check whether all parameters in conditional models are identifiable? (This test may be slow for models with large numbers of fixed-effect parameters.)
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1218,7 +1214,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
-                           start_method = list(method = NULL, jitter.sd = 0)) {
+                           start_method = list(method = NULL, jitter.sd = 0),
+                           rank_check = FALSE) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1237,7 +1234,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, zerodisp_val, start_method)
+              eigval_check, zerodisp_val, start_method, rank_check)
 }
 
 ##' collapse duplicated observations
@@ -1517,7 +1514,9 @@ fitTMB <- function(TMBStruc) {
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
 
-    ## FIXME: we need to add Xdropped columns somewhere in ret to use them in the summary, etc
+    ## FIXME (rank_check): ret needs to know about Xdropped columns to use
+    ##  them in the summary, etc. At this point in the code, this information
+    ##  only remains in condList, ziList, and dispList.
 
     ret <- structure(namedList(obj, fit, sdr, call=TMBStruc$call,
                         frame=TMBStruc$fr, modelInfo,
@@ -1599,14 +1598,15 @@ summary.glmmTMB <- function(object,...)
         coefs
     }
 
+    # FIXME (rank_check): to include Xdropped predictors in the output, fixef
+    #  needs to be able to find out about them
+
     ff <- fixef(object)
     vv <- vcov(object,include_mapped=TRUE)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),
                       names(ff))
-
-    # FIXME: add something for dropped predictors
 
     llAIC <- llikAIC(object)
 
