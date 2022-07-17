@@ -543,9 +543,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
           }
         }
+        terms <- list(fixed=terms(terms_fixed))
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
-        terms <- list(fixed=terms(terms_fixed))
         if (inForm(fixedform,quote(offset))) {
             ## hate to match offset terms with model frame names
             ##  via deparse, but since that what was presumably done
