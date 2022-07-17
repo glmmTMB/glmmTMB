@@ -485,7 +485,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param rank_check (logical) check identifiability of fixed effects?
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
-##' \item{Xdropped}{design matrix for non-identifiable fixed effects}
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
 ##' \item{ss}{splitform of the formula}
@@ -643,7 +642,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Xdropped, Z, reTrms, ss, aa, terms, offset, reXterms)
+    namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -1511,7 +1510,7 @@ fitTMB <- function(TMBStruc) {
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
 
-    ## FIXME (rank_check): ret needs to know about Xdropped columns to use
+    ## FIXME (rank_check): ret needs to know about dropped columns to use
     ##  them in the summary, etc. At this point in the code, this information
     ##  only remains in condList, ziList, and dispList.
 
@@ -1595,7 +1594,7 @@ summary.glmmTMB <- function(object,...)
         coefs
     }
 
-    # FIXME (rank_check): to include Xdropped predictors in the output, fixef
+    # FIXME (rank_check): to include dropped predictors in the output, fixef
     #  needs to be able to find out about them
 
     ff <- fixef(object)
