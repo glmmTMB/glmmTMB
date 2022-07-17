@@ -533,6 +533,16 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
+        # FIXME (rank_check): does terms need to be altered too? I cannot figure
+        #  out where it gets used downstream
+        if(rank_check){
+          Qr <- qr(X, tol = 1e-7)
+          if(Qr$rank < ncol(X)){
+            dropped.names <- colnames(X[,(Qr$rank+1L):ncol(X),drop=FALSE])
+            X <- X[,1:Qr$rank,drop=FALSE]
+            attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
+          }
+        }
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
         terms <- list(fixed=terms(terms_fixed))
@@ -625,19 +635,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## if(is.null(rankX.chk <- control[["check.rankX"]]))
     ## rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
     ## X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
-
-    # FIXME (rank_check): when predictors are dropped, should we keep the
-    #  whole matrix or just the column names?
-    # FIXME (rank_check): does terms need to be altered too? I cannot figure
-    #  out where it gets used downstream
-    Xdropped <- matrix(nrow=0,ncol=0)
-    if(rank_check){
-      Qr <- qr(X, tol = 1e-7)
-      if(Qr$rank < ncol(X)){
-        Xdropped <- X[,(Qr$rank+1):ncol(X),drop=FALSE]
-        X <- X[,1:Qr$rank,drop=FALSE]
-      }
-    }
 
     ## if(is.null(scaleX.chk <- control[["check.scaleX"]]))
     ##     scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
