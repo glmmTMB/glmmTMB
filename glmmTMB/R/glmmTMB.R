@@ -542,11 +542,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         if(rank_check %in% c('stop', 'warn')){
           rank.X <- Matrix::rankMatrix(X)
           if(Matrix::rankMatrix(X) < ncol(X)){
-            ifelse(
-              rank_check == 'stop',
-              stop("fixed effects in ",type," are rank deficient"),
-              warning("fixed effects in ",type,"are rank deficient")
-            )            
+            if(rank_check == 'stop'){
+              stop("fixed effects in ",type," model are rank deficient")
+            else{
+              warning("fixed effects in ",type," model are rank deficient")
+            }
           }
         }else if(rank_check == 'adjust'){
           Qr <- qr(X, tol = 1e-7)
