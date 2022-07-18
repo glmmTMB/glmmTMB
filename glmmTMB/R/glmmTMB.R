@@ -539,7 +539,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         }
 
         # check for identifiability in fixed effects matrix X?
-        if(rank_check %in% c('stop', 'warn')){
+        if(prod(dim(X))> 0 & rank_check %in% c('stop', 'warn')){
           rank.X <- Matrix::rankMatrix(X)
           if(Matrix::rankMatrix(X) < ncol(X)){
             if(rank_check == 'stop'){
