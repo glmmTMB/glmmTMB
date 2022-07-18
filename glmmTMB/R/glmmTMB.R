@@ -312,12 +312,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]], rank_check=control$rank_check, rank_action=control$rank_action)
-    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]], rank_check=control$rank_check, rank_action=control$rank_action)
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]], rank_check=control$rank_check)
+    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]], rank_check=control$rank_check)
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]],
-                            rank_check=control$rank_check, rank_action=control$rank_action)
+                            rank_check=control$rank_check)
 
     condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr))
@@ -483,8 +483,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param type label for model type
 ##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @param sparse (logical) return sparse model matrix?
-##' @param rank_check (logical) check identifiability of fixed effects?
-##' @param rank_action (character) what to do after checking identifiability of fixed effects
+##' @param rank_check check identifiability of fixed effects?
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
@@ -498,9 +497,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE, rank_check=FALSE, rank_action=c("warn","stop","adjust")) {
-    # check whether the rank_action is legit
-    rank_action <- match.arg(rank_action)
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE, rank_check=c('warn',FALSE,'adjust','stop')) {
+    # check whether the rank_check is legit
+    rank_check <- match.arg(rank_check)
 
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
@@ -540,18 +539,19 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         }
         # FIXME (rank_check): does terms need to be altered too? I cannot figure
         #  out where it gets used downstream
-        if(rank_check){
+        if(rank_check == 'stop'){
+          if(Matrix::rankMatrix(X) < ncol(X)){
+            stop("fixed effects in ",type," are rank deficient")
+          }
+        }else if(rank_check %in% c('warn','adjust')){
           Qr <- qr(X, tol = 1e-7)
           if(Qr$rank < ncol(X)){
-            if(rank_action %in% c('warn','adjust')){
-              if(rank_action == 'warn'){
-                warning("fixed effects in ",type,"are rank deficient")
-              }
+            if(rank_check == 'warn'){
+              warning("fixed effects in ",type,"are rank deficient")
+            }else{
               dropped.names <- colnames(X[,(Qr$rank+1L):ncol(X),drop=FALSE])
               X <- X[,1:Qr$rank,drop=FALSE]
               attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
-            }else{
-              stop("fixed effects in ",type," are rank deficient")
             }
           }
         }
@@ -1175,8 +1175,7 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
-##' @param rank_check (logical) Check whether all parameters in conditional models are identifiable? (This test may be slow for models with large numbers of fixed-effect parameters.)
-##' @param rank_action (character) What should occur after checking identifiability of fixed effects?
+##' @param rank_check Check whether all parameters in conditional models are identifiable? (This test may be slow for models with large numbers of fixed-effect parameters.)
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1224,8 +1223,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0),
-                           rank_check = FALSE,
-                           rank_action = c("warn", "stop", "adjust")) {
+                           rank_check = c("warn", FALSE, "adjust", "stop")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1238,7 +1236,7 @@ glmmTMBControl <- function(optCtrl=NULL,
         parallel <- as.integer(parallel)
     }
 
-    rank_action <- match.arg(rank_action)
+    rank_check <- match.arg(rank_check)
 
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
@@ -1246,7 +1244,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, zerodisp_val, start_method, rank_check, rank_action)
+              eigval_check, zerodisp_val, start_method, rank_check)
 }
 
 ##' collapse duplicated observations
