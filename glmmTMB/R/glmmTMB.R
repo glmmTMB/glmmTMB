@@ -544,7 +544,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
           if(Matrix::rankMatrix(X) < ncol(X)){
             if(rank_check == 'stop'){
               stop("fixed effects in ",type," model are rank deficient")
-            else{
+            }else{
               warning("fixed effects in ",type," model are rank deficient")
             }
           }
