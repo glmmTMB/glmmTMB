@@ -497,7 +497,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE, rank_check=c('warn',FALSE,'adjust','stop')) {
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE, rank_check=c('warn','adjust','stop','skip')) {
     # check whether the rank_check is legit
     rank_check <- match.arg(rank_check)
 
@@ -537,24 +537,29 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
-        # FIXME (rank_check): does terms need to be altered too? I cannot figure
-        #  out where it gets used downstream
-        if(rank_check == 'stop'){
+
+        # check for identifiability in fixed effects matrix X?
+        if(rank_check %in% c('stop', 'warn')){
+          rank.X <- Matrix::rankMatrix(X)
           if(Matrix::rankMatrix(X) < ncol(X)){
-            stop("fixed effects in ",type," are rank deficient")
+            ifelse(
+              rank_check == 'stop',
+              stop("fixed effects in ",type," are rank deficient"),
+              warning("fixed effects in ",type,"are rank deficient")
+            )            
           }
-        }else if(rank_check %in% c('warn','adjust')){
+        }else if(rank_check == 'adjust'){
           Qr <- qr(X, tol = 1e-7)
           if(Qr$rank < ncol(X)){
-            if(rank_check == 'warn'){
-              warning("fixed effects in ",type,"are rank deficient")
-            }else{
-              dropped.names <- colnames(X[,(Qr$rank+1L):ncol(X),drop=FALSE])
-              X <- X[,1:Qr$rank,drop=FALSE]
-              attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
-            }
+            dropped.names <- colnames(X[,(Qr$rank+1L):ncol(X),drop=FALSE])
+            X <- X[,1:Qr$rank,drop=FALSE]
+            attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
           }
         }
+
+        # FIXME (rank_check): with option 'adjust', terms will no longer match X
+        #  how should terms get altered to not cause downstream problems?
+
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
         if (inForm(fixedform,quote(offset))) {
@@ -1223,7 +1228,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0),
-                           rank_check = c("warn", FALSE, "adjust", "stop")) {
+                           rank_check = c("warn", "adjust", "stop", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
