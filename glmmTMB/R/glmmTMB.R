@@ -312,12 +312,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]], rank_check=control$rank_check)
-    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]], rank_check=control$rank_check)
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]])
+    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]])
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
-                            contrasts=contrasts, sparse=sparseX[["disp"]],
-                            rank_check=control$rank_check)
+                            contrasts=contrasts, sparse=sparseX[["disp"]])
 
     condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr))
@@ -483,7 +482,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param type label for model type
 ##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @param sparse (logical) return sparse model matrix?
-##' @param rank_check check identifiability of fixed effects?
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
@@ -497,10 +495,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE, rank_check=c('warn','adjust','stop','skip')) {
-    # check whether the rank_check is legit
-    rank_check <- match.arg(rank_check)
-
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE) {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -537,30 +532,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
-
-        # FIXME (rank_check): The following should only occur as part of fitting.
-        # check for identifiability in fixed effects matrix X?
-        if(prod(dim(X))> 0 & rank_check %in% c('stop', 'warn')){
-          rank.X <- Matrix::rankMatrix(X)
-          if(Matrix::rankMatrix(X) < ncol(X)){
-            if(rank_check == 'stop'){
-              stop("fixed effects in ",type," model are rank deficient")
-            }else{
-              warning("fixed effects in ",type," model are rank deficient")
-            }
-          }
-        }else if(rank_check == 'adjust'){
-          Qr <- qr(X, tol = 1e-7)
-          if(Qr$rank < ncol(X)){
-            dropped.names <- colnames(X[,(Qr$rank+1L):ncol(X),drop=FALSE])
-            X <- X[,1:Qr$rank,drop=FALSE]
-            attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
-          }
-        }
-
-        # FIXME (rank_check): with option 'adjust', terms will no longer match X
-        #  how should terms get altered to not cause downstream problems?
-
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
         if (inForm(fixedform,quote(offset))) {
@@ -1293,6 +1264,51 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+# FIXME: Should there be an @import for rankMatrix and qr below?
+##' check for identifiability of fixed effects matrices X, Xzi, Xd
+##' @keywords internal
+.checkRankX <- function(data.tmb, rank_check=c('warn','adjust','stop','skip')) {
+  rank_check <- match.arg(rank_check)
+  nm <- c("X", "Xzi", "Xd")
+  # use svd-based Matrix::rankMatrix(X) if we wish to abort or warn
+  # FIXME: possibly should be an lapply? but I wanted easy access to nm to make error and warnings more informative
+  if(rank_check %in% c('stop', 'warn')){
+    for(whichX in nm){
+      type <- switch(
+        whichX,
+        X = "conditional",
+        Xzi = "zero-inflation",
+        Xzi = "dispersion"
+      )
+      if(prod(dim(data.tmb[[whichX]]))> 0){
+        if(Matrix::rankMatrix(data.tmb[[whichX]]) < ncol(data.tmb[[whichX]])){
+          if(rank_check == 'stop'){
+            stop("fixed effects in ",type," model are rank deficient")
+          }else{
+            warning("fixed effects in ",type," model are rank deficient")
+          }
+        }
+      }
+    }
+  }
+  # use Matrix::qr(X) if we are prepared to drop columns
+  else if(rank_check == 'adjust'){
+    data.tmb[nm] <- lapply(
+      data.tmb[nm],
+      function(X){
+        Qr <- Matrix::qr(X, tol = 1e-7)
+        if(Qr$rank < ncol(X)){
+          dropped.names <- colnames(X[,(Qr$rank+1L):ncol(X),drop=FALSE])
+          X <- X[,1L:Qr$rank,drop=FALSE]
+          attr(X, "col.dropped") <- setNames(Qr$pivot[(Qr$rank+1L):ncol(X)], dropped.names)
+        }
+        return(X)
+      }
+    )
+  }
+  return(data.tmb)
+}
+
 ##' Optimize a TMB model and package results
 ##'
 ##' This function (called internally by \code{\link{glmmTMB}}) runs
@@ -1341,6 +1357,10 @@ fitTMB <- function(TMBStruc) {
         ## original data (with duplicates) after fitting.
         data.tmb.old <- TMBStruc$data.tmb
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
+    }
+
+    if(control$rank_check %in% c('warn','stop','adjust')){
+      TMBStruc$data.tmb <- .checkRankX(TMBStruc$data.tmb, control$rank_check)
     }
 
     ## avoid repetition; rely on environment for parameters
