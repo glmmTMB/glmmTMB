@@ -1150,7 +1150,7 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
-##' @param rank_check Check whether all parameters in conditional models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warn'. Alternatives include 'skip', 'stop', and 'adjust'.
+##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warn'. Alternatives include 'skip', 'stop', and 'adjust'.
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
