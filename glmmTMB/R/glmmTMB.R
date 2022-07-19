@@ -538,6 +538,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ##  (but we may not need it, and would add another dependency etc.)
         }
 
+        # FIXME (rank_check): The following should only occur as part of fitting.
         # check for identifiability in fixed effects matrix X?
         if(prod(dim(X))> 0 & rank_check %in% c('stop', 'warn')){
           rank.X <- Matrix::rankMatrix(X)
