@@ -365,7 +365,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
 
-
   data.tmb <- namedList(
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
@@ -623,7 +622,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## if(is.null(rankX.chk <- control[["check.rankX"]]))
     ## rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
     ## X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
-
     ## if(is.null(scaleX.chk <- control[["check.scaleX"]]))
     ##     scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
     ## X <- checkScaleX(X, kind=scaleX.chk)
