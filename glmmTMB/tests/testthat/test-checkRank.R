@@ -27,15 +27,15 @@ test_that("error messages for non-identifiable fixed effects", {
 })
 
 test_that("warning messages for non-identifiable fixed effects", {
-    expect_error(
+    expect_warning(
         glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in conditional model are rank deficient"
     )
-    expect_error(
+    expect_warning(
         glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in zero-inflation model are rank deficient"
     )
-    expect_error(
+    expect_warning(
         glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in dispersion model are rank deficient"
     )
