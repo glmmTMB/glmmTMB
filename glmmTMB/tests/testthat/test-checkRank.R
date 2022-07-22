@@ -43,5 +43,5 @@ test_that("warning messages for non-identifiable fixed effects", {
 
 # FIXME: what tests can be performed for rank_check="adjust"?
 
-# FIXME: what tests can be performed for rank_check="skip"?
+# FIXME: what tests can be performed for rank_check="skip"? maybe just check that 'skip' and 'warn' give equivalent results?
 
