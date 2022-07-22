@@ -56,7 +56,8 @@ enum valid_covStruct {
   gau_covstruct = 6,
   mat_covstruct = 7,
   toep_covstruct = 8,
-  rr_covstruct = 9
+  rr_covstruct = 9,
+  prop2_covstruct = 10
 };
 
 enum valid_ziPredictCode {
