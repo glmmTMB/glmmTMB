@@ -312,8 +312,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts, sparse=sparseX[["cond"]])
-    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts, sparse=sparseX[["zi"]])
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]])
+    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]])
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]])
@@ -523,6 +523,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         attr(tt, "predvars") <- fix_predvars(pv,tt)
         mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
+        terms <- list(fixed=terms(terms_fixed))
         if (!sparse) {
             X <- model.matrix(drop.special(fixedform), fr, contrasts)
         } else {
@@ -532,7 +533,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         }
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
-        terms <- list(fixed=terms(terms_fixed))
         if (inForm(fixedform,quote(offset))) {
             ## hate to match offset terms with model frame names
             ##  via deparse, but since that what was presumably done
@@ -1151,6 +1151,7 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
+##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warn'. Alternatives include 'skip', 'stop', and 'adjust'.
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1197,7 +1198,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
-                           start_method = list(method = NULL, jitter.sd = 0)) {
+                           start_method = list(method = NULL, jitter.sd = 0),
+                           rank_check = c("warn", "adjust", "stop", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1210,13 +1212,15 @@ glmmTMBControl <- function(optCtrl=NULL,
         parallel <- as.integer(parallel)
     }
 
+    rank_check <- match.arg(rank_check)
+
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, zerodisp_val, start_method)
+              eigval_check, zerodisp_val, start_method, rank_check)
 }
 
 ##' collapse duplicated observations
@@ -1257,6 +1261,73 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## Update weights
     data.tmb$weights <- xtabs(data.tmb$weights ~ collect)
     data.tmb
+}
+
+# FIXME: Should there be an @import for rankMatrix and qr below?
+##' Check for identifiability of fixed effects matrices X, Xzi, Xd.
+##' When rank_check='adjust', drop columns in X and remove associated parameters.
+##' @keywords internal
+.checkRankX <- function(TMBStruc, rank_check=c('warn','adjust','stop','skip')) {
+  rank_check <- match.arg(rank_check)
+  Xnames <- c("X", "XS", "Xzi", "XziS", "Xd", "XdS")
+  # use svd-based Matrix::rankMatrix(X) if we wish to abort or warn
+  # FIXME: possibly should be an lapply? but I wanted easy access to nm to make error and warnings more informative
+  if(rank_check %in% c('stop', 'warn')){
+    for(whichX in Xnames){
+      # only attempt rankMatrix if the X matrix contains info
+      if(prod(dim(TMBStruc$data.tmb[[whichX]]))> 0){
+        # if X is rank deficient, stop or throw a warning
+        if(Matrix::rankMatrix(TMBStruc$data.tmb[[whichX]]) < ncol(TMBStruc$data.tmb[[whichX]])){
+          # determine the model type for a more indicative error or warning message
+          model_type <- switch(
+            whichX,
+            X = "conditional",
+            XS = "conditional",
+            Xzi = "zero-inflation",
+            XziS = "zero-inflation",
+            Xd = "dispersion",
+            XdS = "dispersion"
+          )
+          if(rank_check == 'stop'){
+            stop("fixed effects in ",model_type," model are rank deficient")
+          }else{
+            warning("fixed effects in ",model_type," model are rank deficient")
+          }
+        }
+      }
+    }
+  }else
+  # use Matrix::qr(X) if we are prepared to drop columns
+  if(rank_check == 'adjust'){
+    for(whichX in Xnames){
+      # start with a QR decomposition to identify linearly dependent columns
+      qr.X <- Matrix::qr(TMBStruc$data.tmb[[whichX]], tol = 1e-7)
+      # if QR indicates rank deficiency, proceed to adjust X matrix used in fit and associated fixed effect parameters
+      if(qr.X$rank < ncol(TMBStruc$data.tmb[[whichX]])){
+        # columns that will be kept and columns that will be dropped
+        to_keep <- qr.X$pivot[1L:qr.X$rank]
+        to_drop <- qr.X$pivot[(qr.X$rank+1L):length(qr.X$pivot)]
+        dropped_names <- colnames(qr.X$qr)[to_drop]
+
+        # update TMBStruc to have new X with only some columns kept; retain names of dropped columns for use in model output
+        TMBStruc$data.tmb[[whichX]] <- TMBStruc$data.tmb[[whichX]][,to_keep,drop=FALSE]
+        attr(TMBStruc$data.tmb[[whichX]], "col.dropped") <- setNames(to_drop, dropped_names)
+
+        # use whichX to determine which beta vector needs to be reduced and reduce parameters accordingly
+        beta_name <- switch(
+          whichX,
+          X = "beta",
+          XS = "beta",
+          Xzi = "betazi",
+          XziS = "betazi",
+          Xd = "betad",
+          XdS = "betad"
+        )
+        TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][to_keep]
+      }
+    }
+  }
+  return(TMBStruc)
 }
 
 ##' Optimize a TMB model and package results
@@ -1307,6 +1378,10 @@ fitTMB <- function(TMBStruc) {
         ## original data (with duplicates) after fitting.
         data.tmb.old <- TMBStruc$data.tmb
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
+    }
+
+    if(control$rank_check %in% c('warn','stop','adjust')){
+      TMBStruc <- .checkRankX(TMBStruc, control$rank_check)
     }
 
     ## avoid repetition; rely on environment for parameters
@@ -1496,6 +1571,10 @@ fitTMB <- function(TMBStruc) {
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
 
+    ## FIXME (rank_check): ret needs to know about dropped columns to use
+    ##  them in the summary, etc. At this point in the code, this information
+    ##  only remains in condList, ziList, and dispList.
+
     ret <- structure(namedList(obj, fit, sdr, call=TMBStruc$call,
                         frame=TMBStruc$fr, modelInfo,
                         fitted),
@@ -1575,6 +1654,9 @@ summary.glmmTMB <- function(object,...)
         }
         coefs
     }
+
+    # FIXME (rank_check): to include dropped predictors in the output, fixef
+    #  needs to be able to find out about them
 
     ff <- fixef(object)
     vv <- vcov(object,include_mapped=TRUE)
