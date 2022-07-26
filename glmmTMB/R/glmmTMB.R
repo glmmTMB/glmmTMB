@@ -1524,7 +1524,7 @@ fitTMB <- function(TMBStruc) {
                              "non-positive-definite Hessian matrix. ",
                              "See vignette('troubleshooting')"))
           }
-      } else if (control$eigval_check) {
+      } else if (control$eigval_check && length(sdr$cov.fixed)>0) {
           eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
           if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
               warning(paste0("Model convergence problem; ",
