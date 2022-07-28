@@ -416,21 +416,29 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
        if (is.null(n)) numeric(0) else rep(0, n)
   }
 
-  # theta is 0, except if dorr, theta is 1
-  t01 <- function(dorr, condReStruc){
-    theta <- rr0(sum(getVal(condReStruc,"blockNumTheta")))
-    if(dorr){
-      nt <- 1
-      blockNumTheta <- getVal(condReStruc,"blockNumTheta")
-      blockCode <- getVal(condReStruc, "blockCode")
-      for (i in 1:length(blockCode)) {
-        if(blockCode[i]==9){
-          theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
-        }
-        nt <- nt + blockNumTheta[i]
+  # theta is 0, otherwise
+  # theta is 1 for rr_covstruct
+  # theta is parameterised to covariance matrix for prop2
+  t01 <- function(ReStruc, condList){
+
+    theta <- rr0(sum(getVal(ReStruc, "blockNumTheta")))
+
+    blockTheta <- getVal(ReStruc,"blockNumTheta")
+    cov_code <- getVal(ReStruc, "blockCode")
+    thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
+    tl <- split(theta, thetaseq)
+    for(i in seq_along(cov_code)){
+      if(cov_code[[i]] == 9) # if rr start theta at 1
+        tl[[i]] <- rep(1, blockTheta[i])
+      else if(cov_code[[i]] == 10) { # if prop2 then set theta to be matrix values
+        ## FIX ME:: Will need to add in a check to see if it's the right dimensions
+        ## FIX ME:: Might have to do that at getReStruc?
+        a <- condList[["aa"]][[i]]
+        tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
       }
     }
-    theta
+    theta <- unlist(tl, use.names = F)
+    return(theta)
   }
 
   parameters <- with(data.tmb,
@@ -440,7 +448,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
-                       theta   = t01(dorr, condReStruc),
+                       theta   = t01(condReStruc, condList),
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
                        thetaf  = rr0(numThetaFamily)
                      ))
@@ -459,6 +467,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start = start,
                               sparseX = sparseX,
                               start_method = control$start_method)
+  }
+
+  if(any(condList$ss == "prop2")){
+    mapArg.orig <- mapArg
+    mapArg <- map.theta.prop2(condReStruc, mapArg.orig)
   }
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
@@ -574,25 +587,31 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         # FIX ME: use NA rather than 0 as a placeholder in aa?
         ## FIXME: make sure that eval() happens in the right environment/
         ##    document potential issues
-        get_num <- function(v) {
-            if (length(v) == 1) return(NA_real_)
-            payload <- v[[2]]
-            res <- tryCatch(eval(payload, envir = environment(formula)),
-                            error = function(e)
-                              stop("can't evaluate reduced-rank dimension ",
-                                   sQuote(deparse(payload)),
-                                   .call = FALSE))
-            if (is.na(suppressWarnings(as.numeric(res)))) {
-                stop("non-numeric value for reduced-rank dimension",
-                     call. = FALSE)
-            }
-            return(res)
+        ## NOTE:::: Changed from getting rank to extracting additional argument
+        get_arg <- function(v) {
+          if (length(v) == 1) return(NA_real_)
+          payload <- v[[2]]
+          res <- tryCatch(eval(payload, envir = environment(formula)),
+                          error = function(e)
+                            stop("can't evaluate additional arguments ",
+                                 sQuote(deparse(payload)),
+                                 .call = FALSE))
+          return(res)
         }
-        aa <- ifelse(ss$reTrmClass=="rr",
-                     vapply(ss$reTrmAddArgs,
-                           get_num,
-                           FUN.VALUE=numeric(1)),
-                    0)
+
+        aa <- lapply(ss$reTrmAddArgs, get_arg)
+        for (i in seq_along(ss$reTrmAddArgs)) {
+          if(ss$reTrmClasses[i] == "rr") {
+            if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
+              stop("non-numeric value for reduced-rank dimension")
+            }
+          }
+          else if(ss$reTrmClasses[i] == "prop2"){
+            if ( is.na(suppressWarnings(as.matrix( aa[i] ))) ){
+              stop("expecting a matrix for prop2")
+            }
+          }
+        }
 
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
@@ -630,6 +649,55 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
     namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms)
+}
+
+##'Get theta parameterisation of a covariance structure
+## from Balint Tamasi, TMB user's group list
+## FIXME: names based on dimnames of Sigma?
+#' @param Sigma a covariance matrix
+#' @param corrs.only return only values corresponding to the correlation matrix parameters?
+#' @return the corresponding \code{theta} parameter vector
+as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
+  logsd <- log(diag(Sigma))/2
+  cr <- cov2cor(Sigma)
+  cc <- chol(cr)
+  cc <- cc %*% diag(1 / diag(cc))
+  corrs <- cc[upper.tri(cc)]
+  if (corrs.only) return(corrs)
+  ret <- c(logsd,corrs)
+  return(ret)
+}
+
+##'Set map values for theta to be fixed (NA) for prop2
+## FIX Me:: Will need to adjust if map is already used
+#' @param ReStruc a covariance matrix
+#' @param corrs.only return only values corresponding to the correlation matrix parameters?
+#' @return the corresponding \code{theta} parameter vector
+map.theta.prop2 <- function(ReStruc, map){
+  if(is.null(map))
+    params <- list()
+  else
+    params <- map
+  
+  getVal <- function(obj, component)
+    vapply(obj, function(x) x[[component]], numeric(1))
+
+  nt <- sum(getVal(ReStruc, "blockNumTheta"))
+  map.theta <- c(1:nt) #initialises all parameters as separate values
+
+  blockTheta <- getVal(ReStruc,"blockNumTheta")
+  cov_code <- getVal(ReStruc, "blockCode")
+  thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
+  tl <- split(map.theta, thetaseq)
+  for(i in seq_along(cov_code)){
+    if(cov_code[[i]] == 10) {
+      tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
+    }
+  }
+  map.theta <- unlist(tl, use.names = F)
+  params$theta <- factor(map.theta)
+
+  return(params)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -698,17 +766,14 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
             ss <- rep("us",length(blksize))
         }
 
-        if ( any(is.na(aa[ss=="rr"]))) {
-          aa0 <- which(is.na(aa) & ss=="rr")
-          aa[aa0] <- 2 #set default rank to 2 if it's not specified
+        getRank <- function(covCode, a){
+          if(as.character(covCode) != "9") return(0)
+          else if(is.na(a)) return(2) #default is 2
+          else return(a)
         }
 
-        if ( is.null(aa)) {
-          aa <- rep(0,length(blksize)) #set rank to 0
-        }
-
-        blkrank <- aa
         covCode <- .valid_covstruct[ss]
+        blkrank <- mapply(getRank, covCode, aa)
 
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
@@ -721,7 +786,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "6" = 2,  # gau
                    "7" = 3,  # mat
                    "8" = 2 * blksize - 1, # toep
-                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2) #rr
+                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+                   "10" = blksize * (blksize+1) / 2 + 1) #prop2 (same as us, with one extra param)
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 

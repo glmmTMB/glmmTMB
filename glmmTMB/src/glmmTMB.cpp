@@ -410,6 +410,25 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
     }
   }
+  else if (term.blockCode == prop2_covstruct){
+    // case: prop2_covstruct
+    int n = term.blockSize;
+    Type loglambda = theta( theta.size() - 1);
+    vector<Type> logsd = theta.head(n);
+    vector<Type> corr_transf = theta.segment(n, theta.size() - n - 1);
+    vector<Type> sd =  exp(loglambda)*exp(logsd);
+    density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
+    density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
+    }
+    term.corr = nldens.cov(); // For report
+    term.sd = sd;             // For report
+    // density::SCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens2 = density::SCALE(nldens, lambda);
+  }
   else error("covStruct not implemented!");
   return ans;
 }
