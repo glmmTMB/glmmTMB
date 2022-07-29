@@ -37,6 +37,15 @@ if (requireNamespace("lme4")) {
    if (requireNamespace("boot")) {
       boot.ci(b1,type="perc")
     }
+   ## can run in parallel: may need to set up cluster explicitly,
+   ## use clusterEvalQ() to load packages on workers
+   if (requireNamespace("parallel")) {
+      cl <- parallel::makeCluster(2)
+      parallel::clusterEvalQ(cl, library("lme4"))
+      parallel::clusterEvalQ(cl, library("glmmTMB"))
+      b2 <- lme4::bootMer(fm1, FUN = function(x) fixef(x)$cond,
+              nsim = 10, ncpus = 2, cl = cl, parallel = "snow")
+   }
 }
 }
 }
