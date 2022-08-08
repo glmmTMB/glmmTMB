@@ -28,6 +28,7 @@ enum valid_family {
   compois_family =403,
   truncated_genpois_family =404,
   truncated_compois_family =405,
+  zo_truncated_poisson_family = 410,
   nbinom1_family =500,
   nbinom2_family =501,
   truncated_nbinom1_family =502,
@@ -628,6 +629,15 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
 		yobs(i) = glmmtmb::rtruncated_poisson(0, asDouble(mu(i)));
+        }
+        break;
+      case zo_truncated_poisson_family:
+        log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i)));
+	log_nzprob = logspace_sub(log_nzprob, log(mu(i)) - mu(i));
+        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+        tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
+        SIMULATE{
+		yobs(i) = glmmtmb::rtruncated_poisson(1, asDouble(mu(i)));
         }
         break;
      case genpois_family:

@@ -1,0 +1,42 @@
+---
+title: "Adding new families to glmmTMB"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Adding new families to glmmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+---
+
+```{r load_lib,echo=FALSE}
+library(glmmTMB)
+knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
+```
+
+## modify glmmTMB.cpp
+
+- add to the section `enum valid_family`:
+
+```c++
+zo_truncated_poisson_family = 410,
+```
+
+- add a case to the giant `switch` statement that handles the conditional likelihood (search for `// Observation likelihood`): in this case we can most easily do this by modifying the case for the zero-truncated Poisson family (`case truncated_poisson_family`):
+   - `mu(i)` is the value of the location parameter for the current observation
+   - `phi(i)` is the value of the dispersion parameter for the current observation
+   - use logspace addition/subtraction if possible
+   - if you want to be able to simulate data, add a `SIMULATE{}` condition that samples a random deviate from your distribution
+
+```c++
+      case zo_truncated_poisson_family:
+        log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i)));
+	log_nzprob = logspace_sub(log_nzprob, log(mu(i)) - mu(i));
+        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+        tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
+        SIMULATE{
+		yobs(i) = glmmtmb::rtruncated_poisson(1, asDouble(mu(i)));
+        }
+        break;
+```
