@@ -9,6 +9,7 @@
 \alias{genpois}
 \alias{truncated_genpois}
 \alias{truncated_poisson}
+\alias{zo_truncated_poisson}
 \alias{truncated_nbinom2}
 \alias{truncated_nbinom1}
 \alias{beta_family}
@@ -30,6 +31,8 @@ genpois(link = "log")
 truncated_genpois(link = "log")
 
 truncated_poisson(link = "log")
+
+zo_truncated_poisson(link = "log")
 
 truncated_nbinom2(link = "log")
 

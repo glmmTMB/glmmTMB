@@ -88,6 +88,7 @@ export(truncated_poisson)
 export(tweedie)
 export(up2date)
 export(ziGamma)
+export(zo_truncated_poisson)
 if(getRversion() >= "3.6.0") {
      S3method(car::Anova, glmmTMB)
 } else {

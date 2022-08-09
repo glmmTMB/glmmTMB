@@ -197,6 +197,18 @@ truncated_poisson <- function(link="log") {
 }
 
 #' @rdname nbinom2
+#' @export
+zo_truncated_poisson <- function(link="log") {
+    r <- list(family="zo_truncated_poisson",
+              variance=function(lambda) {
+                  stop("haven't implemented variance function")
+                  ## (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
+              })
+    return(make_family(r,link))
+}
+
+
+#' @rdname nbinom2
 #' @importFrom stats dnbinom pnbinom
 #' @export
 truncated_nbinom2 <- function(link="log") {
