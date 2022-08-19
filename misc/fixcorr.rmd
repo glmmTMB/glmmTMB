@@ -40,9 +40,7 @@ as.vcov.theta <- function(theta) {
 #' @param Sigma a covariance matrix
 #' @param corrs.only return only values corresponding to the correlation matrix parameters?
 #' @return the corresponding \code{theta} parameter vector
-as.theta.vcov <- function(Sigma, lambda = 1, corrs.only = FALSE) {
-    # logsd <- log(diag(Sigma))/2
-    Sigma = Sigma* lambda
+as.theta.vcov <- function(Sigma, corrs.only = FALSE) {
     logsd <- log(diag(Sigma))/2 
     cr <- cov2cor(Sigma) 
     cc <- chol(cr)
@@ -75,11 +73,19 @@ fit2 <- glmmTMB(matur.L ~ age.mat + ( 0+spp|dummy),
         dispformula = ~ 0,
         map=list(theta=factor(c(rep(1,nsp),rep(NA,length(corrs))))),
         start=list(theta=c(rep(0,nsp),corrs)))
+
+fitprop <- glmmTMB(matur.L ~ age.mat + prop2( 0+spp|dummy, mat),
+        data = dat,
+        dispformula = ~ 0)
+
 ## check equal coefficients to gls() fit
 all.equal(c(fixef(fit2)$cond),c(coef(fit)),
           tolerance=5e-6)
+## check equal coefficients to gls() fit
+all.equal(c(fixef(fitprop)$cond),c(coef(fit)),
+          tolerance=5e-6)
 ## check that correlation matrix is as intended
-cc <- cov2cor(VarCorr(fit2)$cond[[1]])
+cc <- cov2cor(VarCorr(fitprop)$cond[[1]])
 cc <- matrix(c(cc),
              dimnames=lapply(dimnames(cc),
                              function(x) gsub("^spp","",x)),
@@ -89,13 +95,10 @@ all.equal(cc,mat)
 
 dat.small <- dat[1:5, ]
 mat.small <- mat[1:5, 1:5]
-corrs.2 <- as.theta.vcov(mat.small, 0.85, corrs.only = TRUE)
-corrs.1 <- as.theta.vcov(mat.small, 1, corrs.only = TRUE)
+corrs.1 <- as.theta.vcov(mat.small,  corrs.only = TRUE)
 dat$spp <- factor(rownames(dat), levels=rownames(dat))
 dat$dummy <- factor(0)
 nsp <- nrow(dat.small)
-
-mat.2 <- mat.small*2
 
 fit2 <- glmmTMB(matur.L ~ age.mat + ( 0 + spp | dummy),
         data = dat.small,
@@ -106,6 +109,21 @@ fit2 <- glmmTMB(matur.L ~ age.mat + ( 0 + spp | dummy),
 fit.prop <- glmmTMB(matur.L ~ age.mat + prop2( 0 + spp | dummy, mat.small),
         data = dat.small,
         dispformula = ~ 0)
+
+## check that correlation matrix is as intended
+cc <- cov2cor(VarCorr(fit.prop)$cond[[1]])
+cc <- matrix(c(cc),
+             dimnames=lapply(dimnames(cc),
+                             function(x) gsub("^spp","",x)),
+             nrow=nrow(cc))
+all.equal(cc,mat.small)
+
+theta.1 <- as.theta.vcov(mat.small)
+theta.l <- as.theta.vcov(mat.small*3)
+get.theta.2 <- theta.1
+l <- 3
+get.theta.2[1:nrow(mat.small)] <- get.theta.2[1:nrow(mat.small)] + log(l)/2
+
 
 ```
 

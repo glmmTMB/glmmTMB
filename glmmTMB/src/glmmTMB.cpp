@@ -414,15 +414,13 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // case: prop2_covstruct
     int n = term.blockSize;
     Type loglambda = theta( theta.size() - 1);
-    Type lambda = exp(loglambda);
     vector<Type> logsd = theta.head(n);
+    vector<Type> sd =  exp(logsd + loglambda/2) ;
     vector<Type> corr_transf = theta.segment(n, theta.size() - n - 1);
-    vector<Type> sd =  exp(logsd);
     density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
     density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
-    density::UNSTRUCTURED_CORR_t<Type> scnldens2 = scnldens * lambda;
     for(int i = 0; i < term.blockReps; i++){
-      ans += scnldens2(U.col(i));
+      ans += scnldens(U.col(i));
       if (do_simulate) {
         U.col(i) = sd * nldens.simulate();
       }
