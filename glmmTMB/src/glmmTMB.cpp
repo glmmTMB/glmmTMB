@@ -522,9 +522,11 @@ Type objective_function<Type>::operator() ()
 
   // Apply link
   vector<Type> mu(eta.size());
-  for (int i = 0; i < mu.size(); i++)
+  vector<Type> pz(eta.size());
+  for (int i = 0; i < mu.size(); i++) {
     mu(i) = inverse_linkfun(eta(i), link);
-  vector<Type> pz = inverse_linkfun(etazi, zilink);
+    pz(i) = inverse_linkfun(etazi(i), zilink);
+  }
   vector<Type> phi = exp(etad);
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions

@@ -375,7 +375,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     Zzi = ziList$Z,
     Xd = denseXval("disp",dispList),
     XdS = sparseXval("disp",dispList),
-
     ## Zdisp=dispList$Z,
     ## use c() on yobs, size to strip attributes such as 'AsIs'
     ##  (which confuse MakeADFun)
@@ -470,7 +469,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
             condList, ziList, dispList, condReStruc, ziReStruc,
-            family, contrasts, respCol,
+            family, zilink, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
             fr, se, call, verbose, REML, map, sparseX))
 }
@@ -1112,20 +1111,20 @@ glmmTMB <- function(
         mkTMBStruc(formula, ziformula, dispformula,
                    combForm,
                    mf, fr,
-                   yobs=y,
+                   yobs = y,
                    respCol,
                    weights,
-                   contrasts=contrasts,
-                   family=family,
-                   zilink = zilink,
-                   se=se,
-                   call=call,
-                   verbose=verbose,
-                   REML=REML,
-                   start=start,
-                   map=map,
-                   sparseX=sparseX,
-                   control=control)
+                   contrasts = contrasts,
+                   family = family,
+                   zilink  =  zilink,
+                   se = se,
+                   call = call,
+                   verbose = verbose,
+                   REML = REML,
+                   start = start,
+                   map = map,
+                   sparseX = sparseX,
+                   control = control)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir = TMBStruc)
@@ -1556,6 +1555,7 @@ fitTMB <- function(TMBStruc) {
                                 respCol,
                                 grpVar,
                                 family,
+                                zilink,
                                 contrasts,
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList),
