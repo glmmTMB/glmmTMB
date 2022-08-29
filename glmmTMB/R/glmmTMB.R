@@ -392,7 +392,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     termszi = ziReStruc,
     family = .valid_family[family$family],
     link = .valid_link[family$link],
-    zilink = .valid_link[zilink],
+    zilink = .valid_link[zilink$name],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict

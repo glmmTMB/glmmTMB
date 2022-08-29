@@ -98,17 +98,17 @@ For more information about the \pkg{glmmTMB} package, see Brooks et al. (2017) a
 \examples{
 \donttest{
 (m1 <- glmmTMB(count ~ mined + (1|site),
-  zi=~mined,
+  ziformula=~mined,
   family=poisson, data=Salamanders))
 summary(m1)
 ##' ## Zero-inflated negative binomial model
 (m2 <- glmmTMB(count ~ spp + mined + (1|site),
-  zi=~spp + mined,
+  ziformula=~spp + mined,
   family=nbinom2, data=Salamanders))
 
 ## Hurdle Poisson model
 (m3 <- glmmTMB(count ~ spp + mined + (1|site),
-  zi=~spp + mined,
+  ziformula=~spp + mined,
   family=truncated_poisson, data=Salamanders))
 
 ## Binomial model

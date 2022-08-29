@@ -325,3 +325,23 @@ test_that("bar/double-bar bug with gaussian response", {
                c(`(Intercept)` = 2.09164503130437, cov = -0.0228597948394547))
 
 })
+
+test_that("alternative zi link function", {
+    ## generate data
+    set.seed(1)
+    beta_cond <- c(1,2)
+    beta_zi <- c(-2,1)
+    n <- 200
+    dd <- data.frame(x = rnorm(n))
+    cloglink <- make.link("cloglog")
+    ziprob <- cloglink$linkinv(beta_zi[1] + beta_zi[2]*dd$x)
+    dd$y <- rpois(n, lambda = exp(beta_cond[1] + beta_cond[2]*dd$x))
+    z_struc <- runif(n) < ziprob
+    dd$y[z_struc] <- 0
+    ## fit
+    m1 <- glmmTMB(y ~ x,
+                  data = dd,
+                  ziformula = ~ x,
+                  zilink = make.link("cloglog"),
+                  family = poisson)
+})  
