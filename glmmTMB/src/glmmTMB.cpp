@@ -480,6 +480,7 @@ Type objective_function<Type>::operator() ()
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
+  DATA_INTEGER(zilink);
 
   // Flags
   DATA_INTEGER(ziPredictCode);
@@ -523,7 +524,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
     mu(i) = inverse_linkfun(eta(i), link);
-  vector<Type> pz = invlogit(etazi);
+  vector<Type> pz = inverse_linkfun(etazi, zilink);
   vector<Type> phi = exp(etad);
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions

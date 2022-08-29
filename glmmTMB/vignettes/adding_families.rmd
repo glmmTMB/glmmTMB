@@ -1,5 +1,5 @@
 ---
-title: "Adding new families to glmmTMB"
+title: "Hacking glmmTMB"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -9,6 +9,8 @@ vignette: >
 params:
   EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
 ---
+
+# Adding a family
 
 ```{r load_lib,echo=FALSE}
 library(glmmTMB)
@@ -138,3 +140,5 @@ Conditional model:
 (Intercept)  
       1.015  
 ```
+
+# Flexible link functions for the zero-inflation component
