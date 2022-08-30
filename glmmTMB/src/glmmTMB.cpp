@@ -685,8 +685,9 @@ Type objective_function<Type>::operator() ()
       } // End switch
 
       // Add zero inflation
-      if(zi_flag){
-        Type logit_pz = etazi(i) ;
+      if (zi_flag) {
+	// convert eta from link scale to logit scale
+        Type logit_pz = logit_inverse_linkfun(etazi(i), zilink);
         Type log_pz   = -logspace_add( Type(0) , -logit_pz );
         Type log_1mpz = -logspace_add( Type(0) ,  logit_pz );
         if(yobs(i) == Type(0)){
