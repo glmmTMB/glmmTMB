@@ -240,6 +240,34 @@ test_that("fix_predvars works for I(x^2)", {
     expect_equal(unname(p1),unname(p2), tolerance=1e-4)
 })
 
+test_that("more predvars stuff (I()) (GH #853)", {
+    set.seed(100)
+    N <- 100
+    x1 <- rnorm(N)
+    Y <- rpois(N, lambda = exp(x1))
+    df <- data.frame(Y=Y, x1=x1)
+
+    ##Base model
+    mod <- suppressWarnings(glmmTMB(Y ~ x1 + I((x1+10)^2) + I((x1+10)^3),
+                                    data = df, family = "poisson"))
+    p1 <- predict(mod, newdata = df, type = "response")
+    expect_equal(fitted(mod), predict(mod, newdata = df, type = "response"))
+})
+
+test_that("predvars with different ns() in fixed and disp (GH #845)", {
+    library(splines)
+    x <- glmmTMB(
+        am ~ ns(wt, df = 3), 
+        dispformula = ~ ns(wt, df = 2), 
+        data = mtcars
+    )
+    newdata <- data.frame(
+        wt = seq(min(mtcars$wt), max(mtcars$wt), length.out = 3)
+    )
+    expect_equal(predict(x, newdata = newdata),
+                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
+})
+
 test_that("contrasts carried over", {
     skip_on_cran()
     ## GH 439, @cvoeten
