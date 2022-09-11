@@ -268,6 +268,19 @@ test_that("predvars with different ns() in fixed and disp (GH #845)", {
                  c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
 })
 
+test_that("predvars with differing splines in fixed and RE (GH#632)", {
+    library(splines)
+    data(sleepstudy,package="lme4")
+    m4 <- glmmTMB(Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject), 
+                  data = sleepstudy)
+    pp <- predict(m4, newdata = data.frame(Days = 4:6, Subject = "372"),
+                  re.form = NULL, 
+                  type = "response")
+    ## plot(Reaction ~ Days, data = subset(sleepstudy, Subject == "372"))
+    ## points(4:6, pp, col = 2, pch = 16)
+    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647))
+})
+
 test_that("contrasts carried over", {
     skip_on_cran()
     ## GH 439, @cvoeten
