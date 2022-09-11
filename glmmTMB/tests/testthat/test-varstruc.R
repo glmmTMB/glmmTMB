@@ -61,9 +61,9 @@ test_that("ar1 requires factor time", {
 })
 
 ## FIXME: simpler to check formatVC() directly?
-get_vcout <- function(x,g="\\bSubject\\b") {
+get_vcout <- function(x, g="\\bSubject\\b") {
     cc <- capture.output(print(VarCorr(x)))
-    cc1 <- grep(g,cc,value=TRUE,perl=TRUE)
+    cc1 <- grep(g, cc, value=TRUE, perl=TRUE)
     ss <- strsplit(cc1,"[^[:alnum:][:punct:]]+")[[1]]
     return(ss[nchar(ss)>0])
 }
@@ -92,6 +92,11 @@ test_that("varcorr_print", {
           "c2 4.9e-06 0.98",
           "s (Intercept) 3.4e-05",
           "Residual 9.6e-01"))
+
+    ## check that all std devs are being printed (GH #851)
+    cc <- capture.output(VarCorr(fm_cs2))
+    expect_equal(length(cc), 7)
+    expect_equal(length(grep("fDays", cc)), 2)
 })
 
 test_that("cov_struct_order", {
