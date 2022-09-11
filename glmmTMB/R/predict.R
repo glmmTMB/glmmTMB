@@ -236,10 +236,10 @@ predict.glmmTMB <- function(object,
   tt <- terms(object$modelInfo$allForm$combForm)
   pv <- attr(terms(model.frame(object)),"predvars")
   ## get rid of response variable     
-  attr(tt,"predvars") <- pv[-2] ## fix_predvars(pv,tt)
+  attr(tt,"predvars") <- pv[-2] ## was: fix_predvars(pv,tt)
   mf$formula <- RHSForm(tt, as.form=TRUE)
 
-  ## fix_predvars (in utils.R) is NO LONGER NEEDED.
+  ## fix_predvars (in utils.R) is NO LONGER USED
   ## We now rely on the 'variables' and 'predvars' attributes matching
   ## up correctly, **except for the response variable**, from the
   ## terms of 'combForm' and the model frame, and working with whatever
@@ -248,9 +248,9 @@ predict.glmmTMB <- function(object,
   ## We should still be on the lookout for crazy/unforeseen
   ## usage of data-dependent bases (e.g. polynomials or splines with
   ## different arguments in different parts of the model ...)
-  ## This could probably be slightly further simplified by making RHSForm()
-  ## use delete.response() (which automatically removes the response from predvars,
-  ## carefully) where appropriate [without breaking existing code].
+  ## This could be further improved by making RHSForm()
+  ##  use delete.response() -- handles dropping response from predvars
+  ## Would still need careful testing etc..
        
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
