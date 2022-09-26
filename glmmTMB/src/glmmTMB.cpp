@@ -668,10 +668,10 @@ Type objective_function<Type>::operator() ()
         }
         break;
       case t_family:
-        s1 = (yobs(i) - mu(i))/sqrt(phi(i));
+        s1 = (yobs(i) - mu(i))/phi(i);
 	s2 = exp(thetaf(0));
 	// since resid was scaled above, density needs to be divided by log(sd) = log(var)/2 = etad(i)/2
-	tmp_loglik = dt(s1, s2, true) - etad(i)/2;
+	tmp_loglik = dt(s1, s2, true) - etad(i);
 	break;
       default:
         error("Family not implemented!");
