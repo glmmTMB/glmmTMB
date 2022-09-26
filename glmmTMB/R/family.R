@@ -357,3 +357,12 @@ ziGamma <- function(link="inverse") {
    return(g)
 }
 
+#' @export
+#' @rdname nbinom2
+t_family <- function(link="identity") {
+    r <- list(family="t",
+           variance=function(mu, phi) {
+               rep(phi, length(mu))
+           })
+    return(make_family(r,link))
+}

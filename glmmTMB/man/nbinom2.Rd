@@ -15,6 +15,7 @@
 \alias{betabinomial}
 \alias{tweedie}
 \alias{ziGamma}
+\alias{t_family}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
@@ -42,6 +43,8 @@ betabinomial(link = "logit")
 tweedie(link = "log")
 
 ziGamma(link = "inverse")
+
+t_family(link = "identity")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
