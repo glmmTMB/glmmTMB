@@ -235,21 +235,23 @@ predict.glmmTMB <- function(object,
   ##  bits we need for any of the model frames ...
   tt <- terms(object$modelInfo$allForm$combForm)
   pv <- attr(terms(model.frame(object)),"predvars")
-  attr(tt,"predvars") <- fix_predvars(pv,tt)
+  ## get rid of response variable     
+  attr(tt,"predvars") <- pv[-2] ## was: fix_predvars(pv,tt)
   mf$formula <- RHSForm(tt, as.form=TRUE)
 
-  ## FIXME:: fix_predvars is ugly, and should be refactored.
-  ## the best solution is probably to attach predvars information
-  ## to formulas/terms for individual components
-  ## {conditional, zi, disp} * {fixed, random}
-  ## and fix things downstream, where the actual model matrices
-  ## are constructed.
-  ##
-  ## There's a fairly high chance of breakage with crazy/unforeseen
+  ## fix_predvars (in utils.R) is NO LONGER USED
+  ## We now rely on the 'variables' and 'predvars' attributes matching
+  ## up correctly, **except for the response variable**, from the
+  ## terms of 'combForm' and the model frame, and working with whatever
+  ## newdata= argument is provided.
+  ## Passes existing tests/known cases.
+  ## We should still be on the lookout for crazy/unforeseen
   ## usage of data-dependent bases (e.g. polynomials or splines with
   ## different arguments in different parts of the model ...)
-  ## Can we detect/warn about these?
-  ##
+  ## This could be further improved by making RHSForm()
+  ##  use delete.response() -- handles dropping response from predvars
+  ## Would still need careful testing etc..
+       
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
     newFr <- object$frame

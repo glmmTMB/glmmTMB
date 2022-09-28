@@ -4,6 +4,14 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.4.9000}{
+    \subsection{BUG FIXES}{
+      \itemize{
+	\item improve predict-handling of complex bases (GH #632, #845, #853)
+      } % itemize
+    } % bug fixes
+  } % version 1.1.4.9000
+  
 \section{CHANGES IN VERSION 1.1.4}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
