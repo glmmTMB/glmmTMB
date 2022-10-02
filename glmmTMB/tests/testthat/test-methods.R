@@ -568,7 +568,11 @@ test_that("trunc nbinom simulation", {
         ## at their starting values
         m1 <- simfun(y~f, family=f, data=dd, beta=c(-40,39))
         expect_equal(fixef(m1)$cond, c(`(Intercept)` = -40, f2 = 39))
-        expect_equal(fitted(m1),c(4.24835425529159e-18, 0.367879441171442))
+        res <- list("truncated_nbinom1" = c(1.44269504088896, 1.6344435754591),
+                    "truncated_nbinom2" = c(1, 1 + exp(-1)))
+        ## values were previously 0, exp(-1) regardless of nbinom1 vs nbinom2 (dispersion param == 1, start value)
+        ## now that response predicts mean of *truncated* distribution, they differ
+        expect_equal(fitted(m1), res[[f]], tolerance = 1e-5)
         ## should NOT get NaN (or zero) for the first group if hack/fix is working
         expect_equal(unname(unlist(simulate(m1,seed=101))),c(1,1))
     }
