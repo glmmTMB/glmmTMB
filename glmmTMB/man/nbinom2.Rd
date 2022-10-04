@@ -15,6 +15,7 @@
 \alias{betabinomial}
 \alias{tweedie}
 \alias{ziGamma}
+\alias{t_family}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
@@ -42,6 +43,8 @@ betabinomial(link = "logit")
 tweedie(link = "log")
 
 ziGamma(link = "inverse")
+
+t_family(link = "identity")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
@@ -75,6 +78,7 @@ and the predicted mean as \eqn{\mu}{mu}:
 and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^power}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
+     \item{t}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(thetaf = log(fixed_df)), map = list(thetaf = factor(NA))}.}
 }
 }
 \references{

@@ -531,13 +531,16 @@ printDispersion <- function(ff,s) {
 ## @param object glmmTMB output
 #' @importFrom stats plogis
 printFamily <- function(ff, object) {
-    if (ff == "tweedie") {
-        power <- .tweedie_power(object)
-        cat(sprintf("\nTweedie power parameter: %s",
-                    formatC(power, digits=3)), "\n")
-
+    val <- switch(ff,
+                  tweedie = c("Tweedie power parameter" = .tweedie_power(object)),
+                  t = c("Student-t df" = unname(exp(get_pars(object)["thetaf"]))),
+                  NULL
+                  )
+    if (!is.null(val)) {
+        cat(sprintf("\n%s estimate: %s",
+                    names(val), formatC(val, digits=3)), "\n")
     }
-    NULL
+    invisible(NULL)
 }
 
 ##' @importFrom lme4 .prt.aictab
