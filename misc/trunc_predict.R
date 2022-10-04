@@ -53,8 +53,17 @@ testfun(f_zp1, "zp1")
 f_znb2 <- update(f_zp1, znb1 ~ .,
                  family = truncated_nbinom2)
 
-## hmm, fails
+## hmm, fails for nbinom2??
 testfun(f_znb2, "znb1")
+## calculate by hand
+cm1 <- predict(f_znb2, type="conditional")
+eta <- predict(f_znb2, type = "link")
+## mean value
+mval <- function(mu, size) {
+    mu/(1-dnbinom(0, mu = mu, size = size))
+}
+## this seems to work, so something about the identity is off
+all.equal(mval(exp(eta), sigma(f_znb2)), cm1)
 
 f_znb1 <- update(f_zp1, znb1 ~ .,
                  family = truncated_nbinom1)
