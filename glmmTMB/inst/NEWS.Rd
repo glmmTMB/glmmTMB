@@ -7,12 +7,28 @@
 \section{CHANGES IN VERSION 1.1.4.9000}{
     \subsection{BUG FIXES}{
       \itemize{
-	\item improve predict-handling of complex bases (GH #632, #845, #853)
+	\item improve predict-handling of complex bases (GH #632, #845,
+	#853)
+	\item all standard deviations are now printed in output for
+	models using \code{cs()} (GH #851)
       } % itemize
     } % bug fixes
-  } % version 1.1.4.9000
+    \subsection{USER-VISIBLE CHANGES}{
+      \itemize{
+	\item glmmTMB now stops if fixed-effect model matrices are
+	rank deficient (i.e., perfectly collinear predictors); this
+	can be changed to a warning via
+	\code{glmmTMBControl(rank_check="ignore")}
+      } % itemize
+    } % user-visible changes
+    \subsection{NEW FEATURES}{
+      \itemize{ Student-t response distribution is now implemented (see
+      \code{\link{t_family}})
+    } % itemize
+  } % new features
+} % version 1.1.4.9000
   
-\section{CHANGES IN VERSION 1.1.4}{
+\section{CHANGES IN VERSION 1.1.4 (2022-07-12)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item row names of \code{confint} output for random effects
