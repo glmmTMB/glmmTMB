@@ -24,8 +24,9 @@
       } % itemize
     } % user-visible changes
     \subsection{NEW FEATURES}{
-      \itemize{ Student-t response distribution is now implemented (see
-      \code{\link{t_family}})
+      \itemize{
+	\item Student-t response distribution is now implemented (see
+      \code{\link{t_family}}
     } % itemize
   } % new features
 } % version 1.1.4.9000
