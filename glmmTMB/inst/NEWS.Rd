@@ -11,6 +11,8 @@
 	#853)
 	\item all standard deviations are now printed in output for
 	models using \code{cs()} (GH #851)
+	\item corrected conditional and response predictions for
+	truncated distributions (GH #634, #860)
       } % itemize
     } % bug fixes
     \subsection{USER-VISIBLE CHANGES}{
