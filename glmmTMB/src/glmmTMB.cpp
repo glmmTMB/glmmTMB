@@ -21,6 +21,7 @@ enum valid_family {
   binomial_family = 100,
   betabinomial_family =101,
   beta_family =200,
+  ordbeta_family = 201,
   Gamma_family =300,
   poisson_family =400,
   truncated_poisson_family =401,
@@ -533,7 +534,7 @@ Type objective_function<Type>::operator() ()
 #define zt_lik_nearzero(x,loglik_exp) (zi_flag && (x < Type(0.001)) ? -INFINITY : loglik_exp)
 
   // Observation likelihood
-  Type s1, s2, s3;
+  Type s1, s2, s3, s4;
   Type tmp_loglik;
   
   for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
@@ -568,6 +569,26 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
+      case ordbeta_family:
+	// FIXME: slight advantage to precomputing invlogit(.) outside loop.
+	if (yobs(i) == 0.0) {
+	  // log(logistic(x)): log(alpha)
+	  tmp_loglik = -logspace_add(Type(0), -thetaf(0));
+	} else {
+	  s3 = -logspace_add(Type(0), thetaf(0)); // log(1-alpha)
+	  if (yobs(i) == 1.0) {
+	    // log((1-alpha)*gamma)
+	    tmp_loglik = s3*(-logspace_add(Type(0), thetaf(1)));
+	  } else {
+	    // log((1-alpha)*(1-gamma))
+	    s4 = -logspace_add(Type(0), thetaf(1)); // log(1-gamma)
+	    s1 = mu(i)*phi(i);
+	    s2 = (Type(1)-mu(i))*phi(i);
+	    tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true)) +
+	      s3 + s4;
+	  }
+	}
+	break;
       case betabinomial_family:
         // Transform to logit scale independent of link
         s3 = logit_inverse_linkfun(eta(i), link); // logit(p)

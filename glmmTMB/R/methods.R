@@ -534,11 +534,15 @@ printFamily <- function(ff, object) {
     val <- switch(ff,
                   tweedie = c("Tweedie power parameter" = .tweedie_power(object)),
                   t = c("Student-t df" = unname(exp(get_pars(object)["thetaf"]))),
+                  ordbeta = c("ordered beta parameters" =
+                                  unnames(plogis(get_pars(object)["thetaf"]))),
                   NULL
                   )
     if (!is.null(val)) {
         cat(sprintf("\n%s estimate: %s",
-                    names(val), formatC(val, digits=3)), "\n")
+                    names(val),
+                    paste(formatC(val, digits=3),
+                          collapse = ", ")), "\n")
     }
     invisible(NULL)
 }

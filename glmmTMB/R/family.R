@@ -367,3 +367,14 @@ t_family <- function(link="identity") {
            })
     return(make_family(r,link))
 }
+
+
+#' @export
+#' @rdname nbinom2
+ordbeta <- function(link="logit") {
+    r <- list(family="ordbeta",
+              ## from beta: not sure this is right ... ??
+              variance=function(mu) { mu*(1-mu) }
+              )
+    return(make_family(r,link))
+}
