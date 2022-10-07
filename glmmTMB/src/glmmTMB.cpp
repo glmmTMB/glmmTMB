@@ -137,6 +137,23 @@ Type log_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
+/* log transformed inverse_linkfun without losing too much accuracy */
+template<class Type>
+Type log1m_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case log_link:
+    ans = logspace_sub(Type(0), eta);
+    break;
+  case logit_link:
+    ans = -logspace_add(Type(0), eta);
+    break;
+  default:
+    ans = logspace_sub(Type(0), log( inverse_linkfun(eta, link) ));
+  } // End switch
+  return ans;
+}
+
 template <class Type>
 struct per_term_info {
   // Input from R
@@ -570,23 +587,17 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
       case ordbeta_family:
-	// FIXME: slight advantage to precomputing invlogit(.) outside loop.
+	// https://github.com/saudiwin/ordbetareg_pack/blob/master/R/modeling.R#L565-L573
 	if (yobs(i) == 0.0) {
-	  // log(logistic(x)): log(alpha)
-	  tmp_loglik = -logspace_add(Type(0), -thetaf(0));
+	  tmp_loglik = log1m_inverse_linkfun(eta(i) - thetaf(0), logit_link);
+	} else if (yobs(i) == 1.0) {
+	  tmp_loglik = log_inverse_linkfun(eta(i) - thetaf(1), logit_link);
 	} else {
-	  s3 = -logspace_add(Type(0), thetaf(0)); // log(1-alpha)
-	  if (yobs(i) == 1.0) {
-	    // log((1-alpha)*gamma)
-	    tmp_loglik = s3*(-logspace_add(Type(0), thetaf(1)));
-	  } else {
-	    // log((1-alpha)*(1-gamma))
-	    s4 = -logspace_add(Type(0), thetaf(1)); // log(1-gamma)
-	    s1 = mu(i)*phi(i);
-	    s2 = (Type(1)-mu(i))*phi(i);
-	    tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true)) +
-	      s3 + s4;
-	  }
+	  s1 = mu(i)*phi(i);
+	  s2 = (Type(1)-mu(i))*phi(i);
+	  tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true)) +
+	    logspace_sub(log_inverse_linkfun(eta(i) - thetaf(0), logit_link),
+			 log_inverse_linkfun(eta(i) - thetaf(1), logit_link));
 	}
 	break;
       case betabinomial_family:

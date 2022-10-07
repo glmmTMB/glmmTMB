@@ -16,6 +16,7 @@
 \alias{tweedie}
 \alias{ziGamma}
 \alias{t_family}
+\alias{ordbeta}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
@@ -45,6 +46,8 @@ tweedie(link = "log")
 ziGamma(link = "inverse")
 
 t_family(link = "identity")
+
+ordbeta(link = "logit")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
