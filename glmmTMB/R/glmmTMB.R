@@ -1295,18 +1295,31 @@ glmmTMBControl <- function(optCtrl=NULL,
         for(whichX in Xnames){
            if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
            ## QR decomposition to identify linearly dependent columns
-           qr_X <- Matrix::qr(TMBStruc$data.tmb[[whichX]], tol = 1e-7)
+           curX <- TMBStruc$data.tmb[[whichX]]
+           qr_X <- Matrix::qr(curX, tol = 1e-7)
+           if (inherits(curX, "sparseMatrix")) {
+               rr <- rankMatrix(curX)
+           } else {
+               rr <- qr_X$rank
+           }
            ## if rank-deficient, adjust X and associated fixed effect parameters
-           if(qr_X$rank < ncol(TMBStruc$data.tmb[[whichX]])){
+           if(rr < ncol(curX)) {
                model_type <- names(Xnames)[match(whichX, Xnames)]
                message("dropping columns from rank-deficient ", model_type," model")
-               ## columns to keep/drop
-               to_keep <- qr_X$pivot[1L:qr_X$rank]
-               to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
-               dropped_names <- colnames(qr_X$qr)[to_drop]
+               ## columns to keep/drop: a hack,
+               if (inherits(curX, "sparseMatrix")) {
+                   rel_beta <- qr_X@beta/min(qr_X@beta)
+                   to_keep <- which(rel_beta <= 1e8)
+                   to_drop <- which(rel_beta > 1e8)
+                   dropped_names <- colnames(qr_X@R)[to_drop]
+               } else {
+                   to_keep <- qr_X$pivot[1L:qr_X$rank]
+                   to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
+                   dropped_names <- colnames(qr_X$qr)[to_drop]
+               }
 
                ## update X within TMBStruc; retain dropped columns names for use in model output
-               TMBStruc$data.tmb[[whichX]] <- TMBStruc$data.tmb[[whichX]][,to_keep,drop=FALSE]
+               TMBStruc$data.tmb[[whichX]] <- curX[,to_keep,drop=FALSE]
                attr(TMBStruc$data.tmb[[whichX]], "col.dropped") <- setNames(to_drop, dropped_names)
 
                ## reduce parameters of appropriate component
