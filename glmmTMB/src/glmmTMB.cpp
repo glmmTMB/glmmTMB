@@ -590,14 +590,18 @@ Type objective_function<Type>::operator() ()
 	// https://github.com/saudiwin/ordbetareg_pack/blob/master/R/modeling.R#L565-L573
 	if (yobs(i) == 0.0) {
 	  tmp_loglik = log1m_inverse_linkfun(eta(i) - thetaf(0), logit_link);
+	  // std::cout << "zero " << asDouble(eta(i)) << " " << asDouble(thetaf(0)) << " " << asDouble(tmp_loglik) << std::endl;
 	} else if (yobs(i) == 1.0) {
 	  tmp_loglik = log_inverse_linkfun(eta(i) - thetaf(1), logit_link);
+	  // std::cout << "one " << asDouble(eta(i)) << " " << asDouble(thetaf(1)) << " " << asDouble(tmp_loglik) << std::endl;
 	} else {
 	  s1 = mu(i)*phi(i);
 	  s2 = (Type(1)-mu(i))*phi(i);
-	  tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true)) +
-	    logspace_sub(log_inverse_linkfun(eta(i) - thetaf(0), logit_link),
-			 log_inverse_linkfun(eta(i) - thetaf(1), logit_link));
+	  s3 = logspace_sub(log_inverse_linkfun(eta(i) - thetaf(0), logit_link),
+			    log_inverse_linkfun(eta(i) - thetaf(1), logit_link));
+	  tmp_loglik = s3 + dbeta(yobs(i), s1, s2, true);
+
+	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(thetaf(0)) << " " << asDouble(thetaf(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
 	}
 	break;
       case betabinomial_family:

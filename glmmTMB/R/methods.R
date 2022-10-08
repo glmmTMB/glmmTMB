@@ -531,16 +531,18 @@ printDispersion <- function(ff,s) {
 ## @param object glmmTMB output
 #' @importFrom stats plogis
 printFamily <- function(ff, object) {
+    tf <- get_pars(object)
+    tf <- unname(split(tf, names(tf))[["thetaf"]])
     val <- switch(ff,
                   tweedie = c("Tweedie power parameter" = .tweedie_power(object)),
-                  t = c("Student-t df" = unname(exp(get_pars(object)["thetaf"]))),
-                  ordbeta = c("ordered beta parameters" =
-                                  unnames(plogis(get_pars(object)["thetaf"]))),
+                  t = c("Student-t df" = exp(tf)),
+                  ordbeta = c("ordered beta cutoff parameters" =
+                                  plogis(tf)),
                   NULL
                   )
     if (!is.null(val)) {
         cat(sprintf("\n%s estimate: %s",
-                    names(val),
+                    names(val)[1],
                     paste(formatC(val, digits=3),
                           collapse = ", ")), "\n")
     }
