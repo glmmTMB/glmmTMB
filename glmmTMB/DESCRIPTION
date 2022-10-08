@@ -30,7 +30,9 @@ Authors@R: c(person("Mollie","Brooks",
 	person("Mikael","Jagan", role="ctb",
 		comment = c(ORCID = "0000-0002-3542-2938")),
 	person("Brenton", "Wiernik", role="ctb",
-		comment = c(ORCID = "0000-0001-9560-6336"))
+		comment = c(ORCID = "0000-0001-9560-6336")),
+	person("Daniel B.", "Stouffer", role="ctb",
+		comment = c(ORCID = "0000-0001-9436-9674"))
 	)
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
