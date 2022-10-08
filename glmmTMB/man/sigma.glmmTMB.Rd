@@ -53,8 +53,8 @@ The value returned varies by family:
           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
      \item{tweedie}{returns the value of \eqn{\phi}{phi},
           where the variance is \eqn{\phi\mu^p}{phi*mu^p}.
-          The value of \eqn{p} can be extracted using the internal
-          function \code{glmmTMB:::.tweedie_power}.}
+          The value of \eqn{p} can be extracted using \code{family_params}
+     }
 }
 
  The most commonly used GLM families

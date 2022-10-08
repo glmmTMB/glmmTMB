@@ -1,22 +1,10 @@
-## cutpoints k1, k2
-## alpha = 1- g(eta -k1)
-## delta = g(eta-k1) -
-
-
-
-  ## if(y==0) {
-  ##     return log1m_inv_logit(mu - thresh[1]);
-  ##   } else if(y==1) {
-  ##     return log_inv_logit(mu  - thresh[2]);
-  ##   } else {
-  ##     return log_diff_exp(log_inv_logit(mu   - thresh[1]), log_inv_logit(mu - thresh[2])) +
-  ##               beta_lpdf(y|exp(log_inv_logit(mu) + log(phi)),exp(log1m_inv_logit(mu) + log(phi)));
-  ##   }
-
 library(glmmTMB)
+devtools::load_all("glmmTMB")
 library(ordbetareg)
 data(pew)
-library(dplyr)
+library(tidyverse)
+library(cmdstanr)
+library(broom.mixed)
 
 model_data <- select(pew,therm,age="F_AGECAT_FINAL",
                         sex="F_SEX_FINAL",
@@ -43,19 +31,27 @@ TMB_fit <- glmmTMB(formula=therm/100 ~ education + income +
                    family = ordbeta,
                    start = list(thetaf = c(-1, 1)))
 
-ord_fit_mean <- ordbetareg(formula=therm ~ mo(education)*mo(income) +
+vcov(TMB_fit, full = TRUE)
+View(tidy(TMB_fit, conf.int = TRUE))
+
+ord_fit_mean <- ordbetareg(formula=therm ~ education + income +
                                (1|region), 
                            data=model_data,
-                           cores=2,chains=2,iter=1000,
-                           refresh=0)
-## NOTE: to do parallel processing within chains
-## add the options below
-##threads=threading(5),
-##backend="cmdstanr"
-##where threads is the number of cores per chain
-## you must have cmdstanr set up to do so
-## see https://mc-stan.org/cmdstanr/
+                           cores=12,
+                           chains=2,
+                           iter=1000,
+                           refresh=0,
+                           threads = threading(5),
+                           backend  = "cmdstanr")
 
-## TO DO
-## check vs ordbetareg (w/o mo())
-## initialize() check in family (0<= y <= 1)
+
+res <- (list(glmmTMB = TMB_fit, ordbetareg = ord_fit_mean)
+    |> purrr::map_dfr(tidy, effects = "fixed", .id = "pkg", conf.int = TRUE)
+    |> select(pkg, term, estimate, lwr = conf.low, upr = conf.high)
+)
+
+ggplot(res, aes(estimate, term, colour = pkg)) +
+    geom_pointrange(aes(xmin = lwr, xmax = upr))
+
+
+

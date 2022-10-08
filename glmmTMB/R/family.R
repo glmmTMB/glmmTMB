@@ -373,8 +373,13 @@ t_family <- function(link="identity") {
 #' @rdname nbinom2
 ordbeta <- function(link="logit") {
     r <- list(family="ordbeta",
+                            initialize=expression({
+                                if (any(y < 0 | y > 1))
+                                    stop("y values must be 0 <= y <= 1")
+                                mustart <- y
+                            }),
               ## from beta: not sure this is right ... ??
-              variance=function(mu) { mu*(1-mu) }
+              variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
               )
     return(make_family(r,link))
 }
