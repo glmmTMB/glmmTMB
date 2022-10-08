@@ -1153,7 +1153,7 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
-##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warn'. Alternatives include 'skip', 'stop', and 'adjust'.
+##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip', 'stop', and 'adjust'.
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1201,7 +1201,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0),
-                           rank_check = c("warn", "adjust", "stop", "skip")) {
+                           rank_check = c("warning", "adjust", "stop", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1265,67 +1265,53 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+
 # FIXME: Should there be an @import for rankMatrix and qr below?
 ##' Check for identifiability of fixed effects matrices X, Xzi, Xd.
 ##' When rank_check='adjust', drop columns in X and remove associated parameters.
 ##' @keywords internal
-.checkRankX <- function(TMBStruc, rank_check=c('warn','adjust','stop','skip')) {
+.checkRankX <- function(TMBStruc, rank_check=c('warning','adjust','stop','skip')) {
   rank_check <- match.arg(rank_check)
-  Xnames <- c("X", "XS", "Xzi", "XziS", "Xd", "XdS")
+  Xnames <- c(conditional = "X", conditional = "XS", "zero-inflation" = "Xzi", "zero-inflation" = "XziS", dispersion = "Xd", dispersion = "XdS")
+  betanames <- gsub("X", "beta",
+                    gsub("S", "", Xnames))
   # use svd-based Matrix::rankMatrix(X) if we wish to abort or warn
   # FIXME: possibly should be an lapply? but I wanted easy access to nm to make error and warnings more informative
-  if(rank_check %in% c('stop', 'warn')){
-    for(whichX in Xnames){
+  if(rank_check %in% c('stop', 'warning')){
+    for (whichX in Xnames) {
       # only attempt rankMatrix if the X matrix contains info
-      if(prod(dim(TMBStruc$data.tmb[[whichX]]))> 0){
-        # if X is rank deficient, stop or throw a warning
-        if(Matrix::rankMatrix(TMBStruc$data.tmb[[whichX]]) < ncol(TMBStruc$data.tmb[[whichX]])){
+      if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
+        ## if X is rank deficient, stop or throw a warning
+        if (Matrix::rankMatrix(TMBStruc$data.tmb[[whichX]]) < ncol(TMBStruc$data.tmb[[whichX]])){
           # determine the model type for a more indicative error or warning message
-          model_type <- switch(
-            whichX,
-            X = "conditional",
-            XS = "conditional",
-            Xzi = "zero-inflation",
-            XziS = "zero-inflation",
-            Xd = "dispersion",
-            XdS = "dispersion"
-          )
-          if(rank_check == 'stop'){
-            stop("fixed effects in ",model_type," model are rank deficient")
-          }else{
-            warning("fixed effects in ",model_type," model are rank deficient")
-          }
-        }
-      }
-    }
-  }else
-  # use Matrix::qr(X) if we are prepared to drop columns
-  if(rank_check == 'adjust'){
-    for(whichX in Xnames){
-      # start with a QR decomposition to identify linearly dependent columns
-      qr.X <- Matrix::qr(TMBStruc$data.tmb[[whichX]], tol = 1e-7)
-      # if QR indicates rank deficiency, proceed to adjust X matrix used in fit and associated fixed effect parameters
-      if(qr.X$rank < ncol(TMBStruc$data.tmb[[whichX]])){
-        # columns that will be kept and columns that will be dropped
-        to_keep <- qr.X$pivot[1L:qr.X$rank]
-        to_drop <- qr.X$pivot[(qr.X$rank+1L):length(qr.X$pivot)]
-        dropped_names <- colnames(qr.X$qr)[to_drop]
+          model_type <- names(Xnames)[match(whichX, Xnames)]
+          action <- get(rank_check, "package:base")
+          action("fixed effects in ", model_type," model are rank deficient")
+        } ## if rank-deficient
+      } ## loop over X components
+  } else
+      ## use Matrix::qr(X) if we are prepared to drop columns
+      if(rank_check == 'adjust'){
+        for(whichX in Xnames){
+           if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
+           ## QR decomposition to identify linearly dependent columns
+           qr_X <- Matrix::qr(TMBStruc$data.tmb[[whichX]], tol = 1e-7)
+           ## if rank-deficient, adjust X and associated fixed effect parameters
+           if(qr_X$rank < ncol(TMBStruc$data.tmb[[whichX]])){
+               model_type <- names(Xnames)[match(whichX, Xnames)]
+               message("dropping columns from rank-deficient ", model_type," model")
+               ## columns to keep/drop
+               to_keep <- qr_X$pivot[1L:qr_X$rank]
+               to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
+               dropped_names <- colnames(qr_X$qr)[to_drop]
 
-        # update TMBStruc to have new X with only some columns kept; retain names of dropped columns for use in model output
-        TMBStruc$data.tmb[[whichX]] <- TMBStruc$data.tmb[[whichX]][,to_keep,drop=FALSE]
-        attr(TMBStruc$data.tmb[[whichX]], "col.dropped") <- setNames(to_drop, dropped_names)
+               ## update X within TMBStruc; retain dropped columns names for use in model output
+               TMBStruc$data.tmb[[whichX]] <- TMBStruc$data.tmb[[whichX]][,to_keep,drop=FALSE]
+               attr(TMBStruc$data.tmb[[whichX]], "col.dropped") <- setNames(to_drop, dropped_names)
 
-        # use whichX to determine which beta vector needs to be reduced and reduce parameters accordingly
-        beta_name <- switch(
-          whichX,
-          X = "beta",
-          XS = "beta",
-          Xzi = "betazi",
-          XziS = "betazi",
-          Xd = "betad",
-          XdS = "betad"
-        )
-        TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][to_keep]
+               ## reduce parameters of appropriate component
+               beta_name <- betanames[match(whichX, Xnames)]
+               TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][to_keep]
       }
     }
   }
@@ -1382,7 +1368,7 @@ fitTMB <- function(TMBStruc) {
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
     }
 
-    if(control$rank_check %in% c('warn','stop','adjust')){
+    if(control$rank_check %in% c('warning','stop','adjust')){
       TMBStruc <- .checkRankX(TMBStruc, control$rank_check)
     }
 
