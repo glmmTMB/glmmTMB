@@ -14,7 +14,7 @@ glmmTMBControl(
   eigval_check = TRUE,
   zerodisp_val = log(sqrt(.Machine$double.eps)),
   start_method = list(method = NULL, jitter.sd = 0),
-  rank_check = c("warn", "adjust", "stop", "skip")
+  rank_check = c("warning", "adjust", "stop", "skip")
 )
 }
 \arguments{
@@ -44,7 +44,7 @@ set to 1, with a warning if this overrides the user-specified value.}
 
 \item{start_method}{(list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.}
 
-\item{rank_check}{Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warn'. Alternatives include 'skip', 'stop', and 'adjust'.}
+\item{rank_check}{Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip', 'stop', and 'adjust'.}
 }
 \description{
 Control parameters for glmmTMB optimization
