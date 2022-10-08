@@ -1265,10 +1265,9 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
-
-# FIXME: Should there be an @import for rankMatrix and qr below?
 ##' Check for identifiability of fixed effects matrices X, Xzi, Xd.
 ##' When rank_check='adjust', drop columns in X and remove associated parameters.
+##' @importFrom Matrix rankMatrix
 ##' @keywords internal
 .checkRankX <- function(TMBStruc, rank_check=c('warning','adjust','stop','skip')) {
   rank_check <- match.arg(rank_check)
