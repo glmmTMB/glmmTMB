@@ -20,7 +20,7 @@
 	\item glmmTMB now stops if fixed-effect model matrices are
 	rank deficient (i.e., perfectly collinear predictors); this
 	can be changed to a warning via
-	\code{glmmTMBControl(rank_check="ignore")}
+	\code{glmmTMBControl(rank_check="ignore") (Daniel B. Stouffer)}
       } % itemize
     } % user-visible changes
     \subsection{NEW FEATURES}{
