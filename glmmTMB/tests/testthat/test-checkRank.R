@@ -28,20 +28,33 @@ test_that("error messages for non-identifiable fixed effects", {
 
 test_that("warning messages for non-identifiable fixed effects", {
     expect_warning(
-        glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
+        glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warning')),
         "fixed effects in conditional model are rank deficient"
     )
     expect_warning(
-        glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
+        glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warning')),
         "fixed effects in zero-inflation model are rank deficient"
     )
     expect_warning(
-        glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
+        glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warning')),
         "fixed effects in dispersion model are rank deficient"
     )
 })
 
-# FIXME: what tests can be performed for rank_check="adjust"?
+test_that("messages messages for non-identifiable fixed effects", {
+    expect_message(
+        m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
+        "dropping columns.*conditional")
+    expect_equal(length(fixef(m1)$cond), 3L)
+    expect_message(
+        m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
+        "dropping columns.*zero-inflation")
+    expect_equal(length(fixef(m1)$zi), 3L)
+    expect_message(
+        m1 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
+        "dropping columns.*dispersion")
+    expect_equal(length(fixef(m1)$disp), 3L)
+})
 
 # FIXME: what tests can be performed for rank_check="skip"? maybe just check that 'skip' and 'warn' give equivalent results?
 
