@@ -524,6 +524,7 @@ Type objective_function<Type>::operator() ()
     mu(i) = inverse_linkfun(eta(i), link);
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etad);
+  vector<Type> log_nzprob(eta.size());
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions
 // exact zero: use for positive distributions (Gamma, beta)
@@ -532,8 +533,9 @@ Type objective_function<Type>::operator() ()
 #define zt_lik_nearzero(x,loglik_exp) (zi_flag && (x < Type(0.001)) ? -INFINITY : loglik_exp)
 
   // Observation likelihood
-  Type s1, s2, s3, log_nzprob;
+  Type s1, s2, s3;
   Type tmp_loglik;
+  
   for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
@@ -595,8 +597,8 @@ Type objective_function<Type>::operator() ()
 		}
 	} else {
           s3 = logspace_add( Type(0), etad(i) );                // log(1. + phi(i)
-          log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
-          tmp_loglik -= log_nzprob;
+          log_nzprob(i) = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
+          tmp_loglik -= log_nzprob(i);
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
           SIMULATE{
             s1 = mu(i)/phi(i); //sz
@@ -617,8 +619,8 @@ Type objective_function<Type>::operator() ()
         if (family == truncated_nbinom2_family) {
           // s3 := log( 1. + mu(i) / phi(i) )
           s3         = logspace_add( Type(0), s1 - etad(i) );
-          log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
-          tmp_loglik -= log_nzprob;
+          log_nzprob(i) = logspace_sub( Type(0), -phi(i) * s3 );
+          tmp_loglik -= log_nzprob(i);
           tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
 		  yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(phi(i)), 0, asDouble(mu(i)));
@@ -626,8 +628,8 @@ Type objective_function<Type>::operator() ()
         }
         break;
       case truncated_poisson_family:
-        log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i))) = P(x>0)
-        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+        log_nzprob(i) = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i))) = P(x>0)
+        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob(i);
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
 		yobs(i) = glmmtmb::rtruncated_poisson(0, asDouble(mu(i)));
@@ -642,9 +644,9 @@ Type objective_function<Type>::operator() ()
       case truncated_genpois_family:
         s1 = mu(i) / sqrt(phi(i)); //theta
         s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
-        log_nzprob = logspace_sub(Type(0), -s1);
+        log_nzprob(i) = logspace_sub(Type(0), -s1);
         tmp_loglik = zt_lik_nearzero(yobs(i),
-		    glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob);
+		    glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob(i));
         SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
         break;
       case compois_family:
@@ -656,9 +658,9 @@ Type objective_function<Type>::operator() ()
       case truncated_compois_family:
         s1 = mu(i); //mean
         s2 = 1/phi(i); //nu
-        log_nzprob = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
+        log_nzprob(i) = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
         tmp_loglik = zt_lik_nearzero(yobs(i),
-			    dcompois2(yobs(i), s1, s2, true) - log_nzprob);
+			    dcompois2(yobs(i), s1, s2, true) - log_nzprob(i));
         SIMULATE{yobs(i)=glmmtmb::rtruncated_compois2(mu(i), 1/phi(i));}
         break;
       case tweedie_family:
@@ -741,7 +743,9 @@ Type objective_function<Type>::operator() ()
     REPORT(bzi);
   }
   // For predict
-  if(ziPredictCode==disp_zipredictcode){ //zi irrelevant; just reusing variable
+  if(ziPredictCode == disp_zipredictcode) {
+    // predict dispersion
+    // zi irrelevant; just reusing variable
     switch(family){
     case gaussian_family:
       mu = sqrt(phi);
@@ -753,26 +757,37 @@ Type objective_function<Type>::operator() ()
       mu = phi;
     }
   } else {
-  if(zi_flag) {
-    switch(ziPredictCode){
-    case corrected_zipredictcode:
-      mu *= (Type(1) - pz); // Account for zi in prediction
-      break;
-    case uncorrected_zipredictcode:
-      //mu = mu; // Predict mean of 'family' //comented out for clang 7.0.0. with no effect
-      break;
-    case prob_zipredictcode:
-      mu = pz;     // Predict zi probability
-      eta = etazi; // want to return linear pred for zi
-      break;
-    default:
-      error("Invalid 'ziPredictCode'");
+    // FIXME: would a 'truncated_family' flag be useful?
+    if (family == truncated_poisson_family ||
+	family == truncated_genpois_family ||
+	family == truncated_compois_family ||
+	family == truncated_nbinom1_family ||
+	family == truncated_nbinom2_family) {
+      // convert from mean of *un-truncated* to mean of *truncated* distribution
+      mu /= exp(log_nzprob);
     }
-  }}
+    if (zi_flag) {
+      switch(ziPredictCode){
+      case corrected_zipredictcode:
+	mu *= (Type(1) - pz); // Account for zi in prediction
+	break;
+      case uncorrected_zipredictcode:
+	//mu = mu; // Predict mean of 'family' //commented out for clang 7.0.0. with no effect
+	break;
+      case prob_zipredictcode:
+	mu = pz;     // Predicted zi probability
+	eta = etazi; // want to return linear pred for zi
+	break;
+      default:
+	error("Invalid 'ziPredictCode'");
+      }
+    }}
 
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
+
+      
   REPORT(mu_predict);
   REPORT(eta_predict);
   // ADREPORT expensive for long vectors - only needed by predict() method
@@ -784,6 +799,3 @@ Type objective_function<Type>::operator() ()
 
   return jnll;
 }
-
-
-

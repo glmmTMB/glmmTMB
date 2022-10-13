@@ -370,3 +370,57 @@ test_that("zlink/zprob return appropriate values with non-ZI model (GH#798)", {
   expect_equal(length(p2), nrow(sleepstudy))
   expect_true(all(p2 == 0))
 })
+
+test_that("correct conditional/response predictions for truncated distributions", {
+    set.seed(42)
+    N <- 100
+    df <- data.frame(p1 = rpois(N, 1),
+                     nb1 = rnbinom(N, mu = 1, size = 1),
+                     x = rnorm(N)) |>
+        transform(
+            ## zero-inflated versions
+            zp1 = p1 * rbinom(N, size = 1, prob = 0.5),
+            znb1 = nb1 * rbinom(N, size = 1, prob = 0.5),
+            ## truncated versions (NAs will be dropped)
+            tp1 = ifelse(p1 == 0, NA, p1),
+            tnb1 = ifelse(nb1 == 0, NA, nb1))
+
+    f_zp1 <- glmmTMB(zp1 ~ x,
+                     zi= ~ 1,
+                     family=truncated_poisson(link="log"),
+                     data=df)
+
+    f_znb1 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom1)
+
+    f_znb2 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom2)
+
+
+    testfun <- function(model, response, distrib) {
+        zp1 <- predict(model, type="zprob")
+        cm1 <- predict(model, type="conditional")
+        mu1 <- predict(model, type="response")
+
+        ## compute zero-trunc by hand
+        eta <- predict(model, type = "link")
+        cm2 <- exp(eta)/(1-distrib(0, exp(eta), sigma(model)))
+        expect_equal(cm1, cm2)
+
+        expect_equal(mu1, cm1*(1-zp1))
+
+    }
+
+    ## versions of distrib functions that can be plugged into testfun()
+    my_dpois <- function(x, lambda, ...) dpois(x, lambda)
+    my_nb2 <- function(x, mu, size) dnbinom(x, mu = mu, size = size)
+    my_nb1 <- function(x, mu, phi) {
+        ## var = mu*(1+mu/k) = mu*(1+phi) -> phi = mu/k -> k = mu/phi
+        dnbinom(x, mu = mu, size = mu/phi)
+    }
+
+    testfun(f_zp1, "zp1", my_dpois)
+    testfun(f_znb2, "znb1", my_nb2)
+    testfun(f_znb1, "znb1", my_nb1)
+
+})
