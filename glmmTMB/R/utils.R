@@ -436,7 +436,14 @@ getAllParnames <- function(object, full) {
         return(paste("theta",gsub(" ", "", unlist(nn)), sep="_"))
       }
       ## nameList for estimated variables;
-      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
+      nameList <- c(nameList,
+                    list(theta = reNames("cond"), thetazi = reNames("zi")))
+
+      ##
+      if (length(fp <- family_params(object)) > 0) {
+          nameList <- c(nameList, list(thetaf = names(fp)))
+      }
+      
   }
 
     return(nameList)

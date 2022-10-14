@@ -522,23 +522,42 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+#' Retrieve family-specific parameters
+#'
+#' Most conditional distributions have only parameters governing their location
+#' (retrieved via \code{predict}) and scale (\code{sigma}). A few (e.g. Tweedie, Student t, ordered beta)
+#' are characterized by one or more additional parameters.
+#' @param object glmmTMB object
+#' @return a named numeric vector
+#' @export
+family_params <- function(object) {
+    ff <- object$modelInfo$family$family
+    tf <- get_pars(object)
+    tf <- unname(split(tf, names(tf))[["thetaf"]])
+    switch(ff,
+           tweedie = c("Tweedie power" = plogis(tf) + 1),
+           t = c("Student-t df" = exp(tf)),
+           ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
+           numeric(0)
+           )
+}
+
+## obsolete
 .tweedie_power <- function(object) {
+    warning(".tweedie_power is deprecated in favor of family_params()")
     unname(plogis(get_pars(object)["thetaf"]) + 1)
 }
 
 ## Print family specific parameters
-## @param ff name of family (character)
 ## @param object glmmTMB output
 #' @importFrom stats plogis
-printFamily <- function(ff, object) {
-    val <- switch(ff,
-                  tweedie = c("Tweedie power parameter" = .tweedie_power(object)),
-                  t = c("Student-t df" = unname(exp(get_pars(object)["thetaf"]))),
-                  NULL
-                  )
-    if (!is.null(val)) {
+printFamily <- function(object) {
+    val <- family_params(object)
+    if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
-                    names(val), formatC(val, digits=3)), "\n")
+                    names(val)[1],
+                    paste(formatC(val, digits=3),
+                          collapse = ", ")), "\n")
     }
     invisible(NULL)
 }
@@ -579,7 +598,7 @@ print.glmmTMB <-
     printDispersion(x$modelInfo$family$family,sigma(x))
   }
   ## Family specific parameters
-  printFamily(x$modelInfo$family$family, x)
+  printFamily(x)
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
@@ -636,7 +655,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                # some argument names vary across families
                mu <- predict(object, type = "conditional")
                theta <- predict(object, type = "disp")
-               shape <- .tweedie_power(object) # FIXME: Change this to a general shape() extractor
+               shape <- family_params(object)
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
                vargs$theta <- vargs$phi <- vargs$alpha <- theta
@@ -682,7 +701,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
 ## @param estimate
 
 ##' @importFrom stats qchisq
-.CI_univariate_monotone <- function(object, f, reduce=NULL,
+.CI_univariate_monotone <- function(object,
+                                    f,
+                                    reduce=NULL,
                                     level=0.95,
                                     name.prepend=NULL,
                                     estimate = TRUE) {
@@ -926,15 +947,16 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     ci <- rbind(ci, ci.sigma)
                 }
             }
-            ## Tweedie power
-            if (ff == "tweedie") {
-                ci.power <- .CI_univariate_monotone(object,
-                                                    .tweedie_power,
+            ## shape parameters
+            fp <- family_params(object)
+            if (length(fp)>0) {
+                ci.shape <- .CI_univariate_monotone(object,
+                                                    family_params,
                                                     reduce = NULL,
                                                     level=level,
-                                                    name.prepend="Tweedie.power",
+                                                    name.prepend="Tweedie.power", ## FIXME
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.power)
+                ci <- rbind(ci, ci.shape)
             } ## tweedie
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)

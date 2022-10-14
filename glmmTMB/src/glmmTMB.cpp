@@ -21,6 +21,7 @@ enum valid_family {
   binomial_family = 100,
   betabinomial_family =101,
   beta_family =200,
+  ordbeta_family = 201,
   Gamma_family =300,
   poisson_family =400,
   truncated_poisson_family =401,
@@ -132,6 +133,23 @@ Type log_inverse_linkfun(Type eta, int link) {
     break;
   default:
     ans = log( inverse_linkfun(eta, link) );
+  } // End switch
+  return ans;
+}
+
+/* log transformed inverse_linkfun without losing too much accuracy */
+template<class Type>
+Type log1m_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case log_link:
+    ans = logspace_sub(Type(0), eta);
+    break;
+  case logit_link:
+    ans = -logspace_add(Type(0), eta);
+    break;
+  default:
+    ans = logspace_sub(Type(0), log( inverse_linkfun(eta, link) ));
   } // End switch
   return ans;
 }
@@ -535,7 +553,7 @@ Type objective_function<Type>::operator() ()
   // Observation likelihood
   Type s1, s2, s3;
   Type tmp_loglik;
-  
+
   for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
@@ -568,6 +586,24 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
+      case ordbeta_family:
+	// https://github.com/saudiwin/ordbetareg_pack/blob/master/R/modeling.R#L565-L573
+	if (yobs(i) == 0.0) {
+	  tmp_loglik = log1m_inverse_linkfun(eta(i) - thetaf(0), logit_link);
+	  // std::cout << "zero " << asDouble(eta(i)) << " " << asDouble(thetaf(0)) << " " << asDouble(tmp_loglik) << std::endl;
+	} else if (yobs(i) == 1.0) {
+	  tmp_loglik = log_inverse_linkfun(eta(i) - thetaf(1), logit_link);
+	  // std::cout << "one " << asDouble(eta(i)) << " " << asDouble(thetaf(1)) << " " << asDouble(tmp_loglik) << std::endl;
+	} else {
+	  s1 = mu(i)*phi(i);
+	  s2 = (Type(1)-mu(i))*phi(i);
+	  s3 = logspace_sub(log_inverse_linkfun(eta(i) - thetaf(0), logit_link),
+			    log_inverse_linkfun(eta(i) - thetaf(1), logit_link));
+	  tmp_loglik = s3 + dbeta(yobs(i), s1, s2, true);
+
+	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(thetaf(0)) << " " << asDouble(thetaf(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
+	}
+	break;
       case betabinomial_family:
         // Transform to logit scale independent of link
         s3 = logit_inverse_linkfun(eta(i), link); // logit(p)
@@ -787,7 +823,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
 
-      
+
   REPORT(mu_predict);
   REPORT(eta_predict);
   // ADREPORT expensive for long vectors - only needed by predict() method

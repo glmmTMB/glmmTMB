@@ -410,7 +410,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   beta_init <-  if (family$link %in% c("identity","inverse","sqrt")) 1 else 0
 
   ## Extra family specific parameters
-  numThetaFamily <- (family$family %in% c("t", "tweedie"))
+  ## FIXME: switch/rewrite to be less ugly?
+  numThetaFamily <- if (family$family %in% c("t", "tweedie"))
+                    { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
 
   rr0 <- function(n) {
        if (is.null(n)) numeric(0) else rep(0, n)
