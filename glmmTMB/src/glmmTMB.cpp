@@ -551,9 +551,9 @@ Type objective_function<Type>::operator() ()
 #define zt_lik_nearzero(x,loglik_exp) (zi_flag && (x < Type(0.001)) ? -INFINITY : loglik_exp)
 
   // Observation likelihood
-  Type s1, s2, s3, s4;
+  Type s1, s2, s3;
   Type tmp_loglik;
-  
+
   for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
@@ -823,7 +823,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
 
-      
+
   REPORT(mu_predict);
   REPORT(eta_predict);
   // ADREPORT expensive for long vectors - only needed by predict() method
