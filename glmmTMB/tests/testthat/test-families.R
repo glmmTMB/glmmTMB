@@ -393,7 +393,7 @@ test_that("tweedie", {
                  phi,
                  tolerance = .1)
     ## Check power
-    expect_equal(unname( plogis(twm$fit$par["thetaf"]) + 1 ),
+    expect_equal(unname( plogis(twm$fit$par["psi"]) + 1 ),
                  p,
                  tolerance = .01)
     ## Check internal rtweedie used by simulate
@@ -401,6 +401,8 @@ test_that("tweedie", {
     twm2 <- glmmTMB(y2 ~ 1, family=tweedie(), data = NULL)
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
+    expect_equal(ranef(twm),
+                 structure(list(cond = list(), zi = list()), class = "ranef.glmmTMB"))
 })
 
 test_that("gaussian_sqrt", {

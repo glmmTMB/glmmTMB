@@ -401,7 +401,7 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
+par_components <- c("beta","betazi","betad","theta","thetazi","psi")
 
 getAllParnames <- function(object, full) {
                            
@@ -441,7 +441,7 @@ getAllParnames <- function(object, full) {
 
       ##
       if (length(fp <- family_params(object)) > 0) {
-          nameList <- c(nameList, list(thetaf = names(fp)))
+          nameList <- c(nameList, list(psi = names(fp)))
       }
       
   }

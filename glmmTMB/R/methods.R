@@ -533,7 +533,7 @@ printDispersion <- function(ff,s) {
 family_params <- function(object) {
     ff <- object$modelInfo$family$family
     tf <- get_pars(object)
-    tf <- unname(split(tf, names(tf))[["thetaf"]])
+    tf <- unname(split(tf, names(tf))[["psi"]])
     switch(ff,
            tweedie = c("Tweedie power" = plogis(tf) + 1),
            t = c("Student-t df" = exp(tf)),
@@ -545,7 +545,7 @@ family_params <- function(object) {
 ## obsolete
 .tweedie_power <- function(object) {
     warning(".tweedie_power is deprecated in favor of family_params()")
-    unname(plogis(get_pars(object)["thetaf"]) + 1)
+    unname(plogis(get_pars(object)["psi"]) + 1)
 }
 
 ## Print family specific parameters
