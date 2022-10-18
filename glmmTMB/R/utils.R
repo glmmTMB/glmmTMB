@@ -317,18 +317,29 @@ isNullPointer <- function(x) {
 up2date <- function(oldfit) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
-    obj <- oldfit$obj
-    oldfit$obj <- with(obj$env,
+      obj <- oldfit$obj
+      ee <- obj$env
+      if ("thetaf" %in% names(ee$parameters)) {
+          ee$parameters$psi <- ee$parameters$thetaf
+          ee$parameters$thetaf <- NULL
+          pars <- c(grep("last\\.par", names(ee), value = TRUE)
+                    "par")
+          for (p in pars) {
+              names(ee[[p]])[names(ee[[p]]) == "thetaf"] <- "psi"
+          }
+      }
+      oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
                                       silent = silent,
                                       DLL = "glmmTMB"))
-    oldfit$obj$env$last.par.best <- obj$env$last.par.best
+      oldfit$obj$env$last.par.best <- ee$last.par.best
   }
   return(oldfit)
 }
+
 
 
 #' Load data from system file, updating glmmTMB objects
