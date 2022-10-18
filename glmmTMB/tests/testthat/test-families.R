@@ -453,8 +453,8 @@ test_that("t-distributed response", {
     expect_equal(sigma(m1), 4.96427774321411,
                  tolerance = 1e-6)
     m2 <- glmmTMB(y ~ 1, family = t_family, data = dd,
-                  start = list(thetaf = log(10)),
-                  map = list(thetaf = factor(NA)))
+                  start = list(psi = log(10)),
+                  map = list(psi = factor(NA)))
     expect_equal(sigma(m2), 5.01338678750139,
                  tolerance = 1e-6)
 })

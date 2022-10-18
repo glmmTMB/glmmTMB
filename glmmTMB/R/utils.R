@@ -322,11 +322,18 @@ up2date <- function(oldfit) {
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
-          pars <- c(grep("last\\.par", names(ee), value = TRUE)
+          pars <- c(grep("last\\.par", names(ee), value = TRUE),
                     "par")
           for (p in pars) {
-              names(ee[[p]])[names(ee[[p]]) == "thetaf"] <- "psi"
+              if (!is.null(nm <- names(ee[[p]]))) {
+                  names(ee[[p]])[nm == "thetaf"] <- "psi"
+              }
           }
+      }
+      ee2 <- oldfit$sdr$env
+      if ("thetaf" %in% names(ee2$parameters)) {
+          ee2$parameters$psi <- ee2$parameters$thetaf
+          ee2$parameters$thetaf <- NULL
       }
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
