@@ -26,7 +26,10 @@
     \subsection{NEW FEATURES}{
       \itemize{
 	\item Student-t response distribution is now implemented (see
-      \code{\link{t_family}}
+	\code{\link{t_family}})
+	\item ordered beta regression as in Kubinec (2022), for
+	proportion data containing exact 0 and 1 values, is now
+	implemented (\code{\link{ordbeta}})
     } % itemize
   } % new features
 } % version 1.1.4.9000
