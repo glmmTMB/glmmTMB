@@ -108,6 +108,7 @@ if(getRversion() >= "3.6.0") {
 }
 if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
 importFrom(Matrix,Cholesky)
+importFrom(Matrix,crossprod)
 importFrom(Matrix,rankMatrix)
 importFrom(Matrix,solve)
 importFrom(Matrix,t)
