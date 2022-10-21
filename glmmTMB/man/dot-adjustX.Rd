@@ -6,7 +6,7 @@
 When not rank deficient, do nothing.
 When rank deficient matrix, drop columns.}
 \usage{
-.adjustX(X, tol = 1e-07, why_dropped = FALSE)
+.adjustX(X, tol = NULL, why_dropped = FALSE)
 }
 \arguments{
 \item{X}{model matrix}
