@@ -1273,27 +1273,35 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' @param tol             non-negative tolerance for testing for "practically zero" singular values (passed to Matrix::rankMatrix())
 ##' @param why_dropped     logical indicating whether or not to provide information about sets of collinear predictors (not yet implemented)
 ##'
-##' @importFrom Matrix crossprod
-##' @importFrom Matrix rankMatrix
+##' @importFrom Matrix crossprod diag qr qr2rankMatrix
 ##' @keywords internal
-.adjustX <- function(X, tol=1e-7, why_dropped=FALSE){
+.adjustX <- function(X, tol=NULL, why_dropped=FALSE){
+  # perform QR decomposition
+  qr_X <- Matrix::qr(X)
   # check if adjustment is necessary
-  if(Matrix::rankMatrix(X, tol=tol) < ncol(X)){
-    # we will use t(X) %*% X to determine collinearity
-    tXX <- Matrix::crossprod(X)
-    # convert to "dense" matrix to always use base::qr()
-    if(inherits(tXX, "sparseMatrix")) tXX <- as(tXX, "matrix")
-    # perform QR decomposition
-    qr_tXX <- qr(tXX)
-    # use column pivoting to identify which columns to keep and which to drop
-    to_keep <- qr_tXX$pivot[1L:qr_tXX$rank]
-    to_drop <- qr_tXX$pivot[(qr_tXX$rank+1L):length(qr_tXX$pivot)]
-    # retain names of dropped column for use in model output
-    attr(X, "col.dropped") <- setNames(to_drop, colnames(X)[to_drop])
+  if(Matrix::qr2rankMatrix(qr_X) < ncol(X)){
+    # base qr
+    if(is.qr(qr_X)){
+      # use column pivoting from base::qr() to identify which columns to keep and which to drop
+      to_keep <- qr_X$pivot[1L:qr_X$rank]
+      to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
+    } # sparseQR
+    else{
+      # diagonal elements of R from QR decomposition to identify which columns to keep and which to drop
+      R_diag <- Matrix::diag(qr_X@R)
+      # borrowing tolerance criterion from that specified in Matrix::qr2rankMatrix
+      if(is.null(tol)) tol <- max(dim(X)) * .Machine$double.eps * max(R_diag)
+      to_keep <- which(R_diag >= tol)
+      to_drop <- which(R_diag < tol)
+    }
+    # drop columns
     X <- X[,to_keep,drop=FALSE]
-    # TODO: add message describing WHY columns were dropped
-    #       current idea is to follow process outlined at https://stackoverflow.com/a/74103797/20267047 or derivative thereof
-    if(why_dropped) {}
+    # if(why_dropped){
+    # #   TODO: add message describing WHY columns were dropped
+    # #   current idea is to follow process outlined at https://stackoverflow.com/a/74103797/20267047 or derivative thereof
+    # #   we will eventually use t(X) %*% X to determine collinearity among predictors
+    #   tXX <- Matrix::crossprod(X)
+    # }
   }
   return(X)
 }
@@ -1322,7 +1330,6 @@ glmmTMBControl <- function(optCtrl=NULL,
         } ## if rank-deficient
       } ## loop over X components
   } else
-    ## use Matrix::qr(X) if we are prepared to drop columns
     if(rank_check == 'adjust'){
       for(whichX in Xnames){
         # only attempt adjutment if the X matrix contains info
@@ -1336,9 +1343,17 @@ glmmTMBControl <- function(optCtrl=NULL,
           model_type <- names(Xnames)[match(whichX, Xnames)]
           message("dropping columns from rank-deficient ", model_type," model")
 
+          # use colnames of curX and adjX to identify which columns were dropped
+          dropped_names   <- setdiff(colnames(curX), colnames(adjX))
+          dropped_indices <- match(dropped_names, colnames(curX))
+
+          # retain names of dropped column for use in model output
+          attr(adjX, "col.dropped") <- setNames(dropped_indices, dropped_names)
+
           ## reduce parameters of appropriate component
           beta_name <- betanames[match(whichX, Xnames)]
-          TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][match(colnames(adjX), colnames(curX))]
+          kept_indices <- match(colnames(adjX), colnames(curX))
+          TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][kept_indices]
           TMBStruc$data.tmb[[whichX]] <- adjX
         } ## if matrix was adjusted
       } ## loop over X components
