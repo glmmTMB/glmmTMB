@@ -1265,6 +1265,47 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+##' Adjust a model matrix
+##' When not rank deficient, do nothing.
+##' When rank deficient matrix, drop columns.
+##'
+##' @param X               model matrix
+##' @param tol             non-negative tolerance for testing for "practically zero" singular values (passed to Matrix::rankMatrix())
+##' @param why_dropped     logical indicating whether or not to provide information about sets of collinear predictors (not yet implemented)
+##'
+##' @importFrom Matrix crossprod diag qr qr2rankMatrix
+##' @keywords internal
+.adjustX <- function(X, tol=NULL, why_dropped=FALSE){
+  # perform QR decomposition
+  qr_X <- Matrix::qr(X)
+  # check if adjustment is necessary
+  if(Matrix::qr2rankMatrix(qr_X) < ncol(X)){
+    # base qr
+    if(is.qr(qr_X)){
+      # use column pivoting from base::qr() to identify which columns to keep and which to drop
+      to_keep <- qr_X$pivot[1L:qr_X$rank]
+      to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
+    } # sparseQR
+    else{
+      # diagonal elements of R from QR decomposition to identify which columns to keep and which to drop
+      R_diag <- Matrix::diag(qr_X@R)
+      # borrowing tolerance criterion from that specified in Matrix::qr2rankMatrix
+      if(is.null(tol)) tol <- max(dim(X)) * .Machine$double.eps * max(R_diag)
+      to_keep <- which(R_diag >= tol)
+      to_drop <- which(R_diag < tol)
+    }
+    # drop columns
+    X <- X[,to_keep,drop=FALSE]
+    # if(why_dropped){
+    # #   TODO: add message describing WHY columns were dropped
+    # #   current idea is to follow process outlined at https://stackoverflow.com/a/74103797/20267047 or derivative thereof
+    # #   we will eventually use t(X) %*% X to determine collinearity among predictors
+    #   tXX <- Matrix::crossprod(X)
+    # }
+  }
+  return(X)
+}
+
 ##' Check for identifiability of fixed effects matrices X, Xzi, Xd.
 ##' When rank_check='adjust', drop columns in X and remove associated parameters.
 ##' @importFrom Matrix rankMatrix
@@ -1289,44 +1330,34 @@ glmmTMBControl <- function(optCtrl=NULL,
         } ## if rank-deficient
       } ## loop over X components
   } else
-      ## use Matrix::qr(X) if we are prepared to drop columns
-      if(rank_check == 'adjust'){
-        for(whichX in Xnames){
-           if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
-           ## QR decomposition to identify linearly dependent columns
-           curX <- TMBStruc$data.tmb[[whichX]]
-           qr_X <- Matrix::qr(curX, tol = 1e-7)
-           if (inherits(curX, "sparseMatrix")) {
-               rr <- rankMatrix(curX)
-           } else {
-               rr <- qr_X$rank
-           }
-           ## if rank-deficient, adjust X and associated fixed effect parameters
-           if(rr < ncol(curX)) {
-               model_type <- names(Xnames)[match(whichX, Xnames)]
-               message("dropping columns from rank-deficient ", model_type," model")
-               ## columns to keep/drop: a hack,
-               if (inherits(curX, "sparseMatrix")) {
-                   rel_beta <- qr_X@beta/min(qr_X@beta)
-                   to_keep <- which(rel_beta <= 1e8)
-                   to_drop <- which(rel_beta > 1e8)
-                   dropped_names <- colnames(qr_X@R)[to_drop]
-               } else {
-                   to_keep <- qr_X$pivot[1L:qr_X$rank]
-                   to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
-                   dropped_names <- colnames(qr_X$qr)[to_drop]
-               }
+    if(rank_check == 'adjust'){
+      for(whichX in Xnames){
+        # only attempt adjutment if the X matrix contains info
+        if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
+        curX <- TMBStruc$data.tmb[[whichX]]
+        # use .adjustX to only keep linearly dependent columns of X matrix
+        adjX <- .adjustX(curX)
+        # if columns were dropped, update variables accordingly
+        if(ncol(adjX) != ncol(curX)){
+          # inform the user that columns were dropped
+          model_type <- names(Xnames)[match(whichX, Xnames)]
+          message("dropping columns from rank-deficient ", model_type," model")
 
-               ## update X within TMBStruc; retain dropped columns names for use in model output
-               TMBStruc$data.tmb[[whichX]] <- curX[,to_keep,drop=FALSE]
-               attr(TMBStruc$data.tmb[[whichX]], "col.dropped") <- setNames(to_drop, dropped_names)
+          # use colnames of curX and adjX to identify which columns were dropped
+          dropped_names   <- setdiff(colnames(curX), colnames(adjX))
+          dropped_indices <- match(dropped_names, colnames(curX))
 
-               ## reduce parameters of appropriate component
-               beta_name <- betanames[match(whichX, Xnames)]
-               TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][to_keep]
-      }
-    }
-  }
+          # retain names of dropped column for use in model output
+          attr(adjX, "col.dropped") <- setNames(dropped_indices, dropped_names)
+
+          ## reduce parameters of appropriate component
+          beta_name <- betanames[match(whichX, Xnames)]
+          kept_indices <- match(colnames(adjX), colnames(curX))
+          TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][kept_indices]
+          TMBStruc$data.tmb[[whichX]] <- adjX
+        } ## if matrix was adjusted
+      } ## loop over X components
+    } ## if rank_check == 'adjust'
   return(TMBStruc)
 }
 
