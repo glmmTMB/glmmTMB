@@ -1,0 +1,152 @@
+---
+title: "Hacking glmmTMB"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Hacking glmmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+---
+
+# Adding a family
+
+```{r load_lib,echo=FALSE}
+library(glmmTMB)
+knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
+```
+
+What do you do if `glmmTMB` hasn't implemented the response distributions you want/need? You could try asking the developers to do it, but if you have the technical skills (reading and modifying R and C++ code) you may be able to do it yourself. You will need to make appropriate modifications to the R and C++ code and recompile/reinstall the package.
+
+This example will show how to add a "zero-one truncated Poisson", i.e. a Poisson distribution with only values >1. This is a fairly easy case (we will discuss below what characteristics make a distribution easier or harder to implement).
+
+The most general advice is "identify the most similar distribution that has already been implemented in `glmmTMB` and copy/modify the relevant bits of code".
+
+Download the tarball (`glmmTMB.tar.gz`) from CRAN and unpack it.
+
+## C++
+
+These files are in the `src/` directory.
+
+### modify glmmTMB.cpp
+
+- `enum valid_family` is the list of distributions that `glmmTMB` knows about. Give your distribution an unused index (in a range with other similar distributions) and add it to the list.
+
+```{Rcpp, eval = FALSE}
+...
+truncated_genpois_family =404,
+truncated_compois_family =405,
+// new
+zo_truncated_poisson_family = 410,
+...
+```
+
+- add a case to the giant `switch` statement that handles the conditional likelihood (search for `// Observation likelihood` at the beginning): in this case we can most easily do this by modifying the code for the zero-truncated Poisson family (`case truncated_poisson_family`):
+   - `mu(i)` is the value of the location parameter for the current observation
+   - `phi(i)` is the value of the dispersion parameter for the current observation. This value always uses a log link, so it will be a value on `[0,Inf)`. You should decide whether this value needs to be transformed or combined with `mu(i)` to form the traditional scale or dispersion parameter for your distribution. There are lots of examples in `glmmTMB.cpp`
+   - use logspace addition/subtraction if possible (`logspace_add` and `logspace_sub` functions in `TMB`: see [here](https://stackoverflow.com/questions/65233445/how-to-calculate-sums-in-log-space-without-underflow) for more information). This isn't necessary but will make your computations more stable.
+   - if you want to be able to simulate data, add a `SIMULATE{}` condition that samples a random deviate from your distribution
+
+```{Rcpp, eval = FALSE}
+case zo_truncated_poisson_family:
+   log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i)));
+   // now subtract the prob(X==1)
+   log_nzprob = logspace_sub(log_nzprob, log(mu(i)) - mu(i));
+   // log-Poisson likelihood minus the 'missing mass'
+   tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+   // this is a utility for use in ther zero-inflated case
+   tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
+   SIMULATE{
+    // conveniently, this built-in function already allows truncation
+	//  at different points
+	yobs(i) = glmmtmb::rtruncated_poisson(1, asDouble(mu(i)));
+   }
+ break;
+```
+
+## R code
+
+### modifying family.R
+
+We might be able to get away with specifying `family=` as a list, but it's better to implement it as a new function.
+
+```{r eval = FALSE}
+#' @rdname nbinom2
+#' @export
+zo_truncated_poisson <- function(link="log") {
+    r <- list(family="zo_truncated_poisson",
+              variance=function(lambda) {
+                  stop("haven't implemented variance function")
+                  ## should figure this out ...
+                  ## (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
+              })
+    return(make_family(r,link))
+}
+```
+
+As you can see, I haven't yet worked out the variance of a zero-one-truncated Poisson. This will only cause problems if/when a user wants to estimate Pearson residuals.
+
+If this were for long-term use, you might want to add the documentation to the `?glmmTMB::family_glmmTMB` page. This material is located in `R/family.R`, above the `nbinom2` family function.
+
+### modifying glmmTMB.R
+
+There may not be any other R code that needs to be updated, depending on the details of the family you are adding. Again, it's best to try to work by analogy with the closest family to the one you're adding. In this case, the only occurrence of `truncated_poisson` in `glmmTMB.R` is in the definition of which families have no dispersion parameter:
+
+```{r, eval = FALSE}
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson",
+                           "zo_truncated_poisson")
+```
+
+### updating NAMESPACE
+
+You need to make sure that your new family function is exported (listed in the `NAMESPACE` file). The easiest way to do this is by running `devtools::document()`.
+
+### updating enum.R
+
+The R file that keeps the C++ and R code in sync with respect to which families are available and which numeric code corresponds to which family is `enum.R`. **Do not edit this file by hand**: instead, run `make enum-update`
+
+## Finishing up
+
+### Reinstall
+
+Re-install the package from source (`R CMD INSTALL` or `install.package(..., repos = NULL)`)
+
+### Test
+
+```{r eval = FALSE}
+library(glmmTMB)
+set.seed(101)
+dd <- data.frame(y = rpois(500, exp(1)))
+table(dd$y)
+##  0   1   2   3   4   5   6   7   8   9 
+## 34  91 117 116  68  45  17   7   3   2 
+dd <- dd[dd$y>1,,drop=FALSE]
+table(dd$y)
+##   2   3   4   5   6   7   8   9 
+## 117 116  68  45  17   7   3   2 
+glmmTMB(y ~ 1, family = "zo_truncated_poisson", data = dd)
+```
+
+This appears to give the right answer (i.e. the estimated value of the intercept (log-link), 1.015, is close to the true value of 1).
+
+```
+Formula:          y ~ 1
+Data: dd
+      AIC       BIC    logLik  df.resid 
+1184.2750 1188.2020 -591.1375       374 
+
+Number of obs: 375
+
+Fixed Effects:
+
+Conditional model:
+(Intercept)  
+      1.015  
+```
+
+If you are adding the material for long-term use you should also add some tests to `tests/testthat/test-families.R`
+
+## Additional distributional parameters
+
+Some families (Tweedie, Student-t) have shape parameters or other parameters beyond the usual parameters determining the location (mean) and scale (dispersion). These parameters are passed in the `thetaf` vector: the best thing to do here is to search the R and C++ code for "[Tt]weedie" and see what will need to be adjusted.

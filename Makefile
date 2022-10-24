@@ -51,7 +51,7 @@ doc-update: $(PACKAGE)/R/*.R
 
 ## list of vignette inputs:
 rnw_vig += glmmTMB model_evaluation 
-rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel
+rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel hacking
 
 docdir = $(PACKAGE)/inst/doc
 vigdir = $(PACKAGE)/vignettes
