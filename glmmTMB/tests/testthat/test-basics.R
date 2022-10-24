@@ -4,6 +4,7 @@ stopifnot(require("testthat"),
 ## loaded by gt_load() in setup_makeex.R, but need to do this
 ##  again to get it to work in devtools::check() environment (ugh)
 gm0 <- up2date(gm0)
+gm1 <- up2date(gm1)
 
 data(sleepstudy, cbpp,
      package = "lme4")

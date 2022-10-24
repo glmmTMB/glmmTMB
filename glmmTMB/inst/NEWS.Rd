@@ -13,6 +13,8 @@
 	models using \code{cs()} (GH #851)
 	\item corrected conditional and response predictions for
 	truncated distributions (GH #634, #860)
+	\item \code{ranef()} now works correctly for families
+	with extra parameters (Tweedie etc.) (GH #870)
       } % itemize
     } % bug fixes
     \subsection{USER-VISIBLE CHANGES}{
@@ -21,6 +23,13 @@
 	rank deficient (i.e., perfectly collinear predictors); this
 	can be changed to a warning via
 	\code{glmmTMBControl(rank_check="ignore") (Daniel B. Stouffer)}
+	\item the vector of "extra" family parameters
+	(Tweedie power, Student-t df,
+	etc.) has been renamed from "thetaf" to "psi"; \code{start}
+	and \code{map} arguments that set this parameter will need to
+	be changed. Users will need to run \code{up2date()}
+	when loading stored model objects from previous versions of the
+	package.
       } % itemize
     } % user-visible changes
     \subsection{NEW FEATURES}{

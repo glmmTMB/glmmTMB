@@ -393,7 +393,7 @@ test_that("tweedie", {
                  phi,
                  tolerance = .1)
     ## Check power
-    expect_equal(unname( plogis(twm$fit$par["thetaf"]) + 1 ),
+    expect_equal(unname( plogis(twm$fit$par["psi"]) + 1 ),
                  p,
                  tolerance = .01)
     ## Check internal rtweedie used by simulate
@@ -401,6 +401,8 @@ test_that("tweedie", {
     twm2 <- glmmTMB(y2 ~ 1, family=tweedie(), data = NULL)
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
     expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
+    expect_equal(ranef(twm),
+                 structure(list(cond = list(), zi = list()), class = "ranef.glmmTMB"))
 })
 
 test_that("gaussian_sqrt", {
@@ -451,8 +453,8 @@ test_that("t-distributed response", {
     expect_equal(sigma(m1), 4.96427774321411,
                  tolerance = 1e-6)
     m2 <- glmmTMB(y ~ 1, family = t_family, data = dd,
-                  start = list(thetaf = log(10)),
-                  map = list(thetaf = factor(NA)))
+                  start = list(psi = log(10)),
+                  map = list(psi = factor(NA)))
     expect_equal(sigma(m2), 5.01338678750139,
                  tolerance = 1e-6)
 })

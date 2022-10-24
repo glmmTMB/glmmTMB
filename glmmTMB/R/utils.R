@@ -317,18 +317,36 @@ isNullPointer <- function(x) {
 up2date <- function(oldfit) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
-    obj <- oldfit$obj
-    oldfit$obj <- with(obj$env,
+      obj <- oldfit$obj
+      ee <- obj$env
+      if ("thetaf" %in% names(ee$parameters)) {
+          ee$parameters$psi <- ee$parameters$thetaf
+          ee$parameters$thetaf <- NULL
+          pars <- c(grep("last\\.par", names(ee), value = TRUE),
+                    "par")
+          for (p in pars) {
+              if (!is.null(nm <- names(ee[[p]]))) {
+                  names(ee[[p]])[nm == "thetaf"] <- "psi"
+              }
+          }
+      }
+      ee2 <- oldfit$sdr$env
+      if ("thetaf" %in% names(ee2$parameters)) {
+          ee2$parameters$psi <- ee2$parameters$thetaf
+          ee2$parameters$thetaf <- NULL
+      }
+      oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
                                       silent = silent,
                                       DLL = "glmmTMB"))
-    oldfit$obj$env$last.par.best <- obj$env$last.par.best
+      oldfit$obj$env$last.par.best <- ee$last.par.best
   }
   return(oldfit)
 }
+
 
 
 #' Load data from system file, updating glmmTMB objects
@@ -401,7 +419,7 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
+par_components <- c("beta","betazi","betad","theta","thetazi","psi")
 
 getAllParnames <- function(object, full) {
                            
@@ -441,7 +459,7 @@ getAllParnames <- function(object, full) {
 
       ##
       if (length(fp <- family_params(object)) > 0) {
-          nameList <- c(nameList, list(thetaf = names(fp)))
+          nameList <- c(nameList, list(psi = names(fp)))
       }
       
   }
