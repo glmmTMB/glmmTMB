@@ -492,8 +492,8 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(theta);
   PARAMETER_VECTOR(thetazi);
 
-  // Extra family specific parameters (e.g. tweedie)
-  PARAMETER_VECTOR(thetaf);
+  // Extra family specific parameters (e.g. tweedie, t, ordbetareg)
+  PARAMETER_VECTOR(psi);
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
@@ -589,19 +589,19 @@ Type objective_function<Type>::operator() ()
       case ordbeta_family:
 	// https://github.com/saudiwin/ordbetareg_pack/blob/master/R/modeling.R#L565-L573
 	if (yobs(i) == 0.0) {
-	  tmp_loglik = log1m_inverse_linkfun(eta(i) - thetaf(0), logit_link);
-	  // std::cout << "zero " << asDouble(eta(i)) << " " << asDouble(thetaf(0)) << " " << asDouble(tmp_loglik) << std::endl;
+	  tmp_loglik = log1m_inverse_linkfun(eta(i) - psi(0), logit_link);
+	  // std::cout << "zero " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(tmp_loglik) << std::endl;
 	} else if (yobs(i) == 1.0) {
-	  tmp_loglik = log_inverse_linkfun(eta(i) - thetaf(1), logit_link);
-	  // std::cout << "one " << asDouble(eta(i)) << " " << asDouble(thetaf(1)) << " " << asDouble(tmp_loglik) << std::endl;
+	  tmp_loglik = log_inverse_linkfun(eta(i) - psi(1), logit_link);
+	  // std::cout << "one " << asDouble(eta(i)) << " " << asDouble(psi(1)) << " " << asDouble(tmp_loglik) << std::endl;
 	} else {
 	  s1 = mu(i)*phi(i);
 	  s2 = (Type(1)-mu(i))*phi(i);
-	  s3 = logspace_sub(log_inverse_linkfun(eta(i) - thetaf(0), logit_link),
-			    log_inverse_linkfun(eta(i) - thetaf(1), logit_link));
+	  s3 = logspace_sub(log_inverse_linkfun(eta(i) - psi(0), logit_link),
+			    log_inverse_linkfun(eta(i) - psi(1), logit_link));
 	  tmp_loglik = s3 + dbeta(yobs(i), s1, s2, true);
 
-	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(thetaf(0)) << " " << asDouble(thetaf(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
+	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(psi(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
 	}
 	break;
       case betabinomial_family:
@@ -702,7 +702,7 @@ Type objective_function<Type>::operator() ()
       case tweedie_family:
         s1 = mu(i);  // mean
         s2 = phi(i); // phi
-        s3 = invlogit(thetaf(0)) + Type(1); // p, 1<p<2
+        s3 = invlogit(psi(0)) + Type(1); // p, 1<p<2
         tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
         SIMULATE {
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
@@ -710,7 +710,7 @@ Type objective_function<Type>::operator() ()
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);
-	s2 = exp(thetaf(0));
+	s2 = exp(psi(0));
 	// since resid was scaled above, density needs to be divided by log(sd) = log(var)/2 = etad(i)/2
 	tmp_loglik = dt(s1, s2, true) - etad(i);
 	break;
