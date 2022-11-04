@@ -1288,7 +1288,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     } # sparseQR
     else{
       # diagonal elements of R from QR decomposition to identify which columns to keep and which to drop
-      R_diag <- Matrix::diag(qr_X@R)
+      R_diag <- abs(Matrix::diag(qr_X@R))
       # borrowing tolerance criterion from that specified in Matrix::qr2rankMatrix
       if(is.null(tol)) tol <- max(dim(X)) * .Machine$double.eps * max(R_diag)
       to_keep <- which(R_diag >= tol)
