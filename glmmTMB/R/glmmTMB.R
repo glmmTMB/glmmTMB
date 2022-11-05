@@ -1371,14 +1371,15 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' user's responsibility to make sure that any modifications
 ##' create an internally consistent final fitted object).
 ##'
-##' @param TMBStruc a list contain
+##' @param TMBStruc a list containing lots of stuff ...
+##' @param doOptim logical; do optimization? If FALSE, return TMB object
 ##' @examples
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
 ##'              family=poisson, data=Salamanders, doFit=FALSE)
 ##' names(m0)
 ##' fitTMB(m0)
 ##' @export
-fitTMB <- function(TMBStruc) {
+fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
     control <- TMBStruc$control
 
@@ -1471,7 +1472,7 @@ fitTMB <- function(TMBStruc) {
         max.newton.steps <- 5
         newton.tol <- 1e-10
         if (sdr$pdHess) {
-          ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
+            ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
           ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
           ##    * Option 1: Fall back to old method
           ##    * Option 2: Skip Newton iterations
@@ -1497,6 +1498,7 @@ fitTMB <- function(TMBStruc) {
                               profile = NULL,
                               silent = !verbose,
                               DLL = "glmmTMB"))
+        if (!doOptim) return(obj)
         if (is.na(obj$fn(obj$par))) {
             stop("negative log-likelihood is NaN at starting parameter values")
         }
