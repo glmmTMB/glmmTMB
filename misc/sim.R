@@ -39,12 +39,28 @@ beta <- c(1, 2, 0.1, 0.2)
 summary(exp(X %*% beta))
 dim(Z <- r1$data.tmb$Z)
 
-## would be convenient to have
 ##  a function for mapping relevant elements of theta to corr
 ##  for unstructured corr matrix, n > 2, this is the 
-## inverse function of get_cor() -- not obvious!
+## inverse function of get_cor() 
 ## see covstruct vignete, "Mapping" section
 ## http://glmmtmb.github.io/glmmTMB/articles/covstruct.html
+
+## C is a correlation matrix
+put_cor <- function(C) {
+    cc <- chol(C)
+    cc2 <- t(cc %*% diag(1/diag(cc)))
+    cc2[lower.tri(cc2)]
+}
+
+C <- matrix(c(1,  0.2,  0.1,
+              0.2,  1, -0.2,
+              0.1,-0.2,   1),
+            3, 3)
+
+## test: round-trip
+stopifnot(all.equal(get_cor(put_cor(C)),
+                    C[lower.tri(C)]))
+
 
 ## for *2x2 matrices only* we only need to map the *last* element
 ## of theta to a single correlation parameter
@@ -100,5 +116,8 @@ summary(sim$yobs)
 ## try this on simpler examples, e.g.
 ## - Gaussian (n.b. exp(betad) is residual **variance** ,
 ##    not sd, for gaussian family)
+## - Poisson?
 ## - no random effects
-
+## - check against cases that lme4 simulate() can do
+##   (may not get identical answers but should be identical
+##   on average, reasonable ranges)
