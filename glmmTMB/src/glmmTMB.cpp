@@ -543,6 +543,7 @@ Type objective_function<Type>::operator() ()
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etad);
   vector<Type> log_nzprob(eta.size());
+  log_nzprob.setZero();
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions
 // exact zero: use for positive distributions (Gamma, beta)
