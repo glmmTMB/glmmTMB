@@ -125,7 +125,9 @@ predict.glmmTMB <- function(object,
                             debug=FALSE,
                             ...) {
   ## FIXME: add re.form
-    
+
+  check_dots(..., .action = "warning")
+               
   if (cov.fit) {
       if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
       se.fit <- TRUE

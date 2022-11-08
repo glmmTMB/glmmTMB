@@ -424,3 +424,28 @@ test_that("correct conditional/response predictions for truncated distributions"
     testfun(f_znb1, "znb1", my_nb1)
 
 })
+
+test_that("predict warns about ignored args", {
+    expect_warning(predict(fm2, bad_args = TRUE), "bad_args")
+})
+
+## GH #873
+test_that("nzprob doesn't segfault", {
+    skip_on_cran()
+    model2 <- glmmTMB(
+        count ~ cover + mined + (1 | site),
+        ziformula = ~ cover + mined,
+        family = truncated_poisson(),
+        data = Salamanders
+    )
+    pp <- stats::predict(
+               model2,
+               newdata = Salamanders,
+               type = "link",
+               re.form = NULL,
+               allow.new.levels = FALSE
+               )
+    expect_equal(head(pp, 3),
+                 c(0.465946249085321, 0.206712238705304, 0.133580349579438))
+})
+
