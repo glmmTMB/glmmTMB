@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.4.9000}{
+\section{CHANGES IN VERSION 1.1.5}{
     \subsection{BUG FIXES}{
       \itemize{
 	\item improve predict-handling of complex bases (GH #632, #845,
@@ -30,6 +30,8 @@
 	be changed. Users will need to run \code{up2date()}
 	when loading stored model objects from previous versions of the
 	package.
+	\item \code{predict} now warns if extra (ignored) arguments are
+	provided in \code{...}
       } % itemize
     } % user-visible changes
     \subsection{NEW FEATURES}{
