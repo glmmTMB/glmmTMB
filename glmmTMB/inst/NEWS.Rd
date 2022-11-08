@@ -43,7 +43,7 @@
 	implemented (\code{\link{ordbeta}})
     } % itemize
   } % new features
-} % version 1.1.4.9000
+} % version 1.1.5
   
 \section{CHANGES IN VERSION 1.1.4 (2022-07-12)}{
   \subsection{USER-VISIBLE CHANGES}{
