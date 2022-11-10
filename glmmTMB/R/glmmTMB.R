@@ -522,6 +522,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     } else {
         tt <- terms(fixedform)
         pv <- attr(mf$formula,"predvars")
+        ## FIXME: do we still need fix_predvars here?
+        ## See corresponding discussion  in predict.R
+        ## (search for "NO LONGER USED")
         attr(tt, "predvars") <- fix_predvars(pv,tt)
         mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
