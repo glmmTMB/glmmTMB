@@ -12,7 +12,7 @@
 	\item all standard deviations are now printed in output for
 	models using \code{cs()} (GH #851)
 	\item corrected conditional and response predictions for
-	truncated distributions (GH #634, #860)
+	truncated distributions (GH #634, #860, #873)
 	\item \code{ranef()} now works correctly for families
 	with extra parameters (Tweedie etc.) (GH #870)
       } % itemize
@@ -22,7 +22,7 @@
 	\item glmmTMB now stops if fixed-effect model matrices are
 	rank deficient (i.e., perfectly collinear predictors); this
 	can be changed to a warning via
-	\code{glmmTMBControl(rank_check="ignore") (Daniel B. Stouffer)}
+	\code{glmmTMBControl(rank_check="skip") (Daniel B. Stouffer)}
 	\item the vector of "extra" family parameters
 	(Tweedie power, Student-t df,
 	etc.) has been renamed from "thetaf" to "psi"; \code{start}

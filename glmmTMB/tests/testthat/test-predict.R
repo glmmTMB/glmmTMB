@@ -449,3 +449,31 @@ test_that("nzprob doesn't segfault", {
                  c(0.465946249085321, 0.206712238705304, 0.133580349579438))
 })
 
+## GH #873 continued
+test_that("nzprob computed for non-fast pred", {
+    set.seed(101)
+    dd <- data.frame(y = rpois(5, lambda = 1))
+    m1 <- glmmTMB(
+        y ~ 1,
+        ziformula = ~ 1,
+        data = dd,
+        family = truncated_poisson()
+    )
+    expect_identical(predict(m1, type = "response"),
+                     predict(m1, type = "response", fast = FALSE))
+    m2 <- update(m1, family = truncated_nbinom1)
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    m2 <- update(m1, family = truncated_nbinom2)
+    ## need more data to fit compois, genpois
+    dd2 <- data.frame(y = rpois(100, lambda = 1))
+    m2 <- update(m1, family = truncated_compois, data = dd2)
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    ## suppress NA/NaN function eval warning
+    m2 <- suppressWarnings(update(m1, family = truncated_genpois, data = dd2))
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+})
+
+                 
