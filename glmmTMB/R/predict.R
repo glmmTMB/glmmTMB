@@ -205,7 +205,7 @@ predict.glmmTMB <- function(object,
     dd$ziPredictCode <- ziPredCode
     assign("data",dd, ee) ## stick this in the appropriate environment
     newObj <- object$obj
-
+    
     ## restore original values to environment of the object
     ## putting add=TRUE first would be more readable,
     ##  but that tickles a bug in R < 4.0.2
