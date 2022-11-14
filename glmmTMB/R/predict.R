@@ -125,7 +125,9 @@ predict.glmmTMB <- function(object,
                             debug=FALSE,
                             ...) {
   ## FIXME: add re.form
-    
+
+  check_dots(..., .action = "warning")
+               
   if (cov.fit) {
       if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
       se.fit <- TRUE
@@ -203,7 +205,7 @@ predict.glmmTMB <- function(object,
     dd$ziPredictCode <- ziPredCode
     assign("data",dd, ee) ## stick this in the appropriate environment
     newObj <- object$obj
-
+    
     ## restore original values to environment of the object
     ## putting add=TRUE first would be more readable,
     ##  but that tickles a bug in R < 4.0.2

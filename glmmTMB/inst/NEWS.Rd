@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.4.9000}{
+\section{CHANGES IN VERSION 1.1.5}{
     \subsection{BUG FIXES}{
       \itemize{
 	\item improve predict-handling of complex bases (GH #632, #845,
@@ -12,7 +12,7 @@
 	\item all standard deviations are now printed in output for
 	models using \code{cs()} (GH #851)
 	\item corrected conditional and response predictions for
-	truncated distributions (GH #634, #860)
+	truncated distributions (GH #634, #860, #873)
 	\item \code{ranef()} now works correctly for families
 	with extra parameters (Tweedie etc.) (GH #870)
       } % itemize
@@ -22,7 +22,7 @@
 	\item glmmTMB now stops if fixed-effect model matrices are
 	rank deficient (i.e., perfectly collinear predictors); this
 	can be changed to a warning via
-	\code{glmmTMBControl(rank_check="ignore") (Daniel B. Stouffer)}
+	\code{glmmTMBControl(rank_check="skip") (Daniel B. Stouffer)}
 	\item the vector of "extra" family parameters
 	(Tweedie power, Student-t df,
 	etc.) has been renamed from "thetaf" to "psi"; \code{start}
@@ -30,6 +30,8 @@
 	be changed. Users will need to run \code{up2date()}
 	when loading stored model objects from previous versions of the
 	package.
+	\item \code{predict} now warns if extra (ignored) arguments are
+	provided in \code{...}
       } % itemize
     } % user-visible changes
     \subsection{NEW FEATURES}{
@@ -39,9 +41,13 @@
 	\item ordered beta regression as in Kubinec (2022), for
 	proportion data containing exact 0 and 1 values, is now
 	implemented (\code{\link{ordbeta}})
+	\item \code{glmmTMBControl} now has a \code{conv_check} argument
+	that allows suppressing convergence warnings
+	(the intended use is when these warnings are irrelevant,
+	e.g. when running small examples for testing purposes)
     } % itemize
   } % new features
-} % version 1.1.4.9000
+} % version 1.1.5
   
 \section{CHANGES IN VERSION 1.1.4 (2022-07-12)}{
   \subsection{USER-VISIBLE CHANGES}{

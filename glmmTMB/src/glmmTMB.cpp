@@ -37,6 +37,15 @@ enum valid_family {
   tweedie_family = 700
 };
 
+// capitalize Family so this doesn't get picked up by the 'enum' scraper
+bool trunc_Family(int family) {
+  return (family == truncated_poisson_family ||
+	  family == truncated_genpois_family ||
+	  family == truncated_compois_family ||
+	  family == truncated_nbinom1_family ||
+	  family == truncated_nbinom2_family);
+}
+
 enum valid_link {
   log_link                 = 0,
   logit_link               = 1,
@@ -151,6 +160,39 @@ Type log1m_inverse_linkfun(Type eta, int link) {
   default:
     ans = logspace_sub(Type(0), log( inverse_linkfun(eta, link) ));
   } // End switch
+  return ans;
+}
+
+/* log-prob of non-zero value in conditional distribution  */
+template<class Type>
+Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
+		     int link) {
+  Type ans, s1, s2, s3;
+  switch (family) {
+  case truncated_nbinom1_family:
+    s3 = logspace_add( Type(0), etad);      // log(1. + phi(i)
+    ans = logspace_sub( Type(0), -mu / phi * s3 ); // 1-prob(0)
+    break;
+  case truncated_nbinom2_family:
+    // s1 is repeated computation from main loop ...
+    s1 = log_inverse_linkfun(eta, link);          // log(mu)
+    // s3 := log( 1. + mu(i) / phi(i) )
+    s3 = logspace_add( Type(0), s1 - etad );
+    ans = logspace_sub( Type(0), -phi * s3 );
+    break;
+  case truncated_poisson_family:
+    ans = logspace_sub(Type(0), -mu);  // log(1-exp(-mu(i))) = P(x>0)
+    break;
+  case truncated_genpois_family:
+    s1 = mu / sqrt(phi); //theta
+    s2 = Type(1) - Type(1)/sqrt(phi); //lambda
+    ans = logspace_sub(Type(0), -s1);
+    break;
+  case truncated_compois_family:
+    ans = logspace_sub(Type(0), dcompois2(Type(0), mu, 1/phi, true));
+    break;
+  default: ans = Type(0);
+  }
   return ans;
 }
 
@@ -543,6 +585,15 @@ Type objective_function<Type>::operator() ()
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etad);
   vector<Type> log_nzprob(eta.size());
+  if (!trunc_Family(family)) {
+    log_nzprob.setZero();
+  } else {
+    for (int i = 0; i < log_nzprob.size(); i++) {
+      log_nzprob(i) =  calc_log_nzprob(mu(i), phi(i), eta(i), etad(i),
+				       family, link);
+    }
+  }
+
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions
 // exact zero: use for positive distributions (Gamma, beta)
@@ -632,8 +683,6 @@ Type objective_function<Type>::operator() ()
 			yobs(i) = rnbinom2(s1, s2);
 		}
 	} else {
-          s3 = logspace_add( Type(0), etad(i) );                // log(1. + phi(i)
-          log_nzprob(i) = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
           tmp_loglik -= log_nzprob(i);
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
           SIMULATE{
@@ -653,9 +702,6 @@ Type objective_function<Type>::operator() ()
           yobs(i) = rnbinom2(s1, s2);
         }
         if (family == truncated_nbinom2_family) {
-          // s3 := log( 1. + mu(i) / phi(i) )
-          s3         = logspace_add( Type(0), s1 - etad(i) );
-          log_nzprob(i) = logspace_sub( Type(0), -phi(i) * s3 );
           tmp_loglik -= log_nzprob(i);
           tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
@@ -664,7 +710,6 @@ Type objective_function<Type>::operator() ()
         }
         break;
       case truncated_poisson_family:
-        log_nzprob(i) = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i))) = P(x>0)
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob(i);
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
@@ -680,7 +725,6 @@ Type objective_function<Type>::operator() ()
       case truncated_genpois_family:
         s1 = mu(i) / sqrt(phi(i)); //theta
         s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
-        log_nzprob(i) = logspace_sub(Type(0), -s1);
         tmp_loglik = zt_lik_nearzero(yobs(i),
 		    glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob(i));
         SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
@@ -793,12 +837,7 @@ Type objective_function<Type>::operator() ()
       mu = phi;
     }
   } else {
-    // FIXME: would a 'truncated_family' flag be useful?
-    if (family == truncated_poisson_family ||
-	family == truncated_genpois_family ||
-	family == truncated_compois_family ||
-	family == truncated_nbinom1_family ||
-	family == truncated_nbinom2_family) {
+    if (trunc_Family(family)) {
       // convert from mean of *un-truncated* to mean of *truncated* distribution
       mu /= exp(log_nzprob);
     }
@@ -822,7 +861,6 @@ Type objective_function<Type>::operator() ()
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
-
 
   REPORT(mu_predict);
   REPORT(eta_predict);
