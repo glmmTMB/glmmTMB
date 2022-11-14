@@ -1153,7 +1153,8 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
-##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip', 'stop', and 'adjust'.
+##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).
+##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1201,7 +1202,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0),
-                           rank_check = c("warning", "adjust", "stop", "skip")) {
+                           rank_check = c("warning", "adjust", "stop", "skip"),
+                           conv_check = c("warning", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1215,6 +1217,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     }
 
     rank_check <- match.arg(rank_check)
+    conv_check <- match.arg(conv_check)
 
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
@@ -1222,7 +1225,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, zerodisp_val, start_method, rank_check)
+              eigval_check, zerodisp_val, start_method, rank_check, conv_check)
 }
 
 ##' collapse duplicated observations
@@ -1531,7 +1534,7 @@ fitTMB <- function(TMBStruc) {
         }
         return(ev)
     }
-    if(!is.null(sdr$pdHess)) {
+    if(!is.null(sdr$pdHess) && control$conv_check != "skip") {
        if(!sdr$pdHess) {
           ## double-check (slower, more accurate hessian)
           env <- environment(obj$fn)
@@ -1565,11 +1568,12 @@ fitTMB <- function(TMBStruc) {
       } ## do eigval check
     } ## pdHess exists
 
-    if ( !is.null(fit$convergence) && fit$convergence != 0)
+    if ( !is.null(fit$convergence) && fit$convergence != 0 && control$conv_check != "skip") {
         warning("Model convergence problem; ",
                 fit$message, ". ",
                 "See vignette('troubleshooting')")
-
+    }
+    
     if (control $ collect) {
         ## Undo changes made to the data
         TMBStruc$data.tmb <- data.tmb.old

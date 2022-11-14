@@ -121,17 +121,15 @@ test_that("equivalence between 'skip' and 'warn' when confronted with identifiab
     m2 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2, data=dat, control=glmmTMBControl(rank_check='warn'), sparseX=c(disp=TRUE))
     expect_equal(fixef(m1), fixef(m2))
     # models with identifiability issues
-    # X
-    expect_warning(m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip')),
-                   ## no rank-def warning, but we do have convergence issues
-                   "Model convergence problem")
+    ## X
+    cc1 <- glmmTMBControl(rank_check = 'skip', conv_check = 'skip')
+    m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=cc1)
     expect_warning(
         m2 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in conditional model are rank deficient"
     )
     expect_equal(fixef(m1), fixef(m2))
-    expect_warning(m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip')),
-                   "Model convergence problem")
+    m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=cc1)
     expect_warning(
         m2 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in zero-inflation model are rank deficient"
@@ -144,15 +142,13 @@ test_that("equivalence between 'skip' and 'warn' when confronted with identifiab
     )
     expect_equal(fixef(m1), fixef(m2))
     # sparse X
-    expect_warning(m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip'), sparseX=c(cond=TRUE)),
-                   "Model convergence problem")
+    m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=cc1)
     expect_warning(
         m2 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn'), sparseX=c(cond=TRUE)),
         "fixed effects in conditional model are rank deficient"
     )
     expect_equal(fixef(m1), fixef(m2))
-    expect_warning(m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip'), sparseX=c(zi=TRUE)),
-                   "Model convergence problem")
+    m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control = cc1, sparseX=c(zi=TRUE))
     expect_warning(
         m2 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn'), sparseX=c(zi=TRUE)),
         "fixed effects in zero-inflation model are rank deficient"

@@ -41,6 +41,10 @@
 	\item ordered beta regression as in Kubinec (2022), for
 	proportion data containing exact 0 and 1 values, is now
 	implemented (\code{\link{ordbeta}})
+	\item \code{glmmTMBControl} now has a \code{conv_check} argument
+	that allows suppressing convergence warnings
+	(the intended use is when these warnings are irrelevant,
+	e.g. when running small examples for testing purposes)
     } % itemize
   } % new features
 } % version 1.1.5
