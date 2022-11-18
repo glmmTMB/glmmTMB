@@ -4,6 +4,15 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.5.9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fix bug in diagnose for Tweedie, other models with 'psi'
+      parameter (@nalimilan, GH #135)
+    }
+  }  % bug fixes
+}
+
 \section{CHANGES IN VERSION 1.1.5}{
     \subsection{BUG FIXES}{
       \itemize{
