@@ -74,6 +74,8 @@ jobs:
           do
             eval sudo $cmd
           done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "22.04"))')
+          wget http://security.ubuntu.com/ubuntu/pool/main/i/icu/libicu60_60.2-3ubuntu3.2_amd64.deb  # https://askubuntu.com/questions/1372289/error-while-loading-shared-libraries-libicui18n-so-60-magfieldmapper-gui
+          sudo apt-get install ./libicu60_60.2-3ubuntu3.2_amd64.deb
 
         working-directory: ./glmmTMB
 
