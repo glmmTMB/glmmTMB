@@ -73,7 +73,8 @@ jobs:
           while read -r cmd
           do
             eval sudo $cmd
-          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "20.04"))')
+          done < <(Rscript -e 'writeLines(remotes::system_requirements("ubuntu", "22.04"))')
+
         working-directory: ./glmmTMB
 
       - name: Install extra LaTeX packages
