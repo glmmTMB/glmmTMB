@@ -4,6 +4,15 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.5.9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fix bug in diagnose for Tweedie, other models with 'psi'
+      parameter (@nalimilan, GH #135)
+    }
+  }  % bug fixes
+}
+
 \section{CHANGES IN VERSION 1.1.5 (2022-11-16)}{
     \subsection{BUG FIXES}{
       \itemize{
@@ -63,7 +72,7 @@
     } % itemize
   } % new features
 } % version 1.1.5
-  
+
 \section{CHANGES IN VERSION 1.1.4 (2022-07-12)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
@@ -127,7 +136,7 @@
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item Double-bar notation (\code{(x+y||g)}) is now translated to a
-  diagonal-covariance term (\code{diag(x+y|g)}) rather than being split 
+  diagonal-covariance term (\code{diag(x+y|g)}) rather than being split
   into separate random effects terms as in  \code{lme4}. This should not
   change modeling results, but may change their
   presentation/ordering/etc.. (This is also a bug fix, as double-bar
@@ -150,13 +159,13 @@
     }
   }
 }
-  
+
 \section{CHANGES IN VERSION 1.1.2.2 (2021-09-01)}{
   \itemize{
     \item This is an administrative release (minor revisions for CRAN).
   }
 }
-  
+
 \section{CHANGES IN VERSION 1.1.2 (2021-07-20)}{
   \subsection{BUG FIXES}{
     \itemize{
@@ -172,11 +181,11 @@
     }
   } % user-visible changes
 } % version 1.1.2
-  
+
 \section{CHANGES IN VERSION 1.1.0 (2021-06-24)}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item reduced rank covariance for GLVMs implemented by M.McGillycuddy 
+      \item reduced rank covariance for GLVMs implemented by M.McGillycuddy
       (see covstruct vignette for details)
       \item \code{diagnose} function to investigate potential causes of convergence problems
       \item improved parallel processing (GH #620 #652)
@@ -196,11 +205,11 @@
       \code{parm="theta_"} now work correctly with more complex models
       (e.g. including both zero inflation and random effects)
       (reported by @MKie45 on Stack Overflow)
-      \item \code{confint} works for single-parameter models and those 
+      \item \code{confint} works for single-parameter models and those
       with a \code{dispformula} (GH #622)
       \item mapped (fixed) variables could give incorrect predictions (GH #644)
-      \item \code{simulate} is more robust for truncated_nbinom1 and 
-      truncated_nbinom2 (GH #572) 
+      \item \code{simulate} is more robust for truncated_nbinom1 and
+      truncated_nbinom2 (GH #572)
     }
   }
   \subsection{USER-VISIBLE CHANGES}{

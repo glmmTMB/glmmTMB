@@ -58,7 +58,7 @@ diagnose <- function(fit,
     pp <- ee$last.par.best
     if (!is.null(r <- ee$random)) { pp <- pp[-r] }
     ss <- suppressWarnings(summary(fit$sdr))
-    ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
+    ss <- ss[grepl("^(beta|theta|psi)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
     vv <- try(vcov(fit, full = TRUE))
     if (!inherits(vv, "try-error")) {
