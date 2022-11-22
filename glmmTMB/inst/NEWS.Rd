@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.5}{
+\section{CHANGES IN VERSION 1.1.5 (2022-11-16)}{
     \subsection{BUG FIXES}{
       \itemize{
 	\item improve predict-handling of complex bases (GH #632, #845,
@@ -19,10 +19,25 @@
     } % bug fixes
     \subsection{USER-VISIBLE CHANGES}{
       \itemize{
+	\item glmmTMB has switched to using a different (newer, under
+	active development) autodifferentiation library under the hood
+	(from \code{CppAD} to \code{TMBad}). This is likely to lead to
+	small changes in estimates, including tipping marginally stable
+	computations to instability or vice versa (e.g. presence or
+	absence of convergence warnings, positive-definite Hessian
+	warnings, \code{NaN} values of standard errors, etc.) You can revert
+	to using the older autodiff engine by commenting out the line
+	\code{PKG_CPPFLAGS = -DTMBAD_FRAMEWORK} in \code{src/Makevars}
+	and reinstalling the package (make sure to delete .o/.so files
+	from the \code{src} directory first if installing from the package
+	directory, as the Makefile doesn't recognize know that this
+	change requires recompilation).
 	\item glmmTMB now stops if fixed-effect model matrices are
 	rank deficient (i.e., perfectly collinear predictors); this
 	can be changed to a warning via
-	\code{glmmTMBControl(rank_check="skip") (Daniel B. Stouffer)}
+	\code{glmmTMBControl(rank_check="skip"), or glmmTMB
+	  will automatically drop appropriate columns from the model
+	  matrix if \code{rank_check="adjust"} (Daniel B. Stouffer)}
 	\item the vector of "extra" family parameters
 	(Tweedie power, Student-t df,
 	etc.) has been renamed from "thetaf" to "psi"; \code{start}
