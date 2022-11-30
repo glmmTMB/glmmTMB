@@ -1,5 +1,5 @@
 library(glmmTMB)
-devtools::load_all("glmmTMB")
+## devtools::load_all("glmmTMB")
 library(ordbetareg)
 data(pew)
 library(tidyverse)
@@ -29,7 +29,7 @@ TMB_fit <- glmmTMB(formula=therm/100 ~ education + income +
                        (1|region), 
                    data=model_data,
                    family = ordbeta,
-                   start = list(thetaf = c(-1, 1)))
+                   start = list(psi = c(-1, 1)))
 
 vcov(TMB_fit, full = TRUE)
 View(tidy(TMB_fit, conf.int = TRUE))
@@ -53,5 +53,22 @@ res <- (list(glmmTMB = TMB_fit, ordbetareg = ord_fit_mean)
 ggplot(res, aes(estimate, term, colour = pkg)) +
     geom_pointrange(aes(xmin = lwr, xmax = upr))
 
+###
+library(dplyr)
+library(glmmTMB)
 
+nobs <- 100
+ngroup <- 5
+dat <- tibble(
+  x = sample(1:3, size = nobs, replace = TRUE, prob = c(0.15, 0.5, 0.35)),
+  y = runif(nobs),
+  z = case_when(
+    x == 1 ~ 0,
+    x == 2 ~ y,
+    x == 3 ~ 1
+  ),
+  g = rep(seq_len(ngroup), length.out = nobs)
+)
+glmmTMB(z ~ (1|g), data = dat, family = ordbeta,
+        start = list(psi = c(-1, 1)))
 
