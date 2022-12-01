@@ -173,6 +173,7 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     qval <- 0.5*qchisq(level,df=1)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
+        dd <- na.omit(dd)
         hf <- with(dd,factor(.focal>.focal[which.min(value)],
                    levels=c("FALSE","TRUE")))
         halves <- split(dd,hf)
@@ -188,9 +189,18 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
         if (max(hh$value,na.rm=TRUE)<qval) {
             restr_prof_flag <- TRUE
         }
-        for_spl <- splines::interpSpline(value~.focal,hh)
-        bak_spl <- splines::backSpline(for_spl)
-        predict(bak_spl,qval)$y
+        res <- try({
+            for_spl <- splines::interpSpline(value~.focal,hh)
+            bak_spl <- splines::backSpline(for_spl)
+            predict(bak_spl,qval)$y
+        }, silent = TRUE)
+        if (!inherits(res, "try-error")) return(res)
+        res <- try(approx(hh$value, hh$.focal, xout = qval)$y)
+        if (!inherits(res, "try-error") && !is.na(res)) {
+            warning("spline failure for CI calculation, falling back to linear approximation")
+            return(res)
+        }
+        return(NA_real_)
     }
     objList <- split(object,object$.par)
     if (is.null(parm)) {

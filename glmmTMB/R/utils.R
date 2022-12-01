@@ -102,7 +102,9 @@ getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
         }
     }
     if (is.character(parm)) {
-        if (identical(parm,"theta_")) {
+        if (identical(parm,"psi_")) {
+            parm <- grep("^psi",intnames)
+        } else if (identical(parm,"theta_")) {
             parm <- grep("^theta",intnames)
         } else if (identical(parm,"beta_")) {
             if (trivialDisp(object)) {
