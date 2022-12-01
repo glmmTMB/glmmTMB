@@ -6,6 +6,8 @@ library(tidyverse)
 library(cmdstanr)
 library(broom.mixed)
 
+do_slow <- TRUE
+
 model_data <- select(pew,therm,age="F_AGECAT_FINAL",
                         sex="F_SEX_FINAL",
                         income="F_INCOME_FINAL",
@@ -24,15 +26,47 @@ model_data <- select(pew,therm,age="F_AGECAT_FINAL",
     mutate(education=ordered(education),
            income=ordered(income))
 
-
+## note glmmTMB doesn't automatically normalize
 TMB_fit <- glmmTMB(formula=therm/100 ~ education + income +
                        (1|region), 
                    data=model_data,
                    family = ordbeta)
 
-tt <- tidy(TMB_fit, effect = "fixed") |> select(term, estimate) |> rename(.par = "term")
-## undebug(glmmTMB:::confint.glmmTMB)
-confint(TMB_fit, method = "profile")
+
+vcov(TMB_fit, full = TRUE)
+
+ord_fit_mean <- ordbetareg(formula=therm ~ education + income +
+                               (1|region), 
+                           data=model_data,
+                           cores=12,
+                           chains=2,
+                           iter=1000,
+                           refresh=0,
+                           threads = threading(5),
+                           backend  = "cmdstanr")
+
+res <- (list(glmmTMB = TMB_fit, ordbetareg = ord_fit_mean)
+    |> purrr::map_dfr(tidy, effects = "fixed", .id = "pkg", conf.int = TRUE)
+    |> select(pkg, term, estimate, lwr = conf.low, upr = conf.high)
+    |> mutate(across(term, ~ gsub("E([0-9])","^\\1", .)))
+)
+
+if (do_slow) {
+    res2 <- (tidy(TMB_fit, effects = "fixed", conf.int = TRUE, conf.method = "profile")
+        |> select(term, estimate, lwr = conf.low, upr = conf.high)
+        |> mutate(pkg = "glmmTMB", method = "profile", .before = 1)
+    )
+    res <- (res
+        |> mutate(method = ifelse(pkg == "glmmTMB", "wald", "marginal"), .after = 1)
+        |> bind_rows(res2)
+    )
+}
+ggplot(res, aes(estimate, term, colour = pkg, shape = method)) +
+    geom_pointrange(aes(xmin = lwr, xmax = upr), position = position_dodge(width = 0.2))
+
+res |> arrange(term, method) |> View()
+
+### explore profiles: confirm
 pp <- profile(TMB_fit, trace = 10)
 ## compute and plot signed square root
 pp2 <- (pp
@@ -48,28 +82,7 @@ ggplot(pp2, aes(.focal,.zeta)) + geom_point() + geom_line() + facet_wrap(~.par, 
     geom_smooth(method="lm", colour = adjustcolor("red", alpha.f = 0.5), se  = FALSE) +
     geom_hline(yintercept = 0, colour = "blue", lty = 2)
 
-pp |> filter(.par == "theta_1|region.1")
-vcov(TMB_fit, full = TRUE)
-View(tidy(TMB_fit, conf.int = TRUE))
 
-ord_fit_mean <- ordbetareg(formula=therm ~ education + income +
-                               (1|region), 
-                           data=model_data,
-                           cores=12,
-                           chains=2,
-                           iter=1000,
-                           refresh=0,
-                           threads = threading(5),
-                           backend  = "cmdstanr")
-
-
-res <- (list(glmmTMB = TMB_fit, ordbetareg = ord_fit_mean)
-    |> purrr::map_dfr(tidy, effects = "fixed", .id = "pkg", conf.int = TRUE)
-    |> select(pkg, term, estimate, lwr = conf.low, upr = conf.high)
-)
-
-ggplot(res, aes(estimate, term, colour = pkg)) +
-    geom_pointrange(aes(xmin = lwr, xmax = upr))
 
 ###
 library(dplyr)
