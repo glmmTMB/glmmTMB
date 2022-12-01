@@ -68,7 +68,7 @@ profile.glmmTMB <- function(fitted,
     ystep <- ytol/npts
 
     ## don't suppress sigma profiling (full=TRUE)
-    parm <- getParms(parm, fitted, full=TRUE)
+    if (is.null(parm)) parm <- getParms(parm, fitted, full=TRUE)
 
     ## only need selected SDs
     sds <- sqrt(diag(vcov(fitted,full=TRUE)))
