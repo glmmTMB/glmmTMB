@@ -28,9 +28,27 @@ model_data <- select(pew,therm,age="F_AGECAT_FINAL",
 TMB_fit <- glmmTMB(formula=therm/100 ~ education + income +
                        (1|region), 
                    data=model_data,
-                   family = ordbeta,
-                   start = list(psi = c(-1, 1)))
+                   family = ordbeta)
 
+tt <- tidy(TMB_fit, effect = "fixed") |> select(term, estimate) |> rename(.par = "term")
+## undebug(glmmTMB:::confint.glmmTMB)
+confint(TMB_fit, method = "profile")
+pp <- profile(TMB_fit, trace = 10)
+## compute and plot signed square root
+pp2 <- (pp
+    |> na.omit()
+    |> full_join(tt, by = ".par")
+    |> group_by(.par)
+    |> mutate(.mid = .focal[value == 0][1],
+              .zeta = sqrt(value)*sign(.focal-.mid))
+)
+library(ggplot2); theme_set(theme_bw())
+ggplot(pp2, aes(.focal,value)) + geom_point() + geom_line() + facet_wrap(~.par, scale = "free_x")
+ggplot(pp2, aes(.focal,.zeta)) + geom_point() + geom_line() + facet_wrap(~.par, scale = "free_x") +
+    geom_smooth(method="lm", colour = adjustcolor("red", alpha.f = 0.5), se  = FALSE) +
+    geom_hline(yintercept = 0, colour = "blue", lty = 2)
+
+pp |> filter(.par == "theta_1|region.1")
 vcov(TMB_fit, full = TRUE)
 View(tidy(TMB_fit, conf.int = TRUE))
 
@@ -69,6 +87,7 @@ dat <- tibble(
   ),
   g = rep(seq_len(ngroup), length.out = nobs)
 )
-glmmTMB(z ~ (1|g), data = dat, family = ordbeta,
-        start = list(psi = c(-1, 1)))
+m1 <- glmmTMB(z ~ (1|g), data = dat, family = ordbeta)
+confint(m1)
+confint(m1, method = "profile")
 
