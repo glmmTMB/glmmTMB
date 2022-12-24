@@ -178,6 +178,7 @@ startParams <- function(parameters,
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
       nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
+      ## FIXME: replace hard-coded 9 with .valid_covstruct["rr"] ?
       if (condReStruc[[j]]$blockCode == 9) {
         start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
         start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
@@ -409,14 +410,16 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ##    [because inverse-link is symmetric around 0?]
   beta_init <-  if (family$link %in% c("identity","inverse","sqrt")) 1 else 0
 
+  rr0 <- function(n) {
+     if (is.null(n)) numeric(0) else rep(0, n)
+  }
+
   ## Extra family specific parameters
   ## FIXME: switch/rewrite to be less ugly?
-  numThetaFamily <- if (family$family %in% c("t", "tweedie"))
-                    { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
+  psiLength <- if (family$family %in% c("t", "tweedie"))
+               { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
 
-  rr0 <- function(n) {
-       if (is.null(n)) numeric(0) else rep(0, n)
-  }
+  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)  
 
   # theta is 0, except if dorr, theta is 1
   t01 <- function(dorr, condReStruc){
@@ -437,14 +440,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   parameters <- with(data.tmb,
                      list(
-                       beta    = rep(beta_init, max(ncol(X),ncol(XS))),
+                       beta    = rep(beta_init, max(ncol(X), ncol(XS))),
                        betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
                        theta   = t01(dorr, condReStruc),
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       psi  = rr0(numThetaFamily)
+                       psi  = psi_init
                      ))
 
   if(!is.null(start) || !is.null(control$start_method$method)){

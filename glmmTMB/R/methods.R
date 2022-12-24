@@ -800,7 +800,7 @@ format.perc <- function (probs, digits) {
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
 ##' @param include_mapped include dummy rows for mapped (i.e. fixed-value) parameters?
-##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
+##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
