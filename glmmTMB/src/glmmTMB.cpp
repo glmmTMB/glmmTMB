@@ -502,6 +502,8 @@ template<class Type>
 Type objective_function<Type>::operator() ()
 {
 
+  // FIXME: reimplement as nested list
+  //  ((X, Z), (Xzi, Zzi), (Xd, Zd?), (Xoi, Zoi)) ?
   DATA_MATRIX(X);
   bool sparseX = X.rows()==0 && X.cols()==0;
   DATA_SPARSE_MATRIX(Z);
@@ -510,29 +512,39 @@ Type objective_function<Type>::operator() ()
   DATA_SPARSE_MATRIX(Zzi);
   DATA_MATRIX(Xd);
   bool sparseXd = Xd.rows()==0 && Xd.cols()==0;
+  // fixed and random effects for one-inflation (or N-inflation for beta-binom)
+  DATA_MATRIX(Xoi);
+  bool sparseXoi = Xoi.rows()==0 && Xoi.cols()==0;
+  DATA_SPARSE_MATRIX(Zoi);
+  
   DATA_VECTOR(yobs);
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
   DATA_VECTOR(offset);
   DATA_VECTOR(zioffset);
   DATA_VECTOR(doffset);
+  DATA_VECTOR(oioffset);
 
   // Define covariance structure for the conditional model
   DATA_STRUCT(terms, terms_t);
 
-  // Define covariance structure for the zero inflation
+  // Define covariance structure for the zero- and one-inflation
   DATA_STRUCT(termszi, terms_t);
+  DATA_STRUCT(termsoi, terms_t);
 
   // Parameters related to design matrices
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(betazi);
+  PARAMETER_VECTOR(betaoi);
   PARAMETER_VECTOR(b);
   PARAMETER_VECTOR(bzi);
+  PARAMETER_VECTOR(boi);
   PARAMETER_VECTOR(betad);
 
   // Joint vector of covariance parameters
   PARAMETER_VECTOR(theta);
   PARAMETER_VECTOR(thetazi);
+  PARAMETER_VECTOR(thetaoi);
 
   // Extra family specific parameters (e.g. tweedie, t, ordbetareg)
   PARAMETER_VECTOR(psi);
@@ -543,6 +555,9 @@ Type objective_function<Type>::operator() ()
   // Flags
   DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
+  DATA_INTEGER(oiPredictCode);
+  bool oi_flag = (betaoi.size() > 0);
+
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
   // One-Step-Ahead (OSA) residuals
@@ -554,6 +569,7 @@ Type objective_function<Type>::operator() ()
   // Random effects
   PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
   PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(boi, thetaoi, termsoi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = Z * b + offset;
@@ -577,12 +593,20 @@ Type objective_function<Type>::operator() ()
     DATA_SPARSE_MATRIX(XdS);
     etad += XdS*betad;
   }
+  vector<Type> etaoi = Zoi * boi + oioffset;
+  if (!sparseXoi) {
+    etaoi += Xoi*betaoi;
+  } else {
+    DATA_SPARSE_MATRIX(XoiS);
+    etaoi += XoiS*betaoi;
+  }
 
   // Apply link
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
     mu(i) = inverse_linkfun(eta(i), link);
   vector<Type> pz = invlogit(etazi);
+  vector<Type> po = invlogit(etaoi);
   vector<Type> phi = exp(etad);
   vector<Type> log_nzprob(eta.size());
   if (!trunc_Family(family)) {
