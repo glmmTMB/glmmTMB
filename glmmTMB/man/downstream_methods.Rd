@@ -73,22 +73,22 @@ versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 \examples{
 warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
 salamander1 <- up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
-if (require(emmeans)) {
+if (require(emmeans)) withAutoprint({
     emmeans(warp.lm, poly ~ tension | wool)
     emmeans(salamander1, ~ mined, type="response")  # conditional means
-    emmeans(salamander1, ~ mined, comp="cmean")     # same as above, but re-gridded
+    emmeans(salamander1, ~ mined, component="cmean")     # same as above, but re-gridded
     emmeans(salamander1, ~ mined, component="zi", type="response")  # zero probabilities
-    emmeans(salamander1, ~ mined, comp="response")  # response means including both components
-}
+    emmeans(salamander1, ~ mined, component="response")  # response means including both components
+})
 if (getRversion() >= "3.6.0") {
-   if (require(car)) {
+   if (require(car)) withAutoprint({
        Anova(warp.lm,type="III")
        Anova(salamander1)
        Anova(salamander1, component="zi")
-   }
-   if (require(effects)) {
+   })
+   if (require(effects)) withAutoprint({
        plot(allEffects(warp.lm))
        plot(allEffects(salamander1))
-   }
+   })
 }
 }
