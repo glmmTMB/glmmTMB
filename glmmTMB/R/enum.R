@@ -38,7 +38,8 @@
   gau = 6,
   mat = 7,
   toep = 8,
-  rr = 9
+  rr = 9,
+  homdiag = 10
 )
 .valid_zipredictcode <- c(
   corrected = 0,

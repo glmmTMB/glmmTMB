@@ -717,7 +717,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
-                   "0" = blksize, # diag
+                   "0" = blksize, # (heterogenous) diag
                    "1" = blksize * (blksize+1) / 2, # us
                    "2" = blksize + 1, # cs
                    "3" = 2,  # ar1
@@ -726,7 +726,9 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "6" = 2,  # gau
                    "7" = 3,  # mat
                    "8" = 2 * blksize - 1, # toep
-                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2) #rr
+                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+                   "10" = 1  ## (homogeneous) diag
+                   ) 
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
@@ -839,6 +841,7 @@ binomialType <- function(x) {
 ##' \item \code{mat} (* Matérn process correlation)
 ##' \item \code{toep} (* Toeplitz)
 ##' \item \code{rr} (reduced rank/factor-analytic model)
+##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.

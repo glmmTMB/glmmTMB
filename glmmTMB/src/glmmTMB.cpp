@@ -66,7 +66,8 @@ enum valid_covStruct {
   gau_covstruct = 6,
   mat_covstruct = 7,
   toep_covstruct = 8,
-  rr_covstruct = 9
+  rr_covstruct = 9,
+  homdiag_covstruct = 10
 };
 
 enum valid_ziPredictCode {
@@ -244,7 +245,7 @@ struct terms_t : vector<per_term_info<Type> > {
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
-  if (term.blockCode == diag_covstruct){
+  if (term.blockCode == diag_covstruct || term.blockCode == homdiag_covstruct){
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
