@@ -126,3 +126,21 @@ test_that("cov_struct_order", {
     expect_equal(unname(fit1$fit$par),
 		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
 })
+
+test_that("hom vs het diag", {
+        fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy)
+
+    fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy,
+                           doFit = FALSE)
+        fmhetdiag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy,
+                           doFit = FALSE)
+
+
+        fmhomdiag$data.tmb$terms
+        fmhetdiag$data.tmb$terms
+
+        debug(fitTMB)
+        
+        fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy, verbose = TRUE)
+
+})

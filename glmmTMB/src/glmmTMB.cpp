@@ -245,17 +245,36 @@ struct terms_t : vector<per_term_info<Type> > {
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
-  if (term.blockCode == diag_covstruct || term.blockCode == homdiag_covstruct){
+  if (term.blockCode == diag_covstruct) {
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
+      Rprintf("got here: %d, %d\n", vector<Type>(U.col(i)).size(),
+	      sd.size());
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
+      Rprintf("got here 2\n");
       if (do_simulate) {
         U.col(i) = rnorm(Type(0), sd);
       }
     }
     term.sd = sd; // For report
   }
+  else if (term.blockCode == homdiag_covstruct) {
+    // case: homdiag_covstruct
+    Type sd = exp(theta(0));
+    for(int i = 0; i < term.blockReps; i++){
+      Rprintf("H got here");
+      for (int j = 0; j < U.rows(); j++) {
+	ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
+      }
+      Rprintf("got here 2\n");
+      if (do_simulate) {
+        U.col(i) = rnorm(Type(0), sd);
+      }
+    }
+    term.sd = sd; // For report
+  }
+
   else if (term.blockCode == us_covstruct){
     // case: us_covstruct
     int n = term.blockSize;
