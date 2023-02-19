@@ -26,7 +26,7 @@ jobs:
     runs-on: ${{ matrix.config.os }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-
+    
     strategy:
       fail-fast: false
       matrix:
@@ -58,8 +58,11 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
+          working-directory: glmmTMB/dotenv
 
-      - name: Query dependencies
+# https://github.com/r-lib/actions/issues/393
+
+- name: Query dependencies
         run: |
           install.packages('remotes')
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), "../.github/depends.Rds", version = 2)
