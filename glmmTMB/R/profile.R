@@ -46,7 +46,7 @@
 #' @importFrom TMB tmbprofile
 #' @export
 profile.glmmTMB <- function(fitted,
-                            parm=NULL,
+                            parm = NULL,
                             level_max = 0.99,
                             npts = 8,
                             stepfac = 1/4,
@@ -57,6 +57,13 @@ profile.glmmTMB <- function(fitted,
                             cl = NULL,
                             ...) {
 
+    tmbprofile_args <- names(formals(TMB::tmbprofile))
+    miss_args <- setdiff(names(list(...)), tmbprofile_args)
+    if (length(miss_args) > 0) {
+        warning("unknown argument(s) specified to be passed to tmbprofile: ",
+                paste(miss_args, collapse = ", "))
+    }
+    
     if (isREML(fitted)) stop("can't compute profiles for REML models at the moment (sorry)")
     plist <- parallel_default(parallel,ncpus)
     parallel <- plist$parallel
@@ -68,7 +75,7 @@ profile.glmmTMB <- function(fitted,
     ystep <- ytol/npts
 
     ## don't suppress sigma profiling (full=TRUE)
-    if (is.null(parm)) parm <- getParms(parm, fitted, full=TRUE)
+    parm <- getParms(parm, fitted, full=TRUE)
 
     ## only need selected SDs
     sds <- sqrt(diag(vcov(fitted,full=TRUE)))
@@ -117,7 +124,7 @@ profile.glmmTMB <- function(fitted,
                               h=s/4,
                               ytol=ytol,
                               ystep=ystep,
-                              trace=(trace>1),...))
+                              trace=(trace>1), ...))
         }
     })
     if (do_parallel) {
@@ -165,6 +172,7 @@ profile.glmmTMB <- function(fitted,
 #' confint(salamander_prof1)
 #' confint(salamander_prof1,level=0.99)
 #' @importFrom splines interpSpline backSpline
+#' @importFrom stats approx na.omit
 #' @export
 confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:

@@ -52,7 +52,7 @@ function)}
 
 \item{full}{CIs for all parameters (including dispersion) ?}
 
-\item{...}{arguments may be passed to \code{\link{profile.merMod}} or
+\item{...}{arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
 \code{\link[TMB]{tmbroot}}}
 }
 \description{
