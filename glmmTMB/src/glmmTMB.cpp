@@ -249,10 +249,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
-      Rprintf("got here: %d, %d\n", vector<Type>(U.col(i)).size(),
-	      sd.size());
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
-      Rprintf("got here 2\n");
       if (do_simulate) {
         U.col(i) = rnorm(Type(0), sd);
       }
@@ -263,16 +260,20 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // case: homdiag_covstruct
     Type sd = exp(theta(0));
     for(int i = 0; i < term.blockReps; i++){
-      Rprintf("H got here");
-      for (int j = 0; j < U.rows(); j++) {
-	ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
-      }
-      Rprintf("got here 2\n");
-      if (do_simulate) {
-        U.col(i) = rnorm(Type(0), sd);
-      }
+          for (int j = 0; j < U.rows(); j++) {
+	    ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
+	    if (do_simulate) {
+	      U(j,i) = rnorm(Type(0), sd);
+	    }	      
+	  }
     }
-    term.sd = sd; // For report
+    int n = term.blockSize;
+    vector<Type> sdvec(n);
+    for(int i = 0; i < n; i++) {
+      sdvec(i) = sd;
+    }
+    
+    term.sd = sdvec; // For report
   }
 
   else if (term.blockCode == us_covstruct){

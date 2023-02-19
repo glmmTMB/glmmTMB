@@ -128,19 +128,10 @@ test_that("cov_struct_order", {
 })
 
 test_that("hom vs het diag", {
-        fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy)
-
-    fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy,
-                           doFit = FALSE)
-        fmhetdiag   <- glmmTMB(Reaction ~ Days + diag(Days| Subject), sleepstudy,
-                           doFit = FALSE)
-
-
-        fmhomdiag$data.tmb$terms
-        fmhetdiag$data.tmb$terms
-
-        debug(fitTMB)
-        
-        fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy, verbose = TRUE)
+    fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy)
+    expect_equal(c(VarCorr(fmhomdiag)$cond$Subject),
+                 c(69.4182616453357, 0, 0, 69.4182616453357),
+                 tolerance = 1e-6)
 
 })
+
