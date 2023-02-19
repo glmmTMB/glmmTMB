@@ -67,14 +67,6 @@ jobs:
         shell: Rscript {0}
         working-directory: ./glmmTMB
 
-      - name: Cache R packages
-        if: runner.os != 'Windows'
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
-          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
-
       - name: Install system dependencies
         if: runner.os == 'Linux'
         run: |
@@ -86,13 +78,6 @@ jobs:
 
       - name: Install extra LaTeX packages
         run: sudo apt-get install texlive-science texlive-latex-extra texlive-bibtex-extra
-        working-directory: ./glmmTMB
-
-      - name: Install dependencies
-        run: |
-          remotes::install_deps(dependencies = TRUE)
-          remotes::install_cran("rcmdcheck")
-        shell: Rscript {0}
         working-directory: ./glmmTMB
 
       - name: Check
