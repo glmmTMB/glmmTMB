@@ -57,7 +57,7 @@ jobs:
         with:
           extra-packages: any::rcmdcheck
           needs: check
-          working-directory: glmmTMB/dotenv
+          working-directory: ./glmmTMB
 
       - name: Query dependencies
         run: |
