@@ -7,6 +7,7 @@
 #  https://stackoverflow.com/questions/58139175/running-actions-in-another-directory
 # https://docs.github.com/en/free-pro-team@latest/actions/reference/workflow-syntax-for-github-actions#jobsjob_idstepsworking-directory
 # https://github.community/t/github-actions-working-directory-incorrectly-documented-unexpected-value-working-directory/16076
+
 on:
   push:
     branches:
@@ -24,9 +25,7 @@ jobs:
   R-CMD-check:
     if: "! contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ${{ matrix.config.os }}
-
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
-    
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +61,7 @@ jobs:
 
 # https://github.com/r-lib/actions/issues/393
 
-- name: Query dependencies
+       - name: Query dependencies
         run: |
           install.packages('remotes')
           saveRDS(remotes::dev_package_deps(dependencies = TRUE), "../.github/depends.Rds", version = 2)
