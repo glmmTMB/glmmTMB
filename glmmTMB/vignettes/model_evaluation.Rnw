@@ -67,7 +67,6 @@
 \date{\today}
 \author{}
 \begin{document}
-\SweaveOpts{concordance=TRUE}
 \maketitle
 
 %\linenumbers

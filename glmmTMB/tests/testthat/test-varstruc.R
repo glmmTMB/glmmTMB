@@ -126,3 +126,4 @@ test_that("cov_struct_order", {
     expect_equal(unname(fit1$fit$par),
 		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
 })
+
