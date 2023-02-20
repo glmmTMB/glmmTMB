@@ -115,7 +115,8 @@ predict.glmmTMB <- function(object,
                             newparams=NULL,
                             se.fit=FALSE,
                             cov.fit=FALSE,
-                            re.form=NULL, allow.new.levels=FALSE,
+                            re.form=NULL,
+                            allow.new.levels=FALSE,
                             type = c("link", "response",
                                      "conditional", "zprob", "zlink",
                                      "disp"),
@@ -124,7 +125,7 @@ predict.glmmTMB <- function(object,
                             fast=NULL,
                             debug=FALSE,
                             ...) {
-  ## FIXME: add re.form
+  ## FIXME: implement 'complete' re.form (e.g. identify elements of Z or b that need to be zeroed out)
 
   check_dots(..., .action = "warning")
                

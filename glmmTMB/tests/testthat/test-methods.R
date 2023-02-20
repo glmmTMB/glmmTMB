@@ -4,6 +4,11 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
 
+## handy for interactive use
+if (FALSE) {
+    source("tests/testthat/setup_makeex.R")
+}
+
 if (getRversion() < "3.3.0") {
     sigma.default <- function (object, use.fallback = TRUE, ...)
         sqrt(deviance(object, ...)/(nobs(object, use.fallback = use.fallback) -
@@ -68,6 +73,12 @@ test_that("Fitted and residuals", {
     pr.rs.ex <- pr.ex + rs.ex
     expect_equal(unname(pr.rs.ex), y.na)
     
+})
+
+test_that("Pop-level residuals", {
+    r1 <- residuals(fm2, re.form  = NA)
+    r2 <- model.response(model.frame(fm2)) - predict(fm2, re.form = NA)
+    expect_equal(r1, r2)
 })
 
 test_that("Predict", {
@@ -391,6 +402,13 @@ test_that("simulate", {
 	expect_equal(sm2P, sleepstudy$Reaction, tol=20)
 	expect_equal(sm2G, sleepstudy$Reaction, tol=20)
 	expect_equal(sm2NB, sleepstudy$Reaction, tol=20)
+})
+
+test_that("simulate with re.form = NA", {
+    s1 <- simulate(fm_diag2, seed = 101)
+    ## s1_pop <- simulate(fm_diag2, seed = 101, re.form = NA)
+    s1_lmer <- simulate(fm_diag2_lmer, seed = 101)
+    ## s1_lmer_pop <- simulate(fm_diag2_lmer, seed = 101, re.form = NA)
 })
 
 test_that("formula", {

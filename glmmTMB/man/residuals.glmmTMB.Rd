@@ -4,12 +4,19 @@
 \alias{residuals.glmmTMB}
 \title{Compute residuals for a glmmTMB object}
 \usage{
-\method{residuals}{glmmTMB}(object, type = c("response", "pearson", "working"), ...)
+\method{residuals}{glmmTMB}(
+  object,
+  type = c("response", "pearson", "working"),
+  re.form = NULL,
+  ...
+)
 }
 \arguments{
 \item{object}{a \dQuote{glmmTMB} object}
 
 \item{type}{(character) residual type}
+
+\item{re.form}{\code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)}
 
 \item{\dots}{ignored, for method compatibility}
 }
