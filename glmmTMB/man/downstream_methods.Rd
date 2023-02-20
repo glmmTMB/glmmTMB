@@ -26,7 +26,8 @@ Effect.glmmTMB(focal.predictors, mod, ...)
 
 \item{test.statistic}{unused: only valid choice is "Chisq" (i.e., Wald chi-squared test)}
 
-\item{component}{which component of the model to test/analyze ("cond", "zi", or "disp")}
+\item{component}{which component of the model to test/analyze ("cond", "zi", or "disp")
+or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.}
 
 \item{vcov.}{variance-covariance matrix (usually extracted automatically)}
 
@@ -43,14 +44,23 @@ several downstream packages that enable different forms of inference.
 For some methods (\code{Anova} and \code{emmeans}, but \emph{not} \code{effects} at present),
 set the \code{component} argument
 to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
-for the corresponding part of a \code{glmmTMB} model.
+for the corresponding part of a \code{glmmTMB} model. 
+Support for \pkg{emmeans} also allows additional options 
+\code{component = "response"} (response means taking both the \code{cond} and
+\code{zi} components into account), and \code{component = "cmean"} (mean of the 
+[possibly truncated] conditional distribution). 
 
 In particular,
 \itemize{
 \item \code{car::Anova} constructs type-II and type-III Anova tables
 for the fixed effect parameters of any component
 \item the \code{emmeans} package computes estimated marginal means (previously known as least-squares means)
-for the fixed effects of any component
+for the fixed effects of any component, or predictions with \code{type = "response"} or
+\code{type = "component"}. Note: In hurdle models, 
+\code{component = "cmean"} produces means
+of the truncated conditional distribution, while 
+\code{component = "cond", type = "response"} produces means of the \emph{untruncated}
+conditional distribution.
 \item the \code{effects} package computes graphical tabular effect displays
 (only for the fixed effects of the conditional component)
 }
@@ -63,20 +73,22 @@ versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 \examples{
 warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
 salamander1 <- up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
-if (require(emmeans)) {
+if (require(emmeans)) withAutoprint({
     emmeans(warp.lm, poly ~ tension | wool)
-    emmeans(salamander1, ~ mined, type="response")
-    emmeans(salamander1, ~ mined, component="zi", type="response")
-}
+    emmeans(salamander1, ~ mined, type="response")  # conditional means
+    emmeans(salamander1, ~ mined, component="cmean")     # same as above, but re-gridded
+    emmeans(salamander1, ~ mined, component="zi", type="response")  # zero probabilities
+    emmeans(salamander1, ~ mined, component="response")  # response means including both components
+})
 if (getRversion() >= "3.6.0") {
-   if (require(car)) {
+   if (require(car)) withAutoprint({
        Anova(warp.lm,type="III")
        Anova(salamander1)
        Anova(salamander1, component="zi")
-   }
-   if (require(effects)) {
+   })
+   if (require(effects)) withAutoprint({
        plot(allEffects(warp.lm))
        plot(allEffects(salamander1))
-   }
+   })
 }
 }
