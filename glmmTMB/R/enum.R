@@ -38,7 +38,7 @@
   mat = 7,
   toep = 8,
   rr = 9,
-  prop2 = 10
+  propto = 10
 )
 .valid_zipredictcode <- c(
   corrected = 0,

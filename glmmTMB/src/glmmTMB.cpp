@@ -57,7 +57,7 @@ enum valid_covStruct {
   mat_covstruct = 7,
   toep_covstruct = 8,
   rr_covstruct = 9,
-  prop2_covstruct = 10
+  propto_covstruct = 10
 };
 
 enum valid_ziPredictCode {
@@ -410,8 +410,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
     }
   }
-  else if (term.blockCode == prop2_covstruct){
-    // case: prop2_covstruct
+  else if (term.blockCode == propto_covstruct){
+    // case: propto_covstruct
     int n = term.blockSize;
     Type loglambda = theta( theta.size() - 1);
     vector<Type> logsd = theta.head(n);

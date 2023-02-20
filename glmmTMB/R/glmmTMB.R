@@ -396,10 +396,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     whichPredict = whichPredict
   )
 
-  # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
-  dorr = rrVal(condList)
-
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
 
@@ -418,26 +414,29 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   # theta is 0, otherwise
   # theta is 1 for rr_covstruct
-  # theta is parameterised to covariance matrix for prop2
+  # theta is parameterised to covariance matrix for propto
   t01 <- function(ReStruc, condList){
 
-    theta <- rr0(sum(getVal(ReStruc, "blockNumTheta")))
-
-    blockTheta <- getVal(ReStruc,"blockNumTheta")
-    cov_code <- getVal(ReStruc, "blockCode")
-    thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
-    tl <- split(theta, thetaseq)
-    for(i in seq_along(cov_code)){
-      if(cov_code[[i]] == 9) # if rr start theta at 1
-        tl[[i]] <- rep(1, blockTheta[i])
-      else if(cov_code[[i]] == 10) { # if prop2 then set theta to be matrix values
-        ## FIX ME:: Will need to add in a check to see if it's the right dimensions
-        ## FIX ME:: Might have to do that at getReStruc?
-        a <- condList[["aa"]][[i]]
-        tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
+    nt <- sum(getVal(ReStruc, "blockNumTheta"))
+    theta <- rr0(nt)
+    
+    if (nt > 0) {
+      blockTheta <- getVal(ReStruc,"blockNumTheta")
+      cov_code <- getVal(ReStruc, "blockCode")
+      thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
+      tl <- split(theta, thetaseq)
+      for(i in seq_along(cov_code)){
+        if(cov_code[[i]] == 9) # if rr start theta at 1
+          tl[[i]] <- rep(1, blockTheta[i])
+        else if(cov_code[[i]] == 10) { # if propto then set theta to be matrix values
+          ## FIX ME:: Will need to add in a check to see if it's the right dimensions
+          ## FIX ME:: Might have to do that at getReStruc?
+          a <- condList[["aa"]][[i]]
+          tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
+        }
       }
+      theta <- unlist(tl, use.names = F)
     }
-    theta <- unlist(tl, use.names = F)
     return(theta)
   }
 
@@ -469,9 +468,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
-  if(any(condList$ss == "prop2")){
+  if(any(condList$ss == "propto")){
     mapArg.orig <- mapArg
-    mapArg <- map.theta.prop2(condReStruc, mapArg.orig)
+    mapArg <- map.theta.propto(condReStruc, mapArg.orig)
   }
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
@@ -606,9 +605,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
               stop("non-numeric value for reduced-rank dimension")
             }
           }
-          else if(ss$reTrmClasses[i] == "prop2"){
+          else if(ss$reTrmClasses[i] == "propto"){
             if ( is.na(suppressWarnings(as.matrix( aa[i] ))) ){
-              stop("expecting a matrix for prop2")
+              stop("expecting a matrix for propto")
             }
           }
         }
@@ -668,12 +667,12 @@ as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
   return(ret)
 }
 
-##'Set map values for theta to be fixed (NA) for prop2
+##'Set map values for theta to be fixed (NA) for propto
 ## FIX Me:: Will need to adjust if map is already used
 #' @param ReStruc a covariance matrix
 #' @param corrs.only return only values corresponding to the correlation matrix parameters?
 #' @return the corresponding \code{theta} parameter vector
-map.theta.prop2 <- function(ReStruc, map){
+map.theta.propto <- function(ReStruc, map){
   if(is.null(map))
     params <- list()
   else
@@ -787,7 +786,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "7" = 3,  # mat
                    "8" = 2 * blksize - 1, # toep
                    "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "10" = blksize * (blksize+1) / 2 + 1) #prop2 (same as us, with one extra param)
+                   "10" = blksize * (blksize+1) / 2 + 1) #propto (same as us, with one extra param)
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
