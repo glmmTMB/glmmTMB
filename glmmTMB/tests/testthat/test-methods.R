@@ -355,7 +355,7 @@ test_that("confint with mapped parameters", {
 
 
 test_that("profile", {
-    p1_th <- profile(fm1,parm="theta_",npts=4)
+    p1_th <- profile(fm1, parm="theta_", npts=4)
     expect_true(all(p1_th$.par=="theta_1|Subject.1"))
     p1_b <- profile(fm1,parm="beta_",npts=4)
     expect_equal(unique(as.character(p1_b$.par)),

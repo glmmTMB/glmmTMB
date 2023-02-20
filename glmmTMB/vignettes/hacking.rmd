@@ -12,7 +12,7 @@ params:
 
 # Adding a family
 
-```{r load_lib,echo=FALSE}
+```{r glmmTMB, load_lib,echo=FALSE}
 library(glmmTMB)
 knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
 ```
@@ -71,7 +71,7 @@ case zo_truncated_poisson_family:
 
 We might be able to get away with specifying `family=` as a list, but it's better to implement it as a new function.
 
-```{r eval = FALSE}
+```{r, eval = FALSE}
 #' @rdname nbinom2
 #' @export
 zo_truncated_poisson <- function(link="log") {
@@ -114,7 +114,7 @@ Re-install the package from source (`R CMD INSTALL` or `install.package(..., rep
 
 ### Test
 
-```{r eval = FALSE}
+```{r testzo, eval = FALSE}
 library(glmmTMB)
 set.seed(101)
 dd <- data.frame(y = rpois(500, exp(1)))

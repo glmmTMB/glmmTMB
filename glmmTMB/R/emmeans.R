@@ -13,19 +13,29 @@
 ##' For some methods (\code{Anova} and \code{emmeans}, but \emph{not} \code{effects} at present),
 ##' set the \code{component} argument
 ##' to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
-##' for the corresponding part of a \code{glmmTMB} model.
+##' for the corresponding part of a \code{glmmTMB} model. 
+##' Support for \pkg{emmeans} also allows additional options 
+##' \code{component = "response"} (response means taking both the \code{cond} and
+##' \code{zi} components into account), and \code{component = "cmean"} (mean of the 
+##' [possibly truncated] conditional distribution). 
 ##'
 ##' In particular,
 ##' \itemize{
 ##' \item \code{car::Anova} constructs type-II and type-III Anova tables
 ##' for the fixed effect parameters of any component
 ##' \item the \code{emmeans} package computes estimated marginal means (previously known as least-squares means)
-##' for the fixed effects of any component
+##' for the fixed effects of any component, or predictions with \code{type = "response"} or
+##' \code{type = "component"}. Note: In hurdle models, 
+##' \code{component = "cmean"} produces means
+##' of the truncated conditional distribution, while 
+##' \code{component = "cond", type = "response"} produces means of the \emph{untruncated}
+##' conditional distribution.
 ##' \item the \code{effects} package computes graphical tabular effect displays
 ##' (only for the fixed effects of the conditional component)
 ##' }
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
+##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.
 ##' @param \dots Additional parameters that may be supported by the method.
 ##' @details While the examples below are disabled for earlier versions of
 ##' R, they may still work; it may be necessary to refer to private
@@ -34,21 +44,23 @@
 ##' @examples
 ##' warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
 ##' salamander1 <- up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
-##' if (require(emmeans)) {
+##' if (require(emmeans)) withAutoprint({
 ##'     emmeans(warp.lm, poly ~ tension | wool)
-##'     emmeans(salamander1, ~ mined, type="response")
-##'     emmeans(salamander1, ~ mined, component="zi", type="response")
-##' }
+##'     emmeans(salamander1, ~ mined, type="response")  # conditional means
+##'     emmeans(salamander1, ~ mined, component="cmean")     # same as above, but re-gridded
+##'     emmeans(salamander1, ~ mined, component="zi", type="response")  # zero probabilities
+##'     emmeans(salamander1, ~ mined, component="response")  # response means including both components
+##' })
 ##' if (getRversion() >= "3.6.0") {
-##'    if (require(car)) {
+##'    if (require(car)) withAutoprint({
 ##'        Anova(warp.lm,type="III")
 ##'        Anova(salamander1)
 ##'        Anova(salamander1, component="zi")
-##'    }
-##'    if (require(effects)) {
+##'    })
+##'    if (require(effects)) withAutoprint({
 ##'        plot(allEffects(warp.lm))
 ##'        plot(allEffects(salamander1))
-##'    }
+##'    })
 ##' }
 NULL  ## don't document the files here!
 
@@ -56,71 +68,88 @@ NULL  ## don't document the files here!
 ## recover_data method -- DO NOT export -- see zzz.R
 ## do not document either
 
-recover_data.glmmTMB <- function(object, component = "cond", ...) {
-    fcall <- getCall(object)
-    if (!requireNamespace("emmeans"))
+recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "response", "cmean"), ...) {
+    if (!requireNamespace("emmeans")) 
         stop("please install (if necessary) and load the emmeans package")
-    emmeans::recover_data(fcall,
-                          delete.response(terms(object,
-                                                component = component)),
-                          attr(model.frame(object),"na.action"), ...)
+    
+    component <- match.arg(component)
+    # which terms to use?
+    tcomp <- ifelse(component %in% c("response", "cmean"), "cond", component)
+    trms <- delete.response(terms(object, component = tcomp))
+    if (component %in% c("response", "cmean")) {  # may need add'l terms for response mode
+        if(!is.null(ztrms <- terms(object, component = "zi")) && (length(all.vars(ztrms)) > 0))
+            trms <- emmeans::.combine.terms(trms, ztrms)
+        if(!is.null(dtrms <- terms(object, component = "disp")) && (length(all.vars(dtrms)) > 0))
+            trms <- emmeans::.combine.terms(trms, dtrms)
+    }
+    else if (component != "cond") {
+        if (is.null(trms) || (length(all.vars(trms)) == 0))
+            stop("No reference grid is available for the '", component, "' component")
+    }
+    fcall <- getCall(object)
+    emmeans::recover_data(fcall, trms, 
+                          attr(model.frame(object), "na.action"), ...)
 }
 
 
-
-## emm_basis method -- Dynamically exported, see zzz.R
-## don't document, causes confusion
-
-## @rdname downstream_methods
-## @aliases downstream_methods
-## @param component which component of the model to compute emmeans for (conditional ("cond"), zero-inflation ("zi"), or dispersion ("disp"))
-## vcov. user-specified covariance matrix
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, component="cond", vcov., ...) {
-    ## browser()
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, 
+                               component = c("cond", "zi", "disp", "response", "cmean"), vcov., ...) 
+{
+    component <- match.arg(component)
     L <- list(...)
-    if (length(L)>0) {
-        ## don't warn: $misc and $options are always passed through ...
-        ## warning("ignored extra arguments to emm_basis.glmmTMB: ",
-        ## paste(names(L),collapse=", "))
-    }
-    if (missing(vcov.)) {
-        V <- as.matrix(vcov(object)[[component]])
-    } else {
-        V <- vcov.
+    if (length(L) > 0) {
     }
     misc <- list()
-    if (family(object)$family=="gaussian") {
-        dfargs = list(df = df.residual(object))
-        dffun = function(k, dfargs) dfargs$df
-    } else {
-
-        dffun = function(k, dfargs) Inf
-        dfargs = list()
-
+    if (family(object)$family == "gaussian") {
+        dfargs <- list(df = df.residual(object))
+        dffun <- function(k, dfargs) dfargs$df
     }
-    fam <- switch(component,
-                 cond = family(object),
-                 zi = list(link="logit"),
-                 disp = list(link="log"))
-
-    misc <- emmeans::.std.link.labels(fam, misc)
-    ## (used to populate the reminder of response scale)
-    contrasts <- attr(model.matrix(object), "contrasts")
-    ## keep only variables found in conditional fixed effects
-    contrasts <- contrasts[names(contrasts) %in% all.vars(terms(object))]
-    m <- model.frame(trms, grid, na.action=na.pass, xlev=xlev)
-    X <- model.matrix(trms, m, contrasts.arg=contrasts)
-    bhat <- fixef(object)[[component]]
-    if (length(bhat) < ncol(X)) {
-        kept <- match(names(bhat), dimnames(X)[[2]])
-        bhat <- NA * X[1, ]
-        bhat[kept] <- fixef(object)[[component]]
-        modmat <- model.matrix(trms, model.frame(object), contrasts.arg=contrasts)
-        nbasis <- estimability::nonest.basis(modmat)
-    }  else {
+    else {
+        dffun <- function(k, dfargs) Inf
+        dfargs <- list()
+    }
+    
+    if(component %in% c("response", "cmean")) {
+        # which 'type' argument to use in predict?
+        ptype <- ifelse(component == "cmean", "conditional", "response")
+        for(nm in object$modelInfo$grpVar)
+            grid[[nm]] <- NA
+        tmp <- predict(object, newdata = grid, type = ptype, re.form = NA, 
+                       se.fit = TRUE, cov.fit = TRUE)
+        bhat <- tmp$fit
+        X <- diag(1, length(bhat))
+        V <- tmp$cov.fit
+        # We expect predict() to return NA for each non-estimable case
         nbasis <- estimability::all.estble
+        if(any(is.na(bhat)))
+            nbasis <- diag(1, ncol = length(bhat))[, is.na(bhat)]
     }
-    dfargs <- list(df=df.residual(object))
-    dffun <- function(k, dfargs) dfargs$df
+    else { # component %in% c("cond", "zi", "disp")
+        fam <- switch(component, 
+                      cond = family(object), 
+                      zi = list(link = "logit"), 
+                      disp = list(link = "log"))
+        misc <- emmeans::.std.link.labels(fam, misc)
+        if (missing(vcov.)) {
+            V <- as.matrix(vcov(object)[[component]])
+        }
+        else {
+            V <- vcov.
+        }
+        contrasts <- attr(model.matrix(object, component = component), "contrasts")
+        m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
+        X <- model.matrix(trms, m, contrasts.arg = contrasts)
+        bhat <- fixef(object)[[component]]
+        if (length(bhat) < ncol(X)) {
+            kept <- match(names(bhat), dimnames(X)[[2]])
+            bhat <- NA * X[1, ]
+            bhat[kept] <- fixef(object)[[component]]
+            modmat <- model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
+            nbasis <- estimability::nonest.basis(modmat)
+        }
+        else {
+            nbasis <- estimability::all.estble
+        }
+    }
     namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
 }

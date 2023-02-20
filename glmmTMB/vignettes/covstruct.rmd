@@ -654,7 +654,7 @@ An option in `glmmTMBControl()` has been included to initialize the starting val
 - `method = "res"` initializes starting values from the results of fitting a GLM, and fitting a reduced rank model to the residuals to obtain starting values for the fixed coefficients, the latent variables and the factor loadings. 
 - `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
 
-For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining `$nd-d(d-3)/2$`, (i.e. `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
+For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining $nd-d(d-3)/2$, (i.e. parameters `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
 
 ## References
 
