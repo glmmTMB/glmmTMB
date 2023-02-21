@@ -185,9 +185,9 @@ Alternatively we could have generated the random effects with:
 
 ```{r mvrnorm}
 b <- MASS::mvrnorm(1, mu = rep(0,2*n_id),
-                   Sigma = Matrix::.bdiag(replicate(n_id),
-                                          Sigma,
-                                          simplify = FALSE))
+                   Sigma = Matrix::.bdiag(replicate(n_id,
+                                                    Sigma,
+                                                    simplify = FALSE)))
 ```
 
 ## FIXME/TO DO
