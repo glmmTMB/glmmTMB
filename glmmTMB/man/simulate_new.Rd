@@ -23,5 +23,21 @@ be used in the model}
 \item{show_pars}{(logical) print structure of parameter vector and stop without simulating?}
 }
 \description{
-Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
+See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
+and \code{vignette("covstruct", package = "glmmTMB")}
+for more information on the parameterization of different covariance structures.
+}
+\examples{
+## use Salamanders data for structure/covariates
+simulate_new(count ~ mined + (1|site),
+             data = Salamanders, show_pars  = TRUE)
+sim_count <- simulate_new(count ~ mined + (1|site),
+             data = Salamanders,
+             pars = list(beta = c(2, 1),
+                         betad = log(2), ## log(NB dispersion)
+                         theta = log(1)) ## log(among-site SD)
+
+  
+  zi=~mined,
+  family=poisson, data=Salamanders))
 }

@@ -550,6 +550,10 @@ make_pars <- function(pars, ...) {
 }
 
 ##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
+##'
+##' See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
+##' and \code{vignette("covstruct", package = "glmmTMB")}
+##' for more information on the parameterization of different covariance structures.
 ##' 
 ##' @param form a model formula
 ##' @param data a data frame containing all variables listed in the formula,
@@ -561,6 +565,20 @@ make_pars <- function(pars, ...) {
 ##' be used in the model
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @examples
+##' ## use Salamanders data for structure/covariates
+##' simulate_new(count ~ mined + (1|site),
+##'              data = Salamanders, show_pars  = TRUE)
+##' sim_count <- simulate_new(count ~ mined + (1|site),
+##'              data = Salamanders,
+##'              pars = list(beta = c(2, 1),
+##'                          betad = log(2), ## log(NB dispersion)
+##'                          theta = log(1)) ## log(among-site SD)
+##' 
+##'   
+##'   zi=~mined,
+##'   family=poisson, data=Salamanders))
+
 ##' @export
 simulate_new <- function(form, data, pars, ..., show_pars = FALSE) {
     ## for now assume response variable is in data
