@@ -134,4 +134,3 @@ test_that("hom vs het diag", {
                  tolerance = 1e-6)
 
 })
-
