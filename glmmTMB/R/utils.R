@@ -568,17 +568,17 @@ make_pars <- function(pars, ...) {
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
 ##' simulate_new(count ~ mined + (1|site),
+##'              zi = ~ mined,
 ##'              data = Salamanders, show_pars  = TRUE)
 ##' sim_count <- simulate_new(count ~ mined + (1|site),
 ##'              data = Salamanders,
+##'              zi = ~ mined,
+##'              family = nbinom2,
 ##'              pars = list(beta = c(2, 1),
+##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
 ##'                          betad = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
-##' 
-##'   
-##'   zi=~mined,
-##'   family=poisson, data=Salamanders))
-
+##' )
 ##' @export
 simulate_new <- function(form, data, pars, ..., show_pars = FALSE) {
     ## for now assume response variable is in data
