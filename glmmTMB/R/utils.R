@@ -46,13 +46,20 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
-##' @return a vector of correlation values
-##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
-##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
+##' @details These functions follows the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
 ##' get_cor(c(0.5,0.2,0.5))
+##' C <- matrix(c(1,  0.2,  0.1,
+##'              0.2,  1, -0.2,
+##'              0.1,-0.2,   1),
+##'            3, 3)
+##' ## test: round-trip (almostl results in lower triangle only)
+##' stopifnot(all.equal(get_cor(put_cor(C)),
+##'                    C[lower.tri(C)]))
 ##' @export
 get_cor <- function(theta) {
   n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
@@ -62,6 +69,15 @@ get_cor <- function(theta) {
   scale <- 1 / sqrt(diag(R))
   R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
   R[lower.tri(R)]
+}
+
+##' @rdname get_cor
+##' @param C a correlation matrix
+##' @export
+put_cor <- function(C) {
+    cc <- chol(C)
+    cc2 <- t(cc %*% diag(1/diag(cc)))
+    cc2[lower.tri(cc2)]
 }
 
 hasRandom <- function(x) {
@@ -522,4 +538,40 @@ fix_predvars <- function(pv,tt) {
         }
     }
     return(new_pv)
+}
+
+make_pars <- function(pars, ...) {
+    ## FIXME: check for name matches, length matches etc.
+    L <- list(...)
+    for (nm in names(L)) {
+        pars[names(pars) == nm] <- L[[nm]]
+    }
+    return(pars)
+}
+
+##' Simulate from covariate/metadata in the absence of a real data set
+##' 
+##' @param form a model formula
+##' @param data a data frame containing all variables listed in the formula,
+##' \emph{including} the response variable (which needs to fall within
+##' the domain of the conditional distribution, and should probably not
+##' be all zeros, but whose value is otherwise irrelevant)
+##' @param pars a list of parameters containing sub-vectors
+##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+##' be used in the model
+##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
+##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @export
+simulate_new <- function(form, data, pars, ..., show_pars = FALSE) {
+    ## for now assume response variable is in data
+    r1 <- glmmTMB(form,
+              data = data,
+              ...,
+              doFit = FALSE)
+## construct TMB object, but don't fit it
+    r2 <- fitTMB(r1, doOptim = FALSE)
+    if (show_pars) return(r2$env$last.par)
+    pars <- do.call("make_pars",
+                    c(list(r2$env$last.par), pars))
+    r2$simulate(par = pars)$yobs
 }

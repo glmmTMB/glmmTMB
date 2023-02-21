@@ -1,0 +1,197 @@
+---
+title: "De novo simulation in glmmTMB"
+author: "Ben Bolker"
+date: "`r format(Sys.Date(), '%d %b %Y')`"
+output: rmarkdown::html_vignette
+bibliography: glmmTMB.bib
+vignette: >
+  %\VignetteIndexEntry{De novo simulation in glmmTMB}
+  %\VignettePackage{glmmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+---
+
+```{r setup, include=FALSE, message=FALSE}
+## devtools::install_github("kaskr/adcomp/TMB")  ## get development version
+knitr::opts_chunk$set(echo = TRUE, eval=if (exists("params")) params$EVAL else FALSE)
+do_image <- exists("params") && params$EVAL
+## want to *store* images within package
+save_vig_dir <- file.path("inst","vignette_data")
+pkg_dir <- "glmmTMB"
+## guess where we are ...
+if (grepl("/vignettes$",getwd())) {  ## in vignettes dir
+  save_vig_dir <- file.path("../",save_vig_dir)
+} else if (grepl(paste0("/",pkg_dir,"$"),getwd())) { ## in repo head
+  save_vig_dir <- file.path(pkg_dir,save_vig_dir)
+}
+## want to *retrieve* images from system files
+use_vig_dir <- system.file("vignette_data",package="glmmTMB")
+mkfig <- function(expr,fn) {
+  png(normalizePath(file.path(save_vig_dir,fn)))
+  eval(substitute(expr))
+  invisible(dev.off())
+}
+usefig <- function(fn) {
+  knitr::include_graphics(file.path(use_vig_dir,fn))
+}
+## turned off caching for now: got error in chunk 'fit.us.2'
+## Error in retape() : 
+##   Error when reading the variable: 'thetaf'. Please check data and parameters.
+## In addition: Warning message:
+## In retape() : Expected object. Got NULL.
+set.seed(1)
+## run this in interactive session if you actually want to evaluate chunks ...
+## Sys.setenv(NOT_CRAN="true")
+```
+
+`glmmTMB` (and `TMB` generally) easily allows for simulation from a *fitted* model.  But what if you want to simulate data with specified parameters in the absence of a data set, for example for a power analysis?
+
+`glmmTMB` has a `simulate_new` function that can handle this case; the hardest part is understanding the meaning of the parameter values, especially for random-effects covariances.
+
+
+## example 1
+
+For the first example we'll simulate something that looks like the classic "sleep study" data, using the `sleepstudy` data set for structure and covariates. The conditional-fixed effects parameters (`beta`) are standard regression parameters (intercept and slope): we use 250 and 10, which are close to the values from the actual data. The only other parameter, `betad`, is the log of the dispersion parameter, which in the specific case of the Gaussian (default) family is the log of the conditional (residual) *variance*; the standard deviation from a simple regression on these data[^1] is approximately 50, so we use `2*log(50)`.
+
+[^1]: I realize this violates the assumption of *de novo* simulation that we don't know what the real data looks like yet ...
+
+```{r sleepstudy}
+data("sleepstudy", package = "lme4")
+set.seed(101)
+ss_sim <- transform(sleepstudy,
+               Reaction = simulate_new(Reaction ~ Days, sleepstudy,
+                                 family = gaussian,
+                                 pars = list(beta = c(250, 10),
+                                             betad = 2*log(50))))
+```
+
+For comparison, we'll also fit the model and use the built-in simulation method:
+
+```{r simlm}
+ss_fit <- glmmTMB(Reaction ~ Days, sleepstudy)
+ss_simlm <- transform(sleepstudy,
+                      Reaction = simulate(ss_fit)[[1]])
+```
+
+Comparing against the real data set:
+
+```{r ss_plot, fig.width = 10}
+library(ggplot2); theme_set(theme_bw())
+ss_comb <- rbind(data.frame(sleepstudy, sample = "real"),
+                 data.frame(ss_sim, sample = "simulated"),
+                 data.frame(ss_simlm, sample = "simulated (from fit)")
+                 )
+ggplot(ss_comb, aes(x = Days, y = Reaction, colour = Subject)) +
+    geom_line() +
+    facet_wrap(~sample)
+```
+
+The simulated data have about the right variability, but in contrast to the real data have no among-subject variation.
+
+## example 2
+
+The next example will be more complex, getting into the nuts and bolts of how to translate random effects covariances into the terms that `glmmTMB` expects.
+
+The hardest piece is probably translating correlation parameters. The "covariance structures" vignette has more details on how correlation matrices are parameterized, and the `put_cor()` function is a general translator, but for the specific case of 2x2 correlation matrices (i.e. with a single correlation parameter), a correlation $\rho$ corresponds to a `glmmTMB` parameter of $\rho/\sqrt{1-\rho^2}$. Here's a utility function:
+
+```{r rho-to-theta}
+rho_to_theta <- function(rho) rho/sqrt(1-rho^2)
+## tests
+stopifnot(all.equal(get_cor(rho_to_theta(-0.2)), -0.2))
+stopifnot(all.equal(rho_to_theta(-0.2), put_cor(matrix(c(1,-0.2,-0.2,1), 2))))
+```
+Setting up metadata/covariates (tools in the `faux` package may also be useful for this):
+
+```{r sim1}
+n_id <- 10
+dd <- expand.grid(trt = factor(c("A", "B")),
+                  id = factor(1:n_id),
+                  time = 1:6)
+## response var needs to exist and be legal (i.e. within the domain
+##  of the response distribution, probably not all zero)
+##  but not necessarily sensible
+dd$y <- rep(1, nrow(dd))
+```
+
+
+We'll set up some reasonable fixed effects. When in doubt about the order of fixed effect parameters, use `model.matrix()` to check:
+
+```{r form}
+form1 <- y~trt*time+(1+time|id)
+colnames(model.matrix(lme4::nobars(form1), data = dd))
+```
+
+```{r params2}
+## intercept, trtB effect, slope, trt x slope interaction
+beta_vec <- c(1, 2, 0.1, 0.2)
+```
+
+We'll set SDs such that the average coeff var = 1 (SD = mean for
+among-subject variation in intercept and slope). As described in
+the "covstruct" vignette, the parameter vector for a random-effect
+covariance consists of the log-standard-deviations followed by the
+scaled correlations. Finally we'll set the dispersion parameter for
+the negative binomial conditional distribution to 1 (more detail on
+the `betad` parameterization for different families
+is given in `?sigma.glmmTMB`).
+
+```{r params3}
+sdvec <-  c(1.5,0.15)
+corval <- -0.2
+thetavec <- c(log(sdvec), rho_to_theta(corval))
+par1 <- list(beta = beta_vec,
+             betad = log(1),  ## log(theta)
+             theta = thetavec)
+```
+
+Now simulate:
+
+```{r sim3}
+set.seed(101)
+dd$y <- simulate_new(form1,
+                     data = dd,
+                     family = nbinom2,
+                     pars = par1)
+range(dd$y)
+```
+
+For comparison, we'll do this by hand (with some help from `lme4` machinery).
+`lme4` parameterizes covariance matrices by the lower triangle of the Cholesky factor rather than using `glmmTMB`'s method ...
+
+```{r sim-by-hand}
+set.seed(101)
+X <- model.matrix(~trt*time, data  = dd)
+## generate random effects values
+rt <- mkReTrms(findbars(form1),
+               model.frame(subbars(form1), data = dd))
+Z <- t(rt$Zt)
+## construct covariance matrix
+Sigma <- diag(sdvec) %*% matrix(c(1, corval, corval, 1), 2) %*% diag(sdvec)
+lmer_thetavec <- t(chol(Sigma))[c(1,2,4)]
+## plug values into Cholesky factor of random effects covariance matrix
+rt$Lambdat@x <- lmer_thetavec[rt$Lind]
+u <- rnorm(nrow(rt$Lambdat))
+b <- t(rt$Lambdat) %*% u
+eta <- drop(X %*% par1$beta + t(rt$Zt) %*% b)
+mu <- exp(eta)
+y <- rnbinom(nrow(dd), size = 1, mu = mu)
+range(y) ## range varies a lot
+```
+
+Alternatively we could have generated the random effects with:
+
+```{r mvrnorm}
+b <- MASS::mvrnorm(1, mu = rep(0,2*n_id),
+                   Sigma = Matrix::.bdiag(replicate(n_id),
+                                          Sigma,
+                                          simplify = FALSE))
+```
+
+## FIXME/TO DO
+
+* more examples! especially more complex/unavailable in `lme4` (AR1, spatial, etc.). If necessary, more details on how additional parameters (autoregressive, shape/scale for spatial cov structures, etc.)
+
+
+
