@@ -549,7 +549,7 @@ make_pars <- function(pars, ...) {
     return(pars)
 }
 
-##' Simulate from covariate/metadata in the absence of a real data set
+##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
 ##' 
 ##' @param form a model formula
 ##' @param data a data frame containing all variables listed in the formula,

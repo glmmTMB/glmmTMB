@@ -11,6 +11,19 @@
       parameter (@nalimilan, GH #135)
     }
   }  % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added a \code{doOptim} argument to \code{fitTMB}, to return
+      the constructed TMB object without fitting the parameters
+      \item new (experimental) function \code{simulate_new}, to simulate
+      from a formula, list of parameters, and covariate data (rather
+      than from a fitted object)
+      \item \code{emmeans.glmmTMB} method adds two options
+      for the \code{component} argument: "response" and "cmean",
+      corresponding  to \code{type = "response"} and \code{type = "conditional"} 
+      in \code{predict.glmmTMB} (Russ Lenth)
+    }
+  } % new features
 }
 
 \section{CHANGES IN VERSION 1.1.5 (2022-11-16)}{

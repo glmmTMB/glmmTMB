@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{simulate_new}
 \alias{simulate_new}
-\title{Simulate from covariate/metadata in the absence of a real data set}
+\title{Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)}
 \usage{
 simulate_new(form, data, pars, ..., show_pars = FALSE)
 }
@@ -23,5 +23,5 @@ be used in the model}
 \item{show_pars}{(logical) print structure of parameter vector and stop without simulating?}
 }
 \description{
-Simulate from covariate/metadata in the absence of a real data set
+Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
 }
