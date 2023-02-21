@@ -161,6 +161,7 @@ For comparison, we'll do this by hand (with some help from `lme4` machinery).
 `lme4` parameterizes covariance matrices by the lower triangle of the Cholesky factor rather than using `glmmTMB`'s method ...
 
 ```{r sim-by-hand}
+library(lme4)
 set.seed(101)
 X <- model.matrix(~trt*time, data  = dd)
 ## generate random effects values
