@@ -24,6 +24,13 @@
       in \code{predict.glmmTMB} (Russ Lenth)
     }
   } % new features
+ \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      The \code{emmeans} method for glmmTMB fits now returns infinite
+      "df" (i.e., normal- rather than t-based CIs and tests) for non-Gaussian
+      families, consistent with \code{glm} and other packages (GH #893)
+    }
+  } % user-visible changes
 }
 
 \section{CHANGES IN VERSION 1.1.5 (2022-11-16)}{
