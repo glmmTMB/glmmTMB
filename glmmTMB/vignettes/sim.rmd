@@ -73,7 +73,7 @@ ss_sim <- transform(sleepstudy,
                                             data = sleepstudy,
                                             family = gaussian,
                                             pars = list(beta = c(250, 10),
-                                                        betad = 2*log(50))))[[1]]
+                                                        betad = 2*log(50)))[[1]])
 ```
 
 For comparison, we'll also fit the model and use the built-in simulation method:
