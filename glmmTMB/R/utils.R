@@ -555,7 +555,9 @@ make_pars <- function(pars, ...) {
 ##' and \code{vignette("covstruct", package = "glmmTMB")}
 ##' for more information on the parameterization of different covariance structures.
 ##' 
-##' @param form a model formula
+##' @param form a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+##' @param nsim number of simulations
+##' @param seed random-number seed
 ##' @param data a data frame containing all variables listed in the formula,
 ##' \emph{including} the response variable (which needs to fall within
 ##' the domain of the conditional distribution, and should probably not
@@ -567,10 +569,10 @@ make_pars <- function(pars, ...) {
 ##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
-##' simulate_new(count ~ mined + (1|site),
+##' simulate_new(~ mined + (1|site),
 ##'              zi = ~ mined,
 ##'              data = Salamanders, show_pars  = TRUE)
-##' sim_count <- simulate_new(count ~ mined + (1|site),
+##' sim_count <- simulate_new(~ mined + (1|site),
 ##'              data = Salamanders,
 ##'              zi = ~ mined,
 ##'              family = nbinom2,
@@ -579,9 +581,21 @@ make_pars <- function(pars, ...) {
 ##'                          betad = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
 ##' )
+##' head(sim_count[[1]])
 ##' @export
-simulate_new <- function(form, data, pars, ..., show_pars = FALSE) {
-    ## for now assume response variable is in data
+simulate_new <- function(object,
+                         nsim = 1,
+                         seed = NULL,
+                         data, pars, ..., show_pars = FALSE) {
+    if (!is.null(seed)) set.seed(seed)
+    ## truncate
+    if (length(object) == 3) stop("simulate_new should take a one-sided formula")
+    ## fill in fake LHS
+    form <- object
+    form[[3]] <- form[[2]]
+    form[[2]] <- quote(..y)
+    ## insert a legal value: 1.0 is OK as long as family != "beta_family"
+    data[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
     r1 <- glmmTMB(form,
               data = data,
               ...,
@@ -591,5 +605,5 @@ simulate_new <- function(form, data, pars, ..., show_pars = FALSE) {
     if (show_pars) return(r2$env$last.par)
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), pars))
-    r2$simulate(par = pars)$yobs
+    replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
