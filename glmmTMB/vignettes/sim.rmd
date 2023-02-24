@@ -69,10 +69,11 @@ For the first example we'll simulate something that looks like the classic "slee
 data("sleepstudy", package = "lme4")
 set.seed(101)
 ss_sim <- transform(sleepstudy,
-               Reaction = simulate_new(Reaction ~ Days, sleepstudy,
-                                 family = gaussian,
-                                 pars = list(beta = c(250, 10),
-                                             betad = 2*log(50))))
+                    Reaction = simulate_new(~ Days,
+                                            data = sleepstudy,
+                                            family = gaussian,
+                                            pars = list(beta = c(250, 10),
+                                                        betad = 2*log(50))))[[1]]
 ```
 
 For comparison, we'll also fit the model and use the built-in simulation method:
@@ -117,17 +118,13 @@ n_id <- 10
 dd <- expand.grid(trt = factor(c("A", "B")),
                   id = factor(1:n_id),
                   time = 1:6)
-## response var needs to exist and be legal (i.e. within the domain
-##  of the response distribution, probably not all zero)
-##  but not necessarily sensible
-dd$y <- rep(1, nrow(dd))
 ```
 
 
 We'll set up some reasonable fixed effects. When in doubt about the order of fixed effect parameters, use `model.matrix()` to check:
 
 ```{r form}
-form1 <- y~trt*time+(1+time|id)
+form1 <- ~trt*time+(1+time|id)
 colnames(model.matrix(lme4::nobars(form1), data = dd))
 ```
 
@@ -157,11 +154,11 @@ par1 <- list(beta = beta_vec,
 Now simulate:
 
 ```{r sim3}
-set.seed(101)
 dd$y <- simulate_new(form1,
                      data = dd,
+                     seed = 101,
                      family = nbinom2,
-                     pars = par1)
+                     pars = par1)[[1]]
 range(dd$y)
 ```
 
@@ -220,14 +217,14 @@ Now using `simulate_new()` with matching parameters `beta = 0` (the only fixed e
 
 ```{r sim_new_ar1}
 phi_to_AR1 <- function(phi) phi/sqrt(1-phi^2)
-set.seed(101)
-s2 <- simulate_new(y ~ ar1(times + 0 | group), 
-             data=dat0,
-             pars = list(
-                 beta = 0,   
-                 betad = 0,
-                 theta = c(0, phi_to_AR1(0.7)))
-             )
+s2 <- simulate_new(~ ar1(times + 0 | group), 
+                   data=dat0,
+                   seed = 101,
+                   pars = list(
+                       beta = 0,   
+                       betad = 0,
+                       theta = c(0, phi_to_AR1(0.7)))
+                   )[[1]]
 ```
 
 With a nugget variance of $\sigma^2_n = 1.0$, an autoregressive variance of $\sigma^2_a = 1$, and an autoregressive parameter of $\phi = 0.7$, we expect the ACF to be $\sigma^2_a/(\sigma^2_a + \sigma^2_n) \phi^d$ .
