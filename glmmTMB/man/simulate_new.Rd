@@ -4,10 +4,12 @@
 \alias{simulate_new}
 \title{Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)}
 \usage{
-simulate_new(form, data, pars, ..., show_pars = FALSE)
+simulate_new(object, nsim = 1, seed = NULL, data, pars, ..., show_pars = FALSE)
 }
 \arguments{
-\item{form}{a model formula}
+\item{nsim}{number of simulations}
+
+\item{seed}{random-number seed}
 
 \item{data}{a data frame containing all variables listed in the formula,
 \emph{including} the response variable (which needs to fall within
@@ -21,6 +23,8 @@ be used in the model}
 \item{...}{other arguments to \code{glmmTMB} (e.g. \code{family})}
 
 \item{show_pars}{(logical) print structure of parameter vector and stop without simulating?}
+
+\item{form}{a \emph{one-sided} model formula (e.g. \code{~ a + b + c}}
 }
 \description{
 See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
@@ -29,10 +33,10 @@ for more information on the parameterization of different covariance structures.
 }
 \examples{
 ## use Salamanders data for structure/covariates
-simulate_new(count ~ mined + (1|site),
+simulate_new(~ mined + (1|site),
              zi = ~ mined,
              data = Salamanders, show_pars  = TRUE)
-sim_count <- simulate_new(count ~ mined + (1|site),
+sim_count <- simulate_new(~ mined + (1|site),
              data = Salamanders,
              zi = ~ mined,
              family = nbinom2,
@@ -41,4 +45,5 @@ sim_count <- simulate_new(count ~ mined + (1|site),
                          betad = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)
 )
+head(sim_count[[1]])
 }
