@@ -555,7 +555,9 @@ make_pars <- function(pars, ...) {
 ##' and \code{vignette("covstruct", package = "glmmTMB")}
 ##' for more information on the parameterization of different covariance structures.
 ##' 
-##' @param form a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+##' @param object a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+##' (peculiar naming is for consistency with the generic function, which typically
+##' takes a fitted model object)
 ##' @param nsim number of simulations
 ##' @param seed random-number seed
 ##' @param data a data frame containing all variables listed in the formula,

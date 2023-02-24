@@ -7,6 +7,10 @@
 simulate_new(object, nsim = 1, seed = NULL, data, pars, ..., show_pars = FALSE)
 }
 \arguments{
+\item{object}{a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+(peculiar naming is for consistency with the generic function, which typically
+takes a fitted model object)}
+
 \item{nsim}{number of simulations}
 
 \item{seed}{random-number seed}
@@ -23,8 +27,6 @@ be used in the model}
 \item{...}{other arguments to \code{glmmTMB} (e.g. \code{family})}
 
 \item{show_pars}{(logical) print structure of parameter vector and stop without simulating?}
-
-\item{form}{a \emph{one-sided} model formula (e.g. \code{~ a + b + c}}
 }
 \description{
 See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
