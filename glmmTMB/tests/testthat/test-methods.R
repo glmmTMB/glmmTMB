@@ -613,3 +613,15 @@ test_that("trunc poisson simulation", {
         par(op)
     }
 })
+
+test_that("de novo simulation", {
+    dd <- data.frame(x = 1:10)
+    expect_error(simulate_new(y ~ x), "should take a one-sided")
+    ss <- simulate_new(~ x,
+                 seed = 101,
+                 family = gaussian,
+                 newdata = dd,
+                 newparams = list(beta = 1:2, betad = 0))
+    expect_equal(head(ss[[1]], 2),
+                      c(2.67396350948461, 5.55246185541914))
+})
