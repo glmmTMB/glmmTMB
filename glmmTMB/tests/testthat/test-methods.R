@@ -620,8 +620,8 @@ test_that("de novo simulation", {
     ss <- simulate_new(~ x,
                  seed = 101,
                  family = gaussian,
-                 data = dd,
-                 pars = list(beta = 1:2, betad = 0))
+                 newdata = dd,
+                 newparams = list(beta = 1:2, betad = 0))
     expect_equal(head(ss[[1]], 2),
                       c(2.67396350948461, 5.55246185541914))
 })

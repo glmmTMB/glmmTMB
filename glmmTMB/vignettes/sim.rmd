@@ -70,9 +70,9 @@ data("sleepstudy", package = "lme4")
 set.seed(101)
 ss_sim <- transform(sleepstudy,
                     Reaction = simulate_new(~ Days,
-                                            data = sleepstudy,
+                                            newdata = sleepstudy,
                                             family = gaussian,
-                                            pars = list(beta = c(250, 10),
+                                            newparams = list(beta = c(250, 10),
                                                         betad = 2*log(50)))[[1]])
 ```
 
@@ -155,10 +155,10 @@ Now simulate:
 
 ```{r sim3}
 dd$y <- simulate_new(form1,
-                     data = dd,
+                     newdata = dd,
                      seed = 101,
                      family = nbinom2,
-                     pars = par1)[[1]]
+                     newparams = par1)[[1]]
 range(dd$y)
 ```
 
@@ -218,9 +218,9 @@ Now using `simulate_new()` with matching parameters `beta = 0` (the only fixed e
 ```{r sim_new_ar1}
 phi_to_AR1 <- function(phi) phi/sqrt(1-phi^2)
 s2 <- simulate_new(~ ar1(times + 0 | group), 
-                   data=dat0,
+                   newdata = dat0,
                    seed = 101,
-                   pars = list(
+                   newparams = list(
                        beta = 0,   
                        betad = 0,
                        theta = c(0, phi_to_AR1(0.7)))

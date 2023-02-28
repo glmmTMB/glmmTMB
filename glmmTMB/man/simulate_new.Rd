@@ -4,7 +4,15 @@
 \alias{simulate_new}
 \title{Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)}
 \usage{
-simulate_new(object, nsim = 1, seed = NULL, data, pars, ..., show_pars = FALSE)
+simulate_new(
+  object,
+  nsim = 1,
+  seed = NULL,
+  newdata,
+  newparams,
+  ...,
+  show_pars = FALSE
+)
 }
 \arguments{
 \item{object}{a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
@@ -15,12 +23,12 @@ takes a fitted model object)}
 
 \item{seed}{random-number seed}
 
-\item{data}{a data frame containing all variables listed in the formula,
+\item{newdata}{a data frame containing all variables listed in the formula,
 \emph{including} the response variable (which needs to fall within
 the domain of the conditional distribution, and should probably not
 be all zeros, but whose value is otherwise irrelevant)}
 
-\item{pars}{a list of parameters containing sub-vectors
+\item{newparams}{a list of parameters containing sub-vectors
 (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
 be used in the model}
 
@@ -37,12 +45,12 @@ for more information on the parameterization of different covariance structures.
 ## use Salamanders data for structure/covariates
 simulate_new(~ mined + (1|site),
              zi = ~ mined,
-             data = Salamanders, show_pars  = TRUE)
+             newdata = Salamanders, show_pars  = TRUE)
 sim_count <- simulate_new(~ mined + (1|site),
-             data = Salamanders,
+             newdata = Salamanders,
              zi = ~ mined,
              family = nbinom2,
-             pars = list(beta = c(2, 1),
+             newparams = list(beta = c(2, 1),
                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
                          betad = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)

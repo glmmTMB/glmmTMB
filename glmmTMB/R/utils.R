@@ -560,11 +560,11 @@ make_pars <- function(pars, ...) {
 ##' takes a fitted model object)
 ##' @param nsim number of simulations
 ##' @param seed random-number seed
-##' @param data a data frame containing all variables listed in the formula,
+##' @param newdata a data frame containing all variables listed in the formula,
 ##' \emph{including} the response variable (which needs to fall within
 ##' the domain of the conditional distribution, and should probably not
 ##' be all zeros, but whose value is otherwise irrelevant)
-##' @param pars a list of parameters containing sub-vectors
+##' @param newparams a list of parameters containing sub-vectors
 ##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
 ##' be used in the model
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
@@ -573,12 +573,12 @@ make_pars <- function(pars, ...) {
 ##' ## use Salamanders data for structure/covariates
 ##' simulate_new(~ mined + (1|site),
 ##'              zi = ~ mined,
-##'              data = Salamanders, show_pars  = TRUE)
+##'              newdata = Salamanders, show_pars  = TRUE)
 ##' sim_count <- simulate_new(~ mined + (1|site),
-##'              data = Salamanders,
+##'              newdata = Salamanders,
 ##'              zi = ~ mined,
 ##'              family = nbinom2,
-##'              pars = list(beta = c(2, 1),
+##'              newparams = list(beta = c(2, 1),
 ##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
 ##'                          betad = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
@@ -588,7 +588,7 @@ make_pars <- function(pars, ...) {
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
-                         data, pars, ..., show_pars = FALSE) {
+                         newdata, newparams, ..., show_pars = FALSE) {
     if (!is.null(seed)) set.seed(seed)
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
@@ -597,15 +597,15 @@ simulate_new <- function(object,
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
     ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    data[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
+    newdata[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
     r1 <- glmmTMB(form,
-              data = data,
+              data = newdata,
               ...,
               doFit = FALSE)
 ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
     if (show_pars) return(r2$env$last.par)
     pars <- do.call("make_pars",
-                    c(list(r2$env$last.par), pars))
+                    c(list(r2$env$last.par), newparams))
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
