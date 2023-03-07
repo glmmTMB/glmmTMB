@@ -421,15 +421,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)  
 
-  # theta is 0, except if dorr, theta is 1
+  ## starting values for theta are all 0 unless rank-reduced (set to 1)
   t01 <- function(dorr, condReStruc){
     theta <- rr0(sum(getVal(condReStruc,"blockNumTheta")))
-    if(dorr){
+    if (dorr) {
       nt <- 1
       blockNumTheta <- getVal(condReStruc,"blockNumTheta")
       blockCode <- getVal(condReStruc, "blockCode")
       for (i in 1:length(blockCode)) {
-        if(blockCode[i]==9){
+          if (blockCode[i] == .valid_covstruct[["rr"]]) {
           theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
         }
         nt <- nt + blockNumTheta[i]
@@ -717,17 +717,17 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
         covCode <- .valid_covstruct[ss]
 
         parFun <- function(struc, blksize, blkrank) {
-            switch(as.character(struc),
-                   "0" = blksize, # diag
-                   "1" = blksize * (blksize+1) / 2, # us
-                   "2" = blksize + 1, # cs
-                   "3" = 2,  # ar1
-                   "4" = 2,  # ou
-                   "5" = 2,  # exp
-                   "6" = 2,  # gau
-                   "7" = 3,  # mat
-                   "8" = 2 * blksize - 1, # toep
-                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2) #rr
+            switch(covName(struc),
+                   "diag" = blksize, # diag
+                   "us" = blksize * (blksize+1) / 2, # us
+                   "cs" = blksize + 1, # cs
+                   "ar1" = 2,  # ar1
+                   "ou" = 2,  # ou
+                   "exp" = 2,  # exp
+                   "gau" = 2,  # gau
+                   "mat" = 3,  # mat
+                   "toep" = 2 * blksize - 1, # toep
+                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2) #rr
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 

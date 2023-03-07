@@ -609,3 +609,6 @@ simulate_new <- function(object,
                     c(list(r2$env$last.par), newparams))
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
+
+## convenience function matching value to enum name
+covName <- function(x) names(.valid_covstruct)[.valid_covstruct == x]
