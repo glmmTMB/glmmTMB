@@ -46,3 +46,7 @@
   prob = 2,
   disp = 3
 )
+.valid_condpredictcode <- c(
+  uncond = 0,  
+  cond = 1     
+)

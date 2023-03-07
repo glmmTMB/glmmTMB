@@ -76,6 +76,11 @@ enum valid_ziPredictCode {
   disp_zipredictcode = 3
 };
 
+enum valid_condPredictCode {
+  uncond_condpredictcode = 0,  // pop-level prediction/new simulation
+  cond_condpredictcode = 1     // group-level prediction/simulation based on existing b-values
+};
+
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -167,7 +172,7 @@ Type log1m_inverse_linkfun(Type eta, int link) {
 template<class Type>
 Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
 		     int link) {
-  Type ans, s1, s2, s3;
+  Type ans, s1, s3;  // s2 not used at present
   switch (family) {
   case truncated_nbinom1_family:
     s3 = logspace_add( Type(0), etad);      // log(1. + phi(i)
@@ -185,7 +190,6 @@ Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
     break;
   case truncated_genpois_family:
     s1 = mu / sqrt(phi); //theta
-    s2 = Type(1) - Type(1)/sqrt(phi); //lambda
     ans = logspace_sub(Type(0), -s1);
     break;
   case truncated_compois_family:

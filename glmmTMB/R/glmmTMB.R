@@ -671,6 +671,7 @@ getGrpVar <- function(x)
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
+##' \item{simCode}{code for what kind of simulation to do}
 ##' \item{covCode}{structure code}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
