@@ -66,7 +66,8 @@ enum valid_covStruct {
   gau_covstruct = 6,
   mat_covstruct = 7,
   toep_covstruct = 8,
-  rr_covstruct = 9
+  rr_covstruct = 9,
+  homdiag_covstruct = 10
 };
 
 enum valid_ziPredictCode {
@@ -244,7 +245,7 @@ struct terms_t : vector<per_term_info<Type> > {
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
-  if (term.blockCode == diag_covstruct){
+  if (term.blockCode == diag_covstruct) {
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
@@ -255,6 +256,26 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
     term.sd = sd; // For report
   }
+  else if (term.blockCode == homdiag_covstruct) {
+    // case: homdiag_covstruct
+    Type sd = exp(theta(0));
+    for(int i = 0; i < term.blockReps; i++){
+          for (int j = 0; j < U.rows(); j++) {
+	    ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
+	    if (do_simulate) {
+	      U(j,i) = rnorm(Type(0), sd);
+	    }	      
+	  }
+    }
+    int n = term.blockSize;
+    vector<Type> sdvec(n);
+    for(int i = 0; i < n; i++) {
+      sdvec(i) = sd;
+    }
+    
+    term.sd = sdvec; // For report
+  }
+
   else if (term.blockCode == us_covstruct){
     // case: us_covstruct
     int n = term.blockSize;

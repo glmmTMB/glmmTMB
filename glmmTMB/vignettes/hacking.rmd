@@ -150,3 +150,18 @@ If you are adding the material for long-term use you should also add some tests 
 ## Additional distributional parameters
 
 Some families (Tweedie, Student-t) have shape parameters or other parameters beyond the usual parameters determining the location (mean) and scale (dispersion). These parameters are passed in the `thetaf` vector: the best thing to do here is to search the R and C++ code for "[Tt]weedie" and see what will need to be adjusted.
+
+## Adding a covariance structure
+
+General advice, but written while adding a "diagonal with homogeneous variance" (`homdiag`) covariance structure.
+
+### C++ code
+
+* add to the `valid_covStruct` `enum` in `glmmTMB.cpp`
+* modify `termwise_nll`. In the case of `homdiag` we can re-use the existing `diag_covstruct` code (since everything is vectorized so should work equally well with a length-1 or length-$p$ vector of (log) standard deviations)
+
+### R code
+
+* modify `parFun` to specify the number of parameters
+* modify documentation of `glmmTMB()`
+* run `make enum-update`

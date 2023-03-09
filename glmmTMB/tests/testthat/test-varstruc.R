@@ -127,3 +127,10 @@ test_that("cov_struct_order", {
 		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
 })
 
+test_that("hom vs het diag", {
+    fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy)
+    expect_equal(c(VarCorr(fmhomdiag)$cond$Subject),
+                 c(69.4182616453357, 0, 0, 69.4182616453357),
+                 tolerance = 1e-6)
+
+})
