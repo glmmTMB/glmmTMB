@@ -428,7 +428,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       for(i in seq_along(cov_code)){
         if(cov_code[[i]] == 9) # if rr start theta at 1
           tl[[i]] <- rep(1, blockTheta[i])
-        else if(cov_code[[i]] == 10) { # if propto then set theta to be matrix values
+        else if(cov_code[[i]] == 11) { # if propto then set theta to be matrix values
           ## FIX ME:: Will need to add in a check to see if it's the right dimensions
           ## FIX ME:: Might have to do that at getReStruc?
           a <- condList[["aa"]][[i]]
@@ -786,7 +786,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "7" = 3,  # mat
                    "8" = 2 * blksize - 1, # toep
                    "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "10" = blksize * (blksize+1) / 2 + 1) #propto (same as us, with one extra param)
+                   "11" = blksize * (blksize+1) / 2 + 1) #propto (same as us, plus one extra for proportional param)
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
