@@ -355,9 +355,13 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
-      whichNotRandom <- which( ! rownames(Q) %in% c("b", "bzi") )
+      if (is.null(rownames(Q))) { ## may be missing??
+          dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
+      }
+      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi") )
       Qm <- GMRFmarginal(Q, whichNotRandom)
       cov.all.parms <- solve(as.matrix(Qm))
+      
   } else {
       cov.all.parms <- sdr$cov.fixed
   }
@@ -518,22 +522,44 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+#' Retrieve family-specific parameters
+#'
+#' Most conditional distributions have only parameters governing their location
+#' (retrieved via \code{predict}) and scale (\code{sigma}). A few (e.g. Tweedie, Student t, ordered beta)
+#' are characterized by one or more additional parameters.
+#' @param object glmmTMB object
+#' @return a named numeric vector
+#' @export
+family_params <- function(object) {
+    ff <- object$modelInfo$family$family
+    tf <- get_pars(object)
+    tf <- unname(split(tf, names(tf))[["psi"]])
+    switch(ff,
+           tweedie = c("Tweedie power" = plogis(tf) + 1),
+           t = c("Student-t df" = exp(tf)),
+           ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
+           numeric(0)
+           )
+}
+
+## obsolete
 .tweedie_power <- function(object) {
-    unname(plogis(get_pars(object)["thetaf"]) + 1)
+    warning(".tweedie_power is deprecated in favor of family_params()")
+    unname(plogis(get_pars(object)["psi"]) + 1)
 }
 
 ## Print family specific parameters
-## @param ff name of family (character)
 ## @param object glmmTMB output
 #' @importFrom stats plogis
-printFamily <- function(ff, object) {
-    if (ff == "tweedie") {
-        power <- .tweedie_power(object)
-        cat(sprintf("\nTweedie power parameter: %s",
-                    formatC(power, digits=3)), "\n")
-
+printFamily <- function(object) {
+    val <- family_params(object)
+    if (length(val) > 0) {
+        cat(sprintf("\n%s estimate: %s",
+                    names(val)[1],
+                    paste(formatC(val, digits=3),
+                          collapse = ", ")), "\n")
     }
-    NULL
+    invisible(NULL)
 }
 
 ##' @importFrom lme4 .prt.aictab
@@ -572,7 +598,7 @@ print.glmmTMB <-
     printDispersion(x$modelInfo$family$family,sigma(x))
   }
   ## Family specific parameters
-  printFamily(x$modelInfo$family$family, x)
+  printFamily(x)
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
@@ -629,7 +655,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                # some argument names vary across families
                mu <- predict(object, type = "conditional")
                theta <- predict(object, type = "disp")
-               shape <- .tweedie_power(object) # FIXME: Change this to a general shape() extractor
+               shape <- family_params(object)
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
                vargs$theta <- vargs$phi <- vargs$alpha <- theta
@@ -675,7 +701,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
 ## @param estimate
 
 ##' @importFrom stats qchisq
-.CI_univariate_monotone <- function(object, f, reduce=NULL,
+.CI_univariate_monotone <- function(object,
+                                    f,
+                                    reduce=NULL,
                                     level=0.95,
                                     name.prepend=NULL,
                                     estimate = TRUE) {
@@ -772,7 +800,7 @@ format.perc <- function (probs, digits) {
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
 ##' @param include_mapped include dummy rows for mapped (i.e. fixed-value) parameters?
-##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
+##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
@@ -919,15 +947,16 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     ci <- rbind(ci, ci.sigma)
                 }
             }
-            ## Tweedie power
-            if (ff == "tweedie") {
-                ci.power <- .CI_univariate_monotone(object,
-                                                    .tweedie_power,
+            ## shape parameters
+            fp <- family_params(object)
+            if (length(fp)>0) {
+                ci.shape <- .CI_univariate_monotone(object,
+                                                    family_params,
                                                     reduce = NULL,
                                                     level=level,
-                                                    name.prepend="Tweedie.power",
+                                                    name.prepend="Tweedie.power", ## FIXME
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.power)
+                ci <- rbind(ci, ci.shape)
             } ## tweedie
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
@@ -1332,6 +1361,15 @@ lme4::refit
 #'    if (requireNamespace("boot")) {
 #'       boot.ci(b1,type="perc")
 #'     }
+#'    ## can run in parallel: may need to set up cluster explicitly,
+#'    ## use clusterEvalQ() to load packages on workers
+#'    if (requireNamespace("parallel")) {
+#'       cl <- parallel::makeCluster(2)
+#'       parallel::clusterEvalQ(cl, library("lme4"))
+#'       parallel::clusterEvalQ(cl, library("glmmTMB"))
+#'       b2 <- lme4::bootMer(fm1, FUN = function(x) fixef(x)$cond,
+#'               nsim = 10, ncpus = 2, cl = cl, parallel = "snow")
+#'    }
 #' }
 #' }
 #' @details

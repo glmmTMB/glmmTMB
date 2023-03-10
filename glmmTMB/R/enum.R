@@ -13,6 +13,7 @@
   binomial = 100,
   betabinomial =101,
   beta =200,
+  ordbeta = 201,
   Gamma =300,
   poisson =400,
   truncated_poisson =401,
@@ -38,7 +39,7 @@
   mat = 7,
   toep = 8,
   rr = 9,
-  propto = 11
+  homdiag = 10
 )
 .valid_zipredictcode <- c(
   corrected = 0,

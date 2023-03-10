@@ -4,10 +4,12 @@
 \alias{fitTMB}
 \title{Optimize a TMB model and package results}
 \usage{
-fitTMB(TMBStruc)
+fitTMB(TMBStruc, doOptim = TRUE)
 }
 \arguments{
-\item{TMBStruc}{a list contain}
+\item{TMBStruc}{a list containing lots of stuff ...}
+
+\item{doOptim}{logical; do optimization? If FALSE, return TMB object}
 }
 \description{
 This function (called internally by \code{\link{glmmTMB}}) runs

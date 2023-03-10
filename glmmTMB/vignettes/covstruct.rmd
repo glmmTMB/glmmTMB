@@ -97,15 +97,15 @@ A simulation experiment is set up using the parameters
 | Mean                   | $\mu$         | 0     |
 | Process variance       | $\sigma^2$    | 1     |
 | Measurement variance   | $\sigma_0^2$  | 1     |
-| One-step correlation   | $e^{-\theta}$ | 0.7   |
+| One-step correlation   | $\phi$        | 0.7   |
 
 The following R-code draws a simulation based on these parameter
 values.  For illustration purposes we consider a very short time
 series.
 
 ```{r sim1, eval=TRUE}
-n <- 6                                              ## Number of time points
-x <- mvrnorm(mu = rep(0,n),
+n <- 25                                              ## Number of time points
+x <- MASS::mvrnorm(mu = rep(0,n),
              Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process using the MASS package
 y <- x + rnorm(n)                                   ## Add measurement noise
 ```
@@ -120,7 +120,7 @@ the `factor` function:
 
 ```{r simtimes}
 times <- factor(1:n, levels=1:n)
-levels(times)
+head(levels(times))
 ```
 
 We also need a grouping variable. In the current case there is only
@@ -134,7 +134,7 @@ We combine the data into a single data frame (not absolutely
 required, but good practice):
 
 ```{r simcomb}
-dat0 <- data.frame(y,times,group)
+dat0 <- data.frame(y, times, group)
 ```
 
 Now fit the model using
@@ -156,13 +156,17 @@ This formula notation follows that of the `lme4` package.
 
 After running the model, we find the parameter estimates $\mu$
 (intercept), $\sigma_0^2$ (dispersion), $\sigma$ (Std. Dev.) and
-$e^{-\theta}$ (First off-diagonal of "Corr") in the output:
-
-> FIXME: Try a longer time series when the print.VarCorr is fixed.
+$\phi$ (First off-diagonal of "Corr") in the output:
 
 ```{r ar0fit,echo=FALSE}
 glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 ```
+
+For those trying to make sense of the internal parameterization, the internal
+transformation from the parameter ($\phi$) to the AR1 coefficient is
+$\phi = theta_2/sqrt(1+\theta_2^2)$; the inverse transformation is
+$\theta_2 =  \phi/sqrt(1-\phi^2)$. (The first element of the `theta` vector
+is the log-standard-deviation.)
 
 ### Increasing the sample size
 
@@ -172,7 +176,7 @@ or increase the number of groups. We'll try the latter:
 
 ```{r simGroup}
 simGroup <- function(g, n=6, rho=0.7) {
-    x <- mvrnorm(mu = rep(0,n),
+    x <- MASS::mvrnorm(mu = rep(0,n),
              Sigma = rho ^ as.matrix(dist(1:n)) )   ## Simulate the process
     y <- x + rnorm(n)                               ## Add measurement noise
     times <- factor(1:n)
@@ -654,7 +658,7 @@ An option in `glmmTMBControl()` has been included to initialize the starting val
 - `method = "res"` initializes starting values from the results of fitting a GLM, and fitting a reduced rank model to the residuals to obtain starting values for the fixed coefficients, the latent variables and the factor loadings. 
 - `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
 
-For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining `$nd-d(d-3)/2$`, (i.e. `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
+For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining $nd-d(d-3)/2$, (i.e. parameters `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
 
 ## References
 

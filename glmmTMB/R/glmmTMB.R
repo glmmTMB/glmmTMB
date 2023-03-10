@@ -27,7 +27,7 @@ openmp <- function (n = NULL) {
 ##' @param yobs observed y
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
-##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{thetaf} (extra family parameters, e.g., shape for Tweedie models).
+##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{psi} (extra family parameters, e.g., shape for Tweedie models).
 ##' @param sparseX see \code{\link{glmmTMB}}
 ##' @param start_method Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when start = "res".
 ##' @keywords internal
@@ -178,6 +178,7 @@ startParams <- function(parameters,
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
       nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
+      ## FIXME: replace hard-coded 9 with .valid_covstruct["rr"] ?
       if (condReStruc[[j]]$blockCode == 9) {
         start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
         start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
@@ -312,8 +313,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, contrasts=contrasts, sparse=sparseX[["cond"]])
-    ziList    <- getXReTrms(ziformula, mf, fr, contrasts=contrasts, sparse=sparseX[["zi"]])
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]])
+    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]])
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]])
@@ -405,13 +406,18 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ##    [because inverse-link is symmetric around 0?]
   beta_init <-  if (family$link %in% c("identity","inverse","sqrt")) 1 else 0
 
-  ## Extra family specific parameters
-  numThetaFamily <- (family$family == "tweedie")
-
   rr0 <- function(n) {
-       if (is.null(n)) numeric(0) else rep(0, n)
+     if (is.null(n)) numeric(0) else rep(0, n)
   }
 
+  ## Extra family specific parameters
+  ## FIXME: switch/rewrite to be less ugly?
+  psiLength <- if (family$family %in% c("t", "tweedie"))
+               { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
+
+  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)  
+
+  # theta is 0, except if dorr, theta is 1
   # theta is 0, otherwise
   # theta is 1 for rr_covstruct
   # theta is parameterised to covariance matrix for propto
@@ -433,8 +439,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
           ## FIX ME:: Might have to do that at getReStruc?
           a <- condList[["aa"]][[i]]
           tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
-        }
-      }
+        } #end else if propto
+      } #end for loop
       theta <- unlist(tl, use.names = F)
     }
     return(theta)
@@ -442,14 +448,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   parameters <- with(data.tmb,
                      list(
-                       beta    = rep(beta_init, max(ncol(X),ncol(XS))),
+                       beta    = rep(beta_init, max(ncol(X), ncol(XS))),
                        betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
                        theta   = t01(condReStruc, condList),
                        thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       thetaf  = rr0(numThetaFamily)
+                       psi  = psi_init
                      ))
 
   if(!is.null(start) || !is.null(control$start_method$method)){
@@ -535,6 +541,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         attr(tt, "predvars") <- fix_predvars(pv,tt)
         mf$formula <- tt
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
+        terms <- list(fixed=terms(terms_fixed))
         if (!sparse) {
             X <- model.matrix(drop.special(fixedform), fr, contrasts)
         } else {
@@ -544,7 +551,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         }
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
-        terms <- list(fixed=terms(terms_fixed))
         if (inForm(fixedform,quote(offset))) {
             ## hate to match offset terms with model frame names
             ##  via deparse, but since that what was presumably done
@@ -776,7 +782,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
-                   "0" = blksize, # diag
+                   "0" = blksize, # (heterogenous) diag
                    "1" = blksize * (blksize+1) / 2, # us
                    "2" = blksize + 1, # cs
                    "3" = 2,  # ar1
@@ -786,7 +792,9 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "7" = 3,  # mat
                    "8" = 2 * blksize - 1, # toep
                    "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+                   "10" = 1,  ## (homogeneous) diag
                    "11" = blksize * (blksize+1) / 2 + 1) #propto (same as us, plus one extra for proportional param)
+                   ) 
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
@@ -875,7 +883,7 @@ binomialType <- function(x) {
 ##' @param doFit whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects, without fitting the model.
 ##' @param control control parameters, see \code{\link{glmmTMBControl}}.
 ##' @param REML whether to use REML estimation rather than maximum likelihood.
-##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{thetaf} (extra family parameters, e.g., shape for Tweedie models).
+##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{psi} (extra family parameters, e.g., shape for Tweedie models).
 ##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
@@ -899,6 +907,7 @@ binomialType <- function(x) {
 ##' \item \code{mat} (* Matérn process correlation)
 ##' \item \code{toep} (* Toeplitz)
 ##' \item \code{rr} (reduced rank/factor-analytic model)
+##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1216,6 +1225,8 @@ glmmTMB <- function(
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
+##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).
+##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1262,7 +1273,9 @@ glmmTMBControl <- function(optCtrl=NULL,
                            parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
-                           start_method = list(method = NULL, jitter.sd = 0)) {
+                           start_method = list(method = NULL, jitter.sd = 0),
+                           rank_check = c("warning", "adjust", "stop", "skip"),
+                           conv_check = c("warning", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1275,13 +1288,16 @@ glmmTMBControl <- function(optCtrl=NULL,
         parallel <- as.integer(parallel)
     }
 
+    rank_check <- match.arg(rank_check)
+    conv_check <- match.arg(conv_check)
+
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, zerodisp_val, start_method)
+              eigval_check, zerodisp_val, start_method, rank_check, conv_check)
 }
 
 ##' collapse duplicated observations
@@ -1324,6 +1340,102 @@ glmmTMBControl <- function(optCtrl=NULL,
     data.tmb
 }
 
+##' Adjust a model matrix
+##' When not rank deficient, do nothing.
+##' When rank deficient matrix, drop columns.
+##'
+##' @param X               model matrix
+##' @param tol             non-negative tolerance for testing for "practically zero" singular values (passed to Matrix::rankMatrix())
+##' @param why_dropped     logical indicating whether or not to provide information about sets of collinear predictors (not yet implemented)
+##'
+##' @importFrom Matrix crossprod diag qr qr2rankMatrix
+##' @keywords internal
+.adjustX <- function(X, tol=NULL, why_dropped=FALSE){
+  # perform QR decomposition
+  qr_X <- Matrix::qr(X)
+  # check if adjustment is necessary
+  if(Matrix::qr2rankMatrix(qr_X) < ncol(X)){
+    # base qr
+    if(is.qr(qr_X)){
+      # use column pivoting from base::qr() to identify which columns to keep and which to drop
+      to_keep <- qr_X$pivot[1L:qr_X$rank]
+      to_drop <- qr_X$pivot[(qr_X$rank+1L):length(qr_X$pivot)]
+    } # sparseQR
+    else{
+      # diagonal elements of R from QR decomposition to identify which columns to keep and which to drop
+      R_diag <- abs(Matrix::diag(qr_X@R))
+      # borrowing tolerance criterion from that specified in Matrix::qr2rankMatrix
+      if(is.null(tol)) tol <- max(dim(X)) * .Machine$double.eps * max(R_diag)
+      to_keep <- which(R_diag >= tol)
+      to_drop <- which(R_diag < tol)
+    }
+    # drop columns
+    X <- X[,to_keep,drop=FALSE]
+    # if(why_dropped){
+    # #   TODO: add message describing WHY columns were dropped
+    # #   current idea is to follow process outlined at https://stackoverflow.com/a/74103797/20267047 or derivative thereof
+    # #   we will eventually use t(X) %*% X to determine collinearity among predictors
+    #   tXX <- Matrix::crossprod(X)
+    # }
+  }
+  return(X)
+}
+
+##' Check for identifiability of fixed effects matrices X, Xzi, Xd.
+##' When rank_check='adjust', drop columns in X and remove associated parameters.
+##' @importFrom Matrix rankMatrix
+##' @keywords internal
+.checkRankX <- function(TMBStruc, rank_check=c('warning','adjust','stop','skip')) {
+  rank_check <- match.arg(rank_check)
+  Xnames <- c(conditional = "X", conditional = "XS", "zero-inflation" = "Xzi", "zero-inflation" = "XziS", dispersion = "Xd", dispersion = "XdS")
+  betanames <- gsub("X", "beta",
+                    gsub("S", "", Xnames))
+  # use svd-based Matrix::rankMatrix(X) if we wish to abort or warn
+  # FIXME: possibly should be an lapply? but I wanted easy access to nm to make error and warnings more informative
+  if(rank_check %in% c('stop', 'warning')){
+    for (whichX in Xnames) {
+      # only attempt rankMatrix if the X matrix contains info
+      if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
+        ## if X is rank deficient, stop or throw a warning
+        if (Matrix::rankMatrix(TMBStruc$data.tmb[[whichX]]) < ncol(TMBStruc$data.tmb[[whichX]])){
+          # determine the model type for a more indicative error or warning message
+          model_type <- names(Xnames)[match(whichX, Xnames)]
+          action <- get(rank_check, "package:base")
+          action("fixed effects in ", model_type," model are rank deficient")
+        } ## if rank-deficient
+      } ## loop over X components
+  } else
+    if(rank_check == 'adjust'){
+      for(whichX in Xnames){
+        # only attempt adjutment if the X matrix contains info
+        if(prod(dim(TMBStruc$data.tmb[[whichX]])) == 0) next
+        curX <- TMBStruc$data.tmb[[whichX]]
+        # use .adjustX to only keep linearly dependent columns of X matrix
+        adjX <- .adjustX(curX)
+        # if columns were dropped, update variables accordingly
+        if(ncol(adjX) != ncol(curX)){
+          # inform the user that columns were dropped
+          model_type <- names(Xnames)[match(whichX, Xnames)]
+          message("dropping columns from rank-deficient ", model_type," model")
+
+          # use colnames of curX and adjX to identify which columns were dropped
+          dropped_names   <- setdiff(colnames(curX), colnames(adjX))
+          dropped_indices <- match(dropped_names, colnames(curX))
+
+          # retain names of dropped column for use in model output
+          attr(adjX, "col.dropped") <- setNames(dropped_indices, dropped_names)
+
+          ## reduce parameters of appropriate component
+          beta_name <- betanames[match(whichX, Xnames)]
+          kept_indices <- match(colnames(adjX), colnames(curX))
+          TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][kept_indices]
+          TMBStruc$data.tmb[[whichX]] <- adjX
+        } ## if matrix was adjusted
+      } ## loop over X components
+    } ## if rank_check == 'adjust'
+  return(TMBStruc)
+}
+
 ##' Optimize a TMB model and package results
 ##'
 ##' This function (called internally by \code{\link{glmmTMB}}) runs
@@ -1334,14 +1446,15 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' user's responsibility to make sure that any modifications
 ##' create an internally consistent final fitted object).
 ##'
-##' @param TMBStruc a list contain
+##' @param TMBStruc a list containing lots of stuff ...
+##' @param doOptim logical; do optimization? If FALSE, return TMB object
 ##' @examples
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
 ##'              family=poisson, data=Salamanders, doFit=FALSE)
 ##' names(m0)
 ##' fitTMB(m0)
 ##' @export
-fitTMB <- function(TMBStruc) {
+fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
     control <- TMBStruc$control
 
@@ -1372,6 +1485,10 @@ fitTMB <- function(TMBStruc) {
         ## original data (with duplicates) after fitting.
         data.tmb.old <- TMBStruc$data.tmb
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
+    }
+
+    if(control$rank_check %in% c('warning','stop','adjust')){
+      TMBStruc <- .checkRankX(TMBStruc, control$rank_check)
     }
 
     ## avoid repetition; rely on environment for parameters
@@ -1430,7 +1547,7 @@ fitTMB <- function(TMBStruc) {
         max.newton.steps <- 5
         newton.tol <- 1e-10
         if (sdr$pdHess) {
-          ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
+            ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
           ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
           ##    * Option 1: Fall back to old method
           ##    * Option 2: Skip Newton iterations
@@ -1456,6 +1573,7 @@ fitTMB <- function(TMBStruc) {
                               profile = NULL,
                               silent = !verbose,
                               DLL = "glmmTMB"))
+        if (!doOptim) return(obj)
         if (is.na(obj$fn(obj$par))) {
             stop("negative log-likelihood is NaN at starting parameter values")
         }
@@ -1490,7 +1608,7 @@ fitTMB <- function(TMBStruc) {
         }
         return(ev)
     }
-    if(!is.null(sdr$pdHess)) {
+    if(!is.null(sdr$pdHess) && control$conv_check != "skip") {
        if(!sdr$pdHess) {
           ## double-check (slower, more accurate hessian)
           env <- environment(obj$fn)
@@ -1514,7 +1632,7 @@ fitTMB <- function(TMBStruc) {
                              "non-positive-definite Hessian matrix. ",
                              "See vignette('troubleshooting')"))
           }
-      } else if (control$eigval_check) {
+      } else if (control$eigval_check && length(sdr$cov.fixed)>0) {
           eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
           if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
               warning(paste0("Model convergence problem; ",
@@ -1524,11 +1642,12 @@ fitTMB <- function(TMBStruc) {
       } ## do eigval check
     } ## pdHess exists
 
-    if ( !is.null(fit$convergence) && fit$convergence != 0)
+    if ( !is.null(fit$convergence) && fit$convergence != 0 && control$conv_check != "skip") {
         warning("Model convergence problem; ",
                 fit$message, ". ",
                 "See vignette('troubleshooting')")
-
+    }
+    
     if (control $ collect) {
         ## Undo changes made to the data
         TMBStruc$data.tmb <- data.tmb.old
@@ -1560,6 +1679,10 @@ fitTMB <- function(TMBStruc) {
     ##    and provide a way to regenerate it as necessary
     ## If we don't include frame, then we may have difficulty
     ##    with predict() in its current form
+
+    ## FIXME (rank_check): ret needs to know about dropped columns to use
+    ##  them in the summary, etc. At this point in the code, this information
+    ##  only remains in condList, ziList, and dispList.
 
     ret <- structure(namedList(obj, fit, sdr, call=TMBStruc$call,
                         frame=TMBStruc$fr, modelInfo,
@@ -1640,6 +1763,9 @@ summary.glmmTMB <- function(object,...)
         }
         coefs
     }
+
+    # FIXME (rank_check): to include dropped predictors in the output, fixef
+    #  needs to be able to find out about them
 
     ff <- fixef(object)
     vv <- vcov(object,include_mapped=TRUE)

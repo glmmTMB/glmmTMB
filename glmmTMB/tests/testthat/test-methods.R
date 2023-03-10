@@ -355,7 +355,7 @@ test_that("confint with mapped parameters", {
 
 
 test_that("profile", {
-    p1_th <- profile(fm1,parm="theta_",npts=4)
+    p1_th <- profile(fm1, parm="theta_", npts=4)
     expect_true(all(p1_th$.par=="theta_1|Subject.1"))
     p1_b <- profile(fm1,parm="beta_",npts=4)
     expect_equal(unique(as.character(p1_b$.par)),
@@ -568,7 +568,11 @@ test_that("trunc nbinom simulation", {
         ## at their starting values
         m1 <- simfun(y~f, family=f, data=dd, beta=c(-40,39))
         expect_equal(fixef(m1)$cond, c(`(Intercept)` = -40, f2 = 39))
-        expect_equal(fitted(m1),c(4.24835425529159e-18, 0.367879441171442))
+        res <- list("truncated_nbinom1" = c(1.44269504088896, 1.6344435754591),
+                    "truncated_nbinom2" = c(1, 1 + exp(-1)))
+        ## values were previously 0, exp(-1) regardless of nbinom1 vs nbinom2 (dispersion param == 1, start value)
+        ## now that response predicts mean of *truncated* distribution, they differ
+        expect_equal(fitted(m1), res[[f]], tolerance = 1e-5)
         ## should NOT get NaN (or zero) for the first group if hack/fix is working
         expect_equal(unname(unlist(simulate(m1,seed=101))),c(1,1))
     }
@@ -608,4 +612,16 @@ test_that("trunc poisson simulation", {
         for (i in 1:nrow(t3)) pfun(i,tab=t3,dist="poisson",data=dd)
         par(op)
     }
+})
+
+test_that("de novo simulation", {
+    dd <- data.frame(x = 1:10)
+    expect_error(simulate_new(y ~ x), "should take a one-sided")
+    ss <- simulate_new(~ x,
+                 seed = 101,
+                 family = gaussian,
+                 newdata = dd,
+                 newparams = list(beta = 1:2, betad = 0))
+    expect_equal(head(ss[[1]], 2),
+                      c(2.67396350948461, 5.55246185541914))
 })

@@ -22,8 +22,12 @@
 \usepackage{natbib}
 \VerbatimFootnotes
 \bibliographystyle{chicago}
-%% need this for output of citation() below ...
+%% need these for output of citation() below ...
 \newcommand{\bold}[1]{\textbf{#1}}
+%% from Sebastian Meyer: needs LaTeX >= 2020-10-01
+%% (probably? don't need to worry about backward compatibility,
+%%  people who need to build the vignette can update?)
+\NewCommandCopy\Rhref\href
 
 \title{Getting started with the \code{glmmTMB} package}
 \author{Ben Bolker}

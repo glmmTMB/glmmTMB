@@ -46,13 +46,20 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
-##' @return a vector of correlation values
-##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
-##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
+##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
 ##' get_cor(c(0.5,0.2,0.5))
+##' C <- matrix(c(1,  0.2,  0.1,
+##'              0.2,  1, -0.2,
+##'              0.1,-0.2,   1),
+##'            3, 3)
+##' ## test: round-trip (almostl results in lower triangle only)
+##' stopifnot(all.equal(get_cor(put_cor(C)),
+##'                    C[lower.tri(C)]))
 ##' @export
 get_cor <- function(theta) {
   n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
@@ -64,42 +71,13 @@ get_cor <- function(theta) {
   R[lower.tri(R)]
 }
 
-match_which <- function(x,y) {
-    which(sapply(y,function(z) x %in% z))
-}
-
-## reassign predvars to have term vars in the right order,
-##  but with 'predvars' values inserted where appropriate
-fix_predvars <- function(pv,tt) {
-    if (length(tt)==3) {
-        ## convert two-sided to one-sided formula
-        tt <- RHSForm(tt, as.form=TRUE)
-    }
-    ## ugh, deparsing again ...
-    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
-    ## remove terminal paren - e.g. match term poly(x, 2) to
-    ##   predvar poly(x, 2, <stuff>)
-    ## beginning of string, including open-paren, colon
-    ##  but not *first* comma nor arg ...
-    ##  could possibly try init_regexp <- "^([^,]+).*" ?
-    init_regexp <- "^([(^:_.[:alnum:]]+).*"
-    tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
-    if (is.null(pv) || length(tt_vars)==0) return(NULL)
-    new_pv <- quote(list())
-    ## maybe multiple variables per pv term ... [-1] ignores head
-    ## FIXME: test for really long predvar strings ????
-    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
-    pv_strings <- gsub(init_regexp,"\\1",pv_strings)
-    for (i in seq_along(tt_vars)) {
-        w <- match(tt_vars_short[[i]],pv_strings)
-        if (!is.na(w)) {
-            new_pv[[i+1]] <- pv[[w+1]]
-        } else {
-            ## insert symbol from term vars
-            new_pv[[i+1]] <- as.symbol(tt_vars[[i]])
-        }
-    }
-    return(new_pv)
+##' @rdname get_cor
+##' @param C a correlation matrix
+##' @export
+put_cor <- function(C) {
+    cc <- chol(C)
+    cc2 <- t(cc %*% diag(1/diag(cc)))
+    cc2[lower.tri(cc2)]
 }
 
 hasRandom <- function(x) {
@@ -140,7 +118,9 @@ getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
         }
     }
     if (is.character(parm)) {
-        if (identical(parm,"theta_")) {
+        if (identical(parm,"psi_")) {
+            parm <- grep("^psi",intnames)
+        } else if (identical(parm,"theta_")) {
             parm <- grep("^theta",intnames)
         } else if (identical(parm,"beta_")) {
             if (trivialDisp(object)) {
@@ -355,18 +335,36 @@ isNullPointer <- function(x) {
 up2date <- function(oldfit) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
-    obj <- oldfit$obj
-    oldfit$obj <- with(obj$env,
+      obj <- oldfit$obj
+      ee <- obj$env
+      if ("thetaf" %in% names(ee$parameters)) {
+          ee$parameters$psi <- ee$parameters$thetaf
+          ee$parameters$thetaf <- NULL
+          pars <- c(grep("last\\.par", names(ee), value = TRUE),
+                    "par")
+          for (p in pars) {
+              if (!is.null(nm <- names(ee[[p]]))) {
+                  names(ee[[p]])[nm == "thetaf"] <- "psi"
+              }
+          }
+      }
+      ee2 <- oldfit$sdr$env
+      if ("thetaf" %in% names(ee2$parameters)) {
+          ee2$parameters$psi <- ee2$parameters$thetaf
+          ee2$parameters$thetaf <- NULL
+      }
+      oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
                                       silent = silent,
                                       DLL = "glmmTMB"))
-    oldfit$obj$env$last.par.best <- obj$env$last.par.best
+      oldfit$obj$env$last.par.best <- ee$last.par.best
   }
   return(oldfit)
 }
+
 
 
 #' Load data from system file, updating glmmTMB objects
@@ -439,7 +437,7 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
+par_components <- c("beta","betazi","betad","theta","thetazi","psi")
 
 getAllParnames <- function(object, full) {
                            
@@ -474,7 +472,14 @@ getAllParnames <- function(object, full) {
         return(paste("theta",gsub(" ", "", unlist(nn)), sep="_"))
       }
       ## nameList for estimated variables;
-      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
+      nameList <- c(nameList,
+                    list(theta = reNames("cond"), thetazi = reNames("zi")))
+
+      ##
+      if (length(fp <- family_params(object)) > 0) {
+          nameList <- c(nameList, list(psi = names(fp)))
+      }
+      
   }
 
     return(nameList)
@@ -497,4 +502,110 @@ getEstParnames <- function(object, full) {
         }
     }
     return(nameList)
+}
+
+## OBSOLETE: delete eventually
+
+## reassign predvars to have term vars in the right order,
+##  but with 'predvars' values inserted where appropriate
+fix_predvars <- function(pv,tt) {
+    if (length(tt)==3) {
+        ## convert two-sided to one-sided formula
+        tt <- RHSForm(tt, as.form=TRUE)
+    }
+    ## ugh, deparsing again ...
+    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
+    ## remove terminal paren - e.g. match term poly(x, 2) to
+    ##   predvar poly(x, 2, <stuff>)
+    ## beginning of string, including open-paren, colon
+    ##  but not *first* comma nor arg ...
+    ##  could possibly try init_regexp <- "^([^,]+).*" ?
+    init_regexp <- "^([(^:_.[:alnum:]]+).*"
+    tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
+    if (is.null(pv) || length(tt_vars)==0) return(NULL)
+    new_pv <- quote(list())
+    ## maybe multiple variables per pv term ... [-1] ignores head
+    ## FIXME: test for really long predvar strings ????
+    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
+    pv_strings <- gsub(init_regexp,"\\1",pv_strings)
+    for (i in seq_along(tt_vars)) {
+        w <- match(tt_vars_short[[i]],pv_strings)
+        if (!is.na(w)) {
+            new_pv[[i+1]] <- pv[[w+1]]
+        } else {
+            ## insert symbol from term vars
+            new_pv[[i+1]] <- as.symbol(tt_vars[[i]])
+        }
+    }
+    return(new_pv)
+}
+
+make_pars <- function(pars, ...) {
+    ## FIXME: check for name matches, length matches etc.
+    L <- list(...)
+    for (nm in names(L)) {
+        pars[names(pars) == nm] <- L[[nm]]
+    }
+    return(pars)
+}
+
+##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
+##'
+##' See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
+##' and \code{vignette("covstruct", package = "glmmTMB")}
+##' for more information on the parameterization of different covariance structures.
+##' 
+##' @param object a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+##' (peculiar naming is for consistency with the generic function, which typically
+##' takes a fitted model object)
+##' @param nsim number of simulations
+##' @param seed random-number seed
+##' @param newdata a data frame containing all variables listed in the formula,
+##' \emph{including} the response variable (which needs to fall within
+##' the domain of the conditional distribution, and should probably not
+##' be all zeros, but whose value is otherwise irrelevant)
+##' @param newparams a list of parameters containing sub-vectors
+##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+##' be used in the model
+##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
+##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @examples
+##' ## use Salamanders data for structure/covariates
+##' simulate_new(~ mined + (1|site),
+##'              zi = ~ mined,
+##'              newdata = Salamanders, show_pars  = TRUE)
+##' sim_count <- simulate_new(~ mined + (1|site),
+##'              newdata = Salamanders,
+##'              zi = ~ mined,
+##'              family = nbinom2,
+##'              newparams = list(beta = c(2, 1),
+##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
+##'                          betad = log(2), ## log(NB dispersion)
+##'                          theta = log(1)) ## log(among-site SD)
+##' )
+##' head(sim_count[[1]])
+##' @export
+simulate_new <- function(object,
+                         nsim = 1,
+                         seed = NULL,
+                         newdata, newparams, ..., show_pars = FALSE) {
+    if (!is.null(seed)) set.seed(seed)
+    ## truncate
+    if (length(object) == 3) stop("simulate_new should take a one-sided formula")
+    ## fill in fake LHS
+    form <- object
+    form[[3]] <- form[[2]]
+    form[[2]] <- quote(..y)
+    ## insert a legal value: 1.0 is OK as long as family != "beta_family"
+    newdata[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
+    r1 <- glmmTMB(form,
+              data = newdata,
+              ...,
+              doFit = FALSE)
+## construct TMB object, but don't fit it
+    r2 <- fitTMB(r1, doOptim = FALSE)
+    if (show_pars) return(r2$env$last.par)
+    pars <- do.call("make_pars",
+                    c(list(r2$env$last.par), newparams))
+    replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }

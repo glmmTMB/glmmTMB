@@ -1,7 +1,7 @@
 \documentclass[12pt]{article}
 %% vignette index specifications need to be *after* \documentclass{}
 %\VignetteEngine{knitr::knitr}
-%\VignetteIndexEntry{model evaluation}
+%\VignetteIndexEntry{Model evaluation}
 %\VignettePackage{glmmTMB}
 %\VignetteDepends{ggplot2}
 %\VignetteDepends{car}
@@ -224,6 +224,27 @@ if (effects_ok) {
 
 <<emmeans1>>=
 emmeans(owls_nb1, poly ~ FoodTreatment | SexParent)
+@
+Let us also consider a corresponding hurdle model:
+<<hurdle>>=
+owls_hnb1 <- update(owls_nb1, family = truncated_nbinom1, ziformula = ~.)
+@
+On the response scale, this model estimates the means of the component distribution 
+as follows:
+<<>>=
+emmeans(owls_hnb1, ~ FoodTreatment * SexParent, component = "cond", type = "response")
+# --- or ---
+emmeans(owls_hnb1, ~ FoodTreatment * SexParent, component = "cmean")
+@
+These estimates differ because the first ones are back-transformed from the 
+linear predictor, which is based on the \emph{un-truncated} component distribution,
+while the second ones are estimates of the means of the \emph{truncated}
+distribution (with zero omitted). This discrepancy occurs only with
+hurdle models.
+
+The response means combine both the conditional and the zero-inflation model:
+<<>>=
+emmeans(owls_hnb1, ~ FoodTreatment * SexParent, component = "response")
 @
 
 \subsection{\tcode{drop1}}

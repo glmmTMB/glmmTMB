@@ -46,7 +46,7 @@
 #' @importFrom TMB tmbprofile
 #' @export
 profile.glmmTMB <- function(fitted,
-                            parm=NULL,
+                            parm = NULL,
                             level_max = 0.99,
                             npts = 8,
                             stepfac = 1/4,
@@ -57,6 +57,13 @@ profile.glmmTMB <- function(fitted,
                             cl = NULL,
                             ...) {
 
+    tmbprofile_args <- names(formals(TMB::tmbprofile))
+    miss_args <- setdiff(names(list(...)), tmbprofile_args)
+    if (length(miss_args) > 0) {
+        warning("unknown argument(s) specified to be passed to tmbprofile: ",
+                paste(miss_args, collapse = ", "))
+    }
+    
     if (isREML(fitted)) stop("can't compute profiles for REML models at the moment (sorry)")
     plist <- parallel_default(parallel,ncpus)
     parallel <- plist$parallel
@@ -117,7 +124,7 @@ profile.glmmTMB <- function(fitted,
                               h=s/4,
                               ytol=ytol,
                               ystep=ystep,
-                              trace=(trace>1),...))
+                              trace=(trace>1), ...))
         }
     })
     if (do_parallel) {
@@ -165,6 +172,7 @@ profile.glmmTMB <- function(fitted,
 #' confint(salamander_prof1)
 #' confint(salamander_prof1,level=0.99)
 #' @importFrom splines interpSpline backSpline
+#' @importFrom stats approx na.omit
 #' @export
 confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     ## FIXME: lots of bulletproofing:
@@ -173,6 +181,7 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
     qval <- 0.5*qchisq(level,df=1)
     ci_fun <- function(dd) {
         dd <- dd[!duplicated(dd$.focal),] ## unique values: WHY??
+        dd <- na.omit(dd)
         hf <- with(dd,factor(.focal>.focal[which.min(value)],
                    levels=c("FALSE","TRUE")))
         halves <- split(dd,hf)
@@ -188,9 +197,18 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
         if (max(hh$value,na.rm=TRUE)<qval) {
             restr_prof_flag <- TRUE
         }
-        for_spl <- splines::interpSpline(value~.focal,hh)
-        bak_spl <- splines::backSpline(for_spl)
-        predict(bak_spl,qval)$y
+        res <- try({
+            for_spl <- splines::interpSpline(value~.focal,hh)
+            bak_spl <- splines::backSpline(for_spl)
+            predict(bak_spl,qval)$y
+        }, silent = TRUE)
+        if (!inherits(res, "try-error")) return(res)
+        res <- try(approx(hh$value, hh$.focal, xout = qval)$y)
+        if (!inherits(res, "try-error") && !is.na(res)) {
+            warning("spline failure for CI calculation, falling back to linear approximation")
+            return(res)
+        }
+        return(NA_real_)
     }
     objList <- split(object,object$.par)
     if (is.null(parm)) {

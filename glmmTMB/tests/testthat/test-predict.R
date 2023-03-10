@@ -240,6 +240,47 @@ test_that("fix_predvars works for I(x^2)", {
     expect_equal(unname(p1),unname(p2), tolerance=1e-4)
 })
 
+test_that("more predvars stuff (I()) (GH #853)", {
+    set.seed(100)
+    N <- 100
+    x1 <- rnorm(N)
+    Y <- rpois(N, lambda = exp(x1))
+    df <- data.frame(Y=Y, x1=x1)
+
+    ##Base model
+    mod <- suppressWarnings(glmmTMB(Y ~ x1 + I((x1+10)^2) + I((x1+10)^3),
+                                    data = df, family = "poisson"))
+    p1 <- predict(mod, newdata = df, type = "response")
+    expect_equal(fitted(mod), predict(mod, newdata = df, type = "response"))
+})
+
+test_that("predvars with different ns() in fixed and disp (GH #845)", {
+    library(splines)
+    x <- glmmTMB(
+        am ~ ns(wt, df = 3), 
+        dispformula = ~ ns(wt, df = 2), 
+        data = mtcars
+    )
+    newdata <- data.frame(
+        wt = seq(min(mtcars$wt), max(mtcars$wt), length.out = 3)
+    )
+    expect_equal(predict(x, newdata = newdata),
+                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
+})
+
+test_that("predvars with differing splines in fixed and RE (GH#632)", {
+    library(splines)
+    data(sleepstudy,package="lme4")
+    m4 <- glmmTMB(Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject), 
+                  data = sleepstudy)
+    pp <- predict(m4, newdata = data.frame(Days = 4:6, Subject = "372"),
+                  re.form = NULL, 
+                  type = "response")
+    ## plot(Reaction ~ Days, data = subset(sleepstudy, Subject == "372"))
+    ## points(4:6, pp, col = 2, pch = 16)
+    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647))
+})
+
 test_that("contrasts carried over", {
     skip_on_cran()
     ## GH 439, @cvoeten
@@ -329,3 +370,110 @@ test_that("zlink/zprob return appropriate values with non-ZI model (GH#798)", {
   expect_equal(length(p2), nrow(sleepstudy))
   expect_true(all(p2 == 0))
 })
+
+test_that("correct conditional/response predictions for truncated distributions", {
+    set.seed(42)
+    N <- 100
+    df <- data.frame(p1 = rpois(N, 1),
+                     nb1 = rnbinom(N, mu = 1, size = 1),
+                     x = rnorm(N)) |>
+        transform(
+            ## zero-inflated versions
+            zp1 = p1 * rbinom(N, size = 1, prob = 0.5),
+            znb1 = nb1 * rbinom(N, size = 1, prob = 0.5),
+            ## truncated versions (NAs will be dropped)
+            tp1 = ifelse(p1 == 0, NA, p1),
+            tnb1 = ifelse(nb1 == 0, NA, nb1))
+
+    f_zp1 <- glmmTMB(zp1 ~ x,
+                     zi= ~ 1,
+                     family=truncated_poisson(link="log"),
+                     data=df)
+
+    f_znb1 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom1)
+
+    f_znb2 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom2)
+
+
+    testfun <- function(model, response, distrib) {
+        zp1 <- predict(model, type="zprob")
+        cm1 <- predict(model, type="conditional")
+        mu1 <- predict(model, type="response")
+
+        ## compute zero-trunc by hand
+        eta <- predict(model, type = "link")
+        cm2 <- exp(eta)/(1-distrib(0, exp(eta), sigma(model)))
+        expect_equal(cm1, cm2)
+
+        expect_equal(mu1, cm1*(1-zp1))
+
+    }
+
+    ## versions of distrib functions that can be plugged into testfun()
+    my_dpois <- function(x, lambda, ...) dpois(x, lambda)
+    my_nb2 <- function(x, mu, size) dnbinom(x, mu = mu, size = size)
+    my_nb1 <- function(x, mu, phi) {
+        ## var = mu*(1+mu/k) = mu*(1+phi) -> phi = mu/k -> k = mu/phi
+        dnbinom(x, mu = mu, size = mu/phi)
+    }
+
+    testfun(f_zp1, "zp1", my_dpois)
+    testfun(f_znb2, "znb1", my_nb2)
+    testfun(f_znb1, "znb1", my_nb1)
+
+})
+
+test_that("predict warns about ignored args", {
+    expect_warning(predict(fm2, bad_args = TRUE), "bad_args")
+})
+
+## GH #873
+test_that("nzprob doesn't segfault", {
+    skip_on_cran()
+    model2 <- glmmTMB(
+        count ~ cover + mined + (1 | site),
+        ziformula = ~ cover + mined,
+        family = truncated_poisson(),
+        data = Salamanders
+    )
+    pp <- stats::predict(
+               model2,
+               newdata = Salamanders,
+               type = "link",
+               re.form = NULL,
+               allow.new.levels = FALSE
+               )
+    expect_equal(head(pp, 3),
+                 c(0.465946249085321, 0.206712238705304, 0.133580349579438))
+})
+
+## GH #873 continued
+test_that("nzprob computed for non-fast pred", {
+    set.seed(101)
+    dd <- data.frame(y = rpois(5, lambda = 1))
+    m1 <- glmmTMB(
+        y ~ 1,
+        ziformula = ~ 1,
+        data = dd,
+        family = truncated_poisson()
+    )
+    expect_identical(predict(m1, type = "response"),
+                     predict(m1, type = "response", fast = FALSE))
+    m2 <- update(m1, family = truncated_nbinom1)
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    m2 <- update(m1, family = truncated_nbinom2)
+    ## need more data to fit compois, genpois
+    dd2 <- data.frame(y = rpois(100, lambda = 1))
+    m2 <- update(m1, family = truncated_compois, data = dd2)
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    ## suppress NA/NaN function eval warning
+    m2 <- suppressWarnings(update(m1, family = truncated_genpois, data = dd2))
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+})
+
+                 

@@ -31,7 +31,7 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 	echo ".valid_covstruct <- c(" >> $@
-	grep _covstruct.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
+	grep "_covstruct *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
 	echo ")" >> $@
 
 	echo ".valid_zipredictcode <- c(" >> $@
@@ -51,7 +51,7 @@ doc-update: $(PACKAGE)/R/*.R
 
 ## list of vignette inputs:
 rnw_vig += glmmTMB model_evaluation 
-rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel
+rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel hacking
 
 docdir = $(PACKAGE)/inst/doc
 vigdir = $(PACKAGE)/vignettes

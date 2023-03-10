@@ -13,7 +13,9 @@ glmmTMBControl(
   parallel = getOption("glmmTMB.cores", 1L),
   eigval_check = TRUE,
   zerodisp_val = log(sqrt(.Machine$double.eps)),
-  start_method = list(method = NULL, jitter.sd = 0)
+  start_method = list(method = NULL, jitter.sd = 0),
+  rank_check = c("warning", "adjust", "stop", "skip"),
+  conv_check = c("warning", "skip")
 )
 }
 \arguments{
@@ -42,6 +44,10 @@ set to 1, with a warning if this overrides the user-specified value.}
 \item{zerodisp_val}{value of the dispersion parameter when \code{dispformula=~0} is specified}
 
 \item{start_method}{(list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.}
+
+\item{rank_check}{Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).}
+
+\item{conv_check}{Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)}
 }
 \description{
 Control parameters for glmmTMB optimization
