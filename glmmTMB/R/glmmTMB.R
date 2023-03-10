@@ -417,7 +417,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)  
 
-  # theta is 0, except if dorr, theta is 1
   # theta is 0, otherwise
   # theta is 1 for rr_covstruct
   # theta is parameterised to covariance matrix for propto
@@ -592,15 +591,15 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         # FIX ME: use NA rather than 0 as a placeholder in aa?
         ## FIXME: make sure that eval() happens in the right environment/
         ##    document potential issues
-        ## NOTE:::: Changed from getting rank to extracting additional argument
+        ## Changed from getting rank to extracting additional argument
         get_arg <- function(v) {
           if (length(v) == 1) return(NA_real_)
           payload <- v[[2]]
           res <- tryCatch(eval(payload, envir = environment(formula)),
                           error = function(e)
-                            stop("can't evaluate additional arguments ",
+                            stop("can't evaluate argument ",
                                  sQuote(deparse(payload)),
-                                 .call = FALSE))
+                                 call. = FALSE))
           return(res)
         }
 
@@ -608,7 +607,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         for (i in seq_along(ss$reTrmAddArgs)) {
           if(ss$reTrmClasses[i] == "rr") {
             if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
-              stop("non-numeric value for reduced-rank dimension")
+              stop("non-numeric value for reduced-rank dimension", call. = FALSE)
             }
           }
           else if(ss$reTrmClasses[i] == "propto"){
@@ -695,7 +694,7 @@ map.theta.propto <- function(ReStruc, map){
   thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
   tl <- split(map.theta, thetaseq)
   for(i in seq_along(cov_code)){
-    if(cov_code[[i]] == 10) {
+    if(cov_code[[i]] == 11) {
       tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
     }
   }
@@ -793,7 +792,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "8" = 2 * blksize - 1, # toep
                    "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
                    "10" = 1,  ## (homogeneous) diag
-                   "11" = blksize * (blksize+1) / 2 + 1) #propto (same as us, plus one extra for proportional param)
+                   "11" = blksize * (blksize+1) / 2 + 1 #propto (same as us, plus one extra for proportional param)
                    ) 
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)

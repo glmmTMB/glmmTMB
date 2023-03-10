@@ -74,7 +74,7 @@ fit2 <- glmmTMB(matur.L ~ age.mat + ( 0+spp|dummy),
         map=list(theta=factor(c(rep(1,nsp),rep(NA,length(corrs))))),
         start=list(theta=c(rep(0,nsp),corrs)))
 
-fitprop <- glmmTMB(matur.L ~ age.mat + prop2( 0+spp|dummy, mat),
+fitprop <- glmmTMB(matur.L ~ age.mat + propto( 0+spp|dummy, mat),
         data = dat,
         dispformula = ~ 0)
 
@@ -106,7 +106,7 @@ fit2 <- glmmTMB(matur.L ~ age.mat + ( 0 + spp | dummy),
         map=list(theta=factor(c(rep(1,nsp),rep(NA,length(corrs.1))))),
         start=list(theta=c(rep(0,nsp),corrs.1)))
 
-fit.prop <- glmmTMB(matur.L ~ age.mat + prop2( 0 + spp | dummy, mat.small),
+fit.prop <- glmmTMB(matur.L ~ age.mat + propto( 0 + spp | dummy, mat.small),
         data = dat.small,
         dispformula = ~ 0)
 
