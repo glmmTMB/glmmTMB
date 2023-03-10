@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.5.9000}{
+\section{CHANGES IN VERSION 1.1.6}{
   \subsection{BUG FIXES}{
     \itemize{
       \item fix bug in diagnose for Tweedie, other models with 'psi'
@@ -22,6 +22,9 @@
       for the \code{component} argument: "response" and "cmean",
       corresponding  to \code{type = "response"} and \code{type = "conditional"} 
       in \code{predict.glmmTMB} (Russ Lenth)
+      \item new covariance structure \code{homdiag} (homogeneous diagonal;
+      the existing diagonal covariance structure, \code{diag}, assumes heterogeneous
+      variances)					    
     }
   } % new features
  \subsection{USER-VISIBLE CHANGES}{
