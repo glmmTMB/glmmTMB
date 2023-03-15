@@ -38,7 +38,7 @@
 
 %\linenumbers
 
-<<setopts,echo=FALSE,message=FALSE>>=
+<<setopts,echo=FALSE,message=FALSE, eval = TRUE>>=
 library("knitr")
 opts_chunk$set(fig.width=5,fig.height=5,
                out.width="0.8\\textwidth",
@@ -103,8 +103,8 @@ In order to fit a model in \code{glmmTMB} you need to:
 \end{itemize}
 
 This document was
-generated using \Sexpr{R.version$version.string} and package versions:
-<<pkgversions, echo=FALSE>>=
+generated using \Sexpr{Rver} and package versions:
+<<pkgversions, echo=FALSE, eval=TRUE>>=
 pkgver <- vapply(sort(used.pkgs),function(x) as.character(packageVersion(x)),"")
 print(pkgver,quote=FALSE)
 @
