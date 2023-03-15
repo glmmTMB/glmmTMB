@@ -87,6 +87,7 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{mat} (* Matérn process correlation)
 \item \code{toep} (* Toeplitz)
 \item \code{rr} (reduced rank/factor-analytic model)
+\item \code{homdiag} (diagonal, homogeneous variance)
 }
 Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.

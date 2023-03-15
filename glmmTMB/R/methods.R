@@ -1327,16 +1327,18 @@ as.data.frame.ranef.glmmTMB <- function(x, ...) {
 
 #' @rdname bootmer_methods
 #' @title support methods for parametric bootstrapping
-#' @param object a fitted glmmTMB object
+#' @param x a fitted glmmTMB object
+#' @param ... extra args (required for method compatibility)
 #' @param newresp a new response vector
 #' @export
 #' @importFrom lme4 isLMM
 #' @importFrom lme4 refit
 ## don't export refit ...
 #' @description see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details
-isLMM.glmmTMB <- function(object) {
-   fam <- family(object)
-   fam$family=="gaussian" && fam$link=="identity"
+isLMM.glmmTMB <- function(x, ...) {
+    check_dots(...)
+    fam <- family(x)
+    fam$family=="gaussian" && fam$link=="identity"
 }
 
 #' @export
