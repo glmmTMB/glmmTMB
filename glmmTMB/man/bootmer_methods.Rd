@@ -14,6 +14,8 @@
 
 \item{...}{additional arguments (for generic consistency; ignored)}
 
+\item{object}{a fitted glmmTMB object}
+
 \item{newresp}{a new response vector}
 }
 \description{

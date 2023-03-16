@@ -1347,6 +1347,7 @@ lme4::refit
 #' @export
 #' @rdname bootmer_methods
 #' @importFrom stats formula
+#' @param object a fitted glmmTMB object
 #' @param ... additional arguments (for generic consistency; ignored)
 #' @examples
 #' if (requireNamespace("lme4")) {
