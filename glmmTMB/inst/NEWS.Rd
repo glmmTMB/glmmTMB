@@ -64,12 +64,14 @@
 	from the \code{src} directory first if installing from the package
 	directory, as the Makefile doesn't recognize know that this
 	change requires recompilation).
-	\item glmmTMB now stops if fixed-effect model matrices are
+	\item glmmTMB now warns if fixed-effect model matrices are
 	rank deficient (i.e., perfectly collinear predictors); this
-	can be changed to a warning via
-	\code{glmmTMBControl(rank_check="skip"), or glmmTMB
-	  will automatically drop appropriate columns from the model
-	  matrix if \code{rank_check="adjust"} (Daniel B. Stouffer)}
+	warning can be suppressed by setting
+	\code{glmmTMBControl(rank_check="skip")}
+	(\code{rank_check = "stop"} will throw an error).
+	If \code{rank_check="adjust"}, glmmTMB
+	will automatically drop appropriate columns from the model
+	matrix  (Daniel B. Stouffer)
 	\item the vector of "extra" family parameters
 	(Tweedie power, Student-t df,
 	etc.) has been renamed from "thetaf" to "psi"; \code{start}
