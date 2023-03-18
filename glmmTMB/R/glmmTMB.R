@@ -1350,11 +1350,13 @@ glmmTMBControl <- function(optCtrl=NULL,
         if(ncol(adjX) != ncol(curX)){
           # inform the user that columns were dropped
           model_type <- names(Xnames)[match(whichX, Xnames)]
-          message("dropping columns from rank-deficient ", model_type," model")
 
           # use colnames of curX and adjX to identify which columns were dropped
           dropped_names   <- setdiff(colnames(curX), colnames(adjX))
           dropped_indices <- match(dropped_names, colnames(curX))
+
+          message("dropping columns from rank-deficient ", model_type," model: ",
+                    paste(dropped_names, collapse = ", "))
 
           # retain names of dropped column for use in model output
           attr(adjX, "col.dropped") <- setNames(dropped_indices, dropped_names)

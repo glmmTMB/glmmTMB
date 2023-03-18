@@ -24,15 +24,30 @@
 ##' @export fixef
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
-  getXnm <- function(suffix) {
-      nm <- paste0("X",suffix)
-      return(colnames(getME(object, nm)))
+
+  ## set names/fill in NAs as required
+  get_vec <- function(vals, X) {
+      dropped <- attr(X, "col.dropped")
+      if (is.null(dropped)) return(setNames(vals, colnames(X)))
+      n_tot <- ncol(X) + length(dropped)
+      cc <- numeric(n_tot)
+      cc[-dropped] <- vals
+      cc[ dropped] <- NA_real_
+      nm <- character(n_tot)
+      nm[-dropped] <- colnames(X)
+      nm[ dropped] <- names(dropped)
+      setNames(cc, nm)
   }
+
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
-  structure(list(cond = setNames(pl$beta,   getXnm("")),
-                 zi   = setNames(pl$betazi, getXnm("zi")),
-                 disp = setNames(pl$betad,  getXnm("d"))),
-            class = "fixef.glmmTMB")
+  X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "d"))
+
+  r <- Map(get_vec,
+           pl[c("beta", "betazi", "betad")],
+           X)
+  names(r) <- c("cond", "zi", "disp")
+  class(r) <- "fixef.glmmTMB"
+  r
 }
 
 ## general purpose matching between component names and printable names

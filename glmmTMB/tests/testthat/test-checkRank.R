@@ -74,16 +74,21 @@ test_that("messages messages for non-identifiable fixed effects", {
     expect_message(
         m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
         "dropping columns.*conditional")
-    expect_equal(length(fixef(m1)$cond), 3L)
+    expect_equal(length(fixef(m1)$cond), 5L)
+    expect_equal(unname(fixef(m1)$cond[c("x3", "x4")]), rep(NA_real_, 2))
     expect_message(
         m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
         "dropping columns.*zero-inflation")
-    expect_equal(length(fixef(m1)$zi), 3L)
+    expect_equal(length(fixef(m1)$zi), 5L)
+    expect_equal(unname(fixef(m1)$zi[c("x3", "x4")]), rep(NA_real_, 2))
     expect_message(
         m1 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
         "dropping columns.*dispersion")
-    expect_equal(length(fixef(m1)$disp), 3L)
-    # sparse X
+    expect_equal(length(fixef(m1)$disp), 5L)
+    expect_equal(unname(fixef(m1)$disp[c("x3", "x4")]), rep(NA_real_, 2))
+    ## sparse X
+    ## FIXME: NA-substitution not working yet for sparse X
+    ## adj.X attribute missing ... ??
     expect_message(
         m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust'), sparseX=c(cond=TRUE)),
         "dropping columns.*conditional")
@@ -96,6 +101,7 @@ test_that("messages messages for non-identifiable fixed effects", {
         m1 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust'), sparseX=c(disp=TRUE)),
         "dropping columns.*dispersion")
     expect_equal(length(fixef(m1)$disp), 3L)
+
 })
 
 test_that("equivalence between 'skip' and 'warn' when confronted with identifiable and non-identifiable fixed effects", {
