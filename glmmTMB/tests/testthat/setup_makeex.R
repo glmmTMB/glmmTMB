@@ -2,10 +2,6 @@
 ## (rebuilt on every new installation *but* shared between e.g. different archs)
 not_cran <- identical(Sys.getenv("NOT_CRAN"), "true")
 file_ok <- gt_load("test_data/models.rda")
-if (getRversion() >= numeric_version("4.3.0")) {
-    gm0$modelInfo$family$dispersion <- 1
-    gm1$modelInfo$family$dispersion <- 1
-}
 if (!file_ok) {
     make_ex <- system.file("test_data", "make_ex.R", package="glmmTMB", mustWork = TRUE)
     cat("running fits to build test examples ...\n")
