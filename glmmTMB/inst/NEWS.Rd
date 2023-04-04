@@ -4,7 +4,15 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.6}{
+\section{CHANGES IN VERSION 1.1.7}{
+  \itemize{
+    \item \code{up2date()} adds a dispersion component to family
+    objects where required, for compatibility when checking
+    stored fits across R versions
+  }
+}
+
+\section{CHANGES IN VERSION 1.1.6 (2023-03-19)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item fix bug in diagnose for Tweedie, other models with 'psi'
