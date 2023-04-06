@@ -664,7 +664,7 @@ zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 <pre><code>##                       nlminb       optim
 ## cond.(Intercept)  -4.6150738  -4.6152081
 ## cond.Avg.Relief    0.1674507   0.1674755
-## disp.(Intercept) -17.3339441 -11.4800818</code></pre>
+## disp.(Intercept) -17.3339441 -11.4800819</code></pre>
 <p>The conditional-model parameters are practically identical. The dispersion parameters <em>look</em> quite different (-17.3 vs. -11.5), but if we back-transform from the log scale (via <code>exp()</code>) we can see that they are both extremely small (<span class="math inline">\(2.96\times 10^{-8}\)</span> vs. <span class="math inline">\(1.03\times 10^{-5}\)</span>).</p>
 <p>Simplify the model by switching from NB1 to Poisson:</p>
 <div class="sourceCode" id="cb35"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1"></a>mod3 &lt;-<span class="st"> </span><span class="kw">update</span>(mod2, <span class="dt">family=</span>poisson)</span></code></pre></div>

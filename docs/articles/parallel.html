@@ -366,7 +366,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <pre><code>## Warning in glmmTMB(formula = ydata ~ 1 + xdata, control =
 ## glmmTMBControl(parallel = 1)): use of the &#39;data&#39; argument is recommended</code></pre>
 <pre><code>##    user  system elapsed 
-##   3.066   0.331   3.405</code></pre>
+##  26.452   2.289  29.245</code></pre>
 <p>Now, we fit the same model using five threads (or as many as possible - 3 in this case):</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">system.time</span>(</span>
 <span id="cb6-2"><a href="#cb6-2"></a>  model2 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata <span class="op">~</span><span class="st"> </span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>xdata,</span>
@@ -375,7 +375,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <pre><code>## Warning in glmmTMB(formula = ydata ~ 1 + xdata, control =
 ## glmmTMBControl(parallel = nt)): use of the &#39;data&#39; argument is recommended</code></pre>
 <pre><code>##    user  system elapsed 
-##   2.814   0.312   3.129</code></pre>
+##  24.041   1.827  26.094</code></pre>
 <p>The speed-up is definitely more visible on models with a much larger number of observations, or in models with random effects.</p>
 <p>Here’s an example where we have an IID Gaussian random effect. We first simulate the data with 200 groups (our random effect):</p>
 <div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>xdata &lt;-<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)</span>
@@ -395,14 +395,14 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 <span id="cb10-3"><a href="#cb10-3"></a> )</span>
 <span id="cb10-4"><a href="#cb10-4"></a>)</span></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  17.905   1.465  19.385</code></pre>
+## 102.077   6.675 109.546</code></pre>
 <p>Now we fit the same model, but using 3 threads. The speed-up is more noticeable with this model.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a>(t_parallel &lt;-<span class="st"> </span><span class="kw">system.time</span>(</span>
 <span id="cb12-2"><a href="#cb12-2"></a>     <span class="kw">update</span>(model3,  <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> nt))</span>
 <span id="cb12-3"><a href="#cb12-3"></a> )</span>
 <span id="cb12-4"><a href="#cb12-4"></a>)</span></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  18.228   1.546  19.788</code></pre>
+##  92.562   4.347  97.553</code></pre>
 <div id="notes-on-openmp-support" class="section level2">
 <h2>Notes on OpenMP support</h2>
 <p>From <a href="https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support">Writing R Extensions</a>:</p>
