@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.7}{
+\section{CHANGES IN VERSION 1.1.7 (2023-04-05)}{
   \itemize{
     \item \code{up2date()} adds a dispersion component to family
     objects where required, for compatibility when checking
