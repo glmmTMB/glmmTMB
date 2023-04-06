@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,9 +92,9 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">numFactor</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span>
-
-<span class="fu">parseNumLevels</span><span class="op">(</span><span class="va">levels</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">numFactor</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">parseNumLevels</span><span class="op">(</span><span class="va">levels</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -99,15 +102,22 @@
     <dl><dt>x</dt>
 <dd><p>Vector, matrix or data.frame that constitute the
 coordinates.</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Additional vectors, matrices or data.frames that
 constitute the coordinates.</p></dd>
+
+
 <dt>levels</dt>
 <dd><p>Character vector to parse into numeric values.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>Factor with specialized coding of levels.</p>
+    
+
+<p>Factor with specialized coding of levels.</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -123,18 +133,18 @@ fastest running.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co">## 1D example</span></span>
-<span class="r-in"><span class="fu">numFactor</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">20</span>,<span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co">## 1D example</span></span></span>
+<span class="r-in"><span><span class="fu">numFactor</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">20</span>,<span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] (3) (3) (5) (4) (3) (5) (1) (1) (5) (4) (2) (4) (3) (2) (5) (1) (2) (4) (3)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [20] (2)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Levels: (1) (2) (3) (4) (5)</span>
-<span class="r-in"><span class="co">## 2D example</span></span>
-<span class="r-in"><span class="va">coords</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">20</span>,<span class="cn">TRUE</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">20</span>,<span class="cn">TRUE</span><span class="op">)</span> <span class="op">)</span></span>
-<span class="r-in"><span class="op">(</span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu">numFactor</span><span class="op">(</span><span class="va">coords</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co">## 2D example</span></span></span>
+<span class="r-in"><span><span class="va">coords</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">20</span>,<span class="cn">TRUE</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>,<span class="fl">20</span>,<span class="cn">TRUE</span><span class="op">)</span> <span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">(</span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu">numFactor</span><span class="op">(</span><span class="va">coords</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] (5,4) (5,5) (2,1) (2,2) (4,2) (5,3) (2,2) (1,1) (1,5) (1,1) (2,3) (3,4)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [13] (3,1) (2,1) (4,5) (2,4) (2,1) (1,3) (2,4) (5,3)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 14 Levels: (1,1) (2,1) (3,1) (2,2) (4,2) (1,3) (2,3) (5,3) (2,4) ... (5,5)</span>
-<span class="r-in"><span class="fu">parseNumLevels</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">)</span> <span class="co">## Sorted</span></span>
+<span class="r-in"><span><span class="fu">parseNumLevels</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/levels.html" class="external-link">levels</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">)</span> <span class="co">## Sorted</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       [,1] [,2]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1,]    1    1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [2,]    2    1</span>
@@ -150,8 +160,8 @@ fastest running.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [12,]    1    5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [13,]    4    5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [14,]    5    5</span>
-<span class="r-in"><span class="co">## Used as part of a model.matrix</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span> <span class="op">~</span><span class="va">f</span> <span class="op">)</span></span>
+<span class="r-in"><span><span class="co">## Used as part of a model.matrix</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span> <span class="op">~</span><span class="va">f</span> <span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    (Intercept) f(2,1) f(3,1) f(2,2) f(4,2) f(1,3) f(2,3) f(5,3) f(2,4) f(3,4)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1            1      0      0      0      0      0      0      0      0      0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 2            1      0      0      0      0      0      0      0      0      0</span>
@@ -200,9 +210,9 @@ fastest running.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"contrasts")$f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "contr.treatment"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="co">## parseNumLevels( colnames(model.matrix( ~f )) )</span></span>
-<span class="r-in"><span class="co">## Error: 'Failed to parse numeric levels: (Intercept)'</span></span>
-<span class="r-in"><span class="fu">parseNumLevels</span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span> <span class="op">~</span> <span class="va">f</span><span class="op">-</span><span class="fl">1</span> <span class="op">)</span><span class="op">)</span> <span class="op">)</span></span>
+<span class="r-in"><span><span class="co">## parseNumLevels( colnames(model.matrix( ~f )) )</span></span></span>
+<span class="r-in"><span><span class="co">## Error: 'Failed to parse numeric levels: (Intercept)'</span></span></span>
+<span class="r-in"><span><span class="fu">parseNumLevels</span><span class="op">(</span> <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span> <span class="op">~</span> <span class="va">f</span><span class="op">-</span><span class="fl">1</span> <span class="op">)</span><span class="op">)</span> <span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       [,1] [,2]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1,]    1    1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [2,]    2    1</span>
@@ -232,7 +242,7 @@ fastest running.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

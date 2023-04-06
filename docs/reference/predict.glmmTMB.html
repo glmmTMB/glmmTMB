@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,37 +92,54 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span>
-  <span class="va">object</span>,
-  newdata <span class="op">=</span> <span class="cn">NULL</span>,
-  newparams <span class="op">=</span> <span class="cn">NULL</span>,
-  se.fit <span class="op">=</span> <span class="cn">FALSE</span>,
-  re.form <span class="op">=</span> <span class="cn">NULL</span>,
-  allow.new.levels <span class="op">=</span> <span class="cn">FALSE</span>,
-  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"link"</span>, <span class="st">"response"</span>, <span class="st">"conditional"</span>, <span class="st">"zprob"</span>, <span class="st">"zlink"</span>, <span class="st">"disp"</span><span class="op">)</span>,
-  zitype <span class="op">=</span> <span class="cn">NULL</span>,
-  na.action <span class="op">=</span> <span class="va">na.pass</span>,
-  fast <span class="op">=</span> <span class="cn">NULL</span>,
-  debug <span class="op">=</span> <span class="cn">FALSE</span>,
-  <span class="va">...</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  newdata <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  newparams <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  se.fit <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cov.fit <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  re.form <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  allow.new.levels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"link"</span>, <span class="st">"response"</span>, <span class="st">"conditional"</span>, <span class="st">"zprob"</span>, <span class="st">"zlink"</span>, <span class="st">"disp"</span><span class="op">)</span>,</span>
+<span>  zitype <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  na.action <span class="op">=</span> <span class="va">na.pass</span>,</span>
+<span>  fast <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>object</dt>
 <dd><p>a <code>glmmTMB</code> object</p></dd>
+
+
 <dt>newdata</dt>
 <dd><p>new data for prediction</p></dd>
+
+
 <dt>newparams</dt>
 <dd><p>new parameters for prediction</p></dd>
+
+
 <dt>se.fit</dt>
 <dd><p>return the standard errors of the predicted values?</p></dd>
+
+
+<dt>cov.fit</dt>
+<dd><p>return the covariance matrix of the predicted values?</p></dd>
+
+
 <dt>re.form</dt>
 <dd><p><code>NULL</code> to specify individual-level predictions; <code>~0</code> or <code>NA</code> to specify population-level predictions (i.e., setting all random effects to zero)</p></dd>
+
+
 <dt>allow.new.levels</dt>
 <dd><p>allow previously unobserved levels in random-effects variables? see details.</p></dd>
+
+
 <dt>type</dt>
 <dd><p>Denoting \(mu\) as the mean of the conditional distribution and
 <code>p</code> as the zero-inflation probability,
@@ -147,18 +167,29 @@ the logit link function (returns <code>-Inf</code> for non-zero-inflated models)
 
 
 </dl></dd>
+
+
 <dt>zitype</dt>
 <dd><p>deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with <code>type</code></p></dd>
+
+
 <dt>na.action</dt>
 <dd><p>how to handle missing values in <code>newdata</code> (see <code><a href="https://rdrr.io/r/stats/na.action.html" class="external-link">na.action</a></code>);
 the default (<code>na.pass</code>) is to predict <code>NA</code></p></dd>
+
+
 <dt>fast</dt>
 <dd><p>predict without expanding memory (default is TRUE if <code>newdata</code> and <code>newparams</code> are NULL and population-level prediction is not being done)</p></dd>
+
+
 <dt>debug</dt>
 <dd><p>(logical) return the <code>TMBStruc</code> object that will be
 used internally for debugging?</p></dd>
+
+
 <dt>...</dt>
 <dd><p>unused - for method compatibility</p></dd>
+
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -171,9 +202,9 @@ However, to ensure intentional usage, a warning is triggered if <code>allow.new.
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>,package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">g0</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span><span class="op">~</span><span class="va">Days</span><span class="op">+</span><span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>,<span class="va">sleepstudy</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">g0</span>, <span class="va">sleepstudy</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>,package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">g0</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span><span class="op">~</span><span class="va">Days</span><span class="op">+</span><span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>,<span class="va">sleepstudy</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">g0</span>, <span class="va">sleepstudy</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [1] 254.2209 273.7637 293.3065 312.8493 332.3921 351.9349 371.4777 391.0205</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   [9] 410.5633 430.1061 211.3566 213.1798 215.0030 216.8263 218.6495 220.4727</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [17] 222.2959 224.1191 225.9424 227.7656 212.9720 217.9259 222.8798 227.8337</span>
@@ -184,7 +215,7 @@ However, to ensure intentional usage, a warning is triggered if <code>allow.new.
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [57] 321.6132 331.8452 342.0773 352.3094 267.8471 278.1556 288.4640 298.7725</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [65] 309.0809 319.3894 329.6979 340.0063 350.3148 360.6233 244.4084 255.9084</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [73] 267.4085 278.9085 290.4085 301.9085 313.4085 324.9085 336.4085 347.9086</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  [81] 250.3676 250.2354 250.1033 249.9712 249.8390 249.7069 249.5747 249.4426</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  [81] 250.3676 250.2355 250.1033 249.9712 249.8390 249.7069 249.5747 249.4426</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [89] 249.3105 249.1783 286.0715 305.1711 324.2708 343.3704 362.4701 381.5697</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [97] 400.6694 419.7691 438.8687 457.9684 226.8470 238.3787 249.9104 261.4420</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [105] 272.9737 284.5054 296.0371 307.5687 319.1004 330.6321 239.0706 256.0095</span>
@@ -195,17 +226,17 @@ However, to ensure intentional usage, a warning is triggered if <code>allow.new.
 <span class="r-out co"><span class="r-pr">#&gt;</span> [145] 300.0196 311.3586 322.6976 334.0366 345.3756 356.7146 226.6949 241.8219</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [153] 256.9489 272.0759 287.2029 302.3299 317.4569 332.5839 347.7109 362.8379</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [161] 252.1284 261.6246 271.1209 280.6171 290.1133 299.6095 309.1058 318.6020</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [169] 328.0982 337.5944 263.5241 275.3020 287.0800 298.8580 310.6360 322.4139</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [169] 328.0982 337.5945 263.5241 275.3020 287.0800 298.8580 310.6360 322.4139</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [177] 334.1919 345.9699 357.7479 369.5258</span>
-<span class="r-in"><span class="co">## Predict new Subject</span></span>
-<span class="r-in"><span class="va">nd</span> <span class="op">&lt;-</span> <span class="va">sleepstudy</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span></span>
-<span class="r-in"><span class="va">nd</span><span class="op">$</span><span class="va">Subject</span> <span class="op">&lt;-</span> <span class="st">"new"</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">g0</span>, newdata<span class="op">=</span><span class="va">nd</span>, allow.new.levels<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co">## Predict new Subject</span></span></span>
+<span class="r-in"><span><span class="va">nd</span> <span class="op">&lt;-</span> <span class="va">sleepstudy</span><span class="op">[</span><span class="fl">1</span>,<span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">nd</span><span class="op">$</span><span class="va">Subject</span> <span class="op">&lt;-</span> <span class="st">"new"</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">g0</span>, newdata<span class="op">=</span><span class="va">nd</span>, allow.new.levels<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 251.4051</span>
-<span class="r-in"><span class="co">## population-level prediction</span></span>
-<span class="r-in"><span class="va">nd_pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Days<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">sleepstudy</span><span class="op">$</span><span class="va">Days</span><span class="op">)</span>,</span>
-<span class="r-in">                     Subject<span class="op">=</span><span class="cn">NA</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">g0</span>, newdata<span class="op">=</span><span class="va">nd_pop</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="co">## population-level prediction</span></span></span>
+<span class="r-in"><span><span class="va">nd_pop</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Days<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">sleepstudy</span><span class="op">$</span><span class="va">Days</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                     Subject<span class="op">=</span><span class="cn">NA</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">g0</span>, newdata<span class="op">=</span><span class="va">nd_pop</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [1] 251.4051 261.8724 272.3397 282.8070 293.2742 303.7415 314.2088 324.6760</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  [9] 335.1433 345.6106</span>
 </code></pre></div>
@@ -222,7 +253,7 @@ However, to ensure intentional usage, a warning is triggered if <code>allow.new.
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

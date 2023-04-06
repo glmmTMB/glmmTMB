@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2022-05-31" />
+<meta name="date" content="2023-04-06" />
 
 <title>Troubleshooting with glmmTMB</title>
 
@@ -124,13 +124,20 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    for (var j = 0; j < rules.length; j++) {
+    var j = 0;
+    while (j < rules.length) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -335,7 +342,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
-<h4 class="date">2022-05-31</h4>
+<h4 class="date">2023-04-06</h4>
 
 
 
@@ -543,8 +550,8 @@ zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 ## directions
 ## 
 ## 
-## maximum Hessian eigenvalue = 316 
-## Hessian eigenvalue 6 = 2.57e-07 (relative val = 8.13e-10) 
+## maximum Hessian eigenvalue = 323 
+## Hessian eigenvalue 6 = 2.57e-07 (relative val = 7.95e-10) 
 ##    bad elements: zi~(Intercept)</code></pre>
 <p>Let’s try dropping the zero-inflation term:</p>
 <div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1"></a>mod2 &lt;-<span class="st"> </span><span class="kw">update</span>(mod1, <span class="dt">ziformula=</span><span class="op">~</span><span class="dv">0</span>)</span></code></pre></div>
@@ -638,8 +645,8 @@ zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 ## directions
 ## 
 ## 
-## maximum Hessian eigenvalue = 311 
-## Hessian eigenvalue 5 = -0.000634 (relative val = -2.04e-06) 
+## maximum Hessian eigenvalue = 312 
+## Hessian eigenvalue 5 = 0.00131 (relative val = 4.19e-06) 
 ##    bad elements: d~(Intercept)</code></pre>
 <p>The “false convergence” warning comes from the <code>nlminb()</code> optimizer, and is <a href="https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean">difficult to interpret and resolve</a>. The documentation says that the cause of this warning is that:</p>
 <blockquote>
@@ -649,8 +656,8 @@ zinbm1 = update(zinbm0, ziformula=~mined, Salamanders, family=nbinom2)
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1"></a>mod2_optim &lt;-<span class="st"> </span><span class="kw">update</span>(mod2,</span>
 <span id="cb31-2"><a href="#cb31-2"></a>                <span class="dt">control=</span><span class="kw">glmmTMBControl</span>(<span class="dt">optimizer=</span>optim,</span>
 <span id="cb31-3"><a href="#cb31-3"></a>                                       <span class="dt">optArgs=</span><span class="kw">list</span>(<span class="dt">method=</span><span class="st">&quot;BFGS&quot;</span>)))</span></code></pre></div>
-<pre><code>## Warning in glmmTMB(formula = taeCPUE ~ Avg.Relief + (1 | site.name/reef.name), :
-## non-integer counts in a nbinom1 model</code></pre>
+<pre><code>## Warning in glmmTMB(formula = taeCPUE ~ Avg.Relief + (1 | site.name/reef.name),
+## : non-integer counts in a nbinom1 model</code></pre>
 <p>BFGS doesn’t give us any warnings. Comparing the parameter estimates:</p>
 <div class="sourceCode" id="cb33"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1"></a>(parcomp &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="dt">nlminb=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2)),</span>
 <span id="cb33-2"><a href="#cb33-2"></a>                  <span class="dt">optim=</span><span class="kw">unlist</span>(<span class="kw">fixef</span>(mod2_optim))))</span></code></pre></div>

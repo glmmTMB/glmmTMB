@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,85 +92,134 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">mkTMBStruc</span><span class="op">(</span>
-  <span class="va">formula</span>,
-  <span class="va">ziformula</span>,
-  <span class="va">dispformula</span>,
-  <span class="va">combForm</span>,
-  <span class="va">mf</span>,
-  <span class="va">fr</span>,
-  <span class="va">yobs</span>,
-  <span class="va">respCol</span>,
-  <span class="va">weights</span>,
-  <span class="va">contrasts</span>,
-  size <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">family</span>,
-  se <span class="op">=</span> <span class="cn">NULL</span>,
-  call <span class="op">=</span> <span class="cn">NULL</span>,
-  verbose <span class="op">=</span> <span class="cn">NULL</span>,
-  ziPredictCode <span class="op">=</span> <span class="st">"corrected"</span>,
-  doPredict <span class="op">=</span> <span class="fl">0</span>,
-  whichPredict <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,
-  REML <span class="op">=</span> <span class="cn">FALSE</span>,
-  start <span class="op">=</span> <span class="cn">NULL</span>,
-  map <span class="op">=</span> <span class="cn">NULL</span>,
-  sparseX <span class="op">=</span> <span class="cn">NULL</span>,
-  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">mkTMBStruc</span><span class="op">(</span></span>
+<span>  <span class="va">formula</span>,</span>
+<span>  <span class="va">ziformula</span>,</span>
+<span>  <span class="va">dispformula</span>,</span>
+<span>  <span class="va">combForm</span>,</span>
+<span>  <span class="va">mf</span>,</span>
+<span>  <span class="va">fr</span>,</span>
+<span>  <span class="va">yobs</span>,</span>
+<span>  <span class="va">respCol</span>,</span>
+<span>  <span class="va">weights</span>,</span>
+<span>  <span class="va">contrasts</span>,</span>
+<span>  size <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">family</span>,</span>
+<span>  se <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  call <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  verbose <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ziPredictCode <span class="op">=</span> <span class="st">"corrected"</span>,</span>
+<span>  doPredict <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  whichPredict <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  REML <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sparseX <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>formula</dt>
 <dd><p>combined fixed and random effects formula, following lme4 syntax.</p></dd>
+
+
 <dt>ziformula</dt>
 <dd><p>a <em>one-sided</em> (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default <code>~0</code> specifies no zero-inflation. Specifying <code>~.</code> sets the zero-inflation formula identical to the right-hand side of <code>formula</code> (i.e., the conditional effects formula); terms can also be added or subtracted. <strong>When using <code>~.</code> as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped</strong>. The zero-inflation model uses a logit link.</p></dd>
+
+
 <dt>dispformula</dt>
 <dd><p>a <em>one-sided</em> formula for dispersion containing only fixed effects: the default <code>~1</code> specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see <code><a href="sigma.glmmTMB.html">sigma</a></code>. The dispersion model uses a log link. In Gaussian mixed models, <code>dispformula=~0</code> fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via <code>control=glmmTMBControl(zero_dispval=...)</code>; the default value is <code>sqrt(.Machine$double.eps)</code>.</p></dd>
+
+
 <dt>combForm</dt>
 <dd><p>combined formula</p></dd>
+
+
 <dt>mf</dt>
 <dd><p>call to model frame</p></dd>
+
+
 <dt>fr</dt>
 <dd><p>model frame</p></dd>
+
+
 <dt>yobs</dt>
 <dd><p>observed y</p></dd>
+
+
 <dt>respCol</dt>
 <dd><p>response column</p></dd>
+
+
 <dt>weights</dt>
 <dd><p>weights, as in <code>glm</code>. Not automatically scaled to have sum 1.</p></dd>
+
+
 <dt>contrasts</dt>
 <dd><p>an optional list, e.g., <code>list(fac1="contr.sum")</code>. See the <code>contrasts.arg</code> of <code><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix.default</a></code>.</p></dd>
+
+
 <dt>size</dt>
 <dd><p>number of trials in binomial and betabinomial families</p></dd>
+
+
 <dt>family</dt>
 <dd><p>family object</p></dd>
+
+
 <dt>se</dt>
 <dd><p>(logical) compute standard error?</p></dd>
+
+
 <dt>call</dt>
 <dd><p>original <code>glmmTMB</code> call</p></dd>
+
+
 <dt>verbose</dt>
 <dd><p>whether progress indication should be printed to the console.</p></dd>
+
+
 <dt>ziPredictCode</dt>
 <dd><p>zero-inflation code</p></dd>
+
+
 <dt>doPredict</dt>
 <dd><p>flag to enable sds of predictions</p></dd>
+
+
 <dt>whichPredict</dt>
 <dd><p>which observations in model frame represent predictions</p></dd>
+
+
 <dt>REML</dt>
 <dd><p>whether to use REML estimation rather than maximum likelihood.</p></dd>
+
+
 <dt>start</dt>
-<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>thetaf</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
+<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>psi</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
+
+
 <dt>map</dt>
 <dd><p>a list specifying which parameter values should be fixed to a constant value rather than estimated. <code>map</code> should be a named list containing factors corresponding to a subset of the internal parameter names (see <code>start</code> parameter). Distinct factor values are fitted as separate parameter values, <code>NA</code> values are held fixed: e.g., <code>map=list(beta=factor(c(1,2,3,NA)))</code> would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use <code>start</code> to specify non-default starting values for fixed parameters. See <code><a href="https://rdrr.io/pkg/TMB/man/MakeADFun.html" class="external-link">MakeADFun</a></code> for more details.</p></dd>
+
+
 <dt>sparseX</dt>
 <dd><p>see <code><a href="glmmTMB.html">glmmTMB</a></code></p></dd>
+
+
 <dt>control</dt>
 <dd><p>control parameters, see <code><a href="glmmTMBControl.html">glmmTMBControl</a></code>.</p></dd>
+
+
 <dt>zioffset</dt>
 <dd><p>offset for zero-inflated model</p></dd>
+
+
 <dt>doffset</dt>
 <dd><p>offset for dispersion model</p></dd>
+
 </dl></div>
 
   </div>
@@ -182,7 +234,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>
