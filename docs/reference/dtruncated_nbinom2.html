@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,29 +92,42 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">dtruncated_nbinom2</span><span class="op">(</span><span class="va">x</span>, <span class="va">size</span>, <span class="va">mu</span>, k <span class="op">=</span> <span class="fl">0</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
-
-<span class="fu">dtruncated_poisson</span><span class="op">(</span><span class="va">x</span>, <span class="va">lambda</span>, k <span class="op">=</span> <span class="fl">0</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
-
-<span class="fu">dtruncated_nbinom1</span><span class="op">(</span><span class="va">x</span>, <span class="va">phi</span>, <span class="va">mu</span>, k <span class="op">=</span> <span class="fl">0</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">dtruncated_nbinom2</span><span class="op">(</span><span class="va">x</span>, <span class="va">size</span>, <span class="va">mu</span>, k <span class="op">=</span> <span class="fl">0</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">dtruncated_poisson</span><span class="op">(</span><span class="va">x</span>, <span class="va">lambda</span>, k <span class="op">=</span> <span class="fl">0</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">dtruncated_nbinom1</span><span class="op">(</span><span class="va">x</span>, <span class="va">phi</span>, <span class="va">mu</span>, k <span class="op">=</span> <span class="fl">0</span>, log <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>x</dt>
 <dd><p>value</p></dd>
+
+
 <dt>size</dt>
 <dd><p>number of trials/overdispersion parameter</p></dd>
+
+
 <dt>mu</dt>
 <dd><p>mean parameter</p></dd>
+
+
 <dt>k</dt>
 <dd><p>truncation parameter</p></dd>
+
+
 <dt>log</dt>
 <dd><p>(logical) return log-probability?</p></dd>
+
+
 <dt>lambda</dt>
 <dd><p>mean parameter</p></dd>
+
+
 <dt>phi</dt>
 <dd><p>overdispersion parameter</p></dd>
+
 </dl></div>
 
   </div>
@@ -126,7 +142,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

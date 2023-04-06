@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,18 +92,23 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">object</span>, type <span class="op">=</span> <span class="st">"prior"</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/weights.html" class="external-link">weights</a></span><span class="op">(</span><span class="va">object</span>, type <span class="op">=</span> <span class="st">"prior"</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>object</dt>
 <dd><p>a fitted <code>glmmTMB</code> object</p></dd>
+
+
 <dt>type</dt>
 <dd><p>weights type</p></dd>
+
+
 <dt>...</dt>
 <dd><p>additional arguments (not used; for methods compatibility)</p></dd>
+
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -126,7 +134,7 @@ weighted least squares, <code>working weights</code> (see <code><a href="https:/
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

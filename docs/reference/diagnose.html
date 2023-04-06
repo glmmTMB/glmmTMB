@@ -23,7 +23,7 @@ case it tries to isolate the particular parameters that are problematic."><!-- m
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -44,19 +44,22 @@ case it tries to isolate the particular parameters that are problematic."><!-- m
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -101,49 +104,72 @@ case it tries to isolate the particular parameters that are problematic.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">diagnose</span><span class="op">(</span>
-  <span class="va">fit</span>,
-  eval_eps <span class="op">=</span> <span class="fl">1e-05</span>,
-  evec_eps <span class="op">=</span> <span class="fl">0.01</span>,
-  big_coef <span class="op">=</span> <span class="fl">10</span>,
-  big_sd_log10 <span class="op">=</span> <span class="fl">3</span>,
-  big_zstat <span class="op">=</span> <span class="fl">5</span>,
-  check_coefs <span class="op">=</span> <span class="cn">TRUE</span>,
-  check_zstats <span class="op">=</span> <span class="cn">TRUE</span>,
-  check_hessian <span class="op">=</span> <span class="cn">TRUE</span>,
-  check_scales <span class="op">=</span> <span class="cn">TRUE</span>,
-  explain <span class="op">=</span> <span class="cn">TRUE</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">diagnose</span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  eval_eps <span class="op">=</span> <span class="fl">1e-05</span>,</span>
+<span>  evec_eps <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  big_coef <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  big_sd_log10 <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  big_zstat <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  check_coefs <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  check_zstats <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  check_hessian <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  check_scales <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  explain <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>fit</dt>
 <dd><p>a <code>glmmTMB</code> fit</p></dd>
+
+
 <dt>eval_eps</dt>
 <dd><p>numeric tolerance for 'bad' eigenvalues</p></dd>
+
+
 <dt>evec_eps</dt>
 <dd><p>numeric tolerance for 'bad' eigenvector elements</p></dd>
+
+
 <dt>big_coef</dt>
 <dd><p>numeric tolerance for large coefficients</p></dd>
+
+
 <dt>big_sd_log10</dt>
 <dd><p>numeric tolerance for badly scaled parameters (log10 scale), i.e. for default value of 3, predictor variables with sd less than 1e-3 or greater than 1e3 will be flagged)</p></dd>
+
+
 <dt>big_zstat</dt>
 <dd><p>numeric tolerance for Z-statistic</p></dd>
+
+
 <dt>check_coefs</dt>
 <dd><p>identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)</p></dd>
+
+
 <dt>check_zstats</dt>
 <dd><p>identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.</p></dd>
+
+
 <dt>check_hessian</dt>
 <dd><p>identify non-positive-definite Hessian components?</p></dd>
+
+
 <dt>check_scales</dt>
 <dd><p>identify predictors with unusually small or large scales?</p></dd>
+
+
 <dt>explain</dt>
 <dd><p>provide detailed explanation of each test?</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>a logical value based on whether anything questionable was found</p>
+    
+
+<p>a logical value based on whether anything questionable was found</p>
     </div>
     <div id="details">
     <h2>Details</h2>
@@ -168,7 +194,7 @@ Hessian problems persist.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>
