@@ -1406,8 +1406,7 @@ glmmTMBControl <- function(optCtrl=NULL,
 fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
     control <- TMBStruc$control
-    h <- NULL  ## hessian: *may* be computed here, otherwise wait for finalizeTMB
-    
+    data.tmb.old <- h <- NULL  ## these *may* be computed here/used in finalizeTMB
     has_any_rr <- function(x) {
         any(vapply(x, function(z) z$blockCode == .valid_covstruct[["rr"]],
                    FUN.VALUE = logical(1)))
@@ -1533,7 +1532,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         optTime <- system.time(fit <- optfun())
     }
 
-    finalizeTMB(TMBStruc, obj, fit, h)
+    finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old)
 }
 
 #' @rdname fitTMB
@@ -1542,8 +1541,9 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
 #' a similar list (i.e. containing elements \code{par}, \code{objective}, \code{convergence},
 #' \code{message}, \code{iterations}, \code{evaluations})
 #' @param h Hessian matrix for fit, if computed in previous step
+#' @param data.tmb.old stored TMB data, if computed in previous step
 #' @export
-finalizeTMB <- function(TMBStruc, obj, fit, h = NULL) {
+finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
 
     control <- TMBStruc$control
 

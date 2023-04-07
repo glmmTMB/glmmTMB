@@ -7,7 +7,7 @@
 \usage{
 fitTMB(TMBStruc, doOptim = TRUE)
 
-finalizeTMB(TMBStruc, obj, fit, h = NULL)
+finalizeTMB(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL)
 }
 \arguments{
 \item{TMBStruc}{a list containing lots of stuff ...}
@@ -21,6 +21,8 @@ a similar list (i.e. containing elements \code{par}, \code{objective}, \code{con
 \code{message}, \code{iterations}, \code{evaluations})}
 
 \item{h}{Hessian matrix for fit, if computed in previous step}
+
+\item{data.tmb.old}{stored TMB data, if computed in previous step}
 }
 \description{
 These functions (called internally by \code{\link{glmmTMB}}) runs
