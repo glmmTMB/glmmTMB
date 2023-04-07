@@ -2,19 +2,31 @@
 % Please edit documentation in R/glmmTMB.R
 \name{fitTMB}
 \alias{fitTMB}
-\title{Optimize a TMB model and package results}
+\alias{finalizeTMB}
+\title{Optimize TMB models, package results}
 \usage{
 fitTMB(TMBStruc, doOptim = TRUE)
+
+finalizeTMB(TMBStruc, obj, fit, h = NULL)
 }
 \arguments{
 \item{TMBStruc}{a list containing lots of stuff ...}
 
 \item{doOptim}{logical; do optimization? If FALSE, return TMB object}
+
+\item{obj}{object created by \code{fitTMB(., doOptim = FALSE)}}
+
+\item{fit}{a fitted object returned from \code{nlminb}, or more generally
+a similar list (i.e. containing elements \code{par}, \code{objective}, \code{convergence},
+\code{message}, \code{iterations}, \code{evaluations})}
+
+\item{h}{Hessian matrix for fit, if computed in previous step}
 }
 \description{
-This function (called internally by \code{\link{glmmTMB}}) runs
+These functions (called internally by \code{\link{glmmTMB}}) runs
 the actual model optimization, after all of the appropriate structures
-have been set up. It can be useful to run \code{\link{glmmTMB}} with
+have been set up (\code{fitTMB}), and finalize the model after
+optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}} with
 \code{doFit=TRUE}, adjust the components as required, and then
 finish the fitting process with \code{fitTMB} (however, it is the
 user's responsibility to make sure that any modifications

@@ -1523,10 +1523,11 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
 }
 
 #' @rdname fitTMB
-#' @param obj object created by \code{fitTMB(., doOptim = FALSE)
+#' @param obj object created by \code{fitTMB(., doOptim = FALSE)}
 #' @param fit a fitted object returned from \code{nlminb}, or more generally
 #' a similar list (i.e. containing elements \code{par}, \code{objective}, \code{convergence},
 #' \code{message}, \code{iterations}, \code{evaluations})
+#' @param h Hessian matrix for fit, if computed in previous step
 #' @export
 finalizeTMB <- function(TMBStruc, obj, fit, h = NULL) {
 
