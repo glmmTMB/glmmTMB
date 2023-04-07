@@ -1370,11 +1370,12 @@ glmmTMBControl <- function(optCtrl=NULL,
   return(TMBStruc)
 }
 
-##' Optimize a TMB model and package results
+##' Optimize TMB models, package results
 ##'
-##' This function (called internally by \code{\link{glmmTMB}}) runs
+##' These functions (called internally by \code{\link{glmmTMB}}) runs
 ##' the actual model optimization, after all of the appropriate structures
-##' have been set up. It can be useful to run \code{\link{glmmTMB}} with
+##' have been set up (\code{fitTMB}), and finalize the model after
+##' optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}} with
 ##' \code{doFit=TRUE}, adjust the components as required, and then
 ##' finish the fitting process with \code{fitTMB} (however, it is the
 ##' user's responsibility to make sure that any modifications
@@ -1391,7 +1392,8 @@ glmmTMBControl <- function(optCtrl=NULL,
 fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
     control <- TMBStruc$control
-
+    h <- NULL  ## hessian: *may* be computed here, otherwise wait for finalizeTMB
+    
     has_any_rr <- function(x) {
         any(vapply(x, function(z) z$blockCode == .valid_covstruct[["rr"]],
                    FUN.VALUE = logical(1)))
@@ -1517,7 +1519,30 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         optTime <- system.time(fit <- optfun())
     }
 
+    finalizeTMB(TMBStruc, obj, fit, h)
+}
+
+#' @rdname fitTMB
+#' @param obj object created by \code{fitTMB(., doOptim = FALSE)
+#' @param fit a fitted object returned from \code{nlminb}, or more generally
+#' a similar list (i.e. containing elements \code{par}, \code{objective}, \code{convergence},
+#' \code{message}, \code{iterations}, \code{evaluations})
+#' @export
+finalizeTMB <- function(TMBStruc, obj, fit, h = NULL) {
+
+    control <- TMBStruc$control
+
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
+
+    ## DRY ...
+    par <- obj$env$last.par.best
+    if (!is.null(rr <- obj$env$random)) {
+        par <- par[-rr]
+    }
+    if (is.null(h) && length(par)>0) {
+        h <- numDeriv::jacobian(obj$gr, par)
+        h <- .5 * (h + t(h))  ## symmetrize
+    }
 
     fitted <- NULL
 
