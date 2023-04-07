@@ -1535,23 +1535,13 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL) {
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
-    ## DRY ...
-    par <- obj$env$last.par.best
-    if (!is.null(rr <- obj$env$random)) {
-        par <- par[-rr]
-    }
-    if (is.null(h) && length(par)>0) {
-        h <- numDeriv::jacobian(obj$gr, par)
-        h <- .5 * (h + t(h))  ## symmetrize
-    }
-
     fitted <- NULL
 
     if (TMBStruc$se) {
         if(control$profile)
-            sdr <- sdreport(obj, hessian.fixed=h)
+            sdr <- sdreport(obj, hessian.fixed = h)
         else
-            sdr <- sdreport(obj, getJointPrecision=TMBStruc$REML)
+            sdr <- sdreport(obj, getJointPrecision = TMBStruc$REML)
         ## FIXME: assign original rownames to fitted?
     } else {
         sdr <- NULL
