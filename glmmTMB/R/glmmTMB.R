@@ -1370,7 +1370,7 @@ glmmTMBControl <- function(optCtrl=NULL,
   return(TMBStruc)
 }
 
-##' Optimize TMB models, package results
+##' Optimize TMB models and package results, modularly
 ##'
 ##' These functions (called internally by \code{\link{glmmTMB}}) runs
 ##' the actual model optimization, after all of the appropriate structures
@@ -1384,10 +1384,24 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' @param TMBStruc a list containing lots of stuff ...
 ##' @param doOptim logical; do optimization? If FALSE, return TMB object
 ##' @examples
+##' ## regular (non-modular) model fit
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
-##'              family=poisson, data=Salamanders, doFit=FALSE)
+##'              family=poisson, data=Salamanders)
+##' ## construct model structures
+##' m1 <- update(m0, doFit=FALSE)
 ##' names(m0)
-##' fitTMB(m0)
+##' m2 <- fitTMB(m1, doOptim = FALSE)
+##' ## could modify the components of m1$env$data at this point ...
+##' ## rebuild TMB structure (*may* be necessary)
+##' m2 <- with(m2$env,
+##'                TMB::MakeADFun(data,
+##'                                parameters,
+##'                                map = map,
+##'                                random = random,
+##'                                silent = silent,
+##'                                DLL = "glmmTMB"))
+##' m3 <- with(m2, nlminb(par, objective = fn, gr = gr))
+##' m4 <- finalizeTMB(m1, m2, m3)
 ##' @export
 fitTMB <- function(TMBStruc, doOptim = TRUE) {
 

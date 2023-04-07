@@ -3,7 +3,7 @@
 \name{fitTMB}
 \alias{fitTMB}
 \alias{finalizeTMB}
-\title{Optimize TMB models, package results}
+\title{Optimize TMB models and package results, modularly}
 \usage{
 fitTMB(TMBStruc, doOptim = TRUE)
 
@@ -33,8 +33,22 @@ user's responsibility to make sure that any modifications
 create an internally consistent final fitted object).
 }
 \examples{
+## regular (non-modular) model fit
 m0 <- glmmTMB(count ~ mined + (1|site),
-             family=poisson, data=Salamanders, doFit=FALSE)
+             family=poisson, data=Salamanders)
+## construct model structures
+m1 <- update(m0, doFit=FALSE)
 names(m0)
-fitTMB(m0)
+m2 <- fitTMB(m1, doOptim = FALSE)
+## could modify the components of m1$env$data at this point ...
+## rebuild TMB structure (*may* be necessary)
+m2 <- with(m2$env,
+               TMB::MakeADFun(data,
+                               parameters,
+                               map = map,
+                               random = random,
+                               silent = silent,
+                               DLL = "glmmTMB"))
+m3 <- with(m2, nlminb(par, objective = fn, gr = gr))
+m4 <- finalizeTMB(m1, m2, m3)
 }
