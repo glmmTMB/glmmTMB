@@ -135,7 +135,8 @@ test_that("equivalence between 'skip' and 'warn' when confronted with identifiab
         "fixed effects in zero-inflation model are rank deficient"
     )
     expect_equal(fixef(m1), fixef(m2))
-    m1 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip'))
+    ## suppressWarnings() since we know this will be a non-pos-def Hessian
+    m1 <- suppressWarnings(glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip')))
     expect_warning(
         m2 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in dispersion model are rank deficient"
@@ -154,7 +155,8 @@ test_that("equivalence between 'skip' and 'warn' when confronted with identifiab
         "fixed effects in zero-inflation model are rank deficient"
     )
     expect_equal(fixef(m1), fixef(m2))
-    m1 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip'), sparseX=c(cond=TRUE))
+    ## suppressWarnings() since we know this will be a non-pos-def Hessian
+    m1 <- suppressWarnings(glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='skip'), sparseX=c(cond=TRUE)))
     expect_warning(
         m2 <- glmmTMB(y ~ 1, dispformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn'), sparseX=c(cond=TRUE)),
         "fixed effects in dispersion model are rank deficient"
