@@ -621,7 +621,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @param \dots ignored, for method compatibility
 ##' @importFrom stats fitted model.response residuals
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act,model.response(object$frame))
@@ -644,6 +644,10 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                mu.eta <- family(object)$mu.eta
                p <- predict(object, type = "link", fast = TRUE)
                r/mu.eta(p)
+           },
+           deviance = {
+               dr2 <- object$obj$report()$devres2
+               sign(r)*sqrt(dr2)
            },
            pearson = {
                if (is.null(v <- family(object)$variance))
