@@ -419,7 +419,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   psiLength <- if (family$family %in% c("t", "tweedie"))
                { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
 
-  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)  
+  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
   # theta is 0, except if dorr, theta is 1
   t01 <- function(dorr, condReStruc){
@@ -728,7 +728,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "8" = 2 * blksize - 1, # toep
                    "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
                    "10" = 1  ## (homogeneous) diag
-                   ) 
+                   )
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
@@ -1372,11 +1372,11 @@ glmmTMBControl <- function(optCtrl=NULL,
 
 ##' Optimize TMB models and package results, modularly
 ##'
-##' These functions (called internally by \code{\link{glmmTMB}}) runs
+##' These functions (called internally by \code{\link{glmmTMB}}) perform
 ##' the actual model optimization, after all of the appropriate structures
 ##' have been set up (\code{fitTMB}), and finalize the model after
 ##' optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}} with
-##' \code{doFit=TRUE}, adjust the components as required, and then
+##' \code{doFit=FALSE}, adjust the components as required, and then
 ##' finish the fitting process with \code{fitTMB} (however, it is the
 ##' user's responsibility to make sure that any modifications
 ##' create an internally consistent final fitted object).
@@ -1611,7 +1611,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                 fit$message, ". ",
                 "See vignette('troubleshooting')")
     }
-    
+
     if (control $ collect) {
         ## Undo changes made to the data
         TMBStruc$data.tmb <- data.tmb.old
