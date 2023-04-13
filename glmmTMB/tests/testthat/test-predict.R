@@ -461,10 +461,12 @@ test_that("nzprob computed for non-fast pred", {
     )
     expect_identical(predict(m1, type = "response"),
                      predict(m1, type = "response", fast = FALSE))
-    m2 <- update(m1, family = truncated_nbinom1)
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom1))
     expect_identical(predict(m2, type = "response"),
                      predict(m2, type = "response", fast = FALSE))
-    m2 <- update(m1, family = truncated_nbinom2)
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom2))
     ## need more data to fit compois, genpois
     dd2 <- data.frame(y = rpois(100, lambda = 1))
     m2 <- update(m1, family = truncated_compois, data = dd2)
