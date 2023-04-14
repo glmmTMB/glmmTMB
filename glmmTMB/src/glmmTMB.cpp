@@ -625,7 +625,6 @@ Type objective_function<Type>::operator() ()
   // Observation likelihood
   Type s1, s2, s3;
   Type tmp_loglik;
-  vector<Type> devres2(yobs.size());  // squared dev resids, i.e. tmp_loglik values
 
   for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
     if ( !glmmtmb::isNA(yobs(i)) ) {
@@ -802,7 +801,6 @@ Type objective_function<Type>::operator() ()
       }
       tmp_loglik *= weights(i);
 
-      devres2(i) = -tmp_loglik*Type(2.0);
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }
@@ -836,7 +834,6 @@ Type objective_function<Type>::operator() ()
     }
   }
 
-  REPORT(devres2);
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);

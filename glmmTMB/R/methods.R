@@ -624,8 +624,9 @@ model.frame.glmmTMB <- function(formula, ...) {
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
-    mr <- napredict(na.act,model.response(object$frame))
+    mr <- napredict(na.act, model.response(object$frame))
     wts <- model.weights(model.frame(object))
+    if (is.null(wts)) wts <- rep(1, length(mr))
     ## binomial model specified as (success,failure)
     if (!is.null(dim(mr))) {
         wts <- mr[,1]+mr[,2]
@@ -637,23 +638,32 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         mr <- as.numeric(as.numeric(mr)>1)
         names(mr) <- nn  ## restore stripped names
     }
-    r <- mr - fitted(object)
+    mu <- fitted(object)
+    r <- mr - mu
+    fam <- family(object)
     res <- switch(type,
            response=r,
            working = {
-               mu.eta <- family(object)$mu.eta
+               mu.eta <- fam$mu.eta
                p <- predict(object, type = "link", fast = TRUE)
                r/mu.eta(p)
            },
            deviance = {
-               dr2 <- object$obj$report()$devres2
-               sign(r)*sqrt(dr2)
+               ## FIXME: stop or warn or ... ?
+               if (is.null(dr <- fam$dev.resids)) {
+                   stop("deviance residuals undefined for family ",
+                        sQuote(fam$family),"; cannot compute",
+                        " deviance residuals")
+               }
+               d.res <- sqrt(pmax(dr(mr, mu, wts), 0))
+               ifelse(mr < mu, -d.res, d.res)
            },
            pearson = {
-               if (is.null(v <- family(object)$variance))
+               if (is.null(v <- fam$variance)) {
                    stop("variance function undefined for family ",
-                        sQuote(family(object)$family),"; cannot compute",
+                        sQuote(fam$family),"; cannot compute",
                         " Pearson residuals")
+               }
                vformals <- names(formals(v))
                # construct argument list for variance function based on its formals
                # some argument names vary across families
