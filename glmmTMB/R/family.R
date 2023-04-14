@@ -139,12 +139,12 @@ nbinom2 <- function(link="log") {
 #' @export
 nbinom1 <- function(link="log") {
     r <- list(family="nbinom1",
-              variance=function(mu,alpha) {
-        ## Effect stub (can't return 0 or NA or glm.fit will complain)
-        ## FIXME: retrieve dispersion in environment?
-        if (missing(alpha)) return(rep(1e-16,length(mu)))
-        mu*(1+alpha)
-    })
+              variance=function(mu, phi) {
+                  ## Effect stub (can't return 0 or NA or glm.fit will complain)
+                  ## FIXME: retrieve dispersion in environment?
+                  if (missing(phi)) return(rep(1e-16,length(mu)))
+                  mu*(1+phi)
+              })
     return(make_family(r,link))
 }
 
