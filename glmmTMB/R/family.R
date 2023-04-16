@@ -45,7 +45,7 @@ make_family <- function(x, link) {
                           "for family ",
                           sQuote(x$family),
                           ": returning NA"),
-                    class = c("na_dev_resids")))
+                    class = c("dev_resids_undefined", "glmmTMB_warn")))
                 return(rep(NA_real_, length(y)))
             }
         }))
@@ -154,11 +154,22 @@ nbinom2 <- function(link="log") {
 #' @export
 nbinom1 <- function(link="log") {
     r <- list(family="nbinom1",
-              variance=function(mu, phi) {
-                  ## Effect stub (can't return 0 or NA or glm.fit will complain)
-                  ## FIXME: retrieve dispersion in environment?
-                  if (missing(phi)) return(rep(1e-16,length(mu)))
-                  mu*(1+phi)
+              variance=function(mu, phi=NULL) {
+                  get_nbinom_disp(phi, ".Phi", "phi")
+                  return(mu*(1+phi))
+              },
+              initialize = expression({
+                  if (any(y < 0))
+                      stop("negative values not allowed for the negative binomial family")
+                  n <- rep(1, nobs)
+                  mustart <- y + (y == 0)/6
+              }),
+              dev.resids = function (y, mu, wt, phi)  {
+                  get_nbinom_disp(phi, ".Phi", "phi")
+                  ## convert phi to theta and use nbinom2 expression
+                  ## V = mu*(1+phi) = mu*(1+mu/theta) -> theta = mu/phi
+                  theta <- mu/phi
+                  return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
               })
     return(make_family(r,link))
 }
@@ -271,7 +282,8 @@ beta_family <- function(link="logit") {
                           stop("y values must be 0 < y < 1")
                   }
                   mustart <- y
-              }))
+              })
+              )
     return(make_family(r,link))
 }
 
@@ -305,16 +317,6 @@ tweedie <- function(link="log") {
          })
     return(make_family(r,link))
 }
-
-## t not yet implemented
-## t_family <- function(link="identity") {
-##     ## FIXME: right now t behaves just like gaussian(); variance()
-##     ## returns a value *proportional* to the variance
-##     r <- list(family="t",link=link,
-##               variance=function(mu) {
-##         rep.int(1,length(mu))
-##     })
-## }
 
 #' List model options that glmmTMB knows about
 #'

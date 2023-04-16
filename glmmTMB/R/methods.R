@@ -618,10 +618,24 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} object
 ##' @param type (character) residual type
-##' @param \dots ignored, for method compatibility
+##' @param \dots for method compatibility (unused arguments will throw an error)
 ##' @importFrom stats fitted model.response residuals
+##' @details
+##' \itemize{
+##' \item Residuals are computed based on predictions of type "response",
+##' i.e. equal to the conditional mean for non-zero-inflated models and to \code{mu*(1-p)}
+##' for zero-inflated models
+##' \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
+##' function from the object's \code{family} component; at present this returns \code{NA} for most
+##' "exotic" families (i.e. deviance residuals are currently only
+##' implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}).
+##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
+##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
+##' details on the definition of the deviance for GLMMs.
+##' }
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
+    check_dots(...)
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act, model.response(object$frame))
@@ -649,12 +663,11 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            deviance = {
-               ## return classed warning so we can detect it upstream
                if (is.null(dr <- fam$dev.resids)) {
                    warning(
-                       warningCondition(paste("deviance residuals undefined for family ",
-                                              sQuote(fam$family),"; returning NA"),
-                                        class = c("dev_res_undef", "glmmTMB_warn")))
+                       warningCondition(paste0("deviance residuals undefined for family ",
+                                              sQuote(fam$family),": returning NA"),
+                                        class = c("dev_resids_undefined", "glmmTMB_warn")))
                    return(rep(NA_real_, length(r)))
                }
                d.res <- sqrt(pmax(dr(mr, mu, wts), 0))
@@ -1558,8 +1571,10 @@ modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
     return(RET)
 }
 
+#' @rdname residuals.glmmTMB
 #' @export
 deviance.glmmTMB <- function(object, ...) {
+    check_dots(...)
     ## consider suppressing warning of class 'na_dev_resids' ?
     sum(residuals(object, type = "deviance")^2)
 }
