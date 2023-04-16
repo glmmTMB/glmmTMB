@@ -1,9 +1,9 @@
 ## FIXME: I would like to use the following function instead of repeating
 ## the pattern, but I'm worried that lazy evaluation of arguments will
 ## cause all kinds of trouble
-family_factory <- function(default_link,family,variance) {
+family_factory <- function(default_link, family, variance) {
     f <- function(link=default_link) {
-        r <- list(family=family,link=link,variance=variance)
+        r <- list(family=family, link=link, variance=variance)
         r <- c(r,make.link(link))
         class(r) <- "family"
         return(r)
@@ -20,8 +20,8 @@ in_glm_fit <- function() {
     all(c("coefold","control","EMPTY","good","nvars") %in% vars)
 }
 
-make_family <- function(x,link) {
-    x <- c(x,list(link=link),make.link(link))
+make_family <- function(x, link) {
+    x <- c(x, list(link=link), make.link(link))
     ## stubs for Effect.default/glm.fit
     if (is.null(x$aic)) {
         x <- c(x,list(aic=function(...) NA_real_))
@@ -32,9 +32,22 @@ make_family <- function(x,link) {
     }
     if (is.null(x$dev.resids)) {
         ## can't return NA, glm.fit is unhappy
+        ## (*but* no longer remember exactly when this happens ... ??)
+        ## try taking this out and see what breaks ...
         x <- c(x,list(dev.resids=function(y,mu,wt)  {
-                     rep(0,length(y))
-                 }))
+            if (in_glm_fit()) {
+                ## cat("in glm.fit\n")
+                return(rep(0,length(y)))
+            } else {
+                warning(warningCondition(
+                    paste0("deviance residuals not defined ",
+                          "for family ",
+                          sQuote(x$family),
+                          ": returning NA"),
+                    class = c("na_dev_resids")))
+                return(rep(NA_real_, length(y)))
+            }
+        }))
     }
 
     class(x) <- "family"

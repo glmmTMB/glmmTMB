@@ -649,11 +649,13 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            deviance = {
-               ## FIXME: stop or warn or ... ?
+               ## return classed warning so we can detect it upstream
                if (is.null(dr <- fam$dev.resids)) {
-                   stop("deviance residuals undefined for family ",
-                        sQuote(fam$family),"; cannot compute",
-                        " deviance residuals")
+                   warning(
+                       warningCondition(paste("deviance residuals undefined for family ",
+                                              sQuote(fam$family),"; returning NA"),
+                                        class = c("dev_res_undef", "glmmTMB_warn")))
+                   return(rep(NA_real_, length(r)))
                }
                d.res <- sqrt(pmax(dr(mr, mu, wts), 0))
                ifelse(mr < mu, -d.res, d.res)
@@ -1554,4 +1556,10 @@ modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
     RET <- list(coef = beta, vcov = sigma, df = df, estimable = estimable)
     class(RET) <- "modelparm"
     return(RET)
+}
+
+#' @export
+deviance.glmmTMB <- function(object, ...) {
+    ## consider suppressing warning of class 'na_dev_resids' ?
+    sum(residuals(object, type = "deviance")^2)
 }

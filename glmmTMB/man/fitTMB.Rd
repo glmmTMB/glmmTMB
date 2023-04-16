@@ -25,11 +25,11 @@ a similar list (i.e. containing elements \code{par}, \code{objective}, \code{con
 \item{data.tmb.old}{stored TMB data, if computed in previous step}
 }
 \description{
-These functions (called internally by \code{\link{glmmTMB}}) runs
+These functions (called internally by \code{\link{glmmTMB}}) perform
 the actual model optimization, after all of the appropriate structures
 have been set up (\code{fitTMB}), and finalize the model after
 optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}} with
-\code{doFit=TRUE}, adjust the components as required, and then
+\code{doFit=FALSE}, adjust the components as required, and then
 finish the fitting process with \code{fitTMB} (however, it is the
 user's responsibility to make sure that any modifications
 create an internally consistent final fitted object).
