@@ -11,8 +11,9 @@ family_factory <- function(default_link, family, variance) {
     return(f)
 }
 
-## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
+## suppress code warnings for nbinom1/nbinom2; can't use .Theta <- NULL trick here ...
 utils::globalVariables(".Theta")
+utils::globalVariables(".Phi")
 
 ## attempt to guess whether calling function has been called from glm.fit ...
 in_glm_fit <- function() {
@@ -57,6 +58,28 @@ make_family <- function(x, link) {
 ## even better (?) would be to have a standalone list including
 ## name, default link, variance function, (optionally) initialize
 ## for each family
+
+
+nbinom_errstr <- function(pname = "theta") {
+    sprintf("%s (nbinom parameter) neither passed as an argument nor stored in enviroment", pname)
+}
+missing_disp <- "stop"
+
+## find dispersion parameter in environment, if possible, or fall back
+get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
+    if (is.null(disp)) {
+        ## look in environment
+        if (!exists(pname1, parent.frame())) {
+            disp <- switch(missing_disp,
+                           one=1,
+                           na=NA_real_,
+                           stop=stop(nbinom_errstr(pname2)))
+        } else {
+            disp <- get(pname1, parent.frame())
+        }
+    }
+    assign(pname2, disp, parent.frame())
+}
 
 ##' Family functions for glmmTMB
 ##'
@@ -107,23 +130,11 @@ make_family <- function(x, link) {
 ##' @export
 ##' @importFrom stats make.link
 nbinom2 <- function(link="log") {
-    theta_errstr <- "theta (nbinom parameter) neither passed as an argument nor stored in enviroment"
-    missing_theta <- "one" ## or "stop" or "na"
     r <- list(family="nbinom2",
-              variance=function(mu, theta) {
-                if (missing(theta)) {
-                    ## look in environment
-                    if (!exists(".Theta")) {
-                        theta <- switch(missing_theta,
-                                        one=1,
-                                        na=NA_real_,
-                                        stop=stop(theta_errstr))
-                    } else {
-                        theta <- .Theta
-                    }
-                }
-                return(mu*(1+mu/theta))
-               },  ## variance function
+              variance=function(mu, theta=NULL) {
+                  get_nbinom_disp(theta, ".Theta", "theta")
+                  return(mu*(1+mu/theta))
+              },  ## variance function
               ## full versions needed for effects::mer.to.glm
               ## (so we can evaluate a glm)
               initialize = expression({
@@ -133,18 +144,9 @@ nbinom2 <- function(link="log") {
                   mustart <- y + (y == 0)/6
               }),
               dev.resids = function (y, mu, wt, theta)  {
-        if (missing(theta)) {
-            if (!exists(".Theta")) {
-                theta <- switch(missing_theta,
-                                na=NA_real_,
-                                one=1,
-                                stop=stop(theta_errstr))
-            } else {
-                theta <- .Theta
-            }
-        }
-        return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
-    })
+                  get_nbinom_disp(theta, ".Theta", "theta")
+                  return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
+              })
     return(make_family(r,link))
 }
 
