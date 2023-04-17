@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -131,6 +134,10 @@
         </td>
         <td><p>apply</p></td>
       </tr><tr><td>
+          <p><code><a href="family_params.html">family_params()</a></code> </p>
+        </td>
+        <td><p>Retrieve family-specific parameters</p></td>
+      </tr><tr><td>
           <p><code><a href="findReTrmClasses.html">findReTrmClasses()</a></code> </p>
         </td>
         <td><p>list of specials -- taken from enum.R</p></td>
@@ -169,7 +176,7 @@ block size and number of blocks.  Mostly for internal use.</p></td>
         </td>
         <td><p>Create X and random effect terms from formula</p></td>
       </tr><tr><td>
-          <p><code><a href="get_cor.html">get_cor()</a></code> </p>
+          <p><code><a href="get_cor.html">get_cor()</a></code> <code><a href="get_cor.html">put_cor()</a></code> </p>
         </td>
         <td><p>translate vector of correlation parameters to correlation values</p></td>
       </tr><tr><td>
@@ -189,7 +196,7 @@ block size and number of blocks.  Mostly for internal use.</p></td>
         </td>
         <td><p>conditionally update glmmTMB object fitted with an old TMB version</p></td>
       </tr><tr><td>
-          <p><code><a href="nbinom2.html">nbinom2()</a></code> <code><a href="nbinom2.html">nbinom1()</a></code> <code><a href="nbinom2.html">compois()</a></code> <code><a href="nbinom2.html">truncated_compois()</a></code> <code><a href="nbinom2.html">genpois()</a></code> <code><a href="nbinom2.html">truncated_genpois()</a></code> <code><a href="nbinom2.html">truncated_poisson()</a></code> <code><a href="nbinom2.html">truncated_nbinom2()</a></code> <code><a href="nbinom2.html">truncated_nbinom1()</a></code> <code><a href="nbinom2.html">beta_family()</a></code> <code><a href="nbinom2.html">betabinomial()</a></code> <code><a href="nbinom2.html">tweedie()</a></code> <code><a href="nbinom2.html">ziGamma()</a></code> </p>
+          <p><code><a href="nbinom2.html">nbinom2()</a></code> <code><a href="nbinom2.html">nbinom1()</a></code> <code><a href="nbinom2.html">compois()</a></code> <code><a href="nbinom2.html">truncated_compois()</a></code> <code><a href="nbinom2.html">genpois()</a></code> <code><a href="nbinom2.html">truncated_genpois()</a></code> <code><a href="nbinom2.html">truncated_poisson()</a></code> <code><a href="nbinom2.html">truncated_nbinom2()</a></code> <code><a href="nbinom2.html">truncated_nbinom1()</a></code> <code><a href="nbinom2.html">beta_family()</a></code> <code><a href="nbinom2.html">betabinomial()</a></code> <code><a href="nbinom2.html">tweedie()</a></code> <code><a href="nbinom2.html">ziGamma()</a></code> <code><a href="nbinom2.html">t_family()</a></code> <code><a href="nbinom2.html">ordbeta()</a></code> </p>
         </td>
         <td><p>Family functions for glmmTMB</p></td>
       </tr><tr><td>
@@ -233,6 +240,10 @@ block size and number of blocks.  Mostly for internal use.</p></td>
         </td>
         <td><p>Simulate from a glmmTMB fitted model</p></td>
       </tr><tr><td>
+          <p><code><a href="simulate_new.html">simulate_new()</a></code> </p>
+        </td>
+        <td><p>Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)</p></td>
+      </tr><tr><td>
           <p><code><a href="vcov.glmmTMB.html">vcov(<i>&lt;glmmTMB&gt;</i>)</a></code> </p>
         </td>
         <td><p>Calculate Variance-Covariance Matrix for a Fitted glmmTMB model</p></td>
@@ -253,7 +264,7 @@ block size and number of blocks.  Mostly for internal use.</p></td>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

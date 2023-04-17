@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,66 +92,93 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span>
-  <span class="va">fitted</span>,
-  parm <span class="op">=</span> <span class="cn">NULL</span>,
-  level_max <span class="op">=</span> <span class="fl">0.99</span>,
-  npts <span class="op">=</span> <span class="fl">8</span>,
-  stepfac <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">4</span>,
-  stderr <span class="op">=</span> <span class="cn">NULL</span>,
-  trace <span class="op">=</span> <span class="cn">FALSE</span>,
-  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"no"</span>, <span class="st">"multicore"</span>, <span class="st">"snow"</span><span class="op">)</span>,
-  ncpus <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"profile.ncpus"</span>, <span class="fl">1L</span><span class="op">)</span>,
-  cl <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">...</span>
-<span class="op">)</span>
-
-<span class="co"># S3 method for profile.glmmTMB</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">object</span>, parm <span class="op">=</span> <span class="cn">NULL</span>, level <span class="op">=</span> <span class="fl">0.95</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span></span>
+<span>  <span class="va">fitted</span>,</span>
+<span>  parm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  level_max <span class="op">=</span> <span class="fl">0.99</span>,</span>
+<span>  npts <span class="op">=</span> <span class="fl">8</span>,</span>
+<span>  stepfac <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">4</span>,</span>
+<span>  stderr <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  trace <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"no"</span>, <span class="st">"multicore"</span>, <span class="st">"snow"</span><span class="op">)</span>,</span>
+<span>  ncpus <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"profile.ncpus"</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
+<span>  cl <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for profile.glmmTMB</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">object</span>, parm <span class="op">=</span> <span class="cn">NULL</span>, level <span class="op">=</span> <span class="fl">0.95</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>fitted</dt>
 <dd><p>a fitted <code>glmmTMB</code> object</p></dd>
+
+
 <dt>parm</dt>
 <dd><p>which parameters to profile, specified</p><ul><li><p>by index (position)</p></li>
 <li><p>by name (matching the row/column names of <code>vcov(object,full=TRUE)</code>)</p></li>
 <li><p>as <code>"theta_"</code> (random-effects variance-covariance parameters) or <code>"beta_"</code> (conditional and zero-inflation parameters)</p></li>
 </ul></dd>
+
+
 <dt>level_max</dt>
 <dd><p>maximum confidence interval target for profile</p></dd>
+
+
 <dt>npts</dt>
 <dd><p>target number of points in (each half of) the profile (<em>approximate</em>)</p></dd>
+
+
 <dt>stepfac</dt>
 <dd><p>initial step factor (fraction of estimated standard deviation)</p></dd>
+
+
 <dt>stderr</dt>
 <dd><p>standard errors to use as a scaling factor when picking step
 sizes to compute the profile; by default (if <code>stderr</code> is
 <code>NULL</code>, or <code>NA</code> for a particular element),
 uses the estimated (Wald) standard errors of the parameters</p></dd>
+
+
 <dt>trace</dt>
 <dd><p>print tracing information? If <code>trace=FALSE</code> or 0,
 no tracing; if <code>trace=1</code>, print names of parameters currently
 being profiled; if <code>trace&gt;1</code>, turn on tracing for the
 underlying <code>tmbprofile</code> function</p></dd>
+
+
 <dt>parallel</dt>
 <dd><p>method (if any) for parallel computation</p></dd>
+
+
 <dt>ncpus</dt>
 <dd><p>number of CPUs/cores to use for parallel computation</p></dd>
+
+
 <dt>cl</dt>
 <dd><p>cluster to use for parallel computation</p></dd>
+
+
 <dt>...</dt>
 <dd><p>additional arguments passed to <code>tmbprofile</code></p></dd>
+
+
 <dt>object</dt>
 <dd><p>a fitted profile (<code>profile.glmmTMB</code>) object</p></dd>
+
+
 <dt>level</dt>
 <dd><p>confidence level</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>An object of class <code>profile.glmmTMB</code>, which is also a
+    
+
+<p>An object of class <code>profile.glmmTMB</code>, which is also a
 data frame, with columns <code>.par</code> (parameter being profiled),
 <code>.focal</code> (value of focal parameter), value (negative log-likelihood).</p>
     </div>
@@ -161,35 +191,35 @@ to estimate the endpoints of the confidence interval</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in"><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span>
-<span class="r-in">       zi<span class="op">=</span><span class="op">~</span><span class="va">mined</span>, family<span class="op">=</span><span class="va">poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, parallel<span class="op">=</span><span class="st">"multicore"</span>,</span>
-<span class="r-in">                            ncpus<span class="op">=</span><span class="fl">2</span>, trace<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
-<span class="r-in"><span class="co">## testing</span></span>
-<span class="r-in"><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, trace<span class="op">=</span><span class="fl">1</span>,parm<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">salamander_prof1M</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, trace<span class="op">=</span><span class="fl">1</span>,parm<span class="op">=</span><span class="fl">1</span>, npts <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">salamander_prof2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, parm<span class="op">=</span><span class="st">"theta_"</span><span class="op">)</span></span>
-<span class="r-in"></span>
-<span class="r-in"><span class="op">}</span></span>
-<span class="r-in"><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"example_files"</span>,<span class="st">"salamander_prof1.rds"</span>,package<span class="op">=</span><span class="st">"glmmTMB"</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://ggplot2.tidyverse.org" class="external-link">"ggplot2"</a></span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">salamander_prof1</span>,<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">.focal</span>,<span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">value</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span class="r-in">        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span><span class="op">+</span></span>
-<span class="r-in">        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">.par</span>,scale<span class="op">=</span><span class="st">"free_x"</span><span class="op">)</span><span class="op">+</span></span>
-<span class="r-in">    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept<span class="op">=</span><span class="fl">1.96</span>,linetype<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>       zi<span class="op">=</span><span class="op">~</span><span class="va">mined</span>, family<span class="op">=</span><span class="va">poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, parallel<span class="op">=</span><span class="st">"multicore"</span>,</span></span>
+<span class="r-in"><span>                            ncpus<span class="op">=</span><span class="fl">2</span>, trace<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co">## testing</span></span></span>
+<span class="r-in"><span><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, trace<span class="op">=</span><span class="fl">1</span>,parm<span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">salamander_prof1M</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, trace<span class="op">=</span><span class="fl">1</span>,parm<span class="op">=</span><span class="fl">1</span>, npts <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">salamander_prof2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile</a></span><span class="op">(</span><span class="va">m1</span>, parm<span class="op">=</span><span class="st">"theta_"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
+<span class="r-in"><span><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"example_files"</span>,<span class="st">"salamander_prof1.rds"</span>,package<span class="op">=</span><span class="st">"glmmTMB"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://ggplot2.tidyverse.org" class="external-link">"ggplot2"</a></span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="va">salamander_prof1</span>,<span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span><span class="va">.focal</span>,<span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">value</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span></span>
+<span class="r-in"><span>        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_path.html" class="external-link">geom_line</a></span><span class="op">(</span><span class="op">)</span><span class="op">+</span></span></span>
+<span class="r-in"><span>        <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/facet_wrap.html" class="external-link">facet_wrap</a></span><span class="op">(</span><span class="op">~</span><span class="va">.par</span>,scale<span class="op">=</span><span class="st">"free_x"</span><span class="op">)</span><span class="op">+</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_abline.html" class="external-link">geom_hline</a></span><span class="op">(</span>yintercept<span class="op">=</span><span class="fl">1.96</span>,linetype<span class="op">=</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Loading required package: ggplot2</span>
 <span class="r-plt img"><img src="profile.glmmTMB-1.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"example_files"</span>,<span class="st">"salamander_prof1.rds"</span>,package<span class="op">=</span><span class="st">"glmmTMB"</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">salamander_prof1</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="va">salamander_prof1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"example_files"</span>,<span class="st">"salamander_prof1.rds"</span>,package<span class="op">=</span><span class="st">"glmmTMB"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">salamander_prof1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                     2.5 %     97.5 %</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)    -0.4686460  0.4805030</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> minedno         0.6449938  1.7417972</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> zi~(Intercept)  0.6088771  1.5648495</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> zi~minedno     -2.2239195 -1.1665205</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> theta_1|site.1 -1.9452621 -0.5786442</span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">salamander_prof1</span>,level<span class="op">=</span><span class="fl">0.99</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">salamander_prof1</span>,level<span class="op">=</span><span class="fl">0.99</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                     0.5 %     99.5 %</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)    -0.6830922  0.5865649</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> minedno         0.6015779  1.9853898</span>
@@ -210,7 +240,7 @@ to estimate the endpoints of the confidence interval</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

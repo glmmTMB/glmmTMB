@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,26 +92,29 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
-<span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span>
-  <span class="va">object</span>,
-  parm <span class="op">=</span> <span class="cn">NULL</span>,
-  level <span class="op">=</span> <span class="fl">0.95</span>,
-  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"Wald"</span>, <span class="st">"profile"</span>, <span class="st">"uniroot"</span><span class="op">)</span>,
-  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"cond"</span>, <span class="st">"zi"</span>, <span class="st">"other"</span><span class="op">)</span>,
-  estimate <span class="op">=</span> <span class="cn">TRUE</span>,
-  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"no"</span>, <span class="st">"multicore"</span>, <span class="st">"snow"</span><span class="op">)</span>,
-  ncpus <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"profile.ncpus"</span>, <span class="fl">1L</span><span class="op">)</span>,
-  cl <span class="op">=</span> <span class="cn">NULL</span>,
-  full <span class="op">=</span> <span class="cn">FALSE</span>,
-  <span class="va">...</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  parm <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"Wald"</span>, <span class="st">"profile"</span>, <span class="st">"uniroot"</span><span class="op">)</span>,</span>
+<span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"cond"</span>, <span class="st">"zi"</span>, <span class="st">"other"</span><span class="op">)</span>,</span>
+<span>  estimate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  include_mapped <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"no"</span>, <span class="st">"multicore"</span>, <span class="st">"snow"</span><span class="op">)</span>,</span>
+<span>  ncpus <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"profile.ncpus"</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
+<span>  cl <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  full <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>object</dt>
 <dd><p><code>glmmTMB</code> fitted object.</p></dd>
+
+
 <dt>parm</dt>
 <dd><p>which parameters to profile, specified</p><ul><li><p>by index (position) [<em>after</em> component selection for <code>confint</code>, if any]</p></li>
 <li><p>by name (matching the row/column names of <code>vcov(object,full=TRUE)</code>)</p></li>
@@ -116,27 +122,50 @@
 </ul><p>Parameter indexing by number may give unusual results when
  some parameters have been fixed using the <code>map</code> argument:
  please report surprises to the package maintainers.</p></dd>
+
+
 <dt>level</dt>
 <dd><p>Confidence level.</p></dd>
+
+
 <dt>method</dt>
 <dd><p>'wald', 'profile', or 'uniroot': see Details
 function)</p></dd>
+
+
 <dt>component</dt>
 <dd><p>Which of the three components 'cond', 'zi' or
 'other' to select. Default is to select 'all'.</p></dd>
+
+
 <dt>estimate</dt>
 <dd><p>(logical) add a third column with estimate ?</p></dd>
+
+
+<dt>include_mapped</dt>
+<dd><p>include dummy rows for mapped (i.e. fixed-value) parameters?</p></dd>
+
+
 <dt>parallel</dt>
 <dd><p>method (if any) for parallel computation</p></dd>
+
+
 <dt>ncpus</dt>
 <dd><p>number of CPUs/cores to use for parallel computation</p></dd>
+
+
 <dt>cl</dt>
 <dd><p>cluster to use for parallel computation</p></dd>
+
+
 <dt>full</dt>
 <dd><p>CIs for all parameters (including dispersion) ?</p></dd>
+
+
 <dt>...</dt>
-<dd><p>arguments may be passed to <code>profile.merMod</code> or
+<dd><p>arguments may be passed to <code><a href="profile.glmmTMB.html">profile.glmmTMB</a></code> (and possibly from there to <code>tmbprofile</code>) or
 <code><a href="https://rdrr.io/pkg/TMB/man/tmbroot.html" class="external-link">tmbroot</a></code></p></dd>
+
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -165,24 +194,30 @@ parameters on the standard deviation/correlation scale, while
 "profile" and "uniroot" report them on the underlying ("theta")
 scale: for each random effect, the first set of parameter values
 are standard deviations on the log scale, while remaining parameters
-represent correlations on the scaled Cholesky scale (see the</p>
+represent correlations on the scaled Cholesky scale. For a random
+effects model with two elements (such as a random-slopes model,
+or a random effect of factor with two levels), there is a single
+correlation parameter \(\theta\); the correlation is
+equal to \(\rho = \theta/\sqrt{1+\theta^2}\).
+For random-effects terms with more than two elements, the mapping
+is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">model2</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span>,</span>
-<span class="r-in">    dispformula<span class="op">=</span> <span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I</a></span><span class="op">(</span><span class="va">Days</span><span class="op">&gt;</span><span class="fl">8</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span>  <span class="co">## Wald/delta-method CIs</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                       2.5 %    97.5 %  Estimate</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> cond.(Intercept)                 232.773351 270.03687 251.40511</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> cond.Days                          8.895919  12.03866  10.46729</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Subject.cond.Std.Dev.(Intercept)  25.357090  51.14415  36.01204</span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">model</span>,parm<span class="op">=</span><span class="st">"theta_"</span><span class="op">)</span>  <span class="co">## Wald/delta-method CIs</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                     2.5 %   97.5 % Estimate</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Subject.cond.Std.Dev.(Intercept) 25.35709 51.14415 36.01204</span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">model</span>,parm<span class="op">=</span><span class="fl">1</span>,method<span class="op">=</span><span class="st">"profile"</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">model2</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span>,</span></span>
+<span class="r-in"><span>    dispformula<span class="op">=</span> <span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/AsIs.html" class="external-link">I</a></span><span class="op">(</span><span class="va">Days</span><span class="op">&gt;</span><span class="fl">8</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">model</span><span class="op">)</span>  <span class="co">## Wald/delta-method CIs</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                  2.5 %    97.5 %  Estimate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)                 232.773351 270.03687 251.40511</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Days                          8.895919  12.03866  10.46729</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Std.Dev.(Intercept)|Subject  25.357090  51.14415  36.01204</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">model</span>,parm<span class="op">=</span><span class="st">"theta_"</span><span class="op">)</span>  <span class="co">## Wald/delta-method CIs</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                                2.5 %   97.5 % Estimate</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Std.Dev.(Intercept)|Subject 25.35709 51.14415 36.01204</span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/stats/confint.html" class="external-link">confint</a></span><span class="op">(</span><span class="va">model</span>,parm<span class="op">=</span><span class="fl">1</span>,method<span class="op">=</span><span class="st">"profile"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                2.5 %   97.5 %</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept) 231.9922 270.8178</span>
 </code></pre></div>
@@ -199,7 +234,7 @@ represent correlations on the scaled Cholesky scale (see the</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

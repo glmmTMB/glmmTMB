@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,7 +92,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">Owls</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">Owls</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="format">
@@ -141,24 +144,24 @@
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">Owls</span>, package <span class="op">=</span> <span class="st">"glmmTMB"</span><span class="op">)</span></span>
-<span class="r-in"><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="http://lattice.r-forge.r-project.org/" class="external-link">"lattice"</a></span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">Owls</span>, package <span class="op">=</span> <span class="st">"glmmTMB"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="http://lattice.r-forge.r-project.org/" class="external-link">"lattice"</a></span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Loading required package: lattice</span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/pkg/lattice/man/xyplot.html" class="external-link">bwplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/reorder.factor.html" class="external-link">reorder</a></span><span class="op">(</span><span class="va">Nest</span>,<span class="va">NegPerChick</span><span class="op">)</span> <span class="op">~</span> <span class="va">NegPerChick</span> <span class="op">|</span> <span class="va">FoodTreatment</span><span class="op">:</span><span class="va">SexParent</span>,</span>
-<span class="r-in">       data<span class="op">=</span><span class="va">Owls</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/pkg/lattice/man/xyplot.html" class="external-link">bwplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/reorder.factor.html" class="external-link">reorder</a></span><span class="op">(</span><span class="va">Nest</span>,<span class="va">NegPerChick</span><span class="op">)</span> <span class="op">~</span> <span class="va">NegPerChick</span> <span class="op">|</span> <span class="va">FoodTreatment</span><span class="op">:</span><span class="va">SexParent</span>,</span></span>
+<span class="r-in"><span>       data<span class="op">=</span><span class="va">Owls</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="Owls-1.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/pkg/lattice/man/xyplot.html" class="external-link">dotplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/reorder.factor.html" class="external-link">reorder</a></span><span class="op">(</span><span class="va">Nest</span>,<span class="va">NegPerChick</span><span class="op">)</span> <span class="op">~</span> <span class="va">NegPerChick</span><span class="op">|</span> <span class="va">FoodTreatment</span><span class="op">:</span><span class="va">SexParent</span>,</span>
-<span class="r-in">        data<span class="op">=</span><span class="va">Owls</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/pkg/lattice/man/xyplot.html" class="external-link">dotplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/reorder.factor.html" class="external-link">reorder</a></span><span class="op">(</span><span class="va">Nest</span>,<span class="va">NegPerChick</span><span class="op">)</span> <span class="op">~</span> <span class="va">NegPerChick</span><span class="op">|</span> <span class="va">FoodTreatment</span><span class="op">:</span><span class="va">SexParent</span>,</span></span>
+<span class="r-in"><span>        data<span class="op">=</span><span class="va">Owls</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="Owls-2.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in"><span class="co">## Fit negative binomial model with "constant" Zero Inflation :</span></span>
-<span class="r-in"><span class="va">owls_nb1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">SiblingNegotiation</span> <span class="op">~</span> <span class="va">FoodTreatment</span><span class="op">*</span><span class="va">SexParent</span> <span class="op">+</span></span>
-<span class="r-in">                                    <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Nest</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">BroodSize</span><span class="op">)</span><span class="op">)</span>,</span>
-<span class="r-in">              family <span class="op">=</span> <span class="fu"><a href="nbinom2.html">nbinom1</a></span><span class="op">(</span><span class="op">)</span>, zi <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, data<span class="op">=</span><span class="va">Owls</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">owls_nb1_bs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">owls_nb1</span>,</span>
-<span class="r-in">                      <span class="va">.</span> <span class="op">~</span> <span class="va">.</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">BroodSize</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">BroodSize</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">owls_nb1_bs</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="co">## Fit negative binomial model with "constant" Zero Inflation :</span></span></span>
+<span class="r-in"><span><span class="va">owls_nb1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">SiblingNegotiation</span> <span class="op">~</span> <span class="va">FoodTreatment</span><span class="op">*</span><span class="va">SexParent</span> <span class="op">+</span></span></span>
+<span class="r-in"><span>                                    <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Nest</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">BroodSize</span><span class="op">)</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>              family <span class="op">=</span> <span class="fu"><a href="nbinom2.html">nbinom1</a></span><span class="op">(</span><span class="op">)</span>, zi <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>, data<span class="op">=</span><span class="va">Owls</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">owls_nb1_bs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">owls_nb1</span>,</span></span>
+<span class="r-in"><span>                      <span class="va">.</span> <span class="op">~</span> <span class="va">.</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">BroodSize</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">BroodSize</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">owls_nb1_bs</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -173,7 +176,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,18 +92,23 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
-<span class="fu">VarCorr</span><span class="op">(</span><span class="va">x</span>, sigma <span class="op">=</span> <span class="fl">1</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu">VarCorr</span><span class="op">(</span><span class="va">x</span>, sigma <span class="op">=</span> <span class="fl">1</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>x</dt>
 <dd><p>a fitted <code>glmmTMB</code> model</p></dd>
+
+
 <dt>sigma</dt>
 <dd><p>residual standard deviation (usually set automatically from internal information)</p></dd>
+
+
 <dt>extra</dt>
 <dd><p>arguments (for consistency with generic method)</p></dd>
+
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -108,41 +116,41 @@
 are structured as follows: the first n parameters are the log-standard-deviations,
 while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
 of the correlation matrix, filled in column-wise order
-(see the <a href="http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html" class="external-link">TMB documentation</a>
+(see the <a href="http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html" class="external-link">TMB documentation</a>
 for further details).</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co">## Comparing variance-covariance matrix with manual computation</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"sleepstudy"</span>,package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">fm4</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">VarCorr</span><span class="op">(</span><span class="va">fm4</span><span class="op">)</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cond"</span>,<span class="st">"Subject"</span><span class="op">)</span><span class="op">]</span><span class="op">]</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co">## Comparing variance-covariance matrix with manual computation</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"sleepstudy"</span>,package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">fm4</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">VarCorr</span><span class="op">(</span><span class="va">fm4</span><span class="op">)</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cond"</span>,<span class="st">"Subject"</span><span class="op">)</span><span class="op">]</span><span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             (Intercept)     Days</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)   565.51573 11.05626</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Days           11.05626 32.68204</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)   565.51565 11.05622</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Days           11.05622 32.68205</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"stddev")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)        Days </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   23.780575    5.716821 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   23.780573    5.716822 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"correlation")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             (Intercept)       Days</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)  1.00000000 0.08132635</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Days         0.08132635 1.00000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)  1.00000000 0.08132603</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Days         0.08132603 1.00000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"blockCode")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 </span>
-<span class="r-in"><span class="co">## hand calculation</span></span>
-<span class="r-in"><span class="va">pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="getME.glmmTMB.html">getME</a></span><span class="op">(</span><span class="va">fm4</span>,<span class="st">"theta"</span><span class="op">)</span></span>
-<span class="r-in"><span class="co">## construct cholesky factor</span></span>
-<span class="r-in"><span class="va">L</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">L</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">lower.tri</a></span><span class="op">(</span><span class="va">L</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">pars</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span></span>
-<span class="r-in"><span class="va">C</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">crossprod</a></span><span class="op">(</span><span class="va">L</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">C</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
-<span class="r-in"><span class="va">sdvec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">pars</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">(</span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">sdvec</span>,<span class="va">sdvec</span><span class="op">)</span> <span class="op">*</span> <span class="va">C</span><span class="op">)</span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>          [,1]     [,2]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,] 565.5157 11.09300</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  11.0930 32.68204</span>
+<span class="r-in"><span><span class="co">## hand calculation</span></span></span>
+<span class="r-in"><span><span class="va">pars</span> <span class="op">&lt;-</span> <span class="fu"><a href="getME.glmmTMB.html">getME</a></span><span class="op">(</span><span class="va">fm4</span>,<span class="st">"theta"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="co">## construct cholesky factor</span></span></span>
+<span class="r-in"><span><span class="va">L</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">L</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">lower.tri</a></span><span class="op">(</span><span class="va">L</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">pars</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span></span></span>
+<span class="r-in"><span><span class="va">C</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">crossprod</a></span><span class="op">(</span><span class="va">L</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">C</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
+<span class="r-in"><span><span class="va">sdvec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">pars</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">(</span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">sdvec</span>,<span class="va">sdvec</span><span class="op">)</span> <span class="op">*</span> <span class="va">C</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,] 565.51565 11.09296</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  11.09296 32.68205</span>
 </code></pre></div>
     </div>
   </div>
@@ -157,7 +165,7 @@ for further details).</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

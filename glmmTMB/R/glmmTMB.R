@@ -419,7 +419,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   psiLength <- if (family$family %in% c("t", "tweedie"))
                { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
 
-  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)  
+  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
   # theta is 0, except if dorr, theta is 1
   t01 <- function(dorr, condReStruc){
@@ -728,7 +728,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "8" = 2 * blksize - 1, # toep
                    "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
                    "10" = 1  ## (homogeneous) diag
-                   ) 
+                   )
         }
         blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
 
@@ -1372,12 +1372,13 @@ glmmTMBControl <- function(optCtrl=NULL,
   return(TMBStruc)
 }
 
-##' Optimize a TMB model and package results
+##' Optimize TMB models and package results, modularly
 ##'
-##' This function (called internally by \code{\link{glmmTMB}}) runs
+##' These functions (called internally by \code{\link{glmmTMB}}) perform
 ##' the actual model optimization, after all of the appropriate structures
-##' have been set up. It can be useful to run \code{\link{glmmTMB}} with
-##' \code{doFit=TRUE}, adjust the components as required, and then
+##' have been set up (\code{fitTMB}), and finalize the model after
+##' optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}} with
+##' \code{doFit=FALSE}, adjust the components as required, and then
 ##' finish the fitting process with \code{fitTMB} (however, it is the
 ##' user's responsibility to make sure that any modifications
 ##' create an internally consistent final fitted object).
@@ -1385,15 +1386,29 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' @param TMBStruc a list containing lots of stuff ...
 ##' @param doOptim logical; do optimization? If FALSE, return TMB object
 ##' @examples
+##' ## regular (non-modular) model fit
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
-##'              family=poisson, data=Salamanders, doFit=FALSE)
+##'              family=poisson, data=Salamanders)
+##' ## construct model structures
+##' m1 <- update(m0, doFit=FALSE)
 ##' names(m0)
-##' fitTMB(m0)
+##' m2 <- fitTMB(m1, doOptim = FALSE)
+##' ## could modify the components of m1$env$data at this point ...
+##' ## rebuild TMB structure (*may* be necessary)
+##' m2 <- with(m2$env,
+##'                TMB::MakeADFun(data,
+##'                                parameters,
+##'                                map = map,
+##'                                random = random,
+##'                                silent = silent,
+##'                                DLL = "glmmTMB"))
+##' m3 <- with(m2, nlminb(par, objective = fn, gr = gr))
+##' m4 <- finalizeTMB(m1, m2, m3)
 ##' @export
 fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
     control <- TMBStruc$control
-
+    data.tmb.old <- h <- NULL  ## these *may* be computed here/used in finalizeTMB
     has_any_rr <- function(x) {
         any(vapply(x, function(z) z$blockCode == .valid_covstruct[["rr"]],
                    FUN.VALUE = logical(1)))
@@ -1519,15 +1534,30 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         optTime <- system.time(fit <- optfun())
     }
 
+    finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old)
+}
+
+#' @rdname fitTMB
+#' @param obj object created by \code{fitTMB(., doOptim = FALSE)}
+#' @param fit a fitted object returned from \code{nlminb}, or more generally
+#' a similar list (i.e. containing elements \code{par}, \code{objective}, \code{convergence},
+#' \code{message}, \code{iterations}, \code{evaluations})
+#' @param h Hessian matrix for fit, if computed in previous step
+#' @param data.tmb.old stored TMB data, if computed in previous step
+#' @export
+finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
+
+    control <- TMBStruc$control
+
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
     fitted <- NULL
 
     if (TMBStruc$se) {
         if(control$profile)
-            sdr <- sdreport(obj, hessian.fixed=h)
+            sdr <- sdreport(obj, hessian.fixed = h)
         else
-            sdr <- sdreport(obj, getJointPrecision=TMBStruc$REML)
+            sdr <- sdreport(obj, getJointPrecision = TMBStruc$REML)
         ## FIXME: assign original rownames to fitted?
     } else {
         sdr <- NULL
@@ -1583,7 +1613,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
                 fit$message, ". ",
                 "See vignette('troubleshooting')")
     }
-    
+
     if (control $ collect) {
         ## Undo changes made to the data
         TMBStruc$data.tmb <- data.tmb.old

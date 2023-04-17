@@ -23,7 +23,7 @@ block size and number of blocks.  Mostly for internal use."><!-- mathjax --><scr
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -44,19 +44,22 @@ block size and number of blocks.  Mostly for internal use."><!-- mathjax --><scr
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -99,46 +102,61 @@ block size and number of blocks.  Mostly for internal use.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">getReStruc</span><span class="op">(</span><span class="va">reTrms</span>, ss <span class="op">=</span> <span class="cn">NULL</span>, aa <span class="op">=</span> <span class="cn">NULL</span>, reXterms <span class="op">=</span> <span class="cn">NULL</span>, fr <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">getReStruc</span><span class="op">(</span><span class="va">reTrms</span>, ss <span class="op">=</span> <span class="cn">NULL</span>, aa <span class="op">=</span> <span class="cn">NULL</span>, reXterms <span class="op">=</span> <span class="cn">NULL</span>, fr <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>reTrms</dt>
 <dd><p>random-effects terms list</p></dd>
+
+
 <dt>ss</dt>
 <dd><p>a character string indicating a valid covariance structure.
 Must be one of <code>names(glmmTMB:::.valid_covstruct)</code>;
 default is to use an unstructured  variance-covariance
 matrix (<code>"us"</code>) for all blocks).</p></dd>
+
+
 <dt>aa</dt>
 <dd><p>additional arguments (i.e. rank)</p></dd>
+
+
 <dt>reXterms</dt>
 <dd><p>terms objects corresponding to each RE term</p></dd>
+
+
 <dt>fr</dt>
 <dd><p>model frame</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>a list</p>
+    
+
+<p>a list</p>
 <dl><dt>blockNumTheta</dt>
 <dd><p>number of variance covariance parameters per term</p></dd>
+
 <dt>blockSize</dt>
 <dd><p>size (dimension) of one block</p></dd>
+
 <dt>blockReps</dt>
 <dd><p>number of times the blocks are repeated (levels)</p></dd>
+
 <dt>covCode</dt>
 <dd><p>structure code</p></dd>
+
 </dl></div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">rt</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/modular.html" class="external-link">lFormula</a></span><span class="op">(</span><span class="va">Reaction</span><span class="op">~</span><span class="va">Days</span><span class="op">+</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span><span class="op">+</span><span class="op">(</span><span class="fl">0</span><span class="op">+</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>,</span>
-<span class="r-in">                    <span class="va">sleepstudy</span><span class="op">)</span><span class="op">$</span><span class="va">reTrms</span></span>
-<span class="r-in"><span class="va">rt2</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/modular.html" class="external-link">lFormula</a></span><span class="op">(</span><span class="va">Reaction</span><span class="op">~</span><span class="va">Days</span><span class="op">+</span><span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>,</span>
-<span class="r-in">                    <span class="va">sleepstudy</span><span class="op">)</span><span class="op">$</span><span class="va">reTrms</span></span>
-<span class="r-in"><span class="fu">getReStruc</span><span class="op">(</span><span class="va">rt</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">rt</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/modular.html" class="external-link">lFormula</a></span><span class="op">(</span><span class="va">Reaction</span><span class="op">~</span><span class="va">Days</span><span class="op">+</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span><span class="op">+</span><span class="op">(</span><span class="fl">0</span><span class="op">+</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                    <span class="va">sleepstudy</span><span class="op">)</span><span class="op">$</span><span class="va">reTrms</span></span></span>
+<span class="r-in"><span><span class="va">rt2</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/modular.html" class="external-link">lFormula</a></span><span class="op">(</span><span class="va">Reaction</span><span class="op">~</span><span class="va">Days</span><span class="op">+</span><span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>                    <span class="va">sleepstudy</span><span class="op">)</span><span class="op">$</span><span class="va">reTrms</span></span></span>
+<span class="r-in"><span><span class="fu">getReStruc</span><span class="op">(</span><span class="va">rt</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $`1 | Subject`</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $`1 | Subject`$blockReps</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 18</span>
@@ -183,7 +201,7 @@ matrix (<code>"us"</code>) for all blocks).</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

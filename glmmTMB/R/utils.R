@@ -361,11 +361,17 @@ up2date <- function(oldfit) {
                                       silent = silent,
                                       DLL = "glmmTMB"))
       oldfit$obj$env$last.par.best <- ee$last.par.best
+      ##
+  }
+  ## dispersion was NULL rather than 1 in old R versions ...
+  omf <- oldfit$modelInfo$family
+  if (getRversion() >= "4.3.0" &&
+      !("dispersion" %in% names(omf))) {
+      ## don't append() or c(), don't want to lose class info
+      oldfit$modelInfo$family$dispersion <- 1
   }
   return(oldfit)
 }
-
-
 
 #' Load data from system file, updating glmmTMB objects
 #'

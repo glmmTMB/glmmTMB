@@ -18,7 +18,7 @@ print()ing and show()ing"><!-- mathjax --><script src="https://cdnjs.cloudflare.
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
       </span>
     </div>
 
@@ -39,19 +39,22 @@ print()ing and show()ing"><!-- mathjax --><script src="https://cdnjs.cloudflare.
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -91,40 +94,53 @@ print()ing and show()ing</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">formatVC</span><span class="op">(</span>
-  <span class="va">varcor</span>,
-  digits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"digits"</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span><span class="op">)</span>,
-  comp <span class="op">=</span> <span class="st">"Std.Dev."</span>,
-  formatter <span class="op">=</span> <span class="va">format</span>,
-  useScale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">varcor</span>, <span class="st">"useSc"</span><span class="op">)</span>,
-  <span class="va">...</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">formatVC</span><span class="op">(</span></span>
+<span>  <span class="va">varcor</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"digits"</span><span class="op">)</span> <span class="op">-</span> <span class="fl">2</span><span class="op">)</span>,</span>
+<span>  comp <span class="op">=</span> <span class="st">"Std.Dev."</span>,</span>
+<span>  formatter <span class="op">=</span> <span class="va">format</span>,</span>
+<span>  useScale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">varcor</span>, <span class="st">"useSc"</span><span class="op">)</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>varcor</dt>
 <dd><p>a <code><a href="VarCorr.glmmTMB.html">VarCorr</a></code> (-like) matrix with attributes.</p></dd>
+
+
 <dt>digits</dt>
 <dd><p>the number of significant digits.</p></dd>
+
+
 <dt>comp</dt>
 <dd><p>character vector of length one or two indicating which
 columns out of "Variance" and "Std.Dev." should be shown in the
 formatted output.</p></dd>
+
+
 <dt>formatter</dt>
 <dd><p>the <code><a href="https://rdrr.io/r/base/function.html" class="external-link">function</a></code> to be used for
 formatting the standard deviations and or variances (but
 <em>not</em> the correlations which (currently) are always formatted
 as "0.nnn"</p></dd>
+
+
 <dt>useScale</dt>
 <dd><p>whether to report a scale parameter (e.g. residual standard deviation)</p></dd>
+
+
 <dt>...</dt>
 <dd><p>optional arguments for <code>formatter(*)</code> in addition
 to the first (numeric vector) and <code>digits</code>.</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>a character matrix of formatted VarCorr entries from <code>varc</code>.</p>
+    
+
+<p>a character matrix of formatted VarCorr entries from <code>varc</code>.</p>
     </div>
 
   </div>
@@ -139,7 +155,7 @@ to the first (numeric vector) and <code>digits</code>.</p></dd>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>
