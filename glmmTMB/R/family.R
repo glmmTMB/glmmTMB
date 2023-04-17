@@ -15,10 +15,10 @@ family_factory <- function(default_link, family, variance) {
 utils::globalVariables(".Theta")
 utils::globalVariables(".Phi")
 
-## attempt to guess whether calling function has been called from glm.fit ...
+## see whether calling function has been called from glm.fit ...
 in_glm_fit <- function() {
-    vars <- ls(envir=parent.frame(2))
-    all(c("coefold","control","EMPTY","good","nvars") %in% vars)
+    up_two <- sys.calls()[[sys.nframe()-2]]
+    identical(up_two[[1]], quote(glm.fit))
 }
 
 make_family <- function(x, link) {
@@ -32,11 +32,10 @@ make_family <- function(x, link) {
         x <- c(x,list(initialize=expression({mustart <- y+0.1})))
     }
     if (is.null(x$dev.resids)) {
-        ## can't return NA, glm.fit is unhappy
-        ## (*but* no longer remember exactly when this happens ... ??)
-        ## try taking this out and see what breaks ...
         x <- c(x,list(dev.resids=function(y,mu,wt)  {
             if (in_glm_fit()) {
+                ## can't return NA, glm.fit is unhappy
+                ## glm() is called by the effects package
                 ## cat("in glm.fit\n")
                 return(rep(0,length(y)))
             } else {
