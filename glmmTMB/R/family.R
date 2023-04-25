@@ -142,7 +142,7 @@ nbinom2 <- function(link="log") {
                   n <- rep(1, nobs)
                   mustart <- y + (y == 0)/6
               }),
-              dev.resids = function (y, mu, wt, theta)  {
+              dev.resids = function (y, mu, wt, theta = NULL)  {
                   get_nbinom_disp(theta, ".Theta", "theta")
                   return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
               })
@@ -163,7 +163,7 @@ nbinom1 <- function(link="log") {
                   n <- rep(1, nobs)
                   mustart <- y + (y == 0)/6
               }),
-              dev.resids = function (y, mu, wt, phi)  {
+              dev.resids = function (y, mu, wt, phi = NULL)  {
                   get_nbinom_disp(phi, ".Phi", "phi")
                   ## convert phi to theta and use nbinom2 expression
                   ## V = mu*(1+phi) = mu*(1+mu/theta) -> theta = mu/phi
