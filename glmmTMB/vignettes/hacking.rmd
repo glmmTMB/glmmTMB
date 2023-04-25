@@ -87,6 +87,8 @@ zo_truncated_poisson <- function(link="log") {
 
 As you can see, I haven't yet worked out the variance of a zero-one-truncated Poisson. This will only cause problems if/when a user wants to estimate Pearson residuals.
 
+Ideally a `$dev.resids()` component should also be added, to return the *deviance residuals* (i.e., $2 (\log L(y_i) - \log L_{\textrm{sat}}(y_i))$, where $L_{\textrm{sat}}$ is the log-likelihood of $y_i$ under the *saturated* model; see the `$dev.resids` components of families built into base R for examples.
+
 If this were for long-term use, you might want to add the documentation to the `?glmmTMB::family_glmmTMB` page. This material is located in `R/family.R`, above the `nbinom2` family function.
 
 ### modifying glmmTMB.R
