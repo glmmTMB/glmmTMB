@@ -144,6 +144,9 @@ test_that("nbinom", {
        c(1.93154240357181, 0.992776302432081,
          16.447888398429, 1.00770603513152),
        tolerance = 1e-5)
+    expect_equal(head(residuals(m1, type = "deviance"),2),
+                 c(`1` = 0.966425183534698, `2` = -0.213960044837981),
+                 tolerance = 1e-5)
 
     ## identity link: GH #20
     x <- 1:100; m <- 2; b <- 100
