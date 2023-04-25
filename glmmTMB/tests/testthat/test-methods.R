@@ -628,8 +628,8 @@ test_that("de novo simulation", {
 
 test_that("weighted residuals", {
     set.seed(101)
-    wts <- sample(1:2, size = nrow(cbpp), replace = TRUE)
     data("cbpp", package = "lme4")
+    wts <- sample(1:2, size = nrow(cbpp), replace = TRUE)
     ## Pearson tested above ...
     tmbm4 <- glm(incidence ~ period,
                  data = cbpp, family = poisson, weights = wts)
