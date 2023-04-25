@@ -360,8 +360,11 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       }
       whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi") )
       Qm <- GMRFmarginal(Q, whichNotRandom)
-      cov.all.parms <- solve(as.matrix(Qm))
-      
+      cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
+      if (inherits(cov.all.parms, "try-error")) {
+          cov.all.parms <- matrix(NA_real_, nrow = nrow(Qm), ncol = ncol(Qm),
+                                  dimnames = dimnames(Qm))
+      }
   } else {
       cov.all.parms <- sdr$cov.fixed
   }
@@ -370,7 +373,6 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
              } else "beta($|[^d])"
   to_keep <- grep(keepTag,colnames(cov.all.parms)) # only keep betas
   covF <- cov.all.parms[to_keep,to_keep,drop=FALSE]
-
 
   ## drop NA-mapped variables
 
