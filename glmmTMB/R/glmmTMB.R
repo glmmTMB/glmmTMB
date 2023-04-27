@@ -453,7 +453,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
                        theta   = t01(condReStruc, condList),
-                       thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
+                       thetazi = t01(ziReStruc, ziList),
                        psi  = psi_init
                      ))
 
