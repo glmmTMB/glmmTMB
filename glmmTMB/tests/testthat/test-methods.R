@@ -641,3 +641,14 @@ test_that("weighted residuals", {
                      tolerance = 1e-6)
     }
 })
+
+test_that("bad inversion in vcov", {
+    d <- readRDS(system.file("test_data", "strengejacke_nasummary.rds",
+                             package = "glmmTMB"))
+    m <- glmmTMB(
+        QoL ~ time + age + x_tv_dm + x_tv_gm + z1_ti + z2_ti + (1 + time | ID) + (1 + x_tv_dm | ID),
+        data = d,
+        REML = TRUE
+    )
+    expect_true(all(is.na(vcov(m)$cond)))
+})
