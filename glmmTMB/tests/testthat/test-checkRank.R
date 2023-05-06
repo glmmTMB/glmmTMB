@@ -77,9 +77,6 @@ test_that("messages for non-identifiable fixed effects", {
     expect_equal(length(fixef(m1)$cond), 5L)
     expect_equal(unname(fixef(m1)$cond[c("x3", "x4")]), rep(NA_real_, 2))
 
-    expect_equal(dim(vcov(m1)$cond), c(5, 5))
-    expect_equal(dim(vcov(m1, include_nonest = FALSE)$cond), c(3, 3))
-    
     expect_message(
         m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
         "dropping columns.*zero-inflation")
@@ -107,6 +104,25 @@ test_that("messages for non-identifiable fixed effects", {
     expect_equal(length(fixef(m1)$disp), 3L)
 
 })
+
+
+test_that("vcov for rank-deficient models", {
+    m1 <-
+        suppressMessages(glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')))
+    expect_equal(dim(vcov(m1)$cond), c(5, 5))
+    expect_equal(dim(vcov(m1, include_nonest = FALSE)$cond), c(3, 3))
+})
+
+test_that("predict for rank-deficient models", {
+    m1 <-
+        suppressMessages(glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')))
+
+    expect_equal(head(predict(m1, re.form = ~ 0), 4),
+                 c(-0.00552313394691104, -0.0330178636893558, -0.214547485709826, 
+                   0.127729913085515), tolerance = 1e-5)
+
+})
+
 
 test_that("equivalence between 'skip' and 'warn' when confronted with identifiable and non-identifiable fixed effects", {
     # models with no identifiability issues

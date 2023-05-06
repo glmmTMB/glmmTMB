@@ -1337,15 +1337,14 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
     ## model matrix??
     if (part != "fixed") stop("only fixed model matrices currently available")
 
-    ff <- object$modelInfo$allForm
-    form <- ff[[switch(component,
-                       cond="formula",
-                       zi="ziformula",
-                       disp="dispformula")]]
-    model.matrix(lme4::nobars(form), model.frame(object, ...),
-                 contrasts.arg = object$modelInfo$contrasts)
-    ## FIXME: what if contrasts are *different* for different components? (ugh)
-    ## should at least write a test to flag this case ...
+    m <- switch(component,
+                cond =  "",
+                zi = "zi",
+                disp = "d")
+
+    X <- getME(object, paste0("X", m))
+
+    X
 }
 
 ## convert ranef object to a long-format data frame, e.g. suitable
