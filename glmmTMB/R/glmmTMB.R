@@ -1735,7 +1735,7 @@ summary.glmmTMB <- function(object,...)
     #  needs to be able to find out about them
 
     ff <- fixef(object)
-    vv <- vcov(object,include_mapped=TRUE)
+    vv <- vcov(object, include_nonest=TRUE)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),

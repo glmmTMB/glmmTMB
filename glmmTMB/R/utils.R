@@ -89,10 +89,10 @@ hasRandom <- function(x) {
 ##' @param parm parameter specifier
 ##' @param object fitted glmmTMB object
 ##' @param full include simple dispersion parameter?
-##' @param include_mapped include mapped parameter indices?
+##' @param include_nonest include mapped parameter indices for non-estimated (mapped or rank-deficient/dropped) parameters?
 ##' @noRd
-getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
-    vv <- vcov(object, full=TRUE, include_mapped = include_mapped)
+getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
+    vv <- vcov(object, full=TRUE, include_nonest = include_nonest)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
     ee <- object$obj$env
@@ -100,7 +100,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
     drop_rand <- function(x) x[!x %in% c("b", "bzi")]
-    if (!include_mapped) {
+    if (!include_nonest) {
         intnames <- drop_rand(names(ee$last.par))
     } else {
         pl <- ee$parList()
@@ -445,23 +445,32 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## for matching map names vs nameList components ...
 par_components <- c("beta","betazi","betad","theta","thetazi","psi")
 
-getAllParnames <- function(object, full) {
+## all parameters, including both mapped and rank-dropped
+getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
                            
-  mkNames <- function(tag) {
+  mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
-      if (trivialFixef(nn <- colnames(X),tag)
+      dropped <- attr(X, "col.dropped") %||% numeric(0)
+      ntot <- ncol(X) + length(dropped)
+      if (ntot == ncol(X) || !include_dropped) {
+          nn <- colnames(X)
+      } else {
+          nn <- character(ntot)
+          nn[-dropped] <- colnames(X)
+          nn[ dropped] <- names(dropped)
+      }
+      if (trivialFixef(nn, tag)
           ## if 'full', keep disp even if trivial, if used by family
           && !(full && tag =="d" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
+      if (tag == "") return(nn)
       return(paste(tag,nn,sep="~"))
   }
 
-  nameList <- setNames(list(colnames(getME(object,"X")),
-                       mkNames("zi"),
-                       mkNames("d")),
-                names(cNames))
+  nameList <- setNames(Map(mkNames, c("", "zi", "d")),
+                         names(cNames))
 
   if(full) {
       ## FIXME: haven't really decided if we should drop the
@@ -488,29 +497,24 @@ getAllParnames <- function(object, full) {
       
   }
 
-    return(nameList)
-}
-
-
-getEstParnames <- function(object, full) {
-    nameList <- getAllParnames(object, full)
-    map <- object$obj$env$map
-    if (length(map)>0) {
-        ## fullNameList for all variables, including mapped vars
-        ## (nameList will get reduced shortly)
-        for (m in seq_along(map)) {
+  if (!include_mapped) {
+     map <- object$obj$env$map
+     if (length(map)>0) {
+         for (m in seq_along(map)) {
             if (length(NAmap <- which(is.na(map[[m]])))>0) {
                 w <- match(names(map)[m],par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
                     nameList[[w]] <- nameList[[w]][-NAmap]
                 }
             }
-        }
-    }
-    return(nameList)
+         } ## for (m in seq_along(map))
+     } ## if (length(map) > 0)
+  }
+
+  return(nameList)
 }
 
-## OBSOLETE: delete eventually
+## OBSOLETE (?)
 
 ## reassign predvars to have term vars in the right order,
 ##  but with 'predvars' values inserted where appropriate
@@ -614,4 +618,11 @@ simulate_new <- function(object,
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+}
+
+## from rlang
+`%||%` <- function (x, y)  {
+    if (is.null(x)) 
+        y
+    else x
 }

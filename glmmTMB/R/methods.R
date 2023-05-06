@@ -25,22 +25,21 @@
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
 
-  ## set names/fill in NAs as required
-  get_vec <- function(vals, X) {
-      dropped <- attr(X, "col.dropped")
-      if (is.null(dropped)) return(setNames(vals, colnames(X)))
-      n_tot <- ncol(X) + length(dropped)
-      cc <- numeric(n_tot)
-      cc[-dropped] <- vals
-      cc[ dropped] <- NA_real_
-      nm <- character(n_tot)
-      nm[-dropped] <- colnames(X)
-      nm[ dropped] <- names(dropped)
-      setNames(cc, nm)
-  }
-
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
   X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "d"))
+
+  get_vec <- function(vals, X) {
+    dropped <- attr(X, "col.dropped")
+    if (is.null(dropped)) return(setNames(vals, colnames(X)))
+    n_tot <- ncol(X) + length(dropped)
+    cc <- numeric(n_tot)
+    cc[-dropped] <- vals
+    cc[ dropped] <- NA_real_
+    nm <- character(n_tot)
+    nm[-dropped] <- colnames(X)
+    nm[ dropped] <- names(dropped)
+    setNames(cc, nm)
+  }
 
   r <- Map(get_vec,
            pl[c("beta", "betazi", "betad")],
@@ -353,13 +352,13 @@ df.residual.glmmTMB <- function(object, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
-##' @param include_mapped include mapped variables? (these will be given variances and covariances of NA)
+##' @param include_nonest include variables that are mapped \emph{or} dropped due to rank-deficiency? (these will be given variances and covariances of NA)
 ##' @param \dots ignored, for method compatibility
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
 ##' @export
-vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
+vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   check_dots(..., .ignore = "complete")
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
@@ -389,25 +388,25 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   to_keep <- grep(keepTag,colnames(cov.all.parms)) # only keep betas
   covF <- cov.all.parms[to_keep,to_keep,drop=FALSE]
 
-  ## drop NA-mapped variables
-
-
-  fullNameList <- getAllParnames(object, full)
-  nameList <- getEstParnames(object, full)
+  ## include mapped *and* dropped
+  fullNameList <- getParnames(object, full)
+  ## only actually estimated
+  estNameList <- getParnames(object, full, include_mapped = FALSE, include_dropped = FALSE)
 
   if (full) {
-      nl <- unlist(nameList)
+      ## return a matrix
+      nl <- unlist(estNameList)
       fnl <- unlist(fullNameList)
-      if (!include_mapped || identical(nl, fnl)) {
-          colnames(covF) <- rownames(covF) <- unlist(nameList)
-          res <- covF        ## return just a matrix in this case
+      if (!include_nonest || identical(nl, fnl)) {
+          colnames(covF) <- rownames(covF) <- unlist(estNameList)
+          res <- covF
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
                         dimnames = list(fnl, fnl))
           res[nl, nl] <- covF
       }
   } else {
-      ## extract block-diagonal matrix
+      ## extract matrix blocks
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
       names(covList) <- names(cNames) ## component names
@@ -416,15 +415,16 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
           nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
-          xnms <- nameList[[cnm]]
-          map <- object$obj$env$map
-          if (!include_mapped || length(map)==0) {
+          xnms <- estNameList[[cnm]]
+          fnm <- fullNameList[[cnm]]
+          ## map <- object$obj$env$map
+          if (!include_nonest || nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
-              fnm <- fullNameList[[cnm]]
+              ## mapping *or* rank-def columns dropped
               mm <- matrix(NA_real_, length(fnm), length(fnm),
                            dimnames=list(fnm, fnm))
-              mm[nameList[[cnm]],nameList[[cnm]]] <- m
+              mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
               m <- mm
           }
           covList[[i]] <- m
@@ -432,10 +432,12 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       res <- covList[lengths(covList)>0]
       ##  FIXME: should vcov always return a three-element list
       ## (with NULL values for trivial models)?
-      class(res) <- c("vcov.glmmTMB","matrix")
+      class(res) <- c("vcov.glmmTMB", "matrix")
   }
   return(res)
 }
+
+    
 
 ##' @method print vcov.glmmTMB
 ##' @export
@@ -845,7 +847,7 @@ format.perc <- function (probs, digits) {
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
-##' @param include_mapped include dummy rows for mapped (i.e. fixed-value) parameters?
+##' @param include_nonest include dummy rows for non-estimated (mapped, rank-deficient) parameters?
 ##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
@@ -863,7 +865,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                       "uniroot"),
                              component = c("all", "cond", "zi", "other"),
                              estimate = TRUE,
-                             include_mapped = FALSE,
+                             include_nonest = FALSE,
                              parallel = c("no", "multicore", "snow"),
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
@@ -888,8 +890,8 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
     ## expand CI matrix to include mapped parameters
     expand_ci_with_mapped <- function(ci, parm0) {
-        parm_all <- getParms(parm0, object, full, include_mapped = TRUE)
-        pn <- unlist(getAllParnames(object, full))[parm_all]
+        parm_all <- getParms(parm0, object, full, include_nonest = TRUE)
+        pn <- unlist(getParnames(object, full))[parm_all]
         ci_full <- matrix(NA_real_, ncol = 2, nrow = length(parm_all),
                           dimnames = list(pn, colnames(ci)))
         ci_full[rownames(ci), ] <- ci
@@ -907,11 +909,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
     if (!is.null(parm) || method != "wald") {
         parm0 <- parm
-        parm <- getParms(parm, object, full, include_mapped = include_mapped)
+        parm <- getParms(parm, object, full, include_nonest = include_nonest)
     }
 
     wald_comp <- function(component) {
-        vv <- vcov(object, include_mapped = include_mapped)[[component]]
+        vv <- vcov(object, include_nonest = include_nonest)[[component]]
         cf <- fixef(object)[[component]]
         ## strip tag (only really necessary for zi~, d~)
         tag <- if (component=="disp") "d" else component
@@ -1019,7 +1021,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## identify mapped values: lwr and upr CIs equal but *not NaN
         ##  (which indicates a failed fit instead)
         mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
-        if (!include_mapped) {
+        if (!include_nonest) {
             ## drop mapped values (where lower == upper)
             ci <- ci[!mapped, , drop=FALSE]
         } else {
@@ -1038,7 +1040,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
         ## end Wald method
     } else if (method=="uniroot") {
-        parm <- getParms(parm0, object, full, include_mapped = FALSE)
+        parm <- getParms(parm0, object, full, include_nonest = FALSE)
         if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
@@ -1081,17 +1083,17 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- cbind(L,par)
         }
         ci <- rbind(ci,L) ## really just adding column names!
-        if (include_mapped) {
+        if (include_nonest) {
             ci <- expand_ci_with_mapped(ci, parm0)
         }
     }
     else {  ## profile CIs
-        parm <- getParms(parm0, object, full, include_mapped = FALSE)
+        parm <- getParms(parm0, object, full, include_nonest = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
                       parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
-        if (include_mapped) {
+        if (include_nonest) {
             ci <- expand_ci_with_mapped(ci, parm0)
         }
     }

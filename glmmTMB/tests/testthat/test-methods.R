@@ -317,10 +317,10 @@ test_that("confint with mapped parameters", {
     ## getParms() not exported ...
     ## expect_equal(getParms("beta_", test2), 1:2)
     ## expect_equal(getParms("beta_", test2, include_mapped = TRUE), 1:3)
-    v1 <- vcov(test2, include_mapped = TRUE)
+    v1 <- vcov(test2, include_nonest = TRUE)
     expect_equal(dim(v1$cond), c(3,3))
     expect_true(all(is.na(v1$cond["x",] )))
-    c1 <- confint(test2, parm = "beta_", include_mapped = TRUE)
+    c1 <- confint(test2, parm = "beta_", include_nonest = TRUE)
     expect_equal(nrow(c1), 3)
     expect_equal(unname(unlist(c1["x",])), c(NA_real_, NA_real_, 0))
 
@@ -332,23 +332,23 @@ test_that("confint with mapped parameters", {
     expect_equal(nrow(c3), 4)
     expect_equal(rownames(c3),
                  c("(Intercept)", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
-    c4 <- confint(test2, include_mapped = TRUE)
-    expect_equal(confint(test2, include_mapped = TRUE, parm = "theta_"),
+    c4 <- confint(test2, include_nonest = TRUE)
+    expect_equal(confint(test2, include_nonest = TRUE, parm = "theta_"),
                  confint(test2, parm = "theta_"))
     c5 <- confint(test2, parm = "sigma")
 
     ## expect_equal(getParms("theta_", test1), 5L)
     ## expect_equal(getParms("theta_", test1, include_mapped = TRUE), 5:6)
-    v2 <- vcov(test1, include_mapped = TRUE, full = TRUE)
+    v2 <- vcov(test1, include_nonest = TRUE, full = TRUE)
     expect_equal(dim(v2), c(6,6))
     expect_true(all(is.na(v2["theta_1|B.1",])))
 
-    c6 <- confint(test1, include_mapped = TRUE)
+    c6 <- confint(test1, include_nonest = TRUE)
     expect_equal(rownames(c6),
                  c("(Intercept)", "x", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
     c7 <- confint(test1, parm = "theta_")
     expect_equal(rownames(c7), "Std.Dev.x|A")
-    c8 <- confint(test1, parm = "theta_", include_mapped = TRUE)
+    c8 <- confint(test1, parm = "theta_", include_nonest = TRUE)
     expect_equal(rownames(c8), c("Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
     expect_equal(unname(c8["Std.Dev.(Intercept)|B", 1:2]), rep(NA_real_, 2))
 })

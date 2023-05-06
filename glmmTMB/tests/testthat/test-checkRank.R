@@ -69,13 +69,17 @@ test_that("warning messages for non-identifiable fixed effects", {
     )
 })
 
-test_that("messages messages for non-identifiable fixed effects", {
+test_that("messages for non-identifiable fixed effects", {
     # X
     expect_message(
         m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
         "dropping columns.*conditional")
     expect_equal(length(fixef(m1)$cond), 5L)
     expect_equal(unname(fixef(m1)$cond[c("x3", "x4")]), rep(NA_real_, 2))
+
+    expect_equal(dim(vcov(m1)$cond), c(5, 5))
+    expect_equal(dim(vcov(m1, include_nonest = FALSE)$cond), c(3, 3))
+    
     expect_message(
         m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='adjust')),
         "dropping columns.*zero-inflation")
