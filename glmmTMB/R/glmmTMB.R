@@ -1208,7 +1208,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0),
-                           rank_check = c("warning", "adjust", "stop", "skip"),
+                           rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
@@ -1730,9 +1730,6 @@ summary.glmmTMB <- function(object,...)
         }
         coefs
     }
-
-    # FIXME (rank_check): to include dropped predictors in the output, fixef
-    #  needs to be able to find out about them
 
     ff <- fixef(object)
     vv <- vcov(object, include_nonest=TRUE)
