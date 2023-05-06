@@ -625,3 +625,30 @@ test_that("de novo simulation", {
     expect_equal(head(ss[[1]], 2),
                       c(2.67396350948461, 5.55246185541914))
 })
+
+test_that("weighted residuals", {
+    set.seed(101)
+    data("cbpp", package = "lme4")
+    wts <- sample(1:2, size = nrow(cbpp), replace = TRUE)
+    ## Pearson tested above ...
+    tmbm4 <- glm(incidence ~ period,
+                 data = cbpp, family = poisson, weights = wts)
+    tmbm5 <- glmmTMB(incidence ~ period,
+                     data = cbpp, family = poisson, weights = wts)
+    for  (type in eval(formals(residuals.glmmTMB)$type)) {
+        expect_equal(residuals(tmbm4, type = type),
+                     residuals(tmbm5, type = type),
+                     tolerance = 1e-6)
+    }
+})
+
+test_that("bad inversion in vcov", {
+    d <- readRDS(system.file("test_data", "strengejacke_nasummary.rds",
+                             package = "glmmTMB"))
+    m <- glmmTMB(
+        QoL ~ time + age + x_tv_dm + x_tv_gm + z1_ti + z2_ti + (1 + time | ID) + (1 + x_tv_dm | ID),
+        data = d,
+        REML = TRUE
+    )
+    expect_true(all(is.na(vcov(m)$cond)))
+})

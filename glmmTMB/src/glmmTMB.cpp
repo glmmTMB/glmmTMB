@@ -800,6 +800,7 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
       tmp_loglik *= weights(i);
+
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }

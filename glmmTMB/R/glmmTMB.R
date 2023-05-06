@@ -1665,7 +1665,8 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
     if (nbfam || xvarpars) {
         theta <- exp(fit$parfull["betad"]) ## log link
         ## variance() and dev.resids() share an environment
-        assign(".Theta",
+        dnm <- if (ff$family=="nbinom1") ".Phi" else ".Theta"
+        assign(dnm,
                theta,
                environment(ret[["modelInfo"]][["family"]][["variance"]]))
     }
