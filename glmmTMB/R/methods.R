@@ -1320,10 +1320,12 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
 #' @param object a fitted \code{glmmTMB} object
 #' @param component model component ("cond", "zi", or "disp"; not all models contain all components)
 #' @param part whether to return results for the fixed or random effect part of the model (at present only \code{part="fixed"} is implemented for most methods)
+#' @param include_rankdef include all columns of a rank-deficient model matrix?
 #' @param \dots additional arguments (ignored or passed to \code{\link{model.frame}})
 #' @export
 
-model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
+model.matrix.glmmTMB <- function (object, component="cond", part="fixed",
+                                  include_rankdef = FALSE, ...)
 {
     ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
     ## if (n_match <- match("x", names(object), 0L))
@@ -1337,14 +1339,23 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
     ## model matrix??
     if (part != "fixed") stop("only fixed model matrices currently available")
 
-    m <- switch(component,
-                cond =  "",
-                zi = "zi",
-                disp = "d")
-
-    X <- getME(object, paste0("X", m))
-
-    X
+    if (!include_rankdef) {
+        m <- switch(component,
+                    cond =  "",
+                    zi = "zi",
+                    disp = "d")
+        
+        X <- getME(object, paste0("X", m))
+    } else {
+        ff <- object$modelInfo$allForm
+        form <- ff[[switch(component,
+                           cond="formula",
+                           zi="ziformula",
+                           disp="dispformula")]]
+        X <- model.matrix(lme4::nobars(form), model.frame(object, ...),
+                          contrasts.arg = object$modelInfo$contrasts)
+        X
+    }
 }
 
 ## convert ranef object to a long-format data frame, e.g. suitable
