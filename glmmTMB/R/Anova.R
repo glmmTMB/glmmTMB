@@ -189,7 +189,7 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
     I.p <- diag(p)
     names <- term.names.default(mod, component=component)
     n.terms <- length(names)
-    assign <- attr(model.matrix(mod, component=component, include.rankdef.cols), "assign")
+    assign <- attr(model.matrix(mod, component=component, include.rankdef.cols = include.rankdef.cols), "assign")
     p <- teststat <- df <- res.df <- rep(0, n.terms)
     if (intercept) df[1] <- 1
     not.aliased <- !is.na(fixef(mod)[[component]])
