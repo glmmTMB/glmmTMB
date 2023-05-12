@@ -54,22 +54,28 @@ set.seed(1)
 This vignette demonstrates some of the covariance structures available in the `glmmTMB` package.
 Currently the available covariance structures are:
 
-| Covariance                       | Notation      | Parameter count | Requirement |
-|----------------------------------|---------------|-----------------|-------------|
-| Heterogeneous unstructured       | `us`          |  $n(n+1)/2$     |             |
-| Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |             |
-| Heterogeneous compound symmetry  | `cs`          |  $n+1$          |             |
-| Heterogeneous diagonal           | `diag`        |  $n$            |             |
-| AR(1)                            | `ar1`         |  $2$            | Unit spaced levels |
-| Ornstein-Uhlenbeck               | `ou`          |  $2$            | Coordinates |
-| Spatial exponential              | `exp`         |  $2$            | Coordinates |
-| Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
-| Spatial Matern                   | `mat`         |  $3$            | Coordinates |
-| Reduced rank                     | `rr`          |  $nd-d(d-1)/2$  | rank (d)    |
-
+```{r covstruct-table, echo  = FALSE}
+ctab <- read.delim(sep = "|",
+                   header = TRUE,
+                   check.names = FALSE,
+           text = "
+ Covariance                       | Notation      | # parameters | Requirement  | Parameters
+ Unstructured       | `us`          |  $n(n+1)/2$     | | See [Mappings]
+ Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |              
+ Het. compound symmetry  | `cs`          |  $n+1$    |      | log-SDs ($n$); corr (see [Mappings])
+ Het. diagonal           | `diag`        |  $n$            |  | log-SDs
+ AR(1)                            | `ar1`         |  $2$            | Unit spaced levels | log-SD; $\\rho = \\theta/\\sqrt{1+\\theta^2}$
+ Ornstein-Uhlenbeck               | `ou`          |  $2$            | Coordinates 
+ Spatial exponential              | `exp`         |  $2$            | Coordinates 
+ Spatial Gaussian                 | `gau`         |  $2$            | Coordinates | 
+ Spatial Matèrn                   | `mat`         |  $3$            | Coordinates | log-SD, log-range, log-shape (power)
+ Reduced rank                     | `rr`          |  $nd-d(d-1)/2$  | rank (d)    
+"
+)
+knitr::kable(ctab)
+```
 The word 'heterogeneous' refers to the marginal variances of the
-model. Beyond correlation parameters, a heterogeneous structure uses
-$n$ additional variance parameters where $n$ is the dimension.
+model. 
 
 Some of the structures require temporal or spatial coordinates. We
 will show examples of this in a later section.
