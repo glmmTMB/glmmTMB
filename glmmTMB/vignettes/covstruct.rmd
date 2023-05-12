@@ -60,7 +60,7 @@ ctab <- read.delim(sep = "|",
                    check.names = FALSE,
            text = "
  Covariance                       | Notation      | # parameters | Requirement  | Parameters
- Unstructured       | `us`          |  $n(n+1)/2$     | | See [Mappings]
+ Unstructured (general positive definite)      | `us`          |  $n(n+1)/2$     | | See [Mappings]
  Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |              
  Het. compound symmetry  | `cs`          |  $n+1$    |      | log-SDs ($n$); corr (see [Mappings])
  Het. diagonal           | `diag`        |  $n$            |  | log-SDs
@@ -181,9 +181,9 @@ the parameters. We could either increase the length of the time series
 or increase the number of groups. We'll try the latter:
 
 ```{r simGroup}
-simGroup <- function(g, n=6, rho=0.7) {
+simGroup <- function(g, n=6, phi=0.7) {
     x <- MASS::mvrnorm(mu = rep(0,n),
-             Sigma = rho ^ as.matrix(dist(1:n)) )   ## Simulate the process
+             Sigma = phi ^ as.matrix(dist(1:n)) )   ## Simulate the process
     y <- x + rnorm(n)                               ## Add measurement noise
     times <- factor(1:n)
     group <- factor(rep(g,n))
