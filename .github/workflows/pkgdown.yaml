@@ -39,6 +39,11 @@ jobs:
           remotes::install_github("bbolker/pkgdown.extras") # use BMB fork, for now
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+          working-directory: ./glmmTMB
+
       - name: Install extra LaTeX dependencies
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
           install.packages(c("remotes", "devtools"))
