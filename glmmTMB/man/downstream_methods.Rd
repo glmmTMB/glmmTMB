@@ -7,13 +7,14 @@
 \alias{emmeans.glmmTMB}
 \title{Downstream methods}
 \usage{
-Anova.glmmTMB(
+\method{Anova}{glmmTMB}(
   mod,
   type = c("II", "III", 2, 3),
   test.statistic = c("Chisq", "F"),
   component = "cond",
   vcov. = vcov(mod)[[component]],
   singular.ok,
+  include.rankdef.cols = FALSE,
   ...
 )
 
@@ -32,6 +33,8 @@ or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.}
 \item{vcov.}{variance-covariance matrix (usually extracted automatically)}
 
 \item{singular.ok}{OK to do ANOVA with singular models (unused) ?}
+
+\item{include.rankdef.cols}{include all columns of a rank-deficient model matrix?}
 
 \item{\dots}{Additional parameters that may be supported by the method.}
 

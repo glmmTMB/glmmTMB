@@ -14,7 +14,7 @@ glmmTMBControl(
   eigval_check = TRUE,
   zerodisp_val = log(sqrt(.Machine$double.eps)),
   start_method = list(method = NULL, jitter.sd = 0),
-  rank_check = c("warning", "adjust", "stop", "skip"),
+  rank_check = c("adjust", "warning", "stop", "skip"),
   conv_check = c("warning", "skip")
 )
 }

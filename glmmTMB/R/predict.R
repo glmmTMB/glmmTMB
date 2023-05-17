@@ -345,6 +345,18 @@ predict.glmmTMB <- function(object,
                                map=omi$map,
                                sparseX=omi$sparseX))
 
+    ## drop rank-deficient columns if necessary
+    for (nm in c("", "zi", "d")) {
+        xnm <- paste0("X", nm)
+        betanm <- paste0("beta", nm)
+        X <- getME(object, xnm)
+        if (prod(dim(X)) > 0 && !is.null(dd <- attr(X, "col.dropped"))) {
+            if (is(X, "Matrix")) xnm <- paste0(xnm, "S")
+            TMBStruc$data.tmb[[xnm]] <- TMBStruc$data.tmb[[xnm]][,-dd]
+            TMBStruc$parameters[[betanm]] <- TMBStruc$parameters[[betanm]][-dd]
+        }
+  }
+
   ## short-circuit
   if(debug) return(TMBStruc)
 

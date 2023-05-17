@@ -1208,7 +1208,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            eigval_check = TRUE,
                            zerodisp_val=log(sqrt(.Machine$double.eps)),
                            start_method = list(method = NULL, jitter.sd = 0),
-                           rank_check = c("warning", "adjust", "stop", "skip"),
+                           rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip")) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
@@ -1350,11 +1350,13 @@ glmmTMBControl <- function(optCtrl=NULL,
         if(ncol(adjX) != ncol(curX)){
           # inform the user that columns were dropped
           model_type <- names(Xnames)[match(whichX, Xnames)]
-          message("dropping columns from rank-deficient ", model_type," model")
 
           # use colnames of curX and adjX to identify which columns were dropped
           dropped_names   <- setdiff(colnames(curX), colnames(adjX))
           dropped_indices <- match(dropped_names, colnames(curX))
+
+          message("dropping columns from rank-deficient ", model_type," model: ",
+                    paste(dropped_names, collapse = ", "))
 
           # retain names of dropped column for use in model output
           attr(adjX, "col.dropped") <- setNames(dropped_indices, dropped_names)
@@ -1729,11 +1731,8 @@ summary.glmmTMB <- function(object,...)
         coefs
     }
 
-    # FIXME (rank_check): to include dropped predictors in the output, fixef
-    #  needs to be able to find out about them
-
     ff <- fixef(object)
-    vv <- vcov(object,include_mapped=TRUE)
+    vv <- vcov(object, include_nonest=TRUE)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),

@@ -54,12 +54,15 @@ has.intercept.glmmTMB <- function (model, component="cond", ...) {
 ##' @param test.statistic unused: only valid choice is "Chisq" (i.e., Wald chi-squared test)
 ##' @param singular.ok OK to do ANOVA with singular models (unused) ?
 ##' @param type  type of test, \code{"II"}, \code{"III"}, \code{2}, or \code{3}.  Roman numerals are equivalent to the corresponding Arabic numerals. See \code{\link[car]{Anova}} for details.
+##' @param include.rankdef.cols include all columns of a rank-deficient model matrix?
 
 Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                            test.statistic = c("Chisq","F"),
                            component="cond",
-                           vcov. = vcov(mod)[[component]], singular.ok, ...) 
-{
+                           vcov. = vcov(mod)[[component]],
+                           singular.ok,
+                           include.rankdef.cols = FALSE,
+                           ...) {
 
     ff <- fixef(mod)[[component]]
     if (trivialFixef(names(ff),component)) {
@@ -79,7 +82,7 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                    `2` = , II = Anova.II.glmmTMB,
                    `3` = , III = Anova.III.glmmTMB)
     afun(mod, vcov., test=test.statistic, singular.ok = singular.ok,
-         component = component)
+         component = component, include.rankdef.cols = include.rankdef.cols)
 }
 
 ## defined as a function, not a method, so we can hand the object
@@ -112,7 +115,7 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
 }                  
     
 Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
-                             component="cond", ...){
+                             component="cond", include.rankdef.cols = FALSE, ...){
 
     ## would feel cleaner to have this external, but it uses
     ##  lots of variable from the function environment ...
@@ -157,7 +160,7 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
     if (!missing(vcov.)){
         vcov. <- vcov(mod, complete=FALSE)[[component]]
     }
-    assign <- attr(model.matrix(mod, component=component), "assign")
+    assign <- attr(model.matrix(mod, component=component, include_rankdef = include.rankdef.cols), "assign")
     assign[!not.aliased] <- NA
     names <- term.names.default(mod, component=component)
     if (intercept) names <- names[-1]
@@ -180,13 +183,13 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
 }
 
 Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
-                              component="cond", ...){
+                              component="cond", include.rankdef.cols = FALSE, ...){
     intercept <- has.intercept(mod)
     p <- length(fixef(mod)[[component]])
     I.p <- diag(p)
     names <- term.names.default(mod, component=component)
     n.terms <- length(names)
-    assign <- attr(model.matrix(mod, component=component), "assign")
+    assign <- attr(model.matrix(mod, component=component, include.rankdef.cols = include.rankdef.cols), "assign")
     p <- teststat <- df <- res.df <- rep(0, n.terms)
     if (intercept) df[1] <- 1
     not.aliased <- !is.na(fixef(mod)[[component]])
