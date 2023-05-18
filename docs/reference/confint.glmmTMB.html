@@ -100,7 +100,7 @@
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"Wald"</span>, <span class="st">"profile"</span>, <span class="st">"uniroot"</span><span class="op">)</span>,</span>
 <span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"cond"</span>, <span class="st">"zi"</span>, <span class="st">"other"</span><span class="op">)</span>,</span>
 <span>  estimate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  include_mapped <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  include_nonest <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"no"</span>, <span class="st">"multicore"</span>, <span class="st">"snow"</span><span class="op">)</span>,</span>
 <span>  ncpus <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"profile.ncpus"</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
 <span>  cl <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -142,8 +142,8 @@ function)</p></dd>
 <dd><p>(logical) add a third column with estimate ?</p></dd>
 
 
-<dt>include_mapped</dt>
-<dd><p>include dummy rows for mapped (i.e. fixed-value) parameters?</p></dd>
+<dt>include_nonest</dt>
+<dd><p>include dummy rows for non-estimated (mapped, rank-deficient) parameters?</p></dd>
 
 
 <dt>parallel</dt>

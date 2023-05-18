@@ -93,7 +93,7 @@
 
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">object</span>, full <span class="op">=</span> <span class="cn">FALSE</span>, include_mapped <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">object</span>, full <span class="op">=</span> <span class="cn">FALSE</span>, include_nonest <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -106,8 +106,8 @@
 <dd><p>return a full variance-covariance matrix?</p></dd>
 
 
-<dt>include_mapped</dt>
-<dd><p>include mapped variables? (these will be given variances and covariances of NA)</p></dd>
+<dt>include_nonest</dt>
+<dd><p>include variables that are mapped <em>or</em> dropped due to rank-deficiency? (these will be given variances and covariances of NA)</p></dd>
 
 
 <dt>...</dt>

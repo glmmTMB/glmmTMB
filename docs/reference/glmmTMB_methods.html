@@ -96,7 +96,13 @@
 <span><span class="fu"><a href="https://rdrr.io/r/stats/terms.html" class="external-link">terms</a></span><span class="op">(</span><span class="va">x</span>, component <span class="op">=</span> <span class="st">"cond"</span>, part <span class="op">=</span> <span class="st">"fixed"</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="va">object</span>, component <span class="op">=</span> <span class="st">"cond"</span>, part <span class="op">=</span> <span class="st">"fixed"</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span></span>
+<span>  <span class="va">object</span>,</span>
+<span>  component <span class="op">=</span> <span class="st">"cond"</span>,</span>
+<span>  part <span class="op">=</span> <span class="st">"fixed"</span>,</span>
+<span>  include_rankdef <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -119,6 +125,10 @@
 
 <dt>object</dt>
 <dd><p>a fitted <code>glmmTMB</code> object</p></dd>
+
+
+<dt>include_rankdef</dt>
+<dd><p>include all columns of a rank-deficient model matrix?</p></dd>
 
 </dl></div>
 

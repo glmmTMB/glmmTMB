@@ -127,15 +127,15 @@ for further details).</p>
 <span class="r-in"><span><span class="va">fm4</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="va">Days</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">VarCorr</span><span class="op">(</span><span class="va">fm4</span><span class="op">)</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"cond"</span>,<span class="st">"Subject"</span><span class="op">)</span><span class="op">]</span><span class="op">]</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             (Intercept)     Days</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)   565.51565 11.05622</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Days           11.05622 32.68205</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)    565.5156 11.05620</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Days            11.0562 32.68205</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"stddev")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)        Days </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   23.780573    5.716822 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   23.780572    5.716822 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"correlation")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>             (Intercept)       Days</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)  1.00000000 0.08132603</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Days         0.08132603 1.00000000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)  1.00000000 0.08132594</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Days         0.08132594 1.00000000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> attr(,"blockCode")</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  1 </span>
@@ -149,8 +149,8 @@ for further details).</p>
 <span class="r-in"><span><span class="va">sdvec</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">pars</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">(</span><span class="va">V</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">sdvec</span>,<span class="va">sdvec</span><span class="op">)</span> <span class="op">*</span> <span class="va">C</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>           [,1]     [,2]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1,] 565.51565 11.09296</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  11.09296 32.68205</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1,] 565.51561 11.09295</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [2,]  11.09295 32.68205</span>
 </code></pre></div>
     </div>
   </div>
