@@ -212,11 +212,13 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 				  comp = "Std.Dev.", formatter = format, ...)
 {
-    for (cc in names(x))  if(!is.null(x[[cc]])) {
-	cat(sprintf("\n%s:\n", cNames[[cc]]))
-	print(formatVC(x[[cc]],
-		       digits = digits, comp = comp, formatter = formatter),
-	      quote = FALSE, ...)
+    for (cc in names(x))  {
+        if(is.null(x[[cc]])) next
+        cat(sprintf("\n%s:\n", cNames[[cc]]))
+                              
+        print(formatVC(x[[cc]],
+                       digits = digits, comp = comp, formatter = formatter),
+              quote = FALSE, ...)
     }
     invisible(x)
 }
