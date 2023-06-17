@@ -215,13 +215,59 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
     for (cc in names(x))  {
         if(is.null(x[[cc]])) next
         cat(sprintf("\n%s:\n", cNames[[cc]]))
-                              
+
         print(formatVC(x[[cc]],
                        digits = digits, comp = comp, formatter = formatter),
               quote = FALSE, ...)
     }
     invisible(x)
 }
+
+formatCor <- function(x, maxlen=0, digits) {
+    ## x: correlation matrix
+    ## maxlen: max number of RE std devs per term;
+    ##         really a *minimum* length here! pad to (maxlen)
+    ##         columns as necessary
+    x <- as(x, "matrix")
+    dig <- max(2, digits - 2) # use 'digits' !
+    ## n.b. not using formatter() for correlations
+    cc <- format(round(x, dig), nsmall = dig)
+    cc[!lower.tri(cc)] <- ""  ## empty lower triangle
+    nr <- nrow(cc)
+    if (nr < maxlen) {
+        cc <- cbind(cc, matrix("", nr, maxlen-nr))
+    }
+    return(cc)
+}
+
+getCovstruct <- function(x) {
+    n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
+                                       .valid_covstruct)]
+    if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
+    return(n)
+}
+
+getCorSD <- function(x, type="stddev", maxlen=0, digits) {
+    r <- attr(x,type) ## extract stddev *or* correlation from x
+    if (type=="correlation") {
+        ## transform to char matrix
+        r <- formatCor(r, maxlen, digits)
+        ## drop last column (will be blank since we blanked out
+        ##  the upper triangle + diagonal)
+        if (ncol(r)>maxlen)
+            r <- r[, -ncol(r), drop = FALSE]
+    }
+    covstruct <- getCovstruct(x)
+    if (covstruct %in% c("ar1", "cs")) {
+        r <- switch(type,
+                    stddev={ if (covstruct == "ar1") r[1] else r },
+                    ## select lag-1 correlation
+                    ## upper tri has been erased in formatCor() ...
+                    correlation=paste(r[2,1],sprintf("(%s)",covstruct))
+                    )
+    }
+    return(r)
+}  ## getCorSD
 
 ## original from lme4
 ## had to be extended/modified to deal with glmmTMB special cases
@@ -255,53 +301,9 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     nc <- length(colnms <- c(c.nms[1:2], (use.c <- avail.c[mcc])))
     if(length(use.c) == 0)
 	stop("Must show either standard deviations or variances")
-    formatCor <- function(x,maxlen=0) {
-        ## x: correlation matrix
-        ## maxlen: max number of RE std devs per term;
-        ##         really a *minimum* length here! pad to (maxlen)
-        ##         columns as necessary
-        x <- as(x, "matrix")
-        dig <- max(2, digits - 2) # use 'digits' !
-        ## n.b. not using formatter() for correlations
-        cc <- format(round(x, dig), nsmall = dig)
-        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
-        nr <- nrow(cc)
-        if (nr < maxlen) {
-            cc <- cbind(cc, matrix("", nr, maxlen-nr))
-        }
-        return(cc)
-    }
-    getCovstruct <- function(x) {
-        n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
-                                           .valid_covstruct)]
-        if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
-        return(n)
-    }
-    getCorSD <- function(x,type="stddev",maxlen=0) {
-        r <- attr(x,type) ## extract stddev *or* correlation from x
-        if (type=="correlation") {
-            ## transform to char matrix
-            r <- formatCor(r,maxlen)
-            ## drop last column (will be blank since we blanked out
-            ##  the upper triangle + diagonal)
-            if (ncol(r)>maxlen)
-                r <- r[, -ncol(r), drop = FALSE]
-        }
-        covstruct <- getCovstruct(x)
-        if (covstruct %in% c("ar1", "cs")) {
-            r <- switch(type,
-                        stddev={ if (covstruct == "ar1") r[1] else r },
-                        ## select lag-1 correlation
-                        ## upper tri has been erased in formatCor() ...
-                        correlation=paste(r[2,1],sprintf("(%s)",covstruct))
-                        )
-        }
-        return(r)
-    }  ## getCorSD
-
     ## get std devs:
-    reStdDev <- lapply(varcor, getCorSD)
-    ## need correlations if
+    reStdDev <- lapply(varcor, getCorSD, digits = digits)
+    ## need correlations if ... ?
     useCor <- (sapply(varcor,getCovstruct)!="us" |
                sapply(reStdDev,length)>1)
     cnms <- Map(function(x,n) colnames(x)[seq(n)], varcor, lengths(reStdDev))
@@ -325,7 +327,7 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         ## get corrs
 	maxlen <- max(reLens)
 	corr <-
-	    do.call(rbind,lapply(varcor, getCorSD,
+	    do.call(rbind,lapply(varcor, getCorSD, digits = digits,
                                          type="correlation", maxlen=maxlen))
         ## add blank values as necessary
 	if (nrow(corr) < nrow(reMat))
