@@ -262,6 +262,7 @@ findbars_x <- function(term,
     ds <- if (is.null(default.special)) {
               NULL
           } else {
+              ## convert default special char to symbol (less ugly way?)
               eval(substitute(as.name(foo),list(foo=default.special)))
           }
 
@@ -437,11 +438,12 @@ splitForm <- function(formula,
 ##' noSpecials(y~us(1|f), delete=FALSE)
 ##' noSpecials(y~us(1|f), debug=TRUE)
 ##' noSpecials(y~us+1)  ## should *not* delete unless head of a function
-##' noSpecials(~us+1)   ## should work on a one-sided formula!
+##' noSpecials(~us(1|f)+1)   ## should work on a one-sided formula!
+##' noSpecials(~s(stuff) + a + b, specials = "s")
 ##' @export
 ##' @keywords internal
-noSpecials <- function(term, delete=TRUE, debug=FALSE) {
-    nospec <- noSpecials_(term, delete=delete, debug=debug)
+noSpecials <- function(term, delete=TRUE, debug=FALSE, specials = findReTrmClasses()) {
+    nospec <- noSpecials_(term, delete=delete, debug=debug, specials = specials)
     if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
         ## called with two-sided RE-only formula:
         ##    construct response~1 formula
@@ -452,11 +454,11 @@ noSpecials <- function(term, delete=TRUE, debug=FALSE) {
     }
 }
 
-noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
+noSpecials_ <- function(term, delete=TRUE, debug=FALSE, specials = findReTrmClasses()) {
     if (debug) print(term)
-    if (!anySpecial(term)) return(term)
+    if (!anySpecial(term, specials)) return(term)
     if (length(term)==1) return(term)  ## 'naked' specials
-    if (isSpecial(term)) {
+    if (isSpecial(term, specials)) {
         if(delete) {
             return(NULL)
         } else { ## careful to return  (1|f) and not  1|f:
@@ -464,9 +466,9 @@ noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
         }
     } else {
         if (debug) print("not special")
-        nb2 <- noSpecials_(term[[2]], delete=delete, debug=debug)
+        nb2 <- noSpecials_(term[[2]], delete=delete, debug=debug, specials = specials)
         nb3 <- if (length(term)==3) {
-                   noSpecials_(term[[3]], delete=delete, debug=debug)
+                   noSpecials_(term[[3]], delete=delete, debug=debug, specials = specials)
                } else NULL
         if (is.null(nb2)) {
             return(nb3)
@@ -485,26 +487,26 @@ noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
     }
 }
 
-isSpecial <- function(term) {
+isSpecial <- function(term, specials = findReTrmClasses()) {
     if(is.call(term)) {
         ## %in% doesn't work (requires vector args)
-        for(cls in findReTrmClasses()) {
+        for(cls in specials) {
             if(term[[1]] == cls) return(TRUE)
         }
     }
     FALSE
 }
 
-isAnyArgSpecial <- function(term) {
+isAnyArgSpecial <- function(term, specials = findReTrmClasses()) {
     for(tt in term)
-        if(isSpecial(tt)) return(TRUE)
+        if(isSpecial(tt, specials)) return(TRUE)
     FALSE
 }
 
 ## This could be in principle be fooled by a term with a matching name
 ## but this case is caught in noSpecials_() where we test for length>1
-anySpecial <- function(term) {
-    any(findReTrmClasses() %in% all.names(term))
+anySpecial <- function(term, specials=findReTrmClasses()) {
+    any(specials %in% all.names(term))
 }
 
 ##' test whether a formula contains a particular element?
