@@ -499,7 +499,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE) {
+##' @importFrom mgcv smoothCon smooth2random s
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
+                       contrasts, sparse=FALSE) {
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -531,7 +533,27 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             smooth_terms <- findbars_x(fixedform, default.special = NULL, target = "s")
             ## *remove* s() terms from fixed formula
             fixedform <- noSpecials(fixedform, specials = "s")
-            
+
+
+            ## FIXME: do we run into trouble if mgcv isn't loaded?
+            ## FIXME: could be fragile about eval environments (how
+            ##  far up do we have to go with eval.parent? Or do we
+            ##  use the environment of the formula?
+            smooth_terms2 <- lapply(smooth_terms,
+                    function(tt) {
+                        ## FIXME: following Devin Johnson's example and extracting
+                        ## the first element, but why?
+                        ## will there ever be more than one element in this list?
+                        sm <- eval(bquote(mgcv::smoothCon(.(tt), data=mf$data)))[[1]]
+                    list(sm = sm,
+                         ## FIXME: will vnames ("a vector of names
+                         ## to avoid as dummy variable names in the
+                         ## random effects form") ever be non-empty?
+                         re = mgcv::smooth2random(sm, vnames = "", type = 2))
+                    }
+                    )
+
+            warning("smooth terms are dropped for now")
         }
 
         
@@ -1024,6 +1046,7 @@ glmmTMB <- function(
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
                names(mf), 0L)
+    ## FIXME: could break if formula is not specified first ???
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
@@ -1043,7 +1066,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(subbars(f),delete=FALSE)
+        f <- noSpecials(sub_specials(f),delete=FALSE)
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)

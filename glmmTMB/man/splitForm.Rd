@@ -13,7 +13,7 @@ splitForm(
   debug = FALSE
 )
 
-noSpecials(term, delete = TRUE, debug = FALSE)
+noSpecials(term, delete = TRUE, debug = FALSE, specials = findReTrmClasses())
 }
 \arguments{
 \item{formula}{a formula containing special random effect terms}
@@ -61,7 +61,8 @@ noSpecials(y~us(1|f))
 noSpecials(y~us(1|f), delete=FALSE)
 noSpecials(y~us(1|f), debug=TRUE)
 noSpecials(y~us+1)  ## should *not* delete unless head of a function
-noSpecials(~us+1)   ## should work on a one-sided formula!
+noSpecials(~us(1|f)+1)   ## should work on a one-sided formula!
+noSpecials(~s(stuff) + a + b, specials = "s")
 }
 \author{
 Steve Walker

@@ -640,4 +640,37 @@ no_specials <- function(term) {
     if (length(term) == 3) stop("don't know what to do")
     return(no_specials(term[[2]]))
 }
-        
+
+## copied from lme4, and generalized
+##' substitute safe chars for specials (for use in model.frame)
+##' @param term formula or term in a formula
+##' @param specials names of specials to process
+##' @param keep_args number of arguments to retain (matching \code{specials})
+##' @return a term or formula with specials replaced by \code{+} (and extra arguments dropped)
+##' @keywords internal
+##' @examples
+##' sub_specials( ~ (1|x) + (a + b || y) + s(a, b, c))
+##' sub_specials(Reaction ~ s(Days) + (1 + Subject))
+sub_specials <- function (term,
+                          specials = c("|", "||", "s"),
+                          keep_args = c(2, 2, 1)) {
+    if (is.name(term) || !is.language(term)) 
+        return(term)
+    ## previous version recursed immediately for unary operators,
+    ## (we were only interested in `|`(x,y) and `||`(x,y))
+    ## but here s(x) needs to be processed ...
+    for (i in seq_along(specials)) {
+        if (is.call(term) && term[[1]] == as.name(specials[i])) {
+            term[[1]] <- as.name("+")
+            ## converts s(x) to +x, which is ugly, but
+            ##  formula can handle repeated '+'
+            ## discard additional arguments (e.g for s(x, ...))
+            ## (fragile re: order??)
+            term <- term[1:(1+keep_args[i])]
+        }
+    }
+    for (j in 2:length(term)) term[[j]] <- sub_specials(term[[j]],
+                                                        specials = specials,
+                                                        keep_args = keep_args)
+    term
+}

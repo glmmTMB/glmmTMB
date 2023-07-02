@@ -49,7 +49,8 @@ Imports:
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
-    numDeriv
+    numDeriv,
+    mgcv
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
