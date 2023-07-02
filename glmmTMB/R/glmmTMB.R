@@ -525,9 +525,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         X <- matrix(ncol=0, nrow=nobs)
         offset <- rep(0,nobs)
     } else {
-
+        has_smooths <- anySpecial(fixedform, specials = "s")
+        
         ## check for mgcv-style smooth terms, adjust accordingly ...
-        if (anySpecial(fixedform, specials = "s")) {
+        if (has_smooths) {
 
             ## extract s() terms
             smooth_terms <- findbars_x(fixedform, default.special = NULL, target = "s")
@@ -553,7 +554,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                     }
                     )
 
-            warning("smooth terms are dropped for now")
         }
 
         
@@ -570,6 +570,15 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
+        if (has_smooths) {
+            if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
+            for (s in smooth_terms2) {
+                ## FIXME, need to deal with intercept ...
+                ## STOPPED HERE
+                X <- cbind(X, s$re$Xf)
+            }
+        }
+        
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
         if (inForm(fixedform,quote(offset))) {
@@ -605,6 +614,14 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         mf$formula <- ranform
         reTrms <- mkReTrms(no_specials(findbars_x(formula)),
                            fr, reorder.terms=FALSE)
+
+        ## post-process mkReTrms to add smooths (incorporate in mkReTrms?)
+        if (has_smooths) {
+            warning("RE terms not yet adjusted for smooths")
+            ## STOPPED HERE
+            for (s in smooth_terms2) {
+            }
+        }
 
         ss <- splitForm(formula)
         # FIX ME: migrate this (or something like it) down to reTrms,
