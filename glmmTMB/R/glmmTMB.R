@@ -542,15 +542,21 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  use the environment of the formula?
             smooth_terms2 <- lapply(smooth_terms,
                     function(tt) {
-                        ## FIXME: following Devin Johnson's example and extracting
-                        ## the first element, but why?
-                        ## will there ever be more than one element in this list?
-                        sm <- eval(bquote(mgcv::smoothCon(.(tt), data=mf$data)))[[1]]
-                    list(sm = sm,
-                         ## FIXME: will vnames ("a vector of names
-                         ## to avoid as dummy variable names in the
-                         ## random effects form") ever be non-empty?
-                         re = mgcv::smooth2random(sm, vnames = "", type = 2))
+                        ## ‘smoothCon’ returns a list of smooths because factor ‘by’
+                        ## variables result in multiple copies of a smooth, each multiplied
+                        ## by the dummy variable associated with one factor level.
+
+                        sm <- eval(bquote(mgcv::smoothCon(.(tt),
+                                                          ## don't want intercept etc ...
+                                                          absorb.cons = TRUE,
+                                                          data=mf$data)))
+                        if (length(sm)>1) stop("can't handle 'by' arguments in smooths yet")
+                        sm <- sm[[1]]
+                        list(sm = sm,
+                             ## FIXME: will vnames ("a vector of names
+                             ## to avoid as dummy variable names in the
+                             ## random effects form") ever be non-empty?
+                             re = mgcv::smooth2random(sm, vnames = "", type = 2))
                     }
                     )
 
@@ -600,6 +606,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
     ## important to COPY formula (and its environment)?
     ranform <- formula
 
+    ## FIXME: have to handle case containing s() but no lme4-style REs
     if (is.null(findbars_x(ranform))) {
         reTrms <- reXterms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
@@ -614,16 +621,38 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         mf$formula <- ranform
         reTrms <- mkReTrms(no_specials(findbars_x(formula)),
                            fr, reorder.terms=FALSE)
+        
+        ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
+        ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
+        ## "theta", "Lind", "lower", "Lambdat", "nl" (?) are lme4-specific
 
         ## post-process mkReTrms to add smooths (incorporate in mkReTrms?)
         if (has_smooths) {
             warning("RE terms not yet adjusted for smooths")
+            ## mkReTrms returns more than we need (some is for lme4)
+            ##  ... which bits are actually used hereafter?
             ## STOPPED HERE
             for (s in smooth_terms2) {
+                Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
+                reTrms$Zt <- rbind(reTrms$Zt, Zt)
+                nm <- attr(s$re$rand$Xr, "s.label")
+                reTrms$Ztlist <- c(reTrms$Ztlist, setNames(list(Zt), nm))
+                reTrms$Gp <- c(reTrms$Gp, tail(reTrms$Gp, 1) + nrow(Zt))
+                reTrms$theta <- c(reTrms$theta, 1.0) ## ?? is this a good starting value?
+                ## is it even used?
+                ## do better??
+                reTrms$cnms <- c(reTrms$cnms, list(dummy = "dummy"))
+                ## make up a dummy factor for the factor list
+                ff <- factor(rep(1, nrow(Zt)))
+                aa <- attr(reTrms$flist, "assign")
+                reTrms$flist <- c(reTrms$flist, list(dummy = ff))
+                attr(reTrms$flist, "assign") <- c(aa, length(reTrms$flist))
+                                  
             }
         }
 
         ss <- splitForm(formula)
+        ss$reTrmClasses[ss$reTrmClasses == "s"] <- "homdiag"
         # FIX ME: migrate this (or something like it) down to reTrms,
         ##    allow for more different covstruct types that have additional arguments
         ##  e.g. phylo(.,tree); fixed(.,Sigma)
@@ -668,7 +697,12 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             tt
         }
 
-        reXterms <- lapply(ss$reTrmFormulas, termsfun)
+        ## HACK: should duplicate 'homdiag' definition, keep it as 's' (or call it 'mgcv_smooth")
+        ##  so we can recognize it.
+        ## Here, we're using the fact that the ...AddArgs stuff is still in an unevaluated form
+        reXterms <- Map(function(f, a) {
+            if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
+        }, ss$reTrmFormulas, ss$reTrmAddArgs)
 
         ss <- unlist(ss$reTrmClasses)
 
@@ -765,23 +799,23 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
         blkrank <- aa
         covCode <- .valid_covstruct[ss]
-
+        
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
-                   "0" = blksize, # (heterogenous) diag
-                   "1" = blksize * (blksize+1) / 2, # us
-                   "2" = blksize + 1, # cs
-                   "3" = 2,  # ar1
-                   "4" = 2,  # ou
-                   "5" = 2,  # exp
-                   "6" = 2,  # gau
-                   "7" = 3,  # mat
-                   "8" = 2 * blksize - 1, # toep
-                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "10" = 1  ## (homogeneous) diag
+                   "diag" = blksize, # (heterogenous) diag
+                   "us" = blksize * (blksize+1) / 2,
+                   "cs" = blksize + 1,
+                   "ar1" = 2,
+                   "ou" = 2,
+                   "exp" = 2,
+                   "gau" = 2,
+                   "mat" = 3, 
+                   "toep" = 2 * blksize - 1,
+                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+                   "homdiag" = 1  ## (homogeneous) diag
                    )
         }
-        blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
+        blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
 
         ans <- list()
         for (i in seq_along(ss)) {

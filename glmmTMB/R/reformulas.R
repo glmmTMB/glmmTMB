@@ -140,7 +140,7 @@ addForm <- function(...) {
 
 #' list of specials -- taken from enum.R
 findReTrmClasses <- function() {
-    names(.valid_covstruct)
+    c(names(.valid_covstruct), "s")
 }
 
 toLang <- function(x) parse(text=x)[[1]]
@@ -224,7 +224,7 @@ head.name <- function(x) { x }
 ## if default.special = NULL?
 ## (would replace current expandDoubleVerts machinery)
 
-##' find and process random effects terms
+##' Find and process random effects terms
 ##'
 ##' @param term a formula or piece of a formula
 ##' @param debug (logical) debug?
@@ -349,6 +349,7 @@ findbars_x <- function(term,
 ##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
 ##' splitForm(~(((x+y))))               ## lots of parentheses
 ##' splitForm(~1+rr(f|g,n=2))
+##' splitForm(~1+s(x, bs = "tp"))
 ##'
 ##' @author Steve Walker
 ##' @importFrom lme4 nobars
@@ -357,15 +358,14 @@ splitForm <- function(formula,
                       defaultTerm="us",
                       allowFixedOnly=TRUE,
                       allowNoSpecials=TRUE,
-                      debug=FALSE) {
+                      debug=FALSE,
+                      specials = findReTrmClasses()) {
 
     ## logic:
 
     ## string for error message *if* specials not allowed
     ## (probably package-specific)
     noSpecialsAlt <- "lmer or glmer"
-
-    specials <- findReTrmClasses()
 
     ## formula <- expandDoubleVerts(formula)
     ## split formula into separate
@@ -427,7 +427,7 @@ splitForm <- function(formula,
     } else {
         reTrmFormulas <- reTrmAddArgs <- reTrmClasses <- NULL
     }
-    fixedFormula <- noSpecials(nobars(formula))
+    fixedFormula <- noSpecials(formula)
 
     list(fixedFormula  = fixedFormula,
          reTrmFormulas = reTrmFormulas,
@@ -632,13 +632,17 @@ replaceForm <- function(term,target,repl) {
                                    y=replaceForm(term[[3]],target,repl))))
 }
 
-no_specials <- function(term) {
+##' @examples
+##' no_specials(y ~ 1 + s(x) + (f|g))
+no_specials <- function(term, specials = c("|", "||", "s")) {
     if (is.list(term)) {
         return(lapply(term, no_specials))
     }
-    if (identical(head(term), quote(`|`))) return(term)
+    for (ss in specials) {
+        if (identical(head(term), as.name(ss))) return(term)
+    }
     if (length(term) == 3) stop("don't know what to do")
-    return(no_specials(term[[2]]))
+    return(no_specials(term[[2]], specials))
 }
 
 ## copied from lme4, and generalized
