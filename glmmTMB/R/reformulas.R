@@ -248,13 +248,17 @@ head.name <- function(x) { x }
 ##' findbars_x(~ (1||Subject))
 ##' findbars_x(~ (1|Subject))
 ##' findbars_x(~ (1|Subject), default.special = NULL)
-##' findbars_x(~ 1 + x) 
+##' findbars_x(~ 1 + x)
+##' findbars_x(~ s(x, bs = "tp"))
+##' findbars_x(y ~ a + log(b) + s(x, bs = "tp") + s(y, bs = "gp"),
+##'    target = "s", default.special = NULL)
 ##' @rdname formfuns
 ##' @export
 findbars_x <- function(term,
                 debug=FALSE,
                 specials=character(0),
                 default.special="us",
+                target = '|',
                 expand_doublevert_method = c("diag_special", "split")) {
 
     expand_doublevert_method <- match.arg(expand_doublevert_method)
@@ -279,8 +283,11 @@ findbars_x <- function(term,
             if (debug) cat("special: ",deparse(term),"\n")
             return(term)
         }
-        if (head(term) == as.name('|')) {  ## found x | g
-            if (debug) cat("bar term:",deparse(term),"\n")
+        if (head(term) == as.name(target)) {  ## found x | g
+            if (debug) {
+                tt <- if (target == '|') bar else sprintf('"%s"', target)
+                cat(sprintf("%s term: %s\n", tt, deparse(term)))
+            }
             if (is.null(ds)) return(term)
             return(makeOp(term, ds))
         }

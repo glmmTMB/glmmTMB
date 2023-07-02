@@ -523,6 +523,18 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         X <- matrix(ncol=0, nrow=nobs)
         offset <- rep(0,nobs)
     } else {
+
+        ## check for mgcv-style smooth terms, adjust accordingly ...
+        if (anySpecial(fixedform, specials = "s")) {
+
+            ## extract s() terms
+            smooth_terms <- findbars_x(fixedform, default.special = NULL, target = "s")
+            ## *remove* s() terms from fixed formula
+            fixedform <- noSpecials(fixedform, specials = "s")
+            
+        }
+
+        
         tt <- terms(fixedform)
         pv <- attr(mf$formula,"predvars")
         attr(tt, "predvars") <- fix_predvars(pv,tt)
