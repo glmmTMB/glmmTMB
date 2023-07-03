@@ -63,15 +63,13 @@ Seems to fit OK, but glmmTMB is unhappy that the non-nullspace stuff has disappe
 * effective df stuff ?
 * can I get rid of `no_specials` ... ??? 
 
-Details of the math are in the appendix:
-
-Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
-   
-* fixed-effect factors represent the nullspace of the smooth
+* Details of the math are in the appendix: Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
+* fixed-effect terms (`Xf`) represent the nullspace of the smooth
 
 ## to do
 
-- make sure it works for models with `s()`, no other REs
+- make sure it works for models with `s()`, no other REs (simpler test/make sure nothing is conflicting with RE stuff)
 - set up/test prediction stuff
+- better print/summary handling for smooth terms (remove them from fixed effects/print separately); more options to `fixef()` etc ...
 - test test test!
 - prettier `VarCorr` printing ... 
