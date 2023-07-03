@@ -633,37 +633,50 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ## do we need to reconstitute
         ## post-process mkReTrms to add smooths (incorporate in mkReTrms?)
         if (has_smooths) {
-            ns <- length(ss)
+            ns <- length(ss$reTrmClasses)
             augReTrms <- list(Ztlist = vector("list", ns),
                               flist = vector("list", ns),
                               cnms = vector("list", ns))
             barpos <- which(ss$reTrmClasses != "s")
+            nonbarpos <- which(ss$reTrmClasses == "s")
             for (p in c("Ztlist", "flist", "cnms")) {
                 augReTrms[[p]][barpos] <- reTrms[[p]]
                 names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
             }
-            ## STOPPED HERE
+            ## one theta value for smooths
+            ## FIXME: do we actually use theta values?
+            augReTrms$theta <- rep(0, ## default value 
+                                   sum(lengths(reTrms$theta)) +
+                                   length(nonbarpos))
+            augReTrms$theta[barpos] <- reTrms$theta
+            ## only need one 'dummy' factor for all the smooth terms
+            ## FIXME: more transparent that this is nrow(data)
+            ff <- factor(rep(1, ncol(reTrms$Ztlist[[1]])))
+            augReTrms$flist <- c(reTrms$flist, list(dummy = ff))
+            avec <- rep(NA_integer_, ns)
+            avec[barpos] <- attr(reTrms$flist, "assign")
             ## mkReTrms returns more than we need (some is for lme4)
             ##  ... which bits are actually used hereafter?
-            for (s in smooth_terms2) {
+            avec[nonbarpos] <-  length(augReTrms$flist)
+            attr(augReTrms$flist, "assign") <- avec
+            for (i in seq_along(smooth_terms2)) {
+                s <- smooth_terms2[[i]]
+                pos <- nonbarpos[i]
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
                 npar <- nrow(Zt)
-                reTrms$Zt <- rbind(reTrms$Zt, Zt)
+                augReTrms$Ztlist[[pos]] <- Zt
                 nm <- attr(s$re$rand$Xr, "s.label")
-                reTrms$Ztlist <- c(reTrms$Ztlist, setNames(list(Zt), nm))
-                reTrms$Gp <- c(reTrms$Gp, tail(reTrms$Gp, 1) + npar)
-                reTrms$theta <- c(reTrms$theta, 1.0) ## ?? is this a good starting value?
-                ## is it even used?
-                ## do better??
-                ## better names for these terms (even if they're suppressed later)
-                reTrms$cnms <- c(reTrms$cnms, list(dummy = paste("dummy", seq(npar))))
-                ## make up a dummy factor for the factor list
-                ff <- factor(rep(1, nrow(Zt)))
-                aa <- attr(reTrms$flist, "assign")
-                reTrms$flist <- c(reTrms$flist, list(dummy = ff))
-                attr(reTrms$flist, "assign") <- c(aa, length(reTrms$flist))
-                                  
+                names(augReTrms$Ztlist)[pos] <- nm
+                ## cnms
+                augReTrms$cnms[[pos]] <- paste0("dummy", seq(npar))
+                names(augReTrms$cnms)[pos] <- "dummy"
             }
+            ## reconstitute other pieces
+            augReTrms$Zt <- do.call(rbind, augReTrms$Zt)
+            augReTrms$Gp <- cumsum(c(0, vapply(augReTrms$Ztlist, nrow, 0L)))
+
+            ##
+            reTrms <- augReTrms
         }
 
         ss$reTrmClasses[ss$reTrmClasses == "s"] <- "homdiag"

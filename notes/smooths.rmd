@@ -13,17 +13,16 @@ Current problem: we have the results of `mkReTrms` which take **only** the bar-t
 
 
 ```{r eval =FALSE}
+data("sleepstudy", package = "lme4")
 g1 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy)
-g10 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy,
-               doFit=FALSE)
 ```
 
 runs and prints without crashing, but convergence problems.
 Std devs should all be equal but aren't - did `homdiag` not work??
 
 ```{r}
-debug(VarCorr.glmmTMB)
 VarCorr(g1)
+```
 
 ```{r}
 library(mgcv)
@@ -38,11 +37,41 @@ g2 <- gam(formula = Reaction ~ s(Days) + s(Subject, bs="re"), data = sleepstudy)
 draw(g2)
 ```
 
+Compare:
+
+```{r}
+all.equal(sigma(g2), sigma(g1), tol = 0.005) ## close-ish?
+## intercept and nullspace value identical
+all.equal(unname(fixef(g1)$cond),
+          unname(coef(g2)[c("(Intercept)", "s(Days).9")]))
+## doesn't match ...
+logLik(g2)
+## have to dig out logLik because Hessian is non-pos-def
+g1$fit$objective
+bvec <- g1$fit$parfull
+bvec <- bvec[names(bvec) == "b"]
+r1 <- ranef(g1)$cond  ## all b-values for the smooth are tiny ... ??
+r2 <- split(coef(g2), substr(names(coef(g2)), 1, 3))[c(3,2)]
+names(r2) <- names(r1)
+all.equal(unname(unlist(r1[[1]])), unname(r2[[1]]), tol = 0.005)
+```
+
+Seems to fit OK, but glmmTMB is unhappy that the non-nullspace stuff has disappeared ...
+
 * what's the difference between using `smoothCon()` with `diagonal.penalty = TRUE` and using `smooth2random` (guessing that we get all of the conversion-factor stuff too)
-* what about prediction??? need to store back-conversion machinery and use it appropriately
+* what about prediction??? need to store all the back-conversion machinery and use it appropriately
+* effective df stuff ?
+* can I get rid of `no_specials` ... ??? 
 
 Details of the math are in the appendix:
 
 Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
    
 * fixed-effect factors represent the nullspace of the smooth
+
+## to do
+
+- make sure it works for models with `s()`, no other REs
+- set up/test prediction stuff
+- test test test!
+- prettier `VarCorr` printing ... 
