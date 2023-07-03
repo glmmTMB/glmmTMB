@@ -1,0 +1,48 @@
+## implementing mgcv-style smooths
+
+* "sort of" working
+
+Current problem: we have the results of `mkReTrms` which take **only** the bar-terms into account.
+
+* We could modify mkReTrms significantly (time to take it over into `reformulas` and refactor it while keeping it lme4-compliant?) to allow smooth terms to be included *in situ*
+* We could modify the s()-terms to be dummy terms with the right dimensions, then modify in place
+* We could figure out where the s()-terms need to be stuck into the ReTrms output
+   * place elements into Ztlist, cnms, flist in the right place
+   * reconstitute Zt, Gp
+
+
+
+```{r eval =FALSE}
+g1 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy)
+g10 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy,
+               doFit=FALSE)
+```
+
+runs and prints without crashing, but convergence problems.
+Std devs should all be equal but aren't - did `homdiag` not work??
+
+```{r}
+debug(VarCorr.glmmTMB)
+VarCorr(g1)
+
+```{r}
+library(mgcv)
+library(gratia)
+library(broom.mixed)
+library(performance)
+g0 <- glmmTMB(formula = Reaction ~ Days + (1 | Subject), data = sleepstudy
+g0Q <- update(g0, . ~ . - Days + poly(Days,2))
+check_model(g0)
+check_model(g0Q)
+g2 <- gam(formula = Reaction ~ s(Days) + s(Subject, bs="re"), data = sleepstudy)
+draw(g2)
+```
+
+* what's the difference between using `smoothCon()` with `diagonal.penalty = TRUE` and using `smooth2random` (guessing that we get all of the conversion-factor stuff too)
+* what about prediction??? need to store back-conversion machinery and use it appropriately
+
+Details of the math are in the appendix:
+
+Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
+   
+* fixed-effect factors represent the nullspace of the smooth
