@@ -579,8 +579,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
             for (s in smooth_terms2) {
-                ## FIXME, need to deal with intercept ...
-                ## STOPPED HERE
+                ## FIXME:: add useful column name(s) to s$re$Xf
                 X <- cbind(X, s$re$Xf)
             }
         }
@@ -628,20 +627,20 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
 
         ## post-process mkReTrms to add smooths (incorporate in mkReTrms?)
         if (has_smooths) {
-            warning("RE terms not yet adjusted for smooths")
             ## mkReTrms returns more than we need (some is for lme4)
             ##  ... which bits are actually used hereafter?
-            ## STOPPED HERE
             for (s in smooth_terms2) {
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
+                npar <- nrow(Zt)
                 reTrms$Zt <- rbind(reTrms$Zt, Zt)
                 nm <- attr(s$re$rand$Xr, "s.label")
                 reTrms$Ztlist <- c(reTrms$Ztlist, setNames(list(Zt), nm))
-                reTrms$Gp <- c(reTrms$Gp, tail(reTrms$Gp, 1) + nrow(Zt))
+                reTrms$Gp <- c(reTrms$Gp, tail(reTrms$Gp, 1) + npar)
                 reTrms$theta <- c(reTrms$theta, 1.0) ## ?? is this a good starting value?
                 ## is it even used?
                 ## do better??
-                reTrms$cnms <- c(reTrms$cnms, list(dummy = "dummy"))
+                ## better names for these terms (even if they're suppressed later)
+                reTrms$cnms <- c(reTrms$cnms, list(dummy = paste("dummy", seq(npar))))
                 ## make up a dummy factor for the factor list
                 ff <- factor(rep(1, nrow(Zt)))
                 aa <- attr(reTrms$flist, "assign")
