@@ -621,12 +621,28 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         reTrms <- mkReTrms(no_specials(findbars_x(formula)),
                            fr, reorder.terms=FALSE)
         
+
+        ## formula <- Reaction ~ s(Days) + (1|Subject)
+        ss <- splitForm(formula)
+
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
         ## "theta", "Lind", "lower", "Lambdat", "nl" (?) are lme4-specific
 
+        ## need to fill in smooth terms in **correct locations**
+        ## do we need to reconstitute
         ## post-process mkReTrms to add smooths (incorporate in mkReTrms?)
         if (has_smooths) {
+            ns <- length(ss)
+            augReTrms <- list(Ztlist = vector("list", ns),
+                              flist = vector("list", ns),
+                              cnms = vector("list", ns))
+            barpos <- which(ss$reTrmClasses != "s")
+            for (p in c("Ztlist", "flist", "cnms")) {
+                augReTrms[[p]][barpos] <- reTrms[[p]]
+                names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
+            }
+            ## STOPPED HERE
             ## mkReTrms returns more than we need (some is for lme4)
             ##  ... which bits are actually used hereafter?
             for (s in smooth_terms2) {
@@ -650,7 +666,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
         }
 
-        ss <- splitForm(formula)
         ss$reTrmClasses[ss$reTrmClasses == "s"] <- "homdiag"
         # FIX ME: migrate this (or something like it) down to reTrms,
         ##    allow for more different covstruct types that have additional arguments
