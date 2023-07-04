@@ -285,7 +285,7 @@ findbars_x <- function(term,
         }
         if (head(term) == as.name(target)) {  ## found x | g
             if (debug) {
-                tt <- if (target == '|') bar else sprintf('"%s"', target)
+                tt <- if (target == '|') "bar" else sprintf('"%s"', target)
                 cat(sprintf("%s term: %s\n", tt, deparse(term)))
             }
             if (is.null(ds)) return(term)

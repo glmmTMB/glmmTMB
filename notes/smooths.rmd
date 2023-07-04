@@ -59,7 +59,7 @@ There is a lot left to do.
 	* in `predict`, use these to back-calculate and modify the coefficients *in place* (restoring at the end of the function as in the "fast prediction" code branch)
 	* will need to figure out *which* fixed and random effects correspond to which smooth terms ... compute up-front and carry it along?
 	* utility function to get the modified coeffs? Which versions, if any, should be printed in summaries etc.?
-	* how does `mgcv` handle predictions with new data? What is the analog of `predvars` so that we can use the previously specified knots etc. ??? (`mgcv:::predict.gam` is 500+ lines long ...)
+	* how does `mgcv` handle predictions with new data? What is the analog of `predvars` so that we can use the previously specified knots etc. ??? (`mgcv:::predict.gam` is 500+ lines long ...) (I think we can use `mgcv::PredictMat` on the stored smooth object ... ?)
 * better print/summary handling for smooth terms (remove them from fixed effects/print separately); more options to `fixef()` etc ...
 * documentation: where are the pitfalls?
 * prettier `VarCorr` printing ... 
