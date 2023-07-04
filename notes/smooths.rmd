@@ -1,75 +1,80 @@
-## implementing mgcv-style smooths
-
-* "sort of" working
-
-Current problem: we have the results of `mkReTrms` which take **only** the bar-terms into account.
-
-* We could modify mkReTrms significantly (time to take it over into `reformulas` and refactor it while keeping it lme4-compliant?) to allow smooth terms to be included *in situ*
-* We could modify the s()-terms to be dummy terms with the right dimensions, then modify in place
-* We could figure out where the s()-terms need to be stuck into the ReTrms output
-   * place elements into Ztlist, cnms, flist in the right place
-   * reconstitute Zt, Gp
+---
+title: implementing mgcv-style smooths in glmmTMB
+---
 
 
+As previously commented on [the glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues/704) and [illustrated by Devin Johnson](https://gist.github.com/dsjohnson/9d66aa47557ad56438aaf75dd25910ea), `mgcv` provides facilities for exporting its smooths in a format that can work with an IID ('ridge') penalty as implemented in standard mixed-model random effects terms.
 
-```{r eval =FALSE}
-data("sleepstudy", package = "lme4")
-g1 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy)
-```
+This is *briefly* described in `?mgcv::smooth2random`, and the appendix of Wood (2004) gives the mathematical details (see below for reference).
 
-runs and prints without crashing, but convergence problems.
-Std devs should all be equal but aren't - did `homdiag` not work??
+## current status/example: "sort of" working
 
-```{r}
-VarCorr(g1)
-```
+I've implemented the 'front end' for this: pick the `s()` terms out of a formula, convert them with `smooth2random`, add those as appropriate to the fixed and random effect model matrices with the RE type set to "homdiag" (iid errors).
 
-```{r}
+For the standard `sleepstudy` example, we get results that are somewhat reasonable/match `mgcv` in some ways. We **must** use REML in order for this to work! (With default ML fit, we get a sort-of-OK fit, but some weird stuff happens - spline parameters go to tiny values, `NA/NaN` warnings, convergence failure ...
+
+```{r first_try}
+## this is slightly rude, but should be quick if already installed ...
+remotes::install_github("glmmTMB/glmmTMB/glmmTMB@mgcv_smooths")
+library(glmmTMB)
 library(mgcv)
-library(gratia)
-library(broom.mixed)
-library(performance)
-g0 <- glmmTMB(formula = Reaction ~ Days + (1 | Subject), data = sleepstudy
-g0Q <- update(g0, . ~ . - Days + poly(Days,2))
-check_model(g0)
-check_model(g0Q)
-g2 <- gam(formula = Reaction ~ s(Days) + s(Subject, bs="re"), data = sleepstudy)
-draw(g2)
+data("sleepstudy", package = "lme4")
+gtmb1 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy, REML = TRUE)
+mgcv1 <- gam(formula = Reaction ~ s(Days) + s(Subject, bs="re"), data = sleepstudy)
 ```
 
-Compare:
+Lots of comparisons work: residual std error, intercept parameter and 'fixed' spline parameter (which determines the part of the spline corresponding to the nullspace), the random effects corresponding to the `(1|Subject)`/`s(Subject, bs = "re")` terms ...
+
+```{r compare}
+all.equal(sigma(mgcv1), sigma(gtmb1), tol = 1e-5)
+## intercept and nullspace fixed effect
+all.equal(unname(fixef(gtmb1)$cond),
+          unname(coef(mgcv1)[c("(Intercept)", "s(Days).9")]),
+          tol = 1e-6)
+## random effects
+bvec <- gtmb1$fit$parfull
+bvec <- bvec[names(bvec) == "b"]
+r1 <- ranef(gtmb1)$cond  ## all b-values for the smooth are tiny ... ??
+r2 <- split(coef(mgcv1), substr(names(coef(mgcv1)), 1, 3))[c(3,2)]
+names(r2) <- names(r1)
+all.equal(unname(unlist(r1[[1]])), unname(r2[[1]]), tol = 1e-5)
+```
+
+The log-likelihoods do *not* match (something to do with which parameters are profiled out in REML??)
 
 ```{r}
-all.equal(sigma(g2), sigma(g1), tol = 0.005) ## close-ish?
-## intercept and nullspace value identical
-all.equal(unname(fixef(g1)$cond),
-          unname(coef(g2)[c("(Intercept)", "s(Days).9")]))
-## doesn't match ...
-logLik(g2)
-## have to dig out logLik because Hessian is non-pos-def
-g1$fit$objective
-bvec <- g1$fit$parfull
-bvec <- bvec[names(bvec) == "b"]
-r1 <- ranef(g1)$cond  ## all b-values for the smooth are tiny ... ??
-r2 <- split(coef(g2), substr(names(coef(g2)), 1, 3))[c(3,2)]
-names(r2) <- names(r1)
-all.equal(unname(unlist(r1[[1]])), unname(r2[[1]]), tol = 0.005)
+c(mgcv = logLik(mgcv1), gtmb1 = logLik(gtmb1))
 ```
 
-Seems to fit OK, but glmmTMB is unhappy that the non-nullspace stuff has disappeared ...
+I'm not sure how to extract the values corresponding to RE variances from `mgcv` ...
 
-* what's the difference between using `smoothCon()` with `diagonal.penalty = TRUE` and using `smooth2random` (guessing that we get all of the conversion-factor stuff too)
-* what about prediction??? need to store all the back-conversion machinery and use it appropriately
-* effective df stuff ?
-* can I get rid of `no_specials` ... ??? 
+## issues 
 
-* Details of the math are in the appendix: Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
-* fixed-effect terms (`Xf`) represent the nullspace of the smooth
+There is a lot left to do.
 
-## to do
+- test test test! See where stuff breaks.
+- currently only works for models with random effects **and** smooths; should be easy enough to modify this so a smooth-only model will work
+- *predictions*: some fancy footwork is needed to convert the coefficients back to a form that will allow predictions (see Wood's refs). `smooth2random()` provides a matrix and vector that jointly allow the back-calculation
+    * make sure these objects are stored somewhere in the fitted model
+	* in `predict`, use these to back-calculate and modify the coefficients *in place* (restoring at the end of the function as in the "fast prediction" code branch)
+	* will need to figure out *which* fixed and random effects correspond to which smooth terms ... compute up-front and carry it along?
+	* utility function to get the modified coeffs? Which versions, if any, should be printed in summaries etc.?
+	* how does `mgcv` handle predictions with new data? What is the analog of `predvars` so that we can use the previously specified knots etc. ??? (`mgcv:::predict.gam` is 500+ lines long ...)
+* better print/summary handling for smooth terms (remove them from fixed effects/print separately); more options to `fixef()` etc ...
+* documentation: where are the pitfalls?
+* prettier `VarCorr` printing ... 
+* can we set things up so that existing `mgcv` machinery (such as `gratia`) can work on our fits?
 
-- make sure it works for models with `s()`, no other REs (simpler test/make sure nothing is conflicting with RE stuff)
-- set up/test prediction stuff
-- better print/summary handling for smooth terms (remove them from fixed effects/print separately); more options to `fixef()` etc ...
-- test test test!
-- prettier `VarCorr` printing ... 
+
+## architectural stuff
+
+* at present, `mkReTrms` (which is imported from `lme4`) takes only the bar-terms into account. The current strategy is to take the results and do a bunch of post-processing to add stuff from the smooth terms.  This is clunky.
+     * We could modify mkReTrms significantly (time to take it over into `reformulas` and refactor it while keeping it lme4-compliant?) to allow smooth terms to be included *in situ*
+     * We could modify the s()-terms to be dummy terms with the right dimensions, then modify in place (this is not much better than the current approach)
+* can we get rid of `no_specials` ... ??? 
+* right now we're hacking `s()` to `homdiag()`. Should we duplicate the `homdiag` code, or otherwise make "homdiag" and "s" synonyms under the hood?
+
+## ref
+
+Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
+
