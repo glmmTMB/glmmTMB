@@ -650,8 +650,9 @@ no_specials <- function(term, specials = c("|", "||", "s")) {
     return(no_specials(term[[2]], specials))
 }
 
-## copied from lme4, and generalized
-##' substitute safe chars for specials (for use in model.frame)
+
+##' Substitute safe chars (+) for specials (for use in \code{model.frame})
+##' (Generalized from \code{lme4}'s \code{subbars} function.)
 ##' @param term formula or term in a formula
 ##' @param specials names of specials to process
 ##' @param keep_args number of arguments to retain (matching \code{specials})
@@ -660,6 +661,7 @@ no_specials <- function(term, specials = c("|", "||", "s")) {
 ##' @examples
 ##' sub_specials( ~ (1|x) + (a + b || y) + s(a, b, c))
 ##' sub_specials(Reaction ~ s(Days) + (1 + Subject))
+##' @export
 sub_specials <- function (term,
                           specials = c("|", "||", "s"),
                           keep_args = c(2, 2, 1)) {

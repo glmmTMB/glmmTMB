@@ -2,7 +2,8 @@
 % Please edit documentation in R/reformulas.R
 \name{sub_specials}
 \alias{sub_specials}
-\title{substitute safe chars for specials (for use in model.frame)}
+\title{Substitute safe chars (+) for specials (for use in \code{model.frame})
+(Generalized from \code{lme4}'s \code{subbars} function.)}
 \usage{
 sub_specials(term, specials = c("|", "||", "s"), keep_args = c(2, 2, 1))
 }
@@ -17,7 +18,8 @@ sub_specials(term, specials = c("|", "||", "s"), keep_args = c(2, 2, 1))
 a term or formula with specials replaced by \code{+} (and extra arguments dropped)
 }
 \description{
-substitute safe chars for specials (for use in model.frame)
+Substitute safe chars (+) for specials (for use in \code{model.frame})
+(Generalized from \code{lme4}'s \code{subbars} function.)
 }
 \examples{
 sub_specials( ~ (1|x) + (a + b || y) + s(a, b, c))
