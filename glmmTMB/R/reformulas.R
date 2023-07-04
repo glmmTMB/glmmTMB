@@ -636,6 +636,7 @@ replaceForm <- function(term,target,repl) {
                                    y=replaceForm(term[[3]],target,repl))))
 }
 
+##' @noRd
 ##' @examples
 ##' no_specials(y ~ 1 + s(x) + (f|g))
 no_specials <- function(term, specials = c("|", "||", "s")) {
