@@ -31,6 +31,9 @@ all.equal(sigma(mgcv1), sigma(gtmb1), tol = 1e-5)
 all.equal(unname(fixef(gtmb1)$cond),
           unname(coef(mgcv1)[c("(Intercept)", "s(Days).9")]),
           tol = 1e-6)
+## fitted values (**not** worrying yet about prediction with newdata)
+all.equal(fitted(gtmb1), unname(fitted(mgcv1)), tol = 2e-5)
+
 ## random effects
 bvec <- gtmb1$fit$parfull
 bvec <- bvec[names(bvec) == "b"]
@@ -64,7 +67,6 @@ There is a lot left to do.
 * documentation: where are the pitfalls?
 * prettier `VarCorr` printing ... 
 * can we set things up so that existing `mgcv` machinery (such as `gratia`) can work on our fits?
-
 
 ## architectural stuff
 

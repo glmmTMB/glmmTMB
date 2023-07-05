@@ -502,6 +502,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom mgcv smoothCon smooth2random s
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE) {
+
+    has_re <- !is.null(findbars_x(formula))
+    has_smooths <- anySpecial(formula, specials = "s")
+
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -525,8 +529,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         X <- matrix(ncol=0, nrow=nobs)
         offset <- rep(0,nobs)
     } else {
-        has_smooths <- anySpecial(fixedform, specials = "s")
-        
         ## check for mgcv-style smooth terms, adjust accordingly ...
         if (has_smooths) {
 
@@ -535,8 +537,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ## *remove* s() terms from fixed formula
             fixedform <- noSpecials(fixedform, specials = "s")
 
-
-            ## FIXME: do we run into trouble if mgcv isn't loaded?
             ## FIXME: could be fragile about eval environments (how
             ##  far up do we have to go with eval.parent? Or do we
             ##  use the environment of the formula?
@@ -605,8 +605,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
     ## important to COPY formula (and its environment)?
     ranform <- formula
 
-    ## FIXME: have to handle case containing s() but no lme4-style REs
-    if (is.null(findbars_x(ranform))) {
+    if (!has_re && !has_smooths) {
         reTrms <- reXterms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         aa <- integer(0) #added for rr to get rank
