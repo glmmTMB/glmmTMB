@@ -616,10 +616,15 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         if (!ranOK) stop("no random effects allowed in ", type, " term")
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
-        mf$formula <- ranform
-        reTrms <- mkReTrms(no_specials(findbars_x(formula)),
-                           fr, reorder.terms=FALSE)
-        
+        if (has_re) {
+            mf$formula <- ranform
+            reTrms <- mkReTrms(no_specials(findbars_x(formula)),
+                               fr, reorder.terms=FALSE)
+        } else {
+            ## dummy elements
+            reTrms <- list(Ztlist = list(), flist = list(), cnms = list(),
+                           theta = list())
+        }
 
         ## formula <- Reaction ~ s(Days) + (1|Subject)
         ss <- splitForm(formula)
@@ -649,8 +654,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                    length(nonbarpos))
             augReTrms$theta[barpos] <- reTrms$theta
             ## only need one 'dummy' factor for all the smooth terms
-            ## FIXME: more transparent that this is nrow(data)
-            ff <- factor(rep(1, ncol(reTrms$Ztlist[[1]])))
+            ff <- factor(rep(1, nobs))
             augReTrms$flist <- c(reTrms$flist, list(dummy = ff))
             avec <- rep(NA_integer_, ns)
             avec[barpos] <- attr(reTrms$flist, "assign")
