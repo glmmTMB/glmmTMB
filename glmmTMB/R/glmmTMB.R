@@ -547,7 +547,24 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  far up do we have to go with eval.parent? Or do we
             ##  use the environment of the formula?
             if (!is.null(old_smooths)) {
-                smooth_terms2 <- old_smooths
+                smooth_terms2 <- lapply(old_smooths,
+                                        function(s) {
+                                            X <- PredictMat(s$sm,data)   ## get prediction matrix for new data
+                                            ## transform to r.e. parameterization
+                                            if (!is.null(s$re$trans.U)) X <- X%*%s$re$trans.U
+                                            X <- t(t(X)*s$re$trans.D)
+                                            ## re-order columns according to random effect re-ordering...
+                                            X[,s$re$rind] <- X[,s$re$pen.ind!=0] 
+                                            ## re-order penalization index in same way  
+                                            pen.ind <- s$re$pen.ind; s$pen.ind[s$re$rind] <- pen.ind[pen.ind>0]
+                                            ## start return object...
+                                            r <- list(rand=list(), Xf=X[,which(re$pen.ind==0),drop=FALSE])
+                                            for (i in 1:length(s$re$rand)) { ## loop over random effect matrices
+                                                r$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
+                                                attr(r$rand[[i]],"s.label") <- attr(s$re$rand[[i]],"s.label")
+                                            }
+                                            names(r$rand) <- names(s$re$rand)
+                                        })
             } else {
                 smooth_terms2 <- lapply(smooth_terms,
                     function(tt) {
