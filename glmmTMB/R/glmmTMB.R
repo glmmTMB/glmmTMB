@@ -252,7 +252,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        start=NULL,
                        map=NULL,
                        sparseX=NULL,
-                       control=glmmTMBControl()) {
+                       control=glmmTMBControl(),
+                       old_smooths = NULL) {
 
 
   if (is.null(sparseX)) sparseX <- logical(0)
