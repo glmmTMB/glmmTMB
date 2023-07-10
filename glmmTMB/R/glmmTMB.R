@@ -178,8 +178,7 @@ startParams <- function(parameters,
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
       nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
-      ## FIXME: replace hard-coded 9 with .valid_covstruct["rr"] ?
-      if (condReStruc[[j]]$blockCode == 9) {
+      if (condReStruc[[j]]$blockCode == .valid_covstruct[["rr"]]) {
         start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
         start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
         brrp <- brrp + nb; trrp <- trrp + nt
@@ -229,6 +228,8 @@ startParams <- function(parameters,
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
 ##' @param sparseX see \code{\link{glmmTMB}}
+##' @param old_smooths (optional) smooth components from a previous fit: used when constructing a new model structure for prediction
+##' from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -253,9 +254,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        sparseX=NULL,
                        control=glmmTMBControl()) {
 
-  ## handle family specified as naked list
-  ## if specified as character or function, should have been converted
-  ## to a list with class "family" above ...
 
   if (is.null(sparseX)) sparseX <- logical(0)
   for (component in c("cond", "zi", "disp")) {
@@ -269,6 +267,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## FIXME: (1) should use proper tryCatch below
   if (!is(family,"family")) {
       ## if family specified as list
+      ## if specified as character or function, should have been converted
+      ## to a list with class "family" upstream ...
+
       if (is.list(family)) {
           warning("specifying ",sQuote("family")," as a plain list is deprecated")
       }
@@ -313,8 +314,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]])
-    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]])
+    ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
+                            old_smooths = old_smooths$cond)
+    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
+                            old_smooths = old_smooths$zi)
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]])
@@ -486,6 +490,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param type label for model type
 ##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @param sparse (logical) return sparse model matrix?
+##' @param old_smooths smooth information from a prior model fit (for prediction)
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
@@ -501,7 +506,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom lme4 findbars nobars
 ##' @importFrom mgcv smoothCon smooth2random s
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
-                       contrasts, sparse=FALSE) {
+                       contrasts, sparse=FALSE, old_smooths = NULL) {
 
     has_re <- !is.null(findbars_x(formula))
     has_smooths <- anySpecial(formula, specials = "s")
@@ -540,7 +545,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ## FIXME: could be fragile about eval environments (how
             ##  far up do we have to go with eval.parent? Or do we
             ##  use the environment of the formula?
-            smooth_terms2 <- lapply(smooth_terms,
+            if (!is.null(old_smooths)) {
+                smooth_terms2 <- old_smooths
+            } else {
+                smooth_terms2 <- lapply(smooth_terms,
                     function(tt) {
                         ## ‘smoothCon’ returns a list of smooths because factor ‘by’
                         ## variables result in multiple copies of a smooth, each multiplied
@@ -559,8 +567,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                              re = mgcv::smooth2random(sm, vnames = "", type = 2))
                     }
                     )
-
-        }
+            } ## create (new) smooth terms
+        } ## has_smooths
 
         
         tt <- terms(fixedform)
@@ -579,8 +587,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
             for (s in smooth_terms2) {
-                ## FIXME:: add useful column name(s) to s$re$Xf
+                cnm <- colnames(X)
+                snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
+                colnames(X) <- c(cnm, paste0(snm, seq.int(ncol(s$re$Xf))))
             }
         }
         
@@ -640,7 +650,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ns <- length(ss$reTrmClasses)
             augReTrms <- list(Ztlist = vector("list", ns),
                               flist = vector("list", ns),
-                              cnms = vector("list", ns))
+                              cnms = vector("list", ns),
+                              smooth_info = vector("list", ns))
             barpos <- which(ss$reTrmClasses != "s")
             nonbarpos <- which(ss$reTrmClasses == "s")
             for (p in c("Ztlist", "flist", "cnms")) {
@@ -673,6 +684,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                 ## cnms
                 augReTrms$cnms[[pos]] <- paste0("dummy", seq(npar))
                 names(augReTrms$cnms)[pos] <- "dummy"
+            }
+            ## store smooth info in relevant spots
+            for (i in seq_along(nonbarpos)) {
+                augReTrms$smooth_info[[i]] <- smooth_terms2[[nonbarpos[i]]]
             }
             ## reconstitute other pieces
             augReTrms$Zt <- do.call(rbind, augReTrms$Zt)
@@ -889,8 +904,9 @@ usesDispersion <- function(x) {
 .classicDispersionFamilies <- c("gaussian","Gamma","t")
 
 ## select only desired pieces from results of getXReTrms
-stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
-  c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
+stripReTrms <- function(xrt, whichReTrms = c("cnms","flist","smooth_info"), which="terms") {
+    whichReTrms <- intersect(whichReTrms, names(xrt$reTrms)) ## not all models will have smooth_info
+    c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
 }
 
 #.okWeightFamilies <- c("binomial", "betabinomial")
@@ -1667,6 +1683,12 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
+    ## FIXME: not clear why this is here
+    ## (fitted method uses predict(...), not stats::fitted.default)
+    ## could assign this value with predict(), save a little bit??
+    ## (but would have to add $na.action to the object, instead of retrieving it
+    ##  from attr(x$frame, "na.action")), or continue with our own fitted.glmmTMB version
+    
     fitted <- NULL
 
     if (TMBStruc$se) {

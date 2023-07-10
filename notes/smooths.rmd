@@ -3,9 +3,16 @@ title: implementing mgcv-style smooths in glmmTMB
 ---
 
 
+```{r reinstall_flag}
+## make this depend on external input/commandArg/env variable?
+reinstall_pkg <- FALSE
+```
+
 As previously commented on [the glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues/704) and [illustrated by Devin Johnson](https://gist.github.com/dsjohnson/9d66aa47557ad56438aaf75dd25910ea), `mgcv` provides facilities for exporting its smooths in a format that can work with an IID ('ridge') penalty as implemented in standard mixed-model random effects terms.
 
 This is *briefly* described in `?mgcv::smooth2random`, and the appendix of Wood (2004) gives the mathematical details (see below for reference).
+
+**fixme**: pick an example with some nonlinearity for the non-nullspace component of the smooth to capture ...
 
 ## current status/example: "sort of" working
 
@@ -15,7 +22,7 @@ For the standard `sleepstudy` example, we get results that are somewhat reasonab
 
 ```{r first_try}
 ## this is slightly rude, but should be quick if already installed ...
-remotes::install_github("glmmTMB/glmmTMB/glmmTMB@mgcv_smooths")
+if (reinstall_pkg) remotes::install_github("glmmTMB/glmmTMB/glmmTMB@mgcv_smooths")
 library(glmmTMB)
 library(mgcv)
 data("sleepstudy", package = "lme4")
@@ -51,15 +58,55 @@ c(mgcv = logLik(mgcv1), gtmb1 = logLik(gtmb1))
 
 I'm not sure how to extract the values corresponding to RE variances from `mgcv` ...
 
+Works (technically), but annoyingly non-pos-def because the smooth gets penalized to zero ... change to a better example!
+
+```{r}
+gtmb0 <- update(gtmb1, . ~  . - (1|Subject))
+```
+
+```{r nileex}
+data("Nile")
+ndat <- data.frame(time = time(Nile), val = c(Nile))
+sm0 <- gam(val ~ s(time), data = ndat, method = "REML")
+sfun <- function(tstart) {
+    glmmTMB(val ~ s(time), data = ndat, REML = TRUE,
+            start = list(theta = tstart))
+}
+tvec <- seq(-2, 5, length = 31)
+```
+
+```{r nilefit, cache = TRUE}
+smlist <- lapply(tvec, sfun)
+```
+
+Note that this works 'reliably' only for sufficiently large starting values of theta ...  is this because
+we are fitting random effects on a raw scale rather than relative to SD?  Can we use `log(sd(response_var))` as a 
+starting value for theta in these cases? 
+
+```{r nile2}
+res <- t(thval <- sapply(smlist, \(x) c(getME(x, "theta"), x$sdr$pdHess)))
+plot(tvec, res[,1], pch = 16, col = res[,2]+1)
+```
+
+```{r}
+sm1 <- glmmTMB(val ~ s(time), data = ndat, REML = TRUE, start = list(theta = 5))
+names(sm1$modelInfo$reTrms$cond$smooth_info[[1]])
+
+predict(sm1, newdata = ndat)
+```
+
+```{r}
+testthat::expect_equal(c(unname(predict(sm0))), predict(sm1))
+```
+
 ## issues 
 
 There is a lot left to do.
 
 - test test test! See where stuff breaks.
-- currently only works for models with random effects **and** smooths; should be easy enough to modify this so a smooth-only model will work
-- *predictions*: some fancy footwork is needed to convert the coefficients back to a form that will allow predictions (see Wood's refs). `smooth2random()` provides a matrix and vector that jointly allow the back-calculation
-    * make sure these objects are stored somewhere in the fitted model
+- *predictions*: for *new values of the predictor variables*, some fancy footwork is needed to convert the coefficients back to a form that will allow predictions (see Wood's refs). `smooth2random()` provides a matrix and vector that jointly allow the back-calculation (this is loosely analogous to stuff with `predvars` in base R, I think, making sure that the basis is constructed in a way that's consistent with the original model): we should be able to use
 	* in `predict`, use these to back-calculate and modify the coefficients *in place* (restoring at the end of the function as in the "fast prediction" code branch)
+	* I think this needs to be done 
 	* will need to figure out *which* fixed and random effects correspond to which smooth terms ... compute up-front and carry it along?
 	* utility function to get the modified coeffs? Which versions, if any, should be printed in summaries etc.?
 	* how does `mgcv` handle predictions with new data? What is the analog of `predvars` so that we can use the previously specified knots etc. ??? (`mgcv:::predict.gam` is 500+ lines long ...) (I think we can use `mgcv::PredictMat` on the stored smooth object ... ?)
@@ -75,6 +122,32 @@ There is a lot left to do.
      * We could modify the s()-terms to be dummy terms with the right dimensions, then modify in place (this is not much better than the current approach)
 * can we get rid of `no_specials` ... ??? 
 * right now we're hacking `s()` to `homdiag()`. Should we duplicate the `homdiag` code, or otherwise make "homdiag" and "s" synonyms under the hood?
+* this re-opens the can of worms about whether we should allow random effects for the dispersion term (we need to if we're going to allow smooths in the dispersion term ...)
+
+From Devin Wood's post, for reference:
+
+```r
+s2rPred <- function(sm,re,data) {
+## Function to aid prediction from smooths represented as type==2
+## random effects. re must be the result of smooth2random(sm,...,type=2).
+  X <- PredictMat(sm,data)   ## get prediction matrix for new data
+  ## transform to r.e. parameterization
+  if (!is.null(re$trans.U)) X <- X%*%re$trans.U
+  X <- t(t(X)*re$trans.D)
+  ## re-order columns according to random effect re-ordering...
+  X[,re$rind] <- X[,re$pen.ind!=0] 
+  ## re-order penalization index in same way  
+  pen.ind <- re$pen.ind; pen.ind[re$rind] <- pen.ind[pen.ind>0]
+  ## start return object...
+  r <- list(rand=list(),Xf=X[,which(re$pen.ind==0),drop=FALSE])
+  for (i in 1:length(re$rand)) { ## loop over random effect matrices
+    r$rand[[i]] <- X[,which(pen.ind==i),drop=FALSE]
+    attr(r$rand[[i]],"s.label") <- attr(re$rand[[i]],"s.label")
+  }
+  names(r$rand) <- names(re$rand)
+  r
+} ## s2r
+```
 
 ## ref
 
