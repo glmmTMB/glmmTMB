@@ -460,6 +460,9 @@ noSpecials <- function(term, delete=TRUE, debug=FALSE, specials = findReTrmClass
         ##    construct response~1 formula
         as.formula(substitute(R~1,list(R=nospec)),
                    env=environment(term))
+        ## FIXME::better 'nothing left' handling
+    } else if (is.null(nospec)) {
+        ~1
     } else {
         nospec
     }

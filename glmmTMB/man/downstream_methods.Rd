@@ -7,7 +7,7 @@
 \alias{emmeans.glmmTMB}
 \title{Downstream methods}
 \usage{
-Anova.glmmTMB(
+\method{Anova}{glmmTMB}(
   mod,
   type = c("II", "III", 2, 3),
   test.statistic = c("Chisq", "F"),

@@ -505,7 +505,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-##' @importFrom mgcv smoothCon smooth2random s
+##' @importFrom mgcv smoothCon smooth2random s PredictMat
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
@@ -549,7 +549,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             if (!is.null(old_smooths)) {
                 smooth_terms2 <- lapply(old_smooths,
                                         function(s) {
-                                            X <- PredictMat(s$sm,data)   ## get prediction matrix for new data
+                                            X <- PredictMat(s$sm, fr)   ## get prediction matrix for new data
                                             ## transform to r.e. parameterization
                                             if (!is.null(s$re$trans.U)) X <- X%*%s$re$trans.U
                                             X <- t(t(X)*s$re$trans.D)
@@ -558,12 +558,13 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                             ## re-order penalization index in same way  
                                             pen.ind <- s$re$pen.ind; s$pen.ind[s$re$rind] <- pen.ind[pen.ind>0]
                                             ## start return object...
-                                            r <- list(rand=list(), Xf=X[,which(re$pen.ind==0),drop=FALSE])
+                                            snew <- list(re = list(rand=list()), Xf=X[,which(s$re$pen.ind==0),drop=FALSE])
                                             for (i in 1:length(s$re$rand)) { ## loop over random effect matrices
-                                                r$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
-                                                attr(r$rand[[i]],"s.label") <- attr(s$re$rand[[i]],"s.label")
+                                                ss$re$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
+                                                attr(ss$re$rand[[i]], "s.label") <- attr(s$re$rand[[i]],"s.label")
                                             }
                                             names(r$rand) <- names(s$re$rand)
+                                            return(r)
                                         })
             } else {
                 smooth_terms2 <- lapply(smooth_terms,
@@ -583,8 +584,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                              ## to avoid as dummy variable names in the
                              ## random effects form") ever be non-empty?
                              re = mgcv::smooth2random(sm, vnames = "", type = 2))
-                    }
-                    )
+                    })
+                    
             } ## create (new) smooth terms
         } ## has_smooths
 
