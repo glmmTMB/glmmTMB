@@ -453,7 +453,7 @@ test_that("lognormal family", {
     cc <- c(mean=1,sd=2) ## log-scale mean/sd
     x <- rnorm(n)
     dd <- data.frame(x,y=rlnorm(n, meanlog=cc[1]+cc[2]*x, sdlog=1))
-    m1 <- glmmTMB(y~x, family="lognormal", data=dd)
+    ## m1 <- glmmTMB(y~x, family="lognormal", data=dd, start = list(beta = c(1, 2)), )
     m2 <- glmmTMB(log(y) ~ x, data = dd)
     ## NOT WORKING YET!
     ## expect_equal(logLik(m1), logLik(m2)-sum(log(dd$y)))
