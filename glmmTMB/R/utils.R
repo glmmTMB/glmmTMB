@@ -5,6 +5,7 @@ if((Rv <- getRversion()) < "3.2.1") {
 rm(Rv)
 
 ## generate a list with names equal to values
+## See also: \code{tibble::lst}, \code{Hmisc::llist}
 namedList <- function (...) {
     L <- list(...)
     snm <- sapply(substitute(list(...)), deparse)[-1]
@@ -13,512 +14,6 @@ namedList <- function (...) {
     if (any(nonames <- nm == ""))
         nm[nonames] <- snm[nonames]
     setNames(L, nm)
-}
-
-RHSForm <- function(form,as.form=FALSE) {
-    if (!as.form) return(form[[length(form)]])
-    if (length(form)==2) return(form)  ## already RHS-only
-    ## by operating on RHS in situ rather than making a new formula
-    ## object, we avoid messing up existing attributes/environments etc.
-    form[[2]] <- NULL
-    ## assumes response is *first* variable (I think this is safe ...)
-    if (length(vars <- attr(form,"variables"))>0) {
-        attr(form,"variables") <- vars[-2]
-    }
-    if (is.null(attr(form,"response"))) {
-        attr(form,"response") <- 0
-    }
-    if (length(facs <- attr(form,"factors"))>0) {
-        attr(form,"factors") <- facs[-1,]
-    }
-    return(form)
-}
-
-`RHSForm<-` <- function(formula,value) {
-    formula[[length(formula)]] <- value
-    formula
-}
-
-## Random Effects formula only
-## reOnly <- function(f,response=FALSE) {
-##    response <- if (response && length(f)==3) f[[2]] else NULL
-##    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"),
-##                response=response)
-## }
-
-sumTerms <- function(termList) {
-    Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),termList)
-}
-
-## better version -- operates on language objects (no deparse())
-reOnly <- function(f,response=FALSE,bracket=TRUE) {
-    ff <- f
-    if (bracket)
-        ff <- lapply(findbars(ff),makeOp,quote(`(`)) ## bracket-protect terms
-    ff <- sumTerms(ff)
-    if (response && length(f)==3) {
-        form <- makeOp(f[[2]],ff,quote(`~`))
-    } else {
-        form <- makeOp(ff,quote(`~`))
-    }
-    return(form)
-}
-
-## combine unary or binary operator + arguments (sugar for 'substitute')
-## FIXME: would be nice to have multiple dispatch, so
-## (arg,op) gave unary, (arg,arg,op) gave binary operator
-makeOp <- function(x,y,op=NULL) {
-    if (is.null(op) || missing(y)) {  ## unary
-        if (is.null(op)) {
-            substitute(OP(X),list(X=x,OP=y))
-        } else {
-            substitute(OP(X),list(X=x,OP=op))
-        }
-    } else substitute(OP(X,Y), list(X=x,OP=op,Y=y))
-}
-
-## combines the right-hand sides of two formulas, or a formula and a symbol
-## @param f1 formula #1
-## @param f2 formula #2
-## @examples
-## if (FALSE) {  ## still being exported despite "<at>keywords internal" ??
-## addForm0(y~x,~1)
-## addForm0(~x,~y)
-## }
-## @keywords internal
-addForm0 <- function(f1,f2,naked=FALSE) {
-    tilde <- as.symbol("~")
-    if (!identical(head(f2),tilde)) {
-        f2 <- makeOp(f2,tilde)
-    }
-    if (length(f2)==3) warning("discarding LHS of second argument")
-    RHSForm(f1) <- makeOp(RHSForm(f1),RHSForm(f2),quote(`+`))
-    return(f1)
-}
-
-##' Combine right-hand sides of an arbitrary number of formulas
-##' @param ... arguments to pass through to \code{addForm0}
-##' @rdname splitForm
-##' @export
-addForm <- function(...) {
-  Reduce(addForm0,list(...))
-}
-
-addArgs <- function(argList) {
-  Reduce(function(x,y) makeOp(x,y,op=quote(`+`)),argList)
-}
-
-##' list of specials -- taken from enum.R
-findReTrmClasses <- function() {
-    names(.valid_covstruct)
-}
-
-## expandGrpVar(quote(x*y))
-## expandGrpVar(quote(x/y))
-expandGrpVar <- function(f) {
-    form <- as.formula(makeOp(f,quote(`~`)))
-    mm <- terms(form)
-    toLang <- function(x) parse(text=x)[[1]]
-    lapply(attr(mm,"term.labels"),
-           toLang)
-}
-
-##' expand interactions/combinations of grouping variables
-##'
-##' Modeled after lme4:::expandSlash, by Doug Bates
-##' @param bb a list of naked grouping variables, i.e. 1 | f
-##' @examples
-##' ff <- glmmTMB:::fbx(y~1+(x|f/g))
-##' glmmTMB:::expandAllGrpVar(ff)
-##' glmmTMB:::expandAllGrpVar(quote(1|(f/g)/h))
-##' glmmTMB:::expandAllGrpVar(quote(1|f/g/h))
-##' glmmTMB:::expandAllGrpVar(quote(1|f*g))
-##' @importFrom utils head
-##' @keywords internal
-expandAllGrpVar <- function(bb) {
-        ## Return the list of '/'-separated terms
-    if (!is.list(bb))
-        expandAllGrpVar(list(bb))
-    else {
-        for (i in seq_along(bb)) {
-            esfun <- function(x) {
-                if (length(x)==1) return(x)
-                if (length(x)==2) {
-                    ## unary operator such as diag(1|f/g)
-                    ## return diag(...) + diag(...) + ...
-                    return(lapply(esfun(x[[2]]),
-                                  makeOp,y=head(x)))
-                }
-                if (length(x)==3) {
-                    ## binary operator
-                    if (x[[1]]==quote(`|`)) {
-                        return(lapply(expandGrpVar(x[[3]]),
-                                      makeOp,x=x[[2]],op=quote(`|`)))
-                    } else {
-                        return(setNames(makeOp(esfun(x[[2]]),esfun(x[[3]]),
-                                               op=x[[1]]),names(x)))
-                    }
-                }
-            } ## esfun def.
-            return(unlist(lapply(bb,esfun)))
-        } ## loop over bb
-    }
-}
-
-## sugar: this returns the operator, whether ~ or something else
-head.formula <- head.call <- function(x, ...) {
-    x[[1]]
-}
-
-## sugar: we can call head on a symbol and get back the symbol
-head.name <- function(x) { x }
-
-##' (f)ind (b)ars e(x)tended: recursive
-##'
-##' @param term a formula or piece of a formula
-##' @param debug (logical) debug?
-##' @param specials list of special terms
-##' @param default.special character: special to use for parenthesized terms - i.e. random effects terms with unspecified structure
-##' 1. atom (not a call or an expression): NULL
-##' 2. special, i.e. foo(...) where "foo" is in specials: return term
-##' 3. parenthesized term: \emph{if} the head of the head is | (i.e.
-##'    it is of the form (xx|gg), then convert it to the default
-##'    special type; we won't allow pathological cases like
-##'    ((xx|gg)) ... [can we detect them?]
-##' @examples
-##' splitForm(quote(us(x,n=2)))
-##' @keywords internal
-fbx <- function(term,debug=FALSE,specials=character(0),
-                default.special="us") {
-    ds <- eval(substitute(as.name(foo),list(foo=default.special)))
-    if (is.name(term) || !is.language(term)) return(NULL)
-    if (list(term[[1]]) %in% lapply(specials,as.name)) {
-        if (debug) cat("special: ",deparse(term),"\n")
-        return(term)
-    }
-    if (head(term) == as.name('|')) {  ## found x | g
-        if (debug) cat("bar term:",deparse(term),"\n")
-        return(makeOp(term,ds))
-    }
-    if (head(term) == as.name("(")) {  ## found (...)
-        if (debug) cat("paren term:",deparse(term),"\n")
-        return(fbx(term[[2]],debug,specials))
-    }
-    stopifnot(is.call(term))
-    if (length(term) == 2) {
-        ## unary operator, decompose argument
-        if (debug) cat("unary operator:",deparse(term[[2]]),"\n")
-        return(fbx(term[[2]],debug,specials))
-    }
-    ## binary operator, decompose both arguments
-    if (debug) cat("binary operator:",deparse(term[[2]]),",",
-                   deparse(term[[3]]),"\n")
-    c(fbx(term[[2]],debug,specials), fbx(term[[3]],debug,specials))
-}
-
-##' Parse a formula into fixed formula and random effect terms,
-##' treating 'special' terms (of the form foo(x|g[,m])) appropriately
-##'
-##' Taken from Steve Walker's lme4ord,
-##' ultimately from the flexLambda branch of lme4
-##' <https://github.com/stevencarlislewalker/lme4ord/blob/master/R/formulaParsing.R>.  Mostly for internal use.
-##' @title Split formula containing special random effect terms
-##' @param formula a formula containing special random effect terms
-##' @param defaultTerm default type for non-special RE terms
-##' @param allowFixedOnly (logical) are formulas with no RE terms OK?
-##' @param allowNoSpecials (logical) are formulas with only standard RE terms OK?
-##' @return a list containing elements \code{fixedFormula};
-##' \code{reTrmFormulas} list of \code{x | g} formulas for each term;
-##' \code{reTrmAddArgs} list of function+additional arguments, i.e. \code{list()} (non-special), \code{foo()} (no additional arguments), \code{foo(addArgs)} (additional arguments); \code{reTrmClasses} (vector of special functions/classes, as character)
-##' @examples
-##' splitForm(~x+y)                     ## no specials or RE
-##' splitForm(~x+y+(f|g))               ## no specials
-##' splitForm(~x+y+diag(f|g))           ## one special
-##' splitForm(~x+y+(diag(f|g)))         ## 'hidden' special
-##' splitForm(~x+y+(f|g)+cs(1|g))       ## combination
-##' splitForm(~x+y+(1|f/g))             ## 'slash'; term
-##' splitForm(~x+y+(1|f/g/h))             ## 'slash'; term
-##' splitForm(~x+y+(1|(f/g)/h))             ## 'slash'; term
-##' splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
-##' splitForm(~(((x+y))))               ## lots of parentheses
-##' splitForm(~1+rr(f|g,n=2))
-##'
-##' @author Steve Walker
-##' @importFrom lme4 nobars
-##' @export
-splitForm <- function(formula,
-                      defaultTerm="us",
-                      allowFixedOnly=TRUE,
-                      allowNoSpecials=TRUE,
-                      debug=FALSE) {
-
-    ## logic:
-
-    ## string for error message *if* specials not allowed
-    ## (probably package-specific)
-    noSpecialsAlt <- "lmer or glmer"
-
-    specials <- findReTrmClasses()
-
-    ## formula <- expandDoubleVerts(formula)
-    ## split formula into separate
-    ## random effects terms
-    ## (including special terms)
-
-    fbxx <- fbx(formula,debug,specials)
-    formSplits <- expandAllGrpVar(fbxx)
-
-    if (length(formSplits)>0) {
-        formSplitID <- sapply(lapply(formSplits, "[[", 1), as.character)
-                                        # warn about terms without a
-                                        # setReTrm method
-
-        ## FIXME:: do we need all of this??
-
-        if (FALSE) {
-            badTrms <- formSplitID == "|"
-        ## if(any(badTrms)) {
-        ## stop("can't find setReTrm method(s)\n",
-        ## "use findReTrmClasses() for available methods")
-        ## FIXME: coerce bad terms to default as attempted below
-        ## warning(paste("can't find setReTrm method(s) for term number(s)",
-        ## paste(which(badTrms), collapse = ", "),
-        ## "\ntreating those terms as unstructured"))
-            formSplitID[badTrms] <- "("
-            fixBadTrm <- function(formSplit) {
-                makeOp(formSplit[[1]],quote(`(`))
-                ## as.formula(paste(c("~(", as.character(formSplit)[c(2, 1, 3)], ")"),
-                ## collapse = " "))[[2]]
-            }
-            formSplits[badTrms] <- lapply(formSplits[badTrms], fixBadTrm)
-
-        }  ## skipped
-
-        parenTerm <- formSplitID == "("
-                                        # capture additional arguments
-        reTrmAddArgs <- lapply(formSplits, "[", -2)[!parenTerm]
-                                        # remove these additional
-                                        # arguments
-        formSplits <- lapply(formSplits, "[", 1:2)
-                                        # standard RE terms
-        formSplitStan <- formSplits[parenTerm]
-                                        # structured RE terms
-        formSplitSpec <- formSplits[!parenTerm]
-
-        if (!allowNoSpecials) {
-            if(length(formSplitSpec) == 0) stop(
-                     "no special covariance structures. ",
-                     "please use ",noSpecialsAlt,
-                     " or use findReTrmClasses() for available structures.")
-        }
-
-        reTrmFormulas <- c(lapply(formSplitStan, "[[", 2),
-                           lapply(formSplitSpec, "[[", 2))
-        reTrmClasses <- c(rep(defaultTerm, length(formSplitStan)),
-                          sapply(lapply(formSplitSpec, "[[", 1), as.character))
-    } else {
-        reTrmFormulas <- reTrmAddArgs <- reTrmClasses <- NULL
-    }
-    fixedFormula <- noSpecials(nobars(formula))
-
-    list(fixedFormula  = fixedFormula,
-         reTrmFormulas = reTrmFormulas,
-         reTrmAddArgs  = reTrmAddArgs,
-         reTrmClasses  = reTrmClasses)
-}
-
-##' @param term language object
-##' @rdname splitForm
-##' @param debug debugging mode (print stuff)?
-##' @examples
-##' noSpecials(y~1+us(1|f))
-##' noSpecials(y~1+us(1|f),delete=FALSE)
-##' noSpecials(y~us(1|f))
-##' noSpecials(y~us(1|f), delete=FALSE)
-##' noSpecials(y~us(1|f), debug=TRUE)
-##' noSpecials(y~us+1)  ## should *not* delete unless head of a function
-##' noSpecials(~us+1)   ## should work on a one-sided formula!
-##' @export
-##' @keywords internal
-noSpecials <- function(term, delete=TRUE, debug=FALSE) {
-    nospec <- noSpecials_(term, delete=delete, debug=debug)
-    if (inherits(term, "formula") && length(term) == 3 && is.symbol(nospec)) {
-        ## called with two-sided RE-only formula:
-        ##    construct response~1 formula
-        as.formula(substitute(R~1,list(R=nospec)),
-                   env=environment(term))
-    } else {
-        nospec
-    }
-}
-
-noSpecials_ <- function(term,delete=TRUE, debug=FALSE) {
-    if (debug) print(term)
-    if (!anySpecial(term)) return(term)
-    if (length(term)==1) return(term)  ## 'naked' specials
-    if (isSpecial(term)) {
-        if(delete) {
-            return(NULL)
-        } else { ## careful to return  (1|f) and not  1|f:
-            return(substitute((TERM), list(TERM = term[[2]])))
-        }
-    } else {
-        if (debug) print("not special")
-        nb2 <- noSpecials_(term[[2]], delete=delete, debug=debug)
-        nb3 <- if (length(term)==3) {
-                   noSpecials_(term[[3]], delete=delete, debug=debug)
-               } else NULL
-        if (is.null(nb2)) {
-            return(nb3)
-        } else if (is.null(nb3)) {
-            if (length(term)==2 && identical(term[[1]], quote(`~`))) { ## special case for one-sided formula
-                term[[2]] <- nb2
-                return(term)
-            } else {
-                return(nb2)
-            }
-        } else {  ## neither term completely disappears
-            term[[2]] <- nb2
-            term[[3]] <- nb3
-            return(term)
-        }
-    } 
-}
-
-isSpecial <- function(term) {
-    if(is.call(term)) {
-        ## %in% doesn't work (requires vector args)
-        for(cls in findReTrmClasses()) {
-            if(term[[1]] == cls) return(TRUE)
-        }
-    }
-    FALSE
-}
-
-isAnyArgSpecial <- function(term) {
-    for(tt in term)
-        if(isSpecial(tt)) return(TRUE)
-    FALSE
-}
-
-## This could be in principle be fooled by a term with a matching name
-## but this case is caught in noSpecials_() where we test for length>1
-anySpecial <- function(term) {
-    any(findReTrmClasses() %in% all.names(term))
-}
-
-##' test formula: does it contain a particular element?
-##' @rdname formFuns
-##' @examples
-##' inForm(z~.,quote(.))
-##' inForm(z~y,quote(.))
-##' inForm(z~a+b+c,quote(c))
-##' inForm(z~a+b+(d+e),quote(c))
-##' f <- ~ a + offset(x)
-##' f2 <- z ~ a
-##' inForm(f,quote(offset))
-##' inForm(f2,quote(offset))
-##' @export
-##' @keywords internal
-inForm <- function(form,value) {
-    if (any(sapply(form,identical,value))) return(TRUE)
-    if (all(sapply(form,length)==1)) return(FALSE)
-    return(any(vapply(form,inForm,value,FUN.VALUE=logical(1))))
-}
-
-##' extract terms with a given head from an expression/formula
-##' @rdname formFuns
-##' @param term expression/formula
-##' @param value head of terms to extract
-##' @return a list of expressions
-##' @examples
-##' extractForm(~a+offset(b),quote(offset))
-##' extractForm(~c,quote(offset))
-##' extractForm(~a+offset(b)+offset(c),quote(offset))
-##' extractForm(~offset(x),quote(offset))
-##' @export
-##' @keywords internal
-extractForm <- function(term,value) {
-    if (!inForm(term,value)) return(NULL)
-    if (is.name(term) || !is.language(term)) return(NULL)
-    if (identical(head(term),value)) {
-        return(list(term))
-    }
-    if (length(term) == 2) {
-        return(extractForm(term[[2]],value))
-    }
-    return(c(extractForm(term[[2]],value),
-             extractForm(term[[3]],value)))
-}
-
-##' return a formula/expression with a given value stripped, where
-##' it occurs as the head of a term
-##' @rdname formFuns
-##' @examples 
-##' dropHead(~a+offset(b),quote(offset))
-##' dropHead(~a+poly(x+z,3)+offset(b),quote(offset))
-##' @export
-##' @keywords internal
-dropHead <- function(term,value) {
-    if (!inForm(term,value)) return(term)
-    if (is.name(term) || !is.language(term)) return(term)
-    if (identical(head(term),value)) {
-        return(term[[2]])
-    }
-    if (length(term) == 2) {
-        return(dropHead(term[[2]],value))
-    } else  if (length(term) == 3) {
-        term[[2]] <- dropHead(term[[2]],value)
-        term[[3]] <- dropHead(term[[3]],value)
-        return(term)
-    } else stop("length(term)>3")
-}
-
-
-## UNUSED (same function as drop.special2?)
-# drop.special(x~a + b+ offset(z))
-drop.special <- function(term,value=quote(offset)) {
-    if (length(term)==2 && identical(term[[1]],value)) return(NULL)
-    if (length(term)==1) return(term)
-    ## recurse, treating unary and binary operators separately
-    nb2 <- drop.special(term[[2]])
-    nb3 <- if (length(term)==3) {
-               drop.special(term[[3]])
-           } else NULL
-    if (is.null(nb2)) ## RHS was special-only
-        nb3
-    else if (is.null(nb3)) ## LHS was special-only
-        nb2
-    else {
-        ## insert values into daughters and return
-        term[[2]] <- nb2
-        term[[3]] <- nb3
-        return(term)
-    }
-}
-
-##' drop terms matching a particular value from an expression
-##' @rdname formFuns
-## from Gabor Grothendieck: recursive solution
-## http://stackoverflow.com/questions/40308944/removing-offset-terms-from-a-formula
-##' @param x formula
-##' @param value term to remove from formula
-##' @param preserve (integer) retain the specified occurrence of "value"
-##' @keywords internal
-drop.special2 <- function(x, value=quote(offset), preserve = NULL) {
-  k <- 0
-  proc <- function(x) {
-    if (length(x) == 1) return(x)
-    if (x[[1]] == value && !((k <<- k+1) %in% preserve)) return(x[[1]])
-    replace(x, -1, lapply(x[-1], proc))
-  }
-  ## handle 1- and 2-sided formulas
-  if (length(x)==2) {
-      newform <- substitute(~ . -x, list(x=value))
-  } else {
-      newform <- substitute(. ~ . - x, list(x=value))
-  }
-  return(update(proc(x), newform))
 }
 
 ## Sparse Schur complement (Marginal of precision matrix)
@@ -536,22 +31,6 @@ GMRFmarginal <- function(Q, i, ...) {
     ans
 }
 
-# n.b. won't work for terms with more than 2 args ...
-# @examples
-# replaceForm(quote(a(b+x*c(y,z))),quote(y),quote(R))
-# ss <- ~(1 | cask:batch) + (1 | batch)
-# replaceForm(ss,quote(cask:batch),quote(batch:cask))
-replaceForm <- function(term,target,repl) {
-    if (identical(term,target)) return(repl)
-    if (!inForm(term,target)) return(term)
-    if (length(term) == 2) {
-        return(substitute(OP(x),list(OP=term[[1]],x=replaceForm(term[[2]],target,repl))))
-    }
-    return(substitute(OP(x,y),list(OP=term[[1]],
-                                   x=replaceForm(term[[2]],target,repl),
-                                   y=replaceForm(term[[3]],target,repl))))
-}
-
 parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
     ##  boilerplate parallel-handling stuff, copied from lme4
     if (missing(parallel)) parallel <- getOption("profile.parallel", "no")
@@ -566,61 +45,39 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 }
 
 ##' translate vector of correlation parameters to correlation values
-##' @param theta vector of internal correlation parameters
-##' @return a vector of correlation values
-##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}:
-##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
+##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
+##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
 ##' get_cor(c(0.5,0.2,0.5))
+##' C <- matrix(c(1,  0.2,  0.1,
+##'              0.2,  1, -0.2,
+##'              0.1,-0.2,   1),
+##'            3, 3)
+##' ## test: round-trip (almostl results in lower triangle only)
+##' stopifnot(all.equal(get_cor(put_cor(C)),
+##'                    C[lower.tri(C)]))
 ##' @export
 get_cor <- function(theta) {
-    n <- round((1  + sqrt(1+8*length(theta)))/2) ## dim of cor matrix
-    L <- diag(n)
-    L[lower.tri(L)] <- theta
-    cL <- tcrossprod(L)
-    Dh <- diag(1/sqrt(diag(cL)))
-    cc <- Dh %*% cL %*% Dh
-    return(cc[lower.tri(cc)])
+  n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
+  R <- diag(n)
+  R[upper.tri(R)] <- theta
+  R[] <- crossprod(R) # R <- t(R) %*% R
+  scale <- 1 / sqrt(diag(R))
+  R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
+  R[lower.tri(R)]
 }
 
-match_which <- function(x,y) {
-    which(sapply(y,function(z) x %in% z))
-}
-
-## reassign predvars to have term vars in the right order,
-##  but with 'predvars' values inserted where appropriate
-fix_predvars <- function(pv,tt) {
-    if (length(tt)==3) {
-        ## convert two-sided to one-sided formula
-        tt <- RHSForm(tt, as.form=TRUE)
-    }
-    ## ugh, deparsing again ...
-    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
-    ## remove terminal paren - e.g. match term poly(x, 2) to
-    ##   predvar poly(x, 2, <stuff>)
-    ## beginning of string, including open-paren, colon
-    ##  but not *first* comma nor arg ...
-    ##  could possibly try init_regexp <- "^([^,]+).*" ?
-    init_regexp <- "^([(^:_.[:alnum:]]+).*"
-    tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
-    if (is.null(pv) || length(tt_vars)==0) return(NULL)
-    new_pv <- quote(list())
-    ## maybe multiple variables per pv term ... [-1] ignores head
-    ## FIXME: test for really long predvar strings ????
-    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
-    pv_strings <- gsub(init_regexp,"\\1",pv_strings)
-    for (i in seq_along(tt_vars)) {
-        w <- match(tt_vars_short[[i]],pv_strings)
-        if (!is.na(w)) {
-            new_pv[[i+1]] <- pv[[w+1]]
-        } else {
-            ## insert symbol from term vars
-            new_pv[[i+1]] <- as.symbol(tt_vars[[i]])
-        }
-    }
-    return(new_pv)
+##' @rdname get_cor
+##' @param C a correlation matrix
+##' @export
+put_cor <- function(C) {
+    cc <- chol(C)
+    cc2 <- t(cc %*% diag(1/diag(cc)))
+    cc2[lower.tri(cc2)]
 }
 
 hasRandom <- function(x) {
@@ -628,13 +85,27 @@ hasRandom <- function(x) {
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
 }
 
-getParms <- function(parm=NULL, object, full=FALSE) {
-    vv <- vcov(object, full=TRUE)
+##' retrieve parameters by name or index
+##' @param parm parameter specifier
+##' @param object fitted glmmTMB object
+##' @param full include simple dispersion parameter?
+##' @param include_nonest include mapped parameter indices for non-estimated (mapped or rank-deficient/dropped) parameters?
+##' @noRd
+getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
+    vv <- vcov(object, full=TRUE, include_nonest = include_nonest)
     sds <- sqrt(diag(vv))
-    pnames <- names(sds) <- rownames(vv)
-    intnames <- names(object$obj$env$last.par) ## internal names
-    ## "beta" vals may be identified by object$obj$env$random, if REML
-    intnames <- intnames[intnames != "b"]
+    pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
+    ee <- object$obj$env
+
+    ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
+    ## counted as "random" if using REML
+    drop_rand <- function(x) x[!x %in% c("b", "bzi")]
+    if (!include_nonest) {
+        intnames <- drop_rand(names(ee$last.par))
+    } else {
+        pl <- ee$parList()
+        intnames <- drop_rand(rep(names(pl), lengths(pl)))
+    }
     if (length(pnames) != length(sds)) { ## shouldn't happen ...
         stop("length mismatch between internal and external parameter names")
     }
@@ -647,8 +118,10 @@ getParms <- function(parm=NULL, object, full=FALSE) {
         }
     }
     if (is.character(parm)) {
-        if (identical(parm,"theta_")) {
-            parm <- which(intnames=="theta")
+        if (identical(parm,"psi_")) {
+            parm <- grep("^psi",intnames)
+        } else if (identical(parm,"theta_")) {
+            parm <- grep("^theta",intnames)
         } else if (identical(parm,"beta_")) {
             if (trivialDisp(object)) {
                 ## include conditional and zi params
@@ -681,10 +154,13 @@ isREML <- function(x) {
 }
 
 ## action: message, warning, stop
-check_dots <- function(..., action="stop") {
+check_dots <- function(..., .ignore = NULL, .action="stop") {
     L <- list(...)
+    if (length(.ignore)>0) {
+        L <- L[!names(L) %in% .ignore]
+    }
     if (length(L)>0) {
-        FUN <- get(action)
+        FUN <- get(.action)
         FUN("unknown arguments: ",
             paste(names(L), collapse=","))
     }
@@ -730,15 +206,423 @@ nullSparseMatrix <- function() {
     }
 }
 
-get_pars <- function(object) {
+#' Check for version mismatch in dependent binary packages
+#' @param dep_pkg upstream package
+#' @param this_pkg downstream package
+#' @param write_file (logical) write version file and quit?
+#' @param warn give warning?
+#' @return logical: TRUE if the binary versions match
+#' @importFrom utils packageVersion
+#' @export
+checkDepPackageVersion <- function(dep_pkg = "TMB",
+                                   this_pkg = "glmmTMB",
+                                   write_file = FALSE,
+                                   warn = TRUE) {
+    cur_dep_version <- as.character(packageVersion(dep_pkg))
+    fn <- sprintf("%s-version", dep_pkg)
+    if (write_file) {
+        cat(sprintf("current %s version=%s: writing file\n", dep_pkg, cur_dep_version))
+        writeLines(cur_dep_version, con = fn)
+        return(cur_dep_version)
+    }
+    fn <- system.file(fn, package=this_pkg)
+    built_dep_version <- scan(file=fn, what=character(), quiet=TRUE)
+    result_ok <- identical(built_dep_version, cur_dep_version)
+    if(warn && !result_ok) {
+        warning(
+            "Package version inconsistency detected.\n",
+            sprintf("%s was built with %s version %s",
+                    this_pkg, dep_pkg, built_dep_version),
+            "\n",
+            sprintf("Current %s version is %s",
+                    dep_pkg, cur_dep_version),
+            "\n",
+            sprintf("Please re-install %s from source ", this_pkg),
+            "or restore original ",
+            sQuote(dep_pkg), " package (see '?reinstalling' for more information)"
+        )
+    }
+    return(result_ok)
+}
+
+#' @name reinstalling
+#' @rdname reinstalling
+#' @title Reinstalling binary dependencies
+#'
+#' @description The \code{glmmTMB} package depends on several upstream packages, which it
+#' uses in a way that depends heavily on their internal (binary) structure.
+#' Sometimes, therefore, installing an update to one of these packages will
+#' require that you re-install a \emph{binary-compatible} version of \code{glmmTMB},
+#' i.e. a version that has been compiled with the updated version of the upstream
+#' package.
+#' \itemize{
+#' \item If you have development tools (compilers etc.) installed, you
+#' should be able to re-install a binary-compatible version of the package by running
+#' \code{install.packages("glmmTMB", type="source")}. If you want to install
+#' the development version of \code{glmmTMB} instead, you can use
+#' \code{remotes::install_github("glmmTMB/glmmTMB/glmmTMB")}.
+#' (On Windows, you can install development tools following the instructions at
+#' \url{https://cran.r-project.org/bin/windows/Rtools/}; on MacOS, see
+#' \url{https://mac.r-project.org/tools/}.)
+#'
+#' \item If you do \emph{not} have development tools and can't/don't want to
+#' install them (and so can't install packages with compiled code from source),
+#' you have two choices:
+#' \itemize{
+#' \item revert the upstream package(s) to their previous binary version. For example, using the
+#' \code{checkpoint} package:
+#' \preformatted{
+#' ## load (installing if necessary) the checkpoint package
+#' while (!require("checkpoint")) install.packages("checkpoint")
+#' ## retrieve build date of installed version of glmmTMB
+#' bd <- as.character(asDateBuilt(
+#'       packageDescription("glmmTMB",fields="Built")))
+#' oldrepo <- getOption("repos")
+#' use_mran_snapshot(bd) ## was setSnapshot() pre-checkpoint v1.0.0
+#' install.packages("TMB")
+#' options(repos=oldrepo) ## restore original repo
+#' }
+#' A similar recipe (substituting \code{Matrix} for \code{TMB} and \code{TMB} for \code{glmmTMB})
+#' can be used if you get warnings about an incompatibility between \code{TMB} and \code{Matrix}.
+#' \item hope that the glmmTMB maintainers have posted a binary
+#' version of the package that works with your system; try installing it via
+#' \code{install.packages("glmmTMB",repos="https://glmmTMB.github.io/glmmTMB/repos",type="binary")}
+#' If this doesn't work, please file an issue (with full details about your
+#' operating system and R version) asking the maintainers to build and
+#' post an appropriate binary version of the package.
+#' }
+#' }
+NULL
+
+#' Check OpenMP status
+##'
+##' Checks whether OpenMP has been successfully enabled for this
+##' installation of the package. (Use the \code{parallel} argument
+##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
+##' to specify that computations should be done in parallel.)
+##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
+##' @return \code{TRUE} or {FALSE} depending on availability of OpenMP
+##' @export
+omp_check <- function() {
+    .Call("omp_check", PACKAGE="glmmTMB")
+}
+
+get_pars <- function(object, unlist=TRUE) {
     ee <- object$obj$env
     x <- ee$last.par.best
     ## work around built-in default to parList, which
     ##  is bad if no random component
     if (length(ee$random)>0) x <- x[-ee$random]
     p <- ee$parList(x=x)
+    if (!unlist) return(p)
     p <- unlist(p[names(p)!="b"])  ## drop primary RE
     names(p) <- gsub("[0-9]+$","",names(p)) ## remove disambiguators
     return(p)
 }
 
+
+## replacement for (unexported) TMB:::isNullPointer
+isNullPointer <- function(x) {
+    attributes(x) <- NULL
+    identical(x, new("externalptr"))
+}
+
+#' conditionally update glmmTMB object fitted with an old TMB version
+#'
+#' @rdname gt_load
+#' @param oldfit a fitted glmmTMB object
+#' @export
+up2date <- function(oldfit) {
+  openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
+  if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
+      obj <- oldfit$obj
+      ee <- obj$env
+      if ("thetaf" %in% names(ee$parameters)) {
+          ee$parameters$psi <- ee$parameters$thetaf
+          ee$parameters$thetaf <- NULL
+          pars <- c(grep("last\\.par", names(ee), value = TRUE),
+                    "par")
+          for (p in pars) {
+              if (!is.null(nm <- names(ee[[p]]))) {
+                  names(ee[[p]])[nm == "thetaf"] <- "psi"
+              }
+          }
+      }
+      ee2 <- oldfit$sdr$env
+      if ("thetaf" %in% names(ee2$parameters)) {
+          ee2$parameters$psi <- ee2$parameters$thetaf
+          ee2$parameters$thetaf <- NULL
+      }
+      oldfit$obj <- with(ee,
+                       TMB::MakeADFun(data,
+                                      parameters,
+                                      map = map,
+                                      random = random,
+                                      silent = silent,
+                                      DLL = "glmmTMB"))
+      oldfit$obj$env$last.par.best <- ee$last.par.best
+      ##
+  }
+  ## dispersion was NULL rather than 1 in old R versions ...
+  omf <- oldfit$modelInfo$family
+  if (getRversion() >= "4.3.0" &&
+      !("dispersion" %in% names(omf))) {
+      ## don't append() or c(), don't want to lose class info
+      oldfit$modelInfo$family$dispersion <- 1
+  }
+  return(oldfit)
+}
+
+#' Load data from system file, updating glmmTMB objects
+#'
+#' @param fn partial path to system file (e.g. test_data/foo.rda)
+#' @param verbose print names of updated objects?
+#' @param mustWork fail if file not found?
+#' @export
+gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
+    sf <- system.file(fn, package = "glmmTMB")
+    found_file <- file.exists(sf)
+    if (mustWork && !found_file) {
+        stop("couldn't find system file ", sf)
+    }
+
+    L <- load(sf)
+    for (m in L) {
+        if (inherits(get(m), "glmmTMB")) {
+            if (verbose) cat(m,"\n")
+            assign(m, up2date(get(m)))
+        }
+        assign(m, get(m), parent.env(), envir = parent.frame())
+    }
+    return(found_file)
+}
+
+#' truncated distributions
+#'
+#' Probability functions for k-truncated Poisson and negative binomial distributions.
+#' @param x value
+#' @param size number of trials/overdispersion parameter
+#' @param mu mean parameter
+#' @param k truncation parameter
+#' @param log (logical) return log-probability?
+#' @export
+dtruncated_nbinom2 <- function(x, size, mu, k=0, log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x, mu=mu, size=size, log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+#' @rdname dtruncated_nbinom2
+#' @param lambda mean parameter
+#' @importFrom stats dpois
+#' @export
+dtruncated_poisson <- function(x,lambda,k=0,log=FALSE) {
+    y <- ifelse(x<=k,-Inf,
+                dpois(x,lambda,log=TRUE) -
+                ppois(k, lambda=lambda, lower.tail=FALSE,
+                      log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+#' @rdname dtruncated_nbinom2
+#' @param phi overdispersion parameter
+#' @export
+dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
+    ## V=mu*(1+phi) = mu*(1+mu/k) -> k=mu/phi
+    size <- mu/phi
+    y <- ifelse(x<=k,-Inf,
+                dnbinom(x,mu=mu, size=size,log=TRUE) -
+                pnbinom(k, mu=mu, size=size, lower.tail=FALSE,
+                        log.p=TRUE))
+    if (log) return(y) else return(exp(y))
+}
+
+
+## utilities for constructing lists of parameter names
+
+## for matching map names vs nameList components ...
+par_components <- c("beta","betazi","betad","theta","thetazi","psi")
+
+## all parameters, including both mapped and rank-dropped
+getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
+                           
+  mkNames <- function(tag="") {
+      X <- getME(object,paste0("X",tag))
+      dropped <- attr(X, "col.dropped") %||% numeric(0)
+      ntot <- ncol(X) + length(dropped)
+      if (ntot == ncol(X) || !include_dropped) {
+          nn <- colnames(X)
+      } else {
+          nn <- character(ntot)
+          nn[-dropped] <- colnames(X)
+          nn[ dropped] <- names(dropped)
+      }
+      if (trivialFixef(nn, tag)
+          ## if 'full', keep disp even if trivial, if used by family
+          && !(full && tag =="d" &&
+               (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
+          return(character(0))
+      }
+      if (tag == "") return(nn)
+      return(paste(tag,nn,sep="~"))
+  }
+
+  nameList <- setNames(Map(mkNames, c("", "zi", "d")),
+                         names(cNames))
+
+  if(full) {
+      ## FIXME: haven't really decided if we should drop the
+      ##   trivial variance-covariance dispersion parameter ??
+      ## if (trivialDisp(object))
+      ##    res <- covF[-nrow(covF),-nrow(covF)]
+
+      reNames <- function(tag) {
+        re <- object$modelInfo$reStruc[[paste0(tag,"ReStruc")]]
+        num_theta <- vapply(re,"[[","blockNumTheta", FUN.VALUE = numeric(1))
+        nn <- mapply(function(n,L) paste(n, seq(L), sep="."),
+                     names(re), num_theta)
+        if (length(nn) == 0) return(nn)
+        return(paste("theta",gsub(" ", "", unlist(nn)), sep="_"))
+      }
+      ## nameList for estimated variables;
+      nameList <- c(nameList,
+                    list(theta = reNames("cond"), thetazi = reNames("zi")))
+
+      ##
+      if (length(fp <- family_params(object)) > 0) {
+          nameList <- c(nameList, list(psi = names(fp)))
+      }
+      
+  }
+
+  if (!include_mapped) {
+     map <- object$obj$env$map
+     if (length(map)>0) {
+         for (m in seq_along(map)) {
+            if (length(NAmap <- which(is.na(map[[m]])))>0) {
+                w <- match(names(map)[m],par_components) ##
+                if (length(nameList)>=w) { ## may not exist if !full
+                    nameList[[w]] <- nameList[[w]][-NAmap]
+                }
+            }
+         } ## for (m in seq_along(map))
+     } ## if (length(map) > 0)
+  }
+
+  return(nameList)
+}
+
+## OBSOLETE (?)
+
+## reassign predvars to have term vars in the right order,
+##  but with 'predvars' values inserted where appropriate
+fix_predvars <- function(pv,tt) {
+    if (length(tt)==3) {
+        ## convert two-sided to one-sided formula
+        tt <- RHSForm(tt, as.form=TRUE)
+    }
+    ## ugh, deparsing again ...
+    tt_vars <- vapply(attr(tt, "variables"), deparse1, character(1))[-1]
+    ## remove terminal paren - e.g. match term poly(x, 2) to
+    ##   predvar poly(x, 2, <stuff>)
+    ## beginning of string, including open-paren, colon
+    ##  but not *first* comma nor arg ...
+    ##  could possibly try init_regexp <- "^([^,]+).*" ?
+    init_regexp <- "^([(^:_.[:alnum:]]+).*"
+    tt_vars_short <- gsub(init_regexp,"\\1",tt_vars)
+    if (is.null(pv) || length(tt_vars)==0) return(NULL)
+    new_pv <- quote(list())
+    ## maybe multiple variables per pv term ... [-1] ignores head
+    ## FIXME: test for really long predvar strings ????
+    pv_strings <- vapply(pv,deparse1,FUN.VALUE=character(1))[-1]
+    pv_strings <- gsub(init_regexp,"\\1",pv_strings)
+    for (i in seq_along(tt_vars)) {
+        w <- match(tt_vars_short[[i]],pv_strings)
+        if (!is.na(w)) {
+            new_pv[[i+1]] <- pv[[w+1]]
+        } else {
+            ## insert symbol from term vars
+            new_pv[[i+1]] <- as.symbol(tt_vars[[i]])
+        }
+    }
+    return(new_pv)
+}
+
+make_pars <- function(pars, ...) {
+    ## FIXME: check for name matches, length matches etc.
+    L <- list(...)
+    for (nm in names(L)) {
+        pars[names(pars) == nm] <- L[[nm]]
+    }
+    return(pars)
+}
+
+##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
+##'
+##' See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
+##' and \code{vignette("covstruct", package = "glmmTMB")}
+##' for more information on the parameterization of different covariance structures.
+##' 
+##' @param object a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+##' (peculiar naming is for consistency with the generic function, which typically
+##' takes a fitted model object)
+##' @param nsim number of simulations
+##' @param seed random-number seed
+##' @param newdata a data frame containing all variables listed in the formula,
+##' \emph{including} the response variable (which needs to fall within
+##' the domain of the conditional distribution, and should probably not
+##' be all zeros, but whose value is otherwise irrelevant)
+##' @param newparams a list of parameters containing sub-vectors
+##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+##' be used in the model
+##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
+##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @examples
+##' ## use Salamanders data for structure/covariates
+##' simulate_new(~ mined + (1|site),
+##'              zi = ~ mined,
+##'              newdata = Salamanders, show_pars  = TRUE)
+##' sim_count <- simulate_new(~ mined + (1|site),
+##'              newdata = Salamanders,
+##'              zi = ~ mined,
+##'              family = nbinom2,
+##'              newparams = list(beta = c(2, 1),
+##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
+##'                          betad = log(2), ## log(NB dispersion)
+##'                          theta = log(1)) ## log(among-site SD)
+##' )
+##' head(sim_count[[1]])
+##' @export
+simulate_new <- function(object,
+                         nsim = 1,
+                         seed = NULL,
+                         newdata, newparams, ..., show_pars = FALSE) {
+    if (!is.null(seed)) set.seed(seed)
+    ## truncate
+    if (length(object) == 3) stop("simulate_new should take a one-sided formula")
+    ## fill in fake LHS
+    form <- object
+    form[[3]] <- form[[2]]
+    form[[2]] <- quote(..y)
+    ## insert a legal value: 1.0 is OK as long as family != "beta_family"
+    newdata[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
+    r1 <- glmmTMB(form,
+              data = newdata,
+              ...,
+              doFit = FALSE)
+## construct TMB object, but don't fit it
+    r2 <- fitTMB(r1, doOptim = FALSE)
+    if (show_pars) return(r2$env$last.par)
+    pars <- do.call("make_pars",
+                    c(list(r2$env$last.par), newparams))
+    replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+}
+
+## from rlang
+`%||%` <- function (x, y)  {
+    if (is.null(x)) 
+        y
+    else x
+}

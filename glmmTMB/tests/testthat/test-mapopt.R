@@ -3,6 +3,7 @@ stopifnot(require("testthat"),
 
 data(Salamanders, package = "glmmTMB")
 
+if (identical(Sys.getenv("NOT_CRAN"), "true")) {
 m1 <- glmmTMB(count~ mined, family=poisson, data=Salamanders,
               start=list(beta=c(0,2)),
               map=list(beta=factor(c(1,NA))))
@@ -17,10 +18,10 @@ m3 <- glmmTMB(count~ mined + (1|site),
               map=list(theta=factor(NA),
                        betazi=factor(NA)))
 
-m4_nomap <- glmmTMB(count~ mined + (1|site), 
+m4_nomap <- glmmTMB(count~ mined + (1|site),
               zi=~mined,  family=poisson, data=Salamanders)
 
-m4 <- glmmTMB(count~ mined + (1|site), 
+m4 <- glmmTMB(count~ mined + (1|site),
               zi=~mined,  family=poisson, data=Salamanders,
               map=list(theta=factor(NA)),
               start = list(theta=log(10)))
@@ -34,20 +35,21 @@ test_that("basic mapping works", {
     expect_equal(fixef(m3)$zi[[1]], -1.0)
 })
 
+
 test_that("predict works with mapped params",
-          expect_equal(vapply(predict(m1,se.fit=TRUE),unique,numeric(1)),
-                       c(fit = -1.18646939995962, se.fit = 0.0342594326326737),
+          expect_equal(lapply(predict(m1,se.fit=TRUE),unique),
+                       list(fit = c(-1.18646939995962, 0.81353060004038), se.fit = 0.0342594326326739),
                        tolerance=1e-6)
           )
 
 m1_sd <- c(`(Intercept)` = 0.0342594326326741, minedno = NA_real_)
 
 test_that("vcov works with mapped params", {
-    expect_equal(dim(vcov(m1)$cond),c(1,1))
-    expect_equal(dim(vcov(m1,full=TRUE)),c(1,1))
+    expect_equal(dim(vcov(m1, include_nonest=FALSE)$cond),c(1,1))
+    expect_equal(dim(vcov(m1, full=TRUE, include_nonest = FALSE)), c(1,1))
     expect_equal(dim(vcov(m2)$cond),c(2,2))
-    expect_equal(dim(vcov(m2,full=TRUE)),c(2,2))
-    v1 <- vcov(m1,include_mapped=TRUE)
+    expect_equal(dim(vcov(m2,full=TRUE, include_nonest=FALSE)),c(2,2))
+    v1 <- vcov(m1,include_nonest=TRUE)
     expect_equal(dim(v1$cond),c(2,2))
     expect_equal(sqrt(diag(v1$cond)), m1_sd, tolerance=1e-6)
 })
@@ -90,4 +92,5 @@ test_that("summary", {
 
 })
 
-        
+
+} ## skip on CRAN

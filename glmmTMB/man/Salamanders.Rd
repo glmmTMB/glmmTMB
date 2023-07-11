@@ -22,9 +22,9 @@
 }
 }
 \references{
-    Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2016) Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. \emph{Journal of Applied Ecology} \bold{53} 459--468. \url{http://dx.doi.org/10.1111/1365-2664.12585}
+    Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2016) Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. \emph{Journal of Applied Ecology} \bold{53} 459--468. \doi{10.1111/1365-2664.12585}
   
-    Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2015) Data from: Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. \emph{Dryad Digital Repository}. \url{http://dx.doi.org/10.5061/dryad.5m8f6} 
+    Price SJ, Muncy BL, Bonner SJ, Drayer AN, Barton CD (2015) Data from: Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. \emph{Dryad Digital Repository}. \doi{10.5061/dryad.5m8f6} 
 }
 
 \examples{

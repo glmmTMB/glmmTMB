@@ -1,7 +1,6 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-data(sleepstudy, package = "lme4")
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
@@ -16,43 +15,40 @@ nd <- subset(sleepstudy, Subject=="308", select=-1)
 nd$Subject <- "new"
 nd$DaysFac <- "new"
 
-context("Predicting new levels")
-
-g0 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
-
 test_that("manual prediction of pop level pred", {
-    prnd <- predict(g0, newdata=nd, allow.new.levels=TRUE)
+    prnd <- predict(fm2, newdata=nd, allow.new.levels=TRUE)
     expect_equal( as.numeric(prnd),
-                 fixef(g0)$cond[1] + fixef(g0)$cond[2] * nd$Days , tol=1e-10)
+                 fixef(fm2)$cond[1] + fixef(fm2)$cond[2] * nd$Days , tol=1e-10)
 })
 
 test_that("population-level prediction", {
-    prnd <- predict(g0)
+    prnd <- predict(fm2)
     expect_equal(length(unique(prnd)),180)
-    prnd2 <- predict(g0, re.form=~0)
-    prnd3 <- predict(g0, re.form=NA)
+    prnd2 <- predict(fm2, re.form=~0)
+    prnd3 <- predict(fm2, re.form=NA)
     expect_equal(prnd2,prnd3)
     expect_equal(length(unique(prnd2)),10)
     ## make sure we haven't messed up any internal structures ...
-    prnd4 <- predict(g0)
+    prnd4 <- predict(fm2)
     expect_equal(prnd, prnd4)
 })
 
-context("Catch invalid predictions")
-
 test_that("new levels of fixed effect factor", {
+    skip_on_cran()
     g1 <- glmmTMB(Reaction ~ Days + Subject, sleepstudy)
     expect_error( predict(g1, nd),
                  "Prediction is not possible for unknown fixed effects")
 })
 
 test_that("new levels in RE term", {
+    skip_on_cran()
     g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
     expect_error( predict(g2, nd),
                  "Prediction is not possible for terms")
 })
 
 test_that("new levels in AR1 (OK)", {
+    skip_on_cran()
     g3 <- glmmTMB(Reaction ~ ar1(DaysFac + 0| Subject), sleepstudy)
     expect_warning( predict(g3, nd),
                    ## OK: AR1 does not introduce new parameters
@@ -62,53 +58,60 @@ test_that("new levels in AR1 (OK)", {
 context("Predict two-column response case")
 
 test_that("two-column response", {
+    skip_on_cran()
     fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial,
                   data=Salamanders)
     expect_equal(predict(fm, type="response"),
                  c(0.05469247, 0.29269818)[Salamanders$mined] )
 })
 
-context("Prediction with dispformula=~0")
-y <- 1:10
-f <- glmmTMB(y ~ 1, dispformula=~0)
-expect_equal(predict(f), rep(5.5, 10))
+test_that("Prediction with dispformula=~0", {
+    skip_on_cran()
+    y <- 1:10
+    f <- glmmTMB(y ~ 1, dispformula=~0, data = NULL)
+    expect_equal(predict(f), rep(5.5, 10))
+})
 
-context("Handling NA values in predictions")
 ss <- sleepstudy
 
-g0_ex <- update(g0, data=ssNA, na.action=na.exclude)
-g0_om <- update(g0, data=ssNA, na.action=na.omit)
-pp_ex <- predict(g0_ex)
-pp_om <- predict(g0_om)
-expect_equal(length(pp_ex),nrow(ssNA))
-expect_true(all(is.na(pp_ex)==is.na(ssNA$Days)))
-expect_equal(length(pp_om),length(na.omit(ssNA$Days)))
-expect_true(!any(is.na(pp_om)))
+fm2_ex <- update(fm2, data=ssNA, na.action=na.exclude)
+fm2_om <- update(fm2, data=ssNA, na.action=na.omit)
+pp_ex <- predict(fm2_ex)
+pp_om <- predict(fm2_om)
+
+test_that("NA values in predictions", {
+    expect_equal(length(pp_ex),nrow(ssNA))
+    expect_true(all(is.na(pp_ex)==is.na(ssNA$Days)))
+    expect_equal(length(pp_om),length(na.omit(ssNA$Days)))
+    expect_true(!any(is.na(pp_om)))
+})
 
 ## na.pass
-pp_ndNA <- predict(g0,newdata=ssNA)
-expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)),
-       failure_message="NAs don't match with na.pass+predict")
-pp_ndNA2 <- predict(g0,newdata=ssNA2)
-expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)),
-       failure_message="NAs don't match with na.pass+predict+newdata")
+test_that("na.pass", {
+    pp_ndNA <- predict(fm2,newdata=ssNA)
+    expect(all(is.na(ssNA$Days)==is.na(pp_ndNA)),
+           failure_message="NAs don't match with na.pass+predict")
+    pp_ndNA2 <- predict(fm2,newdata=ssNA2)
+    expect(all(is.na(ssNA2$Days)==is.na(pp_ndNA2)),
+           failure_message="NAs don't match with na.pass+predict+newdata")
+})
 
 ## na.omit
-pp_ndNA_om <- predict(g0,newdata=ssNA,na.action=na.omit)
-expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
-
-context("prediction with different binomial specs")
+test_that("na.omit", {
+    pp_ndNA_om <- predict(fm2,newdata=ssNA,na.action=na.omit)
+    expect_equal(length(pp_ndNA_om),sum(complete.cases(ssNA)))
+})
 
 tmbm1 <- glmmTMB(cbind(incidence, size - incidence) ~ period + (1 | herd),
                  data = cbpp, family = binomial)
 tmbm2 <- update(tmbm1,incidence/size ~ . , weights = size)
 
-test_that("fitted & predicted agree", {
+test_that("different binomial specs: fitted & predicted agree", {
     expect_equal(fitted(tmbm1),fitted(tmbm2))
     expect_equal(predict(tmbm1),predict(tmbm2))
 })
 
-context("zero-inflation prediction")
+## context("zero-inflation prediction")
 
 g0_zi <- update(tmbm2, ziformula = ~period)
 un <- function(x) lapply(x,unname)
@@ -149,11 +152,12 @@ test_that("type='zlink'", {
                  zlink_pred)
 })
 
-context("deprecated zitype parameter")
-expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
-    
-    
-context("complex bases")
+test_that("deprecated zitype parameter", {
+    expect_warning(predict(g0_zi,newdata=dd,zitype="zprob"))
+})
+
+
+## context("complex bases")
 data("sleepstudy",package="lme4")
 nd <- data.frame(Days=0,
                  Subject=factor("309", levels=levels(sleepstudy$Subject)))
@@ -176,6 +180,7 @@ test_that("splines", {
 })
 
 test_that("scale", {
+    skip_on_cran()
     g3 <- glmmTMB(Reaction~scale(Days), sleepstudy)
     expect_equal(predict(g3, newdata=data.frame(Days=0)),
                  251.40507651, tolerance=1e-5)
@@ -197,12 +202,14 @@ test_that("splines_RE", {
 })
 
 test_that("scale_RE", {
+    skip_on_cran()
     g3 <- glmmTMB(Reaction~(1|Subject) + scale(Days), sleepstudy)
     expect_equal(predict(g3, newdata=nd, allow.new.levels=TRUE),
                  173.83923026, tolerance=1e-5)
 })
 
 test_that("complex bases in dispformula", {
+    skip_on_cran()
     g4A <- glmmTMB(Reaction~1, sleepstudy)
     g4B <- glmmTMB(Reaction~1,
                    disp=~poly(Days,2), sleepstudy)
@@ -214,6 +221,7 @@ test_that("complex bases in dispformula", {
 })
 
 test_that("fix_predvars works for I(x^2)", {
+    skip_on_cran()
     ## GH512; @strengejacke
     set.seed(123)
     n <- 500
@@ -232,7 +240,49 @@ test_that("fix_predvars works for I(x^2)", {
     expect_equal(unname(p1),unname(p2), tolerance=1e-4)
 })
 
+test_that("more predvars stuff (I()) (GH #853)", {
+    set.seed(100)
+    N <- 100
+    x1 <- rnorm(N)
+    Y <- rpois(N, lambda = exp(x1))
+    df <- data.frame(Y=Y, x1=x1)
+
+    ##Base model
+    mod <- suppressWarnings(glmmTMB(Y ~ x1 + I((x1+10)^2) + I((x1+10)^3),
+                                    data = df, family = "poisson"))
+    p1 <- predict(mod, newdata = df, type = "response")
+    expect_equal(fitted(mod), predict(mod, newdata = df, type = "response"))
+})
+
+test_that("predvars with different ns() in fixed and disp (GH #845)", {
+    library(splines)
+    x <- glmmTMB(
+        am ~ ns(wt, df = 3), 
+        dispformula = ~ ns(wt, df = 2), 
+        data = mtcars
+    )
+    newdata <- data.frame(
+        wt = seq(min(mtcars$wt), max(mtcars$wt), length.out = 3)
+    )
+    expect_equal(predict(x, newdata = newdata),
+                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
+})
+
+test_that("predvars with differing splines in fixed and RE (GH#632)", {
+    library(splines)
+    data(sleepstudy,package="lme4")
+    m4 <- glmmTMB(Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject), 
+                  data = sleepstudy)
+    pp <- predict(m4, newdata = data.frame(Days = 4:6, Subject = "372"),
+                  re.form = NULL, 
+                  type = "response")
+    ## plot(Reaction ~ Days, data = subset(sleepstudy, Subject == "372"))
+    ## points(4:6, pp, col = 2, pch = 16)
+    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647))
+})
+
 test_that("contrasts carried over", {
+    skip_on_cran()
     ## GH 439, @cvoeten
     iris2 <- transform(iris,
                        grp=factor(c("a","b")))
@@ -271,8 +321,161 @@ test_that("dispersion", {
 })
 
 test_that("offset-only model (GH #625)", {
+    skip_on_cran()
     owls_nb0 <- glmmTMB(SiblingNegotiation ~ offset(log(BroodSize)),
                         family = nbinom2(),
                         data=Owls)
     expect_equal(mean(predict(owls_nb0)), 1.88220473712677)
 })
+
+test_that("fast prediction", {
+    ## use tighter-than-default tolerances
+    ##
+    expect_equal(predict(fm2,fast=FALSE),predict(fm2,fast=TRUE), tolerance=1e-13)
+    expect_equal(predict(fm2, type="response",fast=FALSE),
+                 predict(fm2, type="response", fast=TRUE),
+                 tolerance=1e-13)
+    ## handling NAs etc.
+    expect_equal(pp_ex, predict(fm2_ex, fast=FALSE))
+})
+
+test_that("inverse-link prediction", {
+  skip_on_cran()
+  ## example from John Maindonald (GH #696)
+  ## this highlights a particular case where the prediction on the (cloglog) link scale
+  ## is large (3.98), which leads to a prediction of 1.0 unless the cloglog-inverse-link
+  ## function is clamped (as in make.link("cloglog")'s version)
+  ffly <- read.csv(system.file("test_data", "ffly.csv", package="glmmTMB"))
+  ffly$obs <- factor(ffly$obs)
+  form1 <- cbind(Dead,Live)~0+trtGp/TrtTime+(1|obs)+(1|trtGpRep)
+  ObsTMB.cll <- glmmTMB(form1, family=binomial(link="cloglog"), data=ffly)
+  p0 <- predict(ObsTMB.cll, re.form=NA)[63]
+  p0R <- make.link("cloglog")$linkinv(p0)
+  p1 <- predict(ObsTMB.cll, re.form=NA, type="response")[63]
+  expect_equal(p0R, p1)
+})
+
+test_that("fast prediction not allowed with NA (correct errors)", {
+  expect_error(predict(fm2, re.form=NA, fast=TRUE),
+               "fast=TRUE is not compatible")
+  expect_equal(predict(fm2, re.form=NA, fast=FALSE),
+               predict(fm2, re.form=NA, fast=NULL))
+})
+
+test_that("zlink/zprob return appropriate values with non-ZI model (GH#798)", {
+  p1 <- predict(fm2, type = "zlink")
+  expect_equal(length(p1), nrow(sleepstudy))
+  expect_true(all(p1 == -Inf))
+  p2 <- predict(fm2, type = "zprob")
+  expect_equal(length(p2), nrow(sleepstudy))
+  expect_true(all(p2 == 0))
+})
+
+test_that("correct conditional/response predictions for truncated distributions", {
+    set.seed(42)
+    N <- 100
+    df <- data.frame(p1 = rpois(N, 1),
+                     nb1 = rnbinom(N, mu = 1, size = 1),
+                     x = rnorm(N)) |>
+        transform(
+            ## zero-inflated versions
+            zp1 = p1 * rbinom(N, size = 1, prob = 0.5),
+            znb1 = nb1 * rbinom(N, size = 1, prob = 0.5),
+            ## truncated versions (NAs will be dropped)
+            tp1 = ifelse(p1 == 0, NA, p1),
+            tnb1 = ifelse(nb1 == 0, NA, nb1))
+
+    f_zp1 <- glmmTMB(zp1 ~ x,
+                     zi= ~ 1,
+                     family=truncated_poisson(link="log"),
+                     data=df)
+
+    f_znb1 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom1)
+
+    f_znb2 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom2)
+
+
+    testfun <- function(model, response, distrib) {
+        zp1 <- predict(model, type="zprob")
+        cm1 <- predict(model, type="conditional")
+        mu1 <- predict(model, type="response")
+
+        ## compute zero-trunc by hand
+        eta <- predict(model, type = "link")
+        cm2 <- exp(eta)/(1-distrib(0, exp(eta), sigma(model)))
+        expect_equal(cm1, cm2)
+
+        expect_equal(mu1, cm1*(1-zp1))
+
+    }
+
+    ## versions of distrib functions that can be plugged into testfun()
+    my_dpois <- function(x, lambda, ...) dpois(x, lambda)
+    my_nb2 <- function(x, mu, size) dnbinom(x, mu = mu, size = size)
+    my_nb1 <- function(x, mu, phi) {
+        ## var = mu*(1+mu/k) = mu*(1+phi) -> phi = mu/k -> k = mu/phi
+        dnbinom(x, mu = mu, size = mu/phi)
+    }
+
+    testfun(f_zp1, "zp1", my_dpois)
+    testfun(f_znb2, "znb1", my_nb2)
+    testfun(f_znb1, "znb1", my_nb1)
+
+})
+
+test_that("predict warns about ignored args", {
+    expect_warning(predict(fm2, bad_args = TRUE), "bad_args")
+})
+
+## GH #873
+test_that("nzprob doesn't segfault", {
+    skip_on_cran()
+    model2 <- glmmTMB(
+        count ~ cover + mined + (1 | site),
+        ziformula = ~ cover + mined,
+        family = truncated_poisson(),
+        data = Salamanders
+    )
+    pp <- stats::predict(
+               model2,
+               newdata = Salamanders,
+               type = "link",
+               re.form = NULL,
+               allow.new.levels = FALSE
+               )
+    expect_equal(head(pp, 3),
+                 c(0.465946249085321, 0.206712238705304, 0.133580349579438))
+})
+
+## GH #873 continued
+test_that("nzprob computed for non-fast pred", {
+    set.seed(101)
+    dd <- data.frame(y = rpois(5, lambda = 1))
+    m1 <- glmmTMB(
+        y ~ 1,
+        ziformula = ~ 1,
+        data = dd,
+        family = truncated_poisson()
+    )
+    expect_identical(predict(m1, type = "response"),
+                     predict(m1, type = "response", fast = FALSE))
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom1))
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom2))
+    ## need more data to fit compois, genpois
+    dd2 <- data.frame(y = rpois(100, lambda = 1))
+    m2 <- update(m1, family = truncated_compois, data = dd2)
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    ## suppress NA/NaN function eval warning
+    m2 <- suppressWarnings(update(m1, family = truncated_genpois, data = dd2))
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+})
+
+                 

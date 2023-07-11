@@ -1,7 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-context("Testing dispersion")
+## context("Testing dispersion")
 
 sim1=function(nfac=24, nt=100, facsd=.1, tsd=.15, mu=0, residsd=1)
 {

@@ -1,9 +1,9 @@
 ## FIXME: I would like to use the following function instead of repeating
 ## the pattern, but I'm worried that lazy evaluation of arguments will
 ## cause all kinds of trouble
-family_factory <- function(default_link,family,variance) {
+family_factory <- function(default_link, family, variance) {
     f <- function(link=default_link) {
-        r <- list(family=family,link=link,variance=variance)
+        r <- list(family=family, link=link, variance=variance)
         r <- c(r,make.link(link))
         class(r) <- "family"
         return(r)
@@ -11,17 +11,18 @@ family_factory <- function(default_link,family,variance) {
     return(f)
 }
 
-## suppress code warnings for nbinom2; can't use .Theta <- NULL trick here ...
-utils::globalVariables(".Theta") 
+## suppress code warnings for nbinom1/nbinom2; can't use .Theta <- NULL trick here ...
+utils::globalVariables(".Theta")
+utils::globalVariables(".Phi")
 
-## attempt to guess whether calling function has been called from glm.fit ...
+## see whether calling function has been called from glm.fit ...
 in_glm_fit <- function() {
-    vars <- ls(envir=parent.frame(2))
-    all(c("coefold","control","EMPTY","good","nvars") %in% vars)
+    up_two <- sys.calls()[[sys.nframe()-2]]
+    identical(up_two[[1]], quote(glm.fit))
 }
 
-make_family <- function(x,link) {
-    x <- c(x,list(link=link),make.link(link))
+make_family <- function(x, link) {
+    x <- c(x, list(link=link), make.link(link))
     ## stubs for Effect.default/glm.fit
     if (is.null(x$aic)) {
         x <- c(x,list(aic=function(...) NA_real_))
@@ -31,10 +32,22 @@ make_family <- function(x,link) {
         x <- c(x,list(initialize=expression({mustart <- y+0.1})))
     }
     if (is.null(x$dev.resids)) {
-        ## can't return NA, glm.fit is unhappy
         x <- c(x,list(dev.resids=function(y,mu,wt)  {
-                     rep(0,length(y))
-                 }))
+            if (in_glm_fit()) {
+                ## can't return NA, glm.fit is unhappy
+                ## glm() is called by the effects package
+                ## cat("in glm.fit\n")
+                return(rep(0,length(y)))
+            } else {
+                warning(warningCondition(
+                    paste0("deviance residuals not defined ",
+                          "for family ",
+                          sQuote(x$family),
+                          ": returning NA"),
+                    class = c("dev_resids_undefined", "glmmTMB_warn")))
+                return(rep(NA_real_, length(y)))
+            }
+        }))
     }
 
     class(x) <- "family"
@@ -45,10 +58,32 @@ make_family <- function(x,link) {
 ## name, default link, variance function, (optionally) initialize
 ## for each family
 
+
+nbinom_errstr <- function(pname = "theta") {
+    sprintf("%s (nbinom parameter) neither passed as an argument nor stored in enviroment", pname)
+}
+missing_disp <- "stop"
+
+## find dispersion parameter in environment, if possible, or fall back
+get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
+    if (is.null(disp)) {
+        ## look in environment
+        if (!exists(pname1, parent.frame())) {
+            disp <- switch(missing_disp,
+                           one=1,
+                           na=NA_real_,
+                           stop=stop(nbinom_errstr(pname2)))
+        } else {
+            disp <- get(pname1, parent.frame())
+        }
+    }
+    assign(pname2, disp, parent.frame())
+}
+
 ##' Family functions for glmmTMB
 ##'
 ##'
-##' 
+##'
 ##' @aliases family_glmmTMB
 ##' @param link (character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")
 ##' @return returns a list with (at least) components
@@ -60,7 +95,7 @@ make_family <- function(x,link) {
 ##' }
 ##' @details
 ##' If specified, the dispersion model uses a log link. Denoting the variance as \eqn{V}, the dispersion parameter
-##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model), 
+##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 ##' and the predicted mean as \eqn{\mu}{mu}:
 ##'  \describe{
 ##'      \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
@@ -70,11 +105,13 @@ make_family <- function(x,link) {
 ##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}}
 ##'      \item{truncated_nbinom2}{Zero-truncated version of nbinom2: variance expression from Shonkwiler 2016. Simulation code (for this and the other truncated count distributions) is taken from C. Geyer's functions in the \code{aster} package; the algorithms are described in \href{https://cran.r-project.org/package=aster/vignettes/trunc.pdf}{this vignette}.}
 ##'      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
-##'      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.)}
+##'      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.) Our implementation is taken from the \code{HMMpa} package, based on Joe and Zhu (2005) and implemented by Vitali Witowski.}
 ##'      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
 ##' and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
 ##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
-##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^p}{V=phi*mu^p}. The power parameter is restricted to the interval \eqn{1<p<2}}
+##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^power}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
+##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
+##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1].}
 ##' }
 ##' @references
 ##' \itemize{
@@ -82,52 +119,33 @@ make_family <- function(x,link) {
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 ##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts." \emph{Statistical Modelling} 17(6), 1-22.
+##' \item Joe H, Zhu R (2005). "Generalized Poisson Distribution: The Property of Mixture of Poisson and Comparison with Negative Binomial Distribution." \emph{Biometrical Journal} 47(2): 219–29. \doi{10.1002/bimj.200410102}.
 ##' \item Morris  W (1997). "Disentangling Effects of Induced Plant Defenses and Food Quantity on Herbivores by Fitting Nonlinear Models." \emph{American Naturalist} 150:299-327.
+##' \item Kubinec R (2022). "Ordered Beta Regression: A Parsimonious, Well-Fitting Model for Continuous Data with Lower and Upper Bounds." \emph{Political Analysis}. doi:10.1017/pan.2022.20.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
-##' \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. https://doi.org/10.1214/09-AOAS306.
-##' \item Shonkwiler, J. S. (2016). "Variance of the truncated negative binomial distribution." \emph{Journal of Econometrics} 195(2), 209–210. doi:10.1016/j.jeconom.2016.09.002
+##' \item Sellers K & Shmueli G (2010) "A Flexible Regression Model for Count Data." \emph{Annals of Applied Statistics} 4(2), 943–61. \doi{10.1214/09-AOAS306}.
+##' \item Shonkwiler, J. S. (2016). "Variance of the truncated negative binomial distribution." \emph{Journal of Econometrics} 195(2), 209–210. \doi{10.1016/j.jeconom.2016.09.002}.
 ##' }
 ##' @export
 ##' @importFrom stats make.link
 nbinom2 <- function(link="log") {
-    theta_errstr <- "theta (nbinom parameter) neither passed as an argument nor stored in enviroment"
-    missing_theta <- "one" ## or "stop" or "na"
     r <- list(family="nbinom2",
-              variance=function(mu, theta) {
-                if (missing(theta)) {
-                    ## look in environment
-                    if (!exists(".Theta")) {
-                        theta <- switch(missing_theta,
-                                        one=1,
-                                        na=NA_real_,
-                                        stop=stop(theta_errstr))
-                    } else {
-                        theta <- .Theta
-                    }
-                }
-                return(mu*(1+mu/theta))
-               },  ## variance function
+              variance=function(mu, theta=NULL) {
+                  get_nbinom_disp(theta, ".Theta", "theta")
+                  return(mu*(1+mu/theta))
+              },  ## variance function
               ## full versions needed for effects::mer.to.glm
               ## (so we can evaluate a glm)
               initialize = expression({
-                  if (any(y < 0)) 
+                  if (any(y < 0))
                       stop("negative values not allowed for the negative binomial family")
                   n <- rep(1, nobs)
                   mustart <- y + (y == 0)/6
               }),
-              dev.resids = function (y, mu, wt, theta)  {
-        if (missing(theta)) {
-            if (!exists(".Theta")) {
-                theta <- switch(missing_theta,
-                                na=NA_real_,
-                                one=1,
-                                stop=stop(theta_errstr))
-            } else {
-                theta <- .Theta
-            }
-        }
-        return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
-    })
+              dev.resids = function (y, mu, wt, theta = NULL)  {
+                  get_nbinom_disp(theta, ".Theta", "theta")
+                  return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
+              })
     return(make_family(r,link))
 }
 
@@ -135,12 +153,23 @@ nbinom2 <- function(link="log") {
 #' @export
 nbinom1 <- function(link="log") {
     r <- list(family="nbinom1",
-              variance=function(mu,alpha) {
-        ## Effect stub (can't return 0 or NA or glm.fit will complain)
-        ## FIXME: retrieve dispersion in environment?
-        if (missing(alpha)) return(rep(1e-16,length(mu)))
-        mu*(1+alpha)
-    })
+              variance=function(mu, phi=NULL) {
+                  get_nbinom_disp(phi, ".Phi", "phi")
+                  return(mu*(1+phi))
+              },
+              initialize = expression({
+                  if (any(y < 0))
+                      stop("negative values not allowed for the negative binomial family")
+                  n <- rep(1, nobs)
+                  mustart <- y + (y == 0)/6
+              }),
+              dev.resids = function (y, mu, wt, phi = NULL)  {
+                  get_nbinom_disp(phi, ".Phi", "phi")
+                  ## convert phi to theta and use nbinom2 expression
+                  ## V = mu*(1+phi) = mu*(1+mu/theta) -> theta = mu/phi
+                  theta <- mu/phi
+                  return(2 * wt * (y * log(pmax(1, y)/mu) - (y + theta) * log((y + theta)/(mu + theta))))
+              })
     return(make_family(r,link))
 }
 
@@ -197,7 +226,7 @@ truncated_poisson <- function(link="log") {
 
 #' @rdname nbinom2
 #' @importFrom stats dnbinom pnbinom
-#' @export	       	
+#' @export
 truncated_nbinom2 <- function(link="log") {
     theta_errstr <- "theta (nbinom parameter) neither passed as an argument nor stored in enviroment"
     missing_theta <- "one" ## or "stop" or "na"
@@ -205,7 +234,7 @@ truncated_nbinom2 <- function(link="log") {
               variance=function(mu,theta) {
                       if (missing(theta)) {
                           if (!exists(".Theta")) {
-                              theta <- switch(missing_theta, one = 1, na = NA_real_, 
+                              theta <- switch(missing_theta, one = 1, na = NA_real_,
                                               stop = stop(theta_errstr))
                           }
                           else {
@@ -248,11 +277,12 @@ beta_family <- function(link="logit") {
                           stop("y values must be 0 <= y < 1")
                       }
                   } else {
-                      if (any(y <= 0 | y >= 1)) 
+                      if (any(y <= 0 | y >= 1))
                           stop("y values must be 0 < y < 1")
                   }
                   mustart <- y
-              }))
+              })
+              )
     return(make_family(r,link))
 }
 
@@ -270,7 +300,7 @@ beta_family <- function(link="logit") {
 ##  scaling is n*(theta+n)/(theta+1) (vs. simply n for the binomial)
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
-              variance=function(mu,phi) {
+              variance = function(mu, phi) {
                   mu*(1-mu)
               },
               initialize = binomial()$initialize)
@@ -281,8 +311,8 @@ betabinomial <- function(link="logit") {
 #' @export
 tweedie <- function(link="log") {
     r <- list(family="tweedie",
-           variance=function(mu,phi,p) {
-               stop("variance for tweedie family not yet implemented")
+           variance = function(mu, phi, power) {
+               phi * mu ^ power
          })
     return(make_family(r,link))
 }
@@ -297,16 +327,6 @@ lognormal <- function(link="log") {
     return(make_family(r,link))
 }
 
-## t not yet implemented in 
-## t_family <- function(link="identity") {
-##     ## FIXME: right now t behaves just like gaussian(); variance()
-##     ## returns a value *proportional* to the variance
-##     r <- list(family="t",link=link,
-##               variance=function(mu) {
-##         rep.int(1,length(mu))
-##     })
-## }
-
 #' List model options that glmmTMB knows about
 #'
 #' @note these are all the options that are \emph{defined} internally; they have not necessarily all been \emph{implemented} (FIXME!)
@@ -314,7 +334,7 @@ lognormal <- function(link="log") {
 #' ("all","family","link","covstruct")
 #' @param check (logical) do brute-force checking to test whether families are really implemented (only available for \code{what="family"})
 #' @return if \code{check==FALSE}, returns a vector of the names (or a list of name vectors) of allowable entries; if \code{check==TRUE}, returns a logical vector of working families
-#' 
+#'
 #' @export
 getCapabilities <- function(what="all",check=FALSE) {
     if (!check) {
@@ -366,3 +386,28 @@ ziGamma <- function(link="inverse") {
    return(g)
 }
 
+#' @export
+#' @rdname nbinom2
+t_family <- function(link="identity") {
+    r <- list(family="t",
+           variance=function(mu, phi) {
+               rep(phi, length(mu))
+           })
+    return(make_family(r,link))
+}
+
+
+#' @export
+#' @rdname nbinom2
+ordbeta <- function(link="logit") {
+    r <- list(family="ordbeta",
+                            initialize=expression({
+                                if (any(y < 0 | y > 1))
+                                    stop("y values must be 0 <= y <= 1")
+                                mustart <- y
+                            }),
+              ## from beta: not sure this is right ... ??
+              variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
+              )
+    return(make_family(r,link))
+}

@@ -39,14 +39,15 @@ op <- options(digits=3)
               data=epil2, family=nbinom2))
 meths <- methods(class = class(fm))
 if((Rv <- getRversion()) > "3.1.3") {
-    (funs <- attr(meths, "info")[, "generic"])
-    for(F in funs[is.na(match(funs, "getME"))]) {
-        cat(sprintf("\%s:\n-----\n", F))
-        r <- tryCatch( get(F)(fm), error=identity)
+  funs <- attr(meths, "info")[, "generic"]
+  funs <- setdiff(funs, "profile")  ## too slow! pkgdown is trying to run this??
+  for(fun in funs[is.na(match(funs, "getME"))]) {
+        cat(sprintf("\%s:\n-----\n", fun))
+        r <- tryCatch( get(fun)(fm), error=identity)
         if (inherits(r, "error")) cat("** Error:", r$message,"\n")
         else tryCatch( print(r) )
-        cat(sprintf("---end{\%s}--------------\n\n", F))
-    }
+        cat(sprintf("---end{\%s}--------------\n\n", fun))
+  }
 }
 options(op)
 }

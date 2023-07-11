@@ -1,4 +1,4 @@
-if(require("testthat")) {
+if (require("testthat")) {
     pkg <- "glmmTMB"
     require(pkg, character.only=TRUE)
     print(sessionInfo())

@@ -1,30 +1,40 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.0.2.9000
-Authors@R: c(person("Arni","Magnusson",role="aut",
-	   	   comment=c(ORCID="0000-0003-2769-6741")),
-	    person("Hans","Skaug",role="aut"),
-	    person("Anders","Nielsen",role="aut",
-	    	    comment=c(ORCID="0000-0001-9683-9262")),
-	    person("Casper","Berg",role="aut",
-                    comment=c(ORCID="0000-0002-3812-5269")),
-            person("Kasper","Kristensen",role="aut"),
-            person("Martin","Maechler",role="aut",
-	        comment=c(ORCID="0000-0002-8685-9910")),
-            person("Koen","van Bentham",role="aut"),
-            person("Ben","Bolker",role="aut",
-	           comment=c(ORCID="0000-0002-2127-0443")),
-            person("Nafis","Sadat",role="ctb",
-                comment=c(ORCID="0000-0001-5715-616X")),
-            person("Daniel","Lüdecke", role="ctb",
-	        comment=c(ORCID="0000-0002-8895-3206")),
-            person("Russ","Lenth", role="ctb"),
-	    person("Joseph", "O'Brien", role = "ctb",
-		       comment = c(ORCID = "0000-0001-9851-5077")),
-            person("Charles J.","Geyer", role="ctb"),
-            person("Mollie","Brooks",role=c("aut","cre"),
-                   email="mollieebrooks@gmail.com",
-		   comment=c(ORCID="0000-0001-6963-8326")))
+Version: 1.1.7.9000
+Authors@R: c(person("Mollie","Brooks",
+		comment=c(ORCID="0000-0001-6963-8326"),
+		role = c("aut", "cre"),
+		email = "mollieebrooks@gmail.com"),
+	person("Ben","Bolker", role="aut",
+		comment=c(ORCID="0000-0002-2127-0443")),
+	person("Kasper","Kristensen",role="aut"),
+	person("Martin","Maechler", role="aut",
+		comment=c(ORCID="0000-0002-8685-9910")),
+	person("Arni","Magnusson", role="aut",
+		comment=c(ORCID="0000-0003-2769-6741")),
+	person("Maeve","McGillycuddy", role="ctb"),
+	person("Hans","Skaug",role="aut",
+	        comment=c(ORCID="0000-0003-4235-2592")),
+	person("Anders","Nielsen", role="aut",
+		comment=c(ORCID="0000-0001-9683-9262")),
+	person("Casper","Berg", role="aut",
+		comment=c(ORCID="0000-0002-3812-5269")),
+	person("Koen","van Bentham", role="aut"),
+	person("Nafis","Sadat",role="ctb",
+		comment=c(ORCID="0000-0001-5715-616X")),
+	person("Daniel","Lüdecke", role="ctb",
+		comment=c(ORCID="0000-0002-8895-3206")),
+	person("Russ","Lenth", role="ctb"),
+	person("Joseph", "O'Brien", role = "ctb",
+		comment = c(ORCID = "0000-0001-9851-5077")),
+	person("Charles J.","Geyer", role="ctb"),
+	person("Mikael","Jagan", role="ctb",
+		comment = c(ORCID = "0000-0002-3542-2938")),
+	person("Brenton", "Wiernik", role="ctb",
+		comment = c(ORCID = "0000-0001-9560-6336")),
+	person("Daniel B.", "Stouffer", role="ctb",
+		comment = c(ORCID = "0000-0001-9436-9674"))
+	)
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
     likelihood estimation via 'TMB' (Template Model Builder). Random effects are
@@ -35,7 +45,7 @@ License: AGPL-3
 Depends: R (>= 3.2.0)
 Imports:
     methods,
-    TMB (>= 1.7.14),
+    TMB (>= 1.9.0),
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
@@ -68,12 +78,14 @@ Suggests:
     boot,
     texreg,
     xtable,
-    huxtable
+    huxtable,
+    mvabund,
+    parallel
 SystemRequirements: GNU make
-VignetteBuilder: knitr
+VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
 LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
-RoxygenNote: 7.1.1
 NeedsCompilation: yes
 Encoding: UTF-8
+RoxygenNote: 7.2.3

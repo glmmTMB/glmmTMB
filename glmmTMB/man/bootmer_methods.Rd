@@ -5,16 +5,18 @@
 \alias{refit.glmmTMB}
 \title{support methods for parametric bootstrapping}
 \usage{
-\method{isLMM}{glmmTMB}(object)
+\method{isLMM}{glmmTMB}(x, ...)
 
 \method{refit}{glmmTMB}(object, newresp, ...)
 }
 \arguments{
+\item{x}{a fitted glmmTMB object}
+
+\item{...}{additional arguments (for generic consistency; ignored)}
+
 \item{object}{a fitted glmmTMB object}
 
 \item{newresp}{a new response vector}
-
-\item{...}{additional arguments (for generic consistency; ignored)}
 }
 \description{
 see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details
@@ -37,6 +39,15 @@ if (requireNamespace("lme4")) {
    if (requireNamespace("boot")) {
       boot.ci(b1,type="perc")
     }
+   ## can run in parallel: may need to set up cluster explicitly,
+   ## use clusterEvalQ() to load packages on workers
+   if (requireNamespace("parallel")) {
+      cl <- parallel::makeCluster(2)
+      parallel::clusterEvalQ(cl, library("lme4"))
+      parallel::clusterEvalQ(cl, library("glmmTMB"))
+      b2 <- lme4::bootMer(fm1, FUN = function(x) fixef(x)$cond,
+              nsim = 10, ncpus = 2, cl = cl, parallel = "snow")
+   }
 }
 }
 }

@@ -9,11 +9,13 @@
   newdata = NULL,
   newparams = NULL,
   se.fit = FALSE,
+  cov.fit = FALSE,
   re.form = NULL,
   allow.new.levels = FALSE,
   type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
   zitype = NULL,
   na.action = na.pass,
+  fast = NULL,
   debug = FALSE,
   ...
 )
@@ -26,6 +28,8 @@
 \item{newparams}{new parameters for prediction}
 
 \item{se.fit}{return the standard errors of the predicted values?}
+
+\item{cov.fit}{return the covariance matrix of the predicted values?}
 
 \item{re.form}{\code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)}
 
@@ -41,10 +45,9 @@ or equivalently the linear predictor of the conditional model}
 and \code{mu} otherwise}
 \item{"conditional"}{mean of the conditional response; \code{mu} for all models
 (i.e., synonymous with \code{"response"} in the absence of zero-inflation}
-\item{"zprob"}{the probability of a structural zero (gives an error
-for non-zero-inflated models)}
+\item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 \item{"zlink"}{predicted zero-inflation probability on the scale of
-the logit link function}
+the logit link function (returns \code{-Inf} for non-zero-inflated models)}
 \item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
 }}
 
@@ -52,6 +55,8 @@ the logit link function}
 
 \item{na.action}{how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 the default (\code{na.pass}) is to predict \code{NA}}
+
+\item{fast}{predict without expanding memory (default is TRUE if \code{newdata} and \code{newparams} are NULL and population-level prediction is not being done)}
 
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
 used internally for debugging?}

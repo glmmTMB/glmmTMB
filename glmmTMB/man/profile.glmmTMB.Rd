@@ -74,7 +74,7 @@ to estimate the endpoints of the confidence interval
 }
 \examples{
 \dontrun{
-m1 <- glmmTMB(count~ mined + (1|site), 
+m1 <- glmmTMB(count~ mined + (1|site),
        zi=~mined, family=poisson, data=Salamanders)
 salamander_prof1 <- profile(m1, parallel="multicore",
                             ncpus=2, trace=1)

@@ -7,12 +7,12 @@
 namespace glmmtmb{
 template<class Type>
 bool isNA(Type x){
-    return R_IsNA(asDouble(x));
-  }
+  return R_IsNA(asDouble(x));
+}
 
 template<class Type>
 bool notFinite(Type x) {
-	return (!R_FINITE(asDouble(x)));
+  return (!R_FINITE(asDouble(x)));
 }
 }
 
@@ -21,6 +21,7 @@ enum valid_family {
   binomial_family = 100,
   betabinomial_family =101,
   beta_family =200,
+  ordbeta_family = 201,
   Gamma_family =300,
   poisson_family =400,
   truncated_poisson_family =401,
@@ -36,6 +37,15 @@ enum valid_family {
   tweedie_family = 700,
   lognormal_family = 800
 };
+
+// capitalize Family so this doesn't get picked up by the 'enum' scraper
+bool trunc_Family(int family) {
+  return (family == truncated_poisson_family ||
+	  family == truncated_genpois_family ||
+	  family == truncated_compois_family ||
+	  family == truncated_nbinom1_family ||
+	  family == truncated_nbinom2_family);
+}
 
 enum valid_link {
   log_link                 = 0,
@@ -56,7 +66,9 @@ enum valid_covStruct {
   exp_covstruct = 5,
   gau_covstruct = 6,
   mat_covstruct = 7,
-  toep_covstruct = 8
+  toep_covstruct = 8,
+  rr_covstruct = 9,
+  homdiag_covstruct = 10
 };
 
 enum valid_ziPredictCode {
@@ -127,9 +139,62 @@ Type log_inverse_linkfun(Type eta, int link) {
   case log_link:
     ans = eta;
     break;
+  case logit_link:
+    ans = -logspace_add(Type(0), -eta);
+    break;
   default:
     ans = log( inverse_linkfun(eta, link) );
   } // End switch
+  return ans;
+}
+
+/* log transformed inverse_linkfun without losing too much accuracy */
+template<class Type>
+Type log1m_inverse_linkfun(Type eta, int link) {
+  Type ans;
+  switch (link) {
+  case log_link:
+    ans = logspace_sub(Type(0), eta);
+    break;
+  case logit_link:
+    ans = -logspace_add(Type(0), eta);
+    break;
+  default:
+    ans = logspace_sub(Type(0), log( inverse_linkfun(eta, link) ));
+  } // End switch
+  return ans;
+}
+
+/* log-prob of non-zero value in conditional distribution  */
+template<class Type>
+Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
+		     int link) {
+  Type ans, s1, s2;
+  switch (family) {
+  case truncated_nbinom1_family:
+    s2 = logspace_add( Type(0), etad);      // log(1. + phi(i)
+    ans = logspace_sub( Type(0), -mu / phi * s2 ); // 1-prob(0)
+    break;
+  case truncated_nbinom2_family:
+    // s1 is repeated computation from main loop ...
+    s1 = log_inverse_linkfun(eta, link);          // log(mu)
+    // s2 := log( 1. + mu(i) / phi(i) )
+    s2 = logspace_add( Type(0), s1 - etad );
+    ans = logspace_sub( Type(0), -phi * s2 );
+    break;
+  case truncated_poisson_family:
+    ans = logspace_sub(Type(0), -mu);  // log(1-exp(-mu(i))) = P(x>0)
+    break;
+  case truncated_genpois_family:
+    s1 = mu / sqrt(phi); //theta
+    s2 = Type(1) - Type(1)/sqrt(phi); //lambda
+    ans = logspace_sub(Type(0), -s1);
+    break;
+  case truncated_compois_family:
+    ans = logspace_sub(Type(0), dcompois2(Type(0), mu, 1/phi, true));
+    break;
+  default: ans = Type(0);
+  }
   return ans;
 }
 
@@ -145,6 +210,7 @@ struct per_term_info {
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
+  matrix<Type> fact_load; // For rr case
 };
 
 template <class Type>
@@ -180,7 +246,7 @@ struct terms_t : vector<per_term_info<Type> > {
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
-  if (term.blockCode == diag_covstruct){
+  if (term.blockCode == diag_covstruct) {
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
     for(int i = 0; i < term.blockReps; i++){
@@ -191,6 +257,26 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
     term.sd = sd; // For report
   }
+  else if (term.blockCode == homdiag_covstruct) {
+    // case: homdiag_covstruct
+    Type sd = exp(theta(0));
+    for(int i = 0; i < term.blockReps; i++){
+          for (int j = 0; j < U.rows(); j++) {
+	    ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
+	    if (do_simulate) {
+	      U(j,i) = rnorm(Type(0), sd);
+	    }	      
+	  }
+    }
+    int n = term.blockSize;
+    vector<Type> sdvec(n);
+    for(int i = 0; i < n; i++) {
+      sdvec(i) = sd;
+    }
+    
+    term.sd = sdvec; // For report
+  }
+
   else if (term.blockCode == us_covstruct){
     // case: us_covstruct
     int n = term.blockSize;
@@ -367,6 +453,44 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd.resize(n);  // For report
     term.sd.fill(sd);
   }
+  else if (term.blockCode == rr_covstruct){
+    // case: reduced rank
+    for(int i = 0; i < term.blockReps; i++){
+      ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
+      if (do_simulate) {
+        U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+      }
+    }
+
+    int p = term.blockSize;
+    int nt = theta.size();
+    int rank = (2*p + 1 -  (int)sqrt(pow(2.0*p + 1, 2) - 8*nt) ) / 2 ;
+    matrix<Type> Lambda(p, rank);
+    vector<Type> lam_diag = theta.head(rank);
+    vector<Type> lam_lower = theta.tail(nt - rank);
+    for (int j = 0; j < rank; j++){
+      for (int i = 0; i < p; i++){
+        if (j > i)
+          Lambda(i, j) = 0;
+        else if(i == j)
+          Lambda(i, j) = lam_diag(j);
+        else
+          Lambda(i, j) = lam_lower(j*p - (j + 1)*j/2 + i - 1 - j); //Fills by column
+      }
+    }
+
+    for(int i = 0; i < term.blockReps; i++){
+      vector<Type> usub = U.col(i).segment(0, rank);
+      U.col(i) = Lambda * usub;
+    }
+
+    term.fact_load = Lambda;
+    if(isDouble<Type>::value) {
+      term.corr = Lambda * Lambda.transpose();
+      term.sd = term.corr.diagonal().array().sqrt();
+      term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
+    }
+  }
   else error("covStruct not implemented!");
   return ans;
 }
@@ -432,8 +556,8 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(theta);
   PARAMETER_VECTOR(thetazi);
 
-  // Extra family specific parameters (e.g. tweedie)
-  PARAMETER_VECTOR(thetaf);
+  // Extra family specific parameters (e.g. tweedie, t, ordbetareg)
+  PARAMETER_VECTOR(psi);
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
@@ -443,16 +567,15 @@ Type objective_function<Type>::operator() ()
   bool zi_flag = (betazi.size() > 0);
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
-
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
   // Joint negative log-likelihood
-  parallel_accumulator<Type> jnll(this);
+  Type jnll=0;
 
   // Random effects
-  jnll += allterms_nll(b, theta, terms, this->do_simulate);
-  jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
+  PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
 
   // Linear predictor
   vector<Type> eta = Z * b + offset;
@@ -476,13 +599,23 @@ Type objective_function<Type>::operator() ()
     DATA_SPARSE_MATRIX(XdS);
     etad += XdS*betad;
   }
-  
+
   // Apply link
   vector<Type> mu(eta.size());
   for (int i = 0; i < mu.size(); i++)
     mu(i) = inverse_linkfun(eta(i), link);
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etad);
+  vector<Type> log_nzprob(eta.size());
+  if (!trunc_Family(family)) {
+    log_nzprob.setZero();
+  } else {
+    for (int i = 0; i < log_nzprob.size(); i++) {
+      log_nzprob(i) =  calc_log_nzprob(mu(i), phi(i), eta(i), etad(i),
+				       family, link);
+    }
+  }
+
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions
 // exact zero: use for positive distributions (Gamma, beta)
@@ -491,12 +624,16 @@ Type objective_function<Type>::operator() ()
 #define zt_lik_nearzero(x,loglik_exp) (zi_flag && (x < Type(0.001)) ? -INFINITY : loglik_exp)
 
   // Observation likelihood
-  Type s1, s2, s3, log_nzprob;
+  Type s1, s2, s3;
   Type tmp_loglik;
-  for (int i=0; i < yobs.size(); i++){
+
+  for (int i=0; i < yobs.size(); i++) PARALLEL_REGION {
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
+	// n.b. sigma() calculation is special-cased for Gaussian
+	// (exp(0.5*pl$betad), all other families except Gamma
+	//  use exp(pl$betad)
         tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
         SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
         break;
@@ -522,12 +659,34 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = zt_lik_zero(yobs(i),dbeta(yobs(i), s1, s2, true));
         SIMULATE{yobs(i) = rbeta(s1, s2);}
         break;
+      case ordbeta_family:
+	// https://github.com/saudiwin/ordbetareg_pack/blob/master/R/modeling.R#L565-L573
+	if (yobs(i) == 0.0) {
+	  tmp_loglik = log1m_inverse_linkfun(eta(i) - psi(0), logit_link);
+	  // std::cout << "zero " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(tmp_loglik) << std::endl;
+	} else if (yobs(i) == 1.0) {
+	  tmp_loglik = log_inverse_linkfun(eta(i) - psi(1), logit_link);
+	  // std::cout << "one " << asDouble(eta(i)) << " " << asDouble(psi(1)) << " " << asDouble(tmp_loglik) << std::endl;
+	} else {
+	  s1 = mu(i)*phi(i);
+	  s2 = (Type(1)-mu(i))*phi(i);
+	  s3 = logspace_sub(log_inverse_linkfun(eta(i) - psi(0), logit_link),
+			    log_inverse_linkfun(eta(i) - psi(1), logit_link));
+	  tmp_loglik = s3 + dbeta(yobs(i), s1, s2, true);
+
+	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(psi(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
+	}
+	break;
       case betabinomial_family:
-        s1 = mu(i)*phi(i); // s1 = mu(i) * mu(i) / phi(i);
-        s2 = (Type(1)-mu(i))*phi(i); // phi(i) / mu(i);
-        tmp_loglik = glmmtmb::dbetabinom(yobs(i), s1, s2, size(i), true);
+        // Transform to logit scale independent of link
+        s3 = logit_inverse_linkfun(eta(i), link); // logit(p)
+        // Was: s1 = mu(i) * phi(i);
+        s1 = log_inverse_linkfun( s3, logit_link) + log(phi(i)); // s1 = log(mu*phi)
+        // Was: s2 = (Type(1) - mu(i)) * phi(i);
+        s2 = log_inverse_linkfun(-s3, logit_link) + log(phi(i)); // s2 = log((1-mu)*phi)
+        tmp_loglik = glmmtmb::dbetabinom_robust(yobs(i), s1, s2, size(i), true);
         SIMULATE {
-          yobs(i) = rbinom(size(i), rbeta(s1, s2) );
+          yobs(i) = rbinom(size(i), rbeta(exp(s1), exp(s2)) );
         }
         break;
       case nbinom1_family:
@@ -541,14 +700,12 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	if (family != truncated_nbinom1_family) {
 		SIMULATE {
-			s1 = mu(i);  
+			s1 = mu(i);
 			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
 			yobs(i) = rnbinom2(s1, s2);
 		}
 	} else {
-          s3 = logspace_add( Type(0), etad(i) );                // log(1. + phi(i)
-          log_nzprob = logspace_sub( Type(0), -mu(i) / phi(i) * s3 ); // 1-prob(0)
-          tmp_loglik -= log_nzprob;
+          tmp_loglik -= log_nzprob(i);
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
           SIMULATE{
             s1 = mu(i)/phi(i); //sz
@@ -567,10 +724,7 @@ Type objective_function<Type>::operator() ()
           yobs(i) = rnbinom2(s1, s2);
         }
         if (family == truncated_nbinom2_family) {
-          // s3 := log( 1. + mu(i) / phi(i) )
-          s3         = logspace_add( Type(0), s1 - etad(i) );
-          log_nzprob = logspace_sub( Type(0), -phi(i) * s3 );
-          tmp_loglik -= log_nzprob;
+          tmp_loglik -= log_nzprob(i);
           tmp_loglik = zt_lik_nearzero( yobs(i), tmp_loglik);
           SIMULATE{
 		  yobs(i) = glmmtmb::rtruncated_nbinom(asDouble(phi(i)), 0, asDouble(mu(i)));
@@ -578,8 +732,7 @@ Type objective_function<Type>::operator() ()
         }
         break;
       case truncated_poisson_family:
-        log_nzprob = logspace_sub(Type(0), -mu(i));  // log(1-exp(-mu(i))) = P(x>0)
-        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob;
+        tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob(i);
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
         SIMULATE{
 		yobs(i) = glmmtmb::rtruncated_poisson(0, asDouble(mu(i)));
@@ -594,9 +747,8 @@ Type objective_function<Type>::operator() ()
       case truncated_genpois_family:
         s1 = mu(i) / sqrt(phi(i)); //theta
         s2 = Type(1) - Type(1)/sqrt(phi(i)); //lambda
-        log_nzprob = logspace_sub(Type(0), -s1);
         tmp_loglik = zt_lik_nearzero(yobs(i),
-		    glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob);
+		    glmmtmb::dgenpois(yobs(i), s1, s2, true) - log_nzprob(i));
         SIMULATE{yobs(i)=glmmtmb::rtruncated_genpois(mu(i) / sqrt(phi(i)), Type(1) - Type(1)/sqrt(phi(i)));}
         break;
       case compois_family:
@@ -608,26 +760,33 @@ Type objective_function<Type>::operator() ()
       case truncated_compois_family:
         s1 = mu(i); //mean
         s2 = 1/phi(i); //nu
-        log_nzprob = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
+        log_nzprob(i) = logspace_sub(Type(0), dcompois2(Type(0), s1, s2, true));
         tmp_loglik = zt_lik_nearzero(yobs(i),
-			    dcompois2(yobs(i), s1, s2, true) - log_nzprob);
+			    dcompois2(yobs(i), s1, s2, true) - log_nzprob(i));
         SIMULATE{yobs(i)=glmmtmb::rtruncated_compois2(mu(i), 1/phi(i));}
         break;
       case tweedie_family:
         s1 = mu(i);  // mean
         s2 = phi(i); // phi
-        s3 = invlogit(thetaf(0)) + Type(1); // p, 1<p<2
+        s3 = invlogit(psi(0)) + Type(1); // p, 1<p<2
         tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
         SIMULATE {
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
         }
       case lognormal_family:
+	// FIXME: documentation??
         s1 = 1 + phi(i)/pow(mu(i),2);
         s2 = log(mu(i)/sqrt(s1));
 	s3 = sqrt(log(s1));
 	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
 	// FIXME: simulate method?
         break;
+      case t_family:
+        s1 = (yobs(i) - mu(i))/phi(i);
+	s2 = exp(psi(0));
+	// since resid was scaled above, density needs to be divided by log(sd) = log(var)/2 = etad(i)/2
+	tmp_loglik = dt(s1, s2, true) - etad(i);
+	break;
       default:
         error("Family not implemented!");
       } // End switch
@@ -649,6 +808,7 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
       tmp_loglik *= weights(i);
+
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }
@@ -674,17 +834,28 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+  vector<matrix<Type> > fact_load(terms.size());
+  for(int i=0; i<terms.size(); i++){
+    // NOTE: Dummy terms reported as empty
+    if(terms(i).blockNumTheta > 0){
+      fact_load(i) = terms(i).fact_load;
+    }
+  }
+
   REPORT(corr);
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(fact_load);
   SIMULATE {
     REPORT(yobs);
     REPORT(b);
     REPORT(bzi);
   }
   // For predict
-  if(ziPredictCode==disp_zipredictcode){ //zi irrelevant; just reusing variable
+  if(ziPredictCode == disp_zipredictcode) {
+    // predict dispersion
+    // zi irrelevant; just reusing variable
     switch(family){
     case gaussian_family:
       mu = sqrt(phi);
@@ -696,31 +867,39 @@ Type objective_function<Type>::operator() ()
       mu = phi;
     }
   } else {
-  if(zi_flag) {
-    switch(ziPredictCode){
-    case corrected_zipredictcode:
-      mu *= (Type(1) - pz); // Account for zi in prediction
-      break;
-    case uncorrected_zipredictcode:
-      //mu = mu; // Predict mean of 'family' //comented out for clang 7.0.0. with no effect
-      break;
-    case prob_zipredictcode:
-      mu = pz; // Predict zi probability
-      break;
-    default:
-      error("Invalid 'ziPredictCode'");
+    if (trunc_Family(family)) {
+      // convert from mean of *un-truncated* to mean of *truncated* distribution
+      mu /= exp(log_nzprob);
     }
-  }}
+    if (zi_flag) {
+      switch(ziPredictCode){
+      case corrected_zipredictcode:
+	mu *= (Type(1) - pz); // Account for zi in prediction
+	break;
+      case uncorrected_zipredictcode:
+	//mu = mu; // Predict mean of 'family' //commented out for clang 7.0.0. with no effect
+	break;
+      case prob_zipredictcode:
+	mu = pz;     // Predicted zi probability
+	eta = etazi; // want to return linear pred for zi
+	break;
+      default:
+	error("Invalid 'ziPredictCode'");
+      }
+    }}
 
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
+  vector<Type> eta_predict = eta(whichPredict);
+
   REPORT(mu_predict);
-  // ADREPORT expensive for long vectors - only needed by predict()
-  // method.
-  if (doPredict) ADREPORT(mu_predict);
+  REPORT(eta_predict);
+  // ADREPORT expensive for long vectors - only needed by predict() method
+  if (doPredict==1) {
+	  ADREPORT(mu_predict);
+  } else if (doPredict == 2) {
+	  ADREPORT(eta_predict);
+  }
 
   return jnll;
 }
-
-
-

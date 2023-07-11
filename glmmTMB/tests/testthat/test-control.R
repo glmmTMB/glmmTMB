@@ -1,8 +1,6 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-context("glmmTMBControl")
-
 ## Some selected L1-distances between two fits
 distFits <- function(fit1, fit2) {
     s1 <- summary(fit1)
@@ -15,7 +13,7 @@ distFits <- function(fit1, fit2) {
 }
 
 test_that("profile method", {
-
+  skip_on_cran()
     myfit <- function(...) {
         glmmTMB(count ~ mined * spp + (1|site),
                 family = poisson,
@@ -49,6 +47,7 @@ test_that("profile method", {
 
 test_that("parallel regions", {
 
+  skip_on_cran()
 
   myfit <- function(...) {
     glmmTMB(count ~ mined * spp + (1|site),
@@ -69,7 +68,9 @@ test_that("parallel regions", {
 
 
   m1 <- capture_time_model( parallel = 1 )
-  m2 <- capture_time_model( parallel = parallel::detectCores()  )
+  ## DON'T grab all cores - bad on large machines
+  ## FIXME: check if parallel setting is persistent ???
+  m2 <- capture_time_model( parallel = min(4, parallel::detectCores()  ))
 
   expect_true( all( distFits(m1[[1]], m2[[1]]) < c(1e-4, 1e-2, 1e-4) ) )
 

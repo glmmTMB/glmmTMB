@@ -12,3 +12,5 @@ cache$
 .RData
 revdep/
 TAGS
+_pkgdown.yaml
+.gitsum/.*$

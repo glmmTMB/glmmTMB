@@ -35,9 +35,9 @@ The value returned varies by family:
          and a shape parameter; sigma is estimated as (1/sqrt(shape)),
          which will typically be close (but not identical to) that estimated
          by \code{stats:::sigma.default}, which uses sqrt(deviance/df.residual)}
-     \item{beta}{returns the value of \eqn{\phi}{phi}, 
+     \item{beta}{returns the value of \eqn{\phi}{phi},
          where the conditional variance is \eqn{\mu(1-\mu)/(1+\phi)}{mu*(1-mu)/(1+phi)}
-         (i.e., increasing \eqn{\phi}{phi} decreases the variance.) 
+         (i.e., increasing \eqn{\phi}{phi} decreases the variance.)
          This parameterization follows Ferrari and Cribari-Neto (2004)
          (and the \code{betareg} package):}
      \item{betabinomial}{This family uses the same parameterization (governing
@@ -46,19 +46,19 @@ The value returned varies by family:
           where the variance is \eqn{\mu\phi^2}{mu*phi^2} (Consul & Famoye 1992)}
      \item{compois}{returns the value of \eqn{1/\nu}{1/nu},
           When \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
-          There is no closed form equation for the variance, but 
+          There is no closed form equation for the variance, but
           it is approximately undersidpersed when \eqn{1/\nu <1}{1/nu <1}
           and approximately oversidpersed when \eqn{1/\nu >1}{1/nu>1}.
           In this implementation, \eqn{\mu}{mu} is exactly the mean (Huang 2017), which
           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
      \item{tweedie}{returns the value of \eqn{\phi}{phi},
           where the variance is \eqn{\phi\mu^p}{phi*mu^p}.
-          The value of \eqn{p} can be extracted using the internal
-          function \code{glmmTMB:::.tweedie_power}.}
+          The value of \eqn{p} can be extracted using \code{family_params}
+     }
 }
 
- The most commonly used GLM families 
- (\code{binomial}, \code{poisson}) have fixed dispersion parameters which are 
+ The most commonly used GLM families
+ (\code{binomial}, \code{poisson}) have fixed dispersion parameters which are
  internally ignored.
 }
 \references{

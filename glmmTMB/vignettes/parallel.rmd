@@ -1,0 +1,100 @@
+---
+title: "Parallel optimization using glmmTMB"
+author: "Nafis Sadat"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Parallel optimization using glmmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+A new, experimental feature of `glmmTMB` is the ability to parallelize the optimization process. This vignette shows an example and timing of a simple model fit with and without parallelizing across threads.
+
+If your OS supports OpenMP parallelization and R was installed using OpenMP, `glmmTMB` will automatically pick up the OpenMP flags from R's `Makevars` and compile the C++ model with OpenMP support. If the flag is not available, then the model will be compiled with serial optimization only.
+
+```{r setup, include=FALSE, message=FALSE}
+library(knitr)
+opts_chunk$set(eval = identical(Sys.getenv("NOT_CRAN"), "true"))
+```
+
+Load packages:
+
+```{r libs,message=FALSE, eval=TRUE}
+library(glmmTMB)
+set.seed(1)
+nt <- min(parallel::detectCores(),5)
+```
+
+Simulate a dataset with large `N`:
+```{r simulate1}
+N <- 3e5
+xdata <- rnorm(N, 1, 2)
+ydata <- 0.3 + 0.4*xdata + rnorm(N, 0, 0.25)
+```
+
+First, we fit the model serially. We can pass the number of parallelizing process we want using the `parallel` parameter in `glmmTMBcontrol`:
+```{r fit1}
+system.time(
+  model1 <- glmmTMB(formula = ydata ~ 1 + xdata,
+                    control = glmmTMBControl(parallel = 1))
+  )
+```
+
+Now, we fit the same model using five threads (or as many as possible - `r nt` in this case):
+
+```{r fit2}
+system.time(
+  model2 <- glmmTMB(formula = ydata ~ 1 + xdata,
+                    control = glmmTMBControl(parallel = nt))
+  )
+```
+
+The speed-up is definitely more visible on models with a much larger number of observations, or in models with random effects.
+
+Here's an example where we have an IID Gaussian random effect. We first simulate the data with 200 groups (our random effect):
+```{r simulate2}
+xdata <- rnorm(N, 1, 2)
+groups <- 200
+data_use <- data.frame(obs = 1:N)
+data_use <- within(data_use,
+{
+  
+  group_var <- rep(seq(groups), times = nrow(data_use) / groups)
+  group_intercept <- rnorm(groups, 0, 0.1)[group_var]
+  xdata <- xdata
+  ydata <- 0.3 + group_intercept + 0.5*xdata + rnorm(N, 0, 0.25)
+})
+```
+
+We fit the random effect model, first with a single thread:
+```{r fit3}
+(t_serial <- system.time(
+  model3 <- glmmTMB(formula = ydata ~ 1 + xdata + (1 | group_var), data = data_use, control = glmmTMBControl(parallel = 1))
+ )
+)
+```
+
+Now we fit the same model, but using `r nt` threads. The speed-up is more noticeable with this model.
+
+```{r fit4}
+(t_parallel <- system.time(
+     update(model3,  control = glmmTMBControl(parallel = nt))
+ )
+)
+```
+
+## Notes on OpenMP support 
+
+From [Writing R Extensions](https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support):
+
+> Apple builds of clang on macOS currently have no OpenMP support, but CRAN binary packages are built with a clang-based toolchain which supports OpenMP. https://www.openmp.org/resources/openmp-compilers-tools/ gives some idea of what compilers support what versions.
+
+> The performance of OpenMP varies substantially between platforms. The Windows implementation has substantial overheads, so is only beneficial if quite substantial tasks are run in parallel. Also, on Windows new threads are started with the default FPU control word, so computations done on OpenMP threads will not make use of extended-precision arithmetic which is the default for the main process. 
+## System information
+
+This report was built using `r nt` parallel threads (on a machine with a total of `r parallel::detectCores()` cores)
+
+```{r SI}
+print(sessionInfo(), locale=FALSE)
+```

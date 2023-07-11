@@ -27,3 +27,16 @@ test_that("extractForm", {
                  list(quote(offset(x))))
 
 })
+
+test_that("get_cor", {
+  set.seed(145820L)
+  n <- 5L
+  S <- cov2cor(crossprod(matrix(rnorm(n * n), n, n)))
+  R <- chol(S)
+  R[] <- R * rep(1 / diag(R), each = n)
+  theta <- R[upper.tri(R)]
+
+  x <- S[lower.tri(S)]
+  y1 <- get_cor(theta)
+  expect_equal(x, y1)
+})

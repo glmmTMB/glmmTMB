@@ -16,13 +16,14 @@ all:
 	make doc-update
 	make build-package
 	make install
+	make upstream-ver-update
 	make pdf
 
 enum-update:: $(PACKAGE)/R/enum.R
 $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo '## Auto generated - do not edit by hand' > $@
 	echo ".valid_link <- c(" >> $@
-	grep _link.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_link//g >> $@
+	grep "_link[ ]*=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_link//g >> $@
 	echo ")" >> $@
 
 	echo ".valid_family <- c(" >> $@
@@ -30,12 +31,17 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 	echo ".valid_covstruct <- c(" >> $@
-	grep _covstruct.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
+	grep "_covstruct *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
 	echo ")" >> $@
 
 	echo ".valid_zipredictcode <- c(" >> $@
 	grep _zipredictcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_zipredictcode//g >> $@
 	echo ")" >> $@
+
+upstream-ver-update: $(PACKAGE)/inst/TMB-version
+$(PACKAGE)/inst/TMB-version:
+	echo "glmmTMB:::checkDepPackageVersion('TMB',write_file=TRUE)" | $(R) --slave
+	mv TMB-version $@
 
 doc-update: $(PACKAGE)/R/*.R
 	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\")))" | $(R) --slave
@@ -45,7 +51,7 @@ doc-update: $(PACKAGE)/R/*.R
 
 ## list of vignette inputs:
 rnw_vig += glmmTMB model_evaluation 
-rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel
+rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel hacking
 
 docdir = $(PACKAGE)/inst/doc
 vigdir = $(PACKAGE)/vignettes
@@ -69,6 +75,11 @@ $(docdir)/%: $(vigdir)/%
 $(vigdir)/model_evaluation.html: $(vigdir)/model_evaluation.rmd texreg
 
 vignette-update: ${docpdf} ${dochtml}
+
+vigdatadir=glmmTMB/inst/vignette_data
+vignette-data: $(vigdatadir)/mcmc.rda $(vigdatadir)/troubleshooting.rda $(vigdatadir)/model_evaluation.rda
+## haven't figured out all of these rules yet
+## R CMD BATCH corresponding *.R files in vigdatadir ...
 
 
 ####
@@ -128,3 +139,6 @@ unlock:
 
 clean:
 	\rm -f install doc-update
+
+revdep_check:
+	Rscript -e 'library("revdepcheck"); revdep_reset("glmmTMB"); revdep_check("glmmTMB", num_workers = 2, timeout = as.difftime(60, units="mins"))'
