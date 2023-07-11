@@ -149,6 +149,9 @@ s2rPred <- function(sm,re,data) {
 } ## s2r
 ```
 
+```{r}
+```
+
 ## ref
 
 Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
