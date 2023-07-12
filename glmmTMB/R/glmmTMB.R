@@ -434,8 +434,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       blockNumTheta <- getVal(condReStruc,"blockNumTheta")
       blockCode <- getVal(condReStruc, "blockCode")
       for (i in 1:length(blockCode)) {
-        if(blockCode[i]==9){
-          theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
+        if(names(match(blockCode[i], .valid_covstruct))=="rr") {
+            theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
         }
         nt <- nt + blockNumTheta[i]
       }
@@ -495,7 +495,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}, possibly augmented with information about \code{mgcv}-style smooth terms}
 ##' \item{ss}{splitform of the formula}
 ##' \item{aa}{additional arguments, used to obtain rank}
 ##' \item{terms}{terms for the fixed effects}
@@ -547,8 +547,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  far up do we have to go with eval.parent? Or do we
             ##  use the environment of the formula?
             if (!is.null(old_smooths)) {
-                smooth_terms2 <- lapply(old_smooths,
+                smooth_terms2 <- lapply(old_smooths[lengths(old_smooths)>0],
                                         function(s) {
+                                            if (is.null(s)) return(NULL)
                                             X <- PredictMat(s$sm, fr)   ## get prediction matrix for new data
                                             ## transform to r.e. parameterization
                                             if (!is.null(s$re$trans.U)) X <- X%*%s$re$trans.U
@@ -558,10 +559,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                             ## re-order penalization index in same way  
                                             pen.ind <- s$re$pen.ind; s$pen.ind[s$re$rind] <- pen.ind[pen.ind>0]
                                             ## start return object...
-                                            s_new <- list(re = list(rand=list()), Xf=X[,which(s$re$pen.ind==0),drop=FALSE])
+                                            s_new <- list(re = list(rand=list(), Xf=X[,which(s$re$pen.ind==0),drop=FALSE]))
                                             for (i in 1:length(s$re$rand)) { ## loop over random effect matrices
                                                 s_new$re$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
-                                                attr(s_new$re$rand[[i]], "s.label") <- attr(s$re$rand[[i]],"s.label")
+                                                attr(s_new$re$rand[[i]], "s.label") <- attr(s$re$rand[[i]], "s.label")
                                             }
                                             names(s_new$re$rand) <- names(s$re$rand)
                                             return(s_new)
@@ -679,10 +680,12 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
             ## one theta value for smooths
             ## FIXME: do we actually use theta values?
+            ## FIXME: can we set 
             augReTrms$theta <- rep(0, ## default value 
                                    sum(lengths(reTrms$theta)) +
                                    length(nonbarpos))
             augReTrms$theta[barpos] <- reTrms$theta
+
             ## only need one 'dummy' factor for all the smooth terms
             ff <- factor(rep(1, nobs))
             augReTrms$flist <- c(reTrms$flist, list(dummy = ff))
