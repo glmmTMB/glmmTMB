@@ -775,8 +775,8 @@ Type objective_function<Type>::operator() ()
         SIMULATE {
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
         }
+	break;
       case lognormal_family:
-	// FIXME: documentation??
 	// parameterized in terms of mean and SD on *data* scale, i.e.
 	// mu = exp(logmu + logsd^2/2)
 	// sd = sqrt((exp(logsd^2)-1)*exp(2*logmu + logsd^2)) = mu*sqrt(exp(logsd^2)-1)
@@ -784,9 +784,11 @@ Type objective_function<Type>::operator() ()
 	// logsd = sqrt(log(1+(sd/mu)^2))
 	// logmu = log(mu)- 
         s1 = log(1 + pow(phi(i)/mu(i), 2.0));
-        s2 = sqrt(s1);
-        s3 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
-	tmp_loglik = dnorm(log(yobs(i)), s3, s2, true) - log(yobs(i));
+	s2 = log(mu(i)) - s1/2;
+        // s2 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
+	s3 = sqrt(s1);
+
+	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
 	// FIXME: simulate method?
         break;
       case t_family:
