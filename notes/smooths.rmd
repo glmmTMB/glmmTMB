@@ -91,7 +91,6 @@ plot(tvec, res[,1], pch = 16, col = res[,2]+1)
 ```{r}
 sm1 <- glmmTMB(val ~ s(time), data = ndat, REML = TRUE, start = list(theta = 5))
 names(sm1$modelInfo$reTrms$cond$smooth_info[[1]])
-
 predict(sm1, newdata = ndat)
 ```
 
@@ -149,8 +148,10 @@ s2rPred <- function(sm,re,data) {
 } ## s2r
 ```
 
-```{r}
-```
+What is the structure of `smooth_info`? Inside (e.g.) `sm1$modelInfo$reTrms$cond$smooth_info$re`
+we have `$rand$Xr` (component of Z matrix) and `$Xf` (component of X matrix); there may (??) be multiple `$Xr` if we have a `by` term??
+
+Code in `getXReTrms` for prediction needs to replicate this structure ...
 
 ## ref
 
