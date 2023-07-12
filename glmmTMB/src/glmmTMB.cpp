@@ -785,8 +785,8 @@ Type objective_function<Type>::operator() ()
 	// logmu = log(mu)- 
         s1 = log(1 + pow(phi(i)/mu(i), 2.0));
         s2 = sqrt(s1);
-	s3 = log(mu(i)) - s1/2;
-	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
+        s3 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
+	tmp_loglik = dnorm(log(yobs(i)), s3, s2, true) - log(yobs(i));
 	// FIXME: simulate method?
         break;
       case t_family:

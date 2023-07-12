@@ -14,6 +14,7 @@
 \alias{beta_family}
 \alias{betabinomial}
 \alias{tweedie}
+\alias{lognormal}
 \alias{ziGamma}
 \alias{t_family}
 \alias{ordbeta}
@@ -42,6 +43,8 @@ beta_family(link = "logit")
 betabinomial(link = "logit")
 
 tweedie(link = "log")
+
+lognormal(link = "log")
 
 ziGamma(link = "inverse")
 

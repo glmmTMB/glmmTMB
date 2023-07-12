@@ -450,15 +450,14 @@ test_that("link info added to family", {
 test_that("lognormal family", {
     set.seed(102)
     n <- 2000
-    cc <- c(mean=1,sd=2) ## log-scale mean/sd
-    x <- rnorm(n)
-    dd <- data.frame(x,y=rlnorm(n, meanlog=cc[1]+cc[2]*x, sdlog=1))
-    ## m1 <- glmmTMB(y~x, family="lognormal", data=dd, start = list(beta = c(1, 2)), )
-    m2 <- glmmTMB(log(y) ~ x, data = dd)
-    ## NOT WORKING YET!
-    ## expect_equal(logLik(m1), logLik(m2)-sum(log(dd$y)))
-    ## transform
-    ## mean = exp(mu+sd^2/2), var = (exp(sd^2)-1)*exp(2*mu+sd^2)
+    m <-.4; v <-.2 # log-scale mean and var
+    x <- rnorm(n, mean=m, sd=sqrt(v))
+    dd <- data.frame(y=exp(x))
+    m1 <- glmmTMB(y~1, family="lognormal", data=dd)
+    m2 <- glmmTMB(log(y) ~ 1, data = dd)
+    expect_equal(logLik(m1), logLik(m2)-sum(log(dd$y)))
+    expect_equal(unname(fixef(m1)$cond), m+v/2, tol=1e-2)
+    expect_equal(sigma(m1), sqrt((exp(v)-1)*exp(2*m+v)), tol=1e-1)
 })
 
 test_that("t-distributed response", {
