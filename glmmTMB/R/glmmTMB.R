@@ -558,13 +558,13 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                             ## re-order penalization index in same way  
                                             pen.ind <- s$re$pen.ind; s$pen.ind[s$re$rind] <- pen.ind[pen.ind>0]
                                             ## start return object...
-                                            snew <- list(re = list(rand=list()), Xf=X[,which(s$re$pen.ind==0),drop=FALSE])
+                                            s_new <- list(re = list(rand=list()), Xf=X[,which(s$re$pen.ind==0),drop=FALSE])
                                             for (i in 1:length(s$re$rand)) { ## loop over random effect matrices
-                                                ss$re$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
-                                                attr(ss$re$rand[[i]], "s.label") <- attr(s$re$rand[[i]],"s.label")
+                                                s_new$re$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
+                                                attr(s_new$re$rand[[i]], "s.label") <- attr(s$re$rand[[i]],"s.label")
                                             }
-                                            names(r$rand) <- names(s$re$rand)
-                                            return(r)
+                                            names(s_new$re$rand) <- names(s$re$rand)
+                                            return(s_new)
                                         })
             } else {
                 smooth_terms2 <- lapply(smooth_terms,
