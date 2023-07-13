@@ -783,10 +783,10 @@ Type objective_function<Type>::operator() ()
 	// 1+(sd/mu)^2 = exp(logsd^2)
 	// logsd = sqrt(log(1+(sd/mu)^2))
 	// logmu = log(mu)- 
-        s1 = log(1 + pow(phi(i)/mu(i), 2.0));
-	s2 = log(mu(i)) - s1/2;
+        s1 = log1p(pow(phi(i)/mu(i), 2.0)); //log1p(x) = log(1 + x), log-scale var
+        s2 = log(mu(i)) - s1/2; //log-scale mean
         // s2 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
-	s3 = sqrt(s1);
+        s3 = sqrt(s1); //log-scale sd
 
 	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
 	// FIXME: simulate method?
