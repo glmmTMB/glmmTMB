@@ -434,7 +434,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       blockNumTheta <- getVal(condReStruc,"blockNumTheta")
       blockCode <- getVal(condReStruc, "blockCode")
       for (i in 1:length(blockCode)) {
-        if(names(match(blockCode[i], .valid_covstruct))=="rr") {
+        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") {
             theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
         }
         nt <- nt + blockNumTheta[i]

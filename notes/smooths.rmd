@@ -88,17 +88,28 @@ we are fitting random effects on a raw scale rather than relative to SD?  Can we
 starting value for theta in these cases? 
 
 ```{r nile2}
-res <- t(thval <- sapply(smlist, \(x) c(getME(x, "theta"), x$sdr$pdHess)))
-plot(tvec, res[,1], pch = 16, col = res[,2]+1, cex = 3)
+res <- t(thval <- sapply(smlist,
+                         \(x) c(getME(x, "theta"), x$sdr$pdHess)))
+pfun <- function() {
+    par(las = 1)
+    plot(tvec, res[,1], pch = 16, col = res[,2]+1, cex = 3,
+         xlab  = "starting theta value",
+         ylab = "theta estimate")
+    legend("right",
+           pch = 16,
+           col = 1:2,
+           legend = c("non-PD hess", "OK"))
+}
+pfun()
+png("spline_start.png")
+pfun()
+dev.off()
 ```
 
-```{r}
+```{r nilefit}
 sm1 <- glmmTMB(val ~ s(time), data = ndat, REML = TRUE, start = list(theta = 5))
 predict(sm1, newdata = ndat)
 stopifnot(all.equal(predict(sm1), predict(sm1, newdata = ndat)))
-```
-
-```{r}
 stopifnot(all.equal(c(unname(predict(sm0))), predict(sm1)))
 ```
 
