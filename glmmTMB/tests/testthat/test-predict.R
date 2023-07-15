@@ -478,4 +478,10 @@ test_that("nzprob computed for non-fast pred", {
                      predict(m2, type = "response", fast = FALSE))
 })
 
-                 
+test_that("pop-level prediction with missing grouping vars (GH #923)",
+{
+    expect_equal(predict(fm2, re.form = NA),
+                 predict(fm2, newdata = sleepstudy[c("Reaction", "Days")], re.form = NA))
+})
+
+    

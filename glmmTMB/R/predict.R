@@ -253,13 +253,25 @@ predict.glmmTMB <- function(object,
   ## This could be further improved by making RHSForm()
   ##  use delete.response() -- handles dropping response from predvars
   ## Would still need careful testing etc..
+
        
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
     newFr <- object$frame
   } else {
-    mf$data <- newdata
     mf$na.action <- na.action
+    if (pop_pred) {
+        ## add missing components in newdata
+        ## (placeholder only to avoid error in model frame construction:
+        ##  value shouldn't matter since all b values will be fixed to NA anyway ...)
+        for (component in c("cond", "zi")) {
+            f <- names(object$modelInfo$reTrms[[component]]$flist)
+            for (fnew in setdiff(f, names(newdata))) {
+                newdata[[fnew]] <- factor(NA)
+            }
+        }
+        mf$data <- newdata
+    }
     newFr <- eval.parent(mf)
   }
 
