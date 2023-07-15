@@ -268,8 +268,8 @@ predict.glmmTMB <- function(object,
         for (fnew in setdiff(req_vars, names(newdata))) {
             newdata[[fnew]] <- NA
         }
-        mf$data <- newdata
     }
+    mf$data <- newdata
     newFr <- eval.parent(mf)
   }
 
