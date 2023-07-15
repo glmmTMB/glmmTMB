@@ -264,11 +264,9 @@ predict.glmmTMB <- function(object,
         ## add missing components in newdata
         ## (placeholder only to avoid error in model frame construction:
         ##  value shouldn't matter since all b values will be fixed to NA anyway ...)
-        for (component in c("cond", "zi")) {
-            f <- names(object$modelInfo$reTrms[[component]]$flist)
-            for (fnew in setdiff(f, names(newdata))) {
-                newdata[[fnew]] <- factor(NA)
-            }
+        req_vars <- all.vars(RHSForm(formula(object, reOnly = TRUE)))
+        for (fnew in setdiff(req_vars, names(newdata))) {
+            newdata[[fnew]] <- NA
         }
         mf$data <- newdata
     }
