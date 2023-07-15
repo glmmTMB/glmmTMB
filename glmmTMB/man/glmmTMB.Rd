@@ -151,7 +151,6 @@ sm1 <- glmmTMB(val ~ s(time), data = ndat,
                REML = TRUE, start = list(theta = 5))
 plot(val ~ time, data = ndat)
 lines(ndat$time, predict(sm1))
-lines(ndat$time, predict(sm2))
 }
 }
 \references{
