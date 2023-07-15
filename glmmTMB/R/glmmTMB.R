@@ -1068,7 +1068,6 @@ binomialType <- function(x) {
 ##'                REML = TRUE, start = list(theta = 5))
 ##' plot(val ~ time, data = ndat)
 ##' lines(ndat$time, predict(sm1))
-##' lines(ndat$time, predict(sm2))
 ##' }
 glmmTMB <- function(
     formula,
