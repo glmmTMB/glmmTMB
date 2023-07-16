@@ -1310,7 +1310,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##   assign here or later ...
     ## aa$assign <- aa$assign[to_keep]
     ## aa$assign.dropped <- aa$assign[to_drop]  
-    for (nm in setdiff(names(aa), c("dim", "dimnames"))) {
+    for (nm in c("assign", "contrasts")) {
         attr(X, nm) <- aa[[nm]]
     }
     # if(why_dropped){
