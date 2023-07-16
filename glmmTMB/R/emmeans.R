@@ -116,6 +116,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
             grid[[nm]] <- NA
         tmp <- predict(object, newdata = grid, type = ptype, re.form = NA, 
                        se.fit = TRUE, cov.fit = TRUE)
+        browser()
         bhat <- tmp$fit
         X <- diag(1, length(bhat))
         V <- tmp$cov.fit
@@ -131,7 +132,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
                       disp = list(link = "log"))
         misc <- emmeans::.std.link.labels(fam, misc)
         if (missing(vcov.)) {
-            V <- as.matrix(vcov(object)[[component]])
+            V <- as.matrix(vcov(object, include_nonest = FALSE)[[component]])
         }
         else {
             V <- vcov.
@@ -139,7 +140,9 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         contrasts <- attr(model.matrix(object, component = component), "contrasts")
         m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
         X <- model.matrix(trms, m, contrasts.arg = contrasts)
-        bhat <- fixef(object)[[component]]
+        ## keep only estimated components ...
+        X <- X[, colnames(V)]
+        bhat <- na.omit(fixef(object)[[component]])
         if (length(bhat) < ncol(X)) {
             kept <- match(names(bhat), dimnames(X)[[2]])
             bhat <- NA * X[1, ]

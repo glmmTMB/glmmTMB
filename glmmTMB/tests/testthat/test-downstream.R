@@ -3,6 +3,20 @@ stopifnot(require("testthat"),
 
 data(sleepstudy,package="lme4")
 ## m <- load(system.file("test_data","models.rda",package="glmmTMB", mustWork=TRUE))
+
+## from GH 920
+set.seed(101)
+spcount <- rpois(120, rnorm(120, mean = rep(c(1.8, 2, 2.3), each = 40),
+                            sd = 0.4))
+spdat <- data.frame(species = factor(rep(1:3, each = 40)),
+                  pop = factor(rep(c(1, 2, 11, 13, 21, 24), each = 20)),
+                  count = spcount)
+
+nested <- glmmTMB(count ~ species/pop, family = poisson,
+                  data=spdat, control = glmmTMBControl(rank_check = "adjust"))
+## equivalent glm() fit for comparison
+nested0 <- glm(count ~ species + species/pop, family = poisson, data=spdat)
+
 if (require(emmeans)) {
   test_that("emmeans", {
     skip_on_cran()
@@ -51,7 +65,17 @@ if (require(emmeans)) {
     expect_is(e1, "emmGrid")
   }
   ) ## test_that
-}
+
+  test_that("joint_test with non-estimable terms", {
+      
+      expect_equal(
+          c(suppressMessages(joint_tests(nested0))),
+          c(suppressMessages(joint_tests(nested))),
+                   tolerance = 1e-5)
+
+  }
+  )
+}  ## if require(emmeans)
 
 
 if (require(effects)) {

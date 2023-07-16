@@ -1303,8 +1303,16 @@ glmmTMBControl <- function(optCtrl=NULL,
       to_keep <- which(R_diag >= tol)
       to_drop <- which(R_diag < tol)
     }
-    # drop columns
+    ## drop columns; save and restore attributes (ugh)
+    aa <- attributes(X)
     X <- X[,to_keep,drop=FALSE]
+    ## ??? FIXME: not sure whether it's best to drop elements of
+    ##   assign here or later ...
+    ## aa$assign <- aa$assign[to_keep]
+    ## aa$assign.dropped <- aa$assign[to_drop]  
+    for (nm in setdiff(names(aa), c("dim", "dimnames"))) {
+        attr(X, nm) <- aa[[nm]]
+    }
     # if(why_dropped){
     # #   TODO: add message describing WHY columns were dropped
     # #   current idea is to follow process outlined at https://stackoverflow.com/a/74103797/20267047 or derivative thereof
