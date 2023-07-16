@@ -141,7 +141,8 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
         X <- model.matrix(trms, m, contrasts.arg = contrasts)
         ## keep only estimated components ...
-        X <- X[, colnames(V)]
+        ## (need to strip component prefix ...)
+        X <- X[, gsub("^.*~", "", colnames(V))]
         bhat <- na.omit(fixef(object)[[component]])
         if (length(bhat) < ncol(X)) {
             kept <- match(names(bhat), dimnames(X)[[2]])
