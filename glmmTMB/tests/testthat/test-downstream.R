@@ -73,6 +73,7 @@ if (require(emmeans)) {
           c(suppressMessages(joint_tests(nested))),
                    tolerance = 1e-5)
 
+      ## joint_tests(nested, component = "cmean")
   }
   )
 }  ## if require(emmeans)

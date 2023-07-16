@@ -116,7 +116,6 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
             grid[[nm]] <- NA
         tmp <- predict(object, newdata = grid, type = ptype, re.form = NA, 
                        se.fit = TRUE, cov.fit = TRUE)
-        browser()
         bhat <- tmp$fit
         X <- diag(1, length(bhat))
         V <- tmp$cov.fit
