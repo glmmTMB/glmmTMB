@@ -184,7 +184,7 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
 }
 
 Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
-                              component="cond", include.rankdef.cols = FALSE, ...){
+                              component="cond", include.rankdef.cols = include.rankdef.cols, ...){
     intercept <- has.intercept(mod)
     p <- length(fixef(mod)[[component]])
     I.p <- diag(p)
@@ -196,9 +196,12 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
     not.aliased <- !is.na(fixef(mod)[[component]])
     if (!singular.ok && !all(not.aliased))
         stop("there are aliased coefficients in the model")
-    if (!missing(vcov.)){
+    if (missing(vcov.)){
         vcov. <- vcov(mod, complete=FALSE)[[component]]
     }
+    vcov. <- vcov.[not.aliased, not.aliased]
+    assign <- attr(model.matrix(mod, component=component, include_rankdef = include.rankdef.cols), "assign")
+    assign[!not.aliased] <- NA
     for (term in seq_len(n.terms)){
         subs <- which(assign == term - intercept)
         hyp.matrix <- I.p[subs,,drop=FALSE]
