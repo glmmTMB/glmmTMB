@@ -478,4 +478,15 @@ test_that("nzprob computed for non-fast pred", {
                      predict(m2, type = "response", fast = FALSE))
 })
 
-                 
+test_that("pop-level prediction with missing grouping vars (GH #923)",
+{
+    fm20 <- glmmTMB(Reaction ~ 1 + (Days|Subject), sleepstudy)
+    predict(fm20, re.form = NA, newdata = data.frame(matrix(ncol = 0, nrow=length(sleepstudy))))
+    expect_equal(predict(fm2, re.form = NA),
+                 predict(fm2, newdata = sleepstudy[c("Days")], re.form = NA))
+    fmnasty <- glmmTMB(Reaction ~ 1 + (log(Days+1)|Subject), sleepstudy)
+    expect_equal(predict(fmnasty, re.form = NA),
+                 predict(fmnasty, newdata = data.frame(matrix(ncol=0, nrow = nrow(sleepstudy))), re.form = NA))
+})
+
+    
