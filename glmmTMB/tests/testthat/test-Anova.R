@@ -96,7 +96,15 @@ if (require(car) && getRversion()>="3.6.0") {
                      ## FIXME: tolerance is larger than I'd like but
                      ## not big enough to be a real bug ???
                      tolerance = 0.015)
-    
+        
+
+        ## not even sure if this is right ... ???
+        ## they match (approximately) for species:pop
+        ## a1 gives values for Intercept and species
+        ## a2 gives 0 Df for species comparison
+        ## a1 <- Anova(nested, type = "3", singular.ok = TRUE)
+        ## a2 <- Anova(nested0, type = "3", singular.ok = TRUE)
+
 })
 
 }  ## car and R > 3.6.0
