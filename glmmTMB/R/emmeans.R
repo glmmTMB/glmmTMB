@@ -93,7 +93,8 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 
 
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, 
-                               component = c("cond", "zi", "disp", "response", "cmean"), vcov., ...) 
+                               component = c("cond", "zi", "disp", "response", "cmean"),
+                               vcov., ...) 
 {
     component <- match.arg(component)
     L <- list(...)
@@ -121,10 +122,10 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         V <- tmp$cov.fit
         # We expect predict() to return NA for each non-estimable case
         nbasis <- estimability::all.estble
-        if(any(is.na(bhat)))
+        if (any(is.na(bhat))) {
             nbasis <- diag(1, ncol = length(bhat))[, is.na(bhat)]
-    }
-    else { # component %in% c("cond", "zi", "disp")
+        }
+    } else { # component %in% c("cond", "zi", "disp")
         fam <- switch(component, 
                       cond = family(object), 
                       zi = list(link = "logit"), 
@@ -139,19 +140,11 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         contrasts <- attr(model.matrix(object, component = component), "contrasts")
         m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
         X <- model.matrix(trms, m, contrasts.arg = contrasts)
-        ## keep only estimated components ...
-        ## (need to strip component prefix ...)
-        X <- X[, gsub("^.*~", "", colnames(V))]
-        bhat <- na.omit(fixef(object)[[component]])
-        if (length(bhat) < ncol(X)) {
-            kept <- match(names(bhat), dimnames(X)[[2]])
-            bhat <- NA * X[1, ]
-            bhat[kept] <- fixef(object)[[component]]
-            modmat <- model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
+        bhat <- fixef(object)[[component]]
+        if (any(is.na(bhat))) {
+            modmat <- model.matrix(trms, model.frame(object), 
+                                   contrasts.arg = contrasts)
             nbasis <- estimability::nonest.basis(modmat)
-        }
-        else {
-            nbasis <- estimability::all.estble
         }
     }
     namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
