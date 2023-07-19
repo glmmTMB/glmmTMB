@@ -332,6 +332,9 @@ predict.glmmTMB <- function(object,
   ## 'mkTMBStruc' further down.
   yobs <- augFr[[names(omi$respCol)]]
 
+   ## extract smooth information
+   ## NULL if missing
+   old_smooths <- lapply(omi$reTrms, function(x) x[["smooth_info"]])
 
   ## need eval.parent() because we will do eval(mf) down below ...
   TMBStruc <-
@@ -353,7 +356,9 @@ predict.glmmTMB <- function(object,
                                whichPredict=w,
                                REML=omi$REML,
                                map=omi$map,
-                               sparseX=omi$sparseX))
+                               sparseX=omi$sparseX,
+                               old_smooths = old_smooths)
+                    )
 
     ## drop rank-deficient columns if necessary
     for (nm in c("", "zi", "d")) {

@@ -178,8 +178,7 @@ startParams <- function(parameters,
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
       nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
-      ## FIXME: replace hard-coded 9 with .valid_covstruct["rr"] ?
-      if (condReStruc[[j]]$blockCode == 9) {
+      if (condReStruc[[j]]$blockCode == .valid_covstruct[["rr"]]) {
         start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
         start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
         brrp <- brrp + nb; trrp <- trrp + nt
@@ -229,6 +228,8 @@ startParams <- function(parameters,
 ##' @param doPredict flag to enable sds of predictions
 ##' @param whichPredict which observations in model frame represent predictions
 ##' @param sparseX see \code{\link{glmmTMB}}
+##' @param old_smooths (optional) smooth components from a previous fit: used when constructing a new model structure for prediction
+##' from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -251,11 +252,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        start=NULL,
                        map=NULL,
                        sparseX=NULL,
-                       control=glmmTMBControl()) {
+                       control=glmmTMBControl(),
+                       old_smooths = NULL) {
 
-  ## handle family specified as naked list
-  ## if specified as character or function, should have been converted
-  ## to a list with class "family" above ...
 
   if (is.null(sparseX)) sparseX <- logical(0)
   for (component in c("cond", "zi", "disp")) {
@@ -269,6 +268,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## FIXME: (1) should use proper tryCatch below
   if (!is(family,"family")) {
       ## if family specified as list
+      ## if specified as character or function, should have been converted
+      ## to a list with class "family" upstream ...
+
       if (is.list(family)) {
           warning("specifying ",sQuote("family")," as a plain list is deprecated")
       }
@@ -313,8 +315,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
-    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]])
-    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]])
+    ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
+                            old_smooths = old_smooths$cond)
+    ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
+                            old_smooths = old_smooths$zi)
     dispList  <- getXReTrms(dispformula, mf, fr,
                             ranOK=FALSE, type="dispersion",
                             contrasts=contrasts, sparse=sparseX[["disp"]])
@@ -429,8 +434,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       blockNumTheta <- getVal(condReStruc,"blockNumTheta")
       blockCode <- getVal(condReStruc, "blockCode")
       for (i in 1:length(blockCode)) {
-        if(blockCode[i]==9){
-          theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
+        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") {
+            theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
         }
         nt <- nt + blockNumTheta[i]
       }
@@ -486,10 +491,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @param type label for model type
 ##' @param contrasts a list of contrasts (see ?glmmTMB)
 ##' @param sparse (logical) return sparse model matrix?
+##' @param old_smooths smooth information from a prior model fit (for prediction)
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
+##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}, possibly augmented with information about \code{mgcv}-style smooth terms}
 ##' \item{ss}{splitform of the formula}
 ##' \item{aa}{additional arguments, used to obtain rank}
 ##' \item{terms}{terms for the fixed effects}
@@ -499,7 +505,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom lme4 findbars nobars
-getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=FALSE) {
+##' @importFrom mgcv smoothCon smooth2random s PredictMat
+getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
+                       contrasts, sparse=FALSE, old_smooths = NULL) {
+
+    has_re <- !is.null(findbars_x(formula))
+    has_smooths <- anySpecial(formula, specials = "s")
+
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
     fixedform <- formula
@@ -523,6 +535,62 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         X <- matrix(ncol=0, nrow=nobs)
         offset <- rep(0,nobs)
     } else {
+        ## check for mgcv-style smooth terms, adjust accordingly ...
+        if (has_smooths) {
+
+            ## extract s() terms
+            smooth_terms <- findbars_x(fixedform, default.special = NULL, target = "s")
+            ## *remove* s() terms from fixed formula
+            fixedform <- noSpecials(fixedform, specials = "s")
+
+            ## FIXME: could be fragile about eval environments (how
+            ##  far up do we have to go with eval.parent? Or do we
+            ##  use the environment of the formula?
+            if (!is.null(old_smooths)) {
+                smooth_terms2 <- lapply(old_smooths[lengths(old_smooths)>0],
+                                        function(s) {
+                                            if (is.null(s)) return(NULL)
+                                            X <- PredictMat(s$sm, fr)   ## get prediction matrix for new data
+                                            ## transform to r.e. parameterization
+                                            if (!is.null(s$re$trans.U)) X <- X%*%s$re$trans.U
+                                            X <- t(t(X)*s$re$trans.D)
+                                            ## re-order columns according to random effect re-ordering...
+                                            X[,s$re$rind] <- X[,s$re$pen.ind!=0] 
+                                            ## re-order penalization index in same way  
+                                            pen.ind <- s$re$pen.ind; s$pen.ind[s$re$rind] <- pen.ind[pen.ind>0]
+                                            ## start return object...
+                                            s_new <- list(re = list(rand=list(), Xf=X[,which(s$re$pen.ind==0),drop=FALSE]))
+                                            for (i in 1:length(s$re$rand)) { ## loop over random effect matrices
+                                                s_new$re$rand[[i]] <- X[, which(pen.ind==i), drop=FALSE]
+                                                attr(s_new$re$rand[[i]], "s.label") <- attr(s$re$rand[[i]], "s.label")
+                                            }
+                                            names(s_new$re$rand) <- names(s$re$rand)
+                                            return(s_new)
+                                        })
+            } else {
+                smooth_terms2 <- lapply(smooth_terms,
+                    function(tt) {
+                        ## ‘smoothCon’ returns a list of smooths because factor ‘by’
+                        ## variables result in multiple copies of a smooth, each multiplied
+                        ## by the dummy variable associated with one factor level.
+
+                        sm <- eval(bquote(mgcv::smoothCon(.(tt),
+                                                          ## don't want intercept etc ...
+                                                          absorb.cons = TRUE,
+                                                          data=mf$data)))
+                        if (length(sm)>1) stop("can't handle 'by' arguments in smooths yet")
+                        sm <- sm[[1]]
+                        list(sm = sm,
+                             ## FIXME: will vnames ("a vector of names
+                             ## to avoid as dummy variable names in the
+                             ## random effects form") ever be non-empty?
+                             re = mgcv::smooth2random(sm, vnames = "", type = 2))
+                    })
+                    
+            } ## create (new) smooth terms
+        } ## has_smooths
+
+        
         tt <- terms(fixedform)
         pv <- attr(mf$formula,"predvars")
         attr(tt, "predvars") <- fix_predvars(pv,tt)
@@ -536,6 +604,16 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
+        if (has_smooths) {
+            if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
+            for (s in smooth_terms2) {
+                cnm <- colnames(X)
+                snm <- attr(s$re$rand$Xr, "s.label")
+                X <- cbind(X, s$re$Xf)
+                colnames(X) <- c(cnm, paste0(snm, seq.int(ncol(s$re$Xf))))
+            }
+        }
+        
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
         if (inForm(fixedform,quote(offset))) {
@@ -557,7 +635,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
     ## important to COPY formula (and its environment)?
     ranform <- formula
 
-    if (is.null(findbars_x(ranform))) {
+    if (!has_re && !has_smooths) {
         reTrms <- reXterms <- NULL
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         aa <- integer(0) #added for rr to get rank
@@ -568,11 +646,80 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
         if (!ranOK) stop("no random effects allowed in ", type, " term")
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
-        mf$formula <- ranform
-        reTrms <- mkReTrms(no_specials(findbars_x(formula)),
-                           fr, reorder.terms=FALSE)
+        if (has_re) {
+            mf$formula <- ranform
+            reTrms <- mkReTrms(no_specials(findbars_x(formula)),
+                               fr, reorder.terms=FALSE)
+        } else {
+            ## dummy elements
+            reTrms <- list(Ztlist = list(), flist = list(), cnms = list(),
+                           theta = list())
+        }
 
+        ## formula <- Reaction ~ s(Days) + (1|Subject)
         ss <- splitForm(formula)
+
+        ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
+        ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
+        ## "theta", "Lind", "lower", "Lambdat", "nl" (?) are lme4-specific
+
+        ## need to fill in smooth terms in **correct locations**
+        ## do we need to reconstitute
+        ## post-process mkReTrms to add smooths (incorporate in mkReTrms?)
+        if (has_smooths) {
+            ns <- length(ss$reTrmClasses)
+            augReTrms <- list(Ztlist = vector("list", ns),
+                              flist = vector("list", ns),
+                              cnms = vector("list", ns),
+                              smooth_info = vector("list", ns))
+            barpos <- which(ss$reTrmClasses != "s")
+            nonbarpos <- which(ss$reTrmClasses == "s")
+            for (p in c("Ztlist", "flist", "cnms")) {
+                augReTrms[[p]][barpos] <- reTrms[[p]]
+                names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
+            }
+            ## one theta value for smooths
+            ## FIXME: do we actually use theta values?
+            ## FIXME: can we set 
+            augReTrms$theta <- rep(0, ## default value 
+                                   sum(lengths(reTrms$theta)) +
+                                   length(nonbarpos))
+            augReTrms$theta[barpos] <- reTrms$theta
+
+            ## only need one 'dummy' factor for all the smooth terms
+            ff <- factor(rep(1, nobs))
+            augReTrms$flist <- c(reTrms$flist, list(dummy = ff))
+            avec <- rep(NA_integer_, ns)
+            avec[barpos] <- attr(reTrms$flist, "assign")
+            ## mkReTrms returns more than we need (some is for lme4)
+            ##  ... which bits are actually used hereafter?
+            avec[nonbarpos] <-  length(augReTrms$flist)
+            attr(augReTrms$flist, "assign") <- avec
+            for (i in seq_along(smooth_terms2)) {
+                s <- smooth_terms2[[i]]
+                pos <- nonbarpos[i]
+                Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
+                npar <- nrow(Zt)
+                augReTrms$Ztlist[[pos]] <- Zt
+                nm <- attr(s$re$rand$Xr, "s.label")
+                names(augReTrms$Ztlist)[pos] <- nm
+                ## cnms
+                augReTrms$cnms[[pos]] <- paste0("dummy", seq(npar))
+                names(augReTrms$cnms)[pos] <- "dummy"
+            }
+            ## store smooth info in relevant spots
+            for (i in seq_along(nonbarpos)) {
+                augReTrms$smooth_info[[i]] <- smooth_terms2[[nonbarpos[i]]]
+            }
+            ## reconstitute other pieces
+            augReTrms$Zt <- do.call(rbind, augReTrms$Zt)
+            augReTrms$Gp <- cumsum(c(0, vapply(augReTrms$Ztlist, nrow, 0L)))
+
+            ##
+            reTrms <- augReTrms
+        }
+
+        ss$reTrmClasses[ss$reTrmClasses == "s"] <- "homdiag"
         # FIX ME: migrate this (or something like it) down to reTrms,
         ##    allow for more different covstruct types that have additional arguments
         ##  e.g. phylo(.,tree); fixed(.,Sigma)
@@ -617,7 +764,12 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="", contrasts, sparse=F
             tt
         }
 
-        reXterms <- lapply(ss$reTrmFormulas, termsfun)
+        ## HACK: should duplicate 'homdiag' definition, keep it as 's' (or call it 'mgcv_smooth")
+        ##  so we can recognize it.
+        ## Here, we're using the fact that the ...AddArgs stuff is still in an unevaluated form
+        reXterms <- Map(function(f, a) {
+            if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
+        }, ss$reTrmFormulas, ss$reTrmAddArgs)
 
         ss <- unlist(ss$reTrmClasses)
 
@@ -714,23 +866,23 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
         blkrank <- aa
         covCode <- .valid_covstruct[ss]
-
+        
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
-                   "0" = blksize, # (heterogenous) diag
-                   "1" = blksize * (blksize+1) / 2, # us
-                   "2" = blksize + 1, # cs
-                   "3" = 2,  # ar1
-                   "4" = 2,  # ou
-                   "5" = 2,  # exp
-                   "6" = 2,  # gau
-                   "7" = 3,  # mat
-                   "8" = 2 * blksize - 1, # toep
-                   "9" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "10" = 1  ## (homogeneous) diag
+                   "diag" = blksize, # (heterogenous) diag
+                   "us" = blksize * (blksize+1) / 2,
+                   "cs" = blksize + 1,
+                   "ar1" = 2,
+                   "ou" = 2,
+                   "exp" = 2,
+                   "gau" = 2,
+                   "mat" = 3, 
+                   "toep" = 2 * blksize - 1,
+                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+                   "homdiag" = 1  ## (homogeneous) diag
                    )
         }
-        blockNumTheta <- mapply(parFun, covCode, blksize, blkrank, SIMPLIFY=FALSE)
+        blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
 
         ans <- list()
         for (i in seq_along(ss)) {
@@ -774,8 +926,9 @@ usesDispersion <- function(x) {
 .classicDispersionFamilies <- c("gaussian","Gamma","t")
 
 ## select only desired pieces from results of getXReTrms
-stripReTrms <- function(xrt, whichReTrms = c("cnms","flist"), which="terms") {
-  c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
+stripReTrms <- function(xrt, whichReTrms = c("cnms","flist","smooth_info"), which="terms") {
+    whichReTrms <- intersect(whichReTrms, names(xrt$reTrms)) ## not all models will have smooth_info
+    c(xrt$reTrms[whichReTrms],setNames(xrt[which],which))
 }
 
 #.okWeightFamilies <- c("binomial", "betabinomial")
@@ -845,6 +998,7 @@ binomialType <- function(x) {
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
+##' \item Smooths taken from the \code{mgcv} package can be included in \code{glmmTMB} formulas using \code{s}; these terms will appear as additional components in both the fixed and the random-effects terms. This functionality is \emph{experimental} for now. We recommend using \code{REML=TRUE}. See \code{\link[mgcv]{s}} for details of specifying smooths (and \code{\link[mgcv]{smooth2random}} and the appendix of Wood (2004) for technical details).
 ##' }
 ##'
 ##' @note
@@ -855,6 +1009,8 @@ binomialType <- function(x) {
 ##' Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. \emph{Journal of Statistical Software}, \bold{70}, 1--21.
 ##'
 ##' Millar, R. B. (2011). \emph{Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.} Wiley, New York.
+##' Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \url{https://doi.org/10.1198/016214504000000980}
+
 ##' @useDynLib glmmTMB
 ##' @importFrom stats update
 ##' @export
@@ -904,6 +1060,14 @@ binomialType <- function(x) {
 ##' m1_map <- update(m1, map=list(theta=factor(NA)),
 ##'                  start=list(theta=log(10)))
 ##' VarCorr(m1_map)
+##'
+##' ## smooth terms
+##' data("Nile")
+##' ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
+##' sm1 <- glmmTMB(val ~ s(time), data = ndat,
+##'                REML = TRUE, start = list(theta = 5))
+##' plot(val ~ time, data = ndat)
+##' lines(ndat$time, predict(sm1))
 ##' }
 glmmTMB <- function(
     formula,
@@ -1012,6 +1176,7 @@ glmmTMB <- function(
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
                names(mf), 0L)
+    ## FIXME: could break if formula is not specified first ???
     mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
@@ -1031,7 +1196,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(subbars(f),delete=FALSE)
+        f <- noSpecials(sub_specials(f),delete=FALSE)
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
@@ -1551,6 +1716,12 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
 
+    ## FIXME: not clear why this is here
+    ## (fitted method uses predict(...), not stats::fitted.default)
+    ## could assign this value with predict(), save a little bit??
+    ## (but would have to add $na.action to the object, instead of retrieving it
+    ##  from attr(x$frame, "na.action")), or continue with our own fitted.glmmTMB version
+    
     fitted <- NULL
 
     if (TMBStruc$se) {
