@@ -9,6 +9,9 @@
     \itemize{
       \item "lognormal" family available (log-Normal, parameterized
       by the mean and standard deviation on the \emph{data scale})
+      \item an experimental implementation of splines is available, 
+      based on \code{mgcv}. See example in \code{?glmmTMB}.  
+      Constructive feedback is welcome at GitHub issue #919.
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
