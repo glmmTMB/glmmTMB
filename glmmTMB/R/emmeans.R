@@ -76,6 +76,7 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
     # which terms to use?
     tcomp <- ifelse(component %in% c("response", "cmean"), "cond", component)
     trms <- delete.response(terms(object, component = tcomp))
+    nbasis <- estimability::all.estble
     if (component %in% c("response", "cmean")) {  # may need add'l terms for response mode
         if(!is.null(ztrms <- terms(object, component = "zi")) && (length(all.vars(ztrms)) > 0))
             trms <- emmeans::.combine.terms(trms, ztrms)
@@ -121,8 +122,8 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         X <- diag(1, length(bhat))
         V <- tmp$cov.fit
         # We expect predict() to return NA for each non-estimable case
-        nbasis <- estimability::all.estble
         if (any(is.na(bhat))) {
+            ## FIXME:: warn here until we figure everything out??
             nbasis <- diag(1, ncol = length(bhat))[, is.na(bhat)]
         }
     } else { # component %in% c("cond", "zi", "disp")
