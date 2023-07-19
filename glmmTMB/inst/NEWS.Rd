@@ -4,14 +4,19 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.7.9000}{
+\section{CHANGES IN VERSION 1.1.8}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item "lognormal" family available (log-Normal, parameterized
       by the mean and standard deviation on the \emph{data scale})
-      \item an experimental implementation of splines is available, 
-      based on \code{mgcv}. See example in \code{?glmmTMB}.  
-      Constructive feedback is welcome at GitHub issue #919.
+      \item an experimental implementation of penalized splines
+      (and related smooth terms) is available, 
+      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.  
+      Constructive feedback welcome at
+      \url{https://github.com/glmmTMB/glmmTMB/issues/928}
+      \item population-level prediction with new data no longer requires
+      that the variables involved in the random effects be explicitly
+      specified as \code{NA} (GH #923, Russ Lenth)
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
