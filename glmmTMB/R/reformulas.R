@@ -218,7 +218,7 @@ head.formula <- head.call <- function(x, ...) {
 }
 
 ## sugar: we can call head on a symbol and get back the symbol
-head.name <- function(x) { x }
+head.name <- function(x, ...) { x }
 
 ## TEST: does this work as a drop-in replacement for lme4::findbars
 ## if default.special = NULL?

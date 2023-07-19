@@ -786,9 +786,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
     ans
 }
 
-## copied from 'stats'
-
-format.perc <- function (probs, digits) {
+## copied from 'stats'; renamed to avoid false-positive check as
+## an 'apparent method'
+format_perc <- function (probs, digits) {
     paste(format(100 * probs, trim = TRUE, scientific = FALSE, digits = digits),
     "%")
 }
@@ -900,7 +900,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     
     a <- (1 - level)/2
     a <- c(a, 1 - a)
-    pct <- format.perc(a, 3)
+    pct <- format_perc(a, 3)
     fac <- qnorm(a)
     estimate <- as.logical(estimate)
     ci <- matrix(NA, nrow=0, ncol=2 + estimate,
