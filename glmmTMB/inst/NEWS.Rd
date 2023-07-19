@@ -5,24 +5,30 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.7.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item "lognormal" family available (log-Normal, parameterized
+      by the mean and standard deviation on the \emph{data scale})
+    } % itemize
+  } % new features
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item changes related to handling rank-deficient fits:
       \itemize{
 	\item default value of \code{rank_check} in
-  \code{glmmTMBControl} changed to "adjust" (i.e., rank-deficient
-  columns of fixed-effect model matrices are automatically dropped, with
-  a message, by default)
-  \item the \code{include_mapped} argument of \code{vcov} and
-  \code{confint} is changed to \code{include_nonest},
-  controlling both mapped parameters and those
-  dropped due to rank-deficiency, and is now \code{TRUE} by default for
-  \code{vcov}
-  \item \code{model.matrix} now returns the fixed-effect model matrix
-  actually used in fitting (including dropping columns for rank-deficiency)
-} %inner itemize
-} % itemize
-} % user-visible changes
+	\code{glmmTMBControl} changed to "adjust" (i.e., rank-deficient
+	columns of fixed-effect model matrices are automatically dropped, with
+	a message, by default)
+	\item the \code{include_mapped} argument of \code{vcov} and
+	\code{confint} is changed to \code{include_nonest},
+	controlling both mapped parameters and those
+	dropped due to rank-deficiency, and is now \code{TRUE} by default for
+	\code{vcov}
+	\item \code{model.matrix} now returns the fixed-effect model matrix
+	actually used in fitting (including dropping columns for rank-deficiency)
+      } %inner itemize
+    } % itemize
+  } % user-visible changes
 } % version 1.1.7.9000
   
 \section{CHANGES IN VERSION 1.1.7 (2023-04-05)}{
