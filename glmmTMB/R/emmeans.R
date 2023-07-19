@@ -111,6 +111,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         dfargs <- list()
     }
     
+    nbasis <- estimability::all.estble    
     if(component %in% c("response", "cmean")) {
         # which 'type' argument to use in predict?
         ptype <- ifelse(component == "cmean", "conditional", "response")
