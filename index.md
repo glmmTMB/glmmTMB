@@ -26,7 +26,7 @@ See [here](https://github.com/glmmTMB/glmmTMB) for the development site.
 
 - **from CRAN (release version)**: `install.packages("glmmTMB")`. (On Windows and MacOS this will install binary packages, by default: see below for installation from source and why you might want to do that.)
 - **from GitHub (development version, from source)**: use `install.packages()` to install the `TMB` and `remotes` packages from CRAN, then `remotes::install_github("glmmTMB/glmmTMB/glmmTMB")`. If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. You will need to have development tools (compilers etc.) installed: see [here](https://support.rstudio.com/hc/en-us/articles/200486498-Package-Development-Prerequisites) or [here](https://teuder.github.io/rcpp4everyone_en/020_install.html). (As well as being more up-to-date, the development version may contain new bugs or untested features!)
-- **from GitHub (development version, from binary)**: A binary release of the development version *may* be available for your operating system/version of R: try `install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos")`. If (1) this doesn't work; (2) you need the development version; (3) you can't install from source as above, please contact the maintainers.
+- **from GitHub (development version, from binary)**: A binary release of the development version *may* be available for your operating system/version of R from [the glmmTMB repository here](./repos/index.html). If a sufficient version isn't available and you are having insurmountable problems installing the current version of the package from source yourself, please contact the maintainers.
 
 ### Complications
 
