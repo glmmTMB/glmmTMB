@@ -91,6 +91,7 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 }
 Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
+\item Smooths taken from the \code{mgcv} package can be included in \code{glmmTMB} formulas using \code{s}; these terms will appear as additional components in both the fixed and the random-effects terms. This functionality is \emph{experimental} for now. We recommend using \code{REML=TRUE}. See \code{\link[mgcv]{s}} for details of specifying smooths (and \code{\link[mgcv]{smooth2random}} and the appendix of Wood (2004) for technical details).
 }
 }
 \note{
@@ -142,6 +143,14 @@ c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
 m1_map <- update(m1, map=list(theta=factor(NA)),
                  start=list(theta=log(10)))
 VarCorr(m1_map)
+
+## smooth terms
+data("Nile")
+ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
+sm1 <- glmmTMB(val ~ s(time), data = ndat,
+               REML = TRUE, start = list(theta = 5))
+plot(val ~ time, data = ndat)
+lines(ndat$time, predict(sm1))
 }
 }
 \references{
@@ -150,4 +159,5 @@ Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., N
 Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. \emph{Journal of Statistical Software}, \bold{70}, 1--21.
 
 Millar, R. B. (2011). \emph{Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.} Wiley, New York.
+Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \url{https://doi.org/10.1198/016214504000000980}
 }

@@ -34,7 +34,8 @@ enum valid_family {
   truncated_nbinom1_family =502,
   truncated_nbinom2_family =503,
   t_family =600,
-  tweedie_family = 700
+  tweedie_family = 700,
+  lognormal_family = 800
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -168,18 +169,18 @@ Type log1m_inverse_linkfun(Type eta, int link) {
 template<class Type>
 Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
 		     int link) {
-  Type ans, s1, s2, s3;
+  Type ans, s1, s2;
   switch (family) {
   case truncated_nbinom1_family:
-    s3 = logspace_add( Type(0), etad);      // log(1. + phi(i)
-    ans = logspace_sub( Type(0), -mu / phi * s3 ); // 1-prob(0)
+    s2 = logspace_add( Type(0), etad);      // log(1. + phi(i)
+    ans = logspace_sub( Type(0), -mu / phi * s2 ); // 1-prob(0)
     break;
   case truncated_nbinom2_family:
     // s1 is repeated computation from main loop ...
     s1 = log_inverse_linkfun(eta, link);          // log(mu)
-    // s3 := log( 1. + mu(i) / phi(i) )
-    s3 = logspace_add( Type(0), s1 - etad );
-    ans = logspace_sub( Type(0), -phi * s3 );
+    // s2 := log( 1. + mu(i) / phi(i) )
+    s2 = logspace_add( Type(0), s1 - etad );
+    ans = logspace_sub( Type(0), -phi * s2 );
     break;
   case truncated_poisson_family:
     ans = logspace_sub(Type(0), -mu);  // log(1-exp(-mu(i))) = P(x>0)
@@ -633,6 +634,8 @@ Type objective_function<Type>::operator() ()
 	// n.b. sigma() calculation is special-cased for Gaussian
 	// (exp(0.5*pl$betad), all other families except Gamma
 	//  use exp(pl$betad)
+	// so phi = variance, not SD
+	// (FIXME: ?? why ??)
         tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
         SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
         break;
@@ -772,6 +775,21 @@ Type objective_function<Type>::operator() ()
         SIMULATE {
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
         }
+	break;
+      case lognormal_family:
+	// parameterized in terms of mean and SD on *data* scale, i.e.
+	// mu = exp(logmu + logsd^2/2)
+	// sd = sqrt((exp(logsd^2)-1)*exp(2*logmu + logsd^2)) = mu*sqrt(exp(logsd^2)-1)
+	// 1+(sd/mu)^2 = exp(logsd^2)
+	// logsd = sqrt(log(1+(sd/mu)^2))
+	// logmu = log(mu)- 
+        s1 = log1p(pow(phi(i)/mu(i), 2.0)); //log1p(x) = log(1 + x), log-scale var
+        s2 = log(mu(i)) - s1/2; //log-scale mean
+        // s2 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
+        s3 = sqrt(s1); //log-scale sd
+
+	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
+	// FIXME: simulate method?
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);

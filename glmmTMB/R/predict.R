@@ -253,13 +253,23 @@ predict.glmmTMB <- function(object,
   ## This could be further improved by making RHSForm()
   ##  use delete.response() -- handles dropping response from predvars
   ## Would still need careful testing etc..
+
        
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
     newFr <- object$frame
   } else {
-    mf$data <- newdata
     mf$na.action <- na.action
+    if (pop_pred) {
+        ## add missing components in newdata
+        ## (placeholder only to avoid error in model frame construction:
+        ##  value shouldn't matter since all b values will be fixed to NA anyway ...)
+        req_vars <- all.vars(RHSForm(formula(object, reOnly = TRUE)))
+        for (fnew in setdiff(req_vars, names(newdata))) {
+            newdata[[fnew]] <- NA
+        }
+    }
+    mf$data <- newdata
     newFr <- eval.parent(mf)
   }
 
@@ -322,6 +332,9 @@ predict.glmmTMB <- function(object,
   ## 'mkTMBStruc' further down.
   yobs <- augFr[[names(omi$respCol)]]
 
+   ## extract smooth information
+   ## NULL if missing
+   old_smooths <- lapply(omi$reTrms, function(x) x[["smooth_info"]])
 
   ## need eval.parent() because we will do eval(mf) down below ...
   TMBStruc <-
@@ -343,7 +356,9 @@ predict.glmmTMB <- function(object,
                                whichPredict=w,
                                REML=omi$REML,
                                map=omi$map,
-                               sparseX=omi$sparseX))
+                               sparseX=omi$sparseX,
+                               old_smooths = old_smooths)
+                    )
 
     ## drop rank-deficient columns if necessary
     for (nm in c("", "zi", "d")) {
