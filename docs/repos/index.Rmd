@@ -21,13 +21,14 @@ split_f <- all_f %>% grep(pattern = "bin", value=TRUE) %>%
   gsub(pattern = "(bin|contrib/)", replacement = "") %>%
   grep(pattern = "PACKAGES", value = TRUE, invert = TRUE) %>%
   strsplit("/")
-tbl <- do.call(rbind, split_f) %>%
-  as_tibble(.name.repair="unique") %>%
-  select(-1) %>%
-  setNames(c("os","R_version","tmp")) %>%
-  separate(tmp, c("pkg", "pkg_ver"), sep = "_") %>%
-  mutate(across(pkg_ver, str_remove, "\\.[a-z]+$")) %>%
-  arrange(desc(R_version), pkg, desc(pkg_ver))
+tbl <- (do.call(rbind, split_f)
+    |> as_tibble(.name.repair="unique")
+    |> dplyr::select(-1)
+    |> setNames(c("os","R_version","tmp"))
+    |> separate(tmp, c("pkg", "pkg_ver"), sep = "_")
+    |> mutate(across(pkg_ver, ~str_remove(., "\\.[a-z]+$")))
+    |> arrange(desc(R_version), pkg, desc(pkg_ver))
+)
 ```
 
 ```{r tbl, echo=FALSE, results="asis"}
