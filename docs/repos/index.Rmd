@@ -21,9 +21,9 @@ all_f <- list.files(recursive = TRUE)
 ## fill in missing 'platform' for Windows/old MacOS
 fix_val <- function(x) {
     if (length(x) == 4) {
-        return(c(list(x[[2]], ""), x[3:4]))
+        return(c(x[[2]], "", unlist(x[3:4])))
     } else {
-        return(x[-1])
+        return(unlist(x[-1]))
     }
 }
         
