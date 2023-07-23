@@ -33,7 +33,8 @@
 	dropped due to rank-deficiency, and is now \code{TRUE} by default for
 	\code{vcov}
 	\item \code{model.matrix} now returns the fixed-effect model matrix
-	actually used in fitting (including dropping columns for rank-deficiency)
+	actually used in fitting (including dropping columns for
+	rank-deficiency)
       } %inner itemize
     } % itemize
   } % user-visible changes

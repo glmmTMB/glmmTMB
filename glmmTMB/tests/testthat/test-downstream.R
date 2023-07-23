@@ -76,7 +76,19 @@ if (require(emmeans)) {
       ## joint_tests(nested, component = "cmean")
   }
   )
-}  ## if require(emmeans)
+
+  test_that("more on non-estimable terms", {
+      excl <- with(Salamanders, which((mined == "yes") &
+                                      (spp %in% c("PR","DES-L"))))
+      m3 <- glmmTMB(count ~ spp * mined + (1|site),
+                    zi=~spp * mined,
+                    family=nbinom2, data=Salamanders[-excl, ])
+      p3cond <- predict(emmeans(m3, ~spp|mined, comp = "cond"))
+      p3resp <- predict(emmeans(m3, ~spp|mined, comp = "resp"))
+      expect_equal(p3cond[1:3], c(-0.24506247, NA,  0.15354833))
+      expect_equal(p3resp[1:3], c(0.03741431, NA, 0.40555130))
+  })
+} ## if require(emmeans)
 
 
 if (require(effects)) {
