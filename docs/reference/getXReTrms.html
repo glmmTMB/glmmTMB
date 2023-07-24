@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
       </span>
     </div>
 
@@ -92,7 +92,16 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">getXReTrms</span><span class="op">(</span><span class="va">formula</span>, <span class="va">mf</span>, <span class="va">fr</span>, ranOK <span class="op">=</span> <span class="cn">TRUE</span>, type <span class="op">=</span> <span class="st">""</span>, <span class="va">contrasts</span>, sparse <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">getXReTrms</span><span class="op">(</span></span>
+<span>  <span class="va">formula</span>,</span>
+<span>  <span class="va">mf</span>,</span>
+<span>  <span class="va">fr</span>,</span>
+<span>  ranOK <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  <span class="va">contrasts</span>,</span>
+<span>  sparse <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  old_smooths <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -124,6 +133,10 @@
 <dt>sparse</dt>
 <dd><p>(logical) return sparse model matrix?</p></dd>
 
+
+<dt>old_smooths</dt>
+<dd><p>smooth information from a prior model fit (for prediction)</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -137,7 +150,7 @@
 <dd><p>design matrix for random effects</p></dd>
 
 <dt>reTrms</dt>
-<dd><p>output from <code><a href="https://rdrr.io/pkg/lme4/man/mkReTrms.html" class="external-link">mkReTrms</a></code> from <span class="pkg">lme4</span></p></dd>
+<dd><p>output from <code><a href="https://rdrr.io/pkg/lme4/man/mkReTrms.html" class="external-link">mkReTrms</a></code> from <span class="pkg">lme4</span>, possibly augmented with information about <code>mgcv</code>-style smooth terms</p></dd>
 
 <dt>ss</dt>
 <dd><p>splitform of the formula</p></dd>
