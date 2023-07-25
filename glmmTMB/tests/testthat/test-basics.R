@@ -193,7 +193,7 @@ Owls <- transform(Owls,
 
 test_that("basic zero inflation", {
        skip_on_cran()
-	expect_true(require("pscl"))
+       if(require("pscl")) {
 	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
                               offset(logBroodSize),
                           ziformula=~1, data = Owls,
@@ -207,7 +207,8 @@ test_that("basic zero inflation", {
         offset(logBroodSize) + diag(1 | Nest),
         ziformula=~1, data = Owls, family=poisson(link = "log"))
 	expect_equal(ranef(o1.tmb)$cond$Nest[1,1], -0.484, tolerance=1e-2) #glmmADMB gave -0.4842771
-})
+       }
+       })
 
 test_that("alternative binomial model specifications", {
     skip_on_cran()
