@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
       </span>
     </div>
 
@@ -115,7 +115,8 @@
 <span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sparseX <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  old_smooths <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -211,6 +212,11 @@
 
 <dt>control</dt>
 <dd><p>control parameters, see <code><a href="glmmTMBControl.html">glmmTMBControl</a></code>.</p></dd>
+
+
+<dt>old_smooths</dt>
+<dd><p>(optional) smooth components from a previous fit: used when constructing a new model structure for prediction
+from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements</p></dd>
 
 
 <dt>zioffset</dt>

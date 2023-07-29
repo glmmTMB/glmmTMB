@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.7.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
       </span>
     </div>
 
@@ -210,6 +210,7 @@ because of missingness.</p></dd>
 <li><p><code>homdiag</code> (diagonal, homogeneous variance)</p></li>
 </ul><p>Structures marked with * are experimental/untested. See <code><a href="../articles/covstruct.html">vignette("covstruct", package = "glmmTMB")</a></code> for more information.</p></li>
 <li><p>For backward compatibility, the <code>family</code> argument can also be specified as a list comprising the name of the distribution and the link function (e.g. <code>list(family="binomial", link="logit")</code>). However, <strong>this alternative is now deprecated</strong>; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as <code>variance</code> and <code>linkfun</code> are present, see <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">family</a></code>.</p></li>
+<li><p>Smooths taken from the <code>mgcv</code> package can be included in <code>glmmTMB</code> formulas using <code>s</code>; these terms will appear as additional components in both the fixed and the random-effects terms. This functionality is <em>experimental</em> for now. We recommend using <code>REML=TRUE</code>. See <code><a href="https://rdrr.io/pkg/mgcv/man/s.html" class="external-link">s</a></code> for details of specifying smooths (and <code><a href="https://rdrr.io/pkg/mgcv/man/smooth2random.html" class="external-link">smooth2random</a></code> and the appendix of Wood (2004) for technical details).</p></li>
 </ul></div>
     <div id="note">
     <h2>Note</h2>
@@ -219,7 +220,8 @@ because of missingness.</p></dd>
     <h2>References</h2>
     <p>Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., Nielsen, A., Skaug, H. J., Mächler, M. and Bolker, B. M. (2017). glmmTMB balances speed and flexibility among packages for zero-inflated generalized linear mixed modeling. <em>The R Journal</em>, <b>9</b>(2), 378--400.</p>
 <p>Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. <em>Journal of Statistical Software</em>, <b>70</b>, 1--21.</p>
-<p>Millar, R. B. (2011). <em>Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.</em> Wiley, New York.</p>
+<p>Millar, R. B. (2011). <em>Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.</em> Wiley, New York.
+Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. <em>Journal of the American Statistical Association</em> <b>99</b>(467): 673–86. <a href="https://doi.org/10.1198/016214504000000980" class="external-link">https://doi.org/10.1198/016214504000000980</a></p>
     </div>
 
     <div id="ref-examples">
@@ -397,6 +399,15 @@ because of missingness.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Conditional model:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Groups Name        Std.Dev.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  site   (Intercept) 10      </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co">## smooth terms</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"Nile"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">ndat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/time.html" class="external-link">time</a></span><span class="op">(</span><span class="va">Nile</span><span class="op">)</span><span class="op">)</span>, val <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">Nile</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">sm1</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">val</span> <span class="op">~</span> <span class="fu">s</span><span class="op">(</span><span class="va">time</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">ndat</span>,</span></span>
+<span class="r-in"><span>               REML <span class="op">=</span> <span class="cn">TRUE</span>, start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>theta <span class="op">=</span> <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">val</span> <span class="op">~</span> <span class="va">time</span>, data <span class="op">=</span> <span class="va">ndat</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">ndat</span><span class="op">$</span><span class="va">time</span>, <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">sm1</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-plt img"><img src="glmmTMB-1.png" alt="" width="700" height="433"></span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

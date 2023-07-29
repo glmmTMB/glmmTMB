@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2023-05-18" />
+<meta name="date" content="2023-07-24" />
 
 <title>Hacking glmmTMB</title>
 
@@ -338,7 +338,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Hacking glmmTMB</h1>
-<h4 class="date">2023-05-18</h4>
+<h4 class="date">2023-07-24</h4>
 
 
 
@@ -552,6 +552,49 @@ deviations)</li>
 </ul>
 </div>
 </div>
+</div>
+<div id="structure-of-a-glmmtmb-object" class="section level1">
+<h1>Structure of a <code>glmmTMB</code> object</h1>
+<p>Since I don’t think this is explicitly documented anywhere …</p>
+<ul>
+<li><code>obj</code>: this is a TMB-object (no explicit class, just a
+list) as created by <code>TMB::MakeADFun()</code>. It has useful
+components
+<ul>
+<li><code>$fn</code>: the negative log-likelihood function (takes a
+vector of <em>non-random</em> parameters (<code>beta</code>,
+<code>betazi</code>, <code>bzi</code>, <code>theta</code>,
+<code>thetazi</code>, <code>psi</code> depending on the model;
+<code>b</code> and <code>bzi</code> are excluded)</li>
+<li><code>$gr</code>: gradient of the NLL function</li>
+<li><code>$env</code>: environment, holding useful stuff like
+<code>$random</code> (positions of random-effect parameters),
+<code>$last.par.best</code>, etc.</li>
+<li><code>$report</code> (return derived values)</li>
+<li><code>$simulate</code> (simulate new responses)</li>
+</ul></li>
+<li><code>fit</code>: results of optimization</li>
+<li><code>sdr</code>: results of calling <code>sdreport()</code></li>
+<li><code>call</code>: original model call</li>
+<li><code>frame</code>: model frame</li>
+<li><code>modelInfo</code>: lots of useful information
+<ul>
+<li><code>nobs</code>: number of observations (should be the same as
+<code>nrow(x$frame)</code>)</li>
+<li><code>respCol</code>: response column</li>
+<li><code>grpVar</code>: (?)</li>
+<li><code>family</code>: GLM family</li>
+<li><code>contrasts</code></li>
+<li><code>reTrms</code></li>
+<li><code>terms</code></li>
+<li><code>reStruc</code></li>
+<li><code>allForm</code></li>
+<li><code>REML</code></li>
+<li><code>map</code></li>
+<li><code>sparseX</code></li>
+<li><code>parallel</code></li>
+</ul></li>
+</ul>
 </div>
 
 

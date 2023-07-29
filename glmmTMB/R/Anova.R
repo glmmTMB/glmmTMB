@@ -107,8 +107,8 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
              hypothesis.matrix=hypothesis.matrix,
              rhs=rhs,
              test=test,
-             vcov. = vcov(model)[[component]],
-             singular.ok = FALSE,
+             vcov. = vcov.,
+             singular.ok = singular.ok,
              verbose = verbose,
              coef. = fixef(model)[[component]],
              ...)
@@ -149,7 +149,6 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
         else return(c(statistic=hyp$F[2], df=hyp$Df[2], res.df=hyp$Res.Df[2]))
     } ## hyp.term()
 
-    ## may be irrelevant, glmmTMB doesn't currently handle aliased terms?
     not.aliased <- !is.na(fixef(mod)[[component]])
     if (!singular.ok && !all(not.aliased))
         stop("there are aliased coefficients in the model")
@@ -157,9 +156,11 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
     intercept <- has.intercept(mod)
     p <- length(fixef(mod)[[component]])
     I.p <- diag(p)
-    if (!missing(vcov.)){
+    ## FIXME:: missing or !missing ???
+    if (missing(vcov.)){
         vcov. <- vcov(mod, complete=FALSE)[[component]]
     }
+    vcov. <- vcov.[not.aliased, not.aliased]
     assign <- attr(model.matrix(mod, component=component, include_rankdef = include.rankdef.cols), "assign")
     assign[!not.aliased] <- NA
     names <- term.names.default(mod, component=component)
@@ -183,7 +184,7 @@ Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
 }
 
 Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
-                              component="cond", include.rankdef.cols = FALSE, ...){
+                              component="cond", include.rankdef.cols = include.rankdef.cols, ...){
     intercept <- has.intercept(mod)
     p <- length(fixef(mod)[[component]])
     I.p <- diag(p)
@@ -195,9 +196,12 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
     not.aliased <- !is.na(fixef(mod)[[component]])
     if (!singular.ok && !all(not.aliased))
         stop("there are aliased coefficients in the model")
-    if (!missing(vcov.)){
+    if (missing(vcov.)){
         vcov. <- vcov(mod, complete=FALSE)[[component]]
     }
+    vcov. <- vcov.[not.aliased, not.aliased]
+    assign <- attr(model.matrix(mod, component=component, include_rankdef = include.rankdef.cols), "assign")
+    assign[!not.aliased] <- NA
     for (term in seq_len(n.terms)){
         subs <- which(assign == term - intercept)
         hyp.matrix <- I.p[subs,,drop=FALSE]
