@@ -214,13 +214,13 @@ startParams <- function(parameters,
 ## ugh
 sseq <- function(n) if (n==0) integer(0) else seq(n)
 
+#' @noRd
 #' @examples
 #' if (require(brms)) {
 #' bprior <- c(prior_string("normal(0,10)", class = "beta"),
 #' ##            prior(normal(1,2), class = b, coef = treat),
 #'            prior_(~cauchy(0,2), class = ~betad))
-
-
+#' }
 proc_priors <- function(priors) {
     ## priors is a data frame as in brms
     ## process prior list into TMB data structures
@@ -272,6 +272,7 @@ proc_priors <- function(priors) {
 ##' @param sparseX see \code{\link{glmmTMB}}
 ##' @param old_smooths (optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 ##' from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements
+##' @param priors see \code{\link{glmmTMB}}
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -1026,6 +1027,7 @@ binomialType <- function(x) {
 ##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{psi} (extra family parameters, e.g., shape for Tweedie models).
 ##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
+##' @param priors a data frame of priors, in a similar format to that accepted by the \code{brms} package, i.e. a data frame with columns (at least) \code{prior} (character; the prior specification, e.g. "normal(0,2)"); \code{class} (the name of the underlying parameter vector on which to impose the prior ("beta", "betazi", "betad", "theta", "thetazi", "psi"); \code{coef} a string specifying the particular elements of the parameter vector to apply the prior to (not yet implemented; must be specified as an empty string). At present priors can only be imposed jointly on all of the elements of a specified parameter vector, e.g. all fixed-effect coefficients. The tools in \code{brms} for specifying priors (e.g. \code{set_prior} should work to produce legal specifications. The available prior distributions are "normal" (mean/sd parameterization); "gamma" (mean/shape); "t" (mean/sd/df); "cauchy" (location/scale).
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t

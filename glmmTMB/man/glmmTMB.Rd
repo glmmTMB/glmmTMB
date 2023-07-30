@@ -21,7 +21,8 @@ glmmTMB(
   REML = FALSE,
   start = NULL,
   map = NULL,
-  sparseX = NULL
+  sparseX = NULL,
+  priors = NULL
 )
 }
 \arguments{
@@ -66,6 +67,8 @@ because of missingness.}
 \item{map}{a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.}
 
 \item{sparseX}{a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}}
+
+\item{priors}{a data frame of priors, in a similar format to that accepted by the \code{brms} package, i.e. a data frame with columns (at least) \code{prior} (character; the prior specification, e.g. "normal(0,2)"); \code{class} (the name of the underlying parameter vector on which to impose the prior ("beta", "betazi", "betad", "theta", "thetazi", "psi"); \code{coef} a string specifying the particular elements of the parameter vector to apply the prior to (not yet implemented; must be specified as an empty string). At present priors can only be imposed jointly on all of the elements of a specified parameter vector, e.g. all fixed-effect coefficients. The tools in \code{brms} for specifying priors (e.g. \code{set_prior} should work to produce legal specifications. The available prior distributions are "normal" (mean/sd parameterization); "gamma" (mean/shape); "t" (mean/sd/df); "cauchy" (location/scale).}
 }
 \description{
 Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
@@ -159,5 +162,5 @@ Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., N
 Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. \emph{Journal of Statistical Software}, \bold{70}, 1--21.
 
 Millar, R. B. (2011). \emph{Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.} Wiley, New York.
-Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \url{https://doi.org/10.1198/016214504000000980}
+Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \doi{10.1198/016214504000000980}
 }
