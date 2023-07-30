@@ -1,6 +1,6 @@
 R=R
 # -> you can do    R=R-devel  make ....
-o
+
 PACKAGE=glmmTMB
 # get VERSION from glmmTMB/DESCRIPTION  
 ## ("::" = expand only  once, but doesn't work in make <= 3.81)

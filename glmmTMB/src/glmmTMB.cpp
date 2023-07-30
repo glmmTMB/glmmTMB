@@ -846,12 +846,75 @@ Type objective_function<Type>::operator() ()
 
       // Add up
       jnll -= keep(i) * tmp_loglik;
+    } // if !is.na(obs)
     } // loop over observations
 
     // Add priors
+    int np = prior_distrib.size();
+    Type parval, logpriorval;
+    int par_ind = 0; // parameter index
+    for (int i = 0; i < np; i ++ ) {
+      // FIXME: clunky; is it acceptable to copy the
+      //  relevant parameter vector into a new priorvec instead,
+      // to avoid the double switch here??
+      int np2;
+      switch (prior_whichpar[i]) {
+      case beta_vprior: prior_whichpar = beta.size(); break;
+      case betazi_vprior: prior_whichpar = betazi.size(); break;
+      case betad_vprior: prior_whichpar = betad.size(); break;
+      case theta_vprior: prior_whichpar = theta.size(); break;
+      case thetazi_vprior: prior_whichpar = thetazi.size(); break;
+      case psi_vprior: prior_whichpar = psi.size(); break;
+      }
+      // FIXME: implement element-specific priors (won't require looping
+      // over elements, this will only happen if prior_element[i] is NA
+      // What to do about priors on multivariate elements, i.e.
+      // correlation matrices?
+      for (int j = 0; j < np2; j++) {
+	switch(prior_whichpar[i]) {
+	case beta_vprior: parval = beta[j]; break;
+	case betazi_vprior: parval =  betazi[j]; break;
+	case betad_vprior: parval =  betad[j]; break;
+	case theta_vprior: parval =  theta[j]; break;
+	case thetazi_vprior: parval =  thetazi[j]; break;
+	case psi_vprior: parval =  psi[j]; break;
+	}
+	switch(prior_distrib[i]) {
+	case normal_prior:
+	  s1 = prior_params[par_ind];           // mean
+	  s2 = prior_params[par_ind+1];         // sd
+	  logpriorval = dnorm(parval, s1, s2, true);
+	  par_ind += 2;
+	break;
+	case gamma_prior:
+	  s1 = prior_params[par_ind+1];           // shape
+	  s2 = prior_params[par_ind] / prior_params[par_ind+1];   // scale
+	  logpriorval = dgamma(parval, s1, s2, true);
+	  par_ind += 2;
+	break;
+	case t_prior:
+	  s1 = prior_params[par_ind];           // mean
+	  s2 = prior_params[par_ind+1];         // sd
+	  s3 = prior_params[par_ind+2];         // df
+	  parval = (parval - s1)/s2;   // scale value
+	  // see note at t_family about adjusting density for scaling
+	  logpriorval = dt(parval, s3, true) - log(s2);
+	  par_ind += 3;
+	  break;
+	case cauchy_prior:
+	  s1 = prior_params[par_ind];           // loc
+	  s2 = prior_params[par_ind+1];         // scale
+	  logpriorval = glmmtmb::dcauchy(parval, s1, s2, true);
+	  par_ind += 2;
+	break;
+	}
+
+	jnll -= logpriorval;
+	
+      } // loop over elements
+    } // loop over priors
     
     
-  }
 
   // Report / ADreport / Simulate Report
   vector<matrix<Type> > corr(terms.size());
