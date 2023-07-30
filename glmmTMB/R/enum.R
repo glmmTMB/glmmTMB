@@ -48,3 +48,15 @@
   prob = 2,
   disp = 3
 )
+.valid_prior <- c(
+  normal = 0,
+  gamma = 1,
+  t = 2
+)
+.valid_vprior <- c(
+  normal_prior = 0,
+  gamma_prior = 1,
+  t_prior = 2
+)
+.valid_priorvar <- c(
+)

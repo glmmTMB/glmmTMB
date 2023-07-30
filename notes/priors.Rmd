@@ -31,7 +31,6 @@ We probably only need to pay attention to the columns `prior`, `class`, `coef`, 
 * vector of prior codes
     * we need a new `enum`, `.valid_priors`: see `make-enum` in the Makefile
 * list of parameter vectors? or `prior_p1`, `prior_p2`, `prior_p3` (do any prior families have more than two parameters? What about non-scalar parameters, e.g. Wishart priors ... ???)
-* `npar` vector (number of parameters for each prior, usually 2)
 * vector of parameter codes (another `enum`?) (`beta`, `theta`, `thetaf` ... `b` ?)
 * each index (corresponding to `coef`) is scalar, either NA (prior over all elements) or integer (a specific element)
 

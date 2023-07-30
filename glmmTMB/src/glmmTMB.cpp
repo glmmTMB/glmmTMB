@@ -78,6 +78,23 @@ enum valid_ziPredictCode {
   disp_zipredictcode = 3
 };
 
+// codes for prior distributions
+enum valid_prior {
+  normal_prior = 0,
+  gamma_prior = 1,
+  t_prior = 2
+};
+
+// codes for parameter (vec) to apply prior to
+enum valid_priorvar {
+  beta_vprior = 0,
+  betazi_vprior = 1,
+  betad_vprior = 2,
+  theta_vprior = 3,
+  thetazi_vprior = 4,
+  psi_vprior = 5
+};
+
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -570,6 +587,13 @@ Type objective_function<Type>::operator() ()
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
+  // Prior info
+
+  DATA_IVECTOR(prior_distrib);    // specify distribution
+  DATA_IVECTOR(prior_whichpar);   // specify parameter
+  DATA_IVECTOR(prior_element);    // specify element (NA or index)
+  DATA_VECTOR(prior_params);      // specify parameters (concatenated)
+  
   // Joint negative log-likelihood
   Type jnll=0;
 
@@ -821,7 +845,11 @@ Type objective_function<Type>::operator() ()
 
       // Add up
       jnll -= keep(i) * tmp_loglik;
-    }
+    } // loop over observations
+
+    // Add priors
+    
+    
   }
 
   // Report / ADreport / Simulate Report

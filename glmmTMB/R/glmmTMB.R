@@ -211,6 +211,28 @@ startParams <- function(parameters,
   return(parameters)
 }
 
+proc_priors <- function(priors) {
+    ## priors is a data frame as in brms
+    ## process prior list into TMB data structures
+    ##
+    prior_distrib <- prior_whichpar <- prior_element <- integer(nrow(prior))
+    prior_params <- list()
+    for (i in seq(nrow(priors))) {
+        ## prior is a string
+        pp <- priors[["prior"]][i]
+        pname <- gsub("\(.*","",pp)
+        prior_distrib[i] <- .valid_prior[pname]
+        if (is.na(prior_distrib[i])) stop("unknown prior distribution ",pname)
+        ## extract parameter values
+        
+        
+        prior_
+        
+    }
+    return()
+}
+
+
 ##' Extract info from formulas, reTrms, etc., format for TMB
 ##' @inheritParams glmmTMB
 ##' @param combForm combined formula
@@ -253,7 +275,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        map=NULL,
                        sparseX=NULL,
                        control=glmmTMBControl(),
-                       old_smooths = NULL) {
+                       old_smooths = NULL,
+                       priors) {
 
 
   if (is.null(sparseX)) sparseX <- logical(0)
@@ -1086,7 +1109,8 @@ glmmTMB <- function(
     REML=FALSE,
     start=NULL,
     map=NULL,
-    sparseX=NULL
+    sparseX=NULL,
+    priors=NULL
     )
 {
 
@@ -1293,7 +1317,8 @@ glmmTMB <- function(
                    start=start,
                    map=map,
                    sparseX=sparseX,
-                   control=control)
+                   control=control,
+                   priors = priors)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir = TMBStruc)
