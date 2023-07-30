@@ -4,6 +4,15 @@ title: "implementing priors in glmmTMB"
 
 ```{r pkgs}
 library(brms)
+if (!"priors" %in% names(formals(glmmTMB::glmmTMB))) {
+    remotes::install_github("glmmTMB/glmmTMB/glmmTMB@priors")
+}
+library(glmmTMB)
+library(lme4)
+library(broom.mixed)
+library(purrr)
+library(dplyr)
+library(ggplot2); theme_set(theme_bw())
 ```
 
 It seems useful to use the API/user interface from `brms`
@@ -35,8 +44,74 @@ We probably only need to pay attention to the columns `prior`, `class`, `coef`, 
 * each index (corresponding to `coef`) is scalar, either NA (prior over all elements) or integer (a specific element)
 
 * new loop after loglik loop to add (negative log-)prior components: loop over prior spec
-   * 
 
+## tests
 
+### Culcita example 
 
+from Bolker chapter in Fox et al (regularize nearly complete separation)
+
+```{r culcita}
+cdat <- readRDS(system.file("example_files", "culcita.rds", package = "glmmTMB"))
+## identified as extreme residual in https://bbolker.github.io/mixedmodels-misc/ecostats_chap.html
+cdatx <- cdat[-20,]
+form <- predation~ttt+(1|block)
+cmod_glmer <- glmer(form, data=cdatx, family=binomial)
+cmod_blmer <- bglmer(form, data=cdatx, family=binomial,
+                    fixef.prior = normal(cov = diag(9,4)))
+cmod_glmmTMB <- glmmTMB(form, data=cdatx, family=binomial)
+cprior <- data.frame(prior = "normal(0, 3)",
+                     class = "beta",
+                     coef = "")
+cmod_glmmTMB_p <- glmmTMB(form, data=cdatx, family=binomial, priors = cprior)
+all.equal(coef(summary(cmod_blmer)),
+          coef(summary(cmod_glmmTMB_p))$cond,
+          tolerance = 5e-2)
+cmods <- ls(pattern = "cmod_.*")
+cmod_list <- mget(cmods) |> setNames(gsub("cmod_", "", cmods))
+```
+
+```{r culcita_comp}
+cres <- (purrr::map_dfr(cmod_list,
+                        ~tidy(., conf.int = TRUE, effects = "fixed"),
+                        .id = "model")
+    |> select(model, term, estimate, lwr = conf.low, upr = conf.high)
+)
+ggplot(cres, aes(x = estimate, y = term, colour = model)) +
+    geom_pointrange(aes(xmin = lwr, xmax = upr),
+                    position = position_dodge(width = 0.5))
+```
+
+### Gopher tortoise example 
+
+from Bolker chapter in Fox et al (regularize singular fit)
+
+```{r gophertortoise}
+gdat <- readRDS(system.file("example_files", "gophertortoise.rds", package = "glmmTMB"))
+form <- shells~prev+offset(log(Area))+factor(year)+(1|Site)
+gmod_lmer <- glmer(form , family=poisson, data=gdat)
+gmod_blmer <- bglmer(form, family=poisson, data=gdat)
+gmod_glmmTMB <- glmmTMB(form, family = poisson, data = gdat) ## 1e-5
+## blmer default corresponds to gamma(Inf, 2.5)
+gprior <- data.frame(prior = "gamma(1e8, 2.5)",
+                     class = "theta",
+                     coef = "")
+gmod_glmmTMB_p <- glmmTMB(form, family = poisson, data = gdat, priors = gprior)
+vc1 <- c(VarCorr(gmod_glmmTMB_p)$cond$Site)
+vc2 <- c(VarCorr(gmod_blmer)$Site)
+all.equal(vc1, vc2, tolerance = 5e-4)
+```
+
+## To do/Fix me
+
+- add tests!
+- add prior info to model info, print(), summary() output
+- document that gamma is applied on exp() scale
+   - move prior info to a separate man page?
+- implement elementwise priors
+- allow multivariate (joint) priors on parameter vectors rather than iid priors?
+     - esp for correlation matrices: LKJ, Wishart etc. (from Mikael Jagan [here](https://github.com/jaganmn/misc/tree/master/tmb_distributions))
+
+- test!
+- easier to work out number of parameters per prior on the R side and pass it to glmmTMB as a prior-wise vector?
 

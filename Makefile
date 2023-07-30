@@ -43,7 +43,7 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 	echo ".valid_vprior <- c(" >> $@
-	grep _vprior.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_vprior//g >> $@
+	grep "_vprior *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_vprior//g >> $@
 	echo ")" >> $@
 
 
