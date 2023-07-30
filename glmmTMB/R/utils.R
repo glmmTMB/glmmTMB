@@ -337,6 +337,7 @@ up2date <- function(oldfit) {
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
+      ## change name of thetaf to psi
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -352,6 +353,15 @@ up2date <- function(oldfit) {
       if ("thetaf" %in% names(ee2$parameters)) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
+      }
+      prior_ivars <- paste0("prior_",
+                            c("distrib", "whichpar", "element"))
+      prior_fvars <- "prior_params"
+      if (!"prior_distrib" %in% names(ee$data)) {
+          ## these are DATA_IVECTOR but apparently after processing
+          ##  TMB turns these into numeric ... ??
+          for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+          for (v in prior_fvars) ee$data[[v]] <- numeric(0)
       }
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,

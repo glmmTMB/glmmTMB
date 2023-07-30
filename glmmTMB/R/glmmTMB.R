@@ -211,25 +211,45 @@ startParams <- function(parameters,
   return(parameters)
 }
 
+## ugh
+sseq <- function(n) if (n==0) integer(0) else seq(n)
+
+#' @examples
+#' if (require(brms)) {
+#' bprior <- c(prior_string("normal(0,10)", class = "beta"),
+#' ##            prior(normal(1,2), class = b, coef = treat),
+#'            prior_(~cauchy(0,2), class = ~betad))
+
+
 proc_priors <- function(priors) {
     ## priors is a data frame as in brms
     ## process prior list into TMB data structures
     ##
-    prior_distrib <- prior_whichpar <- prior_element <- integer(nrow(prior))
+    np <- if (is.null(priors)) 0 else nrow(priors)
+    prior_distrib <- prior_whichpar <- prior_element <- integer(np)
     prior_params <- list()
-    for (i in seq(nrow(priors))) {
+    for (i in sseq(np)) {
         ## prior is a string
         pp <- priors[["prior"]][i]
-        pname <- gsub("\(.*","",pp)
+        pname <- gsub("\\(.*","",pp)
         prior_distrib[i] <- .valid_prior[pname]
         if (is.na(prior_distrib[i])) stop("unknown prior distribution ",pname)
         ## extract parameter values
-        
-        
-        prior_
-        
+        ## parse and drop expression()
+        p_params <- parse(text = pp)[[1]]
+        p_params[[1]] <- as.name("c")
+        ## in which environment???
+        prior_params[[i]] <- eval(p_params)
+        prior_whichpar[i] <- .valid_vprior[priors[["class"]][i]]
+        if (is.na(prior_whichpar[i])) stop("unknown prior variable ",
+                                           priors[["class"]][i])
+        pc <- priors[["coef"]][i]
+        if (pc == "") prior_element[i] <- NA_integer_
+        if (pc != "") stop("element-specific priors not implemented yet")
     }
-    return()
+    prior_params <- if (np == 0) numeric(0) else unlist(prior_params)
+    return(namedList(prior_distrib, prior_whichpar, prior_element,
+                 prior_params))
 }
 
 
@@ -394,6 +414,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
 
+  priors <- proc_priors(priors)
+
   data.tmb <- namedList(
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
@@ -415,6 +437,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     doffset = c(dispList$offset),
     weights,
     size = c(size),
+    
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,
@@ -422,7 +445,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
-    whichPredict = whichPredict
+    whichPredict = whichPredict,
+
+    ## information about priors
+    prior_distrib = priors$prior_distrib,
+    prior_whichpar = priors$prior_whichpar,
+    prior_element = priors$prior_element,
+    prior_params = priors$prior_params
+    
   )
 
   # function to set value for dorr

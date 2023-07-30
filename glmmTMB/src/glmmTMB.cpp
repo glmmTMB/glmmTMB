@@ -82,11 +82,12 @@ enum valid_ziPredictCode {
 enum valid_prior {
   normal_prior = 0,
   gamma_prior = 1,
-  t_prior = 2
+  t_prior = 2,
+  cauchy_prior = 3
 };
 
 // codes for parameter (vec) to apply prior to
-enum valid_priorvar {
+enum valid_vprior {
   beta_vprior = 0,
   betazi_vprior = 1,
   betad_vprior = 2,

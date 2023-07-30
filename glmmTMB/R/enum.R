@@ -51,12 +51,14 @@
 .valid_prior <- c(
   normal = 0,
   gamma = 1,
-  t = 2
+  t = 2,
+  cauchy = 3
 )
 .valid_vprior <- c(
-  normal_prior = 0,
-  gamma_prior = 1,
-  t_prior = 2
-)
-.valid_priorvar <- c(
+  beta = 0,
+  betazi = 1,
+  betad = 2,
+  theta = 3,
+  thetazi = 4,
+  psi = 5
 )

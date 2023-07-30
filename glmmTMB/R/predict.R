@@ -357,7 +357,9 @@ predict.glmmTMB <- function(object,
                                REML=omi$REML,
                                map=omi$map,
                                sparseX=omi$sparseX,
-                               old_smooths = old_smooths)
+                               old_smooths = old_smooths,
+                               ## don't need priors when predicting ...
+                               priors = NULL)
                     )
 
     ## drop rank-deficient columns if necessary
