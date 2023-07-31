@@ -68,7 +68,7 @@ because of missingness.}
 
 \item{sparseX}{a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}}
 
-\item{priors}{a data frame of priors, in a similar format to that accepted by the \code{brms} package, i.e. a data frame with columns (at least) \code{prior} (character; the prior specification, e.g. "normal(0,2)"); \code{class} (the name of the underlying parameter vector on which to impose the prior ("beta", "betazi", "betad", "theta", "thetazi", "psi"); \code{coef} a string specifying the particular elements of the parameter vector to apply the prior to (not yet implemented; must be specified as an empty string). At present priors can only be imposed jointly on all of the elements of a specified parameter vector, e.g. all fixed-effect coefficients. The tools in \code{brms} for specifying priors (e.g. \code{set_prior} should work to produce legal specifications. The available prior distributions are "normal" (mean/sd parameterization); "gamma" (mean/shape); "t" (mean/sd/df); "cauchy" (location/scale).}
+\item{priors}{a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}}
 }
 \description{
 Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
