@@ -2,13 +2,14 @@
 title: "implementing priors in glmmTMB"
 ---
 
-```{r pkgs}
+```{r pkgs, message = FALSE}
 library(brms)
 if (!"priors" %in% names(formals(glmmTMB::glmmTMB))) {
     remotes::install_github("glmmTMB/glmmTMB/glmmTMB@priors")
 }
 library(glmmTMB)
 library(lme4)
+library(blme)
 library(broom.mixed)
 library(purrr)
 library(dplyr)
@@ -17,10 +18,13 @@ library(ggplot2); theme_set(theme_bw())
 
 It seems useful to use the API/user interface from `brms`
 
-* downside: `brms`has 85 downstream dependencies that `glmmTMB` doesn't
+* downside: `brms`has lots of downstream dependencies that `glmmTMB` doesn't
     * might be able to copy the relevant code (the full [file](https://github.com/paul-buerkner/brms/blob/master/R/priors.R) is 2210 lines (!), but this includes documentation and a lot of code we don't need ...
     ```{r deps}
-    rd <- \(x) packrat:::recursivePackageDependencies(x, ignores = "", lib.loc =    .libPaths()[1])
+	rd <- \(x) tools::package_dependencies("brms", recursive = TRUE)[[x]]
+    ## rd <- \(x) packrat:::recursivePackageDependencies(x, ignores = "", lib.loc =    .libPaths()[1])
+    ## not sure why packrat and tools get different answers, but difference
+    ## doesn't matter much
     brms_dep <- rd("brms")
     glmmTMB_dep <- rd("glmmTMB")
     length(setdiff(brms_dep, glmmTMB_dep))
@@ -67,7 +71,7 @@ cmod_glmmTMB_p <- glmmTMB(form, data=cdatx, family=binomial, priors = cprior)
 all.equal(coef(summary(cmod_blmer)),
           coef(summary(cmod_glmmTMB_p))$cond,
           tolerance = 5e-2)
-cmods <- ls(pattern = "cmod_.*")
+cmods <- ls(pattern = "cmod_[bg].*")
 cmod_list <- mget(cmods) |> setNames(gsub("cmod_", "", cmods))
 ```
 
@@ -89,8 +93,9 @@ from Bolker chapter in Fox et al (regularize singular fit)
 ```{r gophertortoise}
 gdat <- readRDS(system.file("example_files", "gophertortoise.rds", package = "glmmTMB"))
 form <- shells~prev+offset(log(Area))+factor(year)+(1|Site)
-gmod_lmer <- glmer(form , family=poisson, data=gdat)
-gmod_blmer <- bglmer(form, family=poisson, data=gdat)
+gmod_glmer <- glmer(form , family=poisson, data=gdat)
+gmod_blmer <- bglmer(form, family=poisson, data=gdat,
+                     cov.prior = gamma(shape = 2.5, rate = 0, common.scale = TRUE, posterior.scale = "sd"))
 gmod_glmmTMB <- glmmTMB(form, family = poisson, data = gdat) ## 1e-5
 ## blmer default corresponds to gamma(Inf, 2.5)
 gprior <- data.frame(prior = "gamma(1e8, 2.5)",
@@ -100,10 +105,33 @@ gmod_glmmTMB_p <- glmmTMB(form, family = poisson, data = gdat, priors = gprior)
 vc1 <- c(VarCorr(gmod_glmmTMB_p)$cond$Site)
 vc2 <- c(VarCorr(gmod_blmer)$Site)
 all.equal(vc1, vc2, tolerance = 5e-4)
+gmods <- ls(pattern = "gmod_[bg].*")
+gmod_list <- mget(cmods) |> setNames(gsub("gmod_", "", gmods))
+
 ```
+
+```{r culcita_comp}
+pp <- profile(gmod_blmer, which = "theta_", devtol = Inf)
+lattice::xyplot(pp)
+confint(pp)
+pp <- profile(gmod_glmer, which = "theta_", devtol = Inf)
+cres <- (purrr::map_dfr(gmod_list,
+                        ~tidy(., conf.int = TRUE, effects = "ran_pars",
+                              conf.method = "profile", devtol = Inf),
+                        .id = "model")
+    |> select(model, term, estimate, lwr = conf.low, upr = conf.high)
+)
+ggplot(cres, aes(x = estimate, y = term, colour = model)) +
+    geom_pointrange(aes(xmin = lwr, xmax = upr),
+                    position = position_dodge(width = 0.5))
+```
+
+`blme` defaults: Wishart(dim + 2.5), or gamma(2.5). For dim = 1 (scalar), Wishart(n) corresponds to chi-squared(n), or gamma(shape = n/2, scale = n/2).  Chung et al propose log-gamma(2, Inf); not sure why `blme` uses
+
 
 ## To do/Fix me
 
+- move this document to a vignette?
 - add tests!
 - add prior info to model info, print(), summary() output
 - document that gamma is applied on exp() scale
