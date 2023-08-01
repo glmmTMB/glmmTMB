@@ -1,5 +1,3 @@
-## ugh
-sseq <- function(n) if (n==0) integer(0) else seq(n)
 
 #' @noRd
 #' @examples
@@ -15,7 +13,7 @@ proc_priors <- function(priors) {
     np <- if (is.null(priors)) 0 else nrow(priors)
     prior_distrib <- prior_whichpar <- prior_element <- integer(np)
     prior_params <- list()
-    for (i in sseq(np)) {
+    for (i in seq_len(np)) {
         ## prior is a string
         pp <- priors[["prior"]][i]
         pname <- gsub("\\(.*","",pp)
@@ -50,3 +48,4 @@ proc_priors <- function(priors) {
 #' @name priors
 #' 
 NULL
+

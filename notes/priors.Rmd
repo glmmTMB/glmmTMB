@@ -94,8 +94,8 @@ from Bolker chapter in Fox et al (regularize singular fit)
 gdat <- readRDS(system.file("example_files", "gophertortoise.rds", package = "glmmTMB"))
 form <- shells~prev+offset(log(Area))+factor(year)+(1|Site)
 gmod_glmer <- glmer(form , family=poisson, data=gdat)
-gmod_blmer <- bglmer(form, family=poisson, data=gdat,
-                     cov.prior = gamma(shape = 2.5, rate = 0, common.scale = TRUE, posterior.scale = "sd"))
+gmod_blmer <- bglmer(form, family=poisson, data=gdat)
+## cov.prior = gamma(shape = 2.5, rate = 0, common.scale = TRUE, posterior.scale = "sd"))
 gmod_glmmTMB <- glmmTMB(form, family = poisson, data = gdat) ## 1e-5
 ## blmer default corresponds to gamma(Inf, 2.5)
 gprior <- data.frame(prior = "gamma(1e8, 2.5)",
@@ -110,7 +110,7 @@ gmod_list <- mget(cmods) |> setNames(gsub("gmod_", "", gmods))
 
 ```
 
-```{r culcita_comp}
+```{r gopher_comp, eval = FALSE}
 pp <- profile(gmod_blmer, which = "theta_", devtol = Inf)
 lattice::xyplot(pp)
 confint(pp)
@@ -126,11 +126,12 @@ ggplot(cres, aes(x = estimate, y = term, colour = model)) +
                     position = position_dodge(width = 0.5))
 ```
 
-`blme` defaults: Wishart(dim + 2.5), or gamma(2.5). For dim = 1 (scalar), Wishart(n) corresponds to chi-squared(n), or gamma(shape = n/2, scale = n/2).  Chung et al propose log-gamma(2, Inf); not sure why `blme` uses
-
+`blme` defaults: Wishart(dim + 2.5), or gamma(2.5). For dim = 1 (scalar), Wishart(n) corresponds to chi-squared(n), or gamma(shape = n/2, scale = n/2).  Chung et al propose `gamma(2, Inf)`; not sure why `blme` uses `gamma(2.5)` instead? or if specified via Wishart, shape = 3.5 → gamma shape of 1.75?
 
 ## To do/Fix me
 
+- why is `blmer` profile CI failing (in `broom.mixed`, but not externally?)
+- figure out/document `blme` default priors
 - move this document to a vignette?
 - add tests!
 - add prior info to model info, print(), summary() output

@@ -636,3 +636,11 @@ simulate_new <- function(object,
         y
     else x
 }
+
+set_class <- function(x, cls, prepend = TRUE) {
+    if (!prepend) class(x) <- cls
+    else class(x) <- c(cls, class(x))
+    x
+}
+
+

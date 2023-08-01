@@ -1832,7 +1832,9 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 REML,
                                 map,
                                 sparseX,
-                                parallel = control$parallel))
+                                parallel = control$parallel,
+                                priors = set_class(priors, "glmmTMB_prior")))
+    
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
@@ -1994,8 +1996,13 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
     }
-
     invisible(x)
 }## print.summary.glmmTMB
 
-
+print.glmmTMB_prior <- function(x, ...) {
+    for (i in seq_len(nrow(x))) {
+        print(reformulate(x$prior[i], response = x$class[i]))
+    }
+    invisible(x)
+}
+             
