@@ -136,13 +136,16 @@ ggplot(cres, aes(x = estimate, y = term, colour = model)) +
 - figure out/document `blme` default priors
 - move this document to a vignette?
 - add tests!
-- add prior info to model info, print(), summary() output
 - document that gamma is applied on exp() scale
    - move prior info to a separate man page?
 - implement elementwise priors
+    - start with specifying by number, do lookup by name later
 - allow multivariate (joint) priors on parameter vectors rather than iid priors?
      - esp for correlation matrices: LKJ, Wishart etc. (from Mikael Jagan [here](https://github.com/jaganmn/misc/tree/master/tmb_distributions))
 
+- add info to prior structure:
+   - number of prior parameters (save annoying C++ code)
+   - number of model parameters to use/loop over (to be determined on R side)
+       - e.g. allow 'apply gamma to all sd parameters' ?
 - test!
-- easier to work out number of parameters per prior on the R side and pass it to glmmTMB as a prior-wise vector?
 

@@ -52,7 +52,8 @@
   normal = 0,
   gamma = 1,
   t = 2,
-  cauchy = 3
+  cauchy = 3,
+  lkj = 4
 )
 .valid_vprior <- c(
   beta = 0,

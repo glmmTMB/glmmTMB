@@ -83,7 +83,8 @@ enum valid_prior {
   normal_prior = 0,
   gamma_prior = 1,
   t_prior = 2,
-  cauchy_prior = 3
+  cauchy_prior = 3,
+  lkj_prior = 4
 };
 
 // codes for parameter (vec) to apply prior to

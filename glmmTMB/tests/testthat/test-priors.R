@@ -18,5 +18,14 @@ test_that("prior setup", {
 })
 
 gm0p <- update(gm0, priors = cprior)
-print(summary(gm0p))
+
+test_that("prior printing", {
+    cc <- capture.output(print(gm0p))
+    expect_equal(tail(cc[nzchar(cc)], 1), "Priors: fixef ~ normal(0, 3) ")
+}
+
+test_that("summary prior printing", {
+    cc <- capture.output(print(summary(gm0p)))
+    expect_equal(tail(cc, 2), c("Priors:", "fixef ~ normal(0, 3)"))
+}
 ## glmmTMB:::print.glmmTMB_prior(gm0p$modelInfo$priors, compact = TRUE)
