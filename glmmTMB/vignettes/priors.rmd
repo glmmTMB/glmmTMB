@@ -3,6 +3,7 @@ title: "Priors in glmmTMB"
 author: "Ben Bolker"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
+bibliography: glmmTMB.bib
 vignette: >
   %\VignetteIndexEntry{Priors in glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}

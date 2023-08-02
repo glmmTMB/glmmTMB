@@ -174,8 +174,8 @@ glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 
 For those trying to make sense of the internal parameterization, the internal
 transformation from the parameter ($\phi$) to the AR1 coefficient is
-$\phi = theta_2/sqrt(1+\theta_2^2)$; the inverse transformation is
-$\theta_2 =  \phi/sqrt(1-\phi^2)$. (The first element of the `theta` vector
+$\phi = \theta_2/\sqrt(1+\theta_2^2)$; the inverse transformation is
+$\theta_2 =  \phi/\sqrt(1-\phi^2)$. (The first element of the `theta` vector
 is the log-standard-deviation.)
 
 ### Increasing the sample size
