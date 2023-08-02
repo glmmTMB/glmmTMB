@@ -380,6 +380,11 @@ up2date <- function(oldfit) {
       ## don't append() or c(), don't want to lose class info
       oldfit$modelInfo$family$dispersion <- 1
   }
+  if (!"priors" %in% names(oldfit$modelInfo)) {
+      ## https://stackoverflow.com/questions/7944809/assigning-null-to-a-list-element-in-r
+      ## n.b. can't use ...$priors <- NULL
+      oldfit$modelInfo[["priors"]] <- NULL
+  }
   return(oldfit)
 }
 
@@ -638,6 +643,7 @@ simulate_new <- function(object,
 }
 
 set_class <- function(x, cls, prepend = TRUE) {
+    if (is.null(x)) return(NULL)
     if (!prepend) class(x) <- cls
     else class(x) <- c(cls, class(x))
     x

@@ -29,7 +29,7 @@ mkTMBStruc(
   sparseX = NULL,
   control = glmmTMBControl(),
   old_smooths = NULL,
-  priors
+  priors = NULL
 )
 }
 \arguments{

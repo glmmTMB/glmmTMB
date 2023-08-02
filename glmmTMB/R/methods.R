@@ -623,7 +623,13 @@ print.glmmTMB <-
     cat("\nFixed Effects:\n")
     print(cf, ...)
   } else
-    cat("No fixed effect coefficients\n")
+      cat("No fixed effect coefficients\n")
+
+  if (!is.null(x$modelInfo$priors)) {
+      cat("\nPriors: ")
+      print(x$modelInfo$priors, compact = TRUE)
+      cat("\n")
+  }
   invisible(x)
 }
 

@@ -255,7 +255,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        sparseX=NULL,
                        control=glmmTMBControl(),
                        old_smooths = NULL,
-                       priors) {
+                       priors = NULL) {
 
 
   if (is.null(sparseX)) sparseX <- logical(0)
@@ -373,7 +373,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
 
-  priors <- proc_priors(priors)
+  ## don't want to destroy user-specified prior info by writing
+  ##  over; we want the user-spec version in modelInfo 
+  prior_struc <- proc_priors(priors)
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
@@ -407,10 +409,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     whichPredict = whichPredict,
 
     ## information about priors
-    prior_distrib = priors$prior_distrib,
-    prior_whichpar = priors$prior_whichpar,
-    prior_element = priors$prior_element,
-    prior_params = priors$prior_params
+    prior_distrib = prior_struc$prior_distrib,
+    prior_whichpar = prior_struc$prior_whichpar,
+    prior_element = prior_struc$prior_element,
+    prior_params = prior_struc$prior_params
     
   )
 
@@ -492,7 +494,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose, REML, map, sparseX))
+            fr, se, call, verbose, REML, map, sparseX, priors))
 }
 
 ##' Create X and random effect terms from formula
@@ -1944,10 +1946,13 @@ summary.glmmTMB <- function(object,...)
                    family = famL$family, link = famL$link,
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
-		   coefficients = coefs, sigma = sig,
+		   coefficients = coefs,
+                   sigma = sig,
 		   vcov = vcov(object),
 		   varcor = varcor, # and use formatVC(.) for printing.
-		   AICtab = llAIC[["AICtab"]], call = object$call
+		   AICtab = llAIC[["AICtab"]],
+                   call = object$call,
+                   priors = object$modelInfo$priors
                    ## residuals = residuals(object,"pearson",scaled = TRUE),
 		   ## fitMsgs = .merMod.msgs(object),
                    ## optinfo = object@optinfo
@@ -1996,13 +2001,25 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
     }
+    if (!is.null(x$prior)) {
+        cat("\nPriors:\n")
+        print(x$prior)
+    }
     invisible(x)
 }## print.summary.glmmTMB
 
-print.glmmTMB_prior <- function(x, ...) {
+print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
+    if (is.null(x)) return(invisible(x))
+    pstr <- character(nrow(x))
     for (i in seq_len(nrow(x))) {
-        print(reformulate(x$prior[i], response = x$class[i]))
+        ff <- reformulate(x$prior[i], response = from_prior_syn(x$class[i]))
+        if (!compact) {
+            print(showEnv = FALSE, ff)
+        } else {
+            pstr[i] <- capture.output(print(showEnv = FALSE, ff))
+        }
     }
+    if (compact) cat(paste(pstr, collapse = "; "), "\n")
     invisible(x)
 }
              

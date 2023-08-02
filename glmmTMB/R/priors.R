@@ -1,10 +1,28 @@
 
+prior_synonyms <- c("fixef" = "beta",
+                    "fixef_zi" = "beta_zi",
+                    "fixef_disp" = "betad",
+                    "ranef" = "theta",
+                    "ranef_zi" = "theta_zi",
+                    "psi" = "shape")
+
+to_prior_syn <- function(x) {
+    if (!x %in% names(prior_synonyms)) return (x)
+    prior_synonyms[x]
+}
+
+from_prior_syn <- function(x) {
+    if (!x %in% prior_synonyms) return(x)
+    names(prior_synonyms)[match(x, prior_synonyms)]
+}
+    
 #' @noRd
 #' @examples
 #' if (require(brms)) {
 #' bprior <- c(prior_string("normal(0,10)", class = "beta"),
 #' ##            prior(normal(1,2), class = b, coef = treat),
 #'            prior_(~cauchy(0,2), class = ~betad))
+#' proc_priors(bprior)
 #' }
 proc_priors <- function(priors) {
     ## priors is a data frame as in brms
@@ -25,9 +43,10 @@ proc_priors <- function(priors) {
         p_params[[1]] <- as.name("c")
         ## in which environment???
         prior_params[[i]] <- eval(p_params)
-        prior_whichpar[i] <- .valid_vprior[priors[["class"]][i]]
-        if (is.na(prior_whichpar[i])) stop("unknown prior variable ",
-                                           priors[["class"]][i])
+        cl <- to_prior_syn(priors[["class"]][i])
+        prior_whichpar[i] <- .valid_vprior[cl]
+        if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
+                                           
         pc <- priors[["coef"]][i]
         if (pc == "") prior_element[i] <- NA_integer_
         if (pc != "") stop("element-specific priors not implemented yet")

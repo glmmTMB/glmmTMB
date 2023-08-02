@@ -130,6 +130,8 @@ ggplot(cres, aes(x = estimate, y = term, colour = model)) +
 
 ## To do/Fix me
 
+- try to get internal structure of priors fixed before release, otherwise `up2date` might get annoying ...
+- document synonyms
 - why is `blmer` profile CI failing (in `broom.mixed`, but not externally?)
 - figure out/document `blme` default priors
 - move this document to a vignette?
