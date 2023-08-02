@@ -18,7 +18,7 @@
   ...
 )
 
-\method{Effect}{glmmTMB}(focal.predictors, mod, ...)
+Effect.glmmTMB(focal.predictors, mod, ...)
 }
 \arguments{
 \item{mod}{a glmmTMB model}

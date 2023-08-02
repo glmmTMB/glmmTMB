@@ -383,7 +383,7 @@ up2date <- function(oldfit) {
   if (!"priors" %in% names(oldfit$modelInfo)) {
       ## https://stackoverflow.com/questions/7944809/assigning-null-to-a-list-element-in-r
       ## n.b. can't use ...$priors <- NULL
-      oldfit$modelInfo[["priors"]] <- NULL
+      oldfit$modelInfo["priors"] <- list(NULL)
   }
   return(oldfit)
 }
