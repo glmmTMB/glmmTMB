@@ -81,7 +81,9 @@ Suggests:
     xtable,
     huxtable,
     mvabund,
-    parallel
+    parallel,
+    blme,
+    purrr
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
