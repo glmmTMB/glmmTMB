@@ -28,4 +28,12 @@ test_that("summary prior printing", {
     cc <- capture.output(print(summary(gm0p)))
     expect_equal(tail(cc, 2), c("Priors:", "fixef ~ normal(0, 3)"))
 })
-## glmmTMB:::print.glmmTMB_prior(gm0p$modelInfo$priors, compact = TRUE)
+
+data("sleepstudy", package = "lme4")
+
+fm1 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
+cprior <- data.frame(prior = "normal(0, 3)",
+                     class = "beta",
+                     coef = 2)
+## element by name, e.g. "Days" not allowed yet
+proc_priors(cprior)

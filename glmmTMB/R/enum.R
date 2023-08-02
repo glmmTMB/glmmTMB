@@ -50,16 +50,17 @@
 )
 .valid_prior <- c(
   normal = 0,
-  gamma = 1,
-  t = 2,
-  cauchy = 3,
-  lkj = 4
+  t = 1,
+  cauchy = 2,
+  gamma = 10,
+  beta = 20,
+  lkj = 30
 )
 .valid_vprior <- c(
   beta = 0,
   betazi = 1,
   betad = 2,
-  theta = 3,
-  thetazi = 4,
-  psi = 5
+  theta = 10,
+  thetazi = 20,
+  psi = 30
 )

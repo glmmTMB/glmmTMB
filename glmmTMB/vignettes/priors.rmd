@@ -25,6 +25,13 @@ One can also think of adding priors as a way of *regularizing* or *penalizing* a
 
 ## Load packages
 
+```{r opts, include = FALSE}
+## only run chunks if we have all required pkgs
+knitr::opts_chunk$set(eval = all(sapply(c("purrr", "blme", "broom.mixed", "dplyr", "ggplot2"), require,
+                                        character.only = TRUE)),
+                      fig.width = 7, fig.height = 5)
+```
+
 ```{r pkgs, message = FALSE}
 library(glmmTMB)
 library(lme4)
@@ -92,35 +99,44 @@ vc1 <- c(VarCorr(gmod_glmmTMB_p)$cond$Site)
 vc2 <- c(VarCorr(gmod_bglmer)$Site)
 all.equal(vc1, vc2, tolerance = 5e-4)
 gmods <- ls(pattern = "gmod_[bg].*")
-gmod_list <- mget(cmods) |> setNames(gsub("gmod_", "", gmods))
-
+gmod_list <- mget(gmods) |> setNames(gsub("gmod_", "", gmods))
 ```
 
-```{r gopher_comp, eval = FALSE}
-pp <- profile(gmod_bglmer, which = "theta_", devtol = Inf)
-lattice::xyplot(pp)
-confint(pp)
-pp <- profile(gmod_glmer, which = "theta_", devtol = Inf)
-cres <- (purrr::map_dfr(gmod_list,
-                        ~tidy(., conf.int = TRUE, effects = "ran_pars",
-                              conf.method = "profile", devtol = Inf),
-                        .id = "model")
-    |> select(model, term, estimate, lwr = conf.low, upr = conf.high)
+The code for extracting CIs is a little bit ugly (because profile confidence intervals aren't
+quite working for `glmmTMB` objects with `broom.mixed::tidy()`, and because profile CIs can be
+fussy in any case)
+
+```{r gopher_comp, echo = FALSE, warning = FALSE, results = "hide", cache = TRUE}
+t1 <- tidy(gmod_bglmer, conf.int = TRUE, conf.method = "profile",
+           effects = "ran_pars", devtol = Inf, quiet = TRUE)
+t2 <- tidy(gmod_glmer, conf.int = TRUE, conf.method = "profile",
+           effects = "ran_pars", quiet = TRUE)
+## subscript out of bounds ... ??
+## tidy(gmod_glmmTMB_p, conf.int = TRUE, conf.method = "profile", effects = "ran_pars")
+t3A <- (exp(confint(profile(gmod_glmmTMB_p, stderr = 0.05, parm = "theta_")))
+    |> as.data.frame()
+    |> setNames(c("conf.low", "conf.high"))
+    |> mutate(estimate = attr(VarCorr(gmod_glmmTMB_p)$cond$Site, "stddev"), .before = 1))
+t3B <- tibble(estimate = attr(VarCorr(gmod_glmmTMB_p)$cond$Site, "stddev"),
+              conf.low = NA,
+              conf.high = NA)
+gres <- (dplyr::bind_rows(list(bglmer = t1, glmer = t2, glmmTMB = t3B, glmmTMB_p = t3A),
+                 .id = "model")
+    |> select(model, estimate, lwr = conf.low, upr = conf.high)
 )
-ggplot(cres, aes(x = estimate, y = term, colour = model)) +
+ggplot(gres, aes(x = estimate, y = model)) + 
     geom_pointrange(aes(xmin = lwr, xmax = upr),
                     position = position_dodge(width = 0.5))
 ```
 
 `blme` defaults: Wishart(dim + 2.5), or gamma(2.5). For dim = 1 (scalar), Wishart(n) corresponds to chi-squared(n), or gamma(shape = n/2, scale = n/2).  Chung et al propose `gamma(2, Inf)`; not sure why `blme` uses `gamma(2.5)` instead? or if specified via Wishart, shape = 3.5 → gamma shape of 1.75?
 
-## To do/Fix me
+## TO DO/FIX ME
 
 - try to get internal structure of priors fixed before release, otherwise `up2date` might get annoying ...
 - document synonyms
 - why is `bglmer` profile CI failing (in `broom.mixed`, but not externally?)
 - figure out/document `blme` default priors
-- move this document to a vignette?
 - add tests!
 - document that gamma is applied on exp() scale
    - move prior info to a separate man page?
@@ -128,13 +144,11 @@ ggplot(cres, aes(x = estimate, y = term, colour = model)) +
     - start with specifying by number, do lookup by name later
 - allow multivariate (joint) priors on parameter vectors rather than iid priors?
      - esp for correlation matrices: LKJ, Wishart etc. (from Mikael Jagan [here](https://github.com/jaganmn/misc/tree/master/tmb_distributions))
-
-- add info to prior structure:
-   - number of prior parameters (save annoying C++ code)
-   - number of model parameters to use/loop over (to be determined on R side)
-       - e.g. allow 'apply gamma to all sd parameters' ?
+- add beta priors for zi, corr, etc. ?
+   - number of prior parameters (save annoying C++ code); can specify via `_cor` or `_sd` on the R side (will pick out sd-specific or cor-specific elements)
+   - start and end indices in vector
 - test!
-
+- safety checks (e.g. error at end of switch statements in C++)
 
 
 ## Development issues
@@ -177,7 +191,7 @@ str(bprior)
 ```
 
 We probably only need to pay attention to the columns `prior`, `class`, `coef`, `group`. For our purposes, `prior` is the name and parameters; `class` will be the name of the parameter vector; `coef` will specify an index within the vector (could be a number or name?)
-	
+
 `TMB`-side data structure:
 
 * vector of prior codes
@@ -187,5 +201,12 @@ We probably only need to pay attention to the columns `prior`, `class`, `coef`, 
 * each index (corresponding to `coef`) is scalar, either NA (prior over all elements) or integer (a specific element)
 
 * new loop after loglik loop to add (negative log-)prior components: loop over prior spec
+
+* add `theta_corr`, `theta_sd` as enum options (synonyms: `ranef_corr`, `ranef_sd`) to specify penalizing only SD vector or only corr vector from a particular element?
+
+* 'coef' picks out elements
+   * fixed effect: find numeric index in `colnames(X)` of corresponding component
+   * random effect: find indices (start and stop?) in corresponding `theta` vector
+   * `ranef_corr`, `ranef_sd`: find indices ... (depends on RE structure)
 
 ## References

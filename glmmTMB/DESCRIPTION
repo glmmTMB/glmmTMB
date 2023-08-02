@@ -83,7 +83,8 @@ Suggests:
     mvabund,
     parallel,
     blme,
-    purrr
+    purrr,
+    dplyr
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

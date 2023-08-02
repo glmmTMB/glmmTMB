@@ -374,8 +374,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   ## don't want to destroy user-specified prior info by writing
-  ##  over; we want the user-spec version in modelInfo 
-  prior_struc <- proc_priors(priors)
+  ##  over; we want the user-spec version in modelInfo
+
+  ## FIXME: would be nice to be able to get this with less info
+  ## (for external testing etc.) but ... ??
+  ## isolate names for localizing priors
+  get_fixnm <- function(x) c(colnames(x$X), colnames(x$XS))
+  fix_nms <- list(beta = get_fixnm(condList),
+                  betazi = get_fixnm(ziList),
+                  betad = get_fixnm(dispList))
+  ## need 'cnms' (names to localize and lengths to figure out ncoef)
+  ## 'ss' (structure)  
+  get_renm <- function(x) x$reTrms[c("cnms", "ss")]
+  re_nms <- list(beta = get_renm(condList),
+                    betazi = get_renm(ziList))
+
+  prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_nms))
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),

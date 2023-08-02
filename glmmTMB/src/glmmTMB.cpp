@@ -80,11 +80,16 @@ enum valid_ziPredictCode {
 
 // codes for prior distributions
 enum valid_prior {
+  // real-valued
   normal_prior = 0,
-  gamma_prior = 1,
-  t_prior = 2,
-  cauchy_prior = 3,
-  lkj_prior = 4
+  t_prior = 1,
+  cauchy_prior = 2,
+  // non-negative
+  gamma_prior = 10,
+  // (0,1)
+  beta_prior = 20,
+  // correlations
+  lkj_prior = 30
 };
 
 // codes for parameter (vec) to apply prior to
@@ -92,9 +97,9 @@ enum valid_vprior {
   beta_vprior = 0,
   betazi_vprior = 1,
   betad_vprior = 2,
-  theta_vprior = 3,
-  thetazi_vprior = 4,
-  psi_vprior = 5
+  theta_vprior = 10,
+  thetazi_vprior = 20,
+  psi_vprior = 30
 };
 
 template<class Type>

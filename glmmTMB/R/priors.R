@@ -24,15 +24,16 @@ from_prior_syn <- function(x) {
 #'            prior_(~cauchy(0,2), class = ~betad))
 #' proc_priors(bprior)
 #' }
-proc_priors <- function(priors) {
+proc_priors <- function(priors, info = NULL) {
     ## priors is a data frame as in brms
     ## process prior list into TMB data structures
-    ##
+    ## 'info' parameter for translating elements into indices; not implemented yet
     np <- if (is.null(priors)) 0 else nrow(priors)
     prior_distrib <- prior_whichpar <- prior_element <- integer(np)
     prior_params <- list()
     for (i in seq_len(np)) {
-        ## prior is a string
+
+        ## process prior value (character to distribution code and parameter vector)
         pp <- priors[["prior"]][i]
         pname <- gsub("\\(.*","",pp)
         prior_distrib[i] <- .valid_prior[pname]
@@ -43,17 +44,31 @@ proc_priors <- function(priors) {
         p_params[[1]] <- as.name("c")
         ## in which environment???
         prior_params[[i]] <- eval(p_params)
+
+        ## process 'class' (parameter vector)
         cl <- to_prior_syn(priors[["class"]][i])
         prior_whichpar[i] <- .valid_vprior[cl]
         if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
-                                           
-        pc <- priors[["coef"]][i]
-        if (pc == "") prior_element[i] <- NA_integer_
-        if (pc != "") stop("element-specific priors not implemented yet")
+
+        ## process 'coef' (particular element)
+        pc <- trimws(priors[["coef"]][i])
+        if (pc == "") {
+            prior_element[i] <- NA_integer_
+        } else {
+            if (grepl("[0-9]+", pc)) {
+                prior_element[i] <- as.integer(pc)
+            } else {
+                stop("only integer 'coef' specifications implemented")
+            }
+        }
     }
     prior_params <- if (np == 0) numeric(0) else unlist(prior_params)
     return(namedList(prior_distrib, prior_whichpar, prior_element,
                  prior_params))
+}
+
+empty_priors <- function() {
+
 }
 
 #' use of priors in glmmTMB
