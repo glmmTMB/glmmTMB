@@ -651,7 +651,7 @@ test_that("bad inversion in vcov", {
         REML = TRUE
     )
     ## only fails on some platforms ... this is sufficient for now ... FIXME
-    if (getRVersion() >= "4.3.0") {
+    if (getRversion() >= "4.3.0") {
         expect_true(all(is.na(vcov(m)$cond)))
     }
 })
