@@ -2008,6 +2008,8 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
     invisible(x)
 }## print.summary.glmmTMB
 
+#' @importFrom stats reformulate
+#' @importFrom utils capture.output
 print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
     if (is.null(x)) return(invisible(x))
     pstr <- character(nrow(x))
