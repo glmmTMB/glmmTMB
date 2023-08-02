@@ -53,6 +53,9 @@
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/priors.html">Priors in glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
@@ -116,7 +119,8 @@
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sparseX <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  old_smooths <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  old_smooths <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  priors <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -217,6 +221,10 @@
 <dt>old_smooths</dt>
 <dd><p>(optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements</p></dd>
+
+
+<dt>priors</dt>
+<dd><p>see <code><a href="priors.html">priors</a></code></p></dd>
 
 
 <dt>zioffset</dt>

@@ -28,6 +28,9 @@
     <loc>/articles/parallel.html</loc>
   </url>
   <url>
+    <loc>/articles/priors.html</loc>
+  </url>
+  <url>
     <loc>/articles/sim.html</loc>
   </url>
   <url>
@@ -155,6 +158,9 @@
   </url>
   <url>
     <loc>/reference/print.VarCorr.glmmTMB.html</loc>
+  </url>
+  <url>
+    <loc>/reference/priors.html</loc>
   </url>
   <url>
     <loc>/reference/profile.glmmTMB.html</loc>
