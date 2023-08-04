@@ -86,7 +86,7 @@ enum valid_prior {
   cauchy_prior = 2,
   // non-negative
   gamma_prior = 10,
-  // (0,1)
+  // (0,1), e.g. for zi prob
   beta_prior = 20,
   // correlations
   lkj_prior = 30

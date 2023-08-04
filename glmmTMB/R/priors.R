@@ -17,11 +17,21 @@ from_prior_syn <- function(x) {
 }
     
 #' @noRd
+#' @param priors data frame with ...
+#' @param info additional info needed: list(fix = list(cond = , zi =, disp = )) [colnames of X matrices];
+#'  re = list(cond = list(cnms, ss), zi = ) [cnms, names of grouping vars and name of terms; ss, structure code]
+#' @return a list with columns
+#' \itemize{
+#' \item prior_distrib: distribution code
+#' \item prior_np: number of parameters
+#' \item prior_whichpar: which parameter vector (theta, beta, etc.)
+#' \item prior_elstart: starting element of parameter vector
+#' \item prior_elend: ending element of parameter vector
+#' \item prior_params: vector of all parameters
+#' }
 #' @examples
-#' if (require(brms)) {
-#' bprior <- c(prior_string("normal(0,10)", class = "beta"),
-#' ##            prior(normal(1,2), class = b, coef = treat),
-#'            prior_(~cauchy(0,2), class = ~betad))
+#' #' bprior <- c(prior_string("normal(0,10)", class = "fixef"))
+#' 
 #' proc_priors(bprior)
 #' }
 proc_priors <- function(priors, info = NULL) {
@@ -29,7 +39,7 @@ proc_priors <- function(priors, info = NULL) {
     ## process prior list into TMB data structures
     ## 'info' parameter for translating elements into indices; not implemented yet
     np <- if (is.null(priors)) 0 else nrow(priors)
-    prior_distrib <- prior_whichpar <- prior_element <- integer(np)
+    prior_distrib <- prior_whichpar <- prior_elstart <- prior_elend <- integer(np)
     prior_params <- list()
     for (i in seq_len(np)) {
 
@@ -38,6 +48,7 @@ proc_priors <- function(priors, info = NULL) {
         pname <- gsub("\\(.*","",pp)
         prior_distrib[i] <- .valid_prior[pname]
         if (is.na(prior_distrib[i])) stop("unknown prior distribution ",pname)
+        
         ## extract parameter values
         ## parse and drop expression()
         p_params <- parse(text = pp)[[1]]
@@ -46,9 +57,19 @@ proc_priors <- function(priors, info = NULL) {
         prior_params[[i]] <- eval(p_params)
 
         ## process 'class' (parameter vector)
-        cl <- to_prior_syn(priors[["class"]][i])
+        pcl <- priors[["class"]][i]
+        suffix <- gsub("^.*_", "", pcl)
+        pcl <- gsub("_.*", "", pcl)
+
+        ## STOPPED HERE
+        cl <- to_prior_syn(pcl)
         prior_whichpar[i] <- .valid_vprior[cl]
         if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
+
+        ## figure out elements
+        ## if blank, all
+        ## if names, locate
+        ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
 
         ## process 'coef' (particular element)
         pc <- trimws(priors[["coef"]][i])

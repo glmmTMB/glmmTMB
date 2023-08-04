@@ -378,18 +378,19 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## FIXME: would be nice to be able to get this with less info
   ## (for external testing etc.) but ... ??
+
   ## isolate names for localizing priors
   get_fixnm <- function(x) c(colnames(x$X), colnames(x$XS))
-  fix_nms <- list(beta = get_fixnm(condList),
-                  betazi = get_fixnm(ziList),
-                  betad = get_fixnm(dispList))
+  fix_nms <- list(cond = get_fixnm(condList),
+                  zi = get_fixnm(ziList),
+                  disp = get_fixnm(dispList))
   ## need 'cnms' (names to localize and lengths to figure out ncoef)
   ## 'ss' (structure)  
-  get_renm <- function(x) x$reTrms[c("cnms", "ss")]
-  re_nms <- list(beta = get_renm(condList),
-                    betazi = get_renm(ziList))
+  get_reinfo <- function(x) list(cnms = x$reTrms[["cnms"]], ss = x[["ss"]])
+  re_info <- list(cond = get_reinfo(condList),
+                  zi = get_reinfo(ziList))
 
-  prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_nms))
+  prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
 
   data.tmb <- namedList(
     X = denseXval("cond",condList),
