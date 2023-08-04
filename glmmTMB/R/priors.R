@@ -92,6 +92,8 @@ proc_priors <- function(priors, info = NULL) {
                 } else {
                     ## match component based on cnms
                     ## work out number of sd/cor params based on structure
+                    ## first need to locate theta component in overall
+                    ##  theta vector
                     stop("element-specific ranef priors not yet implemented")
                 }
             } ## specified elements

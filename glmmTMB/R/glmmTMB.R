@@ -390,6 +390,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   re_info <- list(cond = get_reinfo(condList),
                   zi = get_reinfo(ziList))
 
+  ## easy way to get lengths of theta of individual components??
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
 
   data.tmb <- namedList(

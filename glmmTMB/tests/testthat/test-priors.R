@@ -13,6 +13,10 @@ cprior3 <- data.frame(prior = "normal(0, 3)",
                      class = "beta",
                      coef = 2)
 
+cprior4 <- data.frame(prior = "gamma(1e8, 2)",
+                     class = "theta",
+                     coef = 2)
+
 gm0p1 <- update(gm0, priors = cprior1)
 gm1p2 <- update(gm1, priors = cprior2)
 gm1p3 <- update(gm1, priors = cprior3)
