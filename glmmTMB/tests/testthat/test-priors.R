@@ -24,18 +24,18 @@ get_prior_info <- function(fit) {
 }
 
 test_that("basic prior info", {
-    expect_equal(get_prior_info(gm0p),
+    expect_equal(get_prior_info(gm0p1),
                  list(prior_distrib = 0, prior_elend = 0, prior_elstart = 0,
                       prior_params = c(0, 3), prior_whichpar = 0))
 })
 
 test_that("prior printing", {
-    cc <- capture.output(print(gm0p))
+    cc <- capture.output(print(gm0p1))
     expect_equal(tail(cc[nzchar(cc)], 1), "Priors: fixef ~ normal(0, 3) ")
 })
 
 test_that("summary prior printing", {
-    cc <- capture.output(print(summary(gm0p)))
+    cc <- capture.output(print(summary(gm0p1)))
     expect_equal(tail(cc, 2), c("Priors:", "fixef ~ normal(0, 3)"))
 })
 
