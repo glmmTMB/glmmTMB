@@ -354,9 +354,7 @@ up2date <- function(oldfit) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
-      prior_ivars <- paste0("prior_",
-                            c("distrib", "whichpar", "element"))
-      prior_fvars <- "prior_params"
+      ## prior_ivars, prior_fvars are defined in priors.R
       if (!"prior_distrib" %in% names(ee$data)) {
           ## these are DATA_IVECTOR but apparently after processing
           ##  TMB turns these into numeric ... ??
@@ -649,4 +647,11 @@ set_class <- function(x, cls, prepend = TRUE) {
     x
 }
 
-
+## convert from parameter name to component name or vice versa
+compsyn <- c(beta = "cond", betazi = "zi", betad = "disp")
+match_names <- function(x, to_beta = FALSE) {
+    if (to_beta) return(names(compsyn)[match(x, compsyn)])
+    return(compsyn[x])
+}
+                        
+    

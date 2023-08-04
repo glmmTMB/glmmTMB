@@ -598,7 +598,9 @@ Type objective_function<Type>::operator() ()
 
   DATA_IVECTOR(prior_distrib);    // specify distribution
   DATA_IVECTOR(prior_whichpar);   // specify parameter
-  DATA_IVECTOR(prior_element);    // specify element (NA or index)
+  DATA_IVECTOR(prior_elstart);    // starting element index
+  DATA_IVECTOR(prior_elend);      // ending element index
+  DATA_IVECTOR(prior_npar);
   DATA_VECTOR(prior_params);      // specify parameters (concatenated)
   
   // Joint negative log-likelihood
@@ -861,23 +863,9 @@ Type objective_function<Type>::operator() ()
     int par_ind = 0; // parameter index
     int num_par;
     for (int i = 0; i < np; i++) {
-      // FIXME: clunky; is it acceptable to copy the
-      //  relevant parameter vector into a new priorvec instead,
-      // to avoid the double switch here??
-      int np2;
-      switch (prior_whichpar[i]) {
-      case beta_vprior: np2 = beta.size(); break;
-      case betazi_vprior: np2 = betazi.size(); break;
-      case betad_vprior: np2 = betad.size(); break;
-      case theta_vprior: np2 = theta.size(); break;
-      case thetazi_vprior: np2 = thetazi.size(); break;
-      case psi_vprior: np2 = psi.size(); break;
-      }
-      // FIXME: implement element-specific priors (won't require looping
-      // over elements, this will only happen if prior_element[i] is NA)
-      // What to do about priors on multivariate elements, i.e.
-      // correlation matrices?
-      for (int j = 0; j < np2; j++) {
+      // need an if-clause here for multivariate distrib (lkj/corr parameters
+      // otherwise go element-by-element
+      for (int j = prior_elstart[i]; j <= prior_elend[i]; j++) { // <= is on purpose here
 	switch(prior_whichpar[i]) {
 	case beta_vprior: parval = beta[j]; break;
 	case betazi_vprior: parval =  betazi[j]; break;
@@ -910,15 +898,16 @@ Type objective_function<Type>::operator() ()
 	  s2 = prior_params[par_ind+1];         // scale
 	  logpriorval = glmmtmb::dcauchy(parval, s1, s2, true);
 	break;
+	default:
+	  error("Prior distribution not implemented!");
 	}
 
 	jnll -= logpriorval;
 	
       } // loop over elements
-      
-      if (prior_distrib[i] == cauchy_prior) {
-	par_ind += 3;
-      } else par_ind += 2;
+
+      // step forward in prior-parameter vector
+      par_ind += prior_npar[i];
       
     } // loop over priors
     

@@ -1,23 +1,33 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-cprior <- data.frame(prior = "normal(0, 3)",
+cprior1 <- data.frame(prior = "normal(0, 3)",
                      class = "beta",
                      coef = "")
 
-rp1 <- list(prior_distrib = 0, prior_whichpar = 0,
-            prior_element = NA_integer_, 
-            prior_params = c(0, 3))
+cprior2 <- data.frame(prior = "normal(0, 3)",
+                     class = "beta",
+                     coef = "period2")
 
-test_that("prior setup", {
-    expect_equal(proc_priors(cprior), rp1)
-    
-    cprior2 <- cprior
-    cprior2[["class"]] <- "fixef"
-    expect_equal(proc_priors(cprior2), rp1)
+cprior3 <- data.frame(prior = "normal(0, 3)",
+                     class = "beta",
+                     coef = 2)
+
+gm0p1 <- update(gm0, priors = cprior1)
+gm1p2 <- update(gm1, priors = cprior2)
+gm1p3 <- update(gm1, priors = cprior3)
+
+get_prior_info <- function(fit) {
+    pp <- fit$obj$env$data
+    pvars <- grep("^prior", ls(pp), value = TRUE)
+    mget(pvars, list2env(pp))
+}
+
+test_that("basic prior info", {
+    expect_equal(get_prior_info(gm0p),
+                 list(prior_distrib = 0, prior_elend = 0, prior_elstart = 0,
+                      prior_params = c(0, 3), prior_whichpar = 0))
 })
-
-gm0p <- update(gm0, priors = cprior)
 
 test_that("prior printing", {
     cc <- capture.output(print(gm0p))
@@ -35,5 +45,4 @@ fm1 <- glmmTMB(Reaction ~ Days + (Days|Subject), sleepstudy)
 cprior <- data.frame(prior = "normal(0, 3)",
                      class = "beta",
                      coef = 2)
-## element by name, e.g. "Days" not allowed yet
-proc_priors(cprior)
+

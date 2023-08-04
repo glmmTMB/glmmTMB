@@ -6,6 +6,9 @@ prior_synonyms <- c("fixef" = "beta",
                     "ranef_zi" = "theta_zi",
                     "psi" = "shape")
 
+prior_ivars <- paste0("prior_", c("distrib", "whichpar", "elstart", "elend", "npar"))
+prior_fvars <- "prior_params"
+
 to_prior_syn <- function(x) {
     if (!x %in% names(prior_synonyms)) return (x)
     prior_synonyms[x]
@@ -39,13 +42,13 @@ proc_priors <- function(priors, info = NULL) {
     ## process prior list into TMB data structures
     ## 'info' parameter for translating elements into indices; not implemented yet
     np <- if (is.null(priors)) 0 else nrow(priors)
-    prior_distrib <- prior_whichpar <- prior_elstart <- prior_elend <- integer(np)
+    prior_distrib <- prior_whichpar <- prior_elstart <- prior_elend <- prior_npar <- integer(np)
     prior_params <- list()
     for (i in seq_len(np)) {
 
         ## process prior value (character to distribution code and parameter vector)
         pp <- priors[["prior"]][i]
-        pname <- gsub("\\(.*","",pp)
+        pname <- gsub("\\(.*","",pp) ## strip prior name
         prior_distrib[i] <- .valid_prior[pname]
         if (is.na(prior_distrib[i])) stop("unknown prior distribution ",pname)
         
@@ -72,24 +75,41 @@ proc_priors <- function(priors, info = NULL) {
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
 
         ## process 'coef' (particular element)
+        ## 
         pc <- trimws(priors[["coef"]][i])
         if (pc == "") {
-            prior_element[i] <- NA_integer_
+            prior_elstart[i] <- 0
+            prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
         } else {
-            if (grepl("[0-9]+", pc)) {
-                prior_element[i] <- as.integer(pc)
+            ## single numeric index (subtract 1 for R to C++ indexing shift)
+            if (grepl("^[0-9]+$", pc)) {
+                prior_elstart[i] <- prior_elend[i] <- as.integer(pc) -1
             } else {
-                stop("only integer 'coef' specifications implemented")
-            }
+                if (substr(cl, 1, 4) == "beta") {
+                    ind <- match(pc, info$fix[[match_names(cl)]])
+                    if (is.na(ind)) stop("can't match prior element ",pc)
+                    prior_elstart[i] <- prior_elend[i] <- ind-1
+                } else {
+                    ## match component based on cnms
+                    ## work out number of sd/cor params based on structure
+                    stop("element-specific ranef priors not yet implemented")
+                }
+            } ## specified elements
         }
-    }
+        prior_npar[i] <- switch(pname,
+                                normal =,
+                                gamma =,
+                                cauchy =,
+                                beta = 2,
+                                t = 3,
+                                lkj = stop("not implemented"),
+                                other = stop("unknown prior type")
+                                )
+        
+    } ## loop over priors
     prior_params <- if (np == 0) numeric(0) else unlist(prior_params)
-    return(namedList(prior_distrib, prior_whichpar, prior_element,
-                 prior_params))
-}
-
-empty_priors <- function() {
-
+    ## FIXME: replace with mget() ?
+    return(namedList(prior_distrib, prior_whichpar, prior_elstart, prior_elend, prior_npar, prior_params))
 }
 
 #' use of priors in glmmTMB

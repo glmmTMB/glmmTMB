@@ -421,15 +421,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link = .valid_link[family$link],
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
-    whichPredict = whichPredict,
+    whichPredict = whichPredict
+    )
 
-    ## information about priors
-    prior_distrib = prior_struc$prior_distrib,
-    prior_whichpar = prior_struc$prior_whichpar,
-    prior_element = prior_struc$prior_element,
-    prior_params = prior_struc$prior_params
-    
-  )
+    ## add prior info
+    data.tmb <- c(data.tmb, prior_struc)
 
   # function to set value for dorr
   rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
