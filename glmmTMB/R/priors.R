@@ -73,16 +73,16 @@ proc_priors <- function(priors, info = NULL) {
         ## if blank, all
         ## if names, locate
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
-
         ## process 'coef' (particular element)
         ## 
         pc <- trimws(priors[["coef"]][i])
         if (pc == "") {
-            prior_elstart[i] <- 0
             prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
         } else {
             ## single numeric index (subtract 1 for R to C++ indexing shift)
             if (grepl("^[0-9]+$", pc)) {
+                ## FIXME: should check vector length here (it is
+                ## also caught inside TMB code)
                 prior_elstart[i] <- prior_elend[i] <- as.integer(pc) -1
             } else {
                 if (substr(cl, 1, 4) == "beta") {
@@ -94,6 +94,7 @@ proc_priors <- function(priors, info = NULL) {
                     ## work out number of sd/cor params based on structure
                     ## first need to locate theta component in overall
                     ##  theta vector
+                    
                     stop("element-specific ranef priors not yet implemented")
                 }
             } ## specified elements

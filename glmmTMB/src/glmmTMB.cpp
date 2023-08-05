@@ -858,22 +858,27 @@ Type objective_function<Type>::operator() ()
     } // loop over observations
 
     // Add priors
+    CppAD::vector<Type> parvec;
     int np = prior_distrib.size();
     Type parval, logpriorval;
     int par_ind = 0; // parameter index
-    int num_par;
     for (int i = 0; i < np; i++) {
       // need an if-clause here for multivariate distrib (lkj/corr parameters
       // otherwise go element-by-element
       for (int j = prior_elstart[i]; j <= prior_elend[i]; j++) { // <= is on purpose here
 	switch(prior_whichpar[i]) {
-	case beta_vprior: parval = beta[j]; break;
-	case betazi_vprior: parval =  betazi[j]; break;
-	case betad_vprior: parval =  betad[j]; break;
-	case theta_vprior: parval =  theta[j]; break;
-	case thetazi_vprior: parval =  thetazi[j]; break;
-	case psi_vprior: parval =  psi[j]; break;
+	case beta_vprior: parvec = beta; break;
+	case betazi_vprior: parvec = betazi; break;
+	case betad_vprior: parvec = betad; break;
+	case theta_vprior: parvec = theta; break;
+	case thetazi_vprior: parvec = thetazi; break;
+	case psi_vprior: parvec = psi; break;
 	}
+	if ((size_t)j >= parvec.size()) {
+	  // FIXME: should also check upstream ...
+	  error("Bad prior index!");
+	};
+	parval = parvec[j];
 	switch(prior_distrib[i]) {
 	case normal_prior:
 	  s1 = prior_params[par_ind];           // mean
