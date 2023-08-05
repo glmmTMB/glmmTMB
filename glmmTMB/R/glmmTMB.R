@@ -386,9 +386,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                   disp = get_fixnm(dispList))
   ## need 'cnms' (names to localize and lengths to figure out ncoef)
   ## 'ss' (structure)  
-  get_reinfo <- function(x) list(cnms = x$reTrms[["cnms"]], ss = x[["ss"]])
-  re_info <- list(cond = get_reinfo(condList),
-                  zi = get_reinfo(ziList))
+  get_reinfo <- function(x, y) {
+      list(cnms = x$reTrms[["cnms"]], ss = x[["ss"]], y)
+  }
+  re_info <- list(cond = get_reinfo(condList, condReStruc),
+                  zi = get_reinfo(ziList, ziReStruc))
 
   ## easy way to get lengths of theta of individual components??
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
