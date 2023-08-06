@@ -21,7 +21,7 @@ gm0p1 <- update(gm0, priors = cprior1)
 gm1p2 <- update(gm1, priors = cprior2)
 gm1p3 <- update(gm1, priors = cprior3)
 
-try(update(gm1, priors = cprior4))
+## try(update(gm1, priors = cprior4))
 
 ## update(gm1, priors = cprior4)
 
