@@ -648,10 +648,18 @@ set_class <- function(x, cls, prepend = TRUE) {
 }
 
 ## convert from parameter name to component name or vice versa
-compsyn <- c(beta = "cond", betazi = "zi", betad = "disp")
-match_names <- function(x, to_beta = FALSE) {
-    if (to_beta) return(names(compsyn)[match(x, compsyn)])
-    return(compsyn[x])
+## first name shoudl be em
+compsyn <- c(cond = "", zi = "zi", disp = "d")
+match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
+    if (to_parvec) {
+        ## "cond" -> "theta" etc.
+        return(paste0(prefix, compsyn[x]))
+    } else {
+        ## "beta" -> "cond" etc.
+        x <- gsub(prefix, "", x)
+        return(names(compsyn)[match(x, compsyn)])
+    }
 }
+
                         
     

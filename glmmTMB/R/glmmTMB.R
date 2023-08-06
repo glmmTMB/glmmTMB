@@ -387,7 +387,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## need 'cnms' (names to localize and lengths to figure out ncoef)
   ## 'ss' (structure)  
   get_reinfo <- function(x, y) {
-      list(cnms = x$reTrms[["cnms"]], ss = x[["ss"]], y)
+      list(cnms = x$reTrms[["cnms"]], ss = x[["ss"]], reStruc = y)
   }
   re_info <- list(cond = get_reinfo(condList, condReStruc),
                   zi = get_reinfo(ziList, ziReStruc))

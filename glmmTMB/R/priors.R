@@ -61,8 +61,8 @@ proc_priors <- function(priors, info = NULL) {
 
         ## process 'class' (parameter vector)
         pcl <- priors[["class"]][i]
-        suffix <- gsub("^.*_", "", pcl)
-        pcl <- gsub("_.*", "", pcl)
+        suffix <- gsub("((cor|sd)$)", "\\1", pcl)
+        pcl <- gsub("_(cor|sd)$", "", pcl)
 
         ## STOPPED HERE
         cl <- to_prior_syn(pcl)
@@ -74,6 +74,21 @@ proc_priors <- function(priors, info = NULL) {
         ## if names, locate
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
         ## process 'coef' (particular element)
+
+        nthetavec <- lapply(info$re,
+                            function(x) {
+                                ntheta <- vapply(x$reStruc, "[[",
+                                                 "blockNumTheta",
+                                                 FUN.VALUE = numeric(1))
+                                cc <- cumsum(ntheta)
+                                ## want *starting* value of each theta term
+                                ## keep names, shift back one
+                                cc[] <- c(1, head(cc, -1))
+                                return(cc)
+                            })
+        nospace <- function(x) gsub(" +", "", x)
+        thetanames <- lapply(info$re,
+                             function(x) nospace(names(x$reStruc)))
         ## 
         pc <- trimws(priors[["coef"]][i])
         if (pc == "") {
@@ -94,7 +109,8 @@ proc_priors <- function(priors, info = NULL) {
                     ## work out number of sd/cor params based on structure
                     ## first need to locate theta component in overall
                     ##  theta vector
-                    ## browser()
+                    info$re[[match-names(cl, prefix = "theta")]]
+                    browser()
                     stop("element-specific ranef priors not yet implemented")
                 }
             } ## specified elements
