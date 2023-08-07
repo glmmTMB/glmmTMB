@@ -15,7 +15,7 @@ vignette: >
 While `glmmTMB` is primarily designed for maximum likelihood estimation (or restricted ML), there are certain situations where it is convenient to be able to add priors for particular parameters or sets of parameters, e.g.:
 
 * to mitigate *complete separation* (technically, when there is some linear combination of parameters that divides zero from non-zero responses in a count or binomial model; in practice, typically when one treatment combination has all-zero responses)
-* to mitigate *singular fits* in random effects, i.e. when there is insufficient data to estimate a variance parameter so that single variances collapse to zero or covariance matrices are estimated with less than full rank [@chungNondegenerate2023]
+* to mitigate *singular fits* in random effects, i.e. when there is insufficient data to estimate a variance parameter so that single variances collapse to zero or covariance matrices are estimated with less than full rank [@chungNondegenerate2013]
 * to apply a ridge penalty to a set of parameters (corresponding to an independent Gaussian prior on each parameter)
 
 When priors are specified, `glmmTMB` will fit a *maximum a posteriori* (MAP) estimate. In other words, unlike most Bayesian estimate procedures that use Markov chain Monte Carlo to sample the entire parameter space and compute (typically)  posterior mean or median value of the parameters, `glmmTMB` will find the *mode* of the posterior distribution or the *most likely* value. The MAP estimate is theoretically less useful than the posterior mean or median, but is often a useful approximation.
