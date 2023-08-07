@@ -17,6 +17,14 @@ cprior4 <- data.frame(prior = "gamma(1e8, 2)",
                      class = "ranef",
                      coef = "1|herd")
 
+cprior5 <- data.frame(prior = "gamma(1e8, 2)",
+                     class = "ranef_sd",
+                     coef = "1|herd")
+
+cprior6 <- data.frame(prior = "gamma(1e8, 2)",
+                     class = "ranef_cor",
+                     coef = "1|herd")
+
 gm0p1 <- update(gm0, priors = cprior1)
 gm1p2 <- update(gm1, priors = cprior2)
 gm1p3 <- update(gm1, priors = cprior3)
@@ -24,6 +32,8 @@ gm1p3 <- update(gm1, priors = cprior3)
 ## try(update(gm1, priors = cprior4))
 
 update(gm1, priors = cprior4)
+update(gm1, priors = cprior5)
+try(update(gm1, priors = cprior6))
 
 get_prior_info <- function(fit) {
     pp <- fit$obj$env$data

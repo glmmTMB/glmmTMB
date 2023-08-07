@@ -600,7 +600,7 @@ Type objective_function<Type>::operator() ()
   DATA_IVECTOR(prior_whichpar);   // specify parameter
   DATA_IVECTOR(prior_elstart);    // starting element index
   DATA_IVECTOR(prior_elend);      // ending element index
-  DATA_IVECTOR(prior_npar);
+  DATA_IVECTOR(prior_npar);       // number of parameters (based on prior distrib)
   DATA_VECTOR(prior_params);      // specify parameters (concatenated)
   
   // Joint negative log-likelihood

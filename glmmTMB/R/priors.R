@@ -42,6 +42,7 @@ proc_priors <- function(priors, info = NULL) {
     ## process prior list into TMB data structures
     ## 'info' parameter for translating elements into indices; not implemented yet
     np <- if (is.null(priors)) 0 else nrow(priors)
+    ## FIXME: do this automatically via prior_ivars?
     prior_distrib <- prior_whichpar <- prior_elstart <- prior_elend <- prior_npar <- integer(np)
     prior_params <- list()
     for (i in seq_len(np)) {
@@ -61,7 +62,11 @@ proc_priors <- function(priors, info = NULL) {
 
         ## process 'class' (parameter vector)
         pcl <- priors[["class"]][i]
-        suffix <- gsub("((cor|sd)$)", "\\1", pcl)
+        if (!grepl("_(cor|sd)", pcl)) {
+            suffix <- NA_character_
+        } else {
+            suffix <- gsub("^.*((cor|sd))$", "\\1", pcl)
+        }
         pcl <- gsub("_(cor|sd)$", "", pcl)
 
         ## STOPPED HERE
@@ -75,7 +80,7 @@ proc_priors <- function(priors, info = NULL) {
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
         ## process 'coef' (particular element)
 
-        nthetavec <- lapply(info$re,
+        nthetavec <- sapply(info$re,
                             function(x) {
                                 ntheta <- vapply(x$reStruc, "[[",
                                                  "blockNumTheta",
@@ -86,6 +91,7 @@ proc_priors <- function(priors, info = NULL) {
                                 cc[] <- c(1, head(cc, -1))
                                 return(cc)
                             })
+
         nospace <- function(x) gsub(" +", "", x)
         thetanames <- lapply(info$re,
                              function(x) nospace(names(x$reStruc)))
@@ -109,12 +115,32 @@ proc_priors <- function(priors, info = NULL) {
                     ## work out number of sd/cor params based on structure
                     ## first need to locate theta component in overall
                     ##  theta vector
-                    info$re[[match-names(cl, prefix = "theta")]]
-                    browser()
-                    stop("element-specific ranef priors not yet implemented")
-                }
+                    component <- match_names(cl, prefix = "theta")
+                    re_info <- info$re[[component]]
+                    w <- match(nospace(pc), nospace(names(re_info$reStruc)))
+                    if (is.na(w)) stop("can't match prior RE component ", pc)
+                    theta_start <- nthetavec[[component]][w] - 1 ## C++ index
+                    if (is.na(suffix)) {
+                        prior_elstart[i] <- theta_start
+                        prior_elend[i] <- theta_start + re_info$reStruc[[w]]$blockNumTheta - 1
+                    } else {
+                        blocksize <- re_info$reStruc[[w]]$blockSize
+                        blockcodelab <- names(.valid_covstruct)[match(re_info$reStruc[[w]]$blockCode, .valid_covstruct)]
+                        if (blockcodelab == "rr") stop("can't do priors for rr models yet")
+                        nsd <- if (blockcodelab == "homdiag") 1 else blocksize
+                        if (suffix == "sd") {
+                            prior_elstart[i] <- theta_start
+                            prior_elend[i] <- theta_start + nsd - 1
+                        } else {
+                            stop("correlation priors not implemented yet")
+                            prior_elstart[i] <- theta_start + nsd
+                            prior_elend[i] <- theta_start + re_info$reStruc[[w]]$blockNumTheta - 1
+                        }
+                    }
+                } ## specified theta elements
             } ## specified elements
-        }
+        } ## component specified
+        
         prior_npar[i] <- switch(pname,
                                 normal =,
                                 gamma =,
