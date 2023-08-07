@@ -34,7 +34,7 @@ gm1p3 <- update(gm1, priors = cprior3)
 update(gm1, priors = cprior4)
 update(gm1, priors = cprior5)
 
-testthat("cor prior with no cor", {
+test_that("cor prior with no cor", {
     expect_warning(gm1p6 <- update(gm1, priors = cprior6))
     expect_equal(logLik(gm1p6), logLik(gm1))
 })
