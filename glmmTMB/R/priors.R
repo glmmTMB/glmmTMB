@@ -32,11 +32,6 @@ from_prior_syn <- function(x) {
 #' \item prior_elend: ending element of parameter vector
 #' \item prior_params: vector of all parameters
 #' }
-#' @examples
-#' #' bprior <- c(prior_string("normal(0,10)", class = "fixef"))
-#' 
-#' proc_priors(bprior)
-#' }
 proc_priors <- function(priors, info = NULL) {
     ## priors is a data frame as in brms
     ## process prior list into TMB data structures
@@ -69,7 +64,6 @@ proc_priors <- function(priors, info = NULL) {
         }
         pcl <- gsub("_(cor|sd)$", "", pcl)
 
-        ## STOPPED HERE
         cl <- to_prior_syn(pcl)
         prior_whichpar[i] <- .valid_vprior[cl]
         if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
@@ -82,7 +76,7 @@ proc_priors <- function(priors, info = NULL) {
 
         nthetavec <- sapply(info$re,
                             function(x) {
-                                ntheta <- vapply(x$reStruc, "[[",
+                                ntheta <- vapply(x, "[[",
                                                  "blockNumTheta",
                                                  FUN.VALUE = numeric(1))
                                 cc <- cumsum(ntheta)
@@ -117,24 +111,28 @@ proc_priors <- function(priors, info = NULL) {
                     ##  theta vector
                     component <- match_names(cl, prefix = "theta")
                     re_info <- info$re[[component]]
-                    w <- match(nospace(pc), nospace(names(re_info$reStruc)))
+                    w <- match(nospace(pc), nospace(names(re_info)))
                     if (is.na(w)) stop("can't match prior RE component ", pc)
                     theta_start <- nthetavec[[component]][w] - 1 ## C++ index
                     if (is.na(suffix)) {
                         prior_elstart[i] <- theta_start
-                        prior_elend[i] <- theta_start + re_info$reStruc[[w]]$blockNumTheta - 1
+                        prior_elend[i] <- theta_start + re_info[[w]]$blockNumTheta - 1
                     } else {
-                        blocksize <- re_info$reStruc[[w]]$blockSize
-                        blockcodelab <- names(.valid_covstruct)[match(re_info$reStruc[[w]]$blockCode, .valid_covstruct)]
+                        blocksize <- re_info[[w]]$blockSize
+                        blockcodelab <- names(.valid_covstruct)[match(re_info[[w]]$blockCode, .valid_covstruct)]
                         if (blockcodelab == "rr") stop("can't do priors for rr models yet")
                         nsd <- if (blockcodelab == "homdiag") 1 else blocksize
                         if (suffix == "sd") {
                             prior_elstart[i] <- theta_start
                             prior_elend[i] <- theta_start + nsd - 1
                         } else {
-                            stop("correlation priors not implemented yet")
+                            if (nsd == re_info[[w]]$blockNumTheta) {
+                                warning("RE term has no correlation parameters")
+                                ## FIXME: is it dangerous to proceed in this case?
+                                ## stop/cancel out prior spec?
+                            }
                             prior_elstart[i] <- theta_start + nsd
-                            prior_elend[i] <- theta_start + re_info$reStruc[[w]]$blockNumTheta - 1
+                            prior_elend[i] <- theta_start + re_info[[w]]$blockNumTheta - 1
                         }
                     }
                 } ## specified theta elements
@@ -147,7 +145,7 @@ proc_priors <- function(priors, info = NULL) {
                                 cauchy =,
                                 beta = 2,
                                 t = 3,
-                                lkj = stop("not implemented"),
+                                lkj = 1,
                                 other = stop("unknown prior type")
                                 )
         

@@ -21,7 +21,7 @@ cprior5 <- data.frame(prior = "gamma(1e8, 2)",
                      class = "ranef_sd",
                      coef = "1|herd")
 
-cprior6 <- data.frame(prior = "gamma(1e8, 2)",
+cprior6 <- data.frame(prior = "lkj(1)",
                      class = "ranef_cor",
                      coef = "1|herd")
 
@@ -33,7 +33,8 @@ gm1p3 <- update(gm1, priors = cprior3)
 
 update(gm1, priors = cprior4)
 update(gm1, priors = cprior5)
-try(update(gm1, priors = cprior6))
+## why doesn't this break/complain?
+logLik(update(gm1, priors = cprior6))
 
 get_prior_info <- function(fit) {
     pp <- fit$obj$env$data

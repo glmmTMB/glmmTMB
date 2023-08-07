@@ -1,6 +1,7 @@
 #include <TMB.hpp>
 #include "init.h"
 #include "distrib.h"
+#include "cordistrib.h"
 
 // don't need to include omp.h; we get it via TMB.hpp
 
@@ -858,26 +859,33 @@ Type objective_function<Type>::operator() ()
     } // loop over observations
 
     // Add priors
-    CppAD::vector<Type> parvec;
+    vector<Type> parvec;
     int np = prior_distrib.size();
     Type parval, logpriorval;
     int par_ind = 0; // parameter index
     for (int i = 0; i < np; i++) {
+      switch(prior_whichpar[i]) {
+      case beta_vprior: parvec = beta; break;
+      case betazi_vprior: parvec = betazi; break;
+      case betad_vprior: parvec = betad; break;
+      case theta_vprior: parvec = theta; break;
+      case thetazi_vprior: parvec = thetazi; break;
+      case psi_vprior: parvec = psi; break;
+      }
+
       // need an if-clause here for multivariate distrib (lkj/corr parameters
       // otherwise go element-by-element
-      for (int j = prior_elstart[i]; j <= prior_elend[i]; j++) { // <= is on purpose here
-	switch(prior_whichpar[i]) {
-	case beta_vprior: parvec = beta; break;
-	case betazi_vprior: parvec = betazi; break;
-	case betad_vprior: parvec = betad; break;
-	case theta_vprior: parvec = theta; break;
-	case thetazi_vprior: parvec = thetazi; break;
-	case psi_vprior: parvec = psi; break;
-	}
-	if ((size_t)j >= parvec.size()) {
-	  // FIXME: should also check upstream ...
-	  error("Bad prior index!");
-	};
+      if (prior_distrib[i] == lkj_prior) {
+	vector<Type> corpars = parvec.segment(prior_elstart[i] ,
+					      prior_elend[i]-prior_elstart[i]+1);
+	jnll -= glmmtmb::dlkj(corpars, prior_params[par_ind], true);
+      } else {
+	for (int j = prior_elstart[i]; j <= prior_elend[i]; j++) { // <= is on purpose here
+	  if (j >= parvec.size()) {
+	    // FIXME: should also check upstream ...
+	    error("Bad prior index!");
+	  };
+
 	parval = parvec[j];
 	switch(prior_distrib[i]) {
 	case normal_prior:
@@ -909,8 +917,8 @@ Type objective_function<Type>::operator() ()
 
 	jnll -= logpriorval;
 	
-      } // loop over elements
-
+	} // loop over elements
+      }
       // step forward in prior-parameter vector
       par_ind += prior_npar[i];
       
