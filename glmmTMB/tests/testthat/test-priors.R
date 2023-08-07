@@ -33,8 +33,11 @@ gm1p3 <- update(gm1, priors = cprior3)
 
 update(gm1, priors = cprior4)
 update(gm1, priors = cprior5)
-## why doesn't this break/complain?
-logLik(update(gm1, priors = cprior6))
+
+testthat("cor prior with no cor", {
+    expect_warning(gm1p6 <- update(gm1, priors = cprior6))
+    expect_equal(logLik(gm1p6), logLik(gm1))
+})
 
 get_prior_info <- function(fit) {
     pp <- fit$obj$env$data
