@@ -30,7 +30,8 @@ from_prior_syn <- function(x) {
 #' \item prior_whichpar: which parameter vector (theta, beta, etc.)
 #' \item prior_elstart: starting element of parameter vector
 #' \item prior_elend: ending element of parameter vector
-#' \item prior_params: vector of all parameters
+#' \item prior_npars: number of prior (hyper)parameters for each term
+#' \item prior_params: vector of all hyperparameters, concatenated
 #' }
 proc_priors <- function(priors, info = NULL) {
     ## priors is a data frame as in brms
@@ -82,17 +83,23 @@ proc_priors <- function(priors, info = NULL) {
                                 cc <- cumsum(ntheta)
                                 ## want *starting* value of each theta term
                                 ## keep names, shift back one
-                                cc[] <- c(1, head(cc, -1))
+                                nm <- names(cc)
+                                if (length(cc) == 0) return(integer(0))
+                                cc <- c(1, cc) |> setNames(c(nm, "..total"))
                                 return(cc)
                             })
 
         nospace <- function(x) gsub(" +", "", x)
         thetanames <- lapply(info$re,
-                             function(x) nospace(names(x$reStruc)))
+                             function(x) nospace(names(x)))
         ## 
         pc <- trimws(priors[["coef"]][i])
         if (pc == "") {
-            prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
+            if (substr(cl, 1, 4) == "beta") {
+                prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
+            } else {
+                prior_elend[i] <- nthetavec[[match_names(cl, prefix = "theta")]][["..total"]] -1 
+            }
         } else {
             ## single numeric index (subtract 1 for R to C++ indexing shift)
             if (grepl("^[0-9]+$", pc)) {

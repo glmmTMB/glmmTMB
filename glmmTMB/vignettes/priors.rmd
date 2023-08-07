@@ -95,7 +95,7 @@ gmod_glmmTMB <- glmmTMB(form, family = poisson, data = gdat) ## 1e-5
 gprior <- data.frame(prior = "gamma(1e8, 2.5)",
                      class = "theta",
                      coef = "")
-gmod_glmmTMB_p <- glmmTMB(form, family = poisson, data = gdat, priors = gprior)
+gmod_glmmTMB_p <- update(gmod_glmmTMB, priors = gprior)
 vc1 <- c(VarCorr(gmod_glmmTMB_p)$cond$Site)
 vc2 <- c(VarCorr(gmod_bglmer)$Site)
 all.equal(vc1, vc2, tolerance = 5e-4)
@@ -118,7 +118,7 @@ t3A <- (exp(confint(profile(gmod_glmmTMB_p, stderr = 0.05, parm = "theta_")))
     |> as.data.frame()
     |> setNames(c("conf.low", "conf.high"))
     |> mutate(estimate = attr(VarCorr(gmod_glmmTMB_p)$cond$Site, "stddev"), .before = 1))
-t3B <- tibble(estimate = attr(VarCorr(gmod_glmmTMB_p)$cond$Site, "stddev"),
+t3B <- tibble(estimate = attr(VarCorr(gmod_glmmTMB)$cond$Site, "stddev"),
               conf.low = NA,
               conf.high = NA)
 gres <- (dplyr::bind_rows(list(bglmer = t1, glmer = t2, glmmTMB = t3B, glmmTMB_p = t3A),
