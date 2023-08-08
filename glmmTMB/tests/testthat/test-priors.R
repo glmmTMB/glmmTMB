@@ -62,3 +62,10 @@ test_that("summary prior printing", {
     expect_equal(tail(cc, 2), c("Priors:", "fixef ~ normal(0, 3)"))
 })
 
+## example from GH849
+set.seed(101)
+dd <- data.frame(d = ordered(rep(1:5, each = 10)))
+library(glmmTMB)
+dd$resp <- ifelse(dd$d=="1", 0, rbinom(50, size = 1, prob = 0.5))
+m1 <- glmmTMB(resp ~ d, data = dd, family = binomial, prior = data.frame(prior = "normal(0,3)", class = "beta"))
+
