@@ -24,8 +24,11 @@ How about $\log {\cal L}(\b|\btheta)$ ?
 * `blockNumTheta` (i.e., number of $\theta$ parameters required for the term) will be the sum of `blockNumTheta` for each component (we do need to keep track of the individual values); ditto for `blockSize` (length of the `b` vector)
 * Once we have $\inv{\G_1}$ we should be able to compute $\log {\cal L}(\b|\btheta)$ for each block in the same way as we currently do for all different types in `termwise_nll`. Not quite sure how we would work with precision matrices/specify a MVN log-likelihood with precision rather than corr Cholesky factor supplied??
 
+This suggests that we might want to refactor `termwise_nll` so that we have an upstream function that returns the *precision matrix* given {`theta`, `blockSize`}. (Can this be applied completely generally or are there special cases? Right now we use the state-space representation for `ar1()` (but *not* for Toeplitz?), but I'm not convinced that's necessary (since AR1 has a closed-form precision matrix: machinery in `nlme`, plus can look it up elsewhere)?)
 
-This suggests that we might want to refactor `termwise_nll` so that we have an upstream function that returns the *precision matrix* given {`theta`, `blockSize`}. (Can this be applied completely generally or are there special cases? Right now we use the state-space representation for `ar1()` (but *not* for Toeplitz?), but I'm not convinced that's necessary (since AR1 has a closed-form precision matrix: machinery in `nlme`, plus can look it up elsewhere?
+New data required: need to store the codes (`blockCode` and `blockNumTheta`) for each of the factors.
+
+Need to implement some new covariance structures (`cor` versions of existing structures), or map variance to 1, for identifiability. Naming convention? `hom`+X = homogeneous-diagonal version, `cor`+X = correlation version? Is there a way to avoid repeating too much code?
 
 ## next step
 
