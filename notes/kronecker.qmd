@@ -8,7 +8,7 @@ date: today
 \newcommand{\X}{\mathbf X}
 \newcommand{\b}{\mathbf b}
 \newcommand{\bbeta}{\boldsymbol \beta}
-\newcommand{\btheeta}{\boldsymbol \theta}
+\newcommand{\btheta}{\boldsymbol \theta}
 \newcommand{\inv}[1]{{#1}^{-1}}
 
 We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`
@@ -18,11 +18,15 @@ We would ideally like to be able to fit models with the covariance matrices cons
 * for intercept-only construct $\Z$ matrix via (something like) `fac2sparse(interaction(f1, f2))` - **how do we do it for non-scalar REs?** (`interaction` + `KhatriRao` in some order ...
 * once we have the $\Z$ matrix defined, the conditional log-likelihood of observations ($\log {\cal L}(y_i|\bbeta, \b)$) takes care of itself via  $\X \bbeta + \Z \b$.
 
-How about $\log {\cal L}(\b|\bbtheta)$ ?
+How about $\log {\cal L}(\b|\btheta)$ ?
 
 * construct precision ($\inv{\G}$) matrix by getting the precision matrices $\inv{\G_1}$, $\inv{\G_2}$; then $\inv{G} = \inv{\G_1} \otimes \inv{\G_2}$ (see [Emi's cheatsheet](https://github.com/emitanaka/cheatsheets/blob/master/linear-algebra.qmd)) or [Wikipedia](https://en.wikipedia.org/wiki/Kronecker_product). **Need to make sure the ordering of $\inv G$ matches the ordering of the `b` vector**, which means checking the ordering of the results of  `interaction(levels(f1), levels(f2))` vs. the ordering of `kron(invG1, invG2)` (`invG` matrix rows/cols should correspond to levels of `f`)
 * `blockNumTheta` (i.e., number of $\theta$ parameters required for the term) will be the sum of `blockNumTheta` for each component (we do need to keep track of the individual values); ditto for `blockSize` (length of the `b` vector)
-* see `termwise_nll`; not quite sure how we would work with precision matrices/specify a MVN log-likelihood with precision rather than corr Cholesky factor supplied??
+* Once we have $\inv{\G_1}$ we should be able to compute $\log {\cal L}(\b|\btheta)$ for each block in the same way as we currently do for all different types in `termwise_nll`. Not quite sure how we would work with precision matrices/specify a MVN log-likelihood with precision rather than corr Cholesky factor supplied??
+
 
 This suggests that we might want to refactor `termwise_nll` so that we have an upstream function that returns the *precision matrix* given {`theta`, `blockSize`}. (Can this be applied completely generally or are there special cases? Right now we use the state-space representation for `ar1()` (but *not* for Toeplitz?), but I'm not convinced that's necessary (since AR1 has a closed-form precision matrix: machinery in `nlme`, plus can look it up elsewhere?
 
+## next step
+
+I wanted to illustrate that this works by creating an initial model with `doFit = FALSE`, hacking `Z` etc., but I don't think this will actually work: we have to reconstruct $\inv{G}$ *at every iteration step*, which means the code needs to be inside `src/glmmTMB.cpp` ...
