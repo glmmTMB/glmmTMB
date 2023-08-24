@@ -12,6 +12,11 @@ date: today
 \newcommand{\btheta}{\boldsymbol \theta}
 \newcommand{\inv}[1]{{#1}^{-1}}
 
+```{r pkgs, message = FALSE}
+library(Matrix)
+library(lme4)
+```
+
 We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`
 
 
@@ -77,4 +82,126 @@ c2 <- kronecker(A,B)
 stopifnot(all.equal(c1, c2))
 ```
 
-    
+Let's start by simulating some data (some of the framework here will also be useful in the fitting).  Things 
+
+
+```{r utils}
+##' unpack a list into the current (calling) environment
+##' this is a replacement for \code{with()} (which is hard to debug) and \code{attach()} (which is frowned upon by CRAN/triggers package-check warnings)
+##' (for more traditional Python tuple unpacking see the \code{zeallot} package)
+##' @param x a named vector or a list
+##' @export
+unpack <- function(x) {
+    if (any(names(x) == "")) stop("unnamed elements in x")
+    invisible(list2env(as.list(x), envir = parent.frame()))
+}
+##' convenience function for matrix display
+ifun <- function(x) {
+    x |> Matrix() |> image(sub = "", xlab = "", ylab = "")
+}
+##' convert half-vec to a lower-triangular matrix
+## https://en.wikipedia.org/wiki/Vectorization_(mathematics)#Half-vectorization
+hvec2mat <- function(x) {
+    n <- (sqrt(8*length(x)+1)-1)/2
+    m <- matrix(0, n, n)
+    m[lower.tri(m, diag = TRUE)] <- x
+    m
+}
+
+## brute force cmoputation of chol(AR1)
+## closed form expression with factor of ... sqrt(1+1/rho) ?
+ar1_chol <- function(rho, sigma, n) {
+    m <- matrix(0, n, n)
+    m[] <- rho^(abs(row(m)- col(m)))
+    sigma*t(chol(m))
+}
+```
+
+```{r ugh, include = FALSE}
+## playing with examples to try to guess the form of chol(AR1) ...
+ar1_chol(rho = 0.5, sigma = 1, n = 3)  ## cols 2 ... are * sqrt(3)
+ar1_chol(rho = 0.75, sigma = 1, n = 3)  ## cols 2 ... are * 6/8
+tmpf <- function(rho) {
+    a <- ar1_chol(rho = rho, sigma = 1, n = 3)
+    a[2,1]/a[2,2]
+}
+tmpf(0.5)       ## 1/sqrt(3)
+tmpf(1/sqrt(2)) ## 1
+tmpf(0.8)       ## 4/3
+v <- (1:99)/100
+plot(v, sapply(v, tmpf), log = "y")
+```
+
+```{r utils2}
+## generate theta parameters for an AR1 ⨂ AR1 model
+get_theta <- function(p) {
+    nm <- c("sigma", "rho_R", "rho_C", "n_R", "n_C")
+    ## p: sigma, rho_R, rho_C, n_R, n_C
+    if (!is.null(names(p)) && any(names(p) != "" & names(p) != nm)) {
+        stop("name mismatch")
+    }
+    unpack(setNames(p, nm))
+    K <- kronecker(ar1_chol(rho_R, sigma, n_R), ar1_chol(rho_C, 1, n_C))
+    K[lower.tri(K, diag = TRUE)]
+}
+## test
+rvec <- c(sigma = 2, rho_R = 0.8, rho_C = 0.2, n_R = 10, n_C = 10)
+t1 <- get_theta(rvec)
+m1 <-  t1 |> hvec2mat() |> tcrossprod()
+## ifun(m1)
+## test Kronecker identity again
+m2 <- kronecker(tcrossprod(ar1_chol(0.8, 2, 10)),
+                tcrossprod(ar1_chol(0.2, 1, 10)))
+stopifnot(all.equal(m1, m2))
+```
+
+```{r sim1}
+set.seed(101)
+dd <- expand.grid(row = 1:10, col = 1:10, block = 1:10, rep = 1:3)
+## suppress the "xx parameter not named" messages
+dd$y <- suppressMessages(
+    simulate(~ 1 + (interaction(row, col) | block),
+             newdata = dd,
+             newparams = list(beta = 0, theta = t1, sigma = 1),
+             family = gaussian)[[1]]
+    )
+```
+
+Now try to fit this.
+
+```{r fit1}
+lmod1 <- lFormula(y ~ 1 + (interaction(row, col) | block),
+               data = dd)
+## str(f1$reTrms)
+devfun <- do.call(mkLmerDevfun, lmod1)
+## deviance (REML criterion) with original theta parameter ...
+(d1 <- devfun(t1))
+devfun2 <- function(theta0) {
+    ## right now rows/cols are hard-coded ...
+    devfun(get_theta(c(theta0, n_R = 10, n_C = 10)))
+}
+## dev/REMLcrit with original reduced-theta parameters ...
+stopifnot(all.equal(d1, devfun2(rvec[1:3])))
+opt1 <- nloptwrap(rvec[1:3], devfun2,
+                lower = c(0, -1, -1),
+                upper = c(Inf, 1, 1))
+m1 <- mkMerMod(environment(devfun), opt1, lmod1$reTrms, fr = lmod1$fr)
+## show abbreviated summary via capture.output() ?
+
+## if we set the cor bounds at +/-1 we get into trouble taking the
+## chol(AR1) -- should implement it directly ...
+opt2 <- nloptwrap(c(1, 0.5, 0.5), devfun2,
+                lower = c(0, -0.99, -0.99),
+                upper = c(Inf, 0.99, 0.99))
+stopifnot(all.equal(c(opt1$par, opt1$fval), c(opt2$par, opt2$fval),
+          tolerance = 1e-4))
+```
+
+## junk
+
+
+I think this is how `blme` works with a fixed `sigma` ... ?
+
+```{r fix_sigma, eval = FALSE}
+objectiveValue <- merMod@resp$objective(merMod@pp$ldL2(), merMod@pp$ldRX2(), merMod@pp$sqrL(1.0), sigma^2)
+```
