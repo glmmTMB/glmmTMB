@@ -1,6 +1,7 @@
 ---
 title: "Kronecker products"
 date: today
+engine: knitr
 ---
 
 \newcommand{\C}{\mathbf C}
@@ -16,6 +17,8 @@ date: today
 library(Matrix)
 library(lme4)
 ```
+
+Source code is [here](https://github.com/glmmTMB/glmmTMB/blob/master/notes/kronecker.qmd).
 
 We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`
 
@@ -82,8 +85,7 @@ c2 <- kronecker(A,B)
 stopifnot(all.equal(c1, c2))
 ```
 
-Let's start by simulating some data (some of the framework here will also be useful in the fitting).  Things 
-
+Various utilities that will come in handy ...
 
 ```{r utils}
 ##' unpack a list into the current (calling) environment
@@ -155,6 +157,11 @@ m2 <- kronecker(tcrossprod(ar1_chol(0.8, 2, 10)),
 stopifnot(all.equal(m1, m2))
 ```
 
+Let's start by simulating some data (some of the framework here will also be useful in the fitting).
+
+- simulate multiple blocks (we could use a dummy blocking factor with a single level for all observations)
+- simulate multiple observations per row/column combo so we don't have to deal with fixing `sigma`/confounding between residual variance and random-effects variance
+
 ```{r sim1}
 set.seed(101)
 dd <- expand.grid(row = 1:10, col = 1:10, block = 1:10, rep = 1:3)
@@ -167,11 +174,11 @@ dd$y <- suppressMessages(
     )
 ```
 
-Now try to fit this.
+Now try to fit this. Follow the basic steps laid out in `?lme4::modular`.
+The internal structure of the Kronecker model (size of components etc.) doesn't need to change, so we don't need to mess with the internal structures &mdash; all we have to do is write a wrapper function (using our previously defined function for translating `[sigma, rho_R, rho_C]` to the `theta` vector that `lmer` is expecting).
 
-```{r fit1}
-lmod1 <- lFormula(y ~ 1 + (interaction(row, col) | block),
-               data = dd)
+```{r setup1}
+lmod1 <- lFormula(y ~ 1 + (interaction(row, col) | block), data = dd)
 ## str(f1$reTrms)
 devfun <- do.call(mkLmerDevfun, lmod1)
 ## deviance (REML criterion) with original theta parameter ...
@@ -182,12 +189,44 @@ devfun2 <- function(theta0) {
 }
 ## dev/REMLcrit with original reduced-theta parameters ...
 stopifnot(all.equal(d1, devfun2(rvec[1:3])))
+```
+
+Now fit, first going the easy way and starting from the (known) true values:
+
+```{r fit1}
 opt1 <- nloptwrap(rvec[1:3], devfun2,
                 lower = c(0, -1, -1),
                 upper = c(Inf, 1, 1))
-m1 <- mkMerMod(environment(devfun), opt1, lmod1$reTrms, fr = lmod1$fr)
-## show abbreviated summary via capture.output() ?
+```
 
+The results are promising: the REML criterion is (as expected) a little bit better than the true values (`r round(d1 - opt1$fval, 1)` deviance units), the parameters are close to the true values, etc..
+
+```{r show_fit1}
+print(opt1)
+```
+
+As in `?lme4::modular`, we can stick the results back into a `merMod` structure so it can be handled nicely downstream, although we won't be able to retrieve anything about the Kronecker structure:
+
+```{r mkMerMod}
+m1 <- mkMerMod(environment(devfun), opt1, lmod1$reTrms, fr = lmod1$fr)
+```
+
+The `summary()` output is a little bit crazy because it prints the full lower triangle of the 100 $\times$ 100 covariance matrix ...
+
+```{r summary, echo = FALSE}
+sum_out <- capture.output(summary(m1))
+```
+
+**would like this to look like it's in a code block?**
+
+```{r fakesummary, echo = FALSE}
+cat(c(sum_out[1:13], "\n...\n[LOTS MORE]\n...\n", sum_out[826:length(sum_out)]),
+    sep = "\n")
+```
+
+We can also try starting from neutral starting parameters (`sigma = 1, rho_R = rho_C = 0.5`). Everything still works:
+
+```{r fit2}
 ## if we set the cor bounds at +/-1 we get into trouble taking the
 ## chol(AR1) -- should implement it directly ...
 opt2 <- nloptwrap(c(1, 0.5, 0.5), devfun2,
@@ -196,6 +235,7 @@ opt2 <- nloptwrap(c(1, 0.5, 0.5), devfun2,
 stopifnot(all.equal(c(opt1$par, opt1$fval), c(opt2$par, opt2$fval),
           tolerance = 1e-4))
 ```
+
 
 ## junk
 
