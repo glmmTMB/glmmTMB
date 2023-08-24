@@ -3,6 +3,7 @@ title: "Kronecker products"
 date: today
 ---
 
+\newcommand{\C}{\mathbf C}
 \newcommand{\G}{\mathbf G}
 \newcommand{\Z}{\mathbf Z}
 \newcommand{\X}{\mathbf X}
@@ -26,10 +27,54 @@ How about $\log {\cal L}(\b|\btheta)$ ?
 
 This suggests that we might want to refactor `termwise_nll` so that we have an upstream function that returns the *precision matrix* given {`theta`, `blockSize`}. (Can this be applied completely generally or are there special cases? Right now we use the state-space representation for `ar1()` (but *not* for Toeplitz?), but I'm not convinced that's necessary (since AR1 has a closed-form precision matrix: machinery in `nlme`, plus can look it up elsewhere)?)
 
-New data required: need to store the codes (`blockCode` and `blockNumTheta`) for each of the factors.
+New data required: need to store the codes (`blockCode` and `blockNumTheta`) for each of the factors. To allow for multiple Kronecker products $\G_1 \otimes \G_2 \otimes \G_3 \otimes \ldots$, this can be a vector. I think we could generalize the `per_term_info` struct so that, for a Kronecker product of `n` factors,
 
-Need to implement some new covariance structures (`cor` versions of existing structures), or map variance to 1, for identifiability. Naming convention? `hom`+X = homogeneous-diagonal version, `cor`+X = correlation version? Is there a way to avoid repeating too much code?
+- `blockCode` is a variable-length vector (length `n+1`) of integers ; if the *first* element matches the `kron` enum value, then the subsequent elements are the block codes for the factors. (If it is length-1 and not `kron`, then it is treated as a single code.)
+- `blockNumTheta` is of length `n` - number of `theta` values for each factor
+
+The `blockSize` component is a scalar (sum of block sizes for individual components; do we need to be able to have this information available elsewhere, e.g. if we want to reconstruct the individual factors?), as is `blockReps`. The `dist` (for spatial cov structs) and `times` (for time cov structs) are a little more problematic; what if there is more than one? Do we want (somehow) to generalize this component to "extra information required for this term"? Should there be a (possibly empty) vector and a (possibly empty) matrix associated with each block, whose meanings and use may vary depending on the cov type?
+
+**Or**: is there some kind of object-oriented solution to this (i.e. make a new structure that somehow inherits from the simpler version)?
+
+Will also need to implement some new covariance structures (`cor` versions of existing structures), or map variance to 1, for identifiability. Mapping will work but could get very complicated; as a design principle I would like to avoid requiring mapping *internally*, leaving any mapping for special cases needed by the user. Naming convention? `hom`+X = homogeneous-diagonal version, `cor`+X = correlation version? (e.g. `homus` is an unstructured correlation matrix + homogeneous variance, `corus` is an unstructured correlation matrix (variance fixed to 1). Is there a way to avoid repeating too much code?
 
 ## next step
 
 I wanted to illustrate that this works by creating an initial model with `doFit = FALSE`, hacking `Z` etc., but I don't think this will actually work: we have to reconstruct $\inv{G}$ *at every iteration step*, which means the code needs to be inside `src/glmmTMB.cpp` ...
+
+---
+
+## lme4 hacking
+
+We can also do this in `lme4`, by hacking. We'd use the modular machinery (`?lme4::modular`).
+
+* call `lFormula` with a random effects term `(rows:cols|block)` (again, not sure how to do this with non-scalar REs?); this will set up a dense `Lambdat` matrix and an appropriate `Zt` matrix
+* make the deviance function
+* set up a wrapper function that maps $\btheta'$ (our Kronecker-product/restricted parameter set) to $\btheta$ (the full Cholesky factor that `lmer` is expecting)
+* do we have any nice Kronecker-product identities that help us get $\textrm{Chol}\left((\C_1 \C_1^\top) \otimes (\C_2 \C_2^\top)\right)$ the easy way (i.e. not by `chol(kron(crossprod()))`?
+
+Schäcke 2004 ([here](https://www.math.uwaterloo.ca/~hwolkowi/henry/reports/kronthesisschaecke04.pdf)) says
+
+$$
+A \otimes B = (L_A L_A^\top) \otimes (L_B L_B^\top) = 
+(L_A \otimes L_B) (L_A \otimes L_B)^\top
+$$
+
+Lazy test
+
+```{r kron1}
+set.seed(102)
+rc <- function(n) {
+    m <- matrix(0, n, n)
+    m[lower.tri(m, diag = TRUE)] <- rnorm(n*(n+1)/2)
+    m
+}
+tchol <- function(A) t(chol(A))
+A <- rc(3)
+B <- rc(3)
+c1 <- tchol(kronecker(tcrossprod(A), tcrossprod(B)))
+c2 <- kronecker(A,B)
+stopifnot(all.equal(c1, c2))
+```
+
+    
