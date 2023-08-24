@@ -16,6 +16,8 @@ engine: knitr
 ```{r pkgs, message = FALSE}
 library(Matrix)
 library(lme4)
+library(Rcpp)
+library(rbenchmark)
 ```
 
 Source code is [here](https://github.com/glmmTMB/glmmTMB/blob/master/notes/kronecker.qmd).
@@ -109,14 +111,57 @@ hvec2mat <- function(x) {
     m[lower.tri(m, diag = TRUE)] <- x
     m
 }
+```
 
-## brute force cmoputation of chol(AR1)
-## closed form expression with factor of ... sqrt(1+1/rho) ?
-ar1_chol <- function(rho, sigma, n) {
+I was hoping that `nlme` would have something we could use, but this code (adapted from the C code) gives only the inverse Cholesky factor, not the Cholesky factor ...
+
+```{Rcpp, nlme_prec}
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+void AR1_fact(NumericVector par, IntegerVector n, NumericVector mat) 
+{
+    int i, np1 = n[0] + 1;
+    double aux = sqrt(1 - par[0] * par[0]), aux1 = - par[0]/aux;
+
+    aux = 1/aux;
+    mat[0] = 1;
+    for(i = 1; i < n[0]; i++) {
+    	mat[i * np1] = aux;
+	    mat[i + n[0] * (i - 1)] = aux1;
+    }
+}
+```
+
+```{r ar1_funs}
+## brute force computation of chol(AR1)
+ar1_chol_old <- function(rho, sigma, n) {
     m <- matrix(0, n, n)
     m[] <- rho^(abs(row(m)- col(m)))
     sigma*t(chol(m))
 }
+## slightly less brute-force
+ar1_chol <- function(rho, sigma, n) {
+    x <- numeric(n^2)
+    AR1_fact(rho, as.integer(n), x)
+    chol_prec <- Matrix(x, n, n)
+    ## still have to invert, although Matrix knows
+    ## it's triangular so can do this efficiently ...?
+    sigma*solve(chol_prec)
+}
+stopifnot(all.equal(as.matrix(ar1_chol(0.7, 1, 5)),
+                    ar1_chol_old(0.7, 1, 5)
+                    ))
+## closed form expression with factor of ... sqrt(1+1/rho) ?
+```
+
+Rcpp version is actually much *slower* for small/realistic-sized problems (breakeven is in the range of `n=250` ...
+
+```{r ar1bench}
+benchmark(ar1_chol(0.7, 1, 250),
+          ar1_chol_old(0.7, 1, 250),
+          columns = c("test", "replications", "elapsed", "relative"))
 ```
 
 ```{r ugh, include = FALSE}
@@ -136,8 +181,8 @@ plot(v, sapply(v, tmpf), log = "y")
 
 ```{r utils2}
 ## generate theta parameters for an AR1 ⨂ AR1 model
-get_theta <- function(p) {
-    nm <- c("sigma", "rho_R", "rho_C", "n_R", "n_C")
+get_theta <- function(p, n_R, n_C) {
+    nm <- c("sigma", "rho_R", "rho_C")
     ## p: sigma, rho_R, rho_C, n_R, n_C
     if (!is.null(names(p)) && any(names(p) != "" & names(p) != nm)) {
         stop("name mismatch")
@@ -147,14 +192,14 @@ get_theta <- function(p) {
     K[lower.tri(K, diag = TRUE)]
 }
 ## test
-rvec <- c(sigma = 2, rho_R = 0.8, rho_C = 0.2, n_R = 10, n_C = 10)
-t1 <- get_theta(rvec)
+rvec <- c(sigma = 2, rho_R = 0.8, rho_C = 0.2)
+t1 <- get_theta(rvec,  n_R = 10, n_C = 10)
 m1 <-  t1 |> hvec2mat() |> tcrossprod()
 ## ifun(m1)
 ## test Kronecker identity again
 m2 <- kronecker(tcrossprod(ar1_chol(0.8, 2, 10)),
                 tcrossprod(ar1_chol(0.2, 1, 10)))
-stopifnot(all.equal(m1, m2))
+stopifnot(all.equal(m1, as.matrix(m2)))
 ```
 
 Let's start by simulating some data (some of the framework here will also be useful in the fitting).
@@ -185,16 +230,16 @@ devfun <- do.call(mkLmerDevfun, lmod1)
 (d1 <- devfun(t1))
 devfun2 <- function(theta0) {
     ## right now rows/cols are hard-coded ...
-    devfun(get_theta(c(theta0, n_R = 10, n_C = 10)))
+    devfun(get_theta(theta0, n_R = 10, n_C = 10))
 }
 ## dev/REMLcrit with original reduced-theta parameters ...
-stopifnot(all.equal(d1, devfun2(rvec[1:3])))
+stopifnot(all.equal(d1, devfun2(rvec)))
 ```
 
 Now fit, first going the easy way and starting from the (known) true values:
 
 ```{r fit1}
-opt1 <- nloptwrap(rvec[1:3], devfun2,
+opt1 <- nloptwrap(rvec, devfun2,
                 lower = c(0, -1, -1),
                 upper = c(Inf, 1, 1))
 ```
@@ -217,10 +262,8 @@ The `summary()` output is a little bit crazy because it prints the full lower tr
 sum_out <- capture.output(summary(m1))
 ```
 
-**would like this to look like it's in a code block?**
-
-```{r fakesummary, echo = FALSE}
-cat(c(sum_out[1:13], "\n...\n[LOTS MORE]\n...\n", sum_out[826:length(sum_out)]),
+```{r fakesummary, echo = FALSE, class.output="cell-output cell-output-stdout"}
+cat(c(sum_out[1:15], "\n...\n[LOTS MORE]\n...\n", sum_out[826:length(sum_out)]),
     sep = "\n")
 ```
 
