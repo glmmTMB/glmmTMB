@@ -24,13 +24,21 @@ library(rbenchmark)
 library(glmmTMB)
 ```
 
+## Introduction
+
 Source code is [here](https://github.com/glmmTMB/glmmTMB/blob/master/notes/kronecker.qmd).
 
 We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`, in either `glmmTMB` or `lme4`.
 
 This is "straightforward" to implement in either package(i.e. we know, conceptually, how to do it, but it might take some work ...). It presents different challenges in each package due to their differing architectures and age.
 
-* AS-REML syntax: `(f1|g1):(f2|g2)`
+## User interface
+
+The ASREML syntax: `(f1|g1):(f2|g2)`
+
+* In `lme4`, we can use the modular
+
+* 
 * for intercept-only construct $\Z$ matrix via (something like) `fac2sparse(interaction(f1, f2))` (*how do we do it for non-scalar REs?*: `interaction()` + `KhatriRao()` in some order ...?)
 * once we have the $\Z$ matrix defined, the conditional log-likelihood of observations ($\log {\cal L}(y_i|\bbeta, \b)$) takes care of itself via  $\X \bbeta + \Z \b$.
 
@@ -117,6 +125,8 @@ hvec2mat <- function(x) {
     m
 }
 ```
+
+@madarDirect2015b
 
 I was hoping that `nlme` would have something we could use, but this code (adapted from the C code) gives only the inverse Cholesky factor, not the Cholesky factor ...
 
@@ -299,8 +309,16 @@ g1 <- fitTMB(g0, doOptim = FALSE)
 ## junk
 
 
+### fixing sigma in `lme4`
+
+If we want to fit (e.g.) a row-by-column model without replication, we need to be able to fix/suppress the residual variation. (If we can set it to a fixed vvalue, then we can effectively suppress it by setting it to a very small value &mdash; this is not quite as good as reformulating the model to eliminate it completely, but probably good enough. This is how both `blme` and `glmmTMB` fix the `sigma` parameter (not sure how it works in `lme`). So we might want to integrate this into `lme4` (where it will be clunky, since `lme4` fits covariances *relative* to the residual variance, but should work as long as we try to fix the residual variance exactly to zero, or ridiculously small ...)
+
 I think this is how `blme` works with a fixed `sigma` ... ?
 
 ```{r fix_sigma, eval = FALSE}
 objectiveValue <- merMod@resp$objective(merMod@pp$ldL2(), merMod@pp$ldRX2(), merMod@pp$sqrL(1.0), sigma^2)
 ```
+
+### 
+
+## References
