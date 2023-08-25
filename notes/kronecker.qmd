@@ -1,7 +1,10 @@
 ---
 title: "Kronecker products"
 date: today
-engine: knitr
+format:
+  html:
+      embed-resources: true
+bibliography: ../glmmTMB/vignettes/glmmTMB.bib
 ---
 
 \newcommand{\C}{\mathbf C}
@@ -18,20 +21,22 @@ library(Matrix)
 library(lme4)
 library(Rcpp)
 library(rbenchmark)
+library(glmmTMB)
 ```
 
 Source code is [here](https://github.com/glmmTMB/glmmTMB/blob/master/notes/kronecker.qmd).
 
-We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`
+We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`, in either `glmmTMB` or `lme4`.
 
+This is "straightforward" to implement in either package(i.e. we know, conceptually, how to do it, but it might take some work ...). It presents different challenges in each package due to their differing architectures and age.
 
 * AS-REML syntax: `(f1|g1):(f2|g2)`
-* for intercept-only construct $\Z$ matrix via (something like) `fac2sparse(interaction(f1, f2))` - **how do we do it for non-scalar REs?** (`interaction` + `KhatriRao` in some order ...
+* for intercept-only construct $\Z$ matrix via (something like) `fac2sparse(interaction(f1, f2))` (*how do we do it for non-scalar REs?*: `interaction()` + `KhatriRao()` in some order ...?)
 * once we have the $\Z$ matrix defined, the conditional log-likelihood of observations ($\log {\cal L}(y_i|\bbeta, \b)$) takes care of itself via  $\X \bbeta + \Z \b$.
 
 How about $\log {\cal L}(\b|\btheta)$ ?
 
-* construct precision ($\inv{\G}$) matrix by getting the precision matrices $\inv{\G_1}$, $\inv{\G_2}$; then $\inv{G} = \inv{\G_1} \otimes \inv{\G_2}$ (see [Emi's cheatsheet](https://github.com/emitanaka/cheatsheets/blob/master/linear-algebra.qmd)) or [Wikipedia](https://en.wikipedia.org/wiki/Kronecker_product). **Need to make sure the ordering of $\inv G$ matches the ordering of the `b` vector**, which means checking the ordering of the results of  `interaction(levels(f1), levels(f2))` vs. the ordering of `kron(invG1, invG2)` (`invG` matrix rows/cols should correspond to levels of `f`)
+* construct precision ($\inv{\G}$) matrix by getting the precision matrices $\inv{\G_1}$, $\inv{\G_2}$; then $\inv{G} = \inv{\G_1} \otimes \inv{\G_2}$ (see [Emi's cheatsheet](https://github.com/emitanaka/cheatsheets/blob/master/linear-algebra.qmd) or [Wikipedia](https://en.wikipedia.org/wiki/Kronecker_product)). **Need to make sure the ordering of $\inv G$ matches the ordering of the `b` vector**, which means checking the ordering of the results of  `interaction(levels(f1), levels(f2))` vs. the ordering of `kron(invG1, invG2)` (`invG` matrix rows/cols should correspond to levels of `f`)
 * `blockNumTheta` (i.e., number of $\theta$ parameters required for the term) will be the sum of `blockNumTheta` for each component (we do need to keep track of the individual values); ditto for `blockSize` (length of the `b` vector)
 * Once we have $\inv{\G_1}$ we should be able to compute $\log {\cal L}(\b|\btheta)$ for each block in the same way as we currently do for all different types in `termwise_nll`. Not quite sure how we would work with precision matrices/specify a MVN log-likelihood with precision rather than corr Cholesky factor supplied??
 
@@ -63,7 +68,7 @@ We can also do this in `lme4`, by hacking. We'd use the modular machinery (`?lme
 * set up a wrapper function that maps $\btheta'$ (our Kronecker-product/restricted parameter set) to $\btheta$ (the full Cholesky factor that `lmer` is expecting)
 * do we have any nice Kronecker-product identities that help us get $\textrm{Chol}\left((\C_1 \C_1^\top) \otimes (\C_2 \C_2^\top)\right)$ the easy way (i.e. not by `chol(kron(crossprod()))`?
 
-Schäcke 2004 ([here](https://www.math.uwaterloo.ca/~hwolkowi/henry/reports/kronthesisschaecke04.pdf)) says
+@schackeKronecker2004 says
 
 $$
 A \otimes B = (L_A L_A^\top) \otimes (L_B L_B^\top) = 
@@ -277,6 +282,17 @@ opt2 <- nloptwrap(c(1, 0.5, 0.5), devfun2,
                 upper = c(Inf, 0.99, 0.99))
 stopifnot(all.equal(c(opt1$par, opt1$fval), c(opt2$par, opt2$fval),
           tolerance = 1e-4))
+```
+
+The same approach in `glmmTMB`:
+
+```{r eval = FALSE}
+g0 <- glmmTMB(y ~ 1 + (interaction(row, col) | block), data = dd,
+              REML = TRUE,
+              doFit = FALSE)
+## next step dumps core when retaping/setting up model: why??
+g1 <- fitTMB(g0, doOptim = FALSE)
+## now wrap ... ??
 ```
 
 
