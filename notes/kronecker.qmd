@@ -22,11 +22,17 @@ library(lme4)
 library(Rcpp)
 library(rbenchmark)
 library(glmmTMB)
+library(dplyr)
+while (!require("reformulas")) {
+    remotes::install_github("bbolker/reformulas")
+}
 ```
 
 ## Introduction
 
 Source code is [here](https://github.com/glmmTMB/glmmTMB/blob/master/notes/kronecker.qmd).
+
+Notes from Kasper [here](https://github.com/glmmTMB/glmmTMB/commit/0e9d26a02e5e36b74120d8c8a35eae0e0960a73b#commitcomment-125586189).
 
 We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`, in either `glmmTMB` or `lme4`.
 
@@ -34,7 +40,7 @@ This is "straightforward" to implement in either package(i.e. we know, conceptua
 
 ## User interface
 
-The ASREML syntax: `(f1|g1):(f2|g2)`
+The ASREML syntax is `(f1|g1):(f2|g2)`
 
 * In `lme4`, we can use the modular
 
@@ -126,80 +132,58 @@ hvec2mat <- function(x) {
 }
 ```
 
-@madarDirect2015b
+@madarDirect2015b gives a general formulation for computing the Cholesky factor of AR structures directly. Section 5.1 gives a specific, simple form for the AR1 case:
 
-I was hoping that `nlme` would have something we could use, but this code (adapted from the C code) gives only the inverse Cholesky factor, not the Cholesky factor ...
+$$
+\ell_{ji} =
+\begin{cases}
+      \rho^{j-1} & j \ge i = 1 \\
+  \rho^{j-1} \sqrt{1-\rho^2} & j \ge 1 \ge 2
+\end{cases}
+$$
 
-```{Rcpp, nlme_prec}
+
+```{Rcpp chol_fac}
 #include <Rcpp.h>
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-void AR1_fact(NumericVector par, IntegerVector n, NumericVector mat) 
+void AR1_chol(NumericVector par, IntegerVector n, NumericVector mat) 
 {
-    int i, np1 = n[0] + 1;
-    double aux = sqrt(1 - par[0] * par[0]), aux1 = - par[0]/aux;
+    int i, j, k;
+    double aux = sqrt(1 - par[0] * par[0]);
+	Rcpp::NumericVector tmp(n[0]-1);
 
-    aux = 1/aux;
-    mat[0] = 1;
+    mat[0] = 1.0;
     for(i = 1; i < n[0]; i++) {
-    	mat[i * np1] = aux;
-	    mat[i + n[0] * (i - 1)] = aux1;
+	    mat[i] = mat[i-1]*par[0];
+		tmp[i-1] = mat[i-1]*aux;
+    }
+	for (i = 1; i < n[0]; i++) {
+	   k = i*n[0]+i;
+	   for (j = i; j < n[0]; j++) {
+	      mat[k] = tmp[j-i];
+		  k++;
+	   }
     }
 }
 ```
 
-```{r ar1_funs}
-## brute force computation of chol(AR1)
-ar1_chol_old <- function(rho, sigma, n) {
-    m <- matrix(0, n, n)
-    m[] <- rho^(abs(row(m)- col(m)))
-    sigma*t(chol(m))
-}
-## slightly less brute-force
+
+```{r ar1_fun}
 ar1_chol <- function(rho, sigma, n) {
     x <- numeric(n^2)
-    AR1_fact(rho, as.integer(n), x)
-    chol_prec <- Matrix(x, n, n)
-    ## still have to invert, although Matrix knows
-    ## it's triangular so can do this efficiently ...?
-    sigma*solve(chol_prec)
+    AR1_chol(rho, as.integer(n), x)
+    sigma*matrix(x, n)
 }
-stopifnot(all.equal(as.matrix(ar1_chol(0.7, 1, 5)),
-                    ar1_chol_old(0.7, 1, 5)
-                    ))
-## closed form expression with factor of ... sqrt(1+1/rho) ?
 ```
 
-Rcpp version is actually much *slower* for small/realistic-sized problems (breakeven is in the range of `n=250` ...
-
-```{r ar1bench}
-benchmark(ar1_chol(0.7, 1, 250),
-          ar1_chol_old(0.7, 1, 250),
-          columns = c("test", "replications", "elapsed", "relative"))
-```
-
-```{r ugh, include = FALSE}
-## playing with examples to try to guess the form of chol(AR1) ...
-ar1_chol(rho = 0.5, sigma = 1, n = 3)  ## cols 2 ... are * sqrt(3)
-ar1_chol(rho = 0.75, sigma = 1, n = 3)  ## cols 2 ... are * 6/8
-tmpf <- function(rho) {
-    a <- ar1_chol(rho = rho, sigma = 1, n = 3)
-    a[2,1]/a[2,2]
-}
-tmpf(0.5)       ## 1/sqrt(3)
-tmpf(1/sqrt(2)) ## 1
-tmpf(0.8)       ## 4/3
-v <- (1:99)/100
-plot(v, sapply(v, tmpf), log = "y")
-```
 
 ```{r utils2}
 ## generate theta parameters for an AR1 ⨂ AR1 model
 get_theta <- function(p, n_R, n_C) {
     nm <- c("sigma", "rho_R", "rho_C")
-    ## p: sigma, rho_R, rho_C, n_R, n_C
-    if (!is.null(names(p)) && any(names(p) != "" & names(p) != nm)) {
+     if (!is.null(names(p)) && any(names(p) != "" & names(p) != nm)) {
         stop("name mismatch")
     }
     unpack(setNames(p, nm))
@@ -294,17 +278,27 @@ stopifnot(all.equal(c(opt1$par, opt1$fval), c(opt2$par, opt2$fval),
           tolerance = 1e-4))
 ```
 
-The same approach in `glmmTMB`:
+## glmmTMB
+
+In principle we can take the same approach in `glmmTMB`, but it's much worse for several reasons:
 
 ```{r eval = FALSE}
-g0 <- glmmTMB(y ~ 1 + (interaction(row, col) | block), data = dd,
+dd2 <- dd |> filter(row<=4, col<=4)
+g0 <- glmmTMB(y ~ 1 + (interaction(row, col) | block), data = dd2,
               REML = TRUE,
               doFit = FALSE)
-## next step dumps core when retaping/setting up model: why??
+## crashes with full data set
 g1 <- fitTMB(g0, doOptim = FALSE)
-## now wrap ... ??
 ```
 
+Unfinished: need to
+
+* write the equivalent of `get_theta()` for the `glmmTMB` random-effects parameterization (i.e., appropriately get scaled correlation matrix)
+* this won't be as effective as doing the same hack in `lme4`, as we will lose the benefit of having the gradients available when doing the 'outer'/wrapper optimization ...
+
+## to do
+
+* move to `efb` repo? (Although, it's currently private ...)
 
 ## junk
 
@@ -319,6 +313,65 @@ I think this is how `blme` works with a fixed `sigma` ... ?
 objectiveValue <- merMod@resp$objective(merMod@pp$ldL2(), merMod@pp$ldRX2(), merMod@pp$sqrL(1.0), sigma^2)
 ```
 
-### 
+### alternative AR1 representations
+
+```{Rcpp nlme_prec}
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+void AR1_fact(NumericVector par, IntegerVector n, NumericVector mat) 
+{
+    int i, np1 = n[0] + 1;
+    double aux = sqrt(1 - par[0] * par[0]), aux1 = - par[0]/aux;
+
+    aux = 1/aux;
+    mat[0] = 1;
+    for(i = 1; i < n[0]; i++) {
+    	mat[i * np1] = aux;
+	    mat[i + n[0] * (i - 1)] = aux1;
+    }
+}
+```
+
+```{r ar1_alt}
+## brute force computation of chol(AR1)
+ar1_chol_old <- function(rho, sigma, n) {
+    m <- matrix(0, n, n)
+    m[] <- rho^(abs(row(m)- col(m)))
+    sigma*t(chol(m))
+}
+## slightly less brute-force
+ar1_chol_2 <- function(rho, sigma, n) {
+    x <- numeric(n^2)
+    AR1_fact(rho, as.integer(n), x)
+    chol_prec <- Matrix(x, n, n)
+    ## still have to invert, although Matrix knows
+    ## it's triangular so can do this efficiently ...?
+    sigma*solve(chol_prec)
+}
+stopifnot(all.equal(as.matrix(ar1_chol_2(0.7, 1, 5)),
+                    ar1_chol_old(0.7, 1, 5)
+                    ))
+stopifnot(all.equal(ar1_chol_old(0.7, 1, 5),
+                    ar1_chol(0.7, 1, 5)
+                    ))
+```
+
+Getting the precision factor via Rcpp and then inverting is (i.e. `ar1_chol_2`) much *slower* for small/realistic-sized problems. Unsurprisingly, computing the Cholesky factor directly via Rcpp (`ar1_chol`) is fastest:
+
+```{r ar1bench_small}
+benchmark(ar1_chol(0.7, 1, 20),
+          ar1_chol_old(0.7, 1, 20),
+          ar1_chol_2(0.7, 1, 20),
+          columns = c("test", "replications", "elapsed", "relative"))
+```
+
+```{r ar1bench}
+benchmark(ar1_chol(0.7, 1, 250),
+          ar1_chol_old(0.7, 1, 250),
+          ar1_chol_2(0.7, 1, 250),
+          columns = c("test", "replications", "elapsed", "relative"))
+```
 
 ## References

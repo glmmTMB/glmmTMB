@@ -243,6 +243,8 @@ struct terms_t : vector<per_term_info<Type> > {
   }
 };
 
+// compute log-likelihood of b (conditional modes) conditional on theta (var/cov)
+//  for a specified random-effects term 
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
@@ -455,6 +457,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   }
   else if (term.blockCode == rr_covstruct){
     // case: reduced rank
+
+    // computing log-likelihood based on *spherical* (iid N(0,1)) random effects
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
       if (do_simulate) {
@@ -462,6 +466,10 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
+    // now construct the factor matrix and convert the spherical random
+    //  effects back to the 'data scale', and *replace them* in the U matrix
+
+    // constructing the factor loadings matrix
     int p = term.blockSize;
     int nt = theta.size();
     int rank = (2*p + 1 -  (int)sqrt(pow(2.0*p + 1, 2) - 8*nt) ) / 2 ;
@@ -479,11 +487,14 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
+    // transforming u to b by multiplying by the loadings matrix
     for(int i = 0; i < term.blockReps; i++){
       vector<Type> usub = U.col(i).segment(0, rank);
       U.col(i) = Lambda * usub;
     }
 
+    // computing the correlation matrix and std devs
+    // (the same D^(-1/2) L L^T D^(-1/2) transformation that we use for correlations
     term.fact_load = Lambda;
     if(isDouble<Type>::value) {
       term.corr = Lambda * Lambda.transpose();
