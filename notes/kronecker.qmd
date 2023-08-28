@@ -42,6 +42,9 @@ This is "straightforward" to implement in either package(i.e. we know, conceptua
 
 The ASREML syntax is `(f1|g1):(f2|g2)`
 
+```{r}
+```
+
 * In `lme4`, we can use the modular
 
 * 
@@ -148,8 +151,7 @@ $$
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-void AR1_chol(NumericVector par, IntegerVector n, NumericVector mat) 
-{
+void AR1_chol(NumericVector par, IntegerVector n, NumericVector mat) {
     int i, j, k;
     double aux = sqrt(1 - par[0] * par[0]);
 	Rcpp::NumericVector tmp(n[0]-1);
@@ -320,15 +322,14 @@ objectiveValue <- merMod@resp$objective(merMod@pp$ldL2(), merMod@pp$ldRX2(), mer
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-void AR1_fact(NumericVector par, IntegerVector n, NumericVector mat) 
-{
+void AR1_fact(NumericVector par, IntegerVector n, NumericVector mat) {
     int i, np1 = n[0] + 1;
     double aux = sqrt(1 - par[0] * par[0]), aux1 = - par[0]/aux;
 
     aux = 1/aux;
     mat[0] = 1;
     for(i = 1; i < n[0]; i++) {
-    	mat[i * np1] = aux;
+        mat[i * np1] = aux;
 	    mat[i + n[0] * (i - 1)] = aux1;
     }
 }
