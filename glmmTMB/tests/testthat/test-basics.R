@@ -331,5 +331,5 @@ test_that("bar/double-bar bug with gaussian response", {
 test_that("drop dimensions in response variable", {
     ## GH #937
     mm <- transform(mtcars, mpg = scale(mpg))
-    expect_is(glmmTMB(mpg ~ cyl, mm))
+    expect_is(glmmTMB(mpg ~ cyl, mm), "glmmTMB")
 })
