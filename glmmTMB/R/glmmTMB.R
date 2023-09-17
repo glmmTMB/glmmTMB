@@ -1237,7 +1237,7 @@ glmmTMB <- function(
 
     ## extract response variable
     ## (name *must* be 'y' to match guts of family()$initialize
-    y <- fr[,respCol]
+    y <- drop(fr[[respCol]])
     ## extract response variable
     ## (name *must* be 'y' to match guts of family()$initialize
     if (is.matrix(y)) {
