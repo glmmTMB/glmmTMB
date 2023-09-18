@@ -327,3 +327,9 @@ test_that("bar/double-bar bug with gaussian response", {
                c(`(Intercept)` = 2.09164503130437, cov = -0.0228597948394547))
 
 })
+
+test_that("drop dimensions in response variable", {
+    ## GH #937
+    mm <- transform(mtcars, mpg = scale(mpg))
+    expect_is(glmmTMB(mpg ~ cyl, mm), "glmmTMB")
+})

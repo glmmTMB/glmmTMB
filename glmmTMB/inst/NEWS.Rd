@@ -35,6 +35,8 @@
 	\item \code{model.matrix} now returns the fixed-effect model matrix
 	actually used in fitting (including dropping columns for
 	rank-deficiency)
+	\item \code{glmmTMB} now accepts single-column matrices (e.g. as
+	produced by \code{scale} as response variables
       } %inner itemize
     } % itemize
   } % user-visible changes
