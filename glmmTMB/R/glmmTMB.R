@@ -1761,9 +1761,11 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
           if (!is.null(rr <- env$random)) {
               par <- par[-rr]
           }
+          browser()
           h <- numDeriv::jacobian(obj$gr, par)
+          ## fall back to solve(optimHess(par, obj$fn, obj$gr)) ? 
           h <- .5 * (h + t(h))  ## symmetrize
-          eigs <- eigen(h)
+          eigs <- try(eigen(h))
           ## complex-values check should be unnecessary because we
           ## now symmetrize the hessian, but who knows ... ?
           ev <- e_complex_check(eigs$values)
