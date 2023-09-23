@@ -78,6 +78,9 @@ ss <- simfun(y ~ 1, data=data.frame(y = rep(0.5, 1000), fake = 1:1000),
        family = ordbeta,
        pars = make_pars(list(beta=0, betad = 3,  psi = c(-2, 2))))
 hist(ss, breaks = 100, freq = FALSE)
+midprob <- plogis(-2, lower.tail = FALSE) * plogis(2)
+shape1 <- plogis(0)*exp(3); shape2 <- (1-plogis(0))*exp(3)
+curve(midprob*dbeta(x, shape1, shape2), add = TRUE, col = 2, add = TRUE)
 
 ord_fit_mean <- ordbetareg(formula=therm ~ education + income +
                                (1|region), 
