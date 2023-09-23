@@ -1754,45 +1754,48 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
         return(ev)
     }
     if(!is.null(sdr$pdHess) && control$conv_check != "skip") {
-       if(!sdr$pdHess) {
+        if(!sdr$pdHess) {
           ## double-check (slower, more accurate hessian)
           env <- environment(obj$fn)
           par <- env$last.par.best
           if (!is.null(rr <- env$random)) {
               par <- par[-rr]
           }
-          browser()
           h <- numDeriv::jacobian(obj$gr, par)
           ## fall back to solve(optimHess(par, obj$fn, obj$gr)) ? 
           h <- .5 * (h + t(h))  ## symmetrize
-          eigs <- try(eigen(h))
-          ## complex-values check should be unnecessary because we
-          ## now symmetrize the hessian, but who knows ... ?
-          ev <- e_complex_check(eigs$values)
-          if (min(ev)>.Machine$double.eps) {
-              ## apparently fit is OK after all ...
-              sdr$pdHess <- TRUE
-              Vtheta <- try(solve(h), silent=TRUE)
-              if (!inherits(Vtheta,"try-error")) sdr$cov.fixed[] <- Vtheta
-          } else {
+          if (!any(is.na(h))) {
+              eigs <- try(eigen(h), silent = TRUE)
+              if (!inherits(eigs, "try-error") && min(ev)>.Machine$double.eps) {
+                  ## apparently fit is OK after all ...
+                  sdr$pdHess <- TRUE
+                  Vtheta <- try(solve(h), silent=TRUE)
+                  if (!inherits(Vtheta,"try-error")) {
+                      sdr$cov.fixed[] <- Vtheta
+                  } else {
+                      warning("failed to invert Hessian from numDeriv::jacobian(), falling back to internal vcov estimate")
+                  }
+              } ## eig check OK
+          } ## !any(is.na(h))
+        } ## !sdr$pdHess          
+        if (!sdr$pdHess) { ## still bad after trying numDeriv ...
               warning(paste0("Model convergence problem; ",
                              "non-positive-definite Hessian matrix. ",
                              "See vignette('troubleshooting')"))
-          }
-      } else if (control$eigval_check && length(sdr$cov.fixed)>0) {
-          eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
-          if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
-              warning(paste0("Model convergence problem; ",
-                             "extreme or very small eigenvalues detected. ",
-                             "See vignette('troubleshooting')"))
-          } ## bad eigval
-      } ## do eigval check
-    } ## pdHess exists
+        }
+    } else if (control$eigval_check && length(sdr$cov.fixed)>0) {
+        eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
+        if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
+            warning(paste0("Model convergence problem; ",
+                           "extreme or very small eigenvalues detected. ",
+                           "See vignette('troubleshooting')"))
+        } ## extreme eigval
+    }  ## do eigval check
 
     if ( !is.null(fit$convergence) && fit$convergence != 0 && control$conv_check != "skip") {
         warning("Model convergence problem; ",
                 fit$message, ". ",
-                "See vignette('troubleshooting')")
+                "See vignette('troubleshooting'), help('diagnose')")
     }
 
     if (control $ collect) {
