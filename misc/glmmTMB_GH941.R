@@ -1,4 +1,5 @@
-devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
+library(glmmTMB)
+## devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
 ## dd <- read.csv2("df_glmmTMB.csv") |>
 ##     subset(select = c(preMDS, F_Absetzen, Betrieb)) |>
 ##     transform(F_Absetzen = factor(F_Absetzen),
