@@ -1765,8 +1765,10 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
           ## fall back to solve(optimHess(par, obj$fn, obj$gr)) ? 
           h <- .5 * (h + t(h))  ## symmetrize
           if (!any(is.na(h))) {
-              eigs <- try(eigen(h), silent = TRUE)
-              if (!inherits(eigs, "try-error") && min(ev)>.Machine$double.eps) {
+              ev <- try(
+                  e_complex_check(eigen(h)$values),
+                  silent = TRUE)
+              if (!inherits(ev, "try-error") && min(ev)>.Machine$double.eps) {
                   ## apparently fit is OK after all ...
                   sdr$pdHess <- TRUE
                   Vtheta <- try(solve(h), silent=TRUE)
