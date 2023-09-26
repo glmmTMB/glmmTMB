@@ -148,7 +148,7 @@ Type log_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
-/* log transformed inverse_linkfun without losing too much accuracy */
+/* log transformed (1-inverse_linkfun) without losing too much accuracy */
 template<class Type>
 Type log1m_inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -688,6 +688,21 @@ Type objective_function<Type>::operator() ()
 	  tmp_loglik = s3 + dbeta(yobs(i), s1, s2, true);
 
 	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(psi(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
+	}
+	SIMULATE{
+	  s3 = invlogit(psi(0) - eta(i));
+	  if (runif(Type(0), Type(1)) < s3) {
+	    yobs(i) = 0;
+	  } else {
+	    s3 = invlogit(eta(i) - psi(1));
+	    if (runif(Type(0), Type(1)) < s3) {
+	      yobs(i) = 1;
+	    } else {
+	      s1 = mu(i)*phi(i);
+	      s2 = (Type(1)-mu(i))*phi(i);
+	      yobs(i) = rbeta(s1, s2);
+	    }
+	  }
 	}
 	break;
       case betabinomial_family:

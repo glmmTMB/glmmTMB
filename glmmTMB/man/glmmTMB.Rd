@@ -159,5 +159,5 @@ Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., N
 Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. \emph{Journal of Statistical Software}, \bold{70}, 1--21.
 
 Millar, R. B. (2011). \emph{Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.} Wiley, New York.
-Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \url{https://doi.org/10.1198/016214504000000980}
+Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \doi{10.1198/016214504000000980}
 }
