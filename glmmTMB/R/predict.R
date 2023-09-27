@@ -410,6 +410,9 @@ predict.glmmTMB <- function(object,
   }
 
   n_orig <- openmp(n = object$modelInfo$parallel)
+  if (openmp_debug()) {
+      cat("predict: setting OpenMP threads to ", n_orig, " on exit\n")
+  }
   on.exit(openmp(n_orig), add = TRUE)
 
   newObj <- with(TMBStruc,
@@ -428,12 +431,12 @@ predict.glmmTMB <- function(object,
   ## set TMB threads to value from original model fit/reset on exit
   if (!is.null(parallel <- object$modelInfo$parallel)) {
     n_orig <- openmp(NULL)
-    if (debug_openmp) cat("resetting TMB threads to ",  parallel, "\n")
+    if (openmp_debug()) cat("resetting TMB threads to ",  parallel, "\n")
     openmp(parallel)
     on.exit(openmp(n = n_orig), add = TRUE)
   }
 
-  if (debug_openmp) cat("TMB threads currently set to ", openmp(NULL), "\n")
+  if (openmp_debug()) cat("TMB threads currently set to ", openmp(NULL), "\n")
   return_eta <- type %in% c("zlink", "link")
   if (!se.fit) {
     rr <- newObj$report(lp)
