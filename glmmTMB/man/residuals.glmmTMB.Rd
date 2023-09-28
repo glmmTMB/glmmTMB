@@ -27,7 +27,7 @@ for zero-inflated models
 \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
 function from the object's \code{family} component; at present this returns \code{NA} for most
 "exotic" families (i.e. deviance residuals are currently only
-implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}).
+implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}). Deviance residuals are based on the conditional distributions only, i.e. ignoring zero-inflation components.
 \item Deviance is computed as the sum of squared deviance residuals, so is available only
 for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 details on the definition of the deviance for GLMMs.
