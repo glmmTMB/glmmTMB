@@ -42,7 +42,7 @@ How do we diagnose the problem?
 
 Consider this example:
 
-```{r non-pos-def, eval = TRUE, cache=TRUE, warning=FALSE}
+```{r non-pos-def,cache=TRUE, warning=FALSE}
 zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
@@ -55,13 +55,10 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
-```{r echo = FALSE, eval = TRUE}
-zi_int <- round(fixef(zinbm0)$zi[["(Intercept)"]], 1)
-zi_prob <- signif(plogis(fixef(zinbm0)$zi[["(Intercept)"]]), 1)
-```
+**FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below)
 
-The zero-inflation intercept parameter is tiny (`r zi_int`): since the parameters
-are estimated on the logit scale, we back-transform with `plogis()` to see that the zero-inflation probability for the baseline level is about `r zi_prob`. Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
+The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
+are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
 
 ```{r f_zi2}
 ff <- fixef(zinbm0)$zi
