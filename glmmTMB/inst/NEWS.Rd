@@ -17,6 +17,14 @@
       \item population-level prediction with new data no longer requires
       that the variables involved in the random effects be explicitly
       specified as \code{NA} (GH #923, Russ Lenth)
+      \item the \code{simulate} method now works for models fitted with
+      \code{family=ordbetareg} (GH #942, Daniel Lüdecke)
+      \item deviance residuals are now available for some families
+      (built-in families from base R (see \code{?family})
+      plus \code{nbinom1}, \code{nbinom2}); deviance
+      residuals for other families may be implemented on request.
+      \item setting \code{option(glmmTMB_openmp_debug=TRUE)} will
+      produce debugging output about the number of OpenMP threads used
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{

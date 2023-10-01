@@ -1,5 +1,5 @@
 library(glmmTMB)
-## devtools::load_all("glmmTMB")
+devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
 library(ordbetareg)
 data(pew)
 library(tidyverse)
@@ -33,7 +33,54 @@ TMB_fit <- glmmTMB(formula=therm/100 ~ education + income +
                    family = ordbeta)
 
 
+y <- model.frame(TMB_fit)$therm/100
+
+model0 <- update(TMB_fit, . ~ 1)
+ss <- simulate(model0)
+hist(ss[[1]])
+hist(y)
+
+ss2 <- simulate(TMB_fit)
+par(mfrow = c(1,2))
+hist(ss2[[1]], breaks = 20)
+hist(y, breaks = 20)
+
 vcov(TMB_fit, full = TRUE)
+
+simfun <- function(form, data, pars, show_pars = FALSE, ...) {
+    ## for now assume response variable is in data
+    r1 <- glmmTMB(form,
+              data = data,
+              ...,
+              doFit = FALSE)
+## construct TMB object, but don't fit it
+    r2 <- fitTMB(r1, doOptim = FALSE)
+    if (show_pars) return(r2$env$last.par)
+    pars <- do.call("make_pars",
+                    c(list(r2$env$last.par), pars))
+    r2$simulate(par = pars)$yobs
+}
+
+make_pars <- function(pars, ...) {
+    ## FIXME: check for name matches, length matches etc.
+    L <- list(...)
+    for (nm in names(L)) {
+        pars[names(pars) == nm] <- L[[nm]]
+    }
+    return(pars)
+}
+
+
+simfun(y ~ 1, data=data.frame(fake = 1:1000),
+       family = ordbeta, show_pars = TRUE)
+
+ss <- simfun(y ~ 1, data=data.frame(y = rep(0.5, 1000), fake = 1:1000),
+       family = ordbeta,
+       pars = make_pars(list(beta=0, betad = 3,  psi = c(-2, 2))))
+hist(ss, breaks = 100, freq = FALSE)
+midprob <- plogis(-2, lower.tail = FALSE) * plogis(2)
+shape1 <- plogis(0)*exp(3); shape2 <- (1-plogis(0))*exp(3)
+curve(midprob*dbeta(x, shape1, shape2), add = TRUE, col = 2, add = TRUE)
 
 ord_fit_mean <- ordbetareg(formula=therm ~ education + income +
                                (1|region), 

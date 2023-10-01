@@ -1,9 +1,11 @@
 ## internal flag for debugging OpenMP behaviour
-debug_openmp <- FALSE
+openmp_debug <- function() {
+    getOption("glmmTMB_openmp_debug", FALSE)
+}
 
 ## glmmTMB openmp controller copied from TMB (Windows needs it).
 openmp <- function (n = NULL) {
-    if (debug_openmp && !is.null(n)) {
+    if (openmp_debug() && !is.null(n)) {
         cat("setting OpenMP threads to ", n, "\n")
     }
     ## FIXME: redundant with integer-setting within omp_num_threads C++ def in utils.cpp
