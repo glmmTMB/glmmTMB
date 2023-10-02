@@ -607,6 +607,11 @@ simulate_new <- function(object,
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
     ## insert a legal value: 1.0 is OK as long as family != "beta_family"
+    ## FIXME: need to be more careful; for binomial-type models, size is
+    ## only populated from the weights argument if the values are not
+    ## all (0,1). (This is arguably a limitation in the glmmTMB code:
+    ## someone *could* have data with size>1 *and* all responses in (0,1)
+    ## (although that would be pathological) ...
     newdata[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
     r1 <- glmmTMB(form,
               data = newdata,
