@@ -358,6 +358,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         size <- rep(1, nobs)
       } else { #proportions
           yobs <- weights * yobs
+          ## FIXME: check for non-integer values? Or does glm()
+          ##  initialization check this already?
           size <- weights
           weights <- rep(1, nobs)
         }
