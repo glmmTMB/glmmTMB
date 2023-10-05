@@ -304,7 +304,7 @@ getME.glmmTMB <- function(object,
          "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
          "theta" = allpars$theta ,
          "beta"  = unlist(allpars[c("beta","betazi","betad")]),
-         "b" = allpars[["b"]],
+         "b" = unlist(allpars[c("b", "bzi")]),
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
