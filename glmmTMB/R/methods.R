@@ -274,7 +274,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xd", "theta", "beta"),
+                                   "Xd", "theta", "beta", "b"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -291,7 +291,9 @@ getME.glmmTMB <- function(object,
   name <- match.arg(name)
 
   oo.env <- object$obj$env
-  ### Start of the switch
+  ## note, commit f35509f3c97909d07854946
+  ##  changed args of parList() from internal/dynamically changing objects
+  ##  to these stored parameters
   allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
   isSparse <- function(component) { if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
   switch(name,
@@ -302,6 +304,7 @@ getME.glmmTMB <- function(object,
          "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
          "theta" = allpars$theta ,
          "beta"  = unlist(allpars[c("beta","betazi","betad")]),
+         "b" = allpars[["b"]],
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
