@@ -80,10 +80,6 @@ mkTMBStruc(
 
 \item{old_smooths}{(optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements}
-
-\item{zioffset}{offset for zero-inflated model}
-
-\item{doffset}{offset for dispersion model}
 }
 \description{
 Extract info from formulas, reTrms, etc., format for TMB

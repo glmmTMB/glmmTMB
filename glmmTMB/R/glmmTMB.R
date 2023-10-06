@@ -220,8 +220,6 @@ startParams <- function(parameters,
 ##' @param fr model frame
 ##' @param yobs observed y
 ##' @param respCol response column
-##' @param zioffset offset for zero-inflated model
-##' @param doffset offset for dispersion model
 ##' @param size number of trials in binomial and betabinomial families
 ##' @param family family object
 ##' @param se (logical) compute standard error?
