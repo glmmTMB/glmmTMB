@@ -25,6 +25,8 @@
       residuals for other families may be implemented on request.
       \item setting \code{option(glmmTMB_openmp_debug=TRUE)} will
       produce debugging output about the number of OpenMP threads used
+      \item \code{getME(., "b")} returns the vector of conditional modes
+      (BLUPs, in the case of linear mixed models)
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
