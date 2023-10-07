@@ -33,7 +33,7 @@ startParams(
 
 \item{yobs}{observed y}
 
-\item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
+\item{weights}{model weights (for binomial-type models, used as size/number of trials)}
 
 \item{size}{number of trials in binomial and betabinomial families}
 
