@@ -1096,27 +1096,8 @@ glmmTMB <- function(
     ##                       control = glmerControl(), ...) {
     call <- mf <- mc <- match.call()
 
-    if (is.character(family)) {
-        if (family=="beta") {
-            family <- "beta_family"
-            warning("please use ",sQuote("beta_family()")," rather than ",
-                    sQuote("\"beta\"")," to specify a Beta-distributed response")
-        }
-        family <- get(family, mode = "function", envir = parent.frame())
-    }
-
-    if (is.function(family)) {
-        ## call family with no arguments
-        family <- family()
-    }
-
-    ## FIXME: what is this doing? call to a function that's not really
-    ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("'family' not recognized")
-    }
-
+    family <- get_family(family)
+    
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
