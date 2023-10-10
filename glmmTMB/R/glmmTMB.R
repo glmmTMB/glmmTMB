@@ -579,7 +579,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                         sm <- eval(bquote(mgcv::smoothCon(.(tt),
                                                           ## don't want intercept etc ...
                                                           absorb.cons = TRUE,
-                                                          data=mf$data)))
+                                                          data=fr)))
                         if (length(sm)>1) stop("can't handle 'by' arguments in smooths yet")
                         sm <- sm[[1]]
                         list(sm = sm,
