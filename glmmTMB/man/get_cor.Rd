@@ -2,20 +2,25 @@
 % Please edit documentation in R/utils.R
 \name{get_cor}
 \alias{get_cor}
+\alias{get_cov}
 \alias{put_cor}
 \title{translate vector of correlation parameters to correlation values}
 \usage{
-get_cor(theta)
+get_cor(theta, return_mat = FALSE)
+
+get_cov(theta)
 
 put_cor(C)
 }
 \arguments{
 \item{theta}{vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)}
 
+\item{return_mat}{(logical) return a matrix (TRUE) rather than a vector of lower-triangular elements (FALSE)?}
+
 \item{C}{a correlation matrix}
 }
 \value{
-a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
+a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor}) or a covariance matrix (\code{get_cov})
 }
 \description{
 translate vector of correlation parameters to correlation values

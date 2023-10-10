@@ -46,7 +46,8 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
-##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
+##' @param return_mat (logical) return a matrix (TRUE) rather than a vector of lower-triangular elements (FALSE)?
+##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor}) or a covariance matrix (\code{get_cov})
 ##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
 ##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
@@ -61,14 +62,33 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 ##' stopifnot(all.equal(get_cor(put_cor(C)),
 ##'                    C[lower.tri(C)]))
 ##' @export
-get_cor <- function(theta) {
-  n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
+get_cor <- function(theta, return_mat = FALSE) {
+  n <- get_dims(length(theta))
   R <- diag(n)
   R[upper.tri(R)] <- theta
   R[] <- crossprod(R) # R <- t(R) %*% R
   scale <- 1 / sqrt(diag(R))
   R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
-  R[lower.tri(R)]
+  if (!return_mat) R[lower.tri(R)] else R
+}
+
+get_dims <- function(n) {
+    as.integer(round(0.5 * (1 + sqrt(1 + 8 * n))))
+}
+
+##' @rdname get_cor
+##' @export
+get_cov <- function(theta) {
+    n <- get_dims(length(theta))
+    logsdvec <- theta[1:n]
+    varvec <- exp(2*logsdvec)
+    corvec <- theta[-(1:n)]
+    if (length(corvec)==0) {
+        return(diag(varvec))
+    } else {
+        sdvec <- exp(logsdvec)
+        return(outer(sdvec, sdvec) * get_cor(corvec, return_mat = FALSE))
+    }
 }
 
 ##' @rdname get_cor
