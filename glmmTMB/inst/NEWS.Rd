@@ -4,7 +4,23 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.8}{
+\section{CHANGES IN VERSION 1.1.8-9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item interpretation of the \emph{weights} variable for
+      binomial-type GL(M)Ms has changed. Previously, the \emph{weights}
+      argument was \emph{ignored} for a vector- (rather than
+      matrix-valued) numeric response, if all observations were either 0 or 1.
+      Now the \emph{weights} variable is multiplied by the resonse
+      variable to compute the number of successes (consistently with
+      \code{stats::glm(., family = "binomial")}). (This change makes
+      it easier to use \emph{weights} to specify the number of trials
+      per observation for \code{simulate_new()}.)
+    } % itemize
+  } % user-visible changes
+} % 1.1.8-9000
+
+\section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item "lognormal" family available (log-Normal, parameterized

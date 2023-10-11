@@ -220,7 +220,7 @@ startParams <- function(parameters,
 ##' @param fr model frame
 ##' @param yobs observed y
 ##' @param respCol response column
-##' @param size number of trials in binomial and betabinomial families
+##' @param weights model weights (for binomial-type models, used as size/number of trials)
 ##' @param family family object
 ##' @param se (logical) compute standard error?
 ##' @param call original \code{glmmTMB} call
@@ -238,9 +238,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        respCol,
                        ## no conditional offset argument
                        ##  (should be stored in model frame)
-                       weights,
+                       weights = NULL,
                        contrasts,
-                       size=NULL,
                        family,
                        se=NULL,
                        call=NULL,
@@ -329,10 +328,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
-    nobs <- nrow(fr)
+   nobs <- nrow(fr)
+    
+   if (is.null(weights)) weights <- rep(1, nobs)
 
-  if (is.null(weights)) weights <- rep(1, nobs)
-
+  size <- numeric(0)
+    
   ## binomial family:
   ## binomial()$initialize was only executed locally
   ## yobs could be a factor -> treat as binary following glm
@@ -352,19 +353,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         size <- yobs[,1] + yobs[,2]
         yobs <- yobs[,1] #successes
       } else {
-      if(all(yobs %in% c(0,1))) { #binary
-        size <- rep(1, nobs)
-      } else { #proportions
-          yobs <- weights * yobs
-          ## FIXME: check for non-integer values? Or does glm()
-          ##  initialization check this already?
+          ## previously tested for binary data
+          ## shouldn't need to do this, as weights is a vector of ones
+          ## by default (see NEWS for 1.1.8-9000/1.1.9)
+          yobs <- weights*yobs
           size <- weights
-          weights <- rep(1, nobs)
-        }
+          weights <- rep(1.0, nobs)
       }
     }
   }
-  if (is.null(size)) size <- numeric(0)
 
 
   denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
@@ -1099,27 +1096,8 @@ glmmTMB <- function(
     ##                       control = glmerControl(), ...) {
     call <- mf <- mc <- match.call()
 
-    if (is.character(family)) {
-        if (family=="beta") {
-            family <- "beta_family"
-            warning("please use ",sQuote("beta_family()")," rather than ",
-                    sQuote("\"beta\"")," to specify a Beta-distributed response")
-        }
-        family <- get(family, mode = "function", envir = parent.frame())
-    }
-
-    if (is.function(family)) {
-        ## call family with no arguments
-        family <- family()
-    }
-
-    ## FIXME: what is this doing? call to a function that's not really
-    ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("'family' not recognized")
-    }
-
+    family <- get_family(family)
+    
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")

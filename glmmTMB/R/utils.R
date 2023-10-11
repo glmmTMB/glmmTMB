@@ -564,7 +564,8 @@ make_pars <- function(pars, ...) {
 ##' See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
 ##' and \code{vignette("covstruct", package = "glmmTMB")}
 ##' for more information on the parameterization of different covariance structures.
-##' 
+##'
+##' @inheritParams glmmTMB
 ##' @param object a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
 ##' (peculiar naming is for consistency with the generic function, which typically
 ##' takes a fitted model object)
@@ -598,7 +599,10 @@ make_pars <- function(pars, ...) {
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
+                         family = gaussian,
                          newdata, newparams, ..., show_pars = FALSE) {
+    
+    family <- get_family(family)
     if (!is.null(seed)) set.seed(seed)
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
@@ -607,16 +611,12 @@ simulate_new <- function(object,
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
     ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    ## FIXME: need to be more careful; for binomial-type models, size is
-    ## only populated from the weights argument if the values are not
-    ## all (0,1). (This is arguably a limitation in the glmmTMB code:
-    ## someone *could* have data with size>1 *and* all responses in (0,1)
-    ## (although that would be pathological) ...
-    newdata[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
+    newdata[["..y"]] <- if (family$family == "beta_family") 1.0 else 0.5
     r1 <- glmmTMB(form,
-              data = newdata,
-              ...,
-              doFit = FALSE)
+                  data = newdata,
+                  family = family,
+                  ...,
+                  doFit = FALSE)
 ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
     if (show_pars) return(r2$env$last.par)
@@ -630,4 +630,28 @@ simulate_new <- function(object,
     if (is.null(x)) 
         y
     else x
+}
+
+get_family <- function(family) {
+    if (is.character(family)) {
+        if (family=="beta") {
+            family <- "beta_family"
+            warning("please use ",sQuote("beta_family()")," rather than ",
+                    sQuote("\"beta\"")," to specify a Beta-distributed response")
+        }
+        family <- get(family, mode = "function", envir = parent.frame(2))
+    }
+
+    if (is.function(family)) {
+        ## call family with no arguments
+        family <- family()
+    }
+
+    ## FIXME: what is this doing? call to a function that's not really
+    ##  a family creation function?
+    if (is.null(family$family)) {
+      print(family)
+      stop("after evaluation, 'family' must have a '$family' element")
+    }
+    return(family)
 }

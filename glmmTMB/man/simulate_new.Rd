@@ -8,6 +8,7 @@ simulate_new(
   object,
   nsim = 1,
   seed = NULL,
+  family = gaussian,
   newdata,
   newparams,
   ...,
@@ -22,6 +23,8 @@ takes a fitted model object)}
 \item{nsim}{number of simulations}
 
 \item{seed}{random-number seed}
+
+\item{family}{a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See \code{\link{family}} for a generic discussion of families or \code{\link{family_glmmTMB}} for details of \code{glmmTMB}-specific families.}
 
 \item{newdata}{a data frame containing all variables listed in the formula,
 \emph{including} the response variable (which needs to fall within
