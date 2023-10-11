@@ -25,10 +25,8 @@ m5 <- update(m1, . ~ s(log(d), k = 4), data = ss)
 f <- function(x, ...) glmmTMB:::findbars_x(x, default.special = NULL, target = "s", ...)
 f(Reaction ~ s(log(Days)))
 ## OK: s(log(Days))
-f(Reaction ~ s(log(Days+1)))
-## not OK: list of s(log(`+`)), s(log(Days)), s(log(1))
+f(Reaction ~ s(log(Days+1)), debug = TRUE)
 f(Reaction ~ s(log(d), k = 4))  ## OK
-
 
 
 ## this does work though ...
