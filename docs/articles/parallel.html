@@ -371,7 +371,7 @@ in <code>glmmTMBcontrol</code>:</p>
 <pre><code>## Warning in glmmTMB(formula = ydata ~ 1 + xdata, control =
 ## glmmTMBControl(parallel = 1)): use of the &#39;data&#39; argument is recommended</code></pre>
 <pre><code>##    user  system elapsed 
-##   2.622   0.327   2.949</code></pre>
+##   2.588   0.319   2.909</code></pre>
 <p>Now, we fit the same model using five threads (or as many as possible
 - 3 in this case):</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(</span>
@@ -381,7 +381,7 @@ in <code>glmmTMBcontrol</code>:</p>
 <pre><code>## Warning in glmmTMB(formula = ydata ~ 1 + xdata, control =
 ## glmmTMBControl(parallel = nt)): use of the &#39;data&#39; argument is recommended</code></pre>
 <pre><code>##    user  system elapsed 
-##   2.397   0.311   2.708</code></pre>
+##   2.428   0.312   2.741</code></pre>
 <p>The speed-up is definitely more visible on models with a much larger
 number of observations, or in models with random effects.</p>
 <p>Here’s an example where we have an IID Gaussian random effect. We
@@ -403,7 +403,7 @@ first simulate the data with 200 groups (our random effect):</p>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a> )</span>
 <span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  15.731   1.353  17.091</code></pre>
+##  15.481   1.356  16.844</code></pre>
 <p>Now we fit the same model, but using 3 threads. The speed-up is more
 noticeable with this model.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>(t_parallel <span class="ot">&lt;-</span> <span class="fu">system.time</span>(</span>
@@ -411,7 +411,7 @@ noticeable with this model.</p>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a> )</span>
 <span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  15.163   1.292  16.488</code></pre>
+##  15.100   1.299  16.408</code></pre>
 <div id="notes-on-openmp-support" class="section level2">
 <h2>Notes on OpenMP support</h2>
 <p>From <a href="https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support">Writing
