@@ -36,7 +36,12 @@ See [here](https://github.com/glmmTMB/glmmTMB) for the development site.
 
 You can:
 
-- re-install `glmmTMB` *from source* (from GitHub, or from CRAN via `install.packages("glmmTMB", type="source")`) (you'll need development tools installed).
+- re-install the entire `Matrix` > `TMB` > `glmmTMB` stack *from source* (this is slight overkill, you might not need to re-install the whole stack, but it doesn't hurt):
+    - Make sure that you have **development tools** installed. See [here](https://mac.r-project.org/tools/) for MacOS and [here](https://cran.r-project.org/bin/windows/Rtools/) for Windows (if you're on Linux, you probably know what you're doing with this ...) You will need both C++ and Fortran compilers (`gfortran`).
+    - start a *clean* R/RStudio session (make sure no packages other than the base/core packages are loaded)
+    - `install.packages("Matrix")`: this should install the latest version of `Matrix`
+    - `install.package("TMB", type = "source")` - this installs the latest version of `TMB` in a way that is *binary-compatible* with the latest Matrix
+    - `install.package("glmmTMB", type = "source")` - this installs the latest version of `glmmTMB` in a way that is *binary-compatible with the latest TMB
 - hope that updated binary versions are available here for your OS and R version. You can check `http://glmmtmb.github.io/glmmTMB/repos/bin/[OS]/contrib/[R_version]/PACKAGES`, where [OS] is "macosx" or "windows", and [R_version] is the *major* version of R you're using (e.g. 4.1). See "install development version from GitHub, binary" above. (Windows and MacOS binaries of TMB built with newer versions of the `Matrix` package *may* be available here as well. Try: `install.packages("TMB", repos="https://glmmTMB.github.io/glmmTMB/repos")`.)
 - Use the [groundhog package](https://groundhogr.com/) to install binary versions of `Matrix`, `TMB`, and `glmmTMB` from a date when they were consistent with each other:
 
