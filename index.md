@@ -38,20 +38,18 @@ You can:
 
 - re-install `glmmTMB` *from source* (from GitHub, or from CRAN via `install.packages("glmmTMB", type="source")`) (you'll need development tools installed).
 - hope that updated binary versions are available here for your OS and R version. You can check `http://glmmtmb.github.io/glmmTMB/repos/bin/[OS]/contrib/[R_version]/PACKAGES`, where [OS] is "macosx" or "windows", and [R_version] is the *major* version of R you're using (e.g. 4.1). See "install development version from GitHub, binary" above. (Windows and MacOS binaries of TMB built with newer versions of the `Matrix` package *may* be available here as well. Try: `install.packages("TMB", repos="https://glmmTMB.github.io/glmmTMB/repos")`.)
-- Use the [checkpoint package]( https://CRAN.R-project.org/package=checkpoint) to revert your versions of `TMB` and `Matrix` to the ones that were available the last time the `glmmTMB` and `TMB` packages were updated on CRAN:
+- Use the [groundhog package](https://groundhogr.com/) to install binary versions of `Matrix`, `TMB`, and `glmmTMB` from a date when they were consistent with each other:
+
+(**note**: this recipe is not well tested ... if you try it and encounter problems, please [post an issue](https://github.com/glmmTMB/glmmTMB/issues))
 
 ```r
-## load (installing if necessary) the checkpoint package
-while (!require("checkpoint")) install.packages("checkpoint")
-## retrieve build date of installed version of TMB
+## load (installing if necessary) the groundhog package
+while (!require("groundhog", quietly=TRUE)) install.packages("groundhog")
+## retrieve build date of installed version of glmmTMB
 bd1 <- as.character(asDateBuilt(packageDescription("glmmTMB",fields="Built")))
-oldrepo <- getOption("repos")
-use_mran_snapshot(bd1) ## was setSnapshot() before version 1.0.0 of checkpoint
-install.packages("TMB")
+groundhog.library("TMB", bd1)
 bd2 <- as.character(asDateBuilt(packageDescription("TMB",fields="Built")))
-use_mran_snapshot(bd2)
-install.packages("Matrix")
-options(repos=oldrepo) ## restore original repo
+groundhog.library("Matrix", bd2)
 ```
 The only disadvantage to this approach is that your versions of `TMB` and `Matrix` will be behind the version on CRAN; you might be missing out on some bug fixes or improvements, and eventually you may find that updates of other packages require newer versions of these packages. (If you accidentally update the packages from CRAN, you'll have to redo this step.)
 - Install older versions of `TMB` and/or `Matrix` *from CRAN, from source* using `remotes::install_version("[pkg]","[xxxx]")`, where `[pkg]` is TMB or Matrix and `[xxxx]` is the older package version referred to in the first error message you received.
