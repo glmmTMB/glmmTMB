@@ -12,7 +12,7 @@
 
 <meta name="author" content="Kasper Kristensen and Maeve McGillycuddy" />
 
-<meta name="date" content="2023-07-24" />
+<meta name="date" content="2023-10-14" />
 
 <title>Covariance structures with glmmTMB</title>
 
@@ -362,7 +362,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Covariance structures with glmmTMB</h1>
 <h4 class="author">Kasper Kristensen and Maeve McGillycuddy</h4>
-<h4 class="date">2023-07-24</h4>
+<h4 class="date">2023-10-14</h4>
 
 
 <div id="TOC">
@@ -624,9 +624,9 @@ the output:</p>
 ## (Intercept)  
 ##    -0.09745</code></pre>
 <p>For those trying to make sense of the internal parameterization, the
-internal transformation from the parameter (<span class="math inline">\(\phi\)</span>) to the AR1 coefficient is <span class="math inline">\(\phi = theta_2/sqrt(1+\theta_2^2)\)</span>; the
+internal transformation from the parameter (<span class="math inline">\(\phi\)</span>) to the AR1 coefficient is <span class="math inline">\(\phi = \theta_2/\sqrt(1+\theta_2^2)\)</span>; the
 inverse transformation is <span class="math inline">\(\theta_2 =
-\phi/sqrt(1-\phi^2)\)</span>. (The first element of the
+\phi/\sqrt(1-\phi^2)\)</span>. (The first element of the
 <code>theta</code> vector is the log-standard-deviation.)</p>
 </div>
 <div id="increasing-the-sample-size" class="section level3">
@@ -749,7 +749,8 @@ using REML estimation (however, the estimate of the correlations seems
 to have gotten slightly worse):</p>
 <div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>fit.toep.reml <span class="ot">&lt;-</span> <span class="fu">update</span>(fit.toep, <span class="at">REML=</span><span class="cn">TRUE</span>)</span></code></pre></div>
 <pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
-## problem; false convergence (8). See vignette(&#39;troubleshooting&#39;)</code></pre>
+## problem; false convergence (8). See vignette(&#39;troubleshooting&#39;),
+## help(&#39;diagnose&#39;)</code></pre>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>vc1R <span class="ot">&lt;-</span> <span class="fu">VarCorr</span>(fit.toep.reml)<span class="sc">$</span>cond[[<span class="dv">1</span>]]</span>
 <span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(<span class="fu">diag</span>(vc1R))</span></code></pre></div>
 <pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
