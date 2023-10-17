@@ -7,7 +7,13 @@
 \usage{
 \method{terms}{glmmTMB}(x, component = "cond", part = "fixed", ...)
 
-\method{model.matrix}{glmmTMB}(object, component = "cond", part = "fixed", ...)
+\method{model.matrix}{glmmTMB}(
+  object,
+  component = "cond",
+  part = "fixed",
+  include_rankdef = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{a fitted \code{glmmTMB} object}
@@ -19,6 +25,8 @@
 \item{\dots}{additional arguments (ignored or passed to \code{\link{model.frame}})}
 
 \item{object}{a fitted \code{glmmTMB} object}
+
+\item{include_rankdef}{include all columns of a rank-deficient model matrix?}
 }
 \description{
 Methods for extracting developer-level information from \code{glmmTMB} models

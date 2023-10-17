@@ -38,7 +38,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -61,19 +61,22 @@
       <a href="articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="articles/model_evaluation.html">model evaluation</a>
+      <a href="articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -112,6 +115,7 @@
 <div class="page-header"><h1 id="glmmtmb">glmmTMB<a class="anchor" aria-label="anchor" href="#glmmtmb"></a>
 </h1></div>
 <!-- badges: start -->
+
 <p><code>glmmTMB</code> is an R package for fitting generalized linear mixed models (GLMMs) and extensions, built on <a href="https://github.com/kaskr/adcomp" class="external-link">Template Model Builder</a>, which is in turn built on CppAD and Eigen. It is intended to handle a wide range of statistical distributions (Gaussian, Poisson, binomial, negative binomial, Beta …) and zero-inflation. Fixed and random effects models can be specified for the conditional and zero-inflated components of the model, as well as fixed effects for the dispersion parameter.</p>
 <div class="section level2">
 <h2 id="where-to-ask-questions">Where to ask questions<a class="anchor" aria-label="anchor" href="#where-to-ask-questions"></a>
@@ -137,33 +141,44 @@
 <li>
 <strong>from GitHub (development version, from source)</strong>: use <code><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages()</a></code> to install the <code>TMB</code> and <code>remotes</code> packages from CRAN, then <code>remotes::install_github("glmmTMB/glmmTMB/glmmTMB")</code>. If the install fails at the vignette-building step, try specifying <code>build_vignettes=FALSE</code> within the <code>install_github</code> call. You will need to have development tools (compilers etc.) installed: see <a href="https://support.rstudio.com/hc/en-us/articles/200486498-Package-Development-Prerequisites" class="external-link">here</a> or <a href="https://teuder.github.io/rcpp4everyone_en/020_install.html" class="external-link">here</a>. (As well as being more up-to-date, the development version may contain new bugs or untested features!)</li>
 <li>
-<strong>from GitHub (development version, from binary)</strong>: A binary release of the development version <em>may</em> be available for your operating system/version of R: try <code>install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos")</code>. If (1) this doesn’t work; (2) you need the development version; (3) you can’t install from source as above, please contact the maintainers.</li>
+<strong>from GitHub (development version, from binary)</strong>: A binary release of the development version <em>may</em> be available for your operating system/version of R from <a href="./repos/index.html">the glmmTMB repository here</a>. If a sufficient version isn’t available and you are having insurmountable problems installing the current version of the package from source yourself, please contact the maintainers.</li>
 </ul>
 </div>
-<div class="section level3"><h3 id="complications">Complications<a class="anchor" aria-label="anchor" href="#complications"></a>
-</h3></div>
+<div class="section level3">
+<h3 id="complications">Complications<a class="anchor" aria-label="anchor" href="#complications"></a>
+</h3>
+</div>
 <div class="section level3">
 <h3 id="glmmtmbtmbmatrix-mismatches">glmmTMB/TMB/Matrix mismatches<a class="anchor" aria-label="anchor" href="#glmmtmbtmbmatrix-mismatches"></a>
 </h3>
 <p><code>glmmTMB</code> should be run on a system with the same version of <code>TMB</code> installed that was originally used to build the package; <code>TMB</code> and <code>Matrix</code> have a similar dependency. If you update your system with binary versions of the <code>TMB</code> or <code>Matrix</code> packages from CRAN that are <em>newer than the version of glmmTMB on CRAN</em>, you’ll get warnings or error messages.</p>
 <p>You can:</p>
 <ul>
-<li>re-install <code>glmmTMB</code> <em>from source</em> (from GitHub, or from CRAN via <code>install.packages("glmmTMB", type="source")</code>) (you’ll need development tools installed).</li>
-<li>hope that updated binary versions are available here for your OS and R version. You can check <code>http://glmmtmb.github.io/glmmTMB/repos/bin/[OS]/contrib/[R_version]/PACKAGES</code>, where [OS] is “macosx” or “windows”, and [R_version] is the <em>major</em> version of R you’re using (e.g. 4.1). See “install development version from GitHub, binary” above. (Windows and MacOS binaries of TMB built with newer versions of the <code>Matrix</code> package <em>may</em> be available here as well. Try: <code>install.packages("TMB", repos="https://glmmTMB.github.io/glmmTMB/repos")</code>.)</li>
-<li>Use the <a href="https://CRAN.R-project.org/package=checkpoint" class="external-link">checkpoint package</a> to revert your versions of <code>TMB</code> and <code>Matrix</code> to the ones that were available the last time the <code>glmmTMB</code> and <code>TMB</code> packages were updated on CRAN:</li>
+<li>re-install the entire <code>Matrix</code> &gt; <code>TMB</code> &gt; <code>glmmTMB</code> stack <em>from source</em> (this is slight overkill, you might not need to re-install the whole stack, but it doesn’t hurt):
+<ul>
+<li>Make sure that you have <strong>development tools</strong> installed. See <a href="https://mac.r-project.org/tools/" class="external-link">here</a> for MacOS and <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">here</a> for Windows (if you’re on Linux, you probably know what you’re doing with this …) You will need both C++ and Fortran compilers (<code>gfortran</code>).</li>
+<li>start a <em>clean</em> R/RStudio session (make sure no packages other than the base/core packages are loaded)</li>
+<li>
+<code>install.packages("Matrix")</code>: this should install the latest version of <code>Matrix</code>
+</li>
+<li>
+<code>install.package("TMB", type = "source")</code> - this installs the latest version of <code>TMB</code> in a way that is <em>binary-compatible</em> with the latest Matrix</li>
+<li>
+<code>install.package("glmmTMB", type = "source")</code> - this installs the latest version of <code>glmmTMB</code> in a way that is <em>binary-compatible</em> with the latest TMB</li>
 </ul>
+</li>
+<li>hope that updated binary versions are available here for your OS and R version. You can check <code>http://glmmtmb.github.io/glmmTMB/repos/bin/[OS]/contrib/[R_version]/PACKAGES</code>, where [OS] is “macosx” or “windows”, and [R_version] is the <em>major</em> version of R you’re using (e.g. 4.1). See “install development version from GitHub, binary” above. (Windows and MacOS binaries of TMB built with newer versions of the <code>Matrix</code> package <em>may</em> be available here as well. Try: <code>install.packages("TMB", repos="https://glmmTMB.github.io/glmmTMB/repos")</code>.)</li>
+<li>Use the <a href="https://groundhogr.com/" class="external-link">groundhog package</a> to install binary versions of <code>Matrix</code>, <code>TMB</code>, and <code>glmmTMB</code> from a date when they were consistent with each other:</li>
+</ul>
+<p>(<strong>note</strong>: this recipe is not well tested … if you try it and encounter problems, please <a href="https://github.com/glmmTMB/glmmTMB/issues" class="external-link">post an issue</a>)</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co">## load (installing if necessary) the checkpoint package</span>
-<span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://github.com/RevolutionAnalytics/checkpoint" class="external-link">"checkpoint"</a></span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"checkpoint"</span><span class="op">)</span>
-<span class="co">## retrieve build date of installed version of TMB</span>
-<span class="va">bd1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">asDateBuilt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageDescription</a></span><span class="op">(</span><span class="st">"glmmTMB"</span>,fields<span class="op">=</span><span class="st">"Built"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-<span class="va">oldrepo</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"repos"</span><span class="op">)</span>
-<span class="fu">use_mran_snapshot</span><span class="op">(</span><span class="va">bd1</span><span class="op">)</span> <span class="co">## was setSnapshot() before version 1.0.0 of checkpoint</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"TMB"</span><span class="op">)</span>
-<span class="va">bd2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">asDateBuilt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageDescription</a></span><span class="op">(</span><span class="st">"TMB"</span>,fields<span class="op">=</span><span class="st">"Built"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
-<span class="fu">use_mran_snapshot</span><span class="op">(</span><span class="va">bd2</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"Matrix"</span><span class="op">)</span>
-<span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>repos<span class="op">=</span><span class="va">oldrepo</span><span class="op">)</span> <span class="co">## restore original repo</span></code></pre></div>
+<code class="sourceCode R"><span><span class="co">## load (installing if necessary) the groundhog package</span></span>
+<span><span class="kw">while</span> <span class="op">(</span><span class="op">!</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="st"><a href="https://groundhogr.com/" class="external-link">"groundhog"</a></span>, quietly<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"groundhog"</span><span class="op">)</span></span>
+<span><span class="co">## retrieve build date of installed version of glmmTMB</span></span>
+<span><span class="va">bd1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">asDateBuilt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageDescription</a></span><span class="op">(</span><span class="st">"glmmTMB"</span>,fields<span class="op">=</span><span class="st">"Built"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">groundhog.library</span><span class="op">(</span><span class="st">"TMB"</span>, <span class="va">bd1</span><span class="op">)</span></span>
+<span><span class="va">bd2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">asDateBuilt</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageDescription</a></span><span class="op">(</span><span class="st">"TMB"</span>,fields<span class="op">=</span><span class="st">"Built"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">groundhog.library</span><span class="op">(</span><span class="st">"Matrix"</span>, <span class="va">bd2</span><span class="op">)</span></span></code></pre></div>
 <p>The only disadvantage to this approach is that your versions of <code>TMB</code> and <code>Matrix</code> will be behind the version on CRAN; you might be missing out on some bug fixes or improvements, and eventually you may find that updates of other packages require newer versions of these packages. (If you accidentally update the packages from CRAN, you’ll have to redo this step.) - Install older versions of <code>TMB</code> and/or <code>Matrix</code> <em>from CRAN, from source</em> using <code>remotes::install_version("[pkg]","[xxxx]")</code>, where <code>[pkg]</code> is TMB or Matrix and <code>[xxxx]</code> is the older package version referred to in the first error message you received.</p>
 </div>
 <div class="section level3">
@@ -173,10 +188,10 @@
 <p><code>glmmTMB</code> enables parallel (threaded) computations based on <code>OpenMP</code> (see the <a href="glmmTMB/vignettes/parallel.Rmd">parallel vignette</a> for more information). OpenMP will be available automatically if your system supports it, but this may depend on the details of your operating system, compiler, compilation flags used when your R executable was built, etc.; in particular, see <a href="https://github.com/Rdatatable/data.table/wiki/Installation#openmp-enabled-compiler-for-mac" class="external-link">here</a> for tips on enabling OpenMP for older (&lt;= El Capitan/10.11.4) MacOS systems. (That page suggests using optimization level <code>-O3</code>, which <a href="https://github.com/glmmTMB/glmmTMB/issues/297" class="external-link">may cause problems for glmmTMB</a>.)</p>
 <p>The maximum number of threads used defaults to 48; to increase this value when installing from source, you can use</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="fu">withr</span><span class="fu">::</span><span class="fu"><a href="https://withr.r-lib.org/reference/with_makevars.html" class="external-link">with_makevars</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>PKG_CPPFLAGS<span class="op">=</span><span class="st">"-DCPPAD_MAX_NUM_THREADS=128"</span><span class="op">)</span>, <span class="op">{</span>
-  <span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"glmmTMB/glmmTMB/glmmTMB"</span><span class="op">)</span>
-<span class="op">}</span>, assignment<span class="op">=</span><span class="st">"+="</span>
-<span class="op">)</span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">withr</span><span class="fu">::</span><span class="fu"><a href="https://withr.r-lib.org/reference/with_makevars.html" class="external-link">with_makevars</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>PKG_CPPFLAGS<span class="op">=</span><span class="st">"-DCPPAD_MAX_NUM_THREADS=128"</span><span class="op">)</span>, <span class="op">{</span></span>
+<span>  <span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"glmmTMB/glmmTMB/glmmTMB"</span><span class="op">)</span></span>
+<span><span class="op">}</span>, assignment<span class="op">=</span><span class="st">"+="</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p>(or the equivalent for <code><a href="https://remotes.r-lib.org/reference/install_cran.html" class="external-link">remotes::install_cran()</a></code>).</p>
 </div>
 <div class="section level3">
@@ -225,7 +240,7 @@
 <li>Kasper Kristensen <br><small class="roles"> Author </small>  </li>
 <li>Martin Maechler <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0002-8685-9910" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
 <li>Arni Magnusson <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0003-2769-6741" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
-<li>Hans Skaug <br><small class="roles"> Author </small>  </li>
+<li>Hans Skaug <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0003-4235-2592" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
 <li>Anders Nielsen <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0001-9683-9262" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
 <li>Casper Berg <br><small class="roles"> Author </small> <a href="https://orcid.org/0000-0002-3812-5269" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a> </li>
 <li>Koen van Bentham <br><small class="roles"> Author </small>  </li>
@@ -254,7 +269,7 @@
 
 <div class="pkgdown">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer>

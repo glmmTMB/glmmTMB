@@ -137,7 +137,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' @aliases VarCorr
 ##' @param x a fitted \code{glmmTMB} model
 ##' @param sigma residual standard deviation (usually set automatically from internal information)
-##' @param extra arguments (for consistency with generic method)
+##' @param ... extra arguments (for consistency with generic method)
 ##' @importFrom nlme VarCorr
 ## and re-export the generic:
 ##' @export VarCorr
@@ -168,6 +168,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
     ## FIXME:: do we need 'sigma' any more (now that nlme generic
     ##         doesn't have it?)
+    check_dots(..., .action = "warning")
     stopifnot(is.numeric(sigma), length(sigma) == 1)
     xrep <- x$obj$env$report(x$fit$parfull)
     reT <- x$modelInfo$reTrms
@@ -202,7 +203,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 ##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
-## don't importFrom lme4 formatVC; use our own formatV instead!
+## don't importFrom lme4 formatVC; use our own formatVC instead!
 ##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
 ##' @param digits number of significant digits to use.
@@ -220,6 +221,23 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
     }
     invisible(x)
 }
+
+    formatCor <- function(x,maxlen=0, digits) {
+        ## x: correlation matrix
+        ## maxlen: max number of RE std devs per term;
+        ##         really a *minimum* length here! pad to (maxlen)
+        ##         columns as necessary
+        x <- as(x, "matrix")
+        dig <- max(2, digits - 2) # use 'digits' !
+        ## n.b. not using formatter() for correlations
+        cc <- format(round(x, dig), nsmall = dig)
+        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
+        nr <- nrow(cc)
+        if (nr < maxlen) {
+            cc <- cbind(cc, matrix("", nr, maxlen-nr))
+        }
+        return(cc)
+    }
 
 ## original from lme4
 ## had to be extended/modified to deal with glmmTMB special cases
@@ -253,22 +271,6 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     nc <- length(colnms <- c(c.nms[1:2], (use.c <- avail.c[mcc])))
     if(length(use.c) == 0)
 	stop("Must show either standard deviations or variances")
-    formatCor <- function(x,maxlen=0) {
-        ## x: correlation matrix
-        ## maxlen: max number of RE std devs per term;
-        ##         really a *minimum* length here! pad to (maxlen)
-        ##         columns as necessary
-        x <- as(x, "matrix")
-        dig <- max(2, digits - 2) # use 'digits' !
-        ## n.b. not using formatter() for correlations
-        cc <- format(round(x, dig), nsmall = dig)
-        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
-        nr <- nrow(cc)
-        if (nr < maxlen) {
-            cc <- cbind(cc, matrix("", nr, maxlen-nr))
-        }
-        return(cc)
-    }
     getCovstruct <- function(x) {
         n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
                                            .valid_covstruct)]
@@ -279,16 +281,16 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         r <- attr(x,type) ## extract stddev *or* correlation from x
         if (type=="correlation") {
             ## transform to char matrix
-            r <- formatCor(r,maxlen)
+            r <- formatCor(r,maxlen, digits)
             ## drop last column (will be blank since we blanked out
             ##  the upper triangle + diagonal)
             if (ncol(r)>maxlen)
                 r <- r[, -ncol(r), drop = FALSE]
         }
         covstruct <- getCovstruct(x)
-        if (covstruct %in% c("ar1", "cs")) {
+        if (covstruct %in% c("ar1", "cs", "homdiag")) {
             r <- switch(type,
-                        stddev={ if (covstruct == "ar1") r[1] else r },
+                        stddev={ if (covstruct %in%  c("ar1", "homdiag")) r[1] else r },
                         ## select lag-1 correlation
                         ## upper tri has been erased in formatCor() ...
                         correlation=paste(r[2,1],sprintf("(%s)",covstruct))

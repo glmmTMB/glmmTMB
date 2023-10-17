@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.5.9000
+Version: 1.1.8-9000
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -49,7 +49,8 @@ Imports:
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
-    numDeriv
+    numDeriv,
+    mgcv
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,

@@ -193,7 +193,7 @@ Owls <- transform(Owls,
 
 test_that("basic zero inflation", {
        skip_on_cran()
-	expect_true(require("pscl"))
+       if(require("pscl")) {
 	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
                               offset(logBroodSize),
                           ziformula=~1, data = Owls,
@@ -207,7 +207,8 @@ test_that("basic zero inflation", {
         offset(logBroodSize) + diag(1 | Nest),
         ziformula=~1, data = Owls, family=poisson(link = "log"))
 	expect_equal(ranef(o1.tmb)$cond$Nest[1,1], -0.484, tolerance=1e-2) #glmmADMB gave -0.4842771
-})
+       }
+       })
 
 test_that("alternative binomial model specifications", {
     skip_on_cran()
@@ -325,4 +326,33 @@ test_that("bar/double-bar bug with gaussian response", {
   expect_equal(fixef(m2)$cond,
                c(`(Intercept)` = 2.09164503130437, cov = -0.0228597948394547))
 
+})
+
+test_that("drop dimensions in response variable", {
+    ## GH #937
+    mm <- transform(mtcars, mpg = scale(mpg))
+    expect_is(glmmTMB(mpg ~ cyl, mm), "glmmTMB")
+})
+
+test_that("handle failure in numDeriv::jacobian",
+          {
+          dd <- structure(list(preMDS = c(6L, 2L, 1L, 2L, 3L, 34L, 3L, 239L, 
+   1L, 2L, 4L, 81L, 1L, 1L, 1L, 255L, 8L, 72L, 110L, 3L, 6L, 61L, 
+   253L, 113L, 49L, 124L, 72L, 4L, 35L, 4206L, 3660L, 3100L, 4308L, 
+   5871L, 1362L, 4301L, 2673L, 204L, 216L), F_Absetzen = structure(c(1L, 
+   1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L, 2L, 
+   2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 
+   1L, 1L, 1L, 1L, 1L, 1L), levels = c("0", "1"), class = "factor"), 
+    Betrieb = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 
+    2L, 2L, 2L, 3L, 3L, 5L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 
+    8L, 8L, 8L, 8L, 8L, 9L, 9L, 9L, 9L, 9L, 9L, 9L, 9L, 9L, 9L
+    ), levels = c("B02", "B03", "B04", "B05", "B06", "B07", "B08", 
+                  "B10", "B11", "B13", "B13Zucht", "B14"), class = "factor")),
+   row.names = seq(39),
+   class = "data.frame")
+
+          m1 <- suppressWarnings(
+              glmmTMB(preMDS ~ 1 + F_Absetzen + (1 | Betrieb), data = dd,
+                family = truncated_nbinom1))
+   expect_is(m1, "glmmTMB")
 })

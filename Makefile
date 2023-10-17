@@ -31,7 +31,7 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 	echo ".valid_covstruct <- c(" >> $@
-	grep _covstruct.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
+	grep "_covstruct *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
 	echo ")" >> $@
 
 	echo ".valid_zipredictcode <- c(" >> $@

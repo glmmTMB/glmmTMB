@@ -46,13 +46,20 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
 
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
-##' @return a vector of correlation values
-##' @details This function follows the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
-##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
+##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
 ##' get_cor(c(0.5,0.2,0.5))
+##' C <- matrix(c(1,  0.2,  0.1,
+##'              0.2,  1, -0.2,
+##'              0.1,-0.2,   1),
+##'            3, 3)
+##' ## test: round-trip (almostl results in lower triangle only)
+##' stopifnot(all.equal(get_cor(put_cor(C)),
+##'                    C[lower.tri(C)]))
 ##' @export
 get_cor <- function(theta) {
   n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
@@ -64,6 +71,15 @@ get_cor <- function(theta) {
   R[lower.tri(R)]
 }
 
+##' @rdname get_cor
+##' @param C a correlation matrix
+##' @export
+put_cor <- function(C) {
+    cc <- chol(C)
+    cc2 <- t(cc %*% diag(1/diag(cc)))
+    cc2[lower.tri(cc2)]
+}
+
 hasRandom <- function(x) {
     pl <- getParList(x)
     return(length(unlist(pl[grep("^theta",names(pl))]))>0)
@@ -73,10 +89,10 @@ hasRandom <- function(x) {
 ##' @param parm parameter specifier
 ##' @param object fitted glmmTMB object
 ##' @param full include simple dispersion parameter?
-##' @param include_mapped include mapped parameter indices?
+##' @param include_nonest include mapped parameter indices for non-estimated (mapped or rank-deficient/dropped) parameters?
 ##' @noRd
-getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
-    vv <- vcov(object, full=TRUE, include_mapped = include_mapped)
+getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
+    vv <- vcov(object, full=TRUE, include_nonest = include_nonest)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
     ee <- object$obj$env
@@ -84,7 +100,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
     drop_rand <- function(x) x[!x %in% c("b", "bzi")]
-    if (!include_mapped) {
+    if (!include_nonest) {
         intnames <- drop_rand(names(ee$last.par))
     } else {
         pl <- ee$parList()
@@ -345,11 +361,17 @@ up2date <- function(oldfit) {
                                       silent = silent,
                                       DLL = "glmmTMB"))
       oldfit$obj$env$last.par.best <- ee$last.par.best
+      ##
+  }
+  ## dispersion was NULL rather than 1 in old R versions ...
+  omf <- oldfit$modelInfo$family
+  if (getRversion() >= "4.3.0" &&
+      !("dispersion" %in% names(omf))) {
+      ## don't append() or c(), don't want to lose class info
+      oldfit$modelInfo$family$dispersion <- 1
   }
   return(oldfit)
 }
-
-
 
 #' Load data from system file, updating glmmTMB objects
 #'
@@ -423,23 +445,32 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## for matching map names vs nameList components ...
 par_components <- c("beta","betazi","betad","theta","thetazi","psi")
 
-getAllParnames <- function(object, full) {
+## all parameters, including both mapped and rank-dropped
+getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
                            
-  mkNames <- function(tag) {
+  mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
-      if (trivialFixef(nn <- colnames(X),tag)
+      dropped <- attr(X, "col.dropped") %||% numeric(0)
+      ntot <- ncol(X) + length(dropped)
+      if (ntot == ncol(X) || !include_dropped) {
+          nn <- colnames(X)
+      } else {
+          nn <- character(ntot)
+          nn[-dropped] <- colnames(X)
+          nn[ dropped] <- names(dropped)
+      }
+      if (trivialFixef(nn, tag)
           ## if 'full', keep disp even if trivial, if used by family
           && !(full && tag =="d" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
+      if (tag == "") return(nn)
       return(paste(tag,nn,sep="~"))
   }
 
-  nameList <- setNames(list(colnames(getME(object,"X")),
-                       mkNames("zi"),
-                       mkNames("d")),
-                names(cNames))
+  nameList <- setNames(Map(mkNames, c("", "zi", "d")),
+                         names(cNames))
 
   if(full) {
       ## FIXME: haven't really decided if we should drop the
@@ -466,29 +497,24 @@ getAllParnames <- function(object, full) {
       
   }
 
-    return(nameList)
-}
-
-
-getEstParnames <- function(object, full) {
-    nameList <- getAllParnames(object, full)
-    map <- object$obj$env$map
-    if (length(map)>0) {
-        ## fullNameList for all variables, including mapped vars
-        ## (nameList will get reduced shortly)
-        for (m in seq_along(map)) {
+  if (!include_mapped) {
+     map <- object$obj$env$map
+     if (length(map)>0) {
+         for (m in seq_along(map)) {
             if (length(NAmap <- which(is.na(map[[m]])))>0) {
                 w <- match(names(map)[m],par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
                     nameList[[w]] <- nameList[[w]][-NAmap]
                 }
             }
-        }
-    }
-    return(nameList)
+         } ## for (m in seq_along(map))
+     } ## if (length(map) > 0)
+  }
+
+  return(nameList)
 }
 
-## OBSOLETE: delete eventually
+## OBSOLETE (?)
 
 ## reassign predvars to have term vars in the right order,
 ##  but with 'predvars' values inserted where appropriate
@@ -522,4 +548,110 @@ fix_predvars <- function(pv,tt) {
         }
     }
     return(new_pv)
+}
+
+make_pars <- function(pars, ...) {
+    ## FIXME: check for name matches, length matches etc.
+    L <- list(...)
+    for (nm in names(L)) {
+        pars[names(pars) == nm] <- L[[nm]]
+    }
+    return(pars)
+}
+
+##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
+##'
+##' See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
+##' and \code{vignette("covstruct", package = "glmmTMB")}
+##' for more information on the parameterization of different covariance structures.
+##'
+##' @inheritParams glmmTMB
+##' @param object a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
+##' (peculiar naming is for consistency with the generic function, which typically
+##' takes a fitted model object)
+##' @param nsim number of simulations
+##' @param seed random-number seed
+##' @param newdata a data frame containing all variables listed in the formula,
+##' \emph{including} the response variable (which needs to fall within
+##' the domain of the conditional distribution, and should probably not
+##' be all zeros, but whose value is otherwise irrelevant)
+##' @param newparams a list of parameters containing sub-vectors
+##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+##' be used in the model
+##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
+##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @examples
+##' ## use Salamanders data for structure/covariates
+##' simulate_new(~ mined + (1|site),
+##'              zi = ~ mined,
+##'              newdata = Salamanders, show_pars  = TRUE)
+##' sim_count <- simulate_new(~ mined + (1|site),
+##'              newdata = Salamanders,
+##'              zi = ~ mined,
+##'              family = nbinom2,
+##'              newparams = list(beta = c(2, 1),
+##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
+##'                          betad = log(2), ## log(NB dispersion)
+##'                          theta = log(1)) ## log(among-site SD)
+##' )
+##' head(sim_count[[1]])
+##' @export
+simulate_new <- function(object,
+                         nsim = 1,
+                         seed = NULL,
+                         family = gaussian,
+                         newdata, newparams, ..., show_pars = FALSE) {
+    
+    family <- get_family(family)
+    if (!is.null(seed)) set.seed(seed)
+    ## truncate
+    if (length(object) == 3) stop("simulate_new should take a one-sided formula")
+    ## fill in fake LHS
+    form <- object
+    form[[3]] <- form[[2]]
+    form[[2]] <- quote(..y)
+    ## insert a legal value: 1.0 is OK as long as family != "beta_family"
+    newdata[["..y"]] <- if (family$family == "beta_family") 1.0 else 0.5
+    r1 <- glmmTMB(form,
+                  data = newdata,
+                  family = family,
+                  ...,
+                  doFit = FALSE)
+## construct TMB object, but don't fit it
+    r2 <- fitTMB(r1, doOptim = FALSE)
+    if (show_pars) return(r2$env$last.par)
+    pars <- do.call("make_pars",
+                    c(list(r2$env$last.par), newparams))
+    replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+}
+
+## from rlang
+`%||%` <- function (x, y)  {
+    if (is.null(x)) 
+        y
+    else x
+}
+
+get_family <- function(family) {
+    if (is.character(family)) {
+        if (family=="beta") {
+            family <- "beta_family"
+            warning("please use ",sQuote("beta_family()")," rather than ",
+                    sQuote("\"beta\"")," to specify a Beta-distributed response")
+        }
+        family <- get(family, mode = "function", envir = parent.frame(2))
+    }
+
+    if (is.function(family)) {
+        ## call family with no arguments
+        family <- family()
+    }
+
+    ## FIXME: what is this doing? call to a function that's not really
+    ##  a family creation function?
+    if (is.null(family$family)) {
+      print(family)
+      stop("after evaluation, 'family' must have a '$family' element")
+    }
+    return(family)
 }

@@ -328,10 +328,10 @@ test_that("confint with mapped parameters", {
     ## getParms() not exported ...
     ## expect_equal(getParms("beta_", test2), 1:2)
     ## expect_equal(getParms("beta_", test2, include_mapped = TRUE), 1:3)
-    v1 <- vcov(test2, include_mapped = TRUE)
+    v1 <- vcov(test2, include_nonest = TRUE)
     expect_equal(dim(v1$cond), c(3,3))
     expect_true(all(is.na(v1$cond["x",] )))
-    c1 <- confint(test2, parm = "beta_", include_mapped = TRUE)
+    c1 <- confint(test2, parm = "beta_", include_nonest = TRUE)
     expect_equal(nrow(c1), 3)
     expect_equal(unname(unlist(c1["x",])), c(NA_real_, NA_real_, 0))
 
@@ -343,23 +343,23 @@ test_that("confint with mapped parameters", {
     expect_equal(nrow(c3), 4)
     expect_equal(rownames(c3),
                  c("(Intercept)", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
-    c4 <- confint(test2, include_mapped = TRUE)
-    expect_equal(confint(test2, include_mapped = TRUE, parm = "theta_"),
+    c4 <- confint(test2, include_nonest = TRUE)
+    expect_equal(confint(test2, include_nonest = TRUE, parm = "theta_"),
                  confint(test2, parm = "theta_"))
     c5 <- confint(test2, parm = "sigma")
 
     ## expect_equal(getParms("theta_", test1), 5L)
     ## expect_equal(getParms("theta_", test1, include_mapped = TRUE), 5:6)
-    v2 <- vcov(test1, include_mapped = TRUE, full = TRUE)
+    v2 <- vcov(test1, include_nonest = TRUE, full = TRUE)
     expect_equal(dim(v2), c(6,6))
     expect_true(all(is.na(v2["theta_1|B.1",])))
 
-    c6 <- confint(test1, include_mapped = TRUE)
+    c6 <- confint(test1, include_nonest = TRUE)
     expect_equal(rownames(c6),
                  c("(Intercept)", "x", "z", "Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
     c7 <- confint(test1, parm = "theta_")
     expect_equal(rownames(c7), "Std.Dev.x|A")
-    c8 <- confint(test1, parm = "theta_", include_mapped = TRUE)
+    c8 <- confint(test1, parm = "theta_", include_nonest = TRUE)
     expect_equal(rownames(c8), c("Std.Dev.x|A", "Std.Dev.(Intercept)|B"))
     expect_equal(unname(c8["Std.Dev.(Intercept)|B", 1:2]), rep(NA_real_, 2))
 })
@@ -629,5 +629,61 @@ test_that("trunc poisson simulation", {
         op <- par(ask=TRUE)
         for (i in 1:nrow(t3)) pfun(i,tab=t3,dist="poisson",data=dd)
         par(op)
+    }
+})
+
+test_that("de novo simulation", {
+    dd <- data.frame(x = 1:10)
+    expect_error(simulate_new(y ~ x), "should take a one-sided")
+    ss <- simulate_new(~ x,
+                 seed = 101,
+                 family = gaussian,
+                 newdata = dd,
+                 newparams = list(beta = 1:2, betad = 0))
+    expect_equal(head(ss[[1]], 2),
+                      c(2.67396350948461, 5.55246185541914))
+})
+
+test_that("de novo simulation with binomial N>1", {
+    dd <- data.frame(x = 1:10)
+    ss <- simulate_new(~ x,
+                 seed = 101,
+                 family = binomial,
+                 weights = rep(10, 10),
+                 newdata = dd,
+                 newparams = list(beta = c(-0.5, 0.1), betad = 0))
+    expect_equal(head(ss[[1]], 2),
+                      c(3, 2))
+})
+
+
+test_that("weighted residuals", {
+    set.seed(101)
+    data("cbpp", package = "lme4")
+    wts <- sample(1:2, size = nrow(cbpp), replace = TRUE)
+    ## Pearson tested above ...
+    tmbm4 <- glm(incidence ~ period,
+                 data = cbpp, family = poisson, weights = wts)
+    tmbm5 <- glmmTMB(incidence ~ period,
+                     data = cbpp, family = poisson, weights = wts)
+    for  (type in eval(formals(residuals.glmmTMB)$type)) {
+        expect_equal(residuals(tmbm4, type = type),
+                     residuals(tmbm5, type = type),
+                     tolerance = 1e-6)
+    }
+})
+
+test_that("bad inversion in vcov", {
+    skip_on_os(c("windows", "linux"))
+    d <- readRDS(system.file("test_data", "strengejacke_nasummary.rds",
+                             package = "glmmTMB"))
+    m <- glmmTMB(
+        QoL ~ time + age + x_tv_dm + x_tv_gm + z1_ti + z2_ti + (1 + time | ID) + (1 + x_tv_dm | ID),
+        data = d,
+        REML = TRUE
+    )
+    ## only fails on some platforms ... this is sufficient for now ... FIXME
+    if (getRversion() >= "4.3.0") {
+        expect_true(all(is.na(vcov(m)$cond)))
     }
 })

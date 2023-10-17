@@ -5,16 +5,18 @@
 \alias{refit.glmmTMB}
 \title{support methods for parametric bootstrapping}
 \usage{
-\method{isLMM}{glmmTMB}(object)
+\method{isLMM}{glmmTMB}(x, ...)
 
 \method{refit}{glmmTMB}(object, newresp, ...)
 }
 \arguments{
+\item{x}{a fitted glmmTMB object}
+
+\item{...}{additional arguments (for generic consistency; ignored)}
+
 \item{object}{a fitted glmmTMB object}
 
 \item{newresp}{a new response vector}
-
-\item{...}{additional arguments (for generic consistency; ignored)}
 }
 \description{
 see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details

@@ -14,6 +14,7 @@
 \alias{beta_family}
 \alias{betabinomial}
 \alias{tweedie}
+\alias{lognormal}
 \alias{ziGamma}
 \alias{t_family}
 \alias{ordbeta}
@@ -42,6 +43,8 @@ beta_family(link = "logit")
 betabinomial(link = "logit")
 
 tweedie(link = "log")
+
+lognormal(link = "log")
 
 ziGamma(link = "inverse")
 
@@ -83,6 +86,7 @@ and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)
      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^power}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}. Code taken from the \code{tweedie} package, written by Peter Dunn.}
      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1].}
+     \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 }
 }
 \references{

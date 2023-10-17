@@ -461,10 +461,12 @@ test_that("nzprob computed for non-fast pred", {
     )
     expect_identical(predict(m1, type = "response"),
                      predict(m1, type = "response", fast = FALSE))
-    m2 <- update(m1, family = truncated_nbinom1)
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom1))
     expect_identical(predict(m2, type = "response"),
                      predict(m2, type = "response", fast = FALSE))
-    m2 <- update(m1, family = truncated_nbinom2)
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom2))
     ## need more data to fit compois, genpois
     dd2 <- data.frame(y = rpois(100, lambda = 1))
     m2 <- update(m1, family = truncated_compois, data = dd2)
@@ -476,4 +478,18 @@ test_that("nzprob computed for non-fast pred", {
                      predict(m2, type = "response", fast = FALSE))
 })
 
-                 
+test_that("pop-level prediction with missing grouping vars (GH #923)",
+{
+    fm20 <- glmmTMB(Reaction ~ 1 + (Days|Subject), sleepstudy)
+    predict(fm20, re.form = NA, newdata = data.frame(matrix(ncol = 0, nrow=length(sleepstudy))))
+    expect_equal(predict(fm2, re.form = NA),
+                 predict(fm2, newdata = sleepstudy[c("Days")], re.form = NA))
+    ## suppress non-pos-def Hessian warning, this is a silly example
+    fmnasty <- suppressWarnings(
+        glmmTMB(Reaction ~ 1 + (log(Days+1)|Subject), sleepstudy)
+    )
+    expect_equal(predict(fmnasty, re.form = NA),
+                 predict(fmnasty, newdata = data.frame(matrix(ncol=0, nrow = nrow(sleepstudy))), re.form = NA))
+})
+
+    

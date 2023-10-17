@@ -3,7 +3,6 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-
 simfun0 <- function(beta=c(2,1),
                    sd.re=5,
                    ngrp=10,nobs=200,
@@ -120,11 +119,14 @@ test_that("nbinom", {
     expect_equal(fixef(m1)[[1]],
                  structure(c(2.09866748794435, 1.12703589660625),
                            .Names = c("(Intercept)", "x")),
-                 tol=1e-5)
-     expect_equal(c(VarCorr(m1)[[1]][[1]]),
-                  9.54680210862774, tol=1e-5)
-     expect_equal(sigma(m1),0.09922738,tol=1e-5)
-
+                 tolerance = 1e-5)
+    expect_equal(c(VarCorr(m1)[[1]][[1]]),
+                  9.54680210862774, tolerance = 1e-5)
+    expect_equal(sigma(m1),0.09922738,tolerance = 1e-5)
+    expect_equal(head(residuals(m1, type = "deviance"),2),
+                 c(`1` = -0.806418177063906, `2` = -0.312895476230701),
+                 tolerance = 1e-5)
+    
      ## nbinom1
      ## to simulate, back-calculate shape parameters for NB2 ...
      nbphi <- 2
@@ -141,7 +143,10 @@ test_that("nbinom", {
                     sigma(m1)),
        c(1.93154240357181, 0.992776302432081,
          16.447888398429, 1.00770603513152),
-       tol=1e-5)
+       tolerance = 1e-5)
+    expect_equal(head(residuals(m1, type = "deviance"),2),
+                 c(`1` = 0.966425183534698, `2` = -0.213960044837981),
+                 tolerance = 1e-5)
 
     ## identity link: GH #20
     x <- 1:100; m <- 2; b <- 100
@@ -251,7 +256,7 @@ test_that("truncated", {
     }
     g1_tp <- glmmTMB(z_tp~1,family=truncated_poisson(),
                   data=data.frame(z_tp))
-    expect_equal(unname(fixef(g1_tp)[[1]]),0.9778593,tol=1e-5)
+    expect_equal(unname(fixef(g1_tp)[[1]]),0.9778593,tolerance = 1e-5)
     ## Truncated poisson with zeros => invalid:
     num_zeros <- 10
     z_tp0 <<- c(rep(0, num_zeros), z_tp)
@@ -261,8 +266,8 @@ test_that("truncated", {
     g1_tp0 <- glmmTMB(z_tp0~1,family=truncated_poisson(),
                       ziformula=~1,
                       data=data.frame(z_tp0))
-    expect_equal( plogis(as.numeric(fixef(g1_tp0)$zi)), num_zeros/length(z_tp0), tol=1e-7 ) ## Test zero-prob
-    expect_equal(fixef(g1_tp0)$cond,  fixef(g1_tp)$cond, tol=1e-6) ## Test conditional model
+    expect_equal( plogis(as.numeric(fixef(g1_tp0)$zi)), num_zeros/length(z_tp0), tolerance = 1e-7 ) ## Test zero-prob
+    expect_equal(fixef(g1_tp0)$cond,  fixef(g1_tp)$cond, tolerance = 1e-6) ## Test conditional model
     ## nbinom2
     set.seed(101)
     z_nb <<- rnbinom(1000,size=2,mu=exp(2))
@@ -276,7 +281,7 @@ test_that("truncated", {
     g1_nb2 <- glmmTMB(z_nb~1,family=truncated_nbinom2(),
             data=data.frame(z_nb))
     expect_equal(c(unname(fixef(g1_nb2)[[1]]),sigma(g1_nb2)),
-                 c(1.980207,1.892970),tol=1e-5)
+                 c(1.980207,1.892970),tolerance = 1e-5)
     ## Truncated nbinom2 with zeros => invalid:
     num_zeros <- 10
     z_nb0 <<- c(rep(0, num_zeros), z_nb)
@@ -286,8 +291,8 @@ test_that("truncated", {
     g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom2(),
                       ziformula=~1,
                       data=data.frame(z_nb0))
-    expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
-    expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb2)$cond, tol=1e-6) ## Test conditional model
+    expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tolerance = 1e-7 ) ## Test zero-prob
+    expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb2)$cond, tolerance = 1e-6) ## Test conditional model
     ## nbinom1: constant mean, so just a reparameterization of
     ##     nbinom2 (should have the same likelihood)
     ## phi=(1+mu/k)=1+exp(2)/2 = 4.69
@@ -300,7 +305,7 @@ test_that("truncated", {
     g1_nb1 <- glmmTMB(z_nb~1,family=truncated_nbinom1(),
             data=data.frame(z_nb))
     expect_equal(c(unname(fixef(g1_nb1)[[1]]),sigma(g1_nb1)),
-                 c(1.980207,3.826909),tol=1e-5)
+                 c(1.980207,3.826909),tolerance = 1e-5)
     ## Truncated nbinom1 with zeros => invalid:
     expect_error(g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom1(),
                       data=data.frame(z_nb0)))
@@ -308,8 +313,8 @@ test_that("truncated", {
     g1_nb0 <- glmmTMB(z_nb0~1,family=truncated_nbinom1(),
                       ziformula=~1,
                       data=data.frame(z_nb0))
-    expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tol=1e-7 ) ## Test zero-prob
-    expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb1)$cond, tol=1e-6) ## Test conditional model
+    expect_equal( plogis(as.numeric(fixef(g1_nb0)$zi)), num_zeros/length(z_nb0), tolerance = 1e-7 ) ## Test zero-prob
+    expect_equal(fixef(g1_nb0)$cond, fixef(g1_nb1)$cond, tolerance = 1e-6) ## Test conditional model
 })
 
 ##Genpois
@@ -318,8 +323,8 @@ test_that("truncated_genpois",{
     tgp1 <<- glmmTMB(z_nb ~1, data=data.frame(z_nb), family=truncated_genpois())
     tgpdat <<- data.frame(y=simulate(tgp1)[,1])
     tgp2 <<- glmmTMB(y ~1, tgpdat, family=truncated_genpois())
-    expect_equal(sigma(tgp1), sigma(tgp2), tol=1e-1)
-    expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tol=1e-2)
+    expect_equal(sigma(tgp1), sigma(tgp2), tolerance = 1e-1)
+    expect_equal(fixef(tgp1)$cond[1], fixef(tgp2)$cond[1], tolerance = 1e-2)
     cc <- confint(tgp2, full=TRUE)
     expect_lt(cc["sigma", "2.5 %"], sigma(tgp1))
     expect_lt(sigma(tgp1), cc["sigma", "97.5 %"])
@@ -335,9 +340,9 @@ test_that("truncated_compois",{
 	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	tcmp1 <<- glmmTMB(y~f, cmpdat, family= truncated_compois())
-	expect_equal(unname(fixef(tcmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
-	expect_equal(sigma(tcmp1), 0.1833339, tol=1e-6)
-	expect_equal(predict(tcmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
+	expect_equal(unname(fixef(tcmp1)$cond), c(2.9652730653, -0.9773987194), tolerance = 1e-6)
+	expect_equal(sigma(tcmp1), 0.1833339, tolerance = 1e-6)
+	expect_equal(predict(tcmp1,type="response")[1:2], c(19.4, 7.3), tolerance = 1e-6)
 })
 
 context("compois")
@@ -346,9 +351,9 @@ test_that("compois", {
 #	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
 #	 			y=c(15,5,20,7,19,7,19,7,19,6,19,10,20,8,21,8,22,7,20,8))
 	cmp1 <<- glmmTMB(y~f, cmpdat, family=compois())
-	expect_equal(unname(fixef(cmp1)$cond), c(2.9652730653, -0.9773987194), tol=1e-6)
-	expect_equal(sigma(cmp1), 0.1833339, tol=1e-6)
-	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tol=1e-6)
+	expect_equal(unname(fixef(cmp1)$cond), c(2.9652730653, -0.9773987194), tolerance = 1e-6)
+	expect_equal(sigma(cmp1), 0.1833339, tolerance = 1e-6)
+	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tolerance = 1e-6)
 })
 
 context("genpois")
@@ -356,8 +361,8 @@ test_that("genpois", {
     skip_on_cran()
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
 	gen1 <<- glmmTMB(y~1, family=genpois(), gendat)
-	expect_equal(unname(fixef(gen1)$cond), 2.251292, tol=1e-6)
-	expect_equal(sigma(gen1), 0.235309, tol=1e-6)
+	expect_equal(unname(fixef(gen1)$cond), 2.251292, tolerance = 1e-6)
+	expect_equal(sigma(gen1), 0.235309, tolerance = 1e-6)
 })
 
 context("tweedie")
@@ -399,8 +404,8 @@ test_that("tweedie", {
     ## Check internal rtweedie used by simulate
     y2 <- c(simulate(twm)[,1],simulate(twm)[,1])
     twm2 <- glmmTMB(y2 ~ 1, family=tweedie(), data = NULL)
-    expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tol=1e-1)
-    expect_equal(sigma(twm), sigma(twm2), tol=1e-1)
+    expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tolerance = 1e-1)
+    expect_equal(sigma(twm), sigma(twm2), tolerance = 1e-1)
     expect_equal(ranef(twm),
                  structure(list(cond = list(), zi = list()), class = "ranef.glmmTMB"))
 })
@@ -415,34 +420,48 @@ test_that("gaussian_sqrt", {
     expect_equal(fixef(g1),
                  structure(list(cond = c(`(Intercept)` = 2.03810165917618, x = 1.00241002916226
 ), zi = numeric(0), disp = c(`(Intercept)` = -4.68350239019746)), class = "fixef.glmmTMB"),
-tol=1e-6)
+tolerance = 1e-6)
 })
 
-context("link function info available")
-
-fam1 <- c("poisson","nbinom1","nbinom2","compois")
-fam2 <- c("binomial","beta_family","betabinomial","tweedie")
-for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
-    ## print(f)
-    expect_true("linkinv" %in% names(get(f)()))
-}
-
-context("link info added to family")
+test_that("link function info available", {
+    fam1 <- c("poisson","nbinom1","nbinom2","compois")
+    fam2 <- c("binomial","beta_family","betabinomial","tweedie")
+    for (f in c(fam1,paste0("truncated_",fam1),fam2)) {
+        ## print(f)
+        expect_true("linkinv" %in% names(get(f)()))
+    }
+})
 
 d.AD <- data.frame(counts=c(18,17,15,20,10,20,25,13,12),
                    outcome=gl(3,1,9),
                    treatment=gl(3,3))
-glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(),
-                   d.AD)
-expect_warning(glm.D93B <- glmmTMB(counts ~ outcome + treatment,
+glm.D93 <- glmmTMB(counts ~ outcome + treatment, family = poisson(), data=d.AD)
+glm.D93C <- glmmTMB(counts ~ outcome + treatment, family = "poisson", data=d.AD)
+
+test_that("link info added to family", {
+    expect_warning(glm.D93B <- glmmTMB(counts ~ outcome + treatment,
                     family = list(family="poisson", link="log"),
                     d.AD))
 ## note update(..., family= ...) is only equal up to tolerance=5e-5 ...
-glm.D93C <- glmmTMB(counts ~ outcome + treatment,
-                    family = "poisson",
-                    d.AD)
-expect_equal(predict(glm.D93),predict(glm.D93B))
-expect_equal(predict(glm.D93),predict(glm.D93C))
+    expect_equal(predict(glm.D93),predict(glm.D93B))
+    expect_equal(predict(glm.D93),predict(glm.D93C))
+})
+
+test_that("lognormal family", {
+    test_fun <- function(n, m, v) {
+        x <- rnorm(n, mean=m, sd=sqrt(v))
+        dd <- data.frame(y=exp(x))
+        m1 <- glmmTMB(y~1, family="lognormal", data=dd)
+        m2 <- glmmTMB(log(y) ~ 1, data = dd)
+        expect_equal(logLik(m1), logLik(m2)-sum(log(dd$y)))
+        ## noisy because of expected vs observed mean/variance
+        expect_equal(unname(fixef(m1)$cond), m+v/2, tolerance = 1e-2)
+        expect_equal(sigma(m1), sqrt((exp(v)-1)*exp(2*m+v)), tolerance = 5e-2)
+    }
+    set.seed(102)
+    test_fun(n = 2e4, m = 0.4, v = 0.2)
+    test_fun(n = 2e4, m = 0.7, v = 0.5)
+})
 
 test_that("t-distributed response", {
     set.seed(101)
@@ -458,3 +477,4 @@ test_that("t-distributed response", {
     expect_equal(sigma(m2), 5.01338678750139,
                  tolerance = 1e-6)
 })
+

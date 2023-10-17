@@ -4,13 +4,108 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.5.9000}{
+\section{CHANGES IN VERSION 1.1.8-9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item interpretation of the \emph{weights} variable for
+      binomial-type GL(M)Ms has changed. Previously, the \emph{weights}
+      argument was \emph{ignored} for a vector- (rather than
+      matrix-valued) numeric response, if all observations were either 0 or 1.
+      Now the \emph{weights} variable is multiplied by the resonse
+      variable to compute the number of successes (consistently with
+      \code{stats::glm(., family = "binomial")}). (This change makes
+      it easier to use \emph{weights} to specify the number of trials
+      per observation for \code{simulate_new()}.)
+    } % itemize
+  } % user-visible changes
+} % 1.1.8-9000
+
+\section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item "lognormal" family available (log-Normal, parameterized
+      by the mean and standard deviation on the \emph{data scale})
+      \item an experimental implementation of penalized splines
+      (and related smooth terms) is available, 
+      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.  
+      Constructive feedback welcome at
+      \url{https://github.com/glmmTMB/glmmTMB/issues/928}
+      \item population-level prediction with new data no longer requires
+      that the variables involved in the random effects be explicitly
+      specified as \code{NA} (GH #923, Russ Lenth)
+      \item the \code{simulate} method now works for models fitted with
+      \code{family=ordbetareg} (GH #942, Daniel Lüdecke)
+      \item deviance residuals are now available for some families
+      (built-in families from base R (see \code{?family})
+      plus \code{nbinom1}, \code{nbinom2}); deviance
+      residuals for other families may be implemented on request.
+      \item setting \code{option(glmmTMB_openmp_debug=TRUE)} will
+      produce debugging output about the number of OpenMP threads used
+      \item \code{getME(., "b")} returns the vector of conditional modes
+      (BLUPs, in the case of linear mixed models)
+    } % itemize
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item changes related to handling rank-deficient fits:
+      \itemize{
+	\item default value of \code{rank_check} in
+	\code{glmmTMBControl} changed to "adjust" (i.e., rank-deficient
+	columns of fixed-effect model matrices are automatically dropped, with
+	a message, by default)
+	\item the \code{include_mapped} argument of \code{vcov} and
+	\code{confint} is changed to \code{include_nonest},
+	controlling both mapped parameters and those
+	dropped due to rank-deficiency, and is now \code{TRUE} by default for
+	\code{vcov}
+	\item \code{model.matrix} now returns the fixed-effect model matrix
+	actually used in fitting (including dropping columns for
+	rank-deficiency)
+      } %inner itemize
+      \item \code{glmmTMB} now accepts single-column matrices (e.g. as
+	produced by \code{scale} as response variables (GH #937, @santoshbs)
+    } % itemize
+  } % user-visible changes
+} % version 1.1.7.9000
+  
+\section{CHANGES IN VERSION 1.1.7 (2023-04-05)}{
+  \itemize{
+    \item \code{up2date()} adds a dispersion component to family
+    objects where required, for compatibility when checking
+    stored fits across R versions
+  }
+}
+
+\section{CHANGES IN VERSION 1.1.6 (2023-03-19)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item fix bug in diagnose for Tweedie, other models with 'psi'
       parameter (@nalimilan, GH #135)
     }
   }  % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added a \code{doOptim} argument to \code{fitTMB}, to return
+      the constructed TMB object without fitting the parameters
+      \item new (experimental) function \code{simulate_new}, to simulate
+      from a formula, list of parameters, and covariate data (rather
+      than from a fitted object)
+      \item \code{emmeans.glmmTMB} method adds two options
+      for the \code{component} argument: "response" and "cmean",
+      corresponding  to \code{type = "response"} and \code{type = "conditional"} 
+      in \code{predict.glmmTMB} (Russ Lenth)
+      \item new covariance structure \code{homdiag} (homogeneous diagonal;
+      the existing diagonal covariance structure, \code{diag}, assumes heterogeneous
+      variances)					    
+    }
+  } % new features
+ \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item The \code{emmeans} method for glmmTMB fits now returns infinite
+      "df" (i.e., normal- rather than t-based CIs and tests) for non-Gaussian
+      families, consistent with \code{glm} and other packages (GH #893)
+    }
+  } % user-visible changes
 }
 
 \section{CHANGES IN VERSION 1.1.5 (2022-11-16)}{
@@ -41,12 +136,14 @@
 	from the \code{src} directory first if installing from the package
 	directory, as the Makefile doesn't recognize know that this
 	change requires recompilation).
-	\item glmmTMB now stops if fixed-effect model matrices are
+	\item glmmTMB now warns if fixed-effect model matrices are
 	rank deficient (i.e., perfectly collinear predictors); this
-	can be changed to a warning via
-	\code{glmmTMBControl(rank_check="skip"), or glmmTMB
-	  will automatically drop appropriate columns from the model
-	  matrix if \code{rank_check="adjust"} (Daniel B. Stouffer)}
+	warning can be suppressed by setting
+	\code{glmmTMBControl(rank_check="skip")}
+	(\code{rank_check = "stop"} will throw an error).
+	If \code{rank_check="adjust"}, glmmTMB
+	will automatically drop appropriate columns from the model
+	matrix  (Daniel B. Stouffer)
 	\item the vector of "extra" family parameters
 	(Tweedie power, Student-t df,
 	etc.) has been renamed from "thetaf" to "psi"; \code{start}

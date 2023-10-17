@@ -26,7 +26,7 @@ See [here](https://github.com/glmmTMB/glmmTMB) for the development site.
 
 - **from CRAN (release version)**: `install.packages("glmmTMB")`. (On Windows and MacOS this will install binary packages, by default: see below for installation from source and why you might want to do that.)
 - **from GitHub (development version, from source)**: use `install.packages()` to install the `TMB` and `remotes` packages from CRAN, then `remotes::install_github("glmmTMB/glmmTMB/glmmTMB")`. If the install fails at the vignette-building step, try specifying `build_vignettes=FALSE` within the `install_github` call. You will need to have development tools (compilers etc.) installed: see [here](https://support.rstudio.com/hc/en-us/articles/200486498-Package-Development-Prerequisites) or [here](https://teuder.github.io/rcpp4everyone_en/020_install.html). (As well as being more up-to-date, the development version may contain new bugs or untested features!)
-- **from GitHub (development version, from binary)**: A binary release of the development version *may* be available for your operating system/version of R: try `install.packages("glmmTMB", repos="https://glmmTMB.github.io/glmmTMB/repos")`. If (1) this doesn't work; (2) you need the development version; (3) you can't install from source as above, please contact the maintainers.
+- **from GitHub (development version, from binary)**: A binary release of the development version *may* be available for your operating system/version of R from [the glmmTMB repository here](./repos/index.html). If a sufficient version isn't available and you are having insurmountable problems installing the current version of the package from source yourself, please contact the maintainers.
 
 ### Complications
 
@@ -36,22 +36,25 @@ See [here](https://github.com/glmmTMB/glmmTMB) for the development site.
 
 You can:
 
-- re-install `glmmTMB` *from source* (from GitHub, or from CRAN via `install.packages("glmmTMB", type="source")`) (you'll need development tools installed).
+- re-install the entire `Matrix` > `TMB` > `glmmTMB` stack *from source* (this is slight overkill, you might not need to re-install the whole stack, but it doesn't hurt):
+    - Make sure that you have **development tools** installed. See [here](https://mac.r-project.org/tools/) for MacOS and [here](https://cran.r-project.org/bin/windows/Rtools/) for Windows (if you're on Linux, you probably know what you're doing with this ...) You will need both C++ and Fortran compilers (`gfortran`).
+    - start a *clean* R/RStudio session (make sure no packages other than the base/core packages are loaded)
+    - `install.packages("Matrix")`: this should install the latest version of `Matrix`
+    - `install.package("TMB", type = "source")` - this installs the latest version of `TMB` in a way that is *binary-compatible* with the latest Matrix
+    - `install.package("glmmTMB", type = "source")` - this installs the latest version of `glmmTMB` in a way that is *binary-compatible* with the latest TMB
 - hope that updated binary versions are available here for your OS and R version. You can check `http://glmmtmb.github.io/glmmTMB/repos/bin/[OS]/contrib/[R_version]/PACKAGES`, where [OS] is "macosx" or "windows", and [R_version] is the *major* version of R you're using (e.g. 4.1). See "install development version from GitHub, binary" above. (Windows and MacOS binaries of TMB built with newer versions of the `Matrix` package *may* be available here as well. Try: `install.packages("TMB", repos="https://glmmTMB.github.io/glmmTMB/repos")`.)
-- Use the [checkpoint package]( https://CRAN.R-project.org/package=checkpoint) to revert your versions of `TMB` and `Matrix` to the ones that were available the last time the `glmmTMB` and `TMB` packages were updated on CRAN:
+- Use the [groundhog package](https://groundhogr.com/) to install binary versions of `Matrix`, `TMB`, and `glmmTMB` from a date when they were consistent with each other:
+
+(**note**: this recipe is not well tested ... if you try it and encounter problems, please [post an issue](https://github.com/glmmTMB/glmmTMB/issues))
 
 ```r
-## load (installing if necessary) the checkpoint package
-while (!require("checkpoint")) install.packages("checkpoint")
-## retrieve build date of installed version of TMB
+## load (installing if necessary) the groundhog package
+while (!require("groundhog", quietly=TRUE)) install.packages("groundhog")
+## retrieve build date of installed version of glmmTMB
 bd1 <- as.character(asDateBuilt(packageDescription("glmmTMB",fields="Built")))
-oldrepo <- getOption("repos")
-use_mran_snapshot(bd1) ## was setSnapshot() before version 1.0.0 of checkpoint
-install.packages("TMB")
+groundhog.library("TMB", bd1)
 bd2 <- as.character(asDateBuilt(packageDescription("TMB",fields="Built")))
-use_mran_snapshot(bd2)
-install.packages("Matrix")
-options(repos=oldrepo) ## restore original repo
+groundhog.library("Matrix", bd2)
 ```
 The only disadvantage to this approach is that your versions of `TMB` and `Matrix` will be behind the version on CRAN; you might be missing out on some bug fixes or improvements, and eventually you may find that updates of other packages require newer versions of these packages. (If you accidentally update the packages from CRAN, you'll have to redo this step.)
 - Install older versions of `TMB` and/or `Matrix` *from CRAN, from source* using `remotes::install_version("[pkg]","[xxxx]")`, where `[pkg]` is TMB or Matrix and `[xxxx]` is the older package version referred to in the first error message you received.
