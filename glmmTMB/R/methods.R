@@ -666,14 +666,9 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' details on the definition of the deviance for GLMMs.
 ##' }
 ##' @export
-<<<<<<< HEAD
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), re.form = NULL, ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), re.form = NULL, ...) {
     check_dots(...)
     pop_pred <- mk_pop_pred(re.form)
-=======
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
-    check_dots(...)
->>>>>>> master
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act, model.response(object$frame))
@@ -690,13 +685,8 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         mr <- as.numeric(as.numeric(mr)>1)
         names(mr) <- nn  ## restore stripped names
     }
-<<<<<<< HEAD
     r <- mr - predict(object, re.form = re.form, fast = !pop_pred, type = "response")
-=======
-    mu <- fitted(object)
-    r <- mr - mu
     fam <- family(object)
->>>>>>> master
     res <- switch(type,
            response=r,
            working = {
