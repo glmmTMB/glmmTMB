@@ -1,3 +1,5 @@
+## see https://github.com/glmmTMB/glmmTMB/issues/928 for discussion
+
 library(glmmTMB)
 d <- data.frame(z = as.vector(volcano),
                 x = as.vector(row(volcano)),
@@ -15,7 +17,6 @@ system.time(
 )
 predict(f)
 
-## does something but not the right thing?
 f2 <- glmmTMB(z ~ 1 + s(x, y), data=d,
              control = glmmTMBControl(parallel = 10))
 predict(f2)
