@@ -48,3 +48,8 @@
   prob = 2,
   disp = 3
 )
+.valid_simcode <- c(
+  zero = 0,
+  fix = 1,
+  random = 2
+)

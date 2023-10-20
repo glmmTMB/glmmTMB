@@ -38,6 +38,10 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	grep _zipredictcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_zipredictcode//g >> $@
 	echo ")" >> $@
 
+	echo ".valid_simcode <- c(" >> $@
+	grep _simcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_simcode//g >> $@
+	echo ")" >> $@
+
 upstream-ver-update: $(PACKAGE)/inst/TMB-version
 $(PACKAGE)/inst/TMB-version:
 	echo "glmmTMB:::checkDepPackageVersion('TMB',write_file=TRUE)" | $(R) --slave

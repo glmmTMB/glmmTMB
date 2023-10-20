@@ -78,6 +78,12 @@ enum valid_ziPredictCode {
   disp_zipredictcode = 3
 };
 
+enum valid_simCode {
+  zero_simcode = 0,
+  fix_simcode = 1,
+  random_simcode = 2
+}
+
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
   Type ans;
