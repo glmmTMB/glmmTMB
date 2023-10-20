@@ -676,12 +676,14 @@ no_specials <- function(term, specials = c("|", "||", "s")) {
 ##' @return a term or formula with specials replaced by \code{+} (and extra arguments dropped)
 ##' @keywords internal
 ##' @examples
-##' sub_specials( ~ (1|x) + (a + b || y) + s(a, b, c))
+##' sub_specials( ~ s(a, k=4))
+##' sub_specials( ~ (1|x) + (a + b || y) + s(a, k=4))
 ##' sub_specials(Reaction ~ s(Days) + (1 + Subject))
+##' sub_specials(~ s(cos((y^2*3)/2), bs = "tp"))
 ##' @export
 sub_specials <- function (term,
                           specials = c("|", "||", "s"),
-                          keep_args = c(2, 2, 1)) {
+                          keep_args = c(2L, 2L, NA_integer_)) {
     if (is.name(term) || !is.language(term)) 
         return(term)
     ## previous version recursed immediately for unary operators,
@@ -689,16 +691,25 @@ sub_specials <- function (term,
     ## but here s(x) needs to be processed ...
     for (i in seq_along(specials)) {
         if (is.call(term) && term[[1]] == as.name(specials[i])) {
+            if (is.na(keep_args[i])) {
+                ## keep only *unnamed* args
+                if (!is.null(names(term))) {
+                    term <- term[names(term)==""]
+                }
+            } else {
+                term <- term[1:(1+keep_args[i])]
+            }
             term[[1]] <- as.name("+")
             ## converts s(x) to +x, which is ugly, but
             ##  formula can handle repeated '+'
             ## discard additional arguments (e.g for s(x, ...))
             ## (fragile re: order??)
-            term <- term[1:(1+keep_args[i])]
         }
     }
-    for (j in 2:length(term)) term[[j]] <- sub_specials(term[[j]],
-                                                        specials = specials,
-                                                        keep_args = keep_args)
+    for (j in 2:length(term)) {
+        term[[j]] <- sub_specials(term[[j]],
+                                  specials = specials,
+                                  keep_args = keep_args)
+    }
     term
 }
