@@ -371,6 +371,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   data.tmb <- namedList(
+    ## fixed-effect (X) and random-effect (Z), dense and sparse model matrices    
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
     Z = condList$Z,
@@ -811,7 +812,7 @@ getGrpVar <- function(x)
 ##' Calculates number of random effects, number of parameters,
 ##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
-##' @param ss a character string indicating a valid covariance structure.
+##' @param ss a vector of character strings indicating a valid covariance structure (one for each RE term).
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 ##' default is to use an unstructured  variance-covariance
 ##' matrix (\code{"us"}) for all blocks).
@@ -865,7 +866,10 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
     blkrank <- aa
     covCode <- .valid_covstruct[ss]
-    
+
+    ## set simulation code to 'random' for all RE by default
+    simCode <- rep(.valid_simcode[["random"]], length(ss))
+        
     parFun <- function(struc, blksize, blkrank) {
         switch(as.character(struc),
                "diag" = blksize, # (heterogenous) diag
@@ -888,10 +892,10 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
         tmp <- list(blockReps = nreps[i],
                     blockSize = blksize[i],
                     blockNumTheta = blockNumTheta[[i]],
-                    blockCode = covCode[i]
+                    blockCode = covCode[i],
+                    simCode = simCode[i]
                     )
         if(ss[i] == "ar1") {
-            ## FIXME: Keep this warning ?
             if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
                 warning("AR1 not meaningful with intercept")
             if (length(.getXlevels(reXterms[[i]],fr))!=1) {

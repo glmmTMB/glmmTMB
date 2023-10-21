@@ -82,7 +82,7 @@ enum valid_simCode {
   zero_simcode = 0,
   fix_simcode = 1,
   random_simcode = 2
-}
+};
 
 template<class Type>
 Type inverse_linkfun(Type eta, int link) {
@@ -211,6 +211,7 @@ struct per_term_info {
   int blockSize;     // Size of one block
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
+  int simCode;       // Simulation code (zero, fixed, or draw new random deviate?)
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
   // Report output
@@ -229,10 +230,12 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
       int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
+      int simCode = (int) REAL(getListElement(y, "simCode", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
+      (*this)(i).simCode = simCode;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
       if(!isNull(t)){
@@ -249,6 +252,7 @@ struct terms_t : vector<per_term_info<Type> > {
   }
 };
 
+
 // compute log-likelihood of b (conditional modes) conditional on theta (var/cov)
 //  for a specified random-effects term 
 template <class Type>
@@ -260,9 +264,24 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
       if (do_simulate) {
-        U.col(i) = rnorm(Type(0), sd);
-      }
-    }
+	// FIXME this can be abstracted as a more general function (zero and fix are always the same,
+	// random_simcode will differ by type) ¿can we make 'covariance structure' a class, with nll and simulate methods??
+        switch(term.simCode) {
+	case random_simcode:
+	  U.col(i) = rnorm(Type(0), sd);
+	  break;
+	case zero_simcode:
+	  for (int j=0; j < U.rows(); j++) {
+	    U(j,i) = Type(0);
+	  };
+	  break;
+	case fix_simcode:
+	  // do nothing, leave U values as is
+	  break;
+	default: error ("unknown simcode");
+	} // simcode
+      } // simulate
+    } // loop over blocks
     term.sd = sd; // For report
   }
   else if (term.blockCode == homdiag_covstruct) {
