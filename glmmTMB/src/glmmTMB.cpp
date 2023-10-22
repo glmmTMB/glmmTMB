@@ -814,7 +814,8 @@ Type objective_function<Type>::operator() ()
         // s2 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
         s3 = sqrt(s1); //log-scale sd
 
-	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
+	tmp_loglik = zt_lik_zero(yobs(i),
+			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
 	// FIXME: simulate method?
         break;
       case t_family:

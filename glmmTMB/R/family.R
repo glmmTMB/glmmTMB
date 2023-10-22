@@ -324,8 +324,16 @@ lognormal <- function(link="log") {
     r <- list(family="lognormal",
               variance=function(mu,phi) phi^2,
               initialize = expression({
-                  if (any(y <= 0)) 
-                      stop("non-positive values not allowed for the 'lognormal' family")
+                  if (exists("ziformula") && !ident(ziformula, ~0)) {
+                      if (any(y < 0)) {
+                          stop("y values must be >= 0")
+                      }
+                      mustart <- y + 0.1
+                  } else {
+                      if (any(y <= 0)) {
+                          stop("y values must be > 0 (may be =0 if ziformula is specified)")
+                      }
+                  }
               })
               )
     return(make_family(r,link))
