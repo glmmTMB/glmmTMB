@@ -353,6 +353,13 @@ up2date <- function(oldfit) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
+      for (i in seq_along(ee$data$terms)) {
+          ee$data$terms[[i]]$simCode <- .valid_simcode[["random"]]
+      }
+      for (i in seq_along(ee$data$termszi)) {
+          ee$data$termszi[[i]]$simCode <- .valid_simcode[["random"]]
+      }
+
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
