@@ -914,7 +914,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
         }
         ans[[i]] <- tmp
     }
-    setNames(ans, names(reTrms$Ztlist))
+    names(ans) <- names(reTrms$Ztlist)
 
     return(ans)
 }

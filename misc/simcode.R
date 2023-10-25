@@ -3,6 +3,26 @@ devtools::load_all("glmmTMB")
 ## debug(getReStruc)
 ## undebug(glmmTMB:::mkTMBStruc)
 data("sleepstudy", package = "lme4")
+gt_load("test_data/models.rda")
+gm0 <- up2date(gm0)
+gm1 <- update(gm0, family = "binomial")
+matchForm <- function(obj, objU, family=FALSE, fn = FALSE) {
+  for(cmp in c("call","frame")) # <- more?
+     objU[[cmp]] <- obj[[cmp]]
+     ## Q: why are formulas equivalent but not identical?  A: their environments may differ
+  objU$modelInfo$allForm <- obj$modelInfo$allForm
+  if (family)  objU$modelInfo$family <- obj$modelInfo$family
+  ## objective function/gradient may change between TMB versions
+  if (fn)  {
+      for (f in c("fn","gr","he","retape","env","report","simulate")) {
+          objU$obj[[f]] <- obj$obj[[f]]
+      }
+  }
+  return(objU)
+}
+
+res_chr <- matchForm(gm0, update(gm0, family= "binomial"), fn  = TRUE)
+waldo::compare(gm0, res_chr, tolerance = 1e-8)
 ## machinery only works with diag() at the moment ...
 g <- glmmTMB(Reaction ~ 1 + diag(1+Days|Subject), sleepstudy)
 

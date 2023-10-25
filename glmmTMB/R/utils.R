@@ -359,7 +359,6 @@ up2date <- function(oldfit) {
       for (i in seq_along(ee$data$termszi)) {
           ee$data$termszi[[i]]$simCode <- .valid_simcode[["random"]]
       }
-
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
@@ -369,6 +368,11 @@ up2date <- function(oldfit) {
                                       DLL = "glmmTMB"))
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
+  }
+  for (t in c("condReStruc", "ziRestruc")) {
+      for (i in seq_along(oldfit$modelInfo$reStruc[[t]])) {
+          oldfit$modelInfo$reStruc[[t]][[i]]$simCode <- .valid_simcode[["random"]]
+      }
   }
   ## dispersion was NULL rather than 1 in old R versions ...
   omf <- oldfit$modelInfo$family
