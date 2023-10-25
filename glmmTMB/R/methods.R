@@ -672,6 +672,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act, model.response(object$frame))
+    mu <- predict(object, re.form = re.form, fast = !pop_pred, type = "response")
     wts <- model.weights(model.frame(object))
     if (is.null(wts)) wts <- rep(1, length(mr))
     ## binomial model specified as (success,failure)
@@ -685,7 +686,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         mr <- as.numeric(as.numeric(mr)>1)
         names(mr) <- nn  ## restore stripped names
     }
-    r <- mr - predict(object, re.form = re.form, fast = !pop_pred, type = "response")
+    r <- mr - mu
     fam <- family(object)
     res <- switch(type,
            response=r,
@@ -714,7 +715,6 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                vformals <- names(formals(v))
                # construct argument list for variance function based on its formals
                # some argument names vary across families
-               mu <- predict(object, type = "conditional", re.form = re.form)
                theta <- predict(object, type = "disp", re.form = re.form)
                shape <- family_params(object)
                vargs <- list()
