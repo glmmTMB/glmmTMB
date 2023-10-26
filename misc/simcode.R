@@ -1,10 +1,15 @@
-library(glmmTMB)
+#library(glmmTMB)
 devtools::load_all("glmmTMB")
 ## debug(getReStruc)
 ## undebug(glmmTMB:::mkTMBStruc)
 data("sleepstudy", package = "lme4")
 ## machinery only works with diag() at the moment ...
-g <- glmmTMB(Reaction ~ 1 + diag(1+Days|Subject), sleepstudy)
+form <- Reaction ~ 1 + Days + 
+  #(1|Subject) ## +
+  (1+Days|Subject) +
+  ar1(0 + numFactor(Days)|Subject)
+
+g <- glmmTMB(form, sleepstudy)
 
 ## for now we will set the simulation behaviour by manually modifying the values inside
 ## the 'data' object in the TMB object's 'env' (environment) component
@@ -43,7 +48,7 @@ s4 <- simulate(g, seed=101)[[1]]
 head(cbind(random = s1, zero = s2, random2 = s3, fix = s4))
 
 ## refit (I may have broken/overwritten something)
-g <- glmmTMB(Reaction ~ 1 + diag(1+Days|Subject), sleepstudy)
+g <- glmmTMB(form, sleepstudy) #,dispformula=~0
 ## back to original
 set_simcodes(g,"random")
 ss1 <- simulate(g, seed = 101, nsim = 100)
