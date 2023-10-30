@@ -45,6 +45,7 @@ bool trunc_Family(int family) {
 	  family == truncated_compois_family ||
 	  family == truncated_nbinom1_family ||
 	  family == truncated_nbinom2_family);
+  
 }
 
 enum valid_link {
@@ -267,17 +268,17 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
 	// FIXME this can be abstracted as a more general function (zero and fix are always the same,
 	// random_simcode will differ by type) ¿can we make 'covariance structure' a class, with nll and simulate methods??
         switch(term.simCode) {
-	case random_simcode:
-	  U.col(i) = rnorm(Type(0), sd);
-	  break;
+  case fix_simcode:
+          // do nothing, leave U values as is
+     break;
 	case zero_simcode:
 	  for (int j=0; j < U.rows(); j++) {
 	    U(j,i) = Type(0);
 	  };
 	  break;
-	case fix_simcode:
-	  // do nothing, leave U values as is
-	  break;
+   case random_simcode:
+          U.col(i) = rnorm(Type(0), sd);
+          break;
 	default: error ("unknown simcode");
 	} // simcode
       } // simulate
@@ -315,7 +316,21 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-        U.col(i) = sd * nldens.simulate();
+        switch(term.simCode) {
+        case fix_simcode:
+          // do nothing, leave U values as is
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U.col(i) = sd * nldens.simulate();
+          break;
+        default: error ("unknown simcode");
+        } // simcode
+        
       }
     }
     term.corr = nldens.cov(); // For report
@@ -376,18 +391,35 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type corr_transf = theta(1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
     Type sd = exp(logsd);
+    
     for(int j = 0; j < term.blockReps; j++){
+       for(int i=1; i<n; i++){
+          //Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
+          ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
+      }
       ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
       if (do_simulate) {
-        U(0, j) = rnorm(Type(0), sd);
-      }
-      for(int i=1; i<n; i++){
-	ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
-        if (do_simulate) {
-          U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
-        }
-      }
-    }
+        switch(term.simCode) {
+          case fix_simcode:
+          // do nothing, leave U values as is
+             break;
+          case zero_simcode:
+            for (int i=0; i < U.rows(); i++) {
+              U(i,j) = Type(0);
+              };
+            break;
+          case random_simcode:
+            U(0, j) = rnorm(Type(0), sd);
+            for(int i=1; i<n; i++){
+              U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
+              }
+            break;
+           default: error ("unknown simcode");
+           }
+      } // do_simulate
+  }
+  
+  
     // For consistency with output for other structs we report entire
     // covariance matrix.
     if(isDouble<Type>::value) { // Disable AD for this part
@@ -410,18 +442,33 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type logsd = theta(0);
     Type corr_transf = theta(1);
     Type sd = exp(logsd);
-    for(int j = 0; j < term.blockReps; j++){
-      ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+    for(int i = 0; i < term.blockReps; i++){
+      for(int j=1; j<n; j++){
+        Type rho = exp(-exp(corr_transf) * (term.times(j) - term.times(j-1)));
+        ans -= dnorm(U(j, i), rho * U(j-1, i), sd * sqrt(1 - rho*rho), true);
+      }
+      ans -= dnorm(U(0, i), Type(0), sd, true);   // Initialize
       if (do_simulate) {
-        U(0, j) = rnorm(Type(0), sd);
-      }
-      for(int i=1; i<n; i++){
-	Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
-	ans -= dnorm(U(i, j), rho * U(i-1, j), sd * sqrt(1 - rho*rho), true);
-        if (do_simulate) {
-          U(i, j) = rnorm( rho * U(i-1, j), sd * sqrt(1 - rho*rho));
+        switch(term.simCode) {
+        case fix_simcode:
+          // do nothing, leave U values as is
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U(0, i) = rnorm(Type(0), sd);
+          for(int j=1; j<n; j++){
+            Type rho = exp(-exp(corr_transf) * (term.times(j) - term.times(j-1)));
+            U(j, i) = rnorm( rho * U(j-1, i), sd * sqrt(1 - rho*rho));
+          }
+          break;
+        default: error ("unknown simcode");
         }
-      }
+      } // do_simulate
+      
     }
     // For consistency with output for other structs we report entire
     // covariance matrix.
@@ -487,7 +534,20 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
       if (do_simulate) {
-        U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+        switch(term.simCode) {
+        case fix_simcode:
+          // do nothing, leave U values as is
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+          break;
+        default: error ("unknown simcode");
+        } // simcode
       }
     }
 
