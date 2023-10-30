@@ -618,7 +618,6 @@ set_simcodes <- function(g, val = "zero") {
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
-                         map = NULL,
                          family = gaussian,
                          newdata, newparams, ..., show_pars = FALSE) {
     
@@ -635,9 +634,8 @@ simulate_new <- function(object,
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
-                  map = map,
                   doFit = FALSE)
-## construct TMB object, but don't fit it
+    ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
     if (show_pars) return(r2$env$last.par)
     pars <- do.call("make_pars",
