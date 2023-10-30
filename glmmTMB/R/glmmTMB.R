@@ -1351,7 +1351,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            collect=FALSE,
                            parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
-                           zerodisp_val=log(sqrt(.Machine$double.eps)),
+                           ## want variance to be sqrt(eps), so sd = eps^(1/4)
+                           zerodisp_val=log(.Machine$double.eps)/4,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip")) {

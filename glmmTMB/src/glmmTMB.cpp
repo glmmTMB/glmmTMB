@@ -642,13 +642,8 @@ Type objective_function<Type>::operator() ()
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
-	// n.b. sigma() calculation is special-cased for Gaussian
-	// (exp(0.5*pl$betad), all other families except Gamma
-	//  use exp(pl$betad)
-	// so phi = variance, not SD
-	// (FIXME: ?? why ??)
-        tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-        SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
+        tmp_loglik = dnorm(yobs(i), mu(i), phi(i), true);
+        SIMULATE{yobs(i) = rnorm(mu(i), phi(i));}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
