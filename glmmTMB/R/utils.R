@@ -563,11 +563,19 @@ fix_predvars <- function(pv,tt) {
 
 make_pars <- function(pars, ...) {
     ## FIXME: check for name matches, length matches etc.
+    ## better to split by name first??
     L <- list(...)
     for (nm in names(L)) {
-        pars[names(pars) == nm] <- L[[nm]]
+        v <- (names(pars) == nm)
+        pars[v] <- L[[nm]]
     }
     return(pars)
+}
+
+## helper function: modify sim codes **in place**
+set_simcodes <- function(g, val = "zero") {
+    ee <- g$obj$env
+    for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
 }
 
 ##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
@@ -610,6 +618,7 @@ make_pars <- function(pars, ...) {
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
+                         map = NULL,
                          family = gaussian,
                          newdata, newparams, ..., show_pars = FALSE) {
     
@@ -622,17 +631,23 @@ simulate_new <- function(object,
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
     ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    newdata[["..y"]] <- if (family$family == "beta_family") 1.0 else 0.5
+    newdata[["..y"]] <- if (family$family != "beta_family") 1.0 else 0.5
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
-                  ...,
+                  map = map,
                   doFit = FALSE)
 ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
     if (show_pars) return(r2$env$last.par)
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
+    if ("b" %in% names(newparams)) {
+        browser()
+        set_simcodes(r2, "fix")
+        ## r2$env$map <- list(b = factor(rep(NA, length(newparams$b))))
+        r2$env$parameters$b <-  newparams$b
+    }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
 
