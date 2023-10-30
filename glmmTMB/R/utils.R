@@ -574,7 +574,7 @@ make_pars <- function(pars, ...) {
 
 ## helper function: modify sim codes **in place**
 set_simcodes <- function(g, val = "zero") {
-    ee <- g$obj$env
+    ee <- g$env
     for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
 }
 
@@ -644,8 +644,6 @@ simulate_new <- function(object,
                     c(list(r2$env$last.par), newparams))
     if ("b" %in% names(newparams)) {
         set_simcodes(r2, "fix")
-        r2$env$map <- list(b = factor(rep(NA, length(newparams$b))))
-        r2$env$parameters$b <-  as.numeric(newparams$b)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
