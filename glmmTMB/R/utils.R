@@ -634,6 +634,7 @@ simulate_new <- function(object,
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
+                  ...,
                   doFit = FALSE)
     ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
