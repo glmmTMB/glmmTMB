@@ -11,6 +11,8 @@ form <- Reaction ~ 1 + Days +
 
 g <- glmmTMB(form, sleepstudy)
 
+simulate(~form,
+         param = list())
 ## for now we will set the simulation behaviour by manually modifying the values inside
 ## the 'data' object in the TMB object's 'env' (environment) component
 ## eventually, we want to set up simulate() so it does this for us automatically
