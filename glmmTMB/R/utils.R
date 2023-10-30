@@ -643,10 +643,9 @@ simulate_new <- function(object,
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     if ("b" %in% names(newparams)) {
-        browser()
         set_simcodes(r2, "fix")
-        ## r2$env$map <- list(b = factor(rep(NA, length(newparams$b))))
-        r2$env$parameters$b <-  newparams$b
+        r2$env$map <- list(b = factor(rep(NA, length(newparams$b))))
+        r2$env$parameters$b <-  as.numeric(newparams$b)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
