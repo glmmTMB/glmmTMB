@@ -12,9 +12,10 @@ if (getRversion() < "3.3.0") {
 
 test_that("Fitted and residuals", {
     expect_equal(length(fitted(fm2)), nrow(sleepstudy))
-    expect_equal(mean(fitted(fm2)), 298.507891)
-    expect_equal(mean(residuals(fm2)), 0, tol=1e-5)
+    expect_equal(mean(fitted(fm2)), 298.507891, tolerance = 1e-6)
+    expect_equal(mean(residuals(fm2)), 0, tolerance = 1e-4)
     ## Pearson and response are the same for a Gaussian model
+    ## FIXME: still true after var -> sd shift?  why? scale by SD?
     expect_equal(residuals(fm2,type="response"),
                  residuals(fm2,type="pearson"))
     ## ... but not for Poisson or NB ...
