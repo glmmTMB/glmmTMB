@@ -45,6 +45,7 @@ bool trunc_Family(int family) {
 	  family == truncated_compois_family ||
 	  family == truncated_nbinom1_family ||
 	  family == truncated_nbinom2_family);
+  
 }
 
 enum valid_link {
