@@ -12,7 +12,7 @@ simulate_new(
   newdata,
   newparams,
   ...,
-  show_pars = FALSE
+  return_val = c("sim", "pars", "object")
 )
 }
 \arguments{
@@ -37,6 +37,8 @@ be used in the model}
 
 \item{...}{other arguments to \code{glmmTMB} (e.g. \code{family})}
 
+\item{return_val}{what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)}
+
 \item{show_pars}{(logical) print structure of parameter vector and stop without simulating?}
 }
 \description{
@@ -48,8 +50,19 @@ for more information on the parameterization of different covariance structures.
 ## use Salamanders data for structure/covariates
 simulate_new(~ mined + (1|site),
              zi = ~ mined,
-             newdata = Salamanders, show_pars  = TRUE)
+             newdata = Salamanders,
+             return_val = "pars")
 sim_count <- simulate_new(~ mined + (1|site),
+             newdata = Salamanders,
+             zi = ~ mined,
+             family = nbinom2,
+             newparams = list(beta = c(2, 1),
+                         betazi = c(-0.5, 0.5), ## logit-linear model for zi
+                         betad = log(2), ## log(NB dispersion)
+                         theta = log(1)) ## log(among-site SD)
+)
+sim_obj <- simulate_new(~ mined + (1|site),
+            return_val = "object",
              newdata = Salamanders,
              zi = ~ mined,
              family = nbinom2,

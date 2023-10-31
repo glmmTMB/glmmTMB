@@ -5,8 +5,13 @@
 \alias{deviance.glmmTMB}
 \title{Compute residuals for a glmmTMB object}
 \usage{
-\method{residuals}{glmmTMB}(object, type = c("response", "pearson", "working", "deviance"),
-    re.form = NULL, ...)
+\method{residuals}{glmmTMB}(
+  object,
+  type = c("response", "pearson", "working", "deviance"),
+  re.form = NULL,
+  ...
+)
+
 \method{deviance}{glmmTMB}(object, ...)
 }
 \arguments{
@@ -14,8 +19,8 @@
 
 \item{type}{(character) residual type}
 
-
 \item{re.form}{\code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)}
+
 \item{\dots}{for method compatibility (unused arguments will throw an error)}
 }
 \description{

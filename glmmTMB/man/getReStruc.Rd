@@ -11,7 +11,7 @@ getReStruc(reTrms, ss = NULL, aa = NULL, reXterms = NULL, fr = NULL)
 \arguments{
 \item{reTrms}{random-effects terms list}
 
-\item{ss}{a character string indicating a valid covariance structure.
+\item{ss}{a vector of character strings indicating a valid covariance structure (one for each RE term).
 Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 default is to use an unstructured  variance-covariance
 matrix (\code{"us"}) for all blocks).}
@@ -23,11 +23,7 @@ matrix (\code{"us"}) for all blocks).}
 \item{fr}{model frame}
 }
 \value{
-a list
-\item{blockNumTheta}{number of variance covariance parameters per term}
-\item{blockSize}{size (dimension) of one block}
-\item{blockReps}{number of times the blocks are repeated (levels)}
-\item{covCode}{structure code}
+
 }
 \description{
 Calculate random effect structure

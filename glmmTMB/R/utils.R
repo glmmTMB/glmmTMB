@@ -599,7 +599,7 @@ set_simcodes <- function(g, val = "zero") {
 ##' be used in the model
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
-##' @param return_val (stuff)
+##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
 ##' simulate_new(~ mined + (1|site),
