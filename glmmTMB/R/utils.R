@@ -599,11 +599,13 @@ set_simcodes <- function(g, val = "zero") {
 ##' be used in the model
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @param return_val (stuff)
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
 ##' simulate_new(~ mined + (1|site),
 ##'              zi = ~ mined,
-##'              newdata = Salamanders, show_pars  = TRUE)
+##'              newdata = Salamanders,
+##'              return_val = "pars")
 ##' sim_count <- simulate_new(~ mined + (1|site),
 ##'              newdata = Salamanders,
 ##'              zi = ~ mined,
@@ -613,14 +615,26 @@ set_simcodes <- function(g, val = "zero") {
 ##'                          betad = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
 ##' )
+##' sim_obj <- simulate_new(~ mined + (1|site),
+##'             return_val = "object",
+##'              newdata = Salamanders,
+##'              zi = ~ mined,
+##'              family = nbinom2,
+##'              newparams = list(beta = c(2, 1),
+##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
+##'                          betad = log(2), ## log(NB dispersion)
+##'                          theta = log(1)) ## log(among-site SD)
+##' )
+
 ##' head(sim_count[[1]])
 ##' @export
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
                          family = gaussian,
-                         newdata, newparams, ..., show_pars = FALSE) {
-    
+                         newdata, newparams, ...,
+                         return_val = c("sim", "pars", "object")) {
+    return_val <- match.arg(return_val)
     family <- get_family(family)
     if (!is.null(seed)) set.seed(seed)
     ## truncate
@@ -634,15 +648,22 @@ simulate_new <- function(object,
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
+                  ## make sure optim doesn't actually do anything
+                  ## (if return_val is "object")
+                  control = glmmTMBControl(optCtrl = list(iter.max = 0)),
                   ...,
                   doFit = FALSE)
     ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
-    if (show_pars) return(r2$env$last.par)
+    if (return_val == "pars") return(r2$env$last.par)
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     if ("b" %in% names(newparams)) {
         set_simcodes(r2, "fix")
+    }
+    if (return_val == "object") {
+        r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
+        return(r3)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
