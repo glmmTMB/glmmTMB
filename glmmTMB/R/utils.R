@@ -656,14 +656,23 @@ simulate_new <- function(object,
     ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
     if (return_val == "pars") return(r2$env$last.par)
+    if (return_val == "object") {
+        ## insert parameters (don't do this before because we want to
+        ## be able to return default params if they're not specified)
+        for (nm in names(newparams)) {
+            r1$parameters[[nm]] <- newparams[[nm]]
+        }
+        if ("b" %in% names(newparams)) {
+            r1$map <- r1$mapArg <-
+                list(b = factor(rep(NA, length(newparams$b))))
+        }
+        r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
+        return(r3)
+    }
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     if ("b" %in% names(newparams)) {
         set_simcodes(r2, "fix")
-    }
-    if (return_val == "object") {
-        r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
-        return(r3)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
