@@ -63,7 +63,7 @@ jobs:
           extra-packages: any::rcmdcheck
           needs: check
           working-directory: ./glmmTMB
-          upgrade: true
+          upgrade: 'TRUE'
 
       - name: Install extra LaTeX packages
         if: runner.os == 'Linux'
