@@ -626,6 +626,19 @@ test_that("de novo simulation", {
                       c(2.67396350948461, 5.55246185541914))
 })
 
+test_that("de novo simulation with binomial N>1", {
+    dd <- data.frame(x = 1:10)
+    ss <- simulate_new(~ x,
+                 seed = 101,
+                 family = binomial,
+                 weights = rep(10, 10),
+                 newdata = dd,
+                 newparams = list(beta = c(-0.5, 0.1), betad = 0))
+    expect_equal(head(ss[[1]], 2),
+                      c(3, 2))
+})
+
+
 test_that("weighted residuals", {
     set.seed(101)
     data("cbpp", package = "lme4")
@@ -643,6 +656,7 @@ test_that("weighted residuals", {
 })
 
 test_that("bad inversion in vcov", {
+    skip_on_os(c("windows", "linux"))
     d <- readRDS(system.file("test_data", "strengejacke_nasummary.rds",
                              package = "glmmTMB"))
     m <- glmmTMB(

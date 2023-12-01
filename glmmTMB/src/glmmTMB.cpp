@@ -173,7 +173,7 @@ Type log_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
-/* log transformed inverse_linkfun without losing too much accuracy */
+/* log transformed (1-inverse_linkfun) without losing too much accuracy */
 template<class Type>
 Type log1m_inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -268,6 +268,8 @@ struct terms_t : vector<per_term_info<Type> > {
   }
 };
 
+// compute log-likelihood of b (conditional modes) conditional on theta (var/cov)
+//  for a specified random-effects term 
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
@@ -480,6 +482,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   }
   else if (term.blockCode == rr_covstruct){
     // case: reduced rank
+
+    // computing log-likelihood based on *spherical* (iid N(0,1)) random effects
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
       if (do_simulate) {
@@ -487,6 +491,10 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
+    // now construct the factor matrix and convert the spherical random
+    //  effects back to the 'data scale', and *replace them* in the U matrix
+
+    // constructing the factor loadings matrix
     int p = term.blockSize;
     int nt = theta.size();
     int rank = (2*p + 1 -  (int)sqrt(pow(2.0*p + 1, 2) - 8*nt) ) / 2 ;
@@ -504,11 +512,14 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
+    // transforming u to b by multiplying by the loadings matrix
     for(int i = 0; i < term.blockReps; i++){
       vector<Type> usub = U.col(i).segment(0, rank);
       U.col(i) = Lambda * usub;
     }
 
+    // computing the correlation matrix and std devs
+    // (the same D^(-1/2) L L^T D^(-1/2) transformation that we use for correlations
     term.fact_load = Lambda;
     if(isDouble<Type>::value) {
       term.corr = Lambda * Lambda.transpose();
@@ -712,6 +723,21 @@ Type objective_function<Type>::operator() ()
 
 	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(psi(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
 	}
+	SIMULATE{
+	  s3 = invlogit(psi(0) - eta(i));
+	  if (runif(Type(0), Type(1)) < s3) {
+	    yobs(i) = 0;
+	  } else {
+	    s3 = invlogit(eta(i) - psi(1));
+	    if (runif(Type(0), Type(1)) < s3) {
+	      yobs(i) = 1;
+	    } else {
+	      s1 = mu(i)*phi(i);
+	      s2 = (Type(1)-mu(i))*phi(i);
+	      yobs(i) = rbeta(s1, s2);
+	    }
+	  }
+	}
 	break;
       case betabinomial_family:
         // Transform to logit scale independent of link
@@ -822,7 +848,8 @@ Type objective_function<Type>::operator() ()
         // s2 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
         s3 = sqrt(s1); //log-scale sd
 
-	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
+	tmp_loglik = zt_lik_zero(yobs(i),
+			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
 	// FIXME: simulate method?
         break;
       case t_family:

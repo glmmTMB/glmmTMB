@@ -461,6 +461,15 @@ test_that("lognormal family", {
     set.seed(102)
     test_fun(n = 2e4, m = 0.4, v = 0.2)
     test_fun(n = 2e4, m = 0.7, v = 0.5)
+    set.seed(101)
+    dd <- data.frame(y = c(0, rlnorm(100, 1, 1)))
+    expect_is(glmmTMB(y ~ 1, data = dd, family = lognormal(), ziformula = ~1),
+              "glmmTMB")
+    expect_error(glmmTMB(y ~ 1, data = dd, family = lognormal()),
+                 "must be > 0 ")
+    dd <- rbind(dd, data.frame(y=-1))
+    expect_error(glmmTMB(y ~ 1, data = dd, family = lognormal(), ziformula = ~1),
+                 "must be >= 0")
 })
 
 test_that("t-distributed response", {

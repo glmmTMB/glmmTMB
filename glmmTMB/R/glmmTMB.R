@@ -1,9 +1,11 @@
 ## internal flag for debugging OpenMP behaviour
-debug_openmp <- FALSE
+openmp_debug <- function() {
+    getOption("glmmTMB_openmp_debug", FALSE)
+}
 
 ## glmmTMB openmp controller copied from TMB (Windows needs it).
 openmp <- function (n = NULL) {
-    if (debug_openmp && !is.null(n)) {
+    if (openmp_debug() && !is.null(n)) {
         cat("setting OpenMP threads to ", n, "\n")
     }
     ## FIXME: redundant with integer-setting within omp_num_threads C++ def in utils.cpp
@@ -218,9 +220,7 @@ startParams <- function(parameters,
 ##' @param fr model frame
 ##' @param yobs observed y
 ##' @param respCol response column
-##' @param zioffset offset for zero-inflated model
-##' @param doffset offset for dispersion model
-##' @param size number of trials in binomial and betabinomial families
+##' @param weights model weights (for binomial-type models, used as size/number of trials)
 ##' @param family family object
 ##' @param se (logical) compute standard error?
 ##' @param call original \code{glmmTMB} call
@@ -239,9 +239,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        respCol,
                        ## no conditional offset argument
                        ##  (should be stored in model frame)
-                       weights,
+                       weights = NULL,
                        contrasts,
-                       size=NULL,
                        family,
                        se=NULL,
                        call=NULL,
@@ -331,10 +330,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
-    nobs <- nrow(fr)
+   nobs <- nrow(fr)
+    
+   if (is.null(weights)) weights <- rep(1, nobs)
 
-  if (is.null(weights)) weights <- rep(1, nobs)
-
+  size <- numeric(0)
+    
   ## binomial family:
   ## binomial()$initialize was only executed locally
   ## yobs could be a factor -> treat as binary following glm
@@ -354,17 +355,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         size <- yobs[,1] + yobs[,2]
         yobs <- yobs[,1] #successes
       } else {
-      if(all(yobs %in% c(0,1))) { #binary
-        size <- rep(1, nobs)
-      } else { #proportions
-          yobs <- weights * yobs
+          ## previously tested for binary data
+          ## shouldn't need to do this, as weights is a vector of ones
+          ## by default (see NEWS for 1.1.8-9000/1.1.9)
+          yobs <- weights*yobs
           size <- weights
-          weights <- rep(1, nobs)
-        }
+          weights <- rep(1.0, nobs)
       }
     }
   }
-  if (is.null(size)) size <- numeric(0)
 
 
   denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
@@ -1121,27 +1120,8 @@ glmmTMB <- function(
     ##                       control = glmerControl(), ...) {
     call <- mf <- mc <- match.call()
 
-    if (is.character(family)) {
-        if (family=="beta") {
-            family <- "beta_family"
-            warning("please use ",sQuote("beta_family()")," rather than ",
-                    sQuote("\"beta\"")," to specify a Beta-distributed response")
-        }
-        family <- get(family, mode = "function", envir = parent.frame())
-    }
-
-    if (is.function(family)) {
-        ## call family with no arguments
-        family <- family()
-    }
-
-    ## FIXME: what is this doing? call to a function that's not really
-    ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("'family' not recognized")
-    }
-
+    family <- get_family(family)
+    
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
@@ -1261,7 +1241,7 @@ glmmTMB <- function(
 
     ## extract response variable
     ## (name *must* be 'y' to match guts of family()$initialize
-    y <- fr[,respCol]
+    y <- drop(fr[[respCol]])
     ## extract response variable
     ## (name *must* be 'y' to match guts of family()$initialize
     if (is.matrix(y)) {
@@ -1779,7 +1759,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
         return(ev)
     }
     if(!is.null(sdr$pdHess) && control$conv_check != "skip") {
-       if(!sdr$pdHess) {
+        if(!sdr$pdHess) {
           ## double-check (slower, more accurate hessian)
           env <- environment(obj$fn)
           par <- env$last.par.best
@@ -1787,35 +1767,42 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
               par <- par[-rr]
           }
           h <- numDeriv::jacobian(obj$gr, par)
+          ## fall back to solve(optimHess(par, obj$fn, obj$gr)) ? 
           h <- .5 * (h + t(h))  ## symmetrize
-          eigs <- eigen(h)
-          ## complex-values check should be unnecessary because we
-          ## now symmetrize the hessian, but who knows ... ?
-          ev <- e_complex_check(eigs$values)
-          if (min(ev)>.Machine$double.eps) {
-              ## apparently fit is OK after all ...
-              sdr$pdHess <- TRUE
-              Vtheta <- try(solve(h), silent=TRUE)
-              if (!inherits(Vtheta,"try-error")) sdr$cov.fixed[] <- Vtheta
-          } else {
+          if (!any(is.na(h))) {
+              ev <- try(
+                  e_complex_check(eigen(h)$values),
+                  silent = TRUE)
+              if (!inherits(ev, "try-error") && min(ev)>.Machine$double.eps) {
+                  ## apparently fit is OK after all ...
+                  sdr$pdHess <- TRUE
+                  Vtheta <- try(solve(h), silent=TRUE)
+                  if (!inherits(Vtheta,"try-error")) {
+                      sdr$cov.fixed[] <- Vtheta
+                  } else {
+                      warning("failed to invert Hessian from numDeriv::jacobian(), falling back to internal vcov estimate")
+                  }
+              } ## eig check OK
+          } ## !any(is.na(h))
+        } ## !sdr$pdHess          
+        if (!sdr$pdHess) { ## still bad after trying numDeriv ...
               warning(paste0("Model convergence problem; ",
                              "non-positive-definite Hessian matrix. ",
                              "See vignette('troubleshooting')"))
-          }
-      } else if (control$eigval_check && length(sdr$cov.fixed)>0) {
-          eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
-          if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
-              warning(paste0("Model convergence problem; ",
-                             "extreme or very small eigenvalues detected. ",
-                             "See vignette('troubleshooting')"))
-          } ## bad eigval
-      } ## do eigval check
-    } ## pdHess exists
+        }
+    } else if (control$eigval_check && length(sdr$cov.fixed)>0) {
+        eigval <- try(1/eigen(sdr$cov.fixed)$values, silent=TRUE)
+        if( is(eigval, "try-error") || ( min(e_complex_check(eigval)) < .Machine$double.eps*10 ) ) {
+            warning(paste0("Model convergence problem; ",
+                           "extreme or very small eigenvalues detected. ",
+                           "See vignette('troubleshooting')"))
+        } ## extreme eigval
+    }  ## do eigval check
 
     if ( !is.null(fit$convergence) && fit$convergence != 0 && control$conv_check != "skip") {
         warning("Model convergence problem; ",
                 fit$message, ". ",
-                "See vignette('troubleshooting')")
+                "See vignette('troubleshooting'), help('diagnose')")
     }
 
     if (control $ collect) {

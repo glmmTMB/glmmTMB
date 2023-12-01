@@ -4,7 +4,23 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.8}{
+\section{CHANGES IN VERSION 1.1.8-9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item interpretation of the \emph{weights} variable for
+      binomial-type GL(M)Ms has changed. Previously, the \emph{weights}
+      argument was \emph{ignored} for a vector- (rather than
+      matrix-valued) numeric response, if all observations were either 0 or 1.
+      Now the \emph{weights} variable is multiplied by the resonse
+      variable to compute the number of successes (consistently with
+      \code{stats::glm(., family = "binomial")}). (This change makes
+      it easier to use \emph{weights} to specify the number of trials
+      per observation for \code{simulate_new()}.)
+    } % itemize
+  } % user-visible changes
+} % 1.1.8-9000
+
+\section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item "lognormal" family available (log-Normal, parameterized
@@ -17,6 +33,16 @@
       \item population-level prediction with new data no longer requires
       that the variables involved in the random effects be explicitly
       specified as \code{NA} (GH #923, Russ Lenth)
+      \item the \code{simulate} method now works for models fitted with
+      \code{family=ordbetareg} (GH #942, Daniel Lüdecke)
+      \item deviance residuals are now available for some families
+      (built-in families from base R (see \code{?family})
+      plus \code{nbinom1}, \code{nbinom2}); deviance
+      residuals for other families may be implemented on request.
+      \item setting \code{option(glmmTMB_openmp_debug=TRUE)} will
+      produce debugging output about the number of OpenMP threads used
+      \item \code{getME(., "b")} returns the vector of conditional modes
+      (BLUPs, in the case of linear mixed models)
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
@@ -36,6 +62,8 @@
 	actually used in fitting (including dropping columns for
 	rank-deficiency)
       } %inner itemize
+      \item \code{glmmTMB} now accepts single-column matrices (e.g. as
+	produced by \code{scale} as response variables (GH #937, @santoshbs)
     } % itemize
   } % user-visible changes
 } % version 1.1.7.9000

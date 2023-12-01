@@ -13,9 +13,8 @@ mkTMBStruc(
   fr,
   yobs,
   respCol,
-  weights,
+  weights = NULL,
   contrasts,
-  size = NULL,
   family,
   se = NULL,
   call = NULL,
@@ -49,11 +48,9 @@ mkTMBStruc(
 
 \item{respCol}{response column}
 
-\item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
+\item{weights}{model weights (for binomial-type models, used as size/number of trials)}
 
 \item{contrasts}{an optional list, e.g., \code{list(fac1="contr.sum")}. See the \code{contrasts.arg} of \code{\link{model.matrix.default}}.}
-
-\item{size}{number of trials in binomial and betabinomial families}
 
 \item{family}{family object}
 
@@ -81,12 +78,15 @@ mkTMBStruc(
 
 \item{old_smooths}{(optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements}
+<<<<<<< HEAD
 
 \item{priors}{see \code{\link{priors}}}
 
 \item{zioffset}{offset for zero-inflated model}
 
 \item{doffset}{offset for dispersion model}
+=======
+>>>>>>> master
 }
 \description{
 Extract info from formulas, reTrms, etc., format for TMB

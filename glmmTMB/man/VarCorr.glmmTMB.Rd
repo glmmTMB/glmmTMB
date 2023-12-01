@@ -12,7 +12,7 @@
 
 \item{sigma}{residual standard deviation (usually set automatically from internal information)}
 
-\item{extra}{arguments (for consistency with generic method)}
+\item{...}{extra arguments (for consistency with generic method)}
 }
 \description{
 Extract variance and correlation components

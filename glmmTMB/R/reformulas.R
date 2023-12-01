@@ -10,7 +10,7 @@ if (getRversion() < "4.0.0") {
 }
 
 #' expand double-bar RE notation by splitting
-#' @param a formula term
+#' @param term a formula term
 #' @rdname formfuns
 #' @export
 expandDoubleVert <- function(term) {

@@ -96,8 +96,6 @@ replaceForm(term, target, repl)
    ((xx|gg)) ... [can we detect them?]}
 
 \item{preserve}{(integer) retain the specified occurrence of "value"}
-
-\item{a}{formula term}
 }
 \value{
 a list of expressions

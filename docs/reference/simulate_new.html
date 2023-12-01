@@ -19,7 +19,7 @@ for more information on the parameterization of different covariance structures.
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -103,6 +103,7 @@ for more information on the parameterization of different covariance structures.
 <span>  <span class="va">object</span>,</span>
 <span>  nsim <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  family <span class="op">=</span> <span class="va">gaussian</span>,</span>
 <span>  <span class="va">newdata</span>,</span>
 <span>  <span class="va">newparams</span>,</span>
 <span>  <span class="va">...</span>,</span>
@@ -124,6 +125,10 @@ takes a fitted model object)</p></dd>
 
 <dt>seed</dt>
 <dd><p>random-number seed</p></dd>
+
+
+<dt>family</dt>
+<dd><p>a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">family</a></code> for a generic discussion of families or <code><a href="nbinom2.html">family_glmmTMB</a></code> for details of <code>glmmTMB</code>-specific families.</p></dd>
 
 
 <dt>newdata</dt>
@@ -169,6 +174,7 @@ be used in the model</p></dd>
 <span class="r-in"><span>                         betad <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, <span class="co">## log(NB dispersion)</span></span></span>
 <span class="r-in"><span>                         theta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="co">## log(among-site SD)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>non-integer counts in a nbinom2 model</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sim_count</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1]  3  5  1  0  0 16</span>
 </code></pre></div>

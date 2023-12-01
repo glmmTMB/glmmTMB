@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -125,7 +125,7 @@ for zero-inflated models</p></li>
 <li><p>Computing deviance residuals depends on the implementation of the <code>dev.resids</code>
 function from the object's <code>family</code> component; at present this returns <code>NA</code> for most
 "exotic" families (i.e. deviance residuals are currently only
-implemented for families built into base R plus <code>nbinom1</code>, <code>nbinom2</code>).</p></li>
+implemented for families built into base R plus <code>nbinom1</code>, <code>nbinom2</code>). Deviance residuals are based on the conditional distributions only, i.e. ignoring zero-inflation components.</p></li>
 <li><p>Deviance is computed as the sum of squared deviance residuals, so is available only
 for the families listed in the bullet point above. See <a href="https://rdrr.io/pkg/lme4/man/merMod-class.html" class="external-link">deviance.merMod</a> for more
 details on the definition of the deviance for GLMMs.</p></li>

@@ -274,7 +274,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xd", "theta", "beta"),
+                                   "Xd", "theta", "beta", "b"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -291,7 +291,9 @@ getME.glmmTMB <- function(object,
   name <- match.arg(name)
 
   oo.env <- object$obj$env
-  ### Start of the switch
+  ## note, commit f35509f3c97909d07854946
+  ##  changed args of parList() from internal/dynamically changing objects
+  ##  to these stored parameters
   allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
   isSparse <- function(component) { if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
   switch(name,
@@ -302,6 +304,7 @@ getME.glmmTMB <- function(object,
          "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
          "theta" = allpars$theta ,
          "beta"  = unlist(allpars[c("beta","betazi","betad")]),
+         "b" = unlist(allpars[c("b", "bzi")]),
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -653,7 +656,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
 ##' function from the object's \code{family} component; at present this returns \code{NA} for most
 ##' "exotic" families (i.e. deviance residuals are currently only
-##' implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}).
+##' implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}). Deviance residuals are based on the conditional distributions only, i.e. ignoring zero-inflation components.
 ##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
 ##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 ##' details on the definition of the deviance for GLMMs.
