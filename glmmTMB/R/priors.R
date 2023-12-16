@@ -157,6 +157,11 @@ proc_priors <- function(priors, info = NULL) {
                                 lkj = 1,
                                 other = stop("unknown prior type")
                                 )
+
+        if ((np <- length(prior_params[[i]])) != prior_npar[i]) {
+            stop(sprintf("incorrect number of parameters for prior %s distribution (%d, was expecting %d)",
+              pname, np, prior_npar[i]))
+        }
         
     } ## loop over priors
     prior_params <- if (np == 0) numeric(0) else unlist(prior_params)
@@ -175,3 +180,24 @@ proc_priors <- function(priors, info = NULL) {
 #' 
 NULL
 
+
+#' @importFrom stats reformulate
+#' @importFrom utils capture.output
+print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
+    if (is.null(x)) return(invisible(x))
+    pstr <- character(nrow(x))
+    for (i in seq_len(nrow(x))) {
+        resp <- from_prior_syn(x$class[i])
+        if (nzchar(x$coef[i])) {
+            resp <- sprintf("%s (%s)", resp, x$coef[i])
+        }
+        ff <- reformulate(x$prior[i], response = resp)
+        pstr[i] <- capture.output(print(showEnv = FALSE, ff))
+        if (!compact) {
+            cat(pstr[i], "\n")
+        }
+    }
+    if (compact) cat(paste(pstr, collapse = "; "), "\n")
+    invisible(x)
+}
+             

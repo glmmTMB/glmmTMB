@@ -69,3 +69,32 @@ library(glmmTMB)
 dd$resp <- ifelse(dd$d=="1", 0, rbinom(50, size = 1, prob = 0.5))
 m1 <- glmmTMB(resp ~ d, data = dd, family = binomial, prior = data.frame(prior = "normal(0,3)", class = "beta"))
 
+test_that("check for correct number of prior parameters", {
+    priors3 <- data.frame(
+        prior = "t(1,1)",
+        class = "fixef"
+    )
+    expect_error(m3 <- glmmTMB(count ~ mined + (1 | site),
+                  zi = ~mined,
+                  family = poisson, data = Salamanders,
+                  priors = priors3),
+                 "was expecting")
+})
+
+test_that("print specific coefs for priors", {
+    priors4 <- data.frame(
+        prior = c("normal(0,2)", "t(1,1,10)"),
+        class = c("fixef", "fixef"),
+        coef = c("minedno", "DOP")
+    )
+    m4 <- glmmTMB(count ~ mined + DOP + (1 | site),
+                  zi = ~mined,
+                  family = poisson,
+                  priors = priors4,
+                  data = Salamanders
+                  )
+    cc <- capture.output(summary(m4))
+    expect_true(any(grepl("fixef(minedno)", cc, fixed = TRUE)))
+    expect_true(any(grepl("fixef(DOP)", cc, fixed = TRUE)))
+})
+

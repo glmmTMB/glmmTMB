@@ -2003,20 +2003,3 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
     invisible(x)
 }## print.summary.glmmTMB
 
-#' @importFrom stats reformulate
-#' @importFrom utils capture.output
-print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
-    if (is.null(x)) return(invisible(x))
-    pstr <- character(nrow(x))
-    for (i in seq_len(nrow(x))) {
-        ff <- reformulate(x$prior[i], response = from_prior_syn(x$class[i]))
-        if (!compact) {
-            print(showEnv = FALSE, ff)
-        } else {
-            pstr[i] <- capture.output(print(showEnv = FALSE, ff))
-        }
-    }
-    if (compact) cat(paste(pstr, collapse = "; "), "\n")
-    invisible(x)
-}
-             
