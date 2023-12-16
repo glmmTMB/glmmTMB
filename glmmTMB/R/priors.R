@@ -173,8 +173,21 @@ proc_priors <- function(priors, info = NULL) {
 #'
 #' \code{glmmTMB} can accept prior specifications, for doing maximum \emph{a posteriori} (MAP) estimation (or Hamiltonian MC with the \code{tmbstan} package), or (outside of a Bayesian framework) for the purposes of regularizing parameter estimates  
 #' 
-#' The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame with columns (at least) \code{prior} (character; the prior specification, e.g. "normal(0,2)") and \code{class} (the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi"); \code{coef} a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a random-effects term; one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. `The available prior distributions are "normal" (mean/sd parameterization); "t" (mean/sd/df); "cauchy" (location/scale); "gamma" (mean/shape), "lkj" (correlation). The first three are typically used for fixed effect parameters; the fourth for standard deviation parameters; and the last for correlation structures. See the "priors" vignette for further information.
-
+#' The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame with columns
+#' \describe{
+#' \item{\code{prior}}{character; the prior specification, e.g. "normal(0,2)"}
+#' \item{\code{class}}{the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi")}
+#' \item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a random-effects term; one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term}
+#' }
+#' `The available prior distributions are:
+#' \itemize{
+#' \item "normal" (mean/sd parameterization)
+#' \item "t" (mean/sd/df)
+#' \item "cauchy" (location/scale)
+#' \item "gamma" (mean/shape)
+#' \item "lkj" (correlation) [WARNING, maybe buggy at present!]
+#' }
+#' The first three are typically used for fixed effect parameters; the fourth for standard deviation parameters; and the last for correlation structures. See the "priors" vignette for examples and further information.
 #' 
 #' @name priors
 #' 
