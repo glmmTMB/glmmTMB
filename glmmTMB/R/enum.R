@@ -53,6 +53,7 @@
   zero = 0,
   fix = 1,
   random = 2
+)
 
 .valid_prior <- c(
   normal = 0,
