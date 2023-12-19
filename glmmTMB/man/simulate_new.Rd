@@ -33,7 +33,8 @@ be all zeros, but whose value is otherwise irrelevant)}
 
 \item{newparams}{a list of parameters containing sub-vectors
 (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
-be used in the model}
+be used in the model. If \code{b} is specified in this list, then the conditional modes/BLUPs
+will be set to these values; otherwise they will be drawn from the appropriate Normal distribution}
 
 \item{...}{other arguments to \code{glmmTMB} (e.g. \code{family})}
 

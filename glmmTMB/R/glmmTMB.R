@@ -824,7 +824,7 @@ getGrpVar <- function(x)
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
-##' \item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?
+##' \item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),

@@ -23,7 +23,12 @@ matrix (\code{"us"}) for all blocks).}
 \item{fr}{model frame}
 }
 \value{
-
+a list
+\item{blockNumTheta}{number of variance covariance parameters per term}
+\item{blockSize}{size (dimension) of one block}
+\item{blockReps}{number of times the blocks are repeated (levels)}
+\item{covCode}{structure code}
+\item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?}
 }
 \description{
 Calculate random effect structure
