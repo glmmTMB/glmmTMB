@@ -360,7 +360,8 @@ up2date <- function(oldfit) {
       }
       for (i in seq_along(ee$data$termszi)) {
           ee$data$termszi[[i]]$simCode <- .valid_simcode[["random"]]
-
+      }
+      
       ## prior_ivars, prior_fvars are defined in priors.R
       if (!"prior_distrib" %in% names(ee$data)) {
           ## these are DATA_IVECTOR but apparently after processing
