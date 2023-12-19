@@ -85,7 +85,8 @@ enum valid_simCode {
   zero_simcode = 0,
   fix_simcode = 1,
   random_simcode = 2
-
+};
+  
 // codes for prior distributions
 enum valid_prior {
   // real-valued
