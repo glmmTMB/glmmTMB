@@ -59,13 +59,47 @@ test_that("prior printing", {
 
 test_that("summary prior printing", {
     cc <- capture.output(print(summary(gm0p1)))
-    expect_equal(tail(cc, 2), c("Priors:", "fixef ~ normal(0, 3)"))
+    expect_equal(trimws(tail(cc, 2)), c("Priors:", "fixef ~ normal(0, 3)"))
 })
 
-## example from GH849
-set.seed(101)
-dd <- data.frame(d = ordered(rep(1:5, each = 10)))
-library(glmmTMB)
-dd$resp <- ifelse(dd$d=="1", 0, rbinom(50, size = 1, prob = 0.5))
-m1 <- glmmTMB(resp ~ d, data = dd, family = binomial, prior = data.frame(prior = "normal(0,3)", class = "beta"))
+test_that("regularization example", {
+    ## example from GH849
+    set.seed(101)
+    dd <- data.frame(d = ordered(rep(1:5, each = 10)))
+    dd$resp <- ifelse(dd$d=="1", 0, rbinom(50, size = 1, prob = 0.5))
+    m1 <- glmmTMB(resp ~ d, data = dd, family = binomial, prior = data.frame(prior = "normal(0,3)", class = "beta"))
+    expect_equal(fixef(m1)$cond,
+                 c(`(Intercept)` = -0.79416184276162, d.L = 1.39988627789035, 
+                   d.Q = -2.46199055587654, d.C = 1.31283404670116, `d^4` = -0.226206439743241),
+                 tolerance = 1e-6)
+})
+
+test_that("check for correct number of prior parameters", {
+    priors3 <- data.frame(
+        prior = "t(1,1)",
+        class = "fixef"
+    )
+    expect_error(m3 <- glmmTMB(count ~ mined + (1 | site),
+                  zi = ~mined,
+                  family = poisson, data = Salamanders,
+                  priors = priors3),
+                 "was expecting")
+})
+
+test_that("print specific coefs for priors", {
+    priors4 <- data.frame(
+        prior = c("normal(0,2)", "t(1,1,10)"),
+        class = c("fixef", "fixef"),
+        coef = c("minedno", "DOP")
+    )
+    m4 <- glmmTMB(count ~ mined + DOP + (1 | site),
+                  zi = ~mined,
+                  family = poisson,
+                  priors = priors4,
+                  data = Salamanders
+                  )
+    cc <- capture.output(summary(m4))
+    expect_true(any(grepl("fixef(minedno)", cc, fixed = TRUE)))
+    expect_true(any(grepl("fixef(DOP)", cc, fixed = TRUE)))
+})
 

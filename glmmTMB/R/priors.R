@@ -118,10 +118,17 @@ proc_priors <- function(priors, info = NULL) {
                     ## work out number of sd/cor params based on structure
                     ## first need to locate theta component in overall
                     ##  theta vector
+                    ## TO DO: match SD/cor components *within* log-SD vec??
                     component <- match_names(cl, prefix = "theta")
                     re_info <- info$re[[component]]
-                    w <- match(nospace(pc), nospace(names(re_info)))
-                    if (is.na(w)) stop("can't match prior RE component ", pc)
+                    re_term <- nospace(pc)
+                    ## matching entire component: try to match to full term (space-squashed)
+                    w <- match(re_term, nospace(names(re_info)))
+                    if (is.na(w)) {
+                        ## ... or just grouping variable
+                        w <- match(re_term, gsub("^[^|]+\\|", "", nospace(names(re_info))))
+                    }
+                    if (is.na(re_term)) stop("can't match prior RE term", re_term)
                     theta_start <- nthetavec[[component]][w] - 1 ## C++ index
                     if (is.na(suffix)) {
                         prior_elstart[i] <- theta_start
@@ -132,9 +139,10 @@ proc_priors <- function(priors, info = NULL) {
                         if (blockcodelab == "rr") stop("can't do priors for rr models yet")
                         nsd <- if (blockcodelab == "homdiag") 1 else blocksize
                         if (suffix == "sd") {
+                            ## all suffixes
                             prior_elstart[i] <- theta_start
                             prior_elend[i] <- theta_start + nsd - 1
-                        } else {
+                        } else if (suffix == "cor") {
                             if (nsd == re_info[[w]]$blockNumTheta) {
                                 warning("RE term has no correlation parameters")
                                 ## FIXME: is it dangerous to proceed in this case?
@@ -142,12 +150,13 @@ proc_priors <- function(priors, info = NULL) {
                             }
                             prior_elstart[i] <- theta_start + nsd
                             prior_elend[i] <- theta_start + re_info[[w]]$blockNumTheta - 1
-                        }
-                    }
+                        } else stop("unknown prior suffix ", suffix)
+                   } ## suffix specified 
                 } ## specified theta elements
             } ## specified elements
         } ## component specified
-        
+
+        ## FIXME: don't hard-code here?
         prior_npar[i] <- switch(pname,
                                 normal =,
                                 gamma =,
@@ -157,6 +166,11 @@ proc_priors <- function(priors, info = NULL) {
                                 lkj = 1,
                                 other = stop("unknown prior type")
                                 )
+
+        if ((np <- length(prior_params[[i]])) != prior_npar[i]) {
+            stop(sprintf("incorrect number of parameters for prior %s distribution (%d, was expecting %d)",
+              pname, np, prior_npar[i]))
+        }
         
     } ## loop over priors
     prior_params <- if (np == 0) numeric(0) else unlist(prior_params)
@@ -168,10 +182,52 @@ proc_priors <- function(priors, info = NULL) {
 #'
 #' \code{glmmTMB} can accept prior specifications, for doing maximum \emph{a posteriori} (MAP) estimation (or Hamiltonian MC with the \code{tmbstan} package), or (outside of a Bayesian framework) for the purposes of regularizing parameter estimates  
 #' 
-#' The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame with columns (at least) \code{prior} (character; the prior specification, e.g. "normal(0,2)") and \code{class} (the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi"); \code{coef} a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a random-effects term; one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. `The available prior distributions are "normal" (mean/sd parameterization); "t" (mean/sd/df); "cauchy" (location/scale); "gamma" (mean/shape), "lkj" (correlation). The first three are typically used for fixed effect parameters; the fourth for standard deviation parameters; and the last for correlation structures. See the "priors" vignette for further information.
-
+#' The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame with columns
+#' \describe{
+#' \item{\code{prior}}{character; the prior specification, e.g. "normal(0,2)"}
+#' \item{\code{class}}{the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi")}
+#' \item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term}
+#' }
+#' `The available prior distributions are:
+#' \itemize{
+#' \item "normal" (mean/sd parameterization)
+#' \item "t" (mean/sd/df)
+#' \item "cauchy" (location/scale)
+#' \item "gamma" (mean/shape); applied on the SD (\emph{not} the log-SD) scale
+#' \item "lkj" (correlation) [WARNING, maybe buggy at present!]
+#' }
+#' The first three are typically used for fixed effect parameters; the fourth for standard deviation parameters; and the last for correlation structures. See the "priors" vignette for examples and further information.
 #' 
 #' @name priors
-#' 
+#'
+#' @examples
+#'
+#' data("sleepstudy", package = "lme4")
+#' prior1 <- data.frame(prior = c("normal(250,3)","t(0,3,3)","gamma(10,1)"),
+#'                      class = c("fixef", "fixef", "ranef_sd"),
+#'                      coef = c("(Intercept)", "Days", "Subject"))
+#' g1 <- glmmTMB(Reaction ~ 1 + Days + (1 + Days |Subject), sleepstudy)
+#' update(g1, prior = prior1)
 NULL
 
+
+#' @importFrom stats reformulate
+#' @importFrom utils capture.output
+print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
+    if (is.null(x)) return(invisible(x))
+    pstr <- character(nrow(x))
+    for (i in seq_len(nrow(x))) {
+        resp <- from_prior_syn(x$class[i])
+        if (nzchar(x$coef[i])) {
+            resp <- sprintf("%s (%s)", resp, x$coef[i])
+        }
+        ff <- reformulate(x$prior[i], response = resp)
+        pstr[i] <- capture.output(print(showEnv = FALSE, ff))
+        if (!compact) {
+            cat(pstr[i], "\n")
+        }
+    }
+    if (compact) cat(paste(pstr, collapse = "; "), "\n")
+    invisible(x)
+}
+             

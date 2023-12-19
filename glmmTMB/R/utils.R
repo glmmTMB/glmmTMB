@@ -700,6 +700,26 @@ simulate_new <- function(object,
     else x
 }
 
+set_class <- function(x, cls, prepend = TRUE) {
+    if (is.null(x)) return(NULL)
+    if (!prepend) class(x) <- cls
+    else class(x) <- c(cls, class(x))
+    x
+}
+
+## convert from parameter name to component name or vice versa
+## first name shoudl be em
+compsyn <- c(cond = "", zi = "zi", disp = "d")
+match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
+    if (to_parvec) {
+        ## "cond" -> "theta" etc.
+        return(paste0(prefix, compsyn[x]))
+    } else {
+        ## "beta" -> "cond" etc.
+        x <- gsub(prefix, "", x)
+        return(names(compsyn)[match(x, compsyn)])
+    }
+}
 
 get_family <- function(family) {
     if (is.character(family)) {
@@ -724,28 +744,4 @@ get_family <- function(family) {
     }
     return(family)
 }
-
-set_class <- function(x, cls, prepend = TRUE) {
-    if (is.null(x)) return(NULL)
-    if (!prepend) class(x) <- cls
-    else class(x) <- c(cls, class(x))
-    x
-}
-
-## convert from parameter name to component name or vice versa
-## first name shoudl be em
-compsyn <- c(cond = "", zi = "zi", disp = "d")
-match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
-    if (to_parvec) {
-        ## "cond" -> "theta" etc.
-        return(paste0(prefix, compsyn[x]))
-    } else {
-        ## "beta" -> "cond" etc.
-        x <- gsub(prefix, "", x)
-        return(names(compsyn)[match(x, compsyn)])
-    }
-}
-
-                        
-    
 

@@ -378,12 +378,21 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## FIXME: would be nice to be able to get this with less info
   ## (for external testing etc.) but ... ??
 
+    
   ## isolate names for localizing priors
   get_fixnm <- function(x) c(colnames(x$X), colnames(x$XS))
   fix_nms <- list(cond = get_fixnm(condList),
                   zi = get_fixnm(ziList),
                   disp = get_fixnm(dispList))
-  re_info <- list(cond = condReStruc, zi = ziReStruc)
+  comb_re <- function(component) {
+      restruc <- get(paste0(component, "ReStruc"))
+      rList <- get(paste0(component, "List"))
+      res <- lapply(seq_along(restruc), function(i) c(restruc[[i]], list(cnms = rList$reTrms$cnms[[i]])))
+      names(res) <- names(restruc)
+      res
+  }
+
+  re_info <- list(cond = comb_re("cond"), zi = comb_re("zi"))
 
   ## easy way to get lengths of theta of individual components??
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
@@ -2008,20 +2017,3 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
     invisible(x)
 }## print.summary.glmmTMB
 
-#' @importFrom stats reformulate
-#' @importFrom utils capture.output
-print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
-    if (is.null(x)) return(invisible(x))
-    pstr <- character(nrow(x))
-    for (i in seq_len(nrow(x))) {
-        ff <- reformulate(x$prior[i], response = from_prior_syn(x$class[i]))
-        if (!compact) {
-            print(showEnv = FALSE, ff)
-        } else {
-            pstr[i] <- capture.output(print(showEnv = FALSE, ff))
-        }
-    }
-    if (compact) cat(paste(pstr, collapse = "; "), "\n")
-    invisible(x)
-}
-             

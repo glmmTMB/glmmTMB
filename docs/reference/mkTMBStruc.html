@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -51,9 +51,6 @@
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/priors.html">Priors in glmmTMB</a>
     </li>
     <li>
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
@@ -104,9 +101,8 @@
 <span>  <span class="va">fr</span>,</span>
 <span>  <span class="va">yobs</span>,</span>
 <span>  <span class="va">respCol</span>,</span>
-<span>  <span class="va">weights</span>,</span>
+<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">contrasts</span>,</span>
-<span>  size <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">family</span>,</span>
 <span>  se <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  call <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -119,8 +115,7 @@
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sparseX <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  old_smooths <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  priors <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  old_smooths <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -159,15 +154,11 @@
 
 
 <dt>weights</dt>
-<dd><p>weights, as in <code>glm</code>. Not automatically scaled to have sum 1.</p></dd>
+<dd><p>model weights (for binomial-type models, used as size/number of trials)</p></dd>
 
 
 <dt>contrasts</dt>
 <dd><p>an optional list, e.g., <code>list(fac1="contr.sum")</code>. See the <code>contrasts.arg</code> of <code><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix.default</a></code>.</p></dd>
-
-
-<dt>size</dt>
-<dd><p>number of trials in binomial and betabinomial families</p></dd>
 
 
 <dt>family</dt>
@@ -221,18 +212,6 @@
 <dt>old_smooths</dt>
 <dd><p>(optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements</p></dd>
-
-
-<dt>priors</dt>
-<dd><p>see <code><a href="priors.html">priors</a></code></p></dd>
-
-
-<dt>zioffset</dt>
-<dd><p>offset for zero-inflated model</p></dd>
-
-
-<dt>doffset</dt>
-<dd><p>offset for dispersion model</p></dd>
 
 </dl></div>
 
