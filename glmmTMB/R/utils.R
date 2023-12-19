@@ -337,6 +337,7 @@ up2date <- function(oldfit) {
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
+      ## change name of thetaf to psi
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -353,11 +354,20 @@ up2date <- function(oldfit) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
+
       for (i in seq_along(ee$data$terms)) {
           ee$data$terms[[i]]$simCode <- .valid_simcode[["random"]]
       }
       for (i in seq_along(ee$data$termszi)) {
           ee$data$termszi[[i]]$simCode <- .valid_simcode[["random"]]
+
+      ## prior_ivars, prior_fvars are defined in priors.R
+      if (!"prior_distrib" %in% names(ee$data)) {
+          ## these are DATA_IVECTOR but apparently after processing
+          ##  TMB turns these into numeric ... ??
+          for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+          for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+
       }
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
@@ -380,6 +390,11 @@ up2date <- function(oldfit) {
       !("dispersion" %in% names(omf))) {
       ## don't append() or c(), don't want to lose class info
       oldfit$modelInfo$family$dispersion <- 1
+  }
+  if (!"priors" %in% names(oldfit$modelInfo)) {
+      ## https://stackoverflow.com/questions/7944809/assigning-null-to-a-list-element-in-r
+      ## n.b. can't use ...$priors <- NULL
+      oldfit$modelInfo["priors"] <- list(NULL)
   }
   return(oldfit)
 }
@@ -685,6 +700,7 @@ simulate_new <- function(object,
     else x
 }
 
+
 get_family <- function(family) {
     if (is.character(family)) {
         if (family=="beta") {
@@ -708,3 +724,28 @@ get_family <- function(family) {
     }
     return(family)
 }
+
+set_class <- function(x, cls, prepend = TRUE) {
+    if (is.null(x)) return(NULL)
+    if (!prepend) class(x) <- cls
+    else class(x) <- c(cls, class(x))
+    x
+}
+
+## convert from parameter name to component name or vice versa
+## first name shoudl be em
+compsyn <- c(cond = "", zi = "zi", disp = "d")
+match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
+    if (to_parvec) {
+        ## "cond" -> "theta" etc.
+        return(paste0(prefix, compsyn[x]))
+    } else {
+        ## "beta" -> "cond" etc.
+        x <- gsub(prefix, "", x)
+        return(names(compsyn)[match(x, compsyn)])
+    }
+}
+
+                        
+    
+

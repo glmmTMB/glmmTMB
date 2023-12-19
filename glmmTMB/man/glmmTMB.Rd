@@ -21,7 +21,8 @@ glmmTMB(
   REML = FALSE,
   start = NULL,
   map = NULL,
-  sparseX = NULL
+  sparseX = NULL,
+  priors = NULL
 )
 }
 \arguments{
@@ -66,6 +67,8 @@ because of missingness.}
 \item{map}{a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.}
 
 \item{sparseX}{a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}}
+
+\item{priors}{a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}}
 }
 \description{
 Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).

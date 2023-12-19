@@ -230,6 +230,7 @@ startParams <- function(parameters,
 ##' @param sparseX see \code{\link{glmmTMB}}
 ##' @param old_smooths (optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 ##' from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements
+##' @param priors see \code{\link{priors}}
 ##' @keywords internal
 mkTMBStruc <- function(formula, ziformula, dispformula,
                        combForm,
@@ -252,7 +253,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        map=NULL,
                        sparseX=NULL,
                        control=glmmTMBControl(),
-                       old_smooths = NULL) {
+                       old_smooths = NULL,
+                       priors = NULL) {
 
 
   if (is.null(sparseX)) sparseX <- logical(0)
@@ -370,6 +372,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     if (sparseX[[component]]) lst$X else nullSparseMatrix()
   }
 
+  ## don't want to destroy user-specified prior info by writing
+  ##  over; we want the user-spec version in modelInfo
+
+  ## FIXME: would be nice to be able to get this with less info
+  ## (for external testing etc.) but ... ??
+
+  ## isolate names for localizing priors
+  get_fixnm <- function(x) c(colnames(x$X), colnames(x$XS))
+  fix_nms <- list(cond = get_fixnm(condList),
+                  zi = get_fixnm(ziList),
+                  disp = get_fixnm(dispList))
+  re_info <- list(cond = condReStruc, zi = ziReStruc)
+
+  ## easy way to get lengths of theta of individual components??
+  prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
+
   data.tmb <- namedList(
     ## fixed-effect (X) and random-effect (Z), dense and sparse model matrices    
     X = denseXval("cond",condList),
@@ -392,6 +410,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     doffset = c(dispList$offset),
     weights,
     size = c(size),
+    
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,
@@ -400,7 +419,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict
-  )
+    )
+
+    ## add prior info
+    data.tmb <- c(data.tmb, prior_struc)
 
   # function to set value for dorr
   rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
@@ -480,7 +502,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             condList, ziList, dispList, condReStruc, ziReStruc,
             family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
-            fr, se, call, verbose, REML, map, sparseX))
+            fr, se, call, verbose, REML, map, sparseX, priors))
 }
 
 ##' Create X and random effect terms from formula
@@ -977,6 +999,7 @@ binomialType <- function(x) {
 ##' @param start starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{psi} (extra family parameters, e.g., shape for Tweedie models).
 ##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
+##' @param priors a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom lme4 subbars findbars mkReTrms nobars
 ##' @importFrom Matrix t
@@ -1090,7 +1113,8 @@ glmmTMB <- function(
     REML=FALSE,
     start=NULL,
     map=NULL,
-    sparseX=NULL
+    sparseX=NULL,
+    priors=NULL
     )
 {
 
@@ -1278,7 +1302,8 @@ glmmTMB <- function(
                    start=start,
                    map=map,
                    sparseX=sparseX,
-                   control=control)
+                   control=control,
+                   priors = priors)
 
     ## Allow for adaptive control parameters
     TMBStruc$control <- lapply(control, eval, envir = TMBStruc)
@@ -1809,7 +1834,9 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 REML,
                                 map,
                                 sparseX,
-                                parallel = control$parallel))
+                                parallel = control$parallel,
+                                priors = set_class(priors, "glmmTMB_prior")))
+    
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
@@ -1919,10 +1946,13 @@ summary.glmmTMB <- function(object,...)
                    family = famL$family, link = famL$link,
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
-		   coefficients = coefs, sigma = sig,
+		   coefficients = coefs,
+                   sigma = sig,
 		   vcov = vcov(object),
 		   varcor = varcor, # and use formatVC(.) for printing.
-		   AICtab = llAIC[["AICtab"]], call = object$call
+		   AICtab = llAIC[["AICtab"]],
+                   call = object$call,
+                   priors = object$modelInfo$priors
                    ## residuals = residuals(object,"pearson",scaled = TRUE),
 		   ## fitMsgs = .merMod.msgs(object),
                    ## optinfo = object@optinfo
@@ -1971,8 +2001,27 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
     }
-
+    if (!is.null(x$prior)) {
+        cat("\nPriors:\n")
+        print(x$prior)
+    }
     invisible(x)
 }## print.summary.glmmTMB
 
-
+#' @importFrom stats reformulate
+#' @importFrom utils capture.output
+print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
+    if (is.null(x)) return(invisible(x))
+    pstr <- character(nrow(x))
+    for (i in seq_len(nrow(x))) {
+        ff <- reformulate(x$prior[i], response = from_prior_syn(x$class[i]))
+        if (!compact) {
+            print(showEnv = FALSE, ff)
+        } else {
+            pstr[i] <- capture.output(print(showEnv = FALSE, ff))
+        }
+    }
+    if (compact) cat(paste(pstr, collapse = "; "), "\n")
+    invisible(x)
+}
+             
