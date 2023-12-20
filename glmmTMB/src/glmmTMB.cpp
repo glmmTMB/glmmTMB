@@ -288,21 +288,21 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   if (term.blockCode == diag_covstruct) {
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
-    for(int i = 0; i < term.blockReps; i++){
+    for(int i = 0; i < term.blockReps; i++) {
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
       if (do_simulate) {
 	// FIXME this can be abstracted as a more general function (zero and fix are always the same,
 	// random_simcode will differ by type) ¿can we make 'covariance structure' a class, with nll and simulate methods??
         switch(term.simCode) {
-  case fix_simcode:
+	case fix_simcode:
           // do nothing, leave U values as is
-     break;
+	  break;
 	case zero_simcode:
 	  for (int j=0; j < U.rows(); j++) {
 	    U(j,i) = Type(0);
 	  };
 	  break;
-   case random_simcode:
+	case random_simcode:
           U.col(i) = rnorm(Type(0), sd);
           break;
 	default: error ("unknown simcode");
@@ -318,6 +318,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
           for (int j = 0; j < U.rows(); j++) {
 	    ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
 	    if (do_simulate) {
+	      if (term.simCode != random_simcode) {
+		Rf_error("simcode not yet implemented for homdiag cov struct");
+	      }
 	      U(j,i) = rnorm(Type(0), sd);
 	    }	      
 	  }
@@ -379,6 +382,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
+	if (term.simCode != random_simcode) {
+	  Rf_error("simcode not yet implemented for cs cov struct");
+	}
         U.col(i) = sd * nldens.simulate();
       }
     }
@@ -402,6 +408,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
+	if (term.simCode != random_simcode) {
+	  Rf_error("simcode not yet implemented for toep cov struct");
+	}
         U.col(i) = sd * nldens.simulate();
       }
     }
@@ -546,6 +555,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
+	if (term.simCode != random_simcode) {
+	  Rf_error("simcode not yet implemented for spatial cov structs");
+	}
         U.col(i) = sd * nldens.simulate();
       }
     }
