@@ -43,7 +43,10 @@ data("Pixel", package="nlme")
 complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)
 
 test_that("bad model convergence warning", {
-    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
+    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel,
+                                      ## weird starting values to force convergence problem
+                                      ## (works out of the box when Gaussian dist is param by SD)
+                                      start = list(theta=rep(-10,5))),
                    "convergence problem")
 })
 

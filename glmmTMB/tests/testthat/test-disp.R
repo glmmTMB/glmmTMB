@@ -37,7 +37,7 @@ test_that("disp calc", {
 })
 
 test_that("predict dispersion", {
-    expect_equal(predict(m0, type="disp"), sqrt(c(rep(10, 24*100), rep(5, 24*100))), tol=1e-2)
+    expect_equal(predict(m0, type="disp"), c(rep(10, 24*100), rep(5, 24*100)), tol=1e-2)
 })
 
 dat2 <<- rbind(head(d1, 50), head(d2, 50)) #smaller for faster fitting when not checking estimates

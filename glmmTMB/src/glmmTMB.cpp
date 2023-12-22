@@ -889,9 +889,6 @@ Type objective_function<Type>::operator() ()
     // predict dispersion
     // zi irrelevant; just reusing variable
     switch(family){
-    case gaussian_family:
-      mu = sqrt(phi);
-      break;
     case Gamma_family:
       mu = 1/sqrt(phi);
       break;
