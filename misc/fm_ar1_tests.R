@@ -56,3 +56,13 @@ fm_ar1$obj$fn(pars2) ## ??
 
 ## with SD param:
 
+
+library(glmmTMB)
+sf <- system.file("test_data/models.rda", package = "glmmTMB")
+L <- load(sf)
+sigma(fm2)
+## should be modifying par, parfull
+debug(glmmTMB::up2date)
+fm2B <- up2date(fm2, update_gauss_disp = TRUE)
+sigma(fm2B)
+glmmTMB:::getParList(fm2)$betad

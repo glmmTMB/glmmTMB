@@ -368,7 +368,7 @@ test_that("profile", {
 
 test_that("profile (no RE)", {
     p0_th <- profile(fm_noRE,npts=4)
-    expect_equal(dim(p0_th),c(43,3))
+    expect_equal(dim(p0_th),c(41,3))
 })
 
 test_that("vcov", {

@@ -86,12 +86,12 @@ test_that("varcorr_print", {
     m1 <- suppressWarnings(glmmTMB(y~c+(c|w)+(1|s),data=dd,
                   family=gaussian))
     cc <- squash_white(capture.output(print(VarCorr(m1),digits=2)))
+    ## updated for var -> SD reparam
     expect_equal(cc,
-        c("Conditional model:", "Groups Name Std.Dev. Corr",
-          "w (Intercept) 3.1e-05",
-          "c2 4.9e-06 0.98",
-          "s (Intercept) 3.4e-05",
-          "Residual 9.6e-01"))
+                 c("Conditional model:", "Groups Name Std.Dev. Corr",
+                   "w (Intercept) 9.6e-05", 
+                   "c2 4.0e-06 0.99", "s (Intercept) 9.4e-06",
+                   "Residual 9.6e-01"))
 
     ## check that all std devs are being printed (GH #851)
     cc <- capture.output(VarCorr(fm_cs2))

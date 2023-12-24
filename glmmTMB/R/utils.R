@@ -339,7 +339,8 @@ up2date <- function(oldfit, update_gauss_disp = FALSE, force = FALSE) {
   if (isNullPointer(oldfit$obj$env$ADFun$ptr) || force) {
       obj <- oldfit$obj
       ee <- obj$env
-      pars <- c(grep("last\\.par", names(ee), value = TRUE), "par")
+      pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
+                "parfull")
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -363,6 +364,9 @@ up2date <- function(oldfit, update_gauss_disp = FALSE, force = FALSE) {
           for (p in pars) {
               if (!is.null(nm <- names(ee[[p]]))) {
                   ee[[p]][nm == "betad"] <- ee[[p]][nm == "betad"]/2
+              }
+              if (!is.null(nm <- names(oldfit$fit[[p]]))) {
+                  oldfit$fit[[p]][nm == "betad"] <- oldfit$fit[[p]][nm == "betad"]/2
               }
           }
       }
