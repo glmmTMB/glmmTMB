@@ -20,9 +20,12 @@ cbpp <<- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 ##  be cosmetically different
 matchForm <- function(obj, objU, family=FALSE, fn = FALSE) {
   for(cmp in c("call","frame")) # <- more?
-     objU[[cmp]] <- obj[[cmp]]
-     ## Q: why are formulas equivalent but not identical?  A: their environments may differ
+      objU[[cmp]] <- obj[[cmp]]
+  ## Q: why are formulas equivalent but not identical?  A: their environments may differ
   objU$modelInfo$allForm <- obj$modelInfo$allForm
+  nm <- names(objU$modelInfo)
+  ## force package version to be equal to current
+  objU$modelInfo$packageVersion <- packageVersion("glmmTMB")
   if (family)  objU$modelInfo$family <- obj$modelInfo$family
   ## objective function/gradient may change between TMB versions
   if (fn)  {
