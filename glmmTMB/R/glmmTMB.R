@@ -1805,7 +1805,8 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 REML,
                                 map,
                                 sparseX,
-                                parallel = control$parallel))
+                                parallel = control$parallel,
+                                packageVersion = packageVersion("glmmTMB")))
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out
