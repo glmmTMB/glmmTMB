@@ -278,16 +278,17 @@ test_that("zero disp setting", {
     m0 <- glmmTMB(y~1, data=dd)
     v0 <- sigma(m0)^2
     m1 <- glmmTMB(y~1+(1|obs), data=dd)
-    tmpf <- function(x) c(sigma(x)^2,c(VarCorr(x)[["cond"]]$obs))
-    m <- -log10(sqrt(.Machine$double.eps))
-    pvec <- c(1,5,m,2*m,20)
-    res <- matrix(NA,ncol=2,nrow=length(pvec))
+    tmpf <- function(x) c(sigma(x)^2, c(VarCorr(x)[["cond"]]$obs))
+    m <- -log10(.Machine$double.eps^(1/4))
+    pvec <- c(1,2.5,m,2*m,10)
+    res <- matrix(NA,ncol=2,nrow=length(pvec), dimnames = list(format(pvec, digits = 3), c("sigma^2", "cond_var")))
     for (i in (seq_along(pvec))) {
         mz <- update(m1,dispformula=~0,
                      control=glmmTMBControl(zerodisp_val=log(10^(-pvec[i]))))
         res[i,] <- tmpf(mz)
     }
     res <- rbind(res,tmpf(m1))
+    ## sum of residual variance and RE variance should be approx constant/independent of fixed sigma
     expect_true(var(res[,1]+res[,2])<1e-8)
 })
 

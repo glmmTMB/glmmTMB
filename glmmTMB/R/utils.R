@@ -331,12 +331,15 @@ isNullPointer <- function(x) {
 #'
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
+#' @param update_gauss_disp update \code{betad} from variance to SD parameterization?
 #' @export
-up2date <- function(oldfit) {
+up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
+      pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
+                "parfull")
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -353,6 +356,20 @@ up2date <- function(oldfit) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
+      ## switch from variance to SD parameterization
+      if (update_gauss_disp &&
+          family(oldfit)$family == "gaussian") {
+          ee$parameters$betad <- ee$parameters$betad/2
+          for (p in pars) {
+              if (!is.null(nm <- names(ee[[p]]))) {
+                  ee[[p]][nm == "betad"] <- ee[[p]][nm == "betad"]/2
+              }
+              if (!is.null(nm <- names(oldfit$fit[[p]]))) {
+                  oldfit$fit[[p]][nm == "betad"] <- oldfit$fit[[p]][nm == "betad"]/2
+              }
+          }
+      }
+
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
@@ -378,8 +395,9 @@ up2date <- function(oldfit) {
 #' @param fn partial path to system file (e.g. test_data/foo.rda)
 #' @param verbose print names of updated objects?
 #' @param mustWork fail if file not found?
+#' @param \dots values passed through to \code{up2date}
 #' @export
-gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
+gt_load <- function(fn, verbose=FALSE, mustWork = FALSE, ...) {
     sf <- system.file(fn, package = "glmmTMB")
     found_file <- file.exists(sf)
     if (mustWork && !found_file) {
@@ -390,7 +408,7 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
     for (m in L) {
         if (inherits(get(m), "glmmTMB")) {
             if (verbose) cat(m,"\n")
-            assign(m, up2date(get(m)))
+            assign(m, up2date(get(m), ...))
         }
         assign(m, get(m), parent.env(), envir = parent.frame())
     }
