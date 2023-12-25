@@ -137,7 +137,7 @@ test_that("Alternative family specifications [via update(.)]", {
     expect_warning(res_list <- matchForm(gm0, update(gm0, family= list(family = "binomial",
                                                        link = "logit")),
                                          family=TRUE, fn=TRUE))
-    expect_equal(gm0, res_list)
+    expect_equal_nover(gm0, res_list)
 })
 
 test_that("Update Binomial", {
