@@ -332,11 +332,10 @@ isNullPointer <- function(x) {
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
 #' @param adjust_gauss_disp update \code{betad} from variance to SD parameterization?
-#' @param force update object even if not obviously necessary
 #' @export
-up2date <- function(oldfit, update_gauss_disp = FALSE, force = FALSE) {
+up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
-  if (isNullPointer(oldfit$obj$env$ADFun$ptr) || force) {
+  if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
       pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
