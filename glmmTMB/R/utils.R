@@ -331,7 +331,7 @@ isNullPointer <- function(x) {
 #'
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
-#' @param adjust_gauss_disp update \code{betad} from variance to SD parameterization?
+#' @param update_gauss_disp update \code{betad} from variance to SD parameterization?
 #' @export
 up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
