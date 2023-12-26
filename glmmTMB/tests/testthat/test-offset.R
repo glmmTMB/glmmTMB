@@ -56,7 +56,7 @@ test_that("LM with offset in formula - variable not in environment", {
 test_that("LM with offset in dispersion formula", {
     skip_on_cran()
     expect_equal(sigma(glmmTMB(y1~x, dat)),
-                 sigma(glmmTMB(y2~x,disp=~1+offset(log(o2)*2), dat)),
+                 sigma(glmmTMB(y2~x,disp=~1+offset(log(o2)), dat)),
                  tolerance=1e-3)
 
 })
@@ -64,7 +64,7 @@ test_that("LM with offset in dispersion formula", {
 test_that("LM with multiple offsets (cond/dispersion)", {
     skip_on_cran()
     m1 <<- glmmTMB(y0~x, dat)
-    m2 <<- glmmTMB(y3~x+offset(o),disp=~1+offset(log(o2)*2), dat)
+    m2 <<- glmmTMB(y3~x+offset(o),disp=~1+offset(log(o2)), dat)
     expect_equal(sigma(m1),sigma(m2),tolerance=1e-3)
     expect_equal(fixef(m1),fixef(m2),tolerance=1e-3)
 })

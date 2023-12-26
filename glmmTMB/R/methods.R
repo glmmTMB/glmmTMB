@@ -743,8 +743,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                  vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
                } else {
                  if (length(vformals) == 1) {
-                   # handle families where variance() returns the scaled variance
-                   vv <- vv * (theta / sigma(object))^2
+                     ## handle families where variance() returns the scaled variance
+                     ## FIXME: what is the logic here??
+                     vv <- vv * (theta / sigma(object))^2
                  }
                }
                r <- r/sqrt(vv)

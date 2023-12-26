@@ -1089,7 +1089,7 @@ binomialType <- function(x) {
 ##' dat <- rbind(d1, d2)
 ##' m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 ##' fixef(m0)$disp
-##' c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
+##' c(log(5), log(10)-log(5)) # expected dispersion model coefficients
 ##'
 ##'
 ##' ## Using 'map' to fix random-effects SD to 10
@@ -1390,7 +1390,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            collect=FALSE,
                            parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
-                           zerodisp_val=log(sqrt(.Machine$double.eps)),
+                           ## want variance to be sqrt(eps), so sd = eps^(1/4)
+                           zerodisp_val=log(.Machine$double.eps)/4,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip")) {
@@ -1844,8 +1845,9 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 map,
                                 sparseX,
                                 parallel = control$parallel,
-                                priors = set_class(priors, "glmmTMB_prior")))
-    
+                                priors = set_class(priors, "glmmTMB_prior"),
+                                packageVersion = packageVersion("glmmTMB")))
+
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out

@@ -72,7 +72,7 @@ If specified, the dispersion model uses a log link. Denoting the variance as \eq
 as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 and the predicted mean as \eqn{\mu}{mu}:
  \describe{
-     \item{gaussian}{(from base R): constant \eqn{V=\phi}{V=phi}}
+     \item{gaussian}{(from base R): constant \eqn{V=\phi^2}{V=phi^2}}
      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu\phi}{V=mu*phi}}
       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}

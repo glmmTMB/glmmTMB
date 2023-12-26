@@ -1,9 +1,5 @@
-## FIXME: redundant with logic in tests/testthat/setup_makeex.R
-if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
-  L <- load(system.file("test_data", "models.rda", package = "glmmTMB"))
-} else {
-  library(glmmTMB)
-  save_image <- TRUE
+library(glmmTMB)
+save_image <- TRUE
 
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
@@ -85,4 +81,3 @@ fm_ar1 <- glmmTMB(Reaction ~ 1 +
 
 if (save_image) save.image(file="models.rda", version=2)
 
- } ## if not on CRAN
