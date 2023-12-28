@@ -661,8 +661,16 @@ set_simcodes <- function(g, val = "zero") {
 ##'                          betad = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
 ##' )
-
-##' head(sim_count[[1]])
+##' data("sleepstudy", package = "lme4")
+##' sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
+##'             return_val = "pars",
+##'              newdata = sleepstudy,
+##'              family = gaussian,
+##'              newparams = list(beta = c(280, 1),
+##'                          betad = log(2), ## log(SD)
+##'                          theta = log(c(2, 2, 1))),
+##' )
+##' 
 ##' @export
 simulate_new <- function(object,
                          nsim = 1,
@@ -672,7 +680,6 @@ simulate_new <- function(object,
                          return_val = c("sim", "pars", "object")) {
     return_val <- match.arg(return_val)
     family <- get_family(family)
-    if (!is.null(seed)) set.seed(seed)
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
     ## fill in fake LHS
@@ -690,25 +697,45 @@ simulate_new <- function(object,
                   ...,
                   doFit = FALSE)
     ## construct TMB object, but don't fit it
+    ## (for cnms etc.)
+    components <- c("cond", "zi")
+    restrucs <- r1[paste0(components, "ReStruc")]
+    browser()
+    bfun <- function(x) {
+        if (length(x) == 0) return(numeric(0))
+        with(x, blockSize * blockReps)
+    }
+    squash_ws <- function(x) gsub(" ", "", x)
+    retrms <- unlist(sapply(restrucs, function(x) sapply(x, bfun)))
+    ## set up indices ...
+    if ("b" %in% names(newparams) && is.list(newparams$b)) {
+        ## first try to match full name (component + term)
+        w <- match(
+    }
     r2 <- fitTMB(r1, doOptim = FALSE)
-    if (return_val == "pars") return(r2$env$last.par)
+    ## sort out components of b (if necessary)
+    pars <- do.call("make_pars",
+                    c(list(r2$env$last.par), newparams))
+    for (nm in names(newparams)) {
+        r1$parameters[[nm]] <- newparams[[nm]]
+    }
+    if ("b" %in% names(newparams)) {
+        r1$map <- r1$mapArg <-
+            list(b = factor(rep(NA, length(newparams$b))))
+    }
+    if ("b" %in% names(newparams)) {
+        set_simcodes(r2, "fix")
+    }
+    if (!is.null(seed)) set.seed(seed)
+    if (return_val == "pars") {
+        r2$simulate(par = pars)
+        return(r2$env$last.par)
+    }
     if (return_val == "object") {
         ## insert parameters (don't do this before because we want to
         ## be able to return default params if they're not specified)
-        for (nm in names(newparams)) {
-            r1$parameters[[nm]] <- newparams[[nm]]
-        }
-        if ("b" %in% names(newparams)) {
-            r1$map <- r1$mapArg <-
-                list(b = factor(rep(NA, length(newparams$b))))
-        }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
         return(r3)
-    }
-    pars <- do.call("make_pars",
-                    c(list(r2$env$last.par), newparams))
-    if ("b" %in% names(newparams)) {
-        set_simcodes(r2, "fix")
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
