@@ -16,9 +16,7 @@ with(sleepstudy, points(Days, Reaction, col = 2))
 s1 <- simulate_new( ~ Days + (1|Subject),
              newdata = sleepstudy,
              family = gaussian,
-             newparams = list(beta = c(200, 1),
-                              betad = 1,
-                              theta = rep(1,3)),
+             newparams = pp,
              return_val = "object")
 
 s1$obj$env$last.par

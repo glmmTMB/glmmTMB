@@ -698,33 +698,29 @@ simulate_new <- function(object,
                   doFit = FALSE)
     ## construct TMB object, but don't fit it
     ## (for cnms etc.)
-    components <- c("cond", "zi")
-    restrucs <- r1[paste0(components, "ReStruc")]
-    browser()
-    bfun <- function(x) {
-        if (length(x) == 0) return(numeric(0))
-        with(x, blockSize * blockReps)
-    }
-    squash_ws <- function(x) gsub(" ", "", x)
-    retrms <- unlist(sapply(restrucs, function(x) sapply(x, bfun)))
-    ## set up indices ...
-    if ("b" %in% names(newparams) && is.list(newparams$b)) {
-        ## first try to match full name (component + term)
-        w <- match(
-    }
     r2 <- fitTMB(r1, doOptim = FALSE)
     ## sort out components of b (if necessary)
+    if ("b" %in% names(newparams)) {
+        if (!is.list(newparams$b)) {
+            b_inds <- seq_along(newparams$b)
+        } else {
+            components <- c("cond", "zi")
+            restrucs <- r1[paste0(components, "ReStruc")]
+            b_inds <- get_b_inds(restrucs, names(newparams$b))
+        }
+        n_b <- sum(names(r2$env$last.par) == "b") ## FIXME: better way?
+        b_fac <- factor(seq(n_b))
+        b_fac[b_inds] <- NA
+        new_b <- rep(0, n_b)
+        new_b[b_inds] <- unlist(newparams$b)
+        newparams$b <- new_b
+        r1$map <- r1$mapArg <- list(b = b_fac)
+        set_simcodes(r2, "fix")
+    }
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     for (nm in names(newparams)) {
         r1$parameters[[nm]] <- newparams[[nm]]
-    }
-    if ("b" %in% names(newparams)) {
-        r1$map <- r1$mapArg <-
-            list(b = factor(rep(NA, length(newparams$b))))
-    }
-    if ("b" %in% names(newparams)) {
-        set_simcodes(r2, "fix")
     }
     if (!is.null(seed)) set.seed(seed)
     if (return_val == "pars") {
@@ -792,3 +788,37 @@ get_family <- function(family) {
     return(family)
 }
 
+
+#' @param reStrucs a list containing conditional and z-i RE structures
+#' @param b_names vector of names matching RE terms
+#' @examples
+#' data("sleepstudy", package = "lme4")
+#' fm1 <- glmmTMB(Reaction ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
+#' re <- fm1$modelInfo$reStruc
+#' get_b_inds(re, "1|Subject")
+get_b_inds <- function(reStrucs, b_names) {
+    bfun <- function(x) {
+        if (length(x) == 0) return(numeric(0))
+        with(x, blockSize * blockReps)
+    }
+    squash_ws <- function(x) gsub(" ", "", x)
+    retrms <- unlist(sapply(reStrucs, function(x) sapply(x, bfun)))
+    ## set up indices ...
+    inds <- cumsum(c("start" = 0, retrms))
+    ## first try to match full name (component + term)
+    nms <- squash_ws(b_names)
+    inms <- squash_ws(names(inds))
+    w <- match(nms, inms)
+    unmatched <- which(is.na(w))
+    if (length(unmatched)>0) {
+        w[unmatched] <- match(nms[unmatched],
+                              gsub("^(cond|zi)ReStruc\\.", "", inms))
+    }
+    if (any(is.na(w))) {
+        stop("unmatched b values")
+    }
+    ## set specified values
+    res <- lapply(w, function(i) seq(inds[i-1]+1, inds[i]))
+    names(res) <- b_names
+    res
+}
