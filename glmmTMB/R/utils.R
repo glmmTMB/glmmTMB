@@ -598,6 +598,7 @@ fix_predvars <- function(pv,tt) {
 
 make_pars <- function(pars, ...) {
     ## FIXME: check for name matches, length matches etc.
+    ## (useful errors)
     ## better to split by name first??
     L <- list(...)
     for (nm in names(L)) {
@@ -608,9 +609,11 @@ make_pars <- function(pars, ...) {
 }
 
 ## helper function: modify sim codes **in place**
-set_simcodes <- function(g, val = "zero") {
+set_simcodes <- function(g, val = "zero", terms = "ALL") {
     ee <- g$env
-    for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
+    if (terms == "ALL") {
+        for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
+    }
 }
 
 ##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
@@ -696,9 +699,6 @@ simulate_new <- function(object,
                   control = glmmTMBControl(optCtrl = list(iter.max = 0)),
                   ...,
                   doFit = FALSE)
-    ## construct TMB object, but don't fit it
-    ## (for cnms etc.)
-    r2 <- fitTMB(r1, doOptim = FALSE)
     ## sort out components of b (if necessary)
     if ("b" %in% names(newparams)) {
         if (!is.list(newparams$b)) {
@@ -707,30 +707,42 @@ simulate_new <- function(object,
             components <- c("cond", "zi")
             restrucs <- r1[paste0(components, "ReStruc")]
             b_inds <- get_b_inds(restrucs, names(newparams$b))
+            b_terms <- get_b_inds(restrucs, names(newparams$b),
+                                  ret_vals = "terms")
         }
-        n_b <- sum(names(r2$env$last.par) == "b") ## FIXME: better way?
-        b_fac <- factor(seq(n_b))
+        n_b <- length(r1$parameters$b)
+        b_fac <- seq(n_b)
         b_fac[b_inds] <- NA
+        ## TMB complains if number of levels doesn't match values:
+        ##  make into a factor *after* setting NA values
+        b_fac <- factor(b_fac)
         new_b <- rep(0, n_b)
         new_b[b_inds] <- unlist(newparams$b)
-        newparams$b <- new_b
+        r1$parameters$b <- new_b
         r1$map <- r1$mapArg <- list(b = b_fac)
-        set_simcodes(r2, "fix")
     }
+    ## construct TMB object, but don't fit it
+    ## (for cnms etc., simulations, etc.)
+    r2 <- fitTMB(r1, doOptim = FALSE)
+
+    set_b <-  function(x, b) {
+        x[names(x)=="b"] <- b
+        return(x)
+    }
+
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     for (nm in names(newparams)) {
         r1$parameters[[nm]] <- newparams[[nm]]
     }
     if (!is.null(seed)) set.seed(seed)
-    if (return_val == "pars") {
-        r2$simulate(par = pars)
-        return(r2$env$last.par)
-    }
-    if (return_val == "object") {
-        ## insert parameters (don't do this before because we want to
-        ## be able to return default params if they're not specified)
+    if (return_val %in% c("pars", "object")) {
+        b_vals <- r2$simulate(par = pars)$b
+        if (return_val == "pars") {
+            return(set_b(pars, b_vals))
+        }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
+        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals)
         return(r3)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
@@ -796,18 +808,12 @@ get_family <- function(family) {
 #' fm1 <- glmmTMB(Reaction ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
 #' re <- fm1$modelInfo$reStruc
 #' get_b_inds(re, "1|Subject")
-get_b_inds <- function(reStrucs, b_names) {
-    bfun <- function(x) {
-        if (length(x) == 0) return(numeric(0))
-        with(x, blockSize * blockReps)
-    }
+#'
+#'
+get_b_terms <- function(nms, inms) {
     squash_ws <- function(x) gsub(" ", "", x)
-    retrms <- unlist(sapply(reStrucs, function(x) sapply(x, bfun)))
-    ## set up indices ...
-    inds <- cumsum(c("start" = 0, retrms))
-    ## first try to match full name (component + term)
-    nms <- squash_ws(b_names)
-    inms <- squash_ws(names(inds))
+    nms <- squash_ws(nms)
+    inms <- squash_ws(inms)
     w <- match(nms, inms)
     unmatched <- which(is.na(w))
     if (length(unmatched)>0) {
@@ -815,10 +821,24 @@ get_b_inds <- function(reStrucs, b_names) {
                               gsub("^(cond|zi)ReStruc\\.", "", inms))
     }
     if (any(is.na(w))) {
-        stop("unmatched b values")
+        stop("unmatched RE terms")
     }
+    return(w)
+}
+    
+                        
+get_b_inds <- function(reStrucs, b_names, ret_val = c("indices", "terms")) {
+    bfun <- function(x) {
+        if (length(x) == 0) return(numeric(0))
+        with(x, blockSize * blockReps)
+    }
+    retrms <- unlist(sapply(reStrucs, function(x) sapply(x, bfun)))
+    ## set up indices ...
+    w <- get_b_terms(b_names, names(reStrucs))
+    inds <- cumsum(c("start" = 0, retrms))
+    ## first try to match full name (component + term)
     ## set specified values
-    res <- lapply(w, function(i) seq(inds[i-1]+1, inds[i]))
+    res <- lapply(w, function(i) seq(inds[i]+1, inds[i+1]))
     names(res) <- b_names
     res
 }
