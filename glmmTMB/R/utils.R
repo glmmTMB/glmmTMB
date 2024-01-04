@@ -740,7 +740,7 @@ simulate_new <- function(object,
                 nre <- length(r1[[i]])
                 cur_b <- which(b_terms < nre)
                 if (length(cur_b) > 0) {
-                    for (j in cur_b) {
+                    for (j in b_terms[cur_b]) {
                         ## ugh, have to set in two places: do this upstream
                         ## of glmmTMB() call?
                         r1[[cnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]

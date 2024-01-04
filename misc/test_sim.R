@@ -118,4 +118,3 @@ s12 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                    newparams = pp6,
                    return_val = "pars")
 
-
