@@ -49,10 +49,6 @@ for more information on the parameterization of different covariance structures.
 }
 \examples{
 ## use Salamanders data for structure/covariates
-simulate_new(~ mined + (1|site),
-             zi = ~ mined,
-             newdata = Salamanders,
-             return_val = "pars")
 sim_count <- simulate_new(~ mined + (1|site),
              newdata = Salamanders,
              zi = ~ mined,
@@ -72,5 +68,14 @@ sim_obj <- simulate_new(~ mined + (1|site),
                          betad = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)
 )
-head(sim_count[[1]])
+data("sleepstudy", package = "lme4")
+sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
+             return_val = "pars",
+             newdata = sleepstudy,
+             family = gaussian,
+             newparams = list(beta = c(280, 1),
+                         betad = log(2), ## log(SD)
+                         theta = log(c(2, 2, 1))),
+)
+
 }

@@ -80,11 +80,6 @@ mkTMBStruc(
 from an existing model. A list of smooths for each model component (only cond and zi at present); each smooth has sm and re elements}
 
 \item{priors}{see \code{\link{priors}}}
-
-\item{zioffset}{offset for zero-inflated model}
-
-\item{doffset}{offset for dispersion model}
-
 }
 \description{
 Extract info from formulas, reTrms, etc., format for TMB

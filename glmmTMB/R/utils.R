@@ -653,10 +653,6 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
-##' simulate_new(~ mined + (1|site),
-##'              zi = ~ mined,
-##'              newdata = Salamanders,
-##'              return_val = "pars")
 ##' sim_count <- simulate_new(~ mined + (1|site),
 ##'              newdata = Salamanders,
 ##'              zi = ~ mined,
@@ -678,7 +674,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' )
 ##' data("sleepstudy", package = "lme4")
 ##' sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
-##'             return_val = "pars",
+##'              return_val = "pars",
 ##'              newdata = sleepstudy,
 ##'              family = gaussian,
 ##'              newparams = list(beta = c(280, 1),
@@ -862,8 +858,7 @@ get_re_names <- function(re) {
 #' fm1 <- glmmTMB(Reaction ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
 #' re <- fm1$modelInfo$reStruc
 #' get_b_inds(re, "1|Subject")
-#'
-#'
+#' @noRd
 get_b_terms <- function(nms, inms) {
     squash_ws <- function(x) gsub(" ", "", x)
     nms <- squash_ws(nms)
