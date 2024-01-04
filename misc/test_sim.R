@@ -50,9 +50,22 @@ s1 <- simulate_new( ~ Days + (Days|Subject),
                    newparams = pp2,
                    return_val = "pars")
 
-data("sleepstudy", package = "lme4")
-fm1 <- glmmTMB(Reaction ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
-re <- fm1$modelInfo$reStruc
-debug(glmmTMB:::get_b_inds)
-glmmTMB:::get_b_inds(re, "1|Subject")
-glmmTMB:::get_b_inds(re, "1|Subject", ret_val = "terms")
+print(s1)
+
+s1 <- simulate_new( ~ Days + (Days|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp2,
+                   return_val = "object")
+
+getME(s1, "b")  ## correct
+
+pp3 <- c(pp, list(b = list("Days|Subject" = pp2$b)))
+
+s3 <- simulate_new( ~ Days + (Days|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp3,
+                   return_val = "pars")

@@ -596,16 +596,21 @@ fix_predvars <- function(pv,tt) {
     return(new_pv)
 }
 
-make_pars <- function(pars, ...) {
+make_pars <- function(pars, ..., include_extra = TRUE) {
     ## FIXME: check for name matches, length matches etc.
     ## (useful errors)
     ## better to split by name first??
     L <- list(...)
+    pList <- split(pars, names(pars))
+    if (!include_extra) L <- L[intersect(names(L), names(pList))]
     for (nm in names(L)) {
-        v <- (names(pars) == nm)
-        pars[v] <- L[[nm]]
+        pList[[nm]] <- L[[nm]]
     }
-    return(pars)
+    ## workaround to get non-unique names ...
+    pList <- mapply(function(x, n) { setNames(x, rep(n, length(x))) },
+                    pList, names(pList))
+    pvec <- unlist(unname(pList))
+    return(pvec)
 }
 
 ## helper function: modify sim codes **in place**
@@ -703,7 +708,6 @@ simulate_new <- function(object,
     if ("b" %in% names(newparams)) {
         components <- c("cond", "zi")
         cnames <- paste0(components, "ReStruc")
-        browser()
         if (!is.list(newparams$b)) {
             b_inds <- seq_along(newparams$b)
             for (i in cnames) {
@@ -715,7 +719,7 @@ simulate_new <- function(object,
             restrucs <- r1[cnames]
             b_inds <- get_b_inds(restrucs, names(newparams$b))
             b_terms <- get_b_inds(restrucs, names(newparams$b),
-                                  ret_vals = "terms")
+                                  ret_val = "terms")
             ##  b_terms gives indices in overall sequence, not
             ## indices per term -- we have to split these by
             ## term. Should probably be handled upstream?
@@ -733,12 +737,12 @@ simulate_new <- function(object,
         }
         n_b <- length(r1$parameters$b)
         b_fac <- seq(n_b)
-        b_fac[b_inds] <- NA
+        b_fac[unlist(b_inds)] <- NA
         ## TMB complains if number of levels doesn't match values:
         ##  make into a factor *after* setting NA values
         b_fac <- factor(b_fac)
         new_b <- rep(0, n_b)
-        new_b[b_inds] <- unlist(newparams$b)
+        new_b[unlist(b_inds)] <- unlist(newparams$b)
         r1$parameters$b <- new_b
         r1$map <- r1$mapArg <- list(b = b_fac)
     }
@@ -752,8 +756,8 @@ simulate_new <- function(object,
     }
 
     pars <- do.call("make_pars",
-                    c(list(r2$env$last.par), newparams))
-    ## FIXME/stopped here: have to re-insert mapped parameters, ugh ...
+                    c(list(r2$env$last.par), newparams,
+                      list(include_extra = FALSE)))
 
     for (nm in names(newparams)) {
         r1$parameters[[nm]] <- newparams[[nm]]
@@ -762,6 +766,9 @@ simulate_new <- function(object,
     if (return_val %in% c("pars", "object")) {
         b_vals <- r2$simulate(par = pars)$b
         if (return_val == "pars") {
+            pars <- do.call("make_pars",
+                            c(list(r2$env$last.par), newparams,
+                              list(include_extra = TRUE)))
             return(set_b(pars, b_vals))
         }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
