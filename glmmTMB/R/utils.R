@@ -548,7 +548,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
      if (length(map)>0) {
          for (m in seq_along(map)) {
             if (length(NAmap <- which(is.na(map[[m]])))>0) {
-                w <- match(names(map)[m],par_components) ##
+                w <- match(names(map)[m], par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
                     nameList[[w]] <- nameList[[w]][-NAmap]
                 }
@@ -701,14 +701,35 @@ simulate_new <- function(object,
                   doFit = FALSE)
     ## sort out components of b (if necessary)
     if ("b" %in% names(newparams)) {
+        components <- c("cond", "zi")
+        cnames <- paste0(components, "ReStruc")
+        browser()
         if (!is.list(newparams$b)) {
             b_inds <- seq_along(newparams$b)
+            for (i in cnames) {
+                for (j in names(r1[[i]])) {
+                    r1[[i]][[j]]$simCode <- .valid_simcode[["random"]]
+                }
+            }
         } else {
-            components <- c("cond", "zi")
-            restrucs <- r1[paste0(components, "ReStruc")]
+            restrucs <- r1[cnames]
             b_inds <- get_b_inds(restrucs, names(newparams$b))
             b_terms <- get_b_inds(restrucs, names(newparams$b),
                                   ret_vals = "terms")
+            ##  b_terms gives indices in overall sequence, not
+            ## indices per term -- we have to split these by
+            ## term. Should probably be handled upstream?
+            for (i in cnames) {
+                nre <- length(r1[[i]])
+                cur_b <- which(b_terms < nre)
+                if (length(cur_b) > 0) {
+                    for (j in cur_b) {
+                        r1[[i]][[j]]$simCode <- .valid_simcode[["random"]]
+                    }
+                    b_terms <- b_terms[-cur_b]
+                }
+                b_terms <- b_terms - nre
+            }
         }
         n_b <- length(r1$parameters$b)
         b_fac <- seq(n_b)
@@ -732,6 +753,8 @@ simulate_new <- function(object,
 
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
+    ## FIXME/stopped here: have to re-insert mapped parameters, ugh ...
+
     for (nm in names(newparams)) {
         r1$parameters[[nm]] <- newparams[[nm]]
     }
@@ -800,6 +823,10 @@ get_family <- function(family) {
     return(family)
 }
 
+## ugh, better way to do this?
+get_re_names <- function(re) {
+    names(unlist(sapply(re, function(x) sapply(x, function(y) NA))))
+}
 
 #' @param reStrucs a list containing conditional and z-i RE structures
 #' @param b_names vector of names matching RE terms
@@ -828,13 +855,17 @@ get_b_terms <- function(nms, inms) {
     
                         
 get_b_inds <- function(reStrucs, b_names, ret_val = c("indices", "terms")) {
+    ret_val <- match.arg(ret_val)
     bfun <- function(x) {
         if (length(x) == 0) return(numeric(0))
         with(x, blockSize * blockReps)
     }
     retrms <- unlist(sapply(reStrucs, function(x) sapply(x, bfun)))
     ## set up indices ...
-    w <- get_b_terms(b_names, names(reStrucs))
+    if (ret_val == "terms") {
+        return(get_b_terms(b_names, get_re_names(reStrucs)))
+    }
+    w <- get_b_terms(b_names, get_re_names(reStrucs))
     inds <- cumsum(c("start" = 0, retrms))
     ## first try to match full name (component + term)
     ## set specified values
