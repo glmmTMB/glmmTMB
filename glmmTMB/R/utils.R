@@ -596,6 +596,13 @@ fix_predvars <- function(pv,tt) {
     return(new_pv)
 }
 
+collapse_list <- function(pList) {
+    ## workaround to get non-unique names ...
+    pList <- mapply(function(x, n) { setNames(x, rep(n, length(x))) },
+                    pList, names(pList))
+    pvec <- unlist(unname(pList))
+}
+
 make_pars <- function(pars, ..., include_extra = TRUE) {
     ## FIXME: check for name matches, length matches etc.
     ## (useful errors)
@@ -605,13 +612,12 @@ make_pars <- function(pars, ..., include_extra = TRUE) {
     pList <- pList[unique(names(pars))] ## correct ordering
     if (!include_extra) L <- L[intersect(names(L), names(pList))]
     for (nm in names(L)) {
-        pList[[nm]] <- L[[nm]]
+        if (length(pList[[nm]]) == length(L[[nm]])) {
+            ## skip cases with different length (== partially-mapped vectors)
+            pList[[nm]] <- L[[nm]]
+        }
     }
-    ## workaround to get non-unique names ...
-    pList <- mapply(function(x, n) { setNames(x, rep(n, length(x))) },
-                    pList, names(pList))
-    pvec <- unlist(unname(pList))
-    return(pvec)
+    return(collapse_list(pList))
 }
 
 ## helper function: modify sim codes **in place**
@@ -691,6 +697,10 @@ simulate_new <- function(object,
     family <- get_family(family)
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
+    newparams0 <- newparams
+    ## store original params
+    ## (in case we need both complete-b and unmapped-b versions)
+    
     ## fill in fake LHS
     form <- object
     form[[3]] <- form[[2]]
@@ -756,9 +766,13 @@ simulate_new <- function(object,
     ## (for cnms etc., simulations, etc.)
     r2 <- fitTMB(r1, doOptim = FALSE)
 
-    set_b <-  function(x, b) {
-        x[names(x)=="b"] <- b
-        return(x)
+    set_b <-  function(x, b, map = NULL) {
+        if (!is.null(map)) {
+            b <- b[!is.na(map)]
+        }
+        pList <- split(x, names(x))
+        pList$b <- b
+        return(collapse_list(pList))
     }
 
     pars <- do.call("make_pars",
@@ -778,7 +792,7 @@ simulate_new <- function(object,
             return(set_b(pars, b_vals))
         }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
-        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals)
+        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map$b)
         return(r3)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
@@ -865,7 +879,6 @@ get_b_terms <- function(nms, inms) {
     }
     return(w)
 }
-    
                         
 get_b_inds <- function(reStrucs, b_names, ret_val = c("indices", "terms")) {
     ret_val <- match.arg(ret_val)

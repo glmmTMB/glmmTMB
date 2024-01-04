@@ -42,29 +42,80 @@ plot(sleepstudy$Days, s4, ylim = c(180,450))
 with(sleepstudy, points(Days, Reaction, col = 2))
 points(sleepstudy$Days, s1, col = 4)
 
-s1 <- simulate_new( ~ Days + (Days|Subject),
+s5 <- simulate_new( ~ Days + (Days|Subject),
                    seed = 101,
                    newdata = sleepstudy,
                    family = gaussian,
                    newparams = pp2,
                    return_val = "pars")
 
-print(s1)
+print(s5)
 
-s1 <- simulate_new( ~ Days + (Days|Subject),
+s6 <- simulate_new( ~ Days + (Days|Subject),
                    seed = 101,
                    newdata = sleepstudy,
                    family = gaussian,
                    newparams = pp2,
                    return_val = "object")
 
-getME(s1, "b")  ## correct
+getME(s6, "b")  ## correct, although names are wrong?
 
 pp3 <- c(pp, list(b = list("Days|Subject" = pp2$b)))
 
-s3 <- simulate_new( ~ Days + (Days|Subject),
+s7 <- simulate_new( ~ Days + (Days|Subject),
                    seed = 101,
                    newdata = sleepstudy,
                    family = gaussian,
                    newparams = pp3,
                    return_val = "pars")
+## same as before
+
+## try some examples with multiple b terms ...
+
+pp4 <- list(beta = c(280),
+           betad = 1,
+           theta = c(-1, 1, 0))
+
+
+## basic sim (checking for sensible parameters)
+s8 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp4)[[1]]
+
+s9 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp4,
+                   return_val = "pars")
+
+nb <- sum(names(s9) == "b")
+pp5 <- c(pp4, list(b = rep(c(-1, 0, 1), length.out = nb)))
+## basic sim (checking for sensible parameters)
+s10 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp5)[[1]]
+
+
+ns <- length(unique(sleepstudy$Subject))
+pp6 <- c(pp4, list(b = list("0+factor(Days)|Subject" =
+                                rep(c(-1, 0, 1), length.out = nb - ns))))
+
+s11 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp6)[[1]]
+
+s12 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp6,
+                   return_val = "pars")
+
+
