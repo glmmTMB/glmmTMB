@@ -602,6 +602,7 @@ make_pars <- function(pars, ..., include_extra = TRUE) {
     ## better to split by name first??
     L <- list(...)
     pList <- split(pars, names(pars))
+    pList <- pList[unique(names(pars))] ## correct ordering
     if (!include_extra) L <- L[intersect(names(L), names(pList))]
     for (nm in names(L)) {
         pList[[nm]] <- L[[nm]]
@@ -708,11 +709,13 @@ simulate_new <- function(object,
     if ("b" %in% names(newparams)) {
         components <- c("cond", "zi")
         cnames <- paste0(components, "ReStruc")
+        tnames <- c("terms", "termszi")
         if (!is.list(newparams$b)) {
             b_inds <- seq_along(newparams$b)
-            for (i in cnames) {
-                for (j in names(r1[[i]])) {
-                    r1[[i]][[j]]$simCode <- .valid_simcode[["random"]]
+            for (i in seq_along(cnames)) {
+                for (j in seq_along(r1[[cnames[i]]])) {
+                    r1[[cnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
+                    r1$data.tmb[[tnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
                 }
             }
         } else {
@@ -723,12 +726,15 @@ simulate_new <- function(object,
             ##  b_terms gives indices in overall sequence, not
             ## indices per term -- we have to split these by
             ## term. Should probably be handled upstream?
-            for (i in cnames) {
+            for (i in seq_along(cnames)) {
                 nre <- length(r1[[i]])
                 cur_b <- which(b_terms < nre)
                 if (length(cur_b) > 0) {
                     for (j in cur_b) {
-                        r1[[i]][[j]]$simCode <- .valid_simcode[["random"]]
+                        ## ugh, have to set in two places: do this upstream
+                        ## of glmmTMB() call?
+                        r1[[cnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
+                        r1$data.tmb[[tnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
                     }
                     b_terms <- b_terms[-cur_b]
                 }
