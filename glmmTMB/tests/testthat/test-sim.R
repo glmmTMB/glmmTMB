@@ -114,7 +114,7 @@ s9 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                    newparams = pp4,
                    return_val = "pars")
 
-testthat("simulate_new with two RE terms", {
+test_that("simulate_new with two RE terms", {
     expect_equal(unname(head(s9)),
                  c(-0.119942121932298, 0.203239358640131, -0.248297964136576, 
                    0.078858438002708, 0.114325605998615, 0.431878061822679))
@@ -130,7 +130,7 @@ s10 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                     family = gaussian,
                     newparams = pp5)[[1]]
 
-testthat("simulate_new with two RE terms, fixed b", {
+test_that("simulate_new with two RE terms, fixed b", {
     s11 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                         seed = 101,
                         newdata = sleepstudy,
@@ -150,7 +150,7 @@ s12 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                    family = gaussian,
                    newparams = pp6)[[1]]
 
-testthat("simulate_new, b partially fixed", {
+test_that("simulate_new, b partially fixed", {
     expect_false(isTRUE(all.equal(s10, s12)))
 })    
 
@@ -161,7 +161,7 @@ s13 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                    newparams = pp6,
                    return_val = "pars")
 
-testthat("simulate_new, b partially fixed (pars)", {
+test_that("simulate_new, b partially fixed (pars)", {
     bvec <- unname(s13[names(s13) == "b"])
     expect_equal(head(bvec),
                  c(-0.119942121932298, 0.203239358640131, -0.248297964136576, 
