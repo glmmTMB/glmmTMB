@@ -774,9 +774,6 @@ simulate_new <- function(object,
                     c(list(r2$env$last.par), newparams,
                       list(include_extra = FALSE)))
 
-    for (nm in names(newparams)) {
-        r1$parameters[[nm]] <- newparams[[nm]]
-    }
     if (!is.null(seed)) set.seed(seed)
     if (return_val %in% c("pars", "object")) {
         b_vals <- r2$simulate(par = pars)$b
@@ -785,6 +782,12 @@ simulate_new <- function(object,
                             c(list(r2$env$last.par), newparams,
                               list(include_extra = TRUE)))
             return(set_b(pars, b_vals))
+        }
+        ## FIXME: need to set start= values as well when simulating
+        ## object??
+        ## what do we do when b is specified/partially specified?
+        for (nm in names(newparams)) {
+            r1$parameters[[nm]] <- newparams[[nm]]
         }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
         r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map$b)

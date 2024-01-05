@@ -170,11 +170,11 @@ testthat("simulate_new, b partially fixed (pars)", {
 })
 
 ## s14 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
-##                    seed = 101,
+##                     seed = 101,
 ##                    newdata = sleepstudy,
-##                    family = gaussian,
+##                     family = gaussian,
 ##                    newparams = pp6,
-##                    return_val = "object")
+##                     return_val = "object")
 
 ## Problem with these parameter entries:
 ## b 
