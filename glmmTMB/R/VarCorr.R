@@ -301,8 +301,8 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
 
     ## get std devs:
     reStdDev <- lapply(varcor, getCorSD)
-    ## need correlations if
-    useCor <- (sapply(varcor,getCovstruct)!="us" |
+    ## need correlations
+    useCor <- (!grepl("us|diag", sapply(varcor,getCovstruct)) |
                sapply(reStdDev,length)>1)
     cnms <- Map(function(x,n) colnames(x)[seq(n)], varcor, lengths(reStdDev))
 
