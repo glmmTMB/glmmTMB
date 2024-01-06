@@ -5,7 +5,11 @@
 \title{Substitute safe chars (+) for specials (for use in \code{model.frame})
 (Generalized from \code{lme4}'s \code{subbars} function.)}
 \usage{
-sub_specials(term, specials = c("|", "||", "s"), keep_args = c(2, 2, 1))
+sub_specials(
+  term,
+  specials = c("|", "||", "s"),
+  keep_args = c(2L, 2L, NA_integer_)
+)
 }
 \arguments{
 \item{term}{formula or term in a formula}
@@ -22,7 +26,9 @@ Substitute safe chars (+) for specials (for use in \code{model.frame})
 (Generalized from \code{lme4}'s \code{subbars} function.)
 }
 \examples{
-sub_specials( ~ (1|x) + (a + b || y) + s(a, b, c))
+sub_specials( ~ s(a, k=4))
+sub_specials( ~ (1|x) + (a + b || y) + s(a, k=4))
 sub_specials(Reaction ~ s(Days) + (1 + Subject))
+sub_specials(~ s(cos((y^2*3)/2), bs = "tp"))
 }
 \keyword{internal}
