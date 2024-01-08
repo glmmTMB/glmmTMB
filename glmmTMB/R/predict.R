@@ -406,6 +406,11 @@ predict.glmmTMB <- function(object,
   }
 
   if (pop_pred) {
+
+      ## use re.form, ll. 749ff of utils.R to decide which
+      ##  b values to set to zero.  OK to map _all_ values in this case
+      ##  (unless they're in newparams) ?
+      ## browser()           
       TMBStruc <- within(TMBStruc, {
           parameters$b[] <- 0
           mapArg$b <- factor(rep(NA,length(parameters$b)))
