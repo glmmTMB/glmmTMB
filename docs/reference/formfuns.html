@@ -20,7 +20,7 @@ random effect terms"><!-- mathjax --><script src="https://cdnjs.cloudflare.com/a
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -217,10 +217,6 @@ random effect terms</p>
 <dt>preserve</dt>
 <dd><p>(integer) retain the specified occurrence of "value"</p></dd>
 
-
-<dt>a</dt>
-<dd><p>formula term</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
@@ -233,10 +229,10 @@ random effect terms</p>
     <h2>Examples</h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">addForm0</span><span class="op">(</span><span class="va">y</span><span class="op">~</span><span class="va">x</span>,<span class="op">~</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ x + 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7ff12736cee8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa86469d120&gt;</span>
 <span class="r-in"><span><span class="fu">addForm0</span><span class="op">(</span><span class="op">~</span><span class="va">x</span>,<span class="op">~</span><span class="va">y</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ~x + y</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7ff12736cee8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa86469d120&gt;</span>
 <span class="r-in"><span><span class="va">ff</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/findbars.html" class="external-link">findbars</a></span><span class="op">(</span><span class="va">y</span><span class="op">~</span><span class="fl">1</span><span class="op">+</span><span class="op">(</span><span class="va">x</span><span class="op">|</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="va">ff</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
@@ -301,7 +297,7 @@ random effect terms</p>
 <span class="r-in"><span><span class="fu"><a href="splitForm.html">splitForm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fu">us</span><span class="op">(</span><span class="va">x</span>,n<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $fixedFormula</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ~1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7ff1295b7200&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa860676260&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $reTrmFormulas</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $reTrmFormulas[[1]]</span>
@@ -422,7 +418,7 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a + poly(x + z, 3) + b</span>
 <span class="r-in"><span><span class="fu">drop.special</span><span class="op">(</span><span class="va">x</span><span class="op">~</span><span class="va">a</span> <span class="op">+</span> <span class="va">b</span><span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> x ~ a + b</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7ff12736cee8&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa86469d120&gt;</span>
 <span class="r-in"><span><span class="fu">replaceForm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fu">a</span><span class="op">(</span><span class="va">b</span><span class="op">+</span><span class="va">x</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">y</span>,<span class="va">z</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">R</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a(b + x * c(R, z))</span>
 <span class="r-in"><span><span class="va">ss</span> <span class="op">&lt;-</span> <span class="op">~</span><span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">cask</span><span class="op">:</span><span class="va">batch</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">batch</span><span class="op">)</span></span></span>

@@ -642,13 +642,8 @@ Type objective_function<Type>::operator() ()
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
-	// n.b. sigma() calculation is special-cased for Gaussian
-	// (exp(0.5*pl$betad), all other families except Gamma
-	//  use exp(pl$betad)
-	// so phi = variance, not SD
-	// (FIXME: ?? why ??)
-        tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-        SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
+        tmp_loglik = dnorm(yobs(i), mu(i), phi(i), true);
+        SIMULATE{yobs(i) = rnorm(mu(i), phi(i));}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
@@ -807,15 +802,16 @@ Type objective_function<Type>::operator() ()
 	// mu = exp(logmu + logsd^2/2)
 	// sd = sqrt((exp(logsd^2)-1)*exp(2*logmu + logsd^2)) = mu*sqrt(exp(logsd^2)-1)
 	// 1+(sd/mu)^2 = exp(logsd^2)
-	// logsd = sqrt(log(1+(sd/mu)^2))
-	// logmu = log(mu)- 
-        s1 = log1p(pow(phi(i)/mu(i), 2.0)); //log1p(x) = log(1 + x), log-scale var
+	// logvar = log(1+(sd/mu)^2)
+	// logsd = sqrt(logvar)
+	// logmu = log(mu)-logvar/2
+	// logvar via logspace_add() [log1p not compatible with CppAD]
+        s1 = logspace_add(2*(log(phi(i))-log(mu(i))), Type(0)); // log-scale var
         s2 = log(mu(i)) - s1/2; //log-scale mean
-        // s2 = log(mu(i)*mu(i)) - log(mu(i)*mu(i) + phi(i)*phi(i))/Type(2.0); //from Wikipedia
-        s3 = sqrt(s1); //log-scale sd
-
-	tmp_loglik = dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i));
-	// FIXME: simulate method?
+        s3 = sqrt(s1);          //log-scale sd
+	tmp_loglik = zt_lik_zero(yobs(i),
+			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
+	SIMULATE{yobs(i) = exp(rnorm(s2, s3));}  // untested
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);
@@ -893,9 +889,6 @@ Type objective_function<Type>::operator() ()
     // predict dispersion
     // zi irrelevant; just reusing variable
     switch(family){
-    case gaussian_family:
-      mu = sqrt(phi);
-      break;
     case Gamma_family:
       mu = 1/sqrt(phi);
       break;

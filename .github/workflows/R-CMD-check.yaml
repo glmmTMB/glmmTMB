@@ -57,12 +57,13 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
-
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: any::rcmdcheck
           needs: check
           working-directory: ./glmmTMB
+          upgrade: 'TRUE'
+# https://github.com/lme4/lme4/issues/756
 
       - name: Install extra LaTeX packages
         if: runner.os == 'Linux'

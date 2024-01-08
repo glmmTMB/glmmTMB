@@ -90,7 +90,6 @@ sigma.glmmTMB <- function(object, ...) {
     if (!usesDispersion(ff)) return(1.)
     if (length(pl$betad)>1) return(NA)
     switch(family(object)$family,
-           gaussian=exp(0.5*pl$betad),
            Gamma=exp(-0.5*pl$betad),
            exp(pl$betad))
 }

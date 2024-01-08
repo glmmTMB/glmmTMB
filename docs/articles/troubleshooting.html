@@ -11,7 +11,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 
-<meta name="date" content="2023-07-24" />
+<meta name="date" content="2023-10-14" />
 
 <title>Troubleshooting with glmmTMB</title>
 
@@ -338,7 +338,7 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 
 <h1 class="title toc-ignore">Troubleshooting with glmmTMB</h1>
-<h4 class="date">2023-07-24</h4>
+<h4 class="date">2023-10-14</h4>
 
 
 
@@ -799,10 +799,7 @@ be excluded from further consideration.</p>
 <div id="model-convergence-problem-eigenvalue-problems" class="section level2">
 <h2>Model convergence problem: eigenvalue problems</h2>
 <div class="sourceCode" id="cb42"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">glmmTMB</span>(count<span class="sc">~</span>spp <span class="sc">+</span> mined <span class="sc">+</span> (<span class="dv">1</span><span class="sc">|</span>site), <span class="at">zi=</span><span class="sc">~</span>spp <span class="sc">+</span> mined, Salamanders, <span class="at">family=</span>genpois)</span></code></pre></div>
-<pre><code>## Warning in finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old): Model convergence
-## problem; extreme or very small eigenvalues detected. See
-## vignette(&#39;troubleshooting&#39;)</code></pre>
-<div class="sourceCode" id="cb44"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diagnose</span>(m1)</span></code></pre></div>
+<div class="sourceCode" id="cb43"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diagnose</span>(m1)</span></code></pre></div>
 <pre><code>## Unusually large coefficients (|x|&gt;10):
 ## 
 ##   zi~sppPR   zi~sppDF zi~minedno 
@@ -875,8 +872,8 @@ fit.</p>
 <h1>Errors</h1>
 <div id="nanan-gradient-evaluation" class="section level2">
 <h2>NA/NaN gradient evaluation</h2>
-<div class="sourceCode" id="cb46"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a>dat1 <span class="ot">=</span> <span class="fu">expand.grid</span>(<span class="at">y=</span><span class="sc">-</span><span class="dv">1</span><span class="sc">:</span><span class="dv">1</span>, <span class="at">rep=</span><span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
-<span id="cb46-2"><a href="#cb46-2" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">=</span> <span class="fu">glmmTMB</span>(y<span class="sc">~</span><span class="dv">1</span>, dat1, <span class="at">family=</span>nbinom2)</span></code></pre></div>
+<div class="sourceCode" id="cb45"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a>dat1 <span class="ot">=</span> <span class="fu">expand.grid</span>(<span class="at">y=</span><span class="sc">-</span><span class="dv">1</span><span class="sc">:</span><span class="dv">1</span>, <span class="at">rep=</span><span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb45-2"><a href="#cb45-2" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">=</span> <span class="fu">glmmTMB</span>(y<span class="sc">~</span><span class="dv">1</span>, dat1, <span class="at">family=</span>nbinom2)</span></code></pre></div>
 <pre><code>## Error in eval(family$initialize): negative values not allowed for the negative binomial family</code></pre>
 <p><strong>FIXME</strong>: this is no longer a “gradient evaluation”
 error …</p>
