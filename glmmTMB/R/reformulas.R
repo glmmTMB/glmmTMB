@@ -179,6 +179,10 @@ expandGrpVar <- function(f) {
 ##' expandAllGrpVar(quote(1|f*g))
 ##' expandAllGrpVar(quote(1|f+g))
 ##' expandAllGrpVar(quote(a+b|f+g+h*i))
+##' ## wish list ... this should be (1|a) + (1|a:b) + (1|a:b:c) + (1|a:b:d) ...
+##' ## expandAllGrpVar(quote(a/b/(c+d)))
+##' expandAllGrpVar(quote(s(log(d), k = 4)))
+##' expandAllGrpVar(quote(s(log(d+1))))
 ##' @importFrom utils head
 ##' @rdname formfuns
 ##' @export
@@ -189,12 +193,12 @@ expandAllGrpVar <- function(bb) {
     else {
         for (i in seq_along(bb)) {
             esfun <- function(x) {
-                if (length(x)==1) return(x)
+                if (length(x)==1 || !anySpecial(x, "|")) return(x)
                 if (length(x)==2) {
-                    ## unary operator such as diag(1|f/g)
-                    ## return diag(...) + diag(...) + ...
-                    return(lapply(esfun(x[[2]]),
-                                  makeOp, y=head(x)))
+                        ## unary operator such as diag(1|f/g)
+                        ## return diag(...) + diag(...) + ...
+                        return(lapply(esfun(x[[2]]),
+                                      makeOp, y=head(x)))
                 }
                 if (length(x)==3) {
                     ## binary operator
@@ -202,8 +206,10 @@ expandAllGrpVar <- function(bb) {
                         return(lapply(expandGrpVar(x[[3]]),
                                       makeOp, x=x[[2]], op=quote(`|`)))
                     } else {
-                        return(setNames(makeOp(esfun(x[[2]]), esfun(x[[3]]),
-                                               op=x[[1]]), names(x)))
+                        return(x)
+                        ## return(x) would be nice, but in that case x gets evaluated
+                        ## return(setNames(makeOp(esfun(x[[2]]), esfun(x[[3]]),
+                        ##  op=x[[1]]), names(x)))
                     }
                 }
             } ## esfun def.
@@ -314,12 +320,20 @@ findbars_x <- function(term,
             return(fbx(term[[2]]))
         }
         ## binary operator, decompose both arguments
-        if (debug) cat("binary operator:",deparse(term[[2]]),",",
-                       deparse(term[[3]]),"\n")
-        c(fbx(term[[2]]), fbx(term[[3]]))
+        f2 <- fbx(term[[2]])
+        f3 <- fbx(term[[3]])
+
+        if (debug) { cat("binary operator:",deparse(term[[2]]),",",
+                         deparse(term[[3]]),"\n")
+                         cat("term 2: ", deparse(f2), "\n")
+                         cat("term 3: ", deparse(f3), "\n")
+        }
+        c(f2, f3)
     }
 
-    expandAllGrpVar(fbx(term))
+    fbx_term <- fbx(term)
+    if (debug) cat("fbx(term): ", deparse(fbx_term))
+    expandAllGrpVar(fbx_term)
 
 }
 
@@ -662,12 +676,14 @@ no_specials <- function(term, specials = c("|", "||", "s")) {
 ##' @return a term or formula with specials replaced by \code{+} (and extra arguments dropped)
 ##' @keywords internal
 ##' @examples
-##' sub_specials( ~ (1|x) + (a + b || y) + s(a, b, c))
+##' sub_specials( ~ s(a, k=4))
+##' sub_specials( ~ (1|x) + (a + b || y) + s(a, k=4))
 ##' sub_specials(Reaction ~ s(Days) + (1 + Subject))
+##' sub_specials(~ s(cos((y^2*3)/2), bs = "tp"))
 ##' @export
 sub_specials <- function (term,
                           specials = c("|", "||", "s"),
-                          keep_args = c(2, 2, 1)) {
+                          keep_args = c(2L, 2L, NA_integer_)) {
     if (is.name(term) || !is.language(term)) 
         return(term)
     ## previous version recursed immediately for unary operators,
@@ -675,16 +691,25 @@ sub_specials <- function (term,
     ## but here s(x) needs to be processed ...
     for (i in seq_along(specials)) {
         if (is.call(term) && term[[1]] == as.name(specials[i])) {
+            if (is.na(keep_args[i])) {
+                ## keep only *unnamed* args
+                if (!is.null(names(term))) {
+                    term <- term[names(term)==""]
+                }
+            } else {
+                term <- term[1:(1+keep_args[i])]
+            }
             term[[1]] <- as.name("+")
             ## converts s(x) to +x, which is ugly, but
             ##  formula can handle repeated '+'
             ## discard additional arguments (e.g for s(x, ...))
             ## (fragile re: order??)
-            term <- term[1:(1+keep_args[i])]
         }
     }
-    for (j in 2:length(term)) term[[j]] <- sub_specials(term[[j]],
-                                                        specials = specials,
-                                                        keep_args = keep_args)
+    for (j in 2:length(term)) {
+        term[[j]] <- sub_specials(term[[j]],
+                                  specials = specials,
+                                  keep_args = keep_args)
+    }
     term
 }
