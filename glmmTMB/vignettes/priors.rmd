@@ -17,12 +17,14 @@ While `glmmTMB` is primarily designed for maximum likelihood estimation (or rest
 * to mitigate *complete separation* (technically, when there is some linear combination of parameters that divides zero from non-zero responses in a count or binomial model; in practice, typically when one treatment combination has all-zero responses)
 * to mitigate *singular fits* in random effects, i.e. when there is insufficient data to estimate a variance parameter so that single variances collapse to zero or covariance matrices are estimated with less than full rank [@chungNondegenerate2013]
 * to apply a ridge penalty to a set of parameters (corresponding to an independent Gaussian prior on each parameter)
+* more generally, to *regularize* models that would otherwise be numerically unstable
+* for models that will be used with the `tmbstan` package as part of a fully Bayesian analysis (see below)
+
+See @bannerUse2020 and @sarmaPrior2020 for some opinions/discussion of priors.
 
 When priors are specified, `glmmTMB` will fit a *maximum a posteriori* (MAP) estimate. In other words, unlike most Bayesian estimate procedures that use Markov chain Monte Carlo to sample the entire parameter space and compute (typically)  posterior mean or median value of the parameters, `glmmTMB` will find the *mode* of the posterior distribution or the *most likely* value. The MAP estimate is theoretically less useful than the posterior mean or median, but is often a useful approximation.
 
-It is also possible to apply `tmbstan` to a fitted `glmmTMB` model that specifies priors (see the [MCMC vignette](./mcmc.html) in order to get samples from the posterior distribution as in a more typical Bayesian analysis.
-
-One can also think of adding priors as a way of *regularizing* or *penalizing* a maximum likelihood estimate.
+One can apply `tmbstan` to a fitted `glmmTMB` model that specifies priors (see the [MCMC vignette](./mcmc.html) in order to get samples from the posterior distribution as in a more typical Bayesian analysis.
 
 ## Load packages
 
