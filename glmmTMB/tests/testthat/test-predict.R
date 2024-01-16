@@ -503,9 +503,17 @@ test_that("pop-level prediction with missing grouping vars (GH #923)",
     
 test_that("weights with attributes are OK", {
     data(iris)
+    d <- as.data.frame(expand.grid(
+        Species = unique(iris$Species),
+        Petal.Width = 2,
+        wg = NA
+    ))
+    
     set.seed(101)
     iris$wg <- abs(rnorm(nrow(iris), 1, 0.1))
+    
     attr(iris$wg, "label") <- "weighting variable"
+    
     m <- glmmTMB(
         Petal.Length ~ Petal.Width + (1 | Species),
         weights = wg,
