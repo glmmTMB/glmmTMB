@@ -33,6 +33,12 @@
       per observation for \code{simulate_new()}.)
     } % itemize
   } % user-visible changes
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item predictions now work when \code{weights} variables have
+      attributes (GH #977)
+    } % itemize
+  } % bug fixes
 } % 1.1.8-9000
 
 \section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
