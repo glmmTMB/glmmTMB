@@ -40,7 +40,7 @@ jobs:
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, any::Matrix
           needs: check
           working-directory: ./glmmTMB
           upgrade: 'TRUE'
