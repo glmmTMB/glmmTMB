@@ -1587,11 +1587,7 @@ weights.glmmTMB <- function(object, type="prior", ...) {
 ## @param df degrees of freedom
 ## @param component which model component to test (cond, zi, or disp)
 
-##' @rawNamespace if(getRversion() >= "3.6.0") {
-##'      S3method(multcomp::modelparm, glmmTMB)
-##' } else {
-##'    export(modelparm.glmmTMB)
-##' }
+##' @rawNamespace if(getRversion() >= "3.6.0") { S3method(multcomp::modelparm, glmmTMB) } else {  export(modelparm.glmmTMB) }
 modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
                                vcov. = function(x) vcov(x)[[component]],
                                df = NULL, component="cond", ...) {

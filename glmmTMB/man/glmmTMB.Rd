@@ -136,7 +136,7 @@ d2$sd <- "five"
 dat <- rbind(d1, d2)
 m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 fixef(m0)$disp
-c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
+c(log(5), log(10)-log(5)) # expected dispersion model coefficients
 
 
 ## Using 'map' to fix random-effects SD to 10

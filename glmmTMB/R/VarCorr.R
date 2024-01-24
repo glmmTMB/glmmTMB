@@ -78,7 +78,7 @@ getParList <- function(object) {
 ## note the following line is hacked in Makefile/namespace-update to ...
 ## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
 ## also see <https://github.com/klutometis/roxygen/issues/371>
-##' @rawNamespace if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
+##' @rawNamespace if(getRversion()>='3.3.0') { importFrom(stats, sigma) } else { importFrom(lme4,sigma) }
 ##  n.b. REQUIRES roxygen2 >= 5.0
 ## @importFrom lme4 sigma
 ##' @export sigma
