@@ -15,7 +15,7 @@
 
 - for questions about mixed models and data analysis:
     - the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) (please [subscribe to the list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) before posting) or 
-	- [CrossValidated](https://stats.stackexchange.com)  
+	- [Cross Validated](https://stats.stackexchange.com)  
 The mailing list has more people who know about using mixed models in R; CrossValidated has a larger overall audience and a nicer question/answer format (allows pictures, code formatting, etc.).
 - for questions about `glmmTMB` usage:
     - `r-sig-mixed-models@r-project.org` or 
