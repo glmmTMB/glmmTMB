@@ -739,7 +739,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
             return(res)
         }
-        aa <- ifelse(ss$reTrmClass=="rr",
+        aa <- ifelse(ss$reTrmClasses=="rr",
                      vapply(ss$reTrmAddArgs,
                            get_num,
                            FUN.VALUE=numeric(1)),
