@@ -620,9 +620,20 @@ make_pars <- function(pars, ..., include_extra = TRUE) {
     return(collapse_list(pList))
 }
 
-## helper function: modify sim codes **in place**
+##' helper function to modify simulation settings for random effects
+##'
+##' This modifies the TMB object \emph{in place} (beware!)
+##' Ultimately this will allow \code{terms} to be a vector of term names,
+##' with a matching \code{val} vector to specify the behaviour for each term
+##'
+##' @param g a TMB object
+##' @param val a legal setting for sim codes ("zero", "random", or "fix")
+##' @param terms which terms to apply this to
+##' @export
+##' 
 set_simcodes <- function(g, val = "zero", terms = "ALL") {
     ee <- g$env
+    if (term != "ALL") stop("termwise setting of simcodes not implemented yet")
     if (terms == "ALL") {
         for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
     }
