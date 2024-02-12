@@ -633,7 +633,7 @@ make_pars <- function(pars, ..., include_extra = TRUE) {
 ##' 
 set_simcodes <- function(g, val = "zero", terms = "ALL") {
     ee <- g$env
-    if (term != "ALL") stop("termwise setting of simcodes not implemented yet")
+    if (terms != "ALL") stop("termwise setting of simcodes not implemented yet")
     if (terms == "ALL") {
         for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
     }
