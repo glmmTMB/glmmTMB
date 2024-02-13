@@ -471,6 +471,7 @@ test_that("lognormal family", {
     dd <- rbind(dd, data.frame(y=-1))
     expect_error(glmmTMB(y ~ 1, data = dd, family = lognormal(), ziformula = ~1),
                  "must be >= 0")
+    glmmTMB(y~1, data=dd, family = lognormal(link ="log"), ziformula = ~1)
 })
 
 test_that("t-distributed response", {

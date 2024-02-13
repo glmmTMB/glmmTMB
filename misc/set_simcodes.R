@@ -6,7 +6,7 @@ data("sleepstudy", package = "lme4")
 m1 <- glmmTMB(Reaction ~ Days + (Days|Subject), data = sleepstudy)
 
 ## modify sim code and simulate
-sim_fun <- function(model, simcode = "zero") {
+sim_fun <- function(model, simcode = "zero", map = FALSE) {
     set_simcodes(model$obj, val = simcode, terms = "ALL")
 
     nvec <- seq(nrow(sleepstudy))

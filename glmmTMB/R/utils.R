@@ -728,8 +728,8 @@ simulate_new <- function(object,
         tnames <- c("terms", "termszi")
         if (!is.list(newparams$b)) {
             b_inds <- seq_along(newparams$b)
-            for (i in seq_along(cnames)) {
-                for (j in seq_along(r1[[cnames[i]]])) {
+            for (i in seq_along(cnames)) { ## loop over RE categories in object ('cond' and 'zi')
+                for (j in seq_along(r1[[cnames[i]]])) { ## loop over terms within the category
                     r1[[cnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
                     r1$data.tmb[[tnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
                 }
