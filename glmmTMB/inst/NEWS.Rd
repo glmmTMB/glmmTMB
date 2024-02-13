@@ -33,6 +33,12 @@
       per observation for \code{simulate_new()}.)
     } % itemize
   } % user-visible changes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item lognormal-hurdle models now work (i.e., zero values
+      can occur in the response if \code{ziformula} is specified)
+    }
+  } % new features
   \subsection{BUG FIXES}{
     \itemize{
       \item predictions now work when \code{weights} variables have
