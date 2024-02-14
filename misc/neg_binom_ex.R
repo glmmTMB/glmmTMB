@@ -11,17 +11,21 @@ update(m1, data = dd2, family = binomial)  ## gives weird/infinite answers
 
 try(glm(cbind(x, 10-x) ~ 1, family = binomial, data = dd2))
 
-b0 <- binomial()$initialize
+
 
 our_binomInitialize <- function(family) {
-    substitute({
+    newtest <- substitute(
+        ## added test for glmmTMB
         if (any(y<0)) {
             stop(sprintf('negative values not allowed in %s responses', FAMILY))
         }
-    }, list(FAMILY=family))
+      , list(FAMILY=family))
+    b0 <- binomial()$initialize
+    b0[[3]] <- newtest
+    return(b0)
 }
 
 b_new <- betabinomial()
 b_new$initialize <- our_binomInitialize("betabinomial")
 
-update(m1, data = dd2, family = b_new)
+try(update(m1, data = dd2, family = b_new))

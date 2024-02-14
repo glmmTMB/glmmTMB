@@ -811,7 +811,9 @@ Type objective_function<Type>::operator() ()
         s3 = sqrt(s1);          //log-scale sd
 	tmp_loglik = zt_lik_zero(yobs(i),
 			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
-	SIMULATE{yobs(i) = exp(rnorm(s2, s3));}  // untested
+	SIMULATE{
+	  yobs(i) = exp(rnorm(s2, s3));
+	}  // untested
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);
