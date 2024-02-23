@@ -142,15 +142,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
 
       # determine the number of basis functions, k, depending on type
       if (is(basis.functions, "mgcv.bf")) {
-        if (attr(basis.functions, "rm.fixed")) {
-          k <- basis.functions$sm[[1]]$bs.dim - ncol(basis.functions$re$Xf)
-        } else {
-          if (attr(basis.functions, "rm.intercept")) {
-            k <- basis.functions$sm[[1]]$bs.dim - 1
-          } else {
-            k <- basis.functions$sm[[1]]$bs.dim
-          }
-        }
+        k <- ncol(basis.functions$re$rand$Xr)
       } else if (is(basis.functions, "scampr.bf")) {
         k <- nrow(basis.functions)
       } else if (is(basis.functions, "Basis")) {
@@ -161,13 +153,21 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
 
       # set the basis function matrix
       newZ <- bf_matrix(basis.functions, point.locations = data[ , coord.names], bf.matrix.type = bf.matrix.type)
+      if (is(basis.functions, "mgcv.bf")) {
+        call.list$data$basis.fixed <- as.matrix(newZ[, 1:sum(basis.functions$re$pen.ind == 0)])
+        newZ <- newZ[, (sum(basis.functions$re$pen.ind == 0) + 1):ncol(newZ)]
+      }
       
       # set the dummy factor for the basis functions and smoothing penalty
       call.list$data$basis.functions <- factor(rep(1:k, length.out = nrow(data)))
       call.list$data$b <- rnorm(nrow(data)) # this needs to be any continuous variable
 
       # update the formula to include basis functions (i.e. approx. latent field)
-      call.list$formula <- update(call.list$formula, ~ . + (0 + b|basis.functions))
+      if (is(basis.functions, "mgcv.bf")) {
+        call.list$formula <- update(call.list$formula, ~ . + basis.fixed + (0 + b|basis.functions))
+      } else {
+        call.list$formula <- update(call.list$formula, ~ . + (0 + b|basis.functions))
+      }
       
       # create an indicator for whether the model should be fitted based on the original user-setting
       not_fitting <- FALSE
@@ -186,32 +186,32 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       call.list$n_factors <- NULL
       
       # set the reduced rank model structure
-      rrm.init <- do.call("glmmTMB", call.list)
+      m.init <- do.call("glmmTMB", call.list)
       
       # check that the dimensions of the other random effects match:
-      if (any(names(rrm.init$condReStruc) != "0 + b | basis.functions")) {
-        if (!sum(sapply(rrm.init$condReStruc[names(rrm.init$condReStruc) != "0 + b | basis.functions"], function(x){x[[1]] * x[[2]]})) == ncol(rrm.init$data.tmb$Z) - ncol(newZ)){
+      if (any(names(m.init$condReStruc) != "0 + b | basis.functions")) {
+        if (!sum(sapply(m.init$condReStruc[names(m.init$condReStruc) != "0 + b | basis.functions"], function(x){x[[1]] * x[[2]]})) == ncol(m.init$data.tmb$Z) - ncol(newZ)){
           stop("dimension of additional random effects are incorrect, please check the model spec.")
         }
       } else {
-        if (!sapply(rrm.init$condReStruc, function(x){x[[1]] * x[[2]]}) == ncol(newZ)){
+        if (!sapply(m.init$condReStruc, function(x){x[[1]] * x[[2]]}) == ncol(newZ)){
           stop("internal error in the dimension of random effects approximating the latent field, please check the model spec.")
         }
       }
       
       # replace the random effect matrix
-      if (any(names(rrm.init$condReStruc) != "0 + b | basis.functions")) {
-        rrm.init$data.tmb$Z <- cbind(rrm.init$data.tmb$Z[,1:(ncol(rrm.init$data.tmb$Z) - ncol(newZ))], newZ)
+      if (any(names(m.init$condReStruc) != "0 + b | basis.functions")) {
+        m.init$data.tmb$Z <- cbind(m.init$data.tmb$Z[,1:(ncol(m.init$data.tmb$Z) - ncol(newZ))], newZ)
       } else {
-        rrm.init$data.tmb$Z <- newZ
+        m.init$data.tmb$Z <- newZ
       }
       
       # fit the model
       if (not_fitting) {
-        mod <- rrm.init
+        mod <- m.init
         tmp.time <- NA
       } else {
-        tmp.time <- system.time(assign("mod", glmmTMB::fitTMB(rrm.init)))
+        tmp.time <- system.time(assign("mod", glmmTMB::fitTMB(m.init)))
       }
       # add in some extra info
       mod$call <- mc
@@ -241,15 +241,16 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
 
       # get the number of basis functions and responses
       if (is(basis.functions, "mgcv.bf")) {
-        if (attr(basis.functions, "rm.fixed")) {
-          k <- basis.functions$sm[[1]]$bs.dim - ncol(basis.functions$re$Xf)
-        } else {
-          if (attr(basis.functions, "rm.intercept")) {
-            k <- basis.functions$sm[[1]]$bs.dim - 1
-          } else {
-            k <- basis.functions$sm[[1]]$bs.dim
-          }
-        }
+        k <- ncol(basis.functions$re$rand$Xr)
+        # if (attr(basis.functions, "rm.fixed")) {
+        #   k <- basis.functions$sm[[1]]$bs.dim - ncol(basis.functions$re$Xf)
+        # } else {
+        #   if (attr(basis.functions, "rm.intercept")) {
+        #     k <- basis.functions$sm[[1]]$bs.dim - 1
+        #   } else {
+        #     k <- basis.functions$sm[[1]]$bs.dim
+        #   }
+        # }
       } else if (is(basis.functions, "scampr.bf")) {
         k <- nrow(basis.functions)
       } else if (is(basis.functions, "Basis")) {
@@ -360,8 +361,6 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
 #' @param from.package a character string that describing the package from which to create basis functions.
 #' @param coord.names vector of character strings describing the names of the coordinates in 'data'. Ordered horizontal then vertical axes
 #' @param longlat specific to \code{scampr} basis functions, a logical indicating whether the coordinates are in Longitude and Latitude so that geodesic distances are used (the radius is also extended to the maximum geodesic distance between nodes). Defaults to \code{FALSE}.
-#' @param rm.intercept specific to \code{mgcv} basis functions, a logical of whether to remove any intercept components of the basis (which are included by default in e.g. TPRS), since this will make the model unidentifiable if intercepts are included within the model \code{formula}. Defaults to \code{TRUE}.
-#' @param rm.fixed specific to \code{mgcv} basis functions, a logical of whether to remove fixed effect components of the basis (which are included by default in e.g. TPRS), in addition to the above, \code{mgcv::smoothCon()} usually encodes linear terms for the smooth which are unpenalised. Defaults to \code{TRUE}.
 #' @param raw specific to \code{mgcv} basis functions, a logical of whether to return raw or transformed values (mgcv does the latter by default, assists fitting algorithms to converge). Defaults to \code{FALSE}.
 #' @param ... additional arguments to be added for the underlying basis construction. See \code{mgcv::smoothCon()} and \code{FRK::auto_basis()} for example.
 #' 
@@ -382,7 +381,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
 #' @examples
 #' # Create basis function nodes on the locations of presence records and quadrature
 #' bfs <- make_basis(k = 100, data = gorillas)
-make_basis <- function(k, data, from.package = c("scampr", "mgcv", "FRK"), coord.names = c("x", "y"), longlat = FALSE, rm.intercept = TRUE, rm.fixed = TRUE, raw = FALSE, ...) {
+make_basis <- function(k, data, from.package = c("scampr", "mgcv", "FRK"), coord.names = c("x", "y"), longlat = FALSE, raw = FALSE, ...) {
   if (!all(coord.names %in% colnames(data))) {
     stop("at least one of 'coord.names' not found in the data provided")
   }
@@ -440,8 +439,6 @@ make_basis <- function(k, data, from.package = c("scampr", "mgcv", "FRK"), coord
     re <- mgcv::smooth2random(sm[[1]], "", type = "2")
     basis.functions <- list(sm = sm, re = re, coord.names = coord.names)
     class(basis.functions) <- "mgcv.bf"
-    attr(basis.functions, "rm.intercept") <- rm.intercept
-    attr(basis.functions, "rm.fixed") <- rm.fixed
     attr(basis.functions, "raw") <- raw
     
   } else if (from.package == "FRK") {
@@ -497,7 +494,6 @@ bf_matrix <- function(basis.functions, point.locations, bf.matrix.type = c("spar
     if (bf.matrix.type == "dense") {
       bf.mat <- methods::as(bf.mat, "matrix")
     }
-    attr(bf.mat, "type") = "FRK"
 
   } else if (is(basis.functions, "scampr.bf")) {
     
@@ -528,6 +524,10 @@ bf_matrix <- function(basis.functions, point.locations, bf.matrix.type = c("spar
       # add resolution to matrix via columns
       bf.mat <- cbind(bf.mat, Z)
       rm(Z)
+    }
+    # ensure the matrix is sparse if required
+    if (bf.matrix.type == "sparse") { # TODO: check the current form of the bf.mat
+      bf.mat <- methods::as(bf.mat, "sparseMatrix")
     }
   } else  if (is(basis.functions, "mgcv.bf")) {
     
@@ -561,46 +561,32 @@ bf_matrix <- function(basis.functions, point.locations, bf.matrix.type = c("spar
       names(r$rand) <- names(re$rand)
       ##############################################################################
       
-      # remove the unpenalised intercept term if required
-      if (attr(basis.functions, "rm.intercept")) { # TODO: stop this occurring if rm.fixed also
-        intercept.ind <- apply(r$Xf, 2, function(x){length(unique(x))}) == 1
-        X_fixed <- r$Xf[ , !intercept.ind]
-      } else {
-        X_fixed <- r$Xf
-      }
+      # set the fixed and random components of the basis
+      X_fixed <- r$Xf
       X_random <- r$rand[[1]]
       
     } else {
       
       X <- mgcv::PredictMat(sm, point.locations) ## get prediction matrix for new data
-      Xf <- X[ , re$pen.ind == 0]
       
-      # remove the unpenalised intercept term if required
-      if (attr(basis.functions, "rm.intercept")) { # TODO: stop this occurring if rm.fixed also
-        intercept.ind <- apply(Xf, 2, function(x){length(unique(x))}) == 1
-        X_fixed <- Xf[ , !intercept.ind]
-      } else {
-        X_fixed <- Xf
-      }
+      # set the fixed and random components of the basis
+      X_fixed <- X[ , re$pen.ind == 0]
       X_random <- X[ , re$pen.ind != 0]
       
     }
     
-    # exclude fixed component if required
-    if (attr(basis.functions, "rm.fixed")) {
-      bf.mat <- unname(X_random)
-    } else {
-      bf.mat <- unname(cbind(X_fixed, X_random))
+    # construct the full basis matrix
+    bf.mat <- unname(cbind(X_fixed, X_random))
+    # ensure the matrix is sparse if required
+    if (bf.matrix.type == "sparse") { # TODO: check the current form of the bf.mat
+      bf.mat <- methods::as(bf.mat, "sparseMatrix")
     }
+    attr(bf.mat, "pen.ind") <- c(rep(0, ncol(X_fixed)), rep(1, ncol(X_random)))
     
   } else {
     
     stop("Basis functions provided are not of the correct type. See documentation for details")
     
-  }
-  # ensure the matrix is sparse if required
-  if (bf.matrix.type == "sparse") { # TODO: check the current form of the bf.mat
-    bf.mat <- methods::as(bf.mat, "sparseMatrix")
   }
   
   return(bf.mat)
@@ -657,7 +643,6 @@ prune_basis <- function(basis.functions, data, n_non_zero = 1, prune = TRUE) {
 #'
 #' @param model a fitted \code{glmmTMB} model object.
 #' @param ... additionally arguments for the S3 generic
-#' @param mgcv.weights a logical indicating whether the observation weights should additionally include the P-IRLS weights suggested in Wood 2017 Section 4.3. When \code{=FALSE}, \eqn{\boldsymbol{W}} is the identity multiplied by the observation \code{weights} from the fitted model.
 #' @param by.obs a logical indicating whether the influence should be calculated by observations (\code{=TRUE}) or by terms (\code{=FALSE}). Since the function extracts the diagonal of \eqn{A}, with the goal to compute its trace (for example to calculate effective degrees of freedom), when \code{by.obs=FALSE} the formula for \eqn{A} (below) is re-arranged to avoid some additional matrix multiplication - this effectively calculates the influence by terms rather than observations.
 #' 
 #' @details
@@ -673,7 +658,7 @@ prune_basis <- function(basis.functions, data, n_non_zero = 1, prune = TRUE) {
 #' @return a vector of influence of length observations in the fitted model (or terms if \code{by.obs=FALSE})
 #' @export
 #'
-#' @importFrom sp spDists
+#' @importFrom Matrix bdiag Diagonal
 #'
 #' @references
 #' Wood, S. N. (2017), Generalized additive models: an introduction with R, \emph{CRC Press}.
@@ -688,7 +673,7 @@ prune_basis <- function(basis.functions, data, n_non_zero = 1, prune = TRUE) {
 #' cbind(glmmTMB = influence(m), mgcv = m_gam$hat)
 #' # compare effective degrees of freedom
 #' c(glmmTMB = sum(influence(m)), mgcv = sum(m_gam$hat))
-influence.glmmTMB <- function(model, ..., mgcv.weights = TRUE, by.obs = TRUE) {
+influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
   # get the call
   call.list <- as.list(model$call)
   # indicate not to fit the model
@@ -705,14 +690,23 @@ influence.glmmTMB <- function(model, ..., mgcv.weights = TRUE, by.obs = TRUE) {
     mod_str$data.tmb$Z <- cbind(other_re, newZ[ , order(model$col.idx)])
   }
   
-  # combine the design matrices (fixed and random)
-  X <- as.matrix(cbind(mod_str$data.tmb$X, mod_str$data.tmb$Z)) # TODO: could include zi and dispersion components down the track?
+  # check for any dropped fixed effects (due to, e.g., duplicate intercepts from mgcv basis)
+  n_fixed <- length(fixef.glmmTMB(model)$cond)
+  if (n_fixed != sum(names(model$fit$par) == "beta")) {
+    term.dropped <- TRUE
+    dropped.term.idx <- unname(is.na(fixef.glmmTMB(model)$cond))
+    n_fixed <- sum(!dropped.term.idx)
+    mod_str$data.tmb$X <- mod_str$data.tmb$X[ , !dropped.term.idx]
+  }
+  
+  # combine the design matrices (fixed and random) # TODO: could include zi and dispersion components down the track?
+  X <- as.matrix(cbind(mod_str$data.tmb$X, mod_str$data.tmb$Z))
 
   # set up the penalty matrix S #
   
   # check for the presence of random effects
   if (ncol(mod_str$data.tmb$Z) == 0) {
-    S <- matrix(data = 0, nrow = length(fixef(model)$cond), ncol = length(fixef(model)$cond)) # set S as an unpenalised matrix for fixed effects only
+    S <- matrix(data = 0, nrow = n_fixed, ncol = n_fixed) # set S as an unpenalised matrix for fixed effects only
   } else {
     # get the random effect covariance matrices
     Sigmas_theta <- VarCorr.glmmTMB(model)
@@ -733,29 +727,20 @@ influence.glmmTMB <- function(model, ..., mgcv.weights = TRUE, by.obs = TRUE) {
     S_random <- Matrix::bdiag(lapply(Sigmas, function(x){disp.par * solve(x)}))
     
     # combine with unpenalised fixed effect components
-    S <- Matrix::bdiag(matrix(data = 0, nrow = length(fixef.glmmTMB(model)$cond), ncol = length(fixef.glmmTMB(model)$cond)), S_random)
+    S <- Matrix::bdiag(matrix(data = 0, nrow = n_fixed, ncol = n_fixed), S_random)
   }
   
-  if (mgcv.weights) {
-    # calculate the weights matrix for the hat matrix which are, according to mgcv: 1 / ( V(mu) * g'(mu)^2 )
-    eta <- predict.glmmTMB(model)
-    mu <- model$modelInfo$family$linkinv(eta)
-    g_dash_squared <- 1 / model$modelInfo$family$mu.eta(eta)^2 # family$mu.eta() gets the derivative of mu w.r.t. eta which we invert for the required term
-    V <- model$modelInfo$family$variance(mu)
-    
-    # multiply by the observation weights
-    if (!is.null(model$frame$`(weights)`)) {
-      w <- model$frame$`(weights)` / (V * g_dash_squared)
-    } else {
-      w <- 1 / (V * g_dash_squared)
-    }
+  # calculate the weights matrix for the hat matrix which are, according to mgcv: 1 / ( V(mu) * g'(mu)^2 )
+  eta <- predict.glmmTMB(model)
+  mu <- model$modelInfo$family$linkinv(eta)
+  g_dash_squared <- 1 / model$modelInfo$family$mu.eta(eta)^2 # family$mu.eta() gets the derivative of mu w.r.t. eta which we invert for the required term
+  V <- model$modelInfo$family$variance(mu)
+  
+  # multiply by the observation weights
+  if (!is.null(model$frame$`(weights)`)) {
+    w <- model$frame$`(weights)` / (V * g_dash_squared)
   } else {
-    # if present these are the observation weights
-    if (!is.null(model$frame$`(weights)`)) {
-      w <- model$frame$`(weights)`
-    } else {
-      w <- rep(1, nrow(X))
-    }
+    w <- 1 / (V * g_dash_squared)
   }
 
   # convert the weights into a diagonal matrix

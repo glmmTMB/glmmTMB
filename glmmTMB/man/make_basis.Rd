@@ -10,8 +10,6 @@ make_basis(
   from.package = c("scampr", "mgcv", "FRK"),
   coord.names = c("x", "y"),
   longlat = FALSE,
-  rm.intercept = TRUE,
-  rm.fixed = TRUE,
   raw = FALSE,
   ...
 )
@@ -26,10 +24,6 @@ make_basis(
 \item{coord.names}{vector of character strings describing the names of the coordinates in 'data'. Ordered horizontal then vertical axes}
 
 \item{longlat}{specific to \code{scampr} basis functions, a logical indicating whether the coordinates are in Longitude and Latitude so that geodesic distances are used (the radius is also extended to the maximum geodesic distance between nodes). Defaults to \code{FALSE}.}
-
-\item{rm.intercept}{specific to \code{mgcv} basis functions, a logical of whether to remove any intercept components of the basis (which are included by default in e.g. TPRS), since this will make the model unidentifiable if intercepts are included within the model \code{formula}. Defaults to \code{TRUE}.}
-
-\item{rm.fixed}{specific to \code{mgcv} basis functions, a logical of whether to remove fixed effect components of the basis (which are included by default in e.g. TPRS), in addition to the above, \code{mgcv::smoothCon()} usually encodes linear terms for the smooth which are unpenalised. Defaults to \code{TRUE}.}
 
 \item{raw}{specific to \code{mgcv} basis functions, a logical of whether to return raw or transformed values (mgcv does the latter by default, assists fitting algorithms to converge). Defaults to \code{FALSE}.}
 

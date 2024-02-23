@@ -4,14 +4,12 @@
 \alias{influence.glmmTMB}
 \title{Compute the influence matrix of a fitted \code{glmmTMB} model}
 \usage{
-\method{influence}{glmmTMB}(model, ..., mgcv.weights = TRUE, by.obs = TRUE)
+\method{influence}{glmmTMB}(model, ..., by.obs = TRUE)
 }
 \arguments{
 \item{model}{a fitted \code{glmmTMB} model object.}
 
 \item{...}{additionally arguments for the S3 generic}
-
-\item{mgcv.weights}{a logical indicating whether the observation weights should additionally include the P-IRLS weights suggested in Wood 2017 Section 4.3. When \code{=FALSE}, \eqn{\boldsymbol{W}} is the identity multiplied by the observation \code{weights} from the fitted model.}
 
 \item{by.obs}{a logical indicating whether the influence should be calculated by observations (\code{=TRUE}) or by terms (\code{=FALSE}). Since the function extracts the diagonal of \eqn{A}, with the goal to compute its trace (for example to calculate effective degrees of freedom), when \code{by.obs=FALSE} the formula for \eqn{A} (below) is re-arranged to avoid some additional matrix multiplication - this effectively calculates the influence by terms rather than observations.}
 }

@@ -112,6 +112,8 @@ if(getRversion()>='3.3.0') { importFrom(stats, sigma) } else { importFrom(lme4,s
 importFrom(FRK,auto_basis)
 importFrom(FRK,eval_basis)
 importFrom(Matrix,Cholesky)
+importFrom(Matrix,Diagonal)
+importFrom(Matrix,bdiag)
 importFrom(Matrix,crossprod)
 importFrom(Matrix,diag)
 importFrom(Matrix,qr)
