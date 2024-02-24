@@ -31,6 +31,9 @@
       \code{stats::glm(., family = "binomial")}). (This change makes
       it easier to use \emph{weights} to specify the number of trials
       per observation for \code{simulate_new()}.)
+      \item \code{simulate_new} gives useful warning and error
+      messages about unrecognized parameter names and length mismatches
+      (length mismatches previously gave only a warning)
     } % itemize
   } % user-visible changes
   \subsection{NEW FEATURES}{
