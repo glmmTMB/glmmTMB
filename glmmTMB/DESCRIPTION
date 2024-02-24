@@ -42,7 +42,7 @@ Description: Fit linear and generalized linear mixed models with various
     out using the Laplace approximation. Gradients are calculated using automatic
     differentiation.
 License: AGPL-3
-Depends: R (>= 3.2.0)
+Depends: R (>= 3.6.0)
 Imports:
     methods,
     TMB (>= 1.9.0),
