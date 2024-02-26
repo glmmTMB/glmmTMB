@@ -4,7 +4,7 @@
 \alias{influence.glmmTMB}
 \title{Compute the influence matrix of a fitted \code{glmmTMB} model}
 \usage{
-\method{influence}{glmmTMB}(model, ..., by.obs = TRUE)
+\method{influence}{glmmTMB}(model, ..., by.obs = FALSE)
 }
 \arguments{
 \item{model}{a fitted \code{glmmTMB} model object.}
@@ -35,7 +35,11 @@ m <- glmmTMB(count ~ spp + (1 | site), data = Salamanders, family = poisson)
 library(mgcv)
 m_gam <- gam(count ~ spp + s(site, bs = "re"), data = Salamanders, family = poisson, method = "ML")
 # compare influence
-cbind(glmmTMB = influence(m), mgcv = m_gam$hat)
+par(mfrow = c(1, 2), mar = c(5.1,4.1,4.1,0))
+plot(cbind(glmmTMB = influence(m, by.obs = TRUE), mgcv = m_gam$hat), main = "Influence by Observations")
+abline(a = 0, b = 1, col = "red", lty = "dashed")
+plot(cbind(glmmTMB = influence(m), mgcv = m_gam$edf), main = "Influence by Terms")
+abline(a = 0, b = 1, col = "red", lty = "dashed")
 # compare effective degrees of freedom
 c(glmmTMB = sum(influence(m)), mgcv = sum(m_gam$hat))
 }

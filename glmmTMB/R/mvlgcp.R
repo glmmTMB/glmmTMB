@@ -670,10 +670,14 @@ prune_basis <- function(basis.functions, data, n_non_zero = 1, prune = TRUE) {
 #' library(mgcv)
 #' m_gam <- gam(count ~ spp + s(site, bs = "re"), data = Salamanders, family = poisson, method = "ML")
 #' # compare influence
-#' cbind(glmmTMB = influence(m), mgcv = m_gam$hat)
+#' par(mfrow = c(1, 2), mar = c(5.1,4.1,4.1,0))
+#' plot(cbind(glmmTMB = influence(m, by.obs = TRUE), mgcv = m_gam$hat), main = "Influence by Observations")
+#' abline(a = 0, b = 1, col = "red", lty = "dashed")
+#' plot(cbind(glmmTMB = influence(m), mgcv = m_gam$edf), main = "Influence by Terms")
+#' abline(a = 0, b = 1, col = "red", lty = "dashed")
 #' # compare effective degrees of freedom
 #' c(glmmTMB = sum(influence(m)), mgcv = sum(m_gam$hat))
-influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
+influence.glmmTMB <- function(model, ..., by.obs = FALSE) {
   # get the call
   call.list <- as.list(model$call)
   # indicate not to fit the model
@@ -722,7 +726,7 @@ influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
       # check for a reduced rank covariance structure
       if (names(model$modelInfo$reStruc$condReStruc[[i_re]]$blockCode) != "rr") {
         
-        # perform a Kronecker on the between effects covariance structure (Sigmas_theta) and the within effect covariance structure
+        # perform a Kronecker on the between effects covariance structure (Sigmas_theta) and the corresponding blockReps
         Sigmas[[i_re]] <- kronecker(Sigmas_theta[[1]][[i_re]], diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps))
         # TODO: pretty sure this is the direction of the Kronecker... but could try:
         # Sigmas[[i_re]] <- kronecker(diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps), Sigmas_theta[[1]][[i_re]])
@@ -733,6 +737,7 @@ influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
         Lambda <- model$obj$env$report(model$fit$parfull)$fact_load[[i_re]]
         
         # latent factors are independent, standard normal so use identity penalty matrix
+        Sigmas[[i_re]] <- diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps * ncol(Lambda))
         
         # also need to adjust the random effect design matrix by multiplying by the factor loadings
 
@@ -757,15 +762,11 @@ influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
                              mod_str$data.tmb$Z[ , 1:ncol(mod_str$data.tmb$Z) > max(re_idx)])
         )
         
-        # need to adjust the model$modelInfo$reStruc$condReStruc blockReps/Sizes etc. so that subsequent rr() will be adjusted correctly
-
+        # adjust the model$modelInfo$reStruc$condReStruc blockSize so that subsequent rr() will be adjusted correctly
+        model$modelInfo$reStruc$condReStruc[[i_re]]$blockSize <- ncol(Lambda)
         
       }
       
-      # perform a Kronecker on the between effects covariance structure (Sigmas_theta) and the within effect covariance structure
-      Sigmas[[i_re]] <- kronecker(Sigmas_theta[[1]][[i_re]], diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps))
-      # TODO: pretty sure this is the direction of the Kronecker... but could try:
-      # Sigmas[[i_re]] <- kronecker(diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps), Sigmas_theta[[1]][[i_re]])
     }
     
     # invert the covariance matrices, multiply by dispersion parameter, and create block diagonal form 
@@ -801,7 +802,7 @@ influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
   } else {
     A <- XtWXplusS_inv %*% XtWX # can re-arrange to this simpler multiplication if we are just interested in the trace
   }
-  # TODO: I'm sure there is a more efficient way to do most of this (e.g. using a QR decomp of X?)
+  # TODO: I'm sure there is a more efficient way to do most of this (e.g. using a QR decomp of X as in Simon's book?)
   
   return(A[cbind(1:min(dim(A)), 1:min(dim(A)))])
 }
