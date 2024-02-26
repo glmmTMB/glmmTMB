@@ -715,8 +715,53 @@ influence.glmmTMB <- function(model, ..., by.obs = TRUE) {
     
     # initialise a list to store covariance matrices
     Sigmas <- list()
+    
     # loop through the random effect components
     for (i_re in 1:length(model$modelInfo$reStruc$condReStruc)) {
+
+      # check for a reduced rank covariance structure
+      if (names(model$modelInfo$reStruc$condReStruc[[i_re]]$blockCode) != "rr") {
+        
+        # perform a Kronecker on the between effects covariance structure (Sigmas_theta) and the within effect covariance structure
+        Sigmas[[i_re]] <- kronecker(Sigmas_theta[[1]][[i_re]], diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps))
+        # TODO: pretty sure this is the direction of the Kronecker... but could try:
+        # Sigmas[[i_re]] <- kronecker(diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps), Sigmas_theta[[1]][[i_re]])
+      
+      } else {
+        
+        # extract the factor loadings
+        Lambda <- model$obj$env$report(model$fit$parfull)$fact_load[[i_re]]
+        
+        # latent factors are independent, standard normal so use identity penalty matrix
+        
+        # also need to adjust the random effect design matrix by multiplying by the factor loadings
+
+        # expand the factor loadings by blockReps to align with Z matrix
+        IxLambda <- kronecker(diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps), Lambda)
+        
+        # get the current random effect indices within Z
+        n_re <- unlist(lapply(model$modelInfo$reStruc$condReStruc, function(x){ x[["blockReps"]] * x[["blockSize"]] }))
+        if (i_re == 1) {
+          # for the first random effects start at 1
+          re_idx <- 1:n_re[[i_re]]
+        } else {
+          # for other random effects start at the previous index + 1 and up to the cumulative sum of random effect indices
+          re_idx <- (n_re[[i_re - 1]] + 1):cumsum(n_re)[[i_re]]
+        }
+        # compute the new Z component
+        newZ_comp <- mod_str$data.tmb$Z[ , re_idx] %*% IxLambda
+        # put the current Z matrix back together again
+        X <- as.matrix(cbind(mod_str$data.tmb$X,
+                             mod_str$data.tmb$Z[ , 1:ncol(mod_str$data.tmb$Z) < min(re_idx)],
+                             newZ_comp,
+                             mod_str$data.tmb$Z[ , 1:ncol(mod_str$data.tmb$Z) > max(re_idx)])
+        )
+        
+        # need to adjust the model$modelInfo$reStruc$condReStruc blockReps/Sizes etc. so that subsequent rr() will be adjusted correctly
+
+        
+      }
+      
       # perform a Kronecker on the between effects covariance structure (Sigmas_theta) and the within effect covariance structure
       Sigmas[[i_re]] <- kronecker(Sigmas_theta[[1]][[i_re]], diag(model$modelInfo$reStruc$condReStruc[[i_re]]$blockReps))
       # TODO: pretty sure this is the direction of the Kronecker... but could try:
