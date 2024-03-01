@@ -164,7 +164,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
 
       # update the formula to include basis functions (i.e. approx. latent field)
       if (is(basis.functions, "mgcv.bf")) {
-        call.list$formula <- update(call.list$formula, ~ . + basis.fixed + (0 + b|basis.functions))
+        call.list$formula <- update(call.list$formula, ~ . + (0 + b|basis.functions) + basis.fixed)
       } else {
         call.list$formula <- update(call.list$formula, ~ . + (0 + b|basis.functions))
       }
@@ -233,10 +233,9 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       
       ## Multivariate LGCP ##
       
-      # re-order the data according to the response.id
-      call.list$data <- call.list$data[order(response.id), ]
-      call.list$weights <- call.list$weights[order(response.id)]
-      call.list$data$response.id <- factor(sort(response.id))
+      # set the response id as a factor within the model data
+      call.list$data$response.id <- factor(response.id)
+      # create a vector of unique response labels
       responses <- levels(call.list$data$response.id)
 
       # get the number of basis functions and responses
@@ -928,6 +927,142 @@ get_field <- function(object, newdata, which.response = NULL) {
   
   return(fld)
 }
+
+#' #' Calculate the linear predictor on new data from a model fitted via \code{mvlgcp()}
+#' #'
+#' #' @description This function sets up the appropriate basis function matrix for the \code{newdata} provided, then multiplies by the random coefficient terms (at the mode of the Laplace approximation).
+#' #'
+#' #' @param object a fitted \code{glmmTMB} model object.
+#' #' @param newdata a data frame containing the point locations (i.e. coordinates used in the original model fit) at which to calculate the field(s). If \code{newdata} is a two-column matrix, these are assumed to be the horizontal and vertical coordinates respectively.
+#' #' @param which.response (optional) a single integer (or vector thereof) indicating the which of the response-specific fields to return. Applies only to multivaraite LGCP. Response numbers correspond to the response in order of \code{unique(object$response.id)}.
+#' #' 
+#' #' 
+#' #' @details
+#' #' The function first calculates basis functions (associated with the fitted \code{object}) at the coordinates within \code{newdata}. The resulting basis function matrix is then multiplied by the random coefficients at their mode (as used in the Laplace approximation of the marginal likelihood). If a specific response field is required, the \code{object$n_factor} latent fields are then multiplied by the response-specific factor loadings. 
+#' #' 
+#' #' @return a matrix with \code{nrow(newdata)} rows and k columns - where k is the number of latent fields. k = 1 in the univariate case, k = \code{length(which.response)} when supplied otherwise, k = \code{object$n_factors}.
+#' #' @export
+#' #'
+#' #' @examples
+#' #' # using a subset of the Lansing Wood data:
+#' #' dat <- lansing[lansing$tree == "blackoak", ]
+#' #' 
+#' #' # set up the basis functions with dimension k = 100
+#' #' bfs <- make_basis(k = 100, dat)
+#' #' 
+#' #' # fit univariate LGCP to the blackoak point pattern data
+#' #' m <- mvlgcp(pt ~ 1, data = dat, weights = dat$wt, basis.functions = bfs)
+#' #' 
+#' #' # extract the field
+#' #' fld <- get_field(m)
+#' #' 
+#' #' # get the domain
+#' #' domain <- dat[dat$pt == 0, ]
+#' #' 
+#' #' plot(vec2im(fld, domain$x, domain$y), main = "Black Oak Latent Field")
+#' predict_mvlgcp <- function(object, newdata, which.response = NULL) {
+#'   
+#'   # check that the fitted model has bsais functions attached to it
+#'   if (is.null(object$basis.functions)) {
+#'     stop("Supplied fitted model does not include basis functions")
+#'   }
+#' 
+#'   # get the call
+#'   call.list <- as.list(object$call)
+#'   # indicate not to fit the model
+#'   call.list$doFit <- FALSE
+#'   # get the model structure (by re-running the model without fitting)
+#'   mod_str <- eval(as.call(call.list)) # NOTE: this gets the corrected Z for smoothers since it evaluates mvlgcp()
+#'   
+#'   # FOR MVLGCP: if the model is from mvlgcp() and has a rr() structure we need to re-order the Z matrix
+#'   if (call.list[[1]] == "mvlgcp" & !is.null(object$col.idx)) {
+#'     # separate out the basis functions from the other random effects
+#'     other_re <- mod_str$data.tmb$Z[ , 1:(ncol(mod_str$data.tmb$Z) - length(mod_str$col.idx))]
+#'     newZ <- mod_str$data.tmb$Z[ , ((ncol(mod_str$data.tmb$Z) - length(mod_str$col.idx)) + 1):ncol(mod_str$data.tmb$Z)]
+#'     # re-order the basis function component according to the column indexing
+#'     mod_str$data.tmb$Z <- cbind(other_re, newZ[ , order(object$col.idx)])
+#'     
+#'     # also need to adjust the random effect design matrix by multiplying by the factor loadings
+#'     
+#'     # get the factor loadings
+#'     Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions")]]
+#'     
+#'     # identify which random component the basis functions are
+#'     i_re <- which(names(object$modelInfo$reStruc$condReStruc) == "0 + response.id | basis.functions")
+#'     
+#'     # expand the factor loadings by blockReps to align with Z matrix
+#'     IxLambda <- kronecker(diag(object$modelInfo$reStruc$condReStruc[[i_re]]$blockReps), Lambda)
+#'     
+#'     # get the current random effect indices within Z
+#'     n_re <- unlist(lapply(object$modelInfo$reStruc$condReStruc, function(x){ x[["blockReps"]] * x[["blockSize"]] }))
+#'     if (i_re == 1) {
+#'       # for the first random effects start at 1
+#'       re_idx <- 1:n_re[[i_re]]
+#'     } else {
+#'       # for other random effects start at the previous index + 1 and up to the cumulative sum of random effect indices
+#'       re_idx <- (n_re[[i_re - 1]] + 1):cumsum(n_re)[[i_re]]
+#'     }
+#'     # compute the new Z component
+#'     newZ_comp <- mod_str$data.tmb$Z[ , re_idx] %*% IxLambda
+#'     # put the current Z matrix back together again
+#'     tmp.Z <- as.matrix(cbind(mod_str$data.tmb$Z[ , 1:ncol(mod_str$data.tmb$Z) < min(re_idx)],
+#'                          newZ_comp,
+#'                          mod_str$data.tmb$Z[ , 1:ncol(mod_str$data.tmb$Z) > max(re_idx)])
+#'     )
+#'     
+#'     mod_str$data.tmb$Z <- tmp.Z
+#'     
+#'   }
+#' 
+#'     # get the fixed effect design matrix
+#'   X <- mod_str$data.tmb$X
+#'   # get random effect design matrix
+#'   Z <- mod_str$data.tmb$Z
+#'   
+#'   # get the fixed effect coefficients ##########################################
+#'   
+#'   betas <- object$fit$par[names(object$fit$par) == "beta"]
+#' 
+#'   # get the random effect# coefficients ########################################
+#' 
+#'   # get all of the random effect coefficients from the model
+#'   all_b <- getME(object, "b")
+#' 
+#'   # get information on the other random effect terms (assumes "basis.functions" is a term reserved for these approximate field models)
+#'   other_re <- object$modelInfo$reStruc$condReStruc[-which(object$modelInfo$grpVar == "basis.functions")]
+#' 
+#'   # determine the number of random effects to  skip (assumes that the field(s) are last in the formula, as is the setup for mvlgcp())
+#'   skip_n <- do.call(sum, lapply(other_re, function(x){as.numeric(x[1]) * as.numeric(x[2])}))
+#' 
+#'   # get the full set of random coefficients for the latent fields (will include zeros in the reduced rank case)
+#'   if (skip_n > 0) {
+#'     tmp.b_flds <- all_b[((skip_n)+1):length(all_b)]
+#'     b_other <- all_b[1:skip_n]
+#'   } else {
+#'     tmp.b_flds <- all_b
+#'     b_other <- NULL
+#'   }
+#' 
+#'   # check if the model is multivariate and adjust the coefficient vector accordingly
+#'   b_flds <- list()
+#'   if (object$n_factors > 0) {
+#'     for (i in 1:object$n_factors) {
+#'       b_flds[[i]] <- all_b[seq(i,length(tmp.b_flds), by = object$n_responses)]
+#'     }
+#'     # while here, extract the factor loadings for the rank reduced fields
+#'     Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions")]]
+#'   } else {
+#'     b_flds <- tmp.b_flds
+#'     Lambda <- NULL
+#'   }
+#'   b <- c(b_other, do.call("c", b_flds))
+#'   
+#'   # compute the linear predictor ###############################################
+#'   
+#'   eta <- (X %*% betas) + (Z %*% b)
+#'   
+#'   return(eta)
+#' }
 
 #' Create a biplot from a multivarite LGCP
 #'
