@@ -35,6 +35,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
     }
     checkTerms( data.tmb1$terms,   data.tmb0$terms )
     checkTerms( data.tmb1$termszi, data.tmb0$termszi )
+    checkTerms( data.tmb1$termsdisp, data.tmb0$termsdisp )
     ## Fixed effect parameters must be identical
     checkModelMatrix <- function(X1, X0) {
         if( !identical(colnames(X1), colnames(X0)) ) {
@@ -52,7 +53,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
     }
     checkModelMatrix(getX(data.tmb1), getX(data.tmb0))
     checkModelMatrix(getX(data.tmb1,"zi"), getX(data.tmb0,"zi"))
-    checkModelMatrix(getX(data.tmb1,"d"), getX(data.tmb0,"d"))
+    checkModelMatrix(getX(data.tmb1,"disp"), getX(data.tmb0,"disp"))
     NULL
 }
 
@@ -181,7 +182,7 @@ predict.glmmTMB <- function(object,
   ## want to make a giant if-block
   ## ('goto' would be handy here ...)
   if (noZI(object) && type %in% c("zprob", "zlink")) {
-    dd <- if (!is.null(newdata)) newdata else object$obj$env$data$Xd
+    dd <- if (!is.null(newdata)) newdata else object$obj$env$data$Xdisp
     pred <- se <- setNames(numeric(nrow(dd)), rownames(dd))
     se[] <- NA_real_
     pred[] <- if (type == "zprob") 0 else -Inf
@@ -361,7 +362,7 @@ predict.glmmTMB <- function(object,
                     )
 
     ## drop rank-deficient columns if necessary
-    for (nm in c("", "zi", "d")) {
+    for (nm in c("", "zi", "disp")) {
         xnm <- paste0("X", nm)
         betanm <- paste0("beta", nm)
         X <- getME(object, xnm)
@@ -385,7 +386,7 @@ predict.glmmTMB <- function(object,
                              any(!is.finite(Z@x)) |
                              any(!is.finite(Xzi)) |
                              any(!is.finite(Zzi@x)) |
-                             any(!is.finite(Xd))
+                             any(!is.finite(Xdisp))
     ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
            This is currently incompatible with se.fit=TRUE or cov.fit=TRUE."))
   }

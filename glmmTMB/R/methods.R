@@ -26,7 +26,7 @@
 fixef.glmmTMB <- function(object, ...) {
 
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
-  X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "d"))
+  X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "disp"))
 
   get_vec <- function(vals, X) {
     dropped <- attr(X, "col.dropped")
@@ -42,7 +42,7 @@ fixef.glmmTMB <- function(object, ...) {
   }
 
   r <- Map(get_vec,
-           pl[c("beta", "betazi", "betad")],
+           pl[c("beta", "betazi", "betadisp")],
            X)
   names(r) <- c("cond", "zi", "disp")
   class(r) <- "fixef.glmmTMB"
@@ -82,7 +82,7 @@ noZI <- function(object) {
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
-    ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
+    ## FIXME: inconsistent tagging; should change 'Xdisp' to 'Xdisp'?
 }
 
 ##' @method print fixef.glmmTMB
@@ -115,9 +115,11 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), pri
 ##'     for the conditional model.}
 ##'   \item{zi}{a list of data frames, containing random effects for
 ##'     the zero inflation.}
+##'   \item{disp}{a list of data frames, containing random effects
+##'     for the dispersion model.}
 ##' }
 ##' If \code{condVar=TRUE}, the individual list elements within the
-##' \code{cond} and \code{zi} components (corresponding to individual
+##' \code{cond}, \code{zi}, and \code{disp} components (corresponding to individual
 ##' random effects terms) will have associated \code{condVar} attributes
 ##' giving the conditional variances of the random effects values.
 ##' These are in the form of three-dimensional arrays: see
@@ -238,17 +240,19 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   if (condVar && hasRandom(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
-                  bzi=ss[rownames(ss)=="bzi","Std. Error"])
+                  bzi=ss[rownames(ss)=="bzi","Std. Error"],
+      						bdisp=ss[rownames(ss)=="bdisp","Std. Error"])
   }  else sdl <- NULL
   structure(list(cond = arrange(pl$b, sdl$b, "cond"),
-                 zi    = arrange(pl$bzi, sdl$bzi, "zi")),
+                 zi   = arrange(pl$bzi, sdl$bzi, "zi"),
+  							 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
             class = "ranef.glmmTMB")
 }
 
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
-    print(if (simplify && length(x$zi) == 0L)
+    print(if (simplify && length(x$zi) == 0L && length(x$disp) == 0L)
               unclass(x$cond) else unclass(x),
           ...)
     invisible(x)
@@ -274,7 +278,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xd", "theta", "beta", "b"),
+                                   "Xdisp", "theta", "beta", "b"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -299,12 +303,13 @@ getME.glmmTMB <- function(object,
   switch(name,
          "X"     = if (!isSparse("cond")) oo.env$data$X else oo.env$data$XS,
          "Xzi"   = if (!isSparse("zi")) oo.env$data$Xzi else oo.env$data$XziS,
-         "Z"     = oo.env$data$Z,
+  			 "Xdisp" = if (!isSparse("disp")) oo.env$data$Xdisp else oo.env$data$XdispS,
+  			 "Z"     = oo.env$data$Z,
          "Zzi"   = oo.env$data$Zzi,
-         "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
-         "theta" = allpars$theta ,
-         "beta"  = unlist(allpars[c("beta","betazi","betad")]),
-         "b" = unlist(allpars[c("b", "bzi")]),
+  			 "Zdisp" = oo.env$data$Zdisp,
+  			 "theta" = allpars$theta ,
+         "beta"  = unlist(allpars[c("beta","betazi","betadisp")]),
+         "b" = unlist(allpars[c("b", "bzi", "bdisp")]),
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -413,7 +418,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
       names(covList) <- names(cNames) ## component names
-      parnms <- c("beta","betazi", "betad")     ## parameter names
+      parnms <- c("beta","betazi", "betadisp")     ## parameter names
       for (i in seq_along(covList)) {
           nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
@@ -1347,7 +1352,7 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed",
         m <- switch(component,
                     cond =  "",
                     zi = "zi",
-                    disp = "d")
+                    disp = "disp")
         
         X <- getME(object, paste0("X", m))
     } else {
@@ -1532,7 +1537,8 @@ coef.glmmTMB <- function(object,
     }
     res <- list(
         cond = get.coef("cond"),
-        zi = get.coef("zi")
+        zi = get.coef("zi"),
+        disp = get.coef("disp")
     )
     if (condVar) {
         stop("condVar not (yet) available for coefficients")

@@ -7,7 +7,7 @@
 \usage{
 \method{getME}{glmmTMB}(
   object,
-  name = c("X", "Xzi", "Z", "Zzi", "Xd", "theta", "beta", "b"),
+  name = c("X", "Xzi", "Z", "Zzi", "Xdisp", "theta", "beta", "b"),
   ...
 )
 }

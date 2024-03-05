@@ -137,7 +137,7 @@ be all zeros, but whose value is otherwise irrelevant)</p></dd>
 
 <dt>newparams</dt>
 <dd><p>a list of parameters containing sub-vectors
-(<code>beta</code>, <code>betazi</code>, <code>betad</code>, <code>theta</code>, etc.) to
+(<code>beta</code>, <code>betazi</code>, <code>betadisp</code>, <code>theta</code>, etc.) to
 be used in the model</p></dd>
 
 
@@ -160,7 +160,7 @@ be used in the model</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      1      1      0      0      1      1      1      1      1      1      1 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      b      b      b      b      b      b      b      b      b      b      b </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      1      1      1      1      1      1      1      1      1      1      1 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>      b      b      b      b      b  betad  theta </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>      b      b      b      b      b  betadisp  theta </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      1      1      1      1      1      0      0 </span>
 <span class="r-in"><span><span class="va">sim_count</span> <span class="op">&lt;-</span> <span class="fu">simulate_new</span><span class="op">(</span><span class="op">~</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>             newdata <span class="op">=</span> <span class="va">Salamanders</span>,</span></span>
@@ -168,7 +168,7 @@ be used in the model</p></dd>
 <span class="r-in"><span>             family <span class="op">=</span> <span class="va">nbinom2</span>,</span></span>
 <span class="r-in"><span>             newparams <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>beta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>                         betazi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.5</span>, <span class="fl">0.5</span><span class="op">)</span>, <span class="co">## logit-linear model for zi</span></span></span>
-<span class="r-in"><span>                         betad <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, <span class="co">## log(NB dispersion)</span></span></span>
+<span class="r-in"><span>                         betadisp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span>, <span class="co">## log(NB dispersion)</span></span></span>
 <span class="r-in"><span>                         theta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="co">## log(among-site SD)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>non-integer counts in a nbinom2 model</span>
