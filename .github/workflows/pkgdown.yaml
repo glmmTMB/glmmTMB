@@ -40,9 +40,12 @@ jobs:
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, any::Matrix
           needs: check
           working-directory: ./glmmTMB
+          upgrade: 'TRUE'
+# https://github.com/lme4/lme4/issues/756
+
 
       - name: Install extra LaTeX dependencies
         run: |  # I know remotes is duplicated, but takes little time and better if we want to copy-paste workflows..
