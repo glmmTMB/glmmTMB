@@ -385,7 +385,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ##  (which confuse MakeADFun)
     yobs = c(yobs),
     respCol,
-    ## strip attributes from offset terms
+    ## strip attributes from various components ...
     offset = c(condList$offset),
     zioffset = c(ziList$offset),
     dispoffset = c(dispList$offset),
@@ -744,7 +744,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
             return(res)
         }
-        aa <- ifelse(ss$reTrmClass=="rr",
+        aa <- ifelse(ss$reTrmClasses=="rr",
                      vapply(ss$reTrmAddArgs,
                            get_num,
                            FUN.VALUE=numeric(1)),

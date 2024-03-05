@@ -31,8 +31,23 @@
       \code{stats::glm(., family = "binomial")}). (This change makes
       it easier to use \emph{weights} to specify the number of trials
       per observation for \code{simulate_new()}.)
+      \item \code{simulate_new} gives useful warning and error
+      messages about unrecognized parameter names and length mismatches
+      (length mismatches previously gave only a warning)
     } % itemize
   } % user-visible changes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item lognormal-hurdle models now work (i.e., zero values
+      can occur in the response if \code{ziformula} is specified)
+    }
+  } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item predictions now work when \code{weights} variables have
+      attributes (GH #977)
+    } % itemize
+  } % bug fixes
 } % 1.1.8-9000
 
 \section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
