@@ -253,13 +253,23 @@ predict.glmmTMB <- function(object,
   ## This could be further improved by making RHSForm()
   ##  use delete.response() -- handles dropping response from predvars
   ## Would still need careful testing etc..
+
        
   if (is.null(newdata)) {
     mf$data <- mc$data ## restore original data
     newFr <- object$frame
   } else {
-    mf$data <- newdata
     mf$na.action <- na.action
+    if (pop_pred) {
+        ## add missing components in newdata
+        ## (placeholder only to avoid error in model frame construction:
+        ##  value shouldn't matter since all b values will be fixed to NA anyway ...)
+        req_vars <- all.vars(RHSForm(formula(object, reOnly = TRUE)))
+        for (fnew in setdiff(req_vars, names(newdata))) {
+            newdata[[fnew]] <- NA
+        }
+    }
+    mf$data <- newdata
     newFr <- eval.parent(mf)
   }
 
@@ -322,6 +332,9 @@ predict.glmmTMB <- function(object,
   ## 'mkTMBStruc' further down.
   yobs <- augFr[[names(omi$respCol)]]
 
+   ## extract smooth information
+   ## NULL if missing
+   old_smooths <- lapply(omi$reTrms, function(x) x[["smooth_info"]])
 
   ## need eval.parent() because we will do eval(mf) down below ...
   TMBStruc <-
@@ -343,7 +356,21 @@ predict.glmmTMB <- function(object,
                                whichPredict=w,
                                REML=omi$REML,
                                map=omi$map,
-                               sparseX=omi$sparseX))
+                               sparseX=omi$sparseX,
+                               old_smooths = old_smooths)
+                    )
+
+    ## drop rank-deficient columns if necessary
+    for (nm in c("", "zi", "d")) {
+        xnm <- paste0("X", nm)
+        betanm <- paste0("beta", nm)
+        X <- getME(object, xnm)
+        if (prod(dim(X)) > 0 && !is.null(dd <- attr(X, "col.dropped"))) {
+            if (is(X, "Matrix")) xnm <- paste0(xnm, "S")
+            TMBStruc$data.tmb[[xnm]] <- TMBStruc$data.tmb[[xnm]][,-dd]
+            TMBStruc$parameters[[betanm]] <- TMBStruc$parameters[[betanm]][-dd]
+        }
+  }
 
   ## short-circuit
   if(debug) return(TMBStruc)
@@ -383,6 +410,9 @@ predict.glmmTMB <- function(object,
   }
 
   n_orig <- openmp(n = object$modelInfo$parallel)
+  if (openmp_debug()) {
+      cat("predict: setting OpenMP threads to ", n_orig, " on exit\n")
+  }
   on.exit(openmp(n_orig), add = TRUE)
 
   newObj <- with(TMBStruc,
@@ -401,12 +431,12 @@ predict.glmmTMB <- function(object,
   ## set TMB threads to value from original model fit/reset on exit
   if (!is.null(parallel <- object$modelInfo$parallel)) {
     n_orig <- openmp(NULL)
-    if (debug_openmp) cat("resetting TMB threads to ",  parallel, "\n")
+    if (openmp_debug()) cat("resetting TMB threads to ",  parallel, "\n")
     openmp(parallel)
     on.exit(openmp(n = n_orig), add = TRUE)
   }
 
-  if (debug_openmp) cat("TMB threads currently set to ", openmp(NULL), "\n")
+  if (openmp_debug()) cat("TMB threads currently set to ", openmp(NULL), "\n")
   return_eta <- type %in% c("zlink", "link")
   if (!se.fit) {
     rr <- newObj$report(lp)

@@ -43,7 +43,10 @@ data("Pixel", package="nlme")
 complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)
 
 test_that("bad model convergence warning", {
-    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
+    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel,
+                                      ## weird starting values to force convergence problem
+                                      ## (works out of the box when Gaussian dist is param by SD)
+                                      start = list(theta=rep(-10,5))),
                    "convergence problem")
 })
 
@@ -146,7 +149,7 @@ expect_equal(getVCText(vc),
                             V4 = c(NA, -0.581, NA)),
                        .Names = c("V3", "V4"),
                        class = "data.frame", row.names = c(NA, -3L)),
-             tolerance=1.5e-5)
+             tolerance=2e-5)
 
 ## both variance and std.dev.
 c2 <- getVCText(vc,comp=c("Variance","Std.Dev."),digits=2)

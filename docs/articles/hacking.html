@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+<meta name="date" content="2023-10-14" />
+
+<title>Hacking glmmTMB</title>
+
+<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
+// be compatible with the behavior of Pandoc < 2.8).
+document.addEventListener('DOMContentLoaded', function(e) {
+  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
+  var i, h, a;
+  for (i = 0; i < hs.length; i++) {
+    h = hs[i];
+    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
+    a = h.attributes;
+    while (a.length > 0) h.removeAttribute(a[0].name);
+  }
+});
+</script>
+
+<style type="text/css">
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+span.underline{text-decoration: underline;}
+div.column{display: inline-block; vertical-align: top; width: 50%;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+</style>
+
+
+
+<style type="text/css">
+code {
+white-space: pre;
+}
+.sourceCode {
+overflow: visible;
+}
+</style>
+<style type="text/css" data-origin="pandoc">
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+{ counter-reset: source-line 0; }
+pre.numberSource code > span
+{ position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+{ content: counter(source-line);
+position: relative; left: -1em; text-align: right; vertical-align: baseline;
+border: none; display: inline-block;
+-webkit-touch-callout: none; -webkit-user-select: none;
+-khtml-user-select: none; -moz-user-select: none;
+-ms-user-select: none; user-select: none;
+padding: 0 4px; width: 4em;
+color: #aaaaaa;
+}
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+div.sourceCode
+{ }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } 
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.at { color: #7d9029; } 
+code span.bn { color: #40a070; } 
+code span.bu { color: #008000; } 
+code span.cf { color: #007020; font-weight: bold; } 
+code span.ch { color: #4070a0; } 
+code span.cn { color: #880000; } 
+code span.co { color: #60a0b0; font-style: italic; } 
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.do { color: #ba2121; font-style: italic; } 
+code span.dt { color: #902000; } 
+code span.dv { color: #40a070; } 
+code span.er { color: #ff0000; font-weight: bold; } 
+code span.ex { } 
+code span.fl { color: #40a070; } 
+code span.fu { color: #06287e; } 
+code span.im { color: #008000; font-weight: bold; } 
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.kw { color: #007020; font-weight: bold; } 
+code span.op { color: #666666; } 
+code span.ot { color: #007020; } 
+code span.pp { color: #bc7a00; } 
+code span.sc { color: #4070a0; } 
+code span.ss { color: #bb6688; } 
+code span.st { color: #4070a0; } 
+code span.va { color: #19177c; } 
+code span.vs { color: #4070a0; } 
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    var j = 0;
+    while (j < rules.length) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
+        j++;
+        continue;
+      }
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' && rule.style.backgroundColor === '') {
+        j++;
+        continue;
+      }
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; } 
+code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Hacking glmmTMB</h1>
+<h4 class="date">2023-10-14</h4>
+
+
+
+<div id="adding-a-family" class="section level1">
+<h1>Adding a family</h1>
+<p>What do you do if <code>glmmTMB</code> hasn’t implemented the
+response distributions you want/need? You could try asking the
+developers to do it, but if you have the technical skills (reading and
+modifying R and C++ code) you may be able to do it yourself. You will
+need to make appropriate modifications to the R and C++ code and
+recompile/reinstall the package.</p>
+<p>This example will show how to add a “zero-one truncated Poisson”,
+i.e. a Poisson distribution with only values &gt;1. This is a fairly
+easy case (we will discuss below what characteristics make a
+distribution easier or harder to implement).</p>
+<p>The most general advice is “identify the most similar distribution
+that has already been implemented in <code>glmmTMB</code> and
+copy/modify the relevant bits of code”.</p>
+<p>Download the tarball (<code>glmmTMB.tar.gz</code>) from CRAN and
+unpack it.</p>
+<div id="c" class="section level2">
+<h2>C++</h2>
+<p>These files are in the <code>src/</code> directory.</p>
+<div id="modify-glmmtmb.cpp" class="section level3">
+<h3>modify glmmTMB.cpp</h3>
+<ul>
+<li><code>enum valid_family</code> is the list of distributions that
+<code>glmmTMB</code> knows about. Give your distribution an unused index
+(in a range with other similar distributions) and add it to the
+list.</li>
+</ul>
+<div class="sourceCode" id="cb1"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>truncated_genpois_family <span class="op">=</span><span class="dv">404</span><span class="op">,</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>truncated_compois_family <span class="op">=</span><span class="dv">405</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co">// new</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>zo_truncated_poisson_family <span class="op">=</span> <span class="dv">410</span><span class="op">,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="op">...</span></span></code></pre></div>
+<ul>
+<li>add a case to the giant <code>switch</code> statement that handles
+the conditional likelihood (search for
+<code>// Observation likelihood</code> at the beginning): in this case
+we can most easily do this by modifying the code for the zero-truncated
+Poisson family (<code>case truncated_poisson_family</code>):
+<ul>
+<li><code>mu(i)</code> is the value of the location parameter for the
+current observation</li>
+<li><code>phi(i)</code> is the value of the dispersion parameter for the
+current observation. This value always uses a log link, so it will be a
+value on <code>[0,Inf)</code>. You should decide whether this value
+needs to be transformed or combined with <code>mu(i)</code> to form the
+traditional scale or dispersion parameter for your distribution. There
+are lots of examples in <code>glmmTMB.cpp</code></li>
+<li>use logspace addition/subtraction if possible
+(<code>logspace_add</code> and <code>logspace_sub</code> functions in
+<code>TMB</code>: see <a href="https://stackoverflow.com/questions/65233445/how-to-calculate-sums-in-log-space-without-underflow">here</a>
+for more information). This isn’t necessary but will make your
+computations more stable.</li>
+<li>if you want to be able to simulate data, add a
+<code>SIMULATE{}</code> condition that samples a random deviate from
+your distribution</li>
+</ul></li>
+</ul>
+<div class="sourceCode" id="cb2"><pre class="sourceCode cpp"><code class="sourceCode cpp"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cf">case</span> zo_truncated_poisson_family<span class="op">:</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>   log_nzprob <span class="op">=</span> logspace_sub<span class="op">(</span>Type<span class="op">(</span><span class="dv">0</span><span class="op">),</span> <span class="op">-</span>mu<span class="op">(</span>i<span class="op">));</span>  <span class="co">// log(1-exp(-mu(i)));</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>   <span class="co">// now subtract the prob(X==1)</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>   log_nzprob <span class="op">=</span> logspace_sub<span class="op">(</span>log_nzprob<span class="op">,</span> log<span class="op">(</span>mu<span class="op">(</span>i<span class="op">))</span> <span class="op">-</span> mu<span class="op">(</span>i<span class="op">));</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>   <span class="co">// log-Poisson likelihood minus the &#39;missing mass&#39;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>   tmp_loglik <span class="op">=</span> dpois<span class="op">(</span>yobs<span class="op">(</span>i<span class="op">),</span> mu<span class="op">(</span>i<span class="op">),</span> <span class="kw">true</span><span class="op">)</span> <span class="op">-</span> log_nzprob<span class="op">;</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>   <span class="co">// this is a utility for use in ther zero-inflated case</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>   tmp_loglik <span class="op">=</span> zt_lik_nearzero<span class="op">(</span>yobs<span class="op">(</span>i<span class="op">),</span> tmp_loglik<span class="op">);</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>   SIMULATE<span class="op">{</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>    <span class="co">// conveniently, this built-in function already allows truncation</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">//  at different points</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    yobs<span class="op">(</span>i<span class="op">)</span> <span class="op">=</span> glmmtmb<span class="op">::</span>rtruncated_poisson<span class="op">(</span><span class="dv">1</span><span class="op">,</span> asDouble<span class="op">(</span>mu<span class="op">(</span>i<span class="op">)));</span></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>   <span class="op">}</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a> <span class="cf">break</span><span class="op">;</span></span></code></pre></div>
+</div>
+</div>
+<div id="r-code" class="section level2">
+<h2>R code</h2>
+<div id="modifying-family.r" class="section level3">
+<h3>modifying family.R</h3>
+<p>We might be able to get away with specifying <code>family=</code> as
+a list, but it’s better to implement it as a new function.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @rdname nbinom2</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co">#&#39; @export</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>zo_truncated_poisson <span class="ot">&lt;-</span> <span class="cf">function</span>(<span class="at">link=</span><span class="st">&quot;log&quot;</span>) {</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    r <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">family=</span><span class="st">&quot;zo_truncated_poisson&quot;</span>,</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>              <span class="at">variance=</span><span class="cf">function</span>(lambda) {</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">stop</span>(<span class="st">&quot;haven&#39;t implemented variance function&quot;</span>)</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>                  <span class="do">## should figure this out ...</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>                  <span class="do">## (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>              })</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">return</span>(<span class="fu">make_family</span>(r,link))</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>As you can see, I haven’t yet worked out the variance of a
+zero-one-truncated Poisson. This will only cause problems if/when a user
+wants to estimate Pearson residuals.</p>
+<p>Ideally a <code>$dev.resids()</code> component should also be added,
+to return the <em>deviance residuals</em> (i.e., <span class="math inline">\(2 (\log L(y_i) - \log
+L_{\textrm{sat}}(y_i))\)</span>, where <span class="math inline">\(L_{\textrm{sat}}\)</span> is the log-likelihood of
+<span class="math inline">\(y_i\)</span> under the <em>saturated</em>
+model; see the <code>$dev.resids</code> components of families built
+into base R for examples.</p>
+<p>For some families, the variance and deviance-residuals function
+require extra information such as a dispersion parameter. For the
+<code>nbinom1</code> and <code>nbinom2</code> families,
+<code>glmmTMB</code> does some additional stuff to store the value of
+the dispersion parameter in the environment of the variance/deviance
+residual functions (which share an environment), and to retrieve the
+dispersion parameter from the environment (search for “.Theta” in the R
+code for the package).</p>
+<p>You should also document your new family, probably in the
+<code>?glmmTMB::family_glmmTMB</code> page. This material is located in
+<code>R/family.R</code>, above the <code>nbinom2</code> family
+function.</p>
+</div>
+<div id="modifying-glmmtmb.r" class="section level3">
+<h3>modifying glmmTMB.R</h3>
+<p>There may not be any other R code that needs to be updated, depending
+on the details of the family you are adding. Again, it’s best to try to
+work by analogy with the closest family to the one you’re adding. In
+this case, the only occurrence of <code>truncated_poisson</code> in
+<code>glmmTMB.R</code> is in the definition of which families have no
+dispersion parameter:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>.noDispersionFamilies <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;binomial&quot;</span>, <span class="st">&quot;poisson&quot;</span>, <span class="st">&quot;truncated_poisson&quot;</span>,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                           <span class="st">&quot;zo_truncated_poisson&quot;</span>)</span></code></pre></div>
+</div>
+<div id="updating-namespace" class="section level3">
+<h3>updating NAMESPACE</h3>
+<p>You need to make sure that your new family function is exported
+(listed in the <code>NAMESPACE</code> file). The easiest way to do this
+is by running <code>devtools::document()</code>.</p>
+</div>
+<div id="updating-enum.r" class="section level3">
+<h3>updating enum.R</h3>
+<p>The R file that keeps the C++ and R code in sync with respect to
+which families are available and which numeric code corresponds to which
+family is <code>enum.R</code>. <strong>Do not edit this file by
+hand</strong>: instead, run <code>make enum-update</code></p>
+</div>
+</div>
+<div id="finishing-up" class="section level2">
+<h2>Finishing up</h2>
+<div id="reinstall" class="section level3">
+<h3>Reinstall</h3>
+<p>Re-install the package from source (<code>R CMD INSTALL</code> or
+<code>install.package(..., repos = NULL)</code>)</p>
+</div>
+<div id="test" class="section level3">
+<h3>Test</h3>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glmmTMB)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">101</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>dd <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">y =</span> <span class="fu">rpois</span>(<span class="dv">500</span>, <span class="fu">exp</span>(<span class="dv">1</span>)))</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(dd<span class="sc">$</span>y)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="do">##  0   1   2   3   4   5   6   7   8   9 </span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="do">## 34  91 117 116  68  45  17   7   3   2 </span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>dd <span class="ot">&lt;-</span> dd[dd<span class="sc">$</span>y<span class="sc">&gt;</span><span class="dv">1</span>,,drop<span class="ot">=</span><span class="cn">FALSE</span>]</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(dd<span class="sc">$</span>y)</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="do">##   2   3   4   5   6   7   8   9 </span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="do">## 117 116  68  45  17   7   3   2 </span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">glmmTMB</span>(y <span class="sc">~</span> <span class="dv">1</span>, <span class="at">family =</span> <span class="st">&quot;zo_truncated_poisson&quot;</span>, <span class="at">data =</span> dd)</span></code></pre></div>
+<p>This appears to give the right answer (i.e. the estimated value of
+the intercept (log-link), 1.015, is close to the true value of 1).</p>
+<pre><code>Formula:          y ~ 1
+Data: dd
+      AIC       BIC    logLik  df.resid 
+1184.2750 1188.2020 -591.1375       374 
+
+Number of obs: 375
+
+Fixed Effects:
+
+Conditional model:
+(Intercept)  
+      1.015  </code></pre>
+<p>If you are adding the material for long-term use you should also add
+some tests to <code>tests/testthat/test-families.R</code></p>
+</div>
+</div>
+<div id="additional-distributional-parameters" class="section level2">
+<h2>Additional distributional parameters</h2>
+<p>Some families (Tweedie, Student-t) have shape parameters or other
+parameters beyond the usual parameters determining the location (mean)
+and scale (dispersion). These parameters are passed in the
+<code>thetaf</code> vector: the best thing to do here is to search the R
+and C++ code for “[Tt]weedie” and see what will need to be adjusted.</p>
+</div>
+<div id="adding-a-covariance-structure" class="section level2">
+<h2>Adding a covariance structure</h2>
+<p>General advice, but written while adding a “diagonal with homogeneous
+variance” (<code>homdiag</code>) covariance structure.</p>
+<div id="c-code" class="section level3">
+<h3>C++ code</h3>
+<ul>
+<li>add to the <code>valid_covStruct</code> <code>enum</code> in
+<code>glmmTMB.cpp</code></li>
+<li>modify <code>termwise_nll</code>. In the case of
+<code>homdiag</code> we can re-use the existing
+<code>diag_covstruct</code> code (since everything is vectorized so
+should work equally well with a length-1 or length-<span class="math inline">\(p\)</span> vector of (log) standard
+deviations)</li>
+</ul>
+</div>
+<div id="r-code-1" class="section level3">
+<h3>R code</h3>
+<ul>
+<li>modify <code>parFun</code> to specify the number of parameters</li>
+<li>modify documentation of <code>glmmTMB()</code></li>
+<li>run <code>make enum-update</code></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="structure-of-a-glmmtmb-object" class="section level1">
+<h1>Structure of a <code>glmmTMB</code> object</h1>
+<p>Since I don’t think this is explicitly documented anywhere …</p>
+<ul>
+<li><code>obj</code>: this is a TMB-object (no explicit class, just a
+list) as created by <code>TMB::MakeADFun()</code>. It has useful
+components
+<ul>
+<li><code>$fn</code>: the negative log-likelihood function (takes a
+vector of <em>non-random</em> parameters (<code>beta</code>,
+<code>betazi</code>, <code>bzi</code>, <code>theta</code>,
+<code>thetazi</code>, <code>psi</code> depending on the model;
+<code>b</code> and <code>bzi</code> are excluded)</li>
+<li><code>$gr</code>: gradient of the NLL function</li>
+<li><code>$env</code>: environment, holding useful stuff like
+<code>$random</code> (positions of random-effect parameters),
+<code>$last.par.best</code>, etc.</li>
+<li><code>$report</code> (return derived values)</li>
+<li><code>$simulate</code> (simulate new responses)</li>
+</ul></li>
+<li><code>fit</code>: results of optimization</li>
+<li><code>sdr</code>: results of calling <code>sdreport()</code></li>
+<li><code>call</code>: original model call</li>
+<li><code>frame</code>: model frame</li>
+<li><code>modelInfo</code>: lots of useful information
+<ul>
+<li><code>nobs</code>: number of observations (should be the same as
+<code>nrow(x$frame)</code>)</li>
+<li><code>respCol</code>: response column</li>
+<li><code>grpVar</code>: (?)</li>
+<li><code>family</code>: GLM family</li>
+<li><code>contrasts</code></li>
+<li><code>reTrms</code></li>
+<li><code>terms</code></li>
+<li><code>reStruc</code></li>
+<li><code>allForm</code></li>
+<li><code>REML</code></li>
+<li><code>map</code></li>
+<li><code>sparseX</code></li>
+<li><code>parallel</code></li>
+</ul></li>
+</ul>
+</div>
+
+
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

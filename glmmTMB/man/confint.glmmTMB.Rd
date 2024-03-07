@@ -11,7 +11,7 @@
   method = c("wald", "Wald", "profile", "uniroot"),
   component = c("all", "cond", "zi", "other"),
   estimate = TRUE,
-  include_mapped = FALSE,
+  include_nonest = FALSE,
   parallel = c("no", "multicore", "snow"),
   ncpus = getOption("profile.ncpus", 1L),
   cl = NULL,
@@ -42,7 +42,7 @@ function)}
 
 \item{estimate}{(logical) add a third column with estimate ?}
 
-\item{include_mapped}{include dummy rows for mapped (i.e. fixed-value) parameters?}
+\item{include_nonest}{include dummy rows for non-estimated (mapped, rank-deficient) parameters?}
 
 \item{parallel}{method (if any) for parallel computation}
 

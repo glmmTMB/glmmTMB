@@ -231,7 +231,7 @@ owls_hnb1 <- update(owls_nb1, family = truncated_nbinom1, ziformula = ~.)
 @
 On the response scale, this model estimates the means of the component distribution 
 as follows:
-<<>>=
+<<emmeans2>>=
 emmeans(owls_hnb1, ~ FoodTreatment * SexParent, component = "cond", type = "response")
 # --- or ---
 emmeans(owls_hnb1, ~ FoodTreatment * SexParent, component = "cmean")
@@ -243,7 +243,7 @@ distribution (with zero omitted). This discrepancy occurs only with
 hurdle models.
 
 The response means combine both the conditional and the zero-inflation model:
-<<>>=
+<<emmeans3>>=
 emmeans(owls_hnb1, ~ FoodTreatment * SexParent, component = "response")
 @
 

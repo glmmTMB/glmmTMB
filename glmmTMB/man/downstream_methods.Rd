@@ -14,6 +14,7 @@ Anova.glmmTMB(
   component = "cond",
   vcov. = vcov(mod)[[component]],
   singular.ok,
+  include.rankdef.cols = FALSE,
   ...
 )
 
@@ -32,6 +33,8 @@ or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.}
 \item{vcov.}{variance-covariance matrix (usually extracted automatically)}
 
 \item{singular.ok}{OK to do ANOVA with singular models (unused) ?}
+
+\item{include.rankdef.cols}{include all columns of a rank-deficient model matrix?}
 
 \item{\dots}{Additional parameters that may be supported by the method.}
 

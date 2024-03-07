@@ -188,7 +188,7 @@ confint.profile.glmmTMB <- function(object, parm=NULL, level = 0.95, ...) {
         res <- vapply(halves,ci_fun_half,numeric(1))
         a <- (1 - level)/2
         a <- c(a, 1 - a)
-        names(res) <- format.perc(a, 3)
+        names(res) <- format_perc(a, 3)
         return(res)
     }
     ## fit spline and invert for one half (lower, upper) of the profile

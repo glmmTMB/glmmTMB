@@ -24,10 +24,11 @@
 \bibliographystyle{chicago}
 %% need these for output of citation() below ...
 \newcommand{\bold}[1]{\textbf{#1}}
+%% this part is no longer needed, hard-coded citation now
 %% from Sebastian Meyer: needs LaTeX >= 2020-10-01
 %% (probably? don't need to worry about backward compatibility,
 %%  people who need to build the vignette can update?)
-\NewCommandCopy\Rhref\href
+%% \NewCommandCopy\Rhref\href
 
 \title{Getting started with the \code{glmmTMB} package}
 \author{Ben Bolker}
@@ -37,7 +38,7 @@
 
 %\linenumbers
 
-<<setopts,echo=FALSE,message=FALSE>>=
+<<setopts,echo=FALSE,message=FALSE, eval = TRUE>>=
 library("knitr")
 opts_chunk$set(fig.width=5,fig.height=5,
                out.width="0.8\\textwidth",
@@ -56,7 +57,7 @@ linear mixed models and extensions.
 (Not-yet-implemented features are denoted \notimpl{like this})
 
 \begin{itemize}
-  \item response distributions: Gaussian, binomial, beta-binomial, Poisson, negative binomial (NB1 and NB2 parameterizations), Conway-Maxwell-Poisson, generalized Poisson, Gamma, Beta, Tweedie; as well as zero-truncated Poisson, Conway-Maxwell-Poisson, generalized Poisson, and negative binomial; \notimpl{Student $t$} See \code{?family\_glmmTMB} for a current list including details of parameterizations.
+  \item response distributions: Gaussian, binomial, beta-binomial, Poisson, negative binomial (NB1 and NB2 parameterizations), Conway-Maxwell-Poisson, generalized Poisson, Gamma, Beta, Tweedie; as well as zero-truncated Poisson, Conway-Maxwell-Poisson, generalized Poisson, and negative binomial; Student $t$. See \code{?family\_glmmTMB} for a current list including details of parameterizations.
   \item link functions: log, logit, probit, complementary log-log, inverse, identity
   \item zero-inflation with fixed and random-effects components; hurdle models via truncated Poisson/NB
   \item single or multiple (nested or crossed) random effects
@@ -102,16 +103,21 @@ In order to fit a model in \code{glmmTMB} you need to:
 \end{itemize}
 
 This document was
-generated using \Sexpr{R.version$version.string} and package versions:
-<<pkgversions,echo=FALSE>>=
+generated using \Sexpr{Rver} and package versions:
+<<pkgversions, echo=FALSE, eval=TRUE>>=
 pkgver <- vapply(sort(used.pkgs),function(x) as.character(packageVersion(x)),"")
 print(pkgver,quote=FALSE)
 @
 
 The current citation for \code{glmmTMB} is:
 \begin{quote}
-%% fixme: would like to deal with smart quotes
-<<citation,echo=FALSE,results="asis">>=
+Brooks ME, Kristensen K, van
+Benthem KJ, Magnusson A, Berg CW, Nielsen A, Skaug HJ, Maechler M, Bolker BM (2017).
+``glmmTMB Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling.''
+\emph{The R Journal}, \bold{9}(2), 378--400.
+\href{https://doi.org/10.32614/RJ-2017-066}{doi:10.32614/RJ-2017-066}.
+% was: echo=FALSE, results="asis"
+<<citation,eval=FALSE,echo=FALSE>>=
 print(citation("glmmTMB"),style="latex")
 @
 \end{quote}

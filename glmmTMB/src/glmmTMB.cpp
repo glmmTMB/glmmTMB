@@ -34,7 +34,8 @@ enum valid_family {
   truncated_nbinom1_family =502,
   truncated_nbinom2_family =503,
   t_family =600,
-  tweedie_family = 700
+  tweedie_family = 700,
+  lognormal_family = 800
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -148,7 +149,7 @@ Type log_inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
-/* log transformed inverse_linkfun without losing too much accuracy */
+/* log transformed (1-inverse_linkfun) without losing too much accuracy */
 template<class Type>
 Type log1m_inverse_linkfun(Type eta, int link) {
   Type ans;
@@ -169,18 +170,18 @@ Type log1m_inverse_linkfun(Type eta, int link) {
 template<class Type>
 Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
 		     int link) {
-  Type ans, s1, s2, s3;
+  Type ans, s1, s2;
   switch (family) {
   case truncated_nbinom1_family:
-    s3 = logspace_add( Type(0), etad);      // log(1. + phi(i)
-    ans = logspace_sub( Type(0), -mu / phi * s3 ); // 1-prob(0)
+    s2 = logspace_add( Type(0), etad);      // log(1. + phi(i)
+    ans = logspace_sub( Type(0), -mu / phi * s2 ); // 1-prob(0)
     break;
   case truncated_nbinom2_family:
     // s1 is repeated computation from main loop ...
     s1 = log_inverse_linkfun(eta, link);          // log(mu)
-    // s3 := log( 1. + mu(i) / phi(i) )
-    s3 = logspace_add( Type(0), s1 - etad );
-    ans = logspace_sub( Type(0), -phi * s3 );
+    // s2 := log( 1. + mu(i) / phi(i) )
+    s2 = logspace_add( Type(0), s1 - etad );
+    ans = logspace_sub( Type(0), -phi * s2 );
     break;
   case truncated_poisson_family:
     ans = logspace_sub(Type(0), -mu);  // log(1-exp(-mu(i))) = P(x>0)
@@ -243,6 +244,8 @@ struct terms_t : vector<per_term_info<Type> > {
   }
 };
 
+// compute log-likelihood of b (conditional modes) conditional on theta (var/cov)
+//  for a specified random-effects term 
 template <class Type>
 Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term, bool do_simulate = false) {
   Type ans = 0;
@@ -455,6 +458,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   }
   else if (term.blockCode == rr_covstruct){
     // case: reduced rank
+
+    // computing log-likelihood based on *spherical* (iid N(0,1)) random effects
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
       if (do_simulate) {
@@ -462,6 +467,10 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
+    // now construct the factor matrix and convert the spherical random
+    //  effects back to the 'data scale', and *replace them* in the U matrix
+
+    // constructing the factor loadings matrix
     int p = term.blockSize;
     int nt = theta.size();
     int rank = (2*p + 1 -  (int)sqrt(pow(2.0*p + 1, 2) - 8*nt) ) / 2 ;
@@ -479,11 +488,14 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
 
+    // transforming u to b by multiplying by the loadings matrix
     for(int i = 0; i < term.blockReps; i++){
       vector<Type> usub = U.col(i).segment(0, rank);
       U.col(i) = Lambda * usub;
     }
 
+    // computing the correlation matrix and std devs
+    // (the same D^(-1/2) L L^T D^(-1/2) transformation that we use for correlations
     term.fact_load = Lambda;
     if(isDouble<Type>::value) {
       term.corr = Lambda * Lambda.transpose();
@@ -649,11 +661,8 @@ Type objective_function<Type>::operator() ()
     if ( !glmmtmb::isNA(yobs(i)) ) {
       switch (family) {
       case gaussian_family:
-	// n.b. sigma() calculation is special-cased for Gaussian
-	// (exp(0.5*pl$betad), all other families except Gamma
-	//  use exp(pl$betad)
-        tmp_loglik = dnorm(yobs(i), mu(i), sqrt(phi(i)), true);
-        SIMULATE{yobs(i) = rnorm(mu(i), sqrt(phi(i)));}
+        tmp_loglik = dnorm(yobs(i), mu(i), phi(i), true);
+        SIMULATE{yobs(i) = rnorm(mu(i), phi(i));}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
@@ -693,6 +702,21 @@ Type objective_function<Type>::operator() ()
 	  tmp_loglik = s3 + dbeta(yobs(i), s1, s2, true);
 
 	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(psi(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
+	}
+	SIMULATE{
+	  s3 = invlogit(psi(0) - eta(i));
+	  if (runif(Type(0), Type(1)) < s3) {
+	    yobs(i) = 0;
+	  } else {
+	    s3 = invlogit(eta(i) - psi(1));
+	    if (runif(Type(0), Type(1)) < s3) {
+	      yobs(i) = 1;
+	    } else {
+	      s1 = mu(i)*phi(i);
+	      s2 = (Type(1)-mu(i))*phi(i);
+	      yobs(i) = rbeta(s1, s2);
+	    }
+	  }
 	}
 	break;
       case betabinomial_family:
@@ -791,6 +815,22 @@ Type objective_function<Type>::operator() ()
         SIMULATE {
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
         }
+	break;
+      case lognormal_family:
+	// parameterized in terms of mean and SD on *data* scale, i.e.
+	// mu = exp(logmu + logsd^2/2)
+	// sd = sqrt((exp(logsd^2)-1)*exp(2*logmu + logsd^2)) = mu*sqrt(exp(logsd^2)-1)
+	// 1+(sd/mu)^2 = exp(logsd^2)
+	// logvar = log(1+(sd/mu)^2)
+	// logsd = sqrt(logvar)
+	// logmu = log(mu)-logvar/2
+	// logvar via logspace_add() [log1p not compatible with CppAD]
+        s1 = logspace_add(2*(log(phi(i))-log(mu(i))), Type(0)); // log-scale var
+        s2 = log(mu(i)) - s1/2; //log-scale mean
+        s3 = sqrt(s1);          //log-scale sd
+	tmp_loglik = zt_lik_zero(yobs(i),
+			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
+	SIMULATE{yobs(i) = exp(rnorm(s2, s3));}  // untested
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);
@@ -819,6 +859,7 @@ Type objective_function<Type>::operator() ()
         SIMULATE{yobs(i) = yobs(i)*rbinom(Type(1), Type(1)-pz(i));}
       }
       tmp_loglik *= weights(i);
+
       // Add up
       jnll -= keep(i) * tmp_loglik;
     }
@@ -867,9 +908,6 @@ Type objective_function<Type>::operator() ()
     // predict dispersion
     // zi irrelevant; just reusing variable
     switch(family){
-    case gaussian_family:
-      mu = sqrt(phi);
-      break;
     case Gamma_family:
       mu = 1/sqrt(phi);
       break;

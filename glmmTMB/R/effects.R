@@ -5,11 +5,7 @@
 ##'  model in any order.
 
 ##'
-##' @rawNamespace if(getRversion() >= "3.6.0") {
-##'   S3method(effects::Effect, glmmTMB)
-##' } else {
-##'   export(Effect.glmmTMB)
-##' }
+##' @rawNamespace if(getRversion() >= "3.6.0") { S3method(effects::Effect, glmmTMB)  } else { export(Effect.glmmTMB) }
 Effect.glmmTMB <- function (focal.predictors, mod, ...) {
     fam <- family(mod)
     ## code to make the 'truncated_*' families work
@@ -24,10 +20,11 @@ Effect.glmmTMB <- function (focal.predictors, mod, ...) {
         if (is.null(fam[[i]])) fam[[i]] <- dummyfuns[[i]]
     }
     ## allow calculation of effects ...
-    if (length(formals(fam$variance))>1) {
-        warning("overriding variance function for effects: ",
+    if (length(formals(fam$variance))>1 || length(formals(fam$dev.resids))>3) {
+        warning("overriding variance function for effects/dev.resids: ",
                 "computed variances may be incorrect")
         fam$variance <- dummyfuns$variance
+        fam$dev.resids <- dummyfuns$dev.resids
     }
     args <- list(call = getCall(mod),
                  coefficients = lme4::fixef(mod)[["cond"]],

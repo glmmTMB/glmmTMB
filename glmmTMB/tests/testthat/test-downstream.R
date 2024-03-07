@@ -3,6 +3,20 @@ stopifnot(require("testthat"),
 
 data(sleepstudy,package="lme4")
 ## m <- load(system.file("test_data","models.rda",package="glmmTMB", mustWork=TRUE))
+
+## from GH 920
+set.seed(101)
+spcount <- rpois(120, rnorm(120, mean = rep(c(1.8, 2, 2.3), each = 40),
+                            sd = 0.4))
+spdat <- data.frame(species = factor(rep(1:3, each = 40)),
+                  pop = factor(rep(c(1, 2, 11, 13, 21, 24), each = 20)),
+                  count = spcount)
+
+nested <- glmmTMB(count ~ species/pop, family = poisson,
+                  data=spdat, control = glmmTMBControl(rank_check = "adjust"))
+## equivalent glm() fit for comparison
+nested0 <- glm(count ~ species + species/pop, family = poisson, data=spdat)
+
 if (require(emmeans)) {
   test_that("emmeans", {
     skip_on_cran()
@@ -51,7 +65,30 @@ if (require(emmeans)) {
     expect_is(e1, "emmGrid")
   }
   ) ## test_that
-}
+
+  test_that("joint_test with non-estimable terms", {
+      
+      expect_equal(
+          c(suppressMessages(joint_tests(nested0))),
+          c(suppressMessages(joint_tests(nested))),
+                   tolerance = 1e-5)
+
+      ## joint_tests(nested, component = "cmean")
+  }
+  )
+
+  test_that("more on non-estimable terms", {
+      excl <- with(Salamanders, which((mined == "yes") &
+                                      (spp %in% c("PR","DES-L"))))
+      m3 <- glmmTMB(count ~ spp * mined + (1|site),
+                    zi=~spp * mined,
+                    family=nbinom2, data=Salamanders[-excl, ])
+      p3cond <- predict(emmeans(m3, ~spp|mined, comp = "cond"))
+      p3resp <- predict(emmeans(m3, ~spp|mined, comp = "resp"))
+      expect_equal(p3cond[1:3], c(-0.24506247, NA,  0.15354833))
+      expect_equal(p3resp[1:3], c(0.03741431, NA, 0.40555130))
+  })
+} ## if require(emmeans)
 
 
 if (require(effects)) {

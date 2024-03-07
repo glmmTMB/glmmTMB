@@ -20,7 +20,7 @@ random effect terms"><!-- mathjax --><script src="https://cdnjs.cloudflare.com/a
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -41,19 +41,22 @@ random effect terms"><!-- mathjax --><script src="https://cdnjs.cloudflare.com/a
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -95,77 +98,112 @@ random effect terms</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">expandDoubleVert</span><span class="op">(</span><span class="va">term</span><span class="op">)</span>
-
-<span class="fu"><a href="RHSForm.html">RHSForm</a></span><span class="op">(</span><span class="va">formula</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">value</span>
-
-<span class="fu">sumTerms</span><span class="op">(</span><span class="va">termList</span><span class="op">)</span>
-
-<span class="fu">reOnly</span><span class="op">(</span><span class="va">f</span>, response <span class="op">=</span> <span class="cn">FALSE</span>, bracket <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
-
-<span class="fu">makeOp</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, op <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>
-
-<span class="fu">addForm0</span><span class="op">(</span><span class="va">f1</span>, <span class="va">f2</span><span class="op">)</span>
-
-<span class="fu">addForm</span><span class="op">(</span><span class="va">...</span><span class="op">)</span>
-
-<span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="va">bb</span><span class="op">)</span>
-
-<span class="fu">findbars_x</span><span class="op">(</span>
-  <span class="va">term</span>,
-  debug <span class="op">=</span> <span class="cn">FALSE</span>,
-  specials <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,
-  default.special <span class="op">=</span> <span class="st">"us"</span>,
-  expand_doublevert_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"diag_special"</span>, <span class="st">"split"</span><span class="op">)</span>
-<span class="op">)</span>
-
-<span class="fu">inForm</span><span class="op">(</span><span class="va">form</span>, <span class="va">value</span><span class="op">)</span>
-
-<span class="fu">extractForm</span><span class="op">(</span><span class="va">term</span>, <span class="va">value</span><span class="op">)</span>
-
-<span class="fu">dropHead</span><span class="op">(</span><span class="va">term</span>, <span class="va">value</span><span class="op">)</span>
-
-<span class="fu">drop.special</span><span class="op">(</span><span class="va">x</span>, value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span>, preserve <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span>
-
-<span class="fu">replaceForm</span><span class="op">(</span><span class="va">term</span>, <span class="va">target</span>, <span class="va">repl</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">expandDoubleVert</span><span class="op">(</span><span class="va">term</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="RHSForm.html">RHSForm</a></span><span class="op">(</span><span class="va">formula</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">value</span></span>
+<span></span>
+<span><span class="fu">sumTerms</span><span class="op">(</span><span class="va">termList</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">reOnly</span><span class="op">(</span><span class="va">f</span>, response <span class="op">=</span> <span class="cn">FALSE</span>, bracket <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">makeOp</span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, op <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">addForm0</span><span class="op">(</span><span class="va">f1</span>, <span class="va">f2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">addForm</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="va">bb</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">findbars_x</span><span class="op">(</span></span>
+<span>  <span class="va">term</span>,</span>
+<span>  debug <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  specials <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  default.special <span class="op">=</span> <span class="st">"us"</span>,</span>
+<span>  target <span class="op">=</span> <span class="st">"|"</span>,</span>
+<span>  expand_doublevert_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"diag_special"</span>, <span class="st">"split"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">inForm</span><span class="op">(</span><span class="va">form</span>, <span class="va">value</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">extractForm</span><span class="op">(</span><span class="va">term</span>, <span class="va">value</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">dropHead</span><span class="op">(</span><span class="va">term</span>, <span class="va">value</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">drop.special</span><span class="op">(</span><span class="va">x</span>, value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span>, preserve <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">replaceForm</span><span class="op">(</span><span class="va">term</span>, <span class="va">target</span>, <span class="va">repl</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>term</dt>
 <dd><p>expression/formula</p></dd>
+
+
 <dt>formula</dt>
 <dd><p>a formula object</p></dd>
+
+
 <dt>value</dt>
 <dd><p>term to remove from formula</p></dd>
+
+
 <dt>termList</dt>
 <dd><p>a list of formula terms</p></dd>
+
+
 <dt>f</dt>
 <dd><p>a formula</p></dd>
+
+
 <dt>response</dt>
 <dd><p>include response variable?</p></dd>
+
+
 <dt>bracket</dt>
 <dd><p>bracket-protect terms?</p></dd>
+
+
 <dt>x</dt>
 <dd><p>formula</p></dd>
+
+
 <dt>y</dt>
 <dd><p>a formula term (or an operator)</p></dd>
+
+
 <dt>op</dt>
 <dd><p>an operator</p></dd>
+
+
 <dt>f1</dt>
 <dd><p>formula #1</p></dd>
+
+
 <dt>f2</dt>
 <dd><p>formula #2</p></dd>
+
+
 <dt>...</dt>
 <dd><p>arguments to pass through to <code>addForm0</code></p></dd>
+
+
 <dt>bb</dt>
 <dd><p>a list of naked grouping variables, i.e. 1 | f</p></dd>
+
+
 <dt>debug</dt>
 <dd><p>(logical) debug?</p></dd>
+
+
 <dt>specials</dt>
 <dd><p>list of special terms</p></dd>
+
+
 <dt>default.special</dt>
 <dd><p>character: special to use for parenthesized terms - i.e. random effects terms with unspecified structure</p></dd>
+
+
 <dt>expand_doublevert_method</dt>
 <dd><p>method for handling <code>||</code> operator: split into separate terms or replace by <code>diag</code>? Inherited from <em>previous call where it was specified</em>.
 1. atom (not a call or an expression): NULL
@@ -174,33 +212,36 @@ random effect terms</p>
    it is of the form (xx|gg), then convert it to the default
    special type; we won't allow pathological cases like
    ((xx|gg)) ... [can we detect them?]</p></dd>
+
+
 <dt>preserve</dt>
 <dd><p>(integer) retain the specified occurrence of "value"</p></dd>
-<dt>a</dt>
-<dd><p>formula term</p></dd>
+
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    <p>a list of expressions</p>
+    
+
+<p>a list of expressions</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="fu">addForm0</span><span class="op">(</span><span class="va">y</span><span class="op">~</span><span class="va">x</span>,<span class="op">~</span><span class="fl">1</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">addForm0</span><span class="op">(</span><span class="va">y</span><span class="op">~</span><span class="va">x</span>,<span class="op">~</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> y ~ x + 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fb9ade37010&gt;</span>
-<span class="r-in"><span class="fu">addForm0</span><span class="op">(</span><span class="op">~</span><span class="va">x</span>,<span class="op">~</span><span class="va">y</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa86469d120&gt;</span>
+<span class="r-in"><span><span class="fu">addForm0</span><span class="op">(</span><span class="op">~</span><span class="va">x</span>,<span class="op">~</span><span class="va">y</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ~x + y</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fb9ade37010&gt;</span>
-<span class="r-in"><span class="va">ff</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/findbars.html" class="external-link">findbars</a></span><span class="op">(</span><span class="va">y</span><span class="op">~</span><span class="fl">1</span><span class="op">+</span><span class="op">(</span><span class="va">x</span><span class="op">|</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="va">ff</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa86469d120&gt;</span>
+<span class="r-in"><span><span class="va">ff</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/findbars.html" class="external-link">findbars</a></span><span class="op">(</span><span class="va">y</span><span class="op">~</span><span class="fl">1</span><span class="op">+</span><span class="op">(</span><span class="va">x</span><span class="op">|</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="va">ff</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> x | g:f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> x | f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="op">(</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">)</span><span class="op">/</span><span class="va">h</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="op">(</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">)</span><span class="op">/</span><span class="va">h</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | h:g:f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -210,7 +251,7 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[3]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">/</span><span class="va">h</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">f</span><span class="op">/</span><span class="va">g</span><span class="op">/</span><span class="va">h</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | h:g:f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -220,7 +261,7 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[3]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">f</span><span class="op">*</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">f</span><span class="op">*</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -230,14 +271,14 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[3]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | f:g</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">f</span><span class="op">+</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">f</span><span class="op">+</span><span class="va">g</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | g</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">a</span><span class="op">+</span><span class="va">b</span><span class="op">|</span><span class="va">f</span><span class="op">+</span><span class="va">g</span><span class="op">+</span><span class="va">h</span><span class="op">*</span><span class="va">i</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">expandAllGrpVar</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">a</span><span class="op">+</span><span class="va">b</span><span class="op">|</span><span class="va">f</span><span class="op">+</span><span class="va">g</span><span class="op">+</span><span class="va">h</span><span class="op">*</span><span class="va">i</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a + b | f</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -253,9 +294,10 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[5]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a + b | h:i</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu"><a href="splitForm.html">splitForm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fu">us</span><span class="op">(</span><span class="va">x</span>,n<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu"><a href="splitForm.html">splitForm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fu">us</span><span class="op">(</span><span class="va">x</span>,n<span class="op">=</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $fixedFormula</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ~1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa860676260&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $reTrmFormulas</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $reTrmFormulas[[1]]</span>
@@ -270,11 +312,11 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $reTrmClasses</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "us"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">||</span> <span class="va">g</span><span class="op">)</span>, expand_doublevert_method <span class="op">=</span> <span class="st">"diag_special"</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">||</span> <span class="va">g</span><span class="op">)</span>, expand_doublevert_method <span class="op">=</span> <span class="st">"diag_special"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> diag(x + y | g)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">||</span> <span class="va">g</span><span class="op">)</span>, expand_doublevert_method <span class="op">=</span> <span class="st">"split"</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">||</span> <span class="va">g</span><span class="op">)</span>, expand_doublevert_method <span class="op">=</span> <span class="st">"split"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | g)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -284,21 +326,21 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[3]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(0 + y | g)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">f</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">g</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">f</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">g</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | f)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | g)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">f</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">g</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">f</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">g</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | f)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | g)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">h</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">||</span> <span class="va">g</span><span class="op">)</span>, expand_doublevert_method <span class="op">=</span> <span class="st">"split"</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">h</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">+</span> <span class="va">y</span> <span class="op">||</span> <span class="va">g</span><span class="op">)</span>, expand_doublevert_method <span class="op">=</span> <span class="st">"split"</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | h)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -311,68 +353,78 @@ random effect terms</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[4]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(0 + y | g)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | Subject)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">||</span><span class="va">Subject</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">||</span><span class="va">Subject</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> diag(1 | Subject)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> us(1 | Subject)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, default.special <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, default.special <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1 | Subject</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="va">x</span><span class="op">)</span> </span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fl">1</span> <span class="op">+</span> <span class="va">x</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
-<span class="r-in"><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">.</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="op">~</span> <span class="fu">s</span><span class="op">(</span><span class="va">x</span>, bs <span class="op">=</span> <span class="st">"tp"</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-in"><span><span class="fu">findbars_x</span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">a</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span> <span class="op">+</span> <span class="fu">s</span><span class="op">(</span><span class="va">x</span>, bs <span class="op">=</span> <span class="st">"tp"</span><span class="op">)</span> <span class="op">+</span> <span class="fu">s</span><span class="op">(</span><span class="va">y</span>, bs <span class="op">=</span> <span class="st">"gp"</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>   target <span class="op">=</span> <span class="st">"s"</span>, default.special <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> s(x, bs = "tp")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> s(y, bs = "gp")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">.</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-in"><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">y</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">y</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">.</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
-<span class="r-in"><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="va">b</span><span class="op">+</span><span class="va">c</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="va">b</span><span class="op">+</span><span class="va">c</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-in"><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="va">b</span><span class="op">+</span><span class="op">(</span><span class="va">d</span><span class="op">+</span><span class="va">e</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">inForm</span><span class="op">(</span><span class="va">z</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="va">b</span><span class="op">+</span><span class="op">(</span><span class="va">d</span><span class="op">+</span><span class="va">e</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
-<span class="r-in"><span class="va">f</span> <span class="op">&lt;-</span> <span class="op">~</span> <span class="va">a</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">f2</span> <span class="op">&lt;-</span> <span class="va">z</span> <span class="op">~</span> <span class="va">a</span></span>
-<span class="r-in"><span class="fu">inForm</span><span class="op">(</span><span class="va">f</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="op">~</span> <span class="va">a</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">f2</span> <span class="op">&lt;-</span> <span class="va">z</span> <span class="op">~</span> <span class="va">a</span></span></span>
+<span class="r-in"><span><span class="fu">inForm</span><span class="op">(</span><span class="va">f</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] TRUE</span>
-<span class="r-in"><span class="fu">inForm</span><span class="op">(</span><span class="va">f2</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">inForm</span><span class="op">(</span><span class="va">f2</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>
-<span class="r-in"><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> offset(b)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="va">c</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="va">c</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
-<span class="r-in"><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">c</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> offset(b)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[2]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> offset(c)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">extractForm</span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [[1]]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> offset(x)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span class="fu">dropHead</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">dropHead</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a + b</span>
-<span class="r-in"><span class="fu">dropHead</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/poly.html" class="external-link">poly</a></span><span class="op">(</span><span class="va">x</span><span class="op">+</span><span class="va">z</span>,<span class="fl">3</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">dropHead</span><span class="op">(</span><span class="op">~</span><span class="va">a</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/poly.html" class="external-link">poly</a></span><span class="op">(</span><span class="va">x</span><span class="op">+</span><span class="va">z</span>,<span class="fl">3</span><span class="op">)</span><span class="op">+</span><span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">b</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">offset</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a + poly(x + z, 3) + b</span>
-<span class="r-in"><span class="fu">drop.special</span><span class="op">(</span><span class="va">x</span><span class="op">~</span><span class="va">a</span> <span class="op">+</span> <span class="va">b</span><span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">drop.special</span><span class="op">(</span><span class="va">x</span><span class="op">~</span><span class="va">a</span> <span class="op">+</span> <span class="va">b</span><span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/offset.html" class="external-link">offset</a></span><span class="op">(</span><span class="va">z</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> x ~ a + b</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fb9ade37010&gt;</span>
-<span class="r-in"><span class="fu">replaceForm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fu">a</span><span class="op">(</span><span class="va">b</span><span class="op">+</span><span class="va">x</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">y</span>,<span class="va">z</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">R</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;environment: 0x7fa86469d120&gt;</span>
+<span class="r-in"><span><span class="fu">replaceForm</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="fu">a</span><span class="op">(</span><span class="va">b</span><span class="op">+</span><span class="va">x</span><span class="op">*</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">y</span>,<span class="va">z</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">y</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">R</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> a(b + x * c(R, z))</span>
-<span class="r-in"><span class="va">ss</span> <span class="op">&lt;-</span> <span class="op">~</span><span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">cask</span><span class="op">:</span><span class="va">batch</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">batch</span><span class="op">)</span></span>
-<span class="r-in"><span class="fu">replaceForm</span><span class="op">(</span><span class="va">ss</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">cask</span><span class="op">:</span><span class="va">batch</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">batch</span><span class="op">:</span><span class="va">cask</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="va">ss</span> <span class="op">&lt;-</span> <span class="op">~</span><span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">cask</span><span class="op">:</span><span class="va">batch</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">batch</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">replaceForm</span><span class="op">(</span><span class="va">ss</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">cask</span><span class="op">:</span><span class="va">batch</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">batch</span><span class="op">:</span><span class="va">cask</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ~(1 | batch:cask) + (1 | batch)</span>
-<span class="r-in"><span class="fu">replaceForm</span><span class="op">(</span><span class="va">ss</span>, <span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">`:`</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">`%:%`</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span><span class="fu">replaceForm</span><span class="op">(</span><span class="va">ss</span>, <span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">`:`</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/substitute.html" class="external-link">quote</a></span><span class="op">(</span><span class="va">`%:%`</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ~(1 | cask %:% batch) + (1 | batch)</span>
 </code></pre></div>
     </div>
@@ -388,7 +440,7 @@ random effect terms</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

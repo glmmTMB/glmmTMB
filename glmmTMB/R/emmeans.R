@@ -76,6 +76,7 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
     # which terms to use?
     tcomp <- ifelse(component %in% c("response", "cmean"), "cond", component)
     trms <- delete.response(terms(object, component = tcomp))
+    nbasis <- estimability::all.estble
     if (component %in% c("response", "cmean")) {  # may need add'l terms for response mode
         if(!is.null(ztrms <- terms(object, component = "zi")) && (length(all.vars(ztrms)) > 0))
             trms <- emmeans::.combine.terms(trms, ztrms)
@@ -92,8 +93,8 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 }
 
 
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, 
-                               component = c("cond", "zi", "disp", "response", "cmean"), vcov., ...) 
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi", 
+                                                                       "disp", "response", "cmean"), vcov., ...) 
 {
     component <- match.arg(component)
     L <- list(...)
@@ -109,47 +110,58 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid,
         dfargs <- list()
     }
     
-    if(component %in% c("response", "cmean")) {
-        # which 'type' argument to use in predict?
-        ptype <- ifelse(component == "cmean", "conditional", "response")
-        for(nm in object$modelInfo$grpVar)
-            grid[[nm]] <- NA
-        tmp <- predict(object, newdata = grid, type = ptype, re.form = NA, 
-                       se.fit = TRUE, cov.fit = TRUE)
+    # internal fcn for identifying non-estimable components
+    .which.nonest <- function(cmp) {
+        bh <- fixef(object)[[cmp]]
+        if (!any(is.na(bh)))
+            return(numeric(0))  # no estimability issues
+        tms <- delete.response(terms(object, component = cmp))
+        bas <- emm_basis.glmmTMB(object, tms, xlev, grid, component = cmp)
+        which(!estimability::is.estble(bas$X, bas$nbasis))
+    }
+    
+    nbasis <- estimability::all.estble
+    if (component %in% c("response", "cmean")) {
+        ptype <- ifelse(component == "cmean", "conditional", 
+                        "response")
+        for (nm in object$modelInfo$grpVar) grid[[nm]] <- NA
+        tmp <- predict(object, newdata = grid, type = ptype, 
+                       re.form = NA, se.fit = TRUE, cov.fit = TRUE)
         bhat <- tmp$fit
         X <- diag(1, length(bhat))
         V <- tmp$cov.fit
-        # We expect predict() to return NA for each non-estimable case
-        nbasis <- estimability::all.estble
-        if(any(is.na(bhat)))
-            nbasis <- diag(1, ncol = length(bhat))[, is.na(bhat)]
+        if(component == "response")
+            bhat[.which.nonest("zi")] <- NA
+        bhat[.which.nonest("cond")] <- NA
+        bhat[.which.nonest("disp")] <- NA
+        if (length(w <- which(is.na(bhat))) > 0) {
+            nbasis <- matrix(0, nrow = length(bhat), ncol = length(w))
+            for (j in seq_along(w))
+                nbasis[w[j], j] <- 1
+            V <- V[-w, -w, drop = FALSE]
+        }
     }
-    else { # component %in% c("cond", "zi", "disp")
-        fam <- switch(component, 
-                      cond = family(object), 
-                      zi = list(link = "logit"), 
+    else {
+        fam <- switch(component, cond = family(object), zi = list(link = "logit"), 
                       disp = list(link = "log"))
         misc <- emmeans::.std.link.labels(fam, misc)
         if (missing(vcov.)) {
-            V <- as.matrix(vcov(object)[[component]])
+            V <- as.matrix(vcov(object, include_nonest = FALSE)[[component]])
         }
         else {
             V <- vcov.
         }
-        contrasts <- attr(model.matrix(object, component = component), "contrasts")
+        contrasts <- attr(model.matrix(object, component = component), 
+                          "contrasts")
         m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
         X <- model.matrix(trms, m, contrasts.arg = contrasts)
         bhat <- fixef(object)[[component]]
-        if (length(bhat) < ncol(X)) {
-            kept <- match(names(bhat), dimnames(X)[[2]])
-            bhat <- NA * X[1, ]
-            bhat[kept] <- fixef(object)[[component]]
-            modmat <- model.matrix(trms, model.frame(object), contrasts.arg = contrasts)
+        if(any(is.na(bhat))) {
+            modmat <- model.matrix(trms, model.frame(object), 
+                                   contrasts.arg = contrasts)
             nbasis <- estimability::nonest.basis(modmat)
-        }
-        else {
-            nbasis <- estimability::all.estble
         }
     }
     namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
 }
+

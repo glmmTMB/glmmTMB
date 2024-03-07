@@ -2,17 +2,34 @@
 % Please edit documentation in R/methods.R
 \name{residuals.glmmTMB}
 \alias{residuals.glmmTMB}
+\alias{deviance.glmmTMB}
 \title{Compute residuals for a glmmTMB object}
 \usage{
-\method{residuals}{glmmTMB}(object, type = c("response", "pearson", "working"), ...)
+\method{residuals}{glmmTMB}(object, type = c("response", "pearson", "working", "deviance"), ...)
+
+\method{deviance}{glmmTMB}(object, ...)
 }
 \arguments{
 \item{object}{a \dQuote{glmmTMB} object}
 
 \item{type}{(character) residual type}
 
-\item{\dots}{ignored, for method compatibility}
+\item{\dots}{for method compatibility (unused arguments will throw an error)}
 }
 \description{
 Compute residuals for a glmmTMB object
+}
+\details{
+\itemize{
+\item Residuals are computed based on predictions of type "response",
+i.e. equal to the conditional mean for non-zero-inflated models and to \code{mu*(1-p)}
+for zero-inflated models
+\item Computing deviance residuals depends on the implementation of the \code{dev.resids}
+function from the object's \code{family} component; at present this returns \code{NA} for most
+"exotic" families (i.e. deviance residuals are currently only
+implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}). Deviance residuals are based on the conditional distributions only, i.e. ignoring zero-inflation components.
+\item Deviance is computed as the sum of squared deviance residuals, so is available only
+for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
+details on the definition of the deviance for GLMMs.
+}
 }
