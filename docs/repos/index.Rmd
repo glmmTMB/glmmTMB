@@ -17,30 +17,17 @@ Available packages:
 library(tidyverse)
 all_f <- list.files(recursive = TRUE)
 ## get binaries
-
-## fill in missing 'platform' for Windows/old MacOS
-fix_val <- function(x) {
-    if (length(x) == 4) {
-        return(c(x[[2]], "", unlist(x[3:4])))
-    } else {
-        return(unlist(x[-1]))
-    }
-}
-        
 split_f <- all_f %>% grep(pattern = "bin", value=TRUE) %>%
-    gsub(pattern = "(bin|contrib/)", replacement = "") %>%
-    grep(pattern = "PACKAGES", value = TRUE, invert = TRUE) %>%
-    strsplit("/") |>
-    map(fix_val)
-
-
-tbl <- (do.call(rbind, split_f)
-    |> as_tibble(.name.repair="unique")
-    |> setNames(c("os","platform","R_version","tmp"))
-    |> separate(tmp, c("pkg", "pkg_ver"), sep = "_")
-    |> mutate(across(pkg_ver, ~str_remove(., "\\.[a-z]+$")))
-    |> arrange(desc(R_version), pkg, desc(pkg_ver))
-)
+  gsub(pattern = "(bin|contrib/)", replacement = "") %>%
+  grep(pattern = "PACKAGES", value = TRUE, invert = TRUE) %>%
+  strsplit("/")
+tbl <- do.call(rbind, split_f) %>%
+  as_tibble(.name.repair="unique") %>%
+  select(-1) %>%
+  setNames(c("os","R_version","tmp")) %>%
+  separate(tmp, c("pkg", "pkg_ver"), sep = "_") %>%
+  mutate(across(pkg_ver, str_remove, "\\.[a-z]+$")) %>%
+  arrange(desc(R_version), pkg, desc(pkg_ver))
 ```
 
 ```{r tbl, echo=FALSE, results="asis"}

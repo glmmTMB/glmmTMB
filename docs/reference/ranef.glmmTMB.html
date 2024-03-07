@@ -18,7 +18,7 @@ for the conditional model and zero inflation."><!-- mathjax --><script src="http
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
       </span>
     </div>
 
@@ -39,22 +39,19 @@ for the conditional model and zero inflation."><!-- mathjax --><script src="http
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/hacking.html">Hacking glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">Model evaluation</a>
+      <a href="../articles/model_evaluation.html">model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -94,40 +91,31 @@ for the conditional model and zero inflation.</p>
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu">ranef</span><span class="op">(</span><span class="va">object</span>, condVar <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for ranef.glmmTMB</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">object</span>, condVar <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
+<span class="fu">ranef</span><span class="op">(</span><span class="va">object</span>, condVar <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span>
+
+<span class="co"># S3 method for ranef.glmmTMB</span>
+<span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span>
+
+<span class="co"># S3 method for glmmTMB</span>
+<span class="fu"><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef</a></span><span class="op">(</span><span class="va">object</span>, condVar <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>object</dt>
 <dd><p>a <code>glmmTMB</code> model.</p></dd>
-
-
 <dt>condVar</dt>
 <dd><p>whether to include conditional variances in result.</p></dd>
-
-
 <dt>...</dt>
 <dd><p>some methods for this generic function require additional
 arguments (they are unused here and will trigger an error)</p></dd>
-
-
 <dt>x</dt>
 <dd><p>a <code>ranef.glmmTMB</code> object (i.e., the result of running <code>ranef</code> on a fitted <code>glmmTMB</code> model)</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    
-
-<ul><li><p>For <code>ranef</code>, an object of class <code>ranef.glmmTMB</code> with two components:</p><dl><dt>cond</dt>
+    <ul><li><p>For <code>ranef</code>, an object of class <code>ranef.glmmTMB</code> with two components:</p><dl><dt>cond</dt>
 <dd><p>a list of data frames, containing random effects
     for the conditional model.</p></dd>
 
@@ -141,7 +129,7 @@ arguments (they are unused here and will trigger an error)</p></dd>
 random effects terms) will have associated <code>condVar</code> attributes
 giving the conditional variances of the random effects values.
 These are in the form of three-dimensional arrays: see
-<code><a href="https://rdrr.io/pkg/lme4/man/ranef.html" class="external-link">ranef.merMod</a></code> for details. The only difference between
+<code>ranef.merMod</code> for details. The only difference between
 the packages is that the attributes are called ‘postVar’
 in <span class="pkg">lme4</span>, vs. ‘condVar’ in <span class="pkg">glmmTMB</span>.</p></li>
 <li><p>For <code>coef.glmmTMB</code>: a similar list, but containing
@@ -187,15 +175,15 @@ the data frames, see example.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>   <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="va">rr</span> <span class="op">&lt;-</span> <span class="fu">ranef</span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">rr</span>, simplify<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="co">## extract Subject conditional modes for conditional model</span></span></span>
-<span class="r-in"><span>   <span class="va">rr</span><span class="op">$</span><span class="va">cond</span><span class="op">$</span><span class="va">Subject</span></span></span>
-<span class="r-in"><span>   <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">rr</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in">   <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">sleepstudy</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span>
+<span class="r-in">   <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">Reaction</span> <span class="op">~</span> <span class="va">Days</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">Subject</span><span class="op">)</span>, <span class="va">sleepstudy</span><span class="op">)</span></span>
+<span class="r-in">   <span class="va">rr</span> <span class="op">&lt;-</span> <span class="fu">ranef</span><span class="op">(</span><span class="va">model</span><span class="op">)</span></span>
+<span class="r-in">   <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">rr</span>, simplify<span class="op">=</span><span class="cn">FALSE</span><span class="op">)</span></span>
+<span class="r-in">   <span class="co">## extract Subject conditional modes for conditional model</span></span>
+<span class="r-in">   <span class="va">rr</span><span class="op">$</span><span class="va">cond</span><span class="op">$</span><span class="va">Subject</span></span>
+<span class="r-in">   <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="va">rr</span><span class="op">)</span></span>
+<span class="r-in"><span class="op">}</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $cond</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $cond$Subject</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     (Intercept)</span>
@@ -255,7 +243,7 @@ the data frames, see example.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

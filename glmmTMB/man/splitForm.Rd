@@ -10,11 +10,10 @@ splitForm(
   defaultTerm = "us",
   allowFixedOnly = TRUE,
   allowNoSpecials = TRUE,
-  debug = FALSE,
-  specials = findReTrmClasses()
+  debug = FALSE
 )
 
-noSpecials(term, delete = TRUE, debug = FALSE, specials = findReTrmClasses())
+noSpecials(term, delete = TRUE, debug = FALSE)
 }
 \arguments{
 \item{formula}{a formula containing special random effect terms}
@@ -55,7 +54,6 @@ splitForm(~x+y+(1|(f/g)/h))             ## 'slash'; term
 splitForm(~x+y+(f|g)+cs(1|g)+cs(a|b,stuff))  ## complex special
 splitForm(~(((x+y))))               ## lots of parentheses
 splitForm(~1+rr(f|g,n=2))
-splitForm(~1+s(x, bs = "tp"))
 
 noSpecials(y~1+us(1|f))
 noSpecials(y~1+us(1|f),delete=FALSE)
@@ -63,8 +61,7 @@ noSpecials(y~us(1|f))
 noSpecials(y~us(1|f), delete=FALSE)
 noSpecials(y~us(1|f), debug=TRUE)
 noSpecials(y~us+1)  ## should *not* delete unless head of a function
-noSpecials(~us(1|f)+1)   ## should work on a one-sided formula!
-noSpecials(~s(stuff) + a + b, specials = "s")
+noSpecials(~us+1)   ## should work on a one-sided formula!
 }
 \author{
 Steve Walker

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
       </span>
     </div>
 
@@ -38,22 +38,19 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/hacking.html">Hacking glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">Model evaluation</a>
+      <a href="../articles/model_evaluation.html">model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -92,30 +89,21 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu">isLMM</span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/refit.html" class="external-link">refit</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">newresp</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
+<span class="fu">isLMM</span><span class="op">(</span><span class="va">object</span><span class="op">)</span>
+
+<span class="co"># S3 method for glmmTMB</span>
+<span class="fu"><a href="https://rdrr.io/pkg/lme4/man/refit.html" class="external-link">refit</a></span><span class="op">(</span><span class="va">object</span>, <span class="va">newresp</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
-    <dl><dt>x</dt>
+    <dl><dt>object</dt>
 <dd><p>a fitted glmmTMB object</p></dd>
-
-
-<dt>...</dt>
-<dd><p>additional arguments (for generic consistency; ignored)</p></dd>
-
-
-<dt>object</dt>
-<dd><p>a fitted glmmTMB object</p></dd>
-
-
 <dt>newresp</dt>
 <dd><p>a new response vector</p></dd>
-
+<dt>...</dt>
+<dd><p>additional arguments (for generic consistency; ignored)</p></dd>
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -124,31 +112,22 @@
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>   <span class="va">fm1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span><span class="va">mined</span><span class="op">+</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">spp</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                  ziformula<span class="op">=</span><span class="op">~</span><span class="va">mined</span>,</span></span>
-<span class="r-in"><span>                  data<span class="op">=</span><span class="va">Salamanders</span>,</span></span>
-<span class="r-in"><span>                  family<span class="op">=</span><span class="va">nbinom1</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="co">## single parametric bootstrap step: refit with data simulated from original model</span></span></span>
-<span class="r-in"><span>   <span class="va">fm1R</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lme4/man/refit.html" class="external-link">refit</a></span><span class="op">(</span><span class="va">fm1</span>, <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">fm1</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="co">## the bootMer function from lme4 provides a wrapper for doing multiple refits</span></span></span>
-<span class="r-in"><span>   <span class="co">##   with a specified summary function</span></span></span>
-<span class="r-in"><span>   <span class="va">b1</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/bootMer.html" class="external-link">bootMer</a></span><span class="op">(</span><span class="va">fm1</span>, FUN<span class="op">=</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">$</span><span class="va">zi</span>, nsim<span class="op">=</span><span class="fl">20</span>, .progress<span class="op">=</span><span class="st">"txt"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"boot"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>      <span class="fu">boot.ci</span><span class="op">(</span><span class="va">b1</span>,type<span class="op">=</span><span class="st">"perc"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="op">}</span></span></span>
-<span class="r-in"><span>   <span class="co">## can run in parallel: may need to set up cluster explicitly,</span></span></span>
-<span class="r-in"><span>   <span class="co">## use clusterEvalQ() to load packages on workers</span></span></span>
-<span class="r-in"><span>   <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"parallel"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>      <span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">makeCluster</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/clusterApply.html" class="external-link">clusterEvalQ</a></span><span class="op">(</span><span class="va">cl</span>, <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st"><a href="https://github.com/lme4/lme4/" class="external-link">"lme4"</a></span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/clusterApply.html" class="external-link">clusterEvalQ</a></span><span class="op">(</span><span class="va">cl</span>, <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="st"><a href="https://github.com/glmmTMB/glmmTMB" class="external-link">"glmmTMB"</a></span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>      <span class="va">b2</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/bootMer.html" class="external-link">bootMer</a></span><span class="op">(</span><span class="va">fm1</span>, FUN <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">$</span><span class="va">cond</span>,</span></span>
-<span class="r-in"><span>              nsim <span class="op">=</span> <span class="fl">10</span>, ncpus <span class="op">=</span> <span class="fl">2</span>, cl <span class="op">=</span> <span class="va">cl</span>, parallel <span class="op">=</span> <span class="st">"snow"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>   <span class="op">}</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"lme4"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in">   <span class="va">fm1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span><span class="va">mined</span><span class="op">+</span><span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">spp</span><span class="op">)</span>,</span>
+<span class="r-in">                  ziformula<span class="op">=</span><span class="op">~</span><span class="va">mined</span>,</span>
+<span class="r-in">                  data<span class="op">=</span><span class="va">Salamanders</span>,</span>
+<span class="r-in">                  family<span class="op">=</span><span class="va">nbinom1</span><span class="op">)</span></span>
+<span class="r-in">   <span class="co">## single parametric bootstrap step: refit with data simulated from original model</span></span>
+<span class="r-in">   <span class="va">fm1R</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/lme4/man/refit.html" class="external-link">refit</a></span><span class="op">(</span><span class="va">fm1</span>, <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">fm1</span><span class="op">)</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
+<span class="r-in">   <span class="co">## the bootMer function from lme4 provides a wrapper for doing multiple refits</span></span>
+<span class="r-in">   <span class="co">##   with a specified summary function</span></span>
+<span class="r-in">   <span class="va">b1</span> <span class="op">&lt;-</span> <span class="fu">lme4</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lme4/man/bootMer.html" class="external-link">bootMer</a></span><span class="op">(</span><span class="va">fm1</span>, FUN<span class="op">=</span><span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">$</span><span class="va">zi</span>, nsim<span class="op">=</span><span class="fl">20</span>, .progress<span class="op">=</span><span class="st">"txt"</span><span class="op">)</span></span>
+<span class="r-in">   <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"boot"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span class="r-in">      <span class="fu">boot.ci</span><span class="op">(</span><span class="va">b1</span>,type<span class="op">=</span><span class="st">"perc"</span><span class="op">)</span></span>
+<span class="r-in">    <span class="op">}</span></span>
+<span class="r-in"><span class="op">}</span></span>
+<span class="r-in"><span class="op">}</span></span>
 </code></pre></div>
     </div>
   </div>
@@ -163,7 +142,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

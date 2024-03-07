@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
       </span>
     </div>
 
@@ -38,22 +38,19 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/hacking.html">Hacking glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">Model evaluation</a>
+      <a href="../articles/model_evaluation.html">model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -92,45 +89,33 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">glmmTMBControl</span><span class="op">(</span></span>
-<span>  optCtrl <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  optArgs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  optimizer <span class="op">=</span> <span class="va">nlminb</span>,</span>
-<span>  profile <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  collect <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"glmmTMB.cores"</span>, <span class="fl">1L</span><span class="op">)</span>,</span>
-<span>  eigval_check <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  zerodisp_val <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  start_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="cn">NULL</span>, jitter.sd <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>  rank_check <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adjust"</span>, <span class="st">"warning"</span>, <span class="st">"stop"</span>, <span class="st">"skip"</span><span class="op">)</span>,</span>
-<span>  conv_check <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"warning"</span>, <span class="st">"skip"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">glmmTMBControl</span><span class="op">(</span>
+  optCtrl <span class="op">=</span> <span class="cn">NULL</span>,
+  optArgs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,
+  optimizer <span class="op">=</span> <span class="va">nlminb</span>,
+  profile <span class="op">=</span> <span class="cn">FALSE</span>,
+  collect <span class="op">=</span> <span class="cn">FALSE</span>,
+  parallel <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">getOption</a></span><span class="op">(</span><span class="st">"glmmTMB.cores"</span>, <span class="fl">1L</span><span class="op">)</span>,
+  eigval_check <span class="op">=</span> <span class="cn">TRUE</span>,
+  zerodisp_val <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="va">.Machine</span><span class="op">$</span><span class="va">double.eps</span><span class="op">)</span><span class="op">)</span>,
+  start_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="cn">NULL</span>, jitter.sd <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>
+<span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>optCtrl</dt>
 <dd><p>Passed as argument <code>control</code> to optimizer. Default value (if default <code>nlminb</code> optimizer is used): <code>list(iter.max=300, eval.max=400)</code></p></dd>
-
-
 <dt>optArgs</dt>
 <dd><p>additional arguments to be passed to optimizer function (e.g.: <code>list(method="BFGS")</code> when <code>optimizer=optim</code>)</p></dd>
-
-
 <dt>optimizer</dt>
 <dd><p>Function to use in model fitting. See <code>Details</code> for required properties of this function.</p></dd>
-
-
 <dt>profile</dt>
 <dd><p>(logical) Experimental option to improve speed and
 robustness when a model has many fixed effects</p></dd>
-
-
 <dt>collect</dt>
 <dd><p>(logical) Experimental option to improve speed by
 recognizing duplicated observations.</p></dd>
-
-
 <dt>parallel</dt>
 <dd><p>(integer) Set number of OpenMP threads to evaluate
 the negative log-likelihood in parallel. The default is to evaluate
@@ -139,27 +124,12 @@ for an R session via <code>options(glmmTMB.cores=&lt;value&gt;)</code>. At prese
 reduced-rank models (i.e., a covariance structure using <code>rr(...)</code>)
 cannot be fitted in parallel; the number of threads will be automatically
 set to 1, with a warning if this overrides the user-specified value.</p></dd>
-
-
 <dt>eigval_check</dt>
 <dd><p>Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)</p></dd>
-
-
 <dt>zerodisp_val</dt>
 <dd><p>value of the dispersion parameter when <code>dispformula=~0</code> is specified</p></dd>
-
-
 <dt>start_method</dt>
 <dd><p>(list) Options to initialize the starting values when fitting models with reduced-rank (<code>rr</code>) covariance structures; <code>jitter.sd</code> adds variation to the starting values of latent variables when <code>method = "res"</code>.</p></dd>
-
-
-<dt>rank_check</dt>
-<dd><p>Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).</p></dd>
-
-
-<dt>conv_check</dt>
-<dd><p>Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)</p></dd>
-
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -187,12 +157,12 @@ more than 5 fixed-effect parameters, specify</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co">## fit with default (nlminb) and alternative (optim/BFGS) optimizer</span></span></span>
-<span class="r-in"><span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span> <span class="va">mined</span>, family<span class="op">=</span><span class="va">poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">m1B</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">m1</span>, control<span class="op">=</span><span class="fu">glmmTMBControl</span><span class="op">(</span>optimizer<span class="op">=</span><span class="va">optim</span>,</span></span>
-<span class="r-in"><span>               optArgs<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method<span class="op">=</span><span class="st">"BFGS"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co">## estimates are *nearly* identical:</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span>, <span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">m1B</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co">## fit with default (nlminb) and alternative (optim/BFGS) optimizer</span></span>
+<span class="r-in"><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">count</span><span class="op">~</span> <span class="va">mined</span>, family<span class="op">=</span><span class="va">poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">m1B</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">m1</span>, control<span class="op">=</span><span class="fu">glmmTMBControl</span><span class="op">(</span>optimizer<span class="op">=</span><span class="va">optim</span>,</span>
+<span class="r-in">               optArgs<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method<span class="op">=</span><span class="st">"BFGS"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span class="co">## estimates are *nearly* identical:</span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span>, <span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">m1B</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "Component “cond”: Mean relative difference: 2.66761e-06"</span>
 </code></pre></div>
     </div>
@@ -208,7 +178,7 @@ more than 5 fixed-effect parameters, specify</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

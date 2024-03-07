@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
       </span>
     </div>
 
@@ -38,22 +38,19 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/hacking.html">Hacking glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">Model evaluation</a>
+      <a href="../articles/model_evaluation.html">model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -92,61 +89,45 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">glmmTMB</span><span class="op">(</span></span>
-<span>  <span class="va">formula</span>,</span>
-<span>  data <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  ziformula <span class="op">=</span> <span class="op">~</span><span class="fl">0</span>,</span>
-<span>  dispformula <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,</span>
-<span>  weights <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  offset <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  contrasts <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  <span class="va">na.action</span>,</span>
-<span>  se <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  verbose <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  doFit <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  REML <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  sparseX <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">glmmTMB</span><span class="op">(</span>
+  <span class="va">formula</span>,
+  data <span class="op">=</span> <span class="cn">NULL</span>,
+  family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">gaussian</a></span><span class="op">(</span><span class="op">)</span>,
+  ziformula <span class="op">=</span> <span class="op">~</span><span class="fl">0</span>,
+  dispformula <span class="op">=</span> <span class="op">~</span><span class="fl">1</span>,
+  weights <span class="op">=</span> <span class="cn">NULL</span>,
+  offset <span class="op">=</span> <span class="cn">NULL</span>,
+  contrasts <span class="op">=</span> <span class="cn">NULL</span>,
+  <span class="va">na.action</span>,
+  se <span class="op">=</span> <span class="cn">TRUE</span>,
+  verbose <span class="op">=</span> <span class="cn">FALSE</span>,
+  doFit <span class="op">=</span> <span class="cn">TRUE</span>,
+  control <span class="op">=</span> <span class="fu"><a href="glmmTMBControl.html">glmmTMBControl</a></span><span class="op">(</span><span class="op">)</span>,
+  REML <span class="op">=</span> <span class="cn">FALSE</span>,
+  start <span class="op">=</span> <span class="cn">NULL</span>,
+  map <span class="op">=</span> <span class="cn">NULL</span>,
+  sparseX <span class="op">=</span> <span class="cn">NULL</span>
+<span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>formula</dt>
 <dd><p>combined fixed and random effects formula, following lme4 syntax.</p></dd>
-
-
 <dt>data</dt>
 <dd><p>data frame (tibbles are OK) containing model variables. Not required, but strongly recommended; if <code>data</code> is not specified, downstream methods such as prediction with new data (<code>predict(fitted_model, newdata = ...)</code>) will fail. If it is necessary to call <code>glmmTMB</code> with model variables taken from the environment rather than from a data frame, specifying <code>data=NULL</code> will suppress the warning message.</p></dd>
-
-
 <dt>family</dt>
 <dd><p>a family function, a character string naming a family function, or the result of a call to a family function (variance/link function) information. See <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">family</a></code> for a generic discussion of families or <code><a href="nbinom2.html">family_glmmTMB</a></code> for details of <code>glmmTMB</code>-specific families.</p></dd>
-
-
 <dt>ziformula</dt>
 <dd><p>a <em>one-sided</em> (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default <code>~0</code> specifies no zero-inflation. Specifying <code>~.</code> sets the zero-inflation formula identical to the right-hand side of <code>formula</code> (i.e., the conditional effects formula); terms can also be added or subtracted. <strong>When using <code>~.</code> as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped</strong>. The zero-inflation model uses a logit link.</p></dd>
-
-
 <dt>dispformula</dt>
 <dd><p>a <em>one-sided</em> formula for dispersion containing only fixed effects: the default <code>~1</code> specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see <code><a href="sigma.glmmTMB.html">sigma</a></code>. The dispersion model uses a log link. In Gaussian mixed models, <code>dispformula=~0</code> fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via <code>control=glmmTMBControl(zero_dispval=...)</code>; the default value is <code>sqrt(.Machine$double.eps)</code>.</p></dd>
-
-
 <dt>weights</dt>
 <dd><p>weights, as in <code>glm</code>. Not automatically scaled to have sum 1.</p></dd>
-
-
 <dt>offset</dt>
 <dd><p>offset for conditional model (only).</p></dd>
-
-
 <dt>contrasts</dt>
 <dd><p>an optional list, e.g., <code>list(fac1="contr.sum")</code>. See the <code>contrasts.arg</code> of <code><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix.default</a></code>.</p></dd>
-
-
 <dt>na.action</dt>
 <dd><p>a function that specifies how to handle observations
 containing <code>NA</code>s.  The default action (<code>na.omit</code>,
@@ -157,39 +138,22 @@ will similarly drop observations with missing values while fitting the model,
 but will fill in <code>NA</code> values for the predicted and residual
 values for cases that were excluded during the fitting process
 because of missingness.</p></dd>
-
-
 <dt>se</dt>
 <dd><p>whether to return standard errors.</p></dd>
-
-
 <dt>verbose</dt>
 <dd><p>whether progress indication should be printed to the console.</p></dd>
-
-
 <dt>doFit</dt>
 <dd><p>whether to fit the full model, or (if FALSE) return the preprocessed data and parameter objects, without fitting the model.</p></dd>
-
-
 <dt>control</dt>
 <dd><p>control parameters, see <code><a href="glmmTMBControl.html">glmmTMBControl</a></code>.</p></dd>
-
-
 <dt>REML</dt>
 <dd><p>whether to use REML estimation rather than maximum likelihood.</p></dd>
-
-
 <dt>start</dt>
-<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>psi</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
-
-
+<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>thetaf</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
 <dt>map</dt>
 <dd><p>a list specifying which parameter values should be fixed to a constant value rather than estimated. <code>map</code> should be a named list containing factors corresponding to a subset of the internal parameter names (see <code>start</code> parameter). Distinct factor values are fitted as separate parameter values, <code>NA</code> values are held fixed: e.g., <code>map=list(beta=factor(c(1,2,3,NA)))</code> would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use <code>start</code> to specify non-default starting values for fixed parameters. See <code><a href="https://rdrr.io/pkg/TMB/man/MakeADFun.html" class="external-link">MakeADFun</a></code> for more details.</p></dd>
-
-
 <dt>sparseX</dt>
 <dd><p>a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. <code>c(cond=TRUE)</code>. Default is all <code>FALSE</code></p></dd>
-
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -206,11 +170,8 @@ because of missingness.</p></dd>
 <li><p><code>gau</code> (* Gaussian autocorrelation)</p></li>
 <li><p><code>mat</code> (* Matérn process correlation)</p></li>
 <li><p><code>toep</code> (* Toeplitz)</p></li>
-<li><p><code>rr</code> (reduced rank/factor-analytic model)</p></li>
-<li><p><code>homdiag</code> (diagonal, homogeneous variance)</p></li>
-</ul><p>Structures marked with * are experimental/untested. See <code><a href="../articles/covstruct.html">vignette("covstruct", package = "glmmTMB")</a></code> for more information.</p></li>
+</ul><p>Structures marked with * are experimental/untested. See <code><a href="../articles/covstruct.html">vignette("covstruct", package = "glmmTMB")</a></code>&lt; for more information.</p></li>
 <li><p>For backward compatibility, the <code>family</code> argument can also be specified as a list comprising the name of the distribution and the link function (e.g. <code>list(family="binomial", link="logit")</code>). However, <strong>this alternative is now deprecated</strong>; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as <code>variance</code> and <code>linkfun</code> are present, see <code><a href="https://rdrr.io/r/stats/family.html" class="external-link">family</a></code>.</p></li>
-<li><p>Smooths taken from the <code>mgcv</code> package can be included in <code>glmmTMB</code> formulas using <code>s</code>; these terms will appear as additional components in both the fixed and the random-effects terms. This functionality is <em>experimental</em> for now. We recommend using <code>REML=TRUE</code>. See <code><a href="https://rdrr.io/pkg/mgcv/man/s.html" class="external-link">s</a></code> for details of specifying smooths (and <code><a href="https://rdrr.io/pkg/mgcv/man/smooth2random.html" class="external-link">smooth2random</a></code> and the appendix of Wood (2004) for technical details).</p></li>
 </ul></div>
     <div id="note">
     <h2>Note</h2>
@@ -220,16 +181,15 @@ because of missingness.</p></dd>
     <h2>References</h2>
     <p>Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., Nielsen, A., Skaug, H. J., Mächler, M. and Bolker, B. M. (2017). glmmTMB balances speed and flexibility among packages for zero-inflated generalized linear mixed modeling. <em>The R Journal</em>, <b>9</b>(2), 378--400.</p>
 <p>Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. <em>Journal of Statistical Software</em>, <b>70</b>, 1--21.</p>
-<p>Millar, R. B. (2011). <em>Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.</em> Wiley, New York.
-Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. <em>Journal of the American Statistical Association</em> <b>99</b>(467): 673–86. <a href="https://doi.org/10.1198/016214504000000980" class="external-link">doi:10.1198/016214504000000980</a></p>
+<p>Millar, R. B. (2011). <em>Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.</em> Wiley, New York.</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
-<span class="r-in"><span><span class="op">(</span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  zi<span class="op">=</span><span class="op">~</span><span class="va">mined</span>,</span></span>
-<span class="r-in"><span>  family<span class="op">=</span><span class="va">poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="co"># \donttest{</span></span>
+<span class="r-in"><span class="op">(</span><span class="va">m1</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span>
+<span class="r-in">  zi<span class="op">=</span><span class="op">~</span><span class="va">mined</span>,</span>
+<span class="r-in">  family<span class="op">=</span><span class="va">poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Formula:          count ~ mined + (1 | site)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Zero inflation:         ~mined</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data: Salamanders</span>
@@ -252,7 +212,7 @@ Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation 
 <span class="r-out co"><span class="r-pr">#&gt;</span> Zero-inflation model:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)      minedno  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       1.139       -1.736  </span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">m1</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Family: poisson  ( log )</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Formula:          count ~ mined + (1 | site)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Zero inflation:         ~mined</span>
@@ -281,10 +241,10 @@ Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation 
 <span class="r-out co"><span class="r-pr">#&gt;</span> minedno      -1.7361     0.2620  -6.626 3.44e-11 ***</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
-<span class="r-in"><span><span class="co">##' ## Zero-inflated negative binomial model</span></span></span>
-<span class="r-in"><span><span class="op">(</span><span class="va">m2</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  zi<span class="op">=</span><span class="op">~</span><span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span>,</span></span>
-<span class="r-in"><span>  family<span class="op">=</span><span class="va">nbinom2</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span class="co">##' ## Zero-inflated negative binomial model</span></span>
+<span class="r-in"><span class="op">(</span><span class="va">m2</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span>
+<span class="r-in">  zi<span class="op">=</span><span class="op">~</span><span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span>,</span>
+<span class="r-in">  family<span class="op">=</span><span class="va">nbinom2</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Formula:          count ~ spp + mined + (1 | site)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Zero inflation:         ~spp + mined</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data: Salamanders</span>
@@ -313,11 +273,11 @@ Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation 
 <span class="r-out co"><span class="r-pr">#&gt;</span>      0.9100       1.1614      -0.9393       1.0424      -0.5623      -0.8930  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       sppDF      minedno  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     -2.5398      -2.5630  </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co">## Hurdle Poisson model</span></span></span>
-<span class="r-in"><span><span class="op">(</span><span class="va">m3</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  zi<span class="op">=</span><span class="op">~</span><span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span>,</span></span>
-<span class="r-in"><span>  family<span class="op">=</span><span class="va">truncated_poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"></span>
+<span class="r-in"><span class="co">## Hurdle Poisson model</span></span>
+<span class="r-in"><span class="op">(</span><span class="va">m3</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">count</span> <span class="op">~</span> <span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">site</span><span class="op">)</span>,</span>
+<span class="r-in">  zi<span class="op">=</span><span class="op">~</span><span class="va">spp</span> <span class="op">+</span> <span class="va">mined</span>,</span>
+<span class="r-in">  family<span class="op">=</span><span class="va">truncated_poisson</span>, data<span class="op">=</span><span class="va">Salamanders</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Formula:          count ~ spp + mined + (1 | site)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Zero inflation:         ~spp + mined</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data: Salamanders</span>
@@ -344,11 +304,11 @@ Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation 
 <span class="r-out co"><span class="r-pr">#&gt;</span>      1.7556       1.6785      -0.4269       1.1046      -0.4269      -0.6716  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       sppDF      minedno  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     -0.4269      -2.4038  </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co">## Binomial model</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">cbpp</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">(</span><span class="va">bovine</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">incidence</span>, <span class="va">size</span><span class="op">-</span><span class="va">incidence</span><span class="op">)</span> <span class="op">~</span> <span class="va">period</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">herd</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>  family<span class="op">=</span><span class="va">binomial</span>, data<span class="op">=</span><span class="va">cbpp</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"></span>
+<span class="r-in"><span class="co">## Binomial model</span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">cbpp</span>, package<span class="op">=</span><span class="st">"lme4"</span><span class="op">)</span></span>
+<span class="r-in"><span class="op">(</span><span class="va">bovine</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">incidence</span>, <span class="va">size</span><span class="op">-</span><span class="va">incidence</span><span class="op">)</span> <span class="op">~</span> <span class="va">period</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">herd</span><span class="op">)</span>,</span>
+<span class="r-in">  family<span class="op">=</span><span class="va">binomial</span>, data<span class="op">=</span><span class="va">cbpp</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Formula:          cbind(incidence, size - incidence) ~ period + (1 | herd)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Data: cbpp</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>       AIC       BIC    logLik  df.resid </span>
@@ -366,49 +326,40 @@ Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation 
 <span class="r-out co"><span class="r-pr">#&gt;</span> Conditional model:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)      period2      period3      period4  </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     -1.3985      -0.9923      -1.1287      -1.5803  </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co">## Dispersion model</span></span></span>
-<span class="r-in"><span><span class="va">sim1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">nfac</span><span class="op">=</span><span class="fl">40</span>, <span class="va">nt</span><span class="op">=</span><span class="fl">100</span>, <span class="va">facsd</span><span class="op">=</span><span class="fl">0.1</span>, <span class="va">tsd</span><span class="op">=</span><span class="fl">0.15</span>, <span class="va">mu</span><span class="op">=</span><span class="fl">0</span>, <span class="va">residsd</span><span class="op">=</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span>fac<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">letters</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="va">nfac</span><span class="op">]</span><span class="op">)</span>, t<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="va">nt</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dat</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">dat</span><span class="op">$</span><span class="va">REfac</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nfac</span>, sd<span class="op">=</span><span class="va">facsd</span><span class="op">)</span><span class="op">[</span><span class="va">dat</span><span class="op">$</span><span class="va">fac</span><span class="op">]</span></span></span>
-<span class="r-in"><span>  <span class="va">dat</span><span class="op">$</span><span class="va">REt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nt</span>, sd<span class="op">=</span><span class="va">tsd</span><span class="op">)</span><span class="op">[</span><span class="va">dat</span><span class="op">$</span><span class="va">t</span><span class="op">]</span></span></span>
-<span class="r-in"><span>  <span class="va">dat</span><span class="op">$</span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, mean<span class="op">=</span><span class="va">mu</span>, sd<span class="op">=</span><span class="va">residsd</span><span class="op">)</span> <span class="op">+</span> <span class="va">dat</span><span class="op">$</span><span class="va">REfac</span> <span class="op">+</span> <span class="va">dat</span><span class="op">$</span><span class="va">REt</span></span></span>
-<span class="r-in"><span>  <span class="va">dat</span></span></span>
-<span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">101</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">d1</span> <span class="op">&lt;-</span> <span class="fu">sim1</span><span class="op">(</span>mu<span class="op">=</span><span class="fl">100</span>, residsd<span class="op">=</span><span class="fl">10</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">d2</span> <span class="op">&lt;-</span> <span class="fu">sim1</span><span class="op">(</span>mu<span class="op">=</span><span class="fl">200</span>, residsd<span class="op">=</span><span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">d1</span><span class="op">$</span><span class="va">sd</span> <span class="op">&lt;-</span> <span class="st">"ten"</span></span></span>
-<span class="r-in"><span><span class="va">d2</span><span class="op">$</span><span class="va">sd</span> <span class="op">&lt;-</span> <span class="st">"five"</span></span></span>
-<span class="r-in"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">d1</span>, <span class="va">d2</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">m0</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">x</span> <span class="op">~</span> <span class="va">sd</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">t</span><span class="op">)</span>, dispformula<span class="op">=</span><span class="op">~</span><span class="va">sd</span>, data<span class="op">=</span><span class="va">dat</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">m0</span><span class="op">)</span><span class="op">$</span><span class="va">disp</span></span></span>
+<span class="r-in"></span>
+<span class="r-in"><span class="co">## Dispersion model</span></span>
+<span class="r-in"><span class="va">sim1</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">nfac</span><span class="op">=</span><span class="fl">40</span>, <span class="va">nt</span><span class="op">=</span><span class="fl">100</span>, <span class="va">facsd</span><span class="op">=</span><span class="fl">0.1</span>, <span class="va">tsd</span><span class="op">=</span><span class="fl">0.15</span>, <span class="va">mu</span><span class="op">=</span><span class="fl">0</span>, <span class="va">residsd</span><span class="op">=</span><span class="fl">1</span><span class="op">)</span></span>
+<span class="r-in"><span class="op">{</span></span>
+<span class="r-in">  <span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/expand.grid.html" class="external-link">expand.grid</a></span><span class="op">(</span>fac<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">letters</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="va">nfac</span><span class="op">]</span><span class="op">)</span>, t<span class="op">=</span><span class="fl">1</span><span class="op">:</span><span class="va">nt</span><span class="op">)</span></span>
+<span class="r-in">  <span class="va">n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">dat</span><span class="op">)</span></span>
+<span class="r-in">  <span class="va">dat</span><span class="op">$</span><span class="va">REfac</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nfac</span>, sd<span class="op">=</span><span class="va">facsd</span><span class="op">)</span><span class="op">[</span><span class="va">dat</span><span class="op">$</span><span class="va">fac</span><span class="op">]</span></span>
+<span class="r-in">  <span class="va">dat</span><span class="op">$</span><span class="va">REt</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">nt</span>, sd<span class="op">=</span><span class="va">tsd</span><span class="op">)</span><span class="op">[</span><span class="va">dat</span><span class="op">$</span><span class="va">t</span><span class="op">]</span></span>
+<span class="r-in">  <span class="va">dat</span><span class="op">$</span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, mean<span class="op">=</span><span class="va">mu</span>, sd<span class="op">=</span><span class="va">residsd</span><span class="op">)</span> <span class="op">+</span> <span class="va">dat</span><span class="op">$</span><span class="va">REfac</span> <span class="op">+</span> <span class="va">dat</span><span class="op">$</span><span class="va">REt</span></span>
+<span class="r-in">  <span class="va">dat</span></span>
+<span class="r-in"><span class="op">}</span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">101</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">d1</span> <span class="op">&lt;-</span> <span class="fu">sim1</span><span class="op">(</span>mu<span class="op">=</span><span class="fl">100</span>, residsd<span class="op">=</span><span class="fl">10</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">d2</span> <span class="op">&lt;-</span> <span class="fu">sim1</span><span class="op">(</span>mu<span class="op">=</span><span class="fl">200</span>, residsd<span class="op">=</span><span class="fl">5</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">d1</span><span class="op">$</span><span class="va">sd</span> <span class="op">&lt;-</span> <span class="st">"ten"</span></span>
+<span class="r-in"><span class="va">d2</span><span class="op">$</span><span class="va">sd</span> <span class="op">&lt;-</span> <span class="st">"five"</span></span>
+<span class="r-in"><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">d1</span>, <span class="va">d2</span><span class="op">)</span></span>
+<span class="r-in"><span class="va">m0</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">x</span> <span class="op">~</span> <span class="va">sd</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">t</span><span class="op">)</span>, dispformula<span class="op">=</span><span class="op">~</span><span class="va">sd</span>, data<span class="op">=</span><span class="va">dat</span><span class="op">)</span></span>
+<span class="r-in"><span class="fu"><a href="fixef.html">fixef</a></span><span class="op">(</span><span class="va">m0</span><span class="op">)</span><span class="op">$</span><span class="va">disp</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)       sdten </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    3.202870    1.386476 </span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="co"># expected dispersion model coefficients</span></span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">5</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="co"># expected dispersion model coefficients</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 3.218876 1.386294</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co">## Using 'map' to fix random-effects SD to 10</span></span></span>
-<span class="r-in"><span><span class="va">m1_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">m1</span>, map<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>theta<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="cn">NA</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                 start<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>theta<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="VarCorr.glmmTMB.html">VarCorr</a></span><span class="op">(</span><span class="va">m1_map</span><span class="op">)</span></span></span>
+<span class="r-in"></span>
+<span class="r-in"></span>
+<span class="r-in"><span class="co">## Using 'map' to fix random-effects SD to 10</span></span>
+<span class="r-in"><span class="va">m1_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/update.html" class="external-link">update</a></span><span class="op">(</span><span class="va">m1</span>, map<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>theta<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="cn">NA</span><span class="op">)</span><span class="op">)</span>,</span>
+<span class="r-in">                 start<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>theta<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span class="fu"><a href="VarCorr.glmmTMB.html">VarCorr</a></span><span class="op">(</span><span class="va">m1_map</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Conditional model:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Groups Name        Std.Dev.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  site   (Intercept) 10      </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co">## smooth terms</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="st">"Nile"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">ndat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/time.html" class="external-link">time</a></span><span class="op">(</span><span class="va">Nile</span><span class="op">)</span><span class="op">)</span>, val <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">Nile</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">sm1</span> <span class="op">&lt;-</span> <span class="fu">glmmTMB</span><span class="op">(</span><span class="va">val</span> <span class="op">~</span> <span class="fu">s</span><span class="op">(</span><span class="va">time</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">ndat</span>,</span></span>
-<span class="r-in"><span>               REML <span class="op">=</span> <span class="cn">TRUE</span>, start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>theta <span class="op">=</span> <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">val</span> <span class="op">~</span> <span class="va">time</span>, data <span class="op">=</span> <span class="va">ndat</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/graphics/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">ndat</span><span class="op">$</span><span class="va">time</span>, <span class="fu"><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict</a></span><span class="op">(</span><span class="va">sm1</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-plt img"><img src="glmmTMB-1.png" alt="" width="700" height="433"></span>
-<span class="r-in"><span><span class="co"># }</span></span></span>
+<span class="r-in"><span class="co"># }</span></span>
 </code></pre></div>
     </div>
   </div>
@@ -423,7 +374,7 @@ Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation 
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

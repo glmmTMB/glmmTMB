@@ -4,16 +4,7 @@
 \alias{getXReTrms}
 \title{Create X and random effect terms from formula}
 \usage{
-getXReTrms(
-  formula,
-  mf,
-  fr,
-  ranOK = TRUE,
-  type = "",
-  contrasts,
-  sparse = FALSE,
-  old_smooths = NULL
-)
+getXReTrms(formula, mf, fr, ranOK = TRUE, type = "", contrasts, sparse = FALSE)
 }
 \arguments{
 \item{formula}{current formula, containing both fixed & random effects}
@@ -29,14 +20,12 @@ getXReTrms(
 \item{contrasts}{a list of contrasts (see ?glmmTMB)}
 
 \item{sparse}{(logical) return sparse model matrix?}
-
-\item{old_smooths}{smooth information from a prior model fit (for prediction)}
 }
 \value{
 a list composed of
 \item{X}{design matrix for fixed effects}
 \item{Z}{design matrix for random effects}
-\item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}, possibly augmented with information about \code{mgcv}-style smooth terms}
+\item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}}
 \item{ss}{splitform of the formula}
 \item{aa}{additional arguments, used to obtain rank}
 \item{terms}{terms for the fixed effects}

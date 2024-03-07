@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
       </span>
     </div>
 
@@ -38,22 +38,19 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/hacking.html">Hacking glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">Model evaluation</a>
+      <a href="../articles/model_evaluation.html">model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -92,33 +89,24 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">object</span>, full <span class="op">=</span> <span class="cn">FALSE</span>, include_nonest <span class="op">=</span> <span class="cn">TRUE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="co"># S3 method for glmmTMB</span>
+<span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">object</span>, full <span class="op">=</span> <span class="cn">FALSE</span>, include_mapped <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>object</dt>
 <dd><p>a “glmmTMB” fit</p></dd>
-
-
 <dt>full</dt>
 <dd><p>return a full variance-covariance matrix?</p></dd>
-
-
-<dt>include_nonest</dt>
-<dd><p>include variables that are mapped <em>or</em> dropped due to rank-deficiency? (these will be given variances and covariances of NA)</p></dd>
-
-
+<dt>include_mapped</dt>
+<dd><p>include mapped variables? (these will be given variances and covariances of NA)</p></dd>
 <dt>...</dt>
 <dd><p>ignored, for method compatibility</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    
-
-<p>By default (<code>full==FALSE</code>), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If <code>full==TRUE</code>, a single square variance-covariance matrix for <em>all</em> top-level model parameters (conditional, dispersion, and variance-covariance parameters)</p>
+    <p>By default (<code>full==FALSE</code>), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If <code>full==TRUE</code>, a single square variance-covariance matrix for <em>all</em> top-level model parameters (conditional, dispersion, and variance-covariance parameters)</p>
     </div>
 
   </div>
@@ -133,7 +121,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

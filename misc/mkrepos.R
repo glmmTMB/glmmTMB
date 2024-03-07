@@ -10,7 +10,7 @@ library(rhub) ## redundant
 
 ## run check/build binaries for Windows and MacOS with the current R release
 ## use rhub::platforms() to see which platforms are available
-releases <- c("windows-x86_64-release") ##  "macos-highsierra-release")
+releases <- c("windows-x86_64-release", "macos-highsierra-release")
 ## maybe macos-highsierra-release-cran? shouldn't make much difference
 ##   for building binaries ... ?
 email <- "bbolker@gmail.com"  ## set this to your e-mail!
@@ -30,11 +30,9 @@ check("glmmTMB", platform = oldrel, email=email)
 ## whash <- "5b768de377c94f12a264deff0924553f"
 ## pkg_version <- "1.1.2"
 
-## whash <- "8676a5b981a94267acf737ae1bd6297f"
-## mhash <- "e7461c3b0baa44f0972c12fb7463a7e4"
-## pkg_version <- "1.1.3"
-
-pkg_version <- "1.1.8"
+whash <- "8676a5b981a94267acf737ae1bd6297f"
+mhash <- "e7461c3b0baa44f0972c12fb7463a7e4"
+pkg_version <- "1.1.3"
 
 
 ## helper fun for constructing URLs
@@ -52,12 +50,12 @@ download.file(ufun(hash=whash, ext="zip"), dest = winbin)
 
 ## system("git checkout master")
 ## system('R CMD build --compact-vignettes="both" glmmTMB')
-## system("git checkout gh-pages")
+system("git checkout gh-pages")
 
 ## put stuff in the right place
-drat::insertPackage(macbin, "docs/repos")
-drat::insertPackage(winbin, "docs/repos")
-drat::insertPackage(src, "docs/repos")
+insertPackage(macbin, "repos")
+insertPackage(winbin, "repos")
+insertPackage(src, "repos")
 
 ## to test installation (if you are on MacOS or Windows)
 if (FALSE) {
@@ -75,6 +73,3 @@ if (FALSE) {
 unlink(macbin)
 unlink(winbin)
 unlink(src)
-
-setwd("docs/repos")
-rmarkdown::render("index.Rmd")

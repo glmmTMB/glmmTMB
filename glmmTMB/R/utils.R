@@ -89,10 +89,10 @@ hasRandom <- function(x) {
 ##' @param parm parameter specifier
 ##' @param object fitted glmmTMB object
 ##' @param full include simple dispersion parameter?
-##' @param include_nonest include mapped parameter indices for non-estimated (mapped or rank-deficient/dropped) parameters?
+##' @param include_mapped include mapped parameter indices?
 ##' @noRd
-getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
-    vv <- vcov(object, full=TRUE, include_nonest = include_nonest)
+getParms <- function(parm=NULL, object, full=FALSE, include_mapped = FALSE) {
+    vv <- vcov(object, full=TRUE, include_mapped = include_mapped)
     sds <- sqrt(diag(vv))
     pnames <- names(sds) <- rownames(vv)       ## parameter names (user-facing)
     ee <- object$obj$env
@@ -100,7 +100,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
     drop_rand <- function(x) x[!x %in% c("b", "bzi")]
-    if (!include_nonest) {
+    if (!include_mapped) {
         intnames <- drop_rand(names(ee$last.par))
     } else {
         pl <- ee$parList()
@@ -331,15 +331,12 @@ isNullPointer <- function(x) {
 #'
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
-#' @param update_gauss_disp update \code{betad} from variance to SD parameterization?
 #' @export
-up2date <- function(oldfit, update_gauss_disp = FALSE) {
+up2date <- function(oldfit) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
-      pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
-                "parfull")
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -356,20 +353,6 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
-      ## switch from variance to SD parameterization
-      if (update_gauss_disp &&
-          family(oldfit)$family == "gaussian") {
-          ee$parameters$betad <- ee$parameters$betad/2
-          for (p in pars) {
-              if (!is.null(nm <- names(ee[[p]]))) {
-                  ee[[p]][nm == "betad"] <- ee[[p]][nm == "betad"]/2
-              }
-              if (!is.null(nm <- names(oldfit$fit[[p]]))) {
-                  oldfit$fit[[p]][nm == "betad"] <- oldfit$fit[[p]][nm == "betad"]/2
-              }
-          }
-      }
-
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
@@ -378,26 +361,19 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
                                       silent = silent,
                                       DLL = "glmmTMB"))
       oldfit$obj$env$last.par.best <- ee$last.par.best
-      ##
-  }
-  ## dispersion was NULL rather than 1 in old R versions ...
-  omf <- oldfit$modelInfo$family
-  if (getRversion() >= "4.3.0" &&
-      !("dispersion" %in% names(omf))) {
-      ## don't append() or c(), don't want to lose class info
-      oldfit$modelInfo$family$dispersion <- 1
   }
   return(oldfit)
 }
+
+
 
 #' Load data from system file, updating glmmTMB objects
 #'
 #' @param fn partial path to system file (e.g. test_data/foo.rda)
 #' @param verbose print names of updated objects?
 #' @param mustWork fail if file not found?
-#' @param \dots values passed through to \code{up2date}
 #' @export
-gt_load <- function(fn, verbose=FALSE, mustWork = FALSE, ...) {
+gt_load <- function(fn, verbose=FALSE, mustWork = FALSE) {
     sf <- system.file(fn, package = "glmmTMB")
     found_file <- file.exists(sf)
     if (mustWork && !found_file) {
@@ -408,7 +384,7 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE, ...) {
     for (m in L) {
         if (inherits(get(m), "glmmTMB")) {
             if (verbose) cat(m,"\n")
-            assign(m, up2date(get(m), ...))
+            assign(m, up2date(get(m)))
         }
         assign(m, get(m), parent.env(), envir = parent.frame())
     }
@@ -463,32 +439,23 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## for matching map names vs nameList components ...
 par_components <- c("beta","betazi","betad","theta","thetazi","psi")
 
-## all parameters, including both mapped and rank-dropped
-getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
+getAllParnames <- function(object, full) {
                            
-  mkNames <- function(tag="") {
+  mkNames <- function(tag) {
       X <- getME(object,paste0("X",tag))
-      dropped <- attr(X, "col.dropped") %||% numeric(0)
-      ntot <- ncol(X) + length(dropped)
-      if (ntot == ncol(X) || !include_dropped) {
-          nn <- colnames(X)
-      } else {
-          nn <- character(ntot)
-          nn[-dropped] <- colnames(X)
-          nn[ dropped] <- names(dropped)
-      }
-      if (trivialFixef(nn, tag)
+      if (trivialFixef(nn <- colnames(X),tag)
           ## if 'full', keep disp even if trivial, if used by family
           && !(full && tag =="d" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
-      if (tag == "") return(nn)
       return(paste(tag,nn,sep="~"))
   }
 
-  nameList <- setNames(Map(mkNames, c("", "zi", "d")),
-                         names(cNames))
+  nameList <- setNames(list(colnames(getME(object,"X")),
+                       mkNames("zi"),
+                       mkNames("d")),
+                names(cNames))
 
   if(full) {
       ## FIXME: haven't really decided if we should drop the
@@ -515,24 +482,29 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       
   }
 
-  if (!include_mapped) {
-     map <- object$obj$env$map
-     if (length(map)>0) {
-         for (m in seq_along(map)) {
+    return(nameList)
+}
+
+
+getEstParnames <- function(object, full) {
+    nameList <- getAllParnames(object, full)
+    map <- object$obj$env$map
+    if (length(map)>0) {
+        ## fullNameList for all variables, including mapped vars
+        ## (nameList will get reduced shortly)
+        for (m in seq_along(map)) {
             if (length(NAmap <- which(is.na(map[[m]])))>0) {
                 w <- match(names(map)[m],par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
                     nameList[[w]] <- nameList[[w]][-NAmap]
                 }
             }
-         } ## for (m in seq_along(map))
-     } ## if (length(map) > 0)
-  }
-
-  return(nameList)
+        }
+    }
+    return(nameList)
 }
 
-## OBSOLETE (?)
+## OBSOLETE: delete eventually
 
 ## reassign predvars to have term vars in the right order,
 ##  but with 'predvars' values inserted where appropriate
@@ -569,18 +541,9 @@ fix_predvars <- function(pv,tt) {
 }
 
 make_pars <- function(pars, ...) {
+    ## FIXME: check for name matches, length matches etc.
     L <- list(...)
     for (nm in names(L)) {
-        unmatched <- setdiff(names(L), unique(names(pars)))
-        if (length(unmatched) > 0) {
-            warning(sprintf("unmatched parameter names: %s",
-                            paste(unmatched, collapse =", ")))
-            next
-        }
-        if ((len1 <- length(L[[nm]])) != (len2 <- sum(names(pars) == nm))) {
-            stop(sprintf("length mismatch in component %s (%d != %d)",
-                         nm, len1, len2))
-        }
         pars[names(pars) == nm] <- L[[nm]]
     }
     return(pars)
@@ -591,8 +554,7 @@ make_pars <- function(pars, ...) {
 ##' See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
 ##' and \code{vignette("covstruct", package = "glmmTMB")}
 ##' for more information on the parameterization of different covariance structures.
-##'
-##' @inheritParams glmmTMB
+##' 
 ##' @param object a \emph{one-sided} model formula (e.g. \code{~ a + b + c}
 ##' (peculiar naming is for consistency with the generic function, which typically
 ##' takes a fitted model object)
@@ -626,10 +588,7 @@ make_pars <- function(pars, ...) {
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
-                         family = gaussian,
                          newdata, newparams, ..., show_pars = FALSE) {
-    
-    family <- get_family(family)
     if (!is.null(seed)) set.seed(seed)
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
@@ -638,47 +597,15 @@ simulate_new <- function(object,
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
     ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    newdata[["..y"]] <- if (family$family == "beta_family") 1.0 else 0.5
+    newdata[["..y"]] <- if (!identical(list(...)$family, "beta_family")) 1.0 else 0.5
     r1 <- glmmTMB(form,
-                  data = newdata,
-                  family = family,
-                  ...,
-                  doFit = FALSE)
+              data = newdata,
+              ...,
+              doFit = FALSE)
 ## construct TMB object, but don't fit it
     r2 <- fitTMB(r1, doOptim = FALSE)
     if (show_pars) return(r2$env$last.par)
     pars <- do.call("make_pars",
                     c(list(r2$env$last.par), newparams))
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
-}
-
-## from rlang (FIXME: put this conditionally in .onLoad, for back-compatibility)
-`%||%` <- function (x, y)  {
-    if (is.null(x)) 
-        y
-    else x
-}
-
-get_family <- function(family) {
-    if (is.character(family)) {
-        if (family=="beta") {
-            family <- "beta_family"
-            warning("please use ",sQuote("beta_family()")," rather than ",
-                    sQuote("\"beta\"")," to specify a Beta-distributed response")
-        }
-        family <- get(family, mode = "function", envir = parent.frame(2))
-    }
-
-    if (is.function(family)) {
-        ## call family with no arguments
-        family <- family()
-    }
-
-    ## FIXME: what is this doing? call to a function that's not really
-    ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("after evaluation, 'family' must have a '$family' element")
-    }
-    return(family)
 }

@@ -42,7 +42,7 @@ test_that("new levels of fixed effect factor", {
 
 test_that("new levels in RE term", {
     skip_on_cran()
-    suppressWarnings(g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy))
+    g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
     expect_error( predict(g2, nd),
                  "Prediction is not possible for terms")
 })
@@ -217,8 +217,7 @@ test_that("complex bases in dispformula", {
                  list(fit = 298.507945749154, se.fit = 4.18682101029576),
                  tolerance=1e-5)
     expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
-                 list(fit = 283.656705454758, se.fit = 4.74204256781178),
-                 tolerance = 1e-6)
+                 list(fit = 283.656705454758, se.fit = 4.74204256781178))
 })
 
 test_that("fix_predvars works for I(x^2)", {
@@ -272,21 +271,14 @@ test_that("predvars with different ns() in fixed and disp (GH #845)", {
 test_that("predvars with differing splines in fixed and RE (GH#632)", {
     library(splines)
     data(sleepstudy,package="lme4")
-    form <- Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject)
-    ## need better/non-default starting values after var -> SD param change
-    m4 <- glmmTMB(form, data = sleepstudy,
-                  start = list(theta = c(3.28, 4.34, 3.79, 0, 0, 0)))
-    m4B <- lme4::lmer(form, data = sleepstudy, REML = FALSE)
-    nd <- data.frame(Days = 4:6, Subject = "372")
-    predict(m4B, newdata = nd, re.form = NULL, type = "response")
-    pp <- predict(m4, newdata = nd, re.form = NULL, type = "response")
-    ppB <- predict(m4B, newdata = nd, re.form = NULL, type = "response")
+    m4 <- glmmTMB(Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject), 
+                  data = sleepstudy)
+    pp <- predict(m4, newdata = data.frame(Days = 4:6, Subject = "372"),
+                  re.form = NULL, 
+                  type = "response")
     ## plot(Reaction ~ Days, data = subset(sleepstudy, Subject == "372"))
     ## points(4:6, pp, col = 2, pch = 16)
-    ## ?? results change on var to SD switch for Gaussian model?
-    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647),
-                 tolerance = 1e-4)
-    expect_equal(unname(ppB), pp, tolerance = 1e-4)
+    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647))
 })
 
 test_that("contrasts carried over", {
@@ -469,12 +461,10 @@ test_that("nzprob computed for non-fast pred", {
     )
     expect_identical(predict(m1, type = "response"),
                      predict(m1, type = "response", fast = FALSE))
-    ## non-pos-def Hessian, ignore
-    m2 <- suppressWarnings(update(m1, family = truncated_nbinom1))
+    m2 <- update(m1, family = truncated_nbinom1)
     expect_identical(predict(m2, type = "response"),
                      predict(m2, type = "response", fast = FALSE))
-    ## non-pos-def Hessian, ignore
-    m2 <- suppressWarnings(update(m1, family = truncated_nbinom2))
+    m2 <- update(m1, family = truncated_nbinom2)
     ## need more data to fit compois, genpois
     dd2 <- data.frame(y = rpois(100, lambda = 1))
     m2 <- update(m1, family = truncated_compois, data = dd2)
@@ -486,40 +476,4 @@ test_that("nzprob computed for non-fast pred", {
                      predict(m2, type = "response", fast = FALSE))
 })
 
-test_that("pop-level prediction with missing grouping vars (GH #923)",
-{
-    fm20 <- glmmTMB(Reaction ~ 1 + (Days|Subject), sleepstudy)
-    predict(fm20, re.form = NA, newdata = data.frame(matrix(ncol = 0, nrow=length(sleepstudy))))
-    expect_equal(predict(fm2, re.form = NA),
-                 predict(fm2, newdata = sleepstudy[c("Days")], re.form = NA))
-    ## suppress non-pos-def Hessian warning, this is a silly example
-    fmnasty <- suppressWarnings(
-        glmmTMB(Reaction ~ 1 + (log(Days+1)|Subject), sleepstudy)
-    )
-    expect_equal(predict(fmnasty, re.form = NA),
-                 predict(fmnasty, newdata = data.frame(matrix(ncol=0, nrow = nrow(sleepstudy))), re.form = NA))
-})
-
-    
-test_that("weights with attributes are OK", {
-    data(iris)
-    d <- as.data.frame(expand.grid(
-        Species = unique(iris$Species),
-        Petal.Width = 2,
-        wg = NA
-    ))
-    
-    set.seed(101)
-    iris$wg <- abs(rnorm(nrow(iris), 1, 0.1))
-    
-    attr(iris$wg, "label") <- "weighting variable"
-    
-    m <- glmmTMB(
-        Petal.Length ~ Petal.Width + (1 | Species),
-        weights = wg,
-        data = iris
-    )
-    p <- predict(m, newdata = d, re.form = NULL)
-    expect_equal(head(p),
-                 c(3.35535960506176, 4.98184089632094, 5.50821757779119))
-})
+                 

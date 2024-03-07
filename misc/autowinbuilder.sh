@@ -1,14 +1,20 @@
 #!/bin/bash
 ## script to modify the maintainer email of current branch,
 ## build the tarball, and upload to win-builder
-## run from head directory (glmmTMB, above glmmTMB package dir),
-## e.g. . misc/autowinbuilder.sh
+## run from head directory
 ## arg 1: which platform to test (both, release, or devel) ?
 whichrel=${1:-both}
 echo $whichrel
 MY_EMAIL=bbolker@gmail.com
 MAINTAINER_EMAIL=mollieebrooks@gmail.com
-. misc/autoreplace.sh $MY_EMAIL $MAINTAINER_EMAIL
+version=`grep 'Version' glmmTMB/DESCRIPTION | sed -e 's/Version: //'`
+echo "glmmTMB version $version"
+tarball="glmmTMB_${version}.tar.gz"
+## substitute e-mail in DESCRIPTION file and build tarball
+sed -i -e "s/$MAINTAINER_EMAIL/$MY_EMAIL/" glmmTMB/DESCRIPTION
+R CMD build glmmTMB
+tar zxvfO $tarball glmmTMB/DESCRIPTION | grep Maintainer
+echo "tarball: $tarball"
 ## https://serverfault.com/questions/279176/ftp-uploading-in-bash-script
 HOST=win-builder.r-project.org
 USER=ftp
@@ -36,6 +42,8 @@ put $tarball
 bye
 EOT
 fi
+## revert changes to DESCRIPTION file
+git checkout -- glmmTMB/DESCRIPTION
 ## check status
 Rscript -e "foghorn::winbuilder_queue('glmmTMB')"
 

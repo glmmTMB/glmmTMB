@@ -1,3 +1,4 @@
+remotes::install_github("glmmTMB/glmmTMB/glmmTMB@denovo_simulation")
 library(glmmTMB)
 library(lme4)
 

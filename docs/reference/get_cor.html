@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
       </span>
     </div>
 
@@ -38,22 +38,19 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/hacking.html">Hacking glmmTMB</a>
-    </li>
-    <li>
-      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">Model evaluation</a>
+      <a href="../articles/model_evaluation.html">model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -92,46 +89,30 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_cor</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu">put_cor</span><span class="op">(</span><span class="va">C</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">get_cor</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>theta</dt>
 <dd><p>vector of internal correlation parameters (elements of scaled Cholesky factor, in <em>row-major</em> order)</p></dd>
-
-
-<dt>C</dt>
-<dd><p>a correlation matrix</p></dd>
-
 </dl></div>
     <div id="value">
     <h2>Value</h2>
-    
-
-<p>a vector of correlation values (<code>get_cor</code>) or glmmTMB scaled-correlation parameters (<code>put_cor</code>)</p>
+    <p>a vector of correlation values</p>
     </div>
     <div id="details">
     <h2>Details</h2>
-    <p>These functions follow the definition at <a href="http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html" class="external-link">http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html</a>:
-if \(L\) is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \(\Sigma = D^{-1/2} L L^\top D^{-1/2}\), where \(D = \textrm{diag}(L L^\top)\). For a single correlation parameter \(\theta_0\), this works out to \(\rho = \theta_0/\sqrt{1+\theta_0^2}\). The <code>get_cor</code> function returns the elements of the lower triangle of the correlation matrix, in column-major order.</p>
+    <p>This function follows the definition at <a href="http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html" class="external-link">http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html</a>:
+if \(L\) is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \(\Sigma = D^{-1/2} L L^\top D^{-1/2}\), where \(D = \textrm{diag}(L L^\top)\). For a single correlation parameter \(\theta_0\), this works out to \(\rho = \theta_0/\sqrt{1+\theta_0^2}\). The function returns the elements of the lower triangle of the correlation matrix, in column-major order.</p>
     </div>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">th0</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu">get_cor</span><span class="op">(</span><span class="va">th0</span><span class="op">)</span>,<span class="va">th0</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="va">th0</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="fu">get_cor</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.2</span>,<span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="va">th0</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
+<span class="r-in"><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu">get_cor</span><span class="op">(</span><span class="va">th0</span><span class="op">)</span>,<span class="va">th0</span><span class="op">/</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">sqrt</a></span><span class="op">(</span><span class="fl">1</span><span class="op">+</span><span class="va">th0</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span class="r-in"><span class="fu">get_cor</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>,<span class="fl">0.2</span>,<span class="fl">0.5</span><span class="op">)</span><span class="op">)</span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.4472136 0.1760902 0.4724995</span>
-<span class="r-in"><span><span class="va">C</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>,  <span class="fl">0.2</span>,  <span class="fl">0.1</span>,</span></span>
-<span class="r-in"><span>             <span class="fl">0.2</span>,  <span class="fl">1</span>, <span class="op">-</span><span class="fl">0.2</span>,</span></span>
-<span class="r-in"><span>             <span class="fl">0.1</span>,<span class="op">-</span><span class="fl">0.2</span>,   <span class="fl">1</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>           <span class="fl">3</span>, <span class="fl">3</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="co">## test: round-trip (almostl results in lower triangle only)</span></span></span>
-<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/Matrix/man/all.equal-methods.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="fu">get_cor</span><span class="op">(</span><span class="fu">put_cor</span><span class="op">(</span><span class="va">C</span><span class="op">)</span><span class="op">)</span>,</span></span>
-<span class="r-in"><span>                   <span class="va">C</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/lower.tri.html" class="external-link">lower.tri</a></span><span class="op">(</span><span class="va">C</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </div>
@@ -146,7 +127,7 @@ if \(L\) is the lower-triangular matrix with 1 on the diagonal and the correlati
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

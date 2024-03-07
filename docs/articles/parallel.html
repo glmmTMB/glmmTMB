@@ -12,107 +12,111 @@
 
 <meta name="author" content="Nafis Sadat" />
 
-<meta name="date" content="2023-10-14" />
+<meta name="date" content="2022-05-31" />
 
 <title>Parallel optimization using glmmTMB</title>
 
-<script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
-// be compatible with the behavior of Pandoc < 2.8).
-document.addEventListener('DOMContentLoaded', function(e) {
-  var hs = document.querySelectorAll("div.section[class*='level'] > :first-child");
-  var i, h, a;
-  for (i = 0; i < hs.length; i++) {
-    h = hs[i];
-    if (!/^h[1-6]$/i.test(h.tagName)) continue;  // it should be a header h1-h6
-    a = h.attributes;
-    while (a.length > 0) h.removeAttribute(a[0].name);
+<script>// Hide empty <a> tag within highlighted CodeBlock for screen reader accessibility (see https://github.com/jgm/pandoc/issues/6352#issuecomment-626106786) -->
+// v0.0.1
+// Written by JooYoung Seo (jooyoung@psu.edu) and Atsushi Yasumoto on June 1st, 2020.
+
+document.addEventListener('DOMContentLoaded', function() {
+  const codeList = document.getElementsByClassName("sourceCode");
+  for (var i = 0; i < codeList.length; i++) {
+    var linkList = codeList[i].getElementsByTagName('a');
+    for (var j = 0; j < linkList.length; j++) {
+      if (linkList[j].innerHTML === "") {
+        linkList[j].setAttribute('aria-hidden', 'true');
+      }
+    }
   }
 });
 </script>
 
 <style type="text/css">
-code{white-space: pre-wrap;}
-span.smallcaps{font-variant: small-caps;}
-span.underline{text-decoration: underline;}
-div.column{display: inline-block; vertical-align: top; width: 50%;}
-div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-ul.task-list{list-style: none;}
-</style>
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
 
 
 
 <style type="text/css">
-code {
-white-space: pre;
-}
-.sourceCode {
-overflow: visible;
-}
+  code {
+    white-space: pre;
+  }
+  .sourceCode {
+    overflow: visible;
+  }
 </style>
 <style type="text/css" data-origin="pandoc">
-pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
-pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
 div.sourceCode { margin: 1em 0; }
 pre.sourceCode { margin: 0; }
 @media screen {
 div.sourceCode { overflow: auto; }
 }
 @media print {
-pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
-{ counter-reset: source-line 0; }
+  { counter-reset: source-line 0; }
 pre.numberSource code > span
-{ position: relative; left: -4em; counter-increment: source-line; }
+  { position: relative; left: -4em; counter-increment: source-line; }
 pre.numberSource code > span > a:first-child::before
-{ content: counter(source-line);
-position: relative; left: -1em; text-align: right; vertical-align: baseline;
-border: none; display: inline-block;
--webkit-touch-callout: none; -webkit-user-select: none;
--khtml-user-select: none; -moz-user-select: none;
--ms-user-select: none; user-select: none;
-padding: 0 4px; width: 4em;
-color: #aaaaaa;
-}
-pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa; padding-left: 4px; }
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
 div.sourceCode
-{ }
+  {   }
 @media screen {
-pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
 }
-code span.al { color: #ff0000; font-weight: bold; } 
-code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } 
-code span.at { color: #7d9029; } 
-code span.bn { color: #40a070; } 
-code span.bu { color: #008000; } 
-code span.cf { color: #007020; font-weight: bold; } 
-code span.ch { color: #4070a0; } 
-code span.cn { color: #880000; } 
-code span.co { color: #60a0b0; font-style: italic; } 
-code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } 
-code span.do { color: #ba2121; font-style: italic; } 
-code span.dt { color: #902000; } 
-code span.dv { color: #40a070; } 
-code span.er { color: #ff0000; font-weight: bold; } 
-code span.ex { } 
-code span.fl { color: #40a070; } 
-code span.fu { color: #06287e; } 
-code span.im { color: #008000; font-weight: bold; } 
-code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } 
-code span.kw { color: #007020; font-weight: bold; } 
-code span.op { color: #666666; } 
-code span.ot { color: #007020; } 
-code span.pp { color: #bc7a00; } 
-code span.sc { color: #4070a0; } 
-code span.ss { color: #bb6688; } 
-code span.st { color: #4070a0; } 
-code span.va { color: #19177c; } 
-code span.vs { color: #4070a0; } 
-code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } 
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
 </style>
 <script>
 // apply pandoc div.sourceCode style to pre.sourceCode instead
@@ -121,20 +125,13 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; }
   for (var i = 0; i < sheets.length; i++) {
     if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
     try { var rules = sheets[i].cssRules; } catch (e) { continue; }
-    var j = 0;
-    while (j < rules.length) {
+    for (var j = 0; j < rules.length; j++) {
       var rule = rules[j];
       // check if there is a div.sourceCode rule
-      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") {
-        j++;
-        continue;
-      }
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
       var style = rule.style.cssText;
       // check if color or background-color is set
-      if (rule.style.color === '' && rule.style.backgroundColor === '') {
-        j++;
-        continue;
-      }
+      if (rule.style.color === '' && rule.style.backgroundColor === '') continue;
       // replace div.sourceCode by a pre.sourceCode rule
       sheets[i].deleteRule(j);
       sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
@@ -340,159 +337,136 @@ code > span.er { color: #a61717; background-color: #e3d2d2; }
 
 <h1 class="title toc-ignore">Parallel optimization using glmmTMB</h1>
 <h4 class="author">Nafis Sadat</h4>
-<h4 class="date">2023-10-14</h4>
+<h4 class="date">2022-05-31</h4>
 
 
 
-<p>A new, experimental feature of <code>glmmTMB</code> is the ability to
-parallelize the optimization process. This vignette shows an example and
-timing of a simple model fit with and without parallelizing across
-threads.</p>
-<p>If your OS supports OpenMP parallelization and R was installed using
-OpenMP, <code>glmmTMB</code> will automatically pick up the OpenMP flags
-from R’s <code>Makevars</code> and compile the C++ model with OpenMP
-support. If the flag is not available, then the model will be compiled
-with serial optimization only.</p>
+<p>A new, experimental feature of <code>glmmTMB</code> is the ability to parallelize the optimization process. This vignette shows an example and timing of a simple model fit with and without parallelizing across threads.</p>
+<p>If your OS supports OpenMP parallelization and R was installed using OpenMP, <code>glmmTMB</code> will automatically pick up the OpenMP flags from R’s <code>Makevars</code> and compile the C++ model with OpenMP support. If the flag is not available, then the model will be compiled with serial optimization only.</p>
 <p>Load packages:</p>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glmmTMB)</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>nt <span class="ot">&lt;-</span> <span class="fu">min</span>(parallel<span class="sc">::</span><span class="fu">detectCores</span>(),<span class="dv">5</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">library</span>(glmmTMB)</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="kw">set.seed</span>(<span class="dv">1</span>)</span>
+<span id="cb1-3"><a href="#cb1-3"></a>nt &lt;-<span class="st"> </span><span class="kw">min</span>(parallel<span class="op">::</span><span class="kw">detectCores</span>(),<span class="dv">5</span>)</span></code></pre></div>
 <p>Simulate a dataset with large <code>N</code>:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>N <span class="ot">&lt;-</span> <span class="fl">3e5</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>xdata <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>ydata <span class="ot">&lt;-</span> <span class="fl">0.3</span> <span class="sc">+</span> <span class="fl">0.4</span><span class="sc">*</span>xdata <span class="sc">+</span> <span class="fu">rnorm</span>(N, <span class="dv">0</span>, <span class="fl">0.25</span>)</span></code></pre></div>
-<p>First, we fit the model serially. We can pass the number of
-parallelizing process we want using the <code>parallel</code> parameter
-in <code>glmmTMBcontrol</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  model1 <span class="ot">&lt;-</span> <span class="fu">glmmTMB</span>(<span class="at">formula =</span> ydata <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> xdata,</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">control =</span> <span class="fu">glmmTMBControl</span>(<span class="at">parallel =</span> <span class="dv">1</span>))</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>N &lt;-<span class="st"> </span><span class="fl">3e5</span></span>
+<span id="cb2-2"><a href="#cb2-2"></a>xdata &lt;-<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)</span>
+<span id="cb2-3"><a href="#cb2-3"></a>ydata &lt;-<span class="st"> </span><span class="fl">0.3</span> <span class="op">+</span><span class="st"> </span><span class="fl">0.4</span><span class="op">*</span>xdata <span class="op">+</span><span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">0</span>, <span class="fl">0.25</span>)</span></code></pre></div>
+<p>First, we fit the model serially. We can pass the number of parallelizing process we want using the <code>parallel</code> parameter in <code>glmmTMBcontrol</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a><span class="kw">system.time</span>(</span>
+<span id="cb3-2"><a href="#cb3-2"></a>  model1 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata <span class="op">~</span><span class="st"> </span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>xdata,</span>
+<span id="cb3-3"><a href="#cb3-3"></a>                    <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> <span class="dv">1</span>))</span>
+<span id="cb3-4"><a href="#cb3-4"></a>  )</span></code></pre></div>
 <pre><code>## Warning in glmmTMB(formula = ydata ~ 1 + xdata, control =
 ## glmmTMBControl(parallel = 1)): use of the &#39;data&#39; argument is recommended</code></pre>
 <pre><code>##    user  system elapsed 
-##   2.588   0.319   2.909</code></pre>
-<p>Now, we fit the same model using five threads (or as many as possible
-- 3 in this case):</p>
-<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">system.time</span>(</span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  model2 <span class="ot">&lt;-</span> <span class="fu">glmmTMB</span>(<span class="at">formula =</span> ydata <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> xdata,</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">control =</span> <span class="fu">glmmTMBControl</span>(<span class="at">parallel =</span> nt))</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div>
+##   2.378   0.298   2.691</code></pre>
+<p>Now, we fit the same model using five threads (or as many as possible - 3 in this case):</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">system.time</span>(</span>
+<span id="cb6-2"><a href="#cb6-2"></a>  model2 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata <span class="op">~</span><span class="st"> </span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>xdata,</span>
+<span id="cb6-3"><a href="#cb6-3"></a>                    <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> nt))</span>
+<span id="cb6-4"><a href="#cb6-4"></a>  )</span></code></pre></div>
 <pre><code>## Warning in glmmTMB(formula = ydata ~ 1 + xdata, control =
 ## glmmTMBControl(parallel = nt)): use of the &#39;data&#39; argument is recommended</code></pre>
 <pre><code>##    user  system elapsed 
-##   2.428   0.312   2.741</code></pre>
-<p>The speed-up is definitely more visible on models with a much larger
-number of observations, or in models with random effects.</p>
-<p>Here’s an example where we have an IID Gaussian random effect. We
-first simulate the data with 200 groups (our random effect):</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>xdata <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)</span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>groups <span class="ot">&lt;-</span> <span class="dv">200</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>data_use <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">obs =</span> <span class="dv">1</span><span class="sc">:</span>N)</span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>data_use <span class="ot">&lt;-</span> <span class="fu">within</span>(data_use,</span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>{</span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  </span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  group_var <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">seq</span>(groups), <span class="at">times =</span> <span class="fu">nrow</span>(data_use) <span class="sc">/</span> groups)</span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  group_intercept <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(groups, <span class="dv">0</span>, <span class="fl">0.1</span>)[group_var]</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  xdata <span class="ot">&lt;-</span> xdata</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>  ydata <span class="ot">&lt;-</span> <span class="fl">0.3</span> <span class="sc">+</span> group_intercept <span class="sc">+</span> <span class="fl">0.5</span><span class="sc">*</span>xdata <span class="sc">+</span> <span class="fu">rnorm</span>(N, <span class="dv">0</span>, <span class="fl">0.25</span>)</span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div>
+##   2.379   0.296   2.679</code></pre>
+<p>The speed-up is definitely more visible on models with a much larger number of observations, or in models with random effects.</p>
+<p>Here’s an example where we have an IID Gaussian random effect. We first simulate the data with 200 groups (our random effect):</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>xdata &lt;-<span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">1</span>, <span class="dv">2</span>)</span>
+<span id="cb9-2"><a href="#cb9-2"></a>groups &lt;-<span class="st"> </span><span class="dv">200</span></span>
+<span id="cb9-3"><a href="#cb9-3"></a>data_use &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">obs =</span> <span class="dv">1</span><span class="op">:</span>N)</span>
+<span id="cb9-4"><a href="#cb9-4"></a>data_use &lt;-<span class="st"> </span><span class="kw">within</span>(data_use,</span>
+<span id="cb9-5"><a href="#cb9-5"></a>{</span>
+<span id="cb9-6"><a href="#cb9-6"></a>  </span>
+<span id="cb9-7"><a href="#cb9-7"></a>  group_var &lt;-<span class="st"> </span><span class="kw">rep</span>(<span class="kw">seq</span>(groups), <span class="dt">times =</span> <span class="kw">nrow</span>(data_use) <span class="op">/</span><span class="st"> </span>groups)</span>
+<span id="cb9-8"><a href="#cb9-8"></a>  group_intercept &lt;-<span class="st"> </span><span class="kw">rnorm</span>(groups, <span class="dv">0</span>, <span class="fl">0.1</span>)[group_var]</span>
+<span id="cb9-9"><a href="#cb9-9"></a>  xdata &lt;-<span class="st"> </span>xdata</span>
+<span id="cb9-10"><a href="#cb9-10"></a>  ydata &lt;-<span class="st"> </span><span class="fl">0.3</span> <span class="op">+</span><span class="st"> </span>group_intercept <span class="op">+</span><span class="st"> </span><span class="fl">0.5</span><span class="op">*</span>xdata <span class="op">+</span><span class="st"> </span><span class="kw">rnorm</span>(N, <span class="dv">0</span>, <span class="fl">0.25</span>)</span>
+<span id="cb9-11"><a href="#cb9-11"></a>})</span></code></pre></div>
 <p>We fit the random effect model, first with a single thread:</p>
-<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>(t_serial <span class="ot">&lt;-</span> <span class="fu">system.time</span>(</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  model3 <span class="ot">&lt;-</span> <span class="fu">glmmTMB</span>(<span class="at">formula =</span> ydata <span class="sc">~</span> <span class="dv">1</span> <span class="sc">+</span> xdata <span class="sc">+</span> (<span class="dv">1</span> <span class="sc">|</span> group_var), <span class="at">data =</span> data_use, <span class="at">control =</span> <span class="fu">glmmTMBControl</span>(<span class="at">parallel =</span> <span class="dv">1</span>))</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a> )</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>(t_serial &lt;-<span class="st"> </span><span class="kw">system.time</span>(</span>
+<span id="cb10-2"><a href="#cb10-2"></a>  model3 &lt;-<span class="st"> </span><span class="kw">glmmTMB</span>(<span class="dt">formula =</span> ydata <span class="op">~</span><span class="st"> </span><span class="dv">1</span> <span class="op">+</span><span class="st"> </span>xdata <span class="op">+</span><span class="st"> </span>(<span class="dv">1</span> <span class="op">|</span><span class="st"> </span>group_var), <span class="dt">data =</span> data_use, <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> <span class="dv">1</span>))</span>
+<span id="cb10-3"><a href="#cb10-3"></a> )</span>
+<span id="cb10-4"><a href="#cb10-4"></a>)</span></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  15.481   1.356  16.844</code></pre>
-<p>Now we fit the same model, but using 3 threads. The speed-up is more
-noticeable with this model.</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>(t_parallel <span class="ot">&lt;-</span> <span class="fu">system.time</span>(</span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>     <span class="fu">update</span>(model3,  <span class="at">control =</span> <span class="fu">glmmTMBControl</span>(<span class="at">parallel =</span> nt))</span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a> )</span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div>
+##  21.483   2.202  23.733</code></pre>
+<p>Now we fit the same model, but using 3 threads. The speed-up is more noticeable with this model.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a>(t_parallel &lt;-<span class="st"> </span><span class="kw">system.time</span>(</span>
+<span id="cb12-2"><a href="#cb12-2"></a>     <span class="kw">update</span>(model3,  <span class="dt">control =</span> <span class="kw">glmmTMBControl</span>(<span class="dt">parallel =</span> nt))</span>
+<span id="cb12-3"><a href="#cb12-3"></a> )</span>
+<span id="cb12-4"><a href="#cb12-4"></a>)</span></code></pre></div>
 <pre><code>##    user  system elapsed 
-##  15.100   1.299  16.408</code></pre>
+##  22.156   2.170  24.387</code></pre>
 <div id="notes-on-openmp-support" class="section level2">
 <h2>Notes on OpenMP support</h2>
-<p>From <a href="https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support">Writing
-R Extensions</a>:</p>
+<p>From <a href="https://cran.r-project.org/doc/manuals/r-devel/R-exts.html#OpenMP-support">Writing R Extensions</a>:</p>
 <blockquote>
-<p>Apple builds of clang on macOS currently have no OpenMP support, but
-CRAN binary packages are built with a clang-based toolchain which
-supports OpenMP. <a href="https://www.openmp.org/resources/openmp-compilers-tools/" class="uri">https://www.openmp.org/resources/openmp-compilers-tools/</a>
-gives some idea of what compilers support what versions.</p>
+<p>Apple builds of clang on macOS currently have no OpenMP support, but CRAN binary packages are built with a clang-based toolchain which supports OpenMP. <a href="https://www.openmp.org/resources/openmp-compilers-tools/" class="uri">https://www.openmp.org/resources/openmp-compilers-tools/</a> gives some idea of what compilers support what versions.</p>
 </blockquote>
 <blockquote>
-<p>The performance of OpenMP varies substantially between platforms. The
-Windows implementation has substantial overheads, so is only beneficial
-if quite substantial tasks are run in parallel. Also, on Windows new
-threads are started with the default FPU control word, so computations
-done on OpenMP threads will not make use of extended-precision
-arithmetic which is the default for the main process. ## System
-information</p>
+<p>The performance of OpenMP varies substantially between platforms. The Windows implementation has substantial overheads, so is only beneficial if quite substantial tasks are run in parallel. Also, on Windows new threads are started with the default FPU control word, so computations done on OpenMP threads will not make use of extended-precision arithmetic which is the default for the main process. ## System information</p>
 </blockquote>
-<p>This report was built using 3 parallel threads (on a machine with a
-total of 3 cores)</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">sessionInfo</span>(), <span class="at">locale=</span><span class="cn">FALSE</span>)</span></code></pre></div>
-<pre><code>## R version 4.3.1 (2023-06-16)
-## Platform: x86_64-apple-darwin20 (64-bit)
-## Running under: macOS Monterey 12.7
+<p>This report was built using 3 parallel threads (on a machine with a total of 3 cores)</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a><span class="kw">print</span>(<span class="kw">sessionInfo</span>(), <span class="dt">locale=</span><span class="ot">FALSE</span>)</span></code></pre></div>
+<pre><code>## R version 4.2.0 (2022-04-22)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Big Sur/Monterey 10.16
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRblas.0.dylib 
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.3-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
 ## 
 ## attached base packages:
 ## [1] grid      stats     graphics  grDevices utils     datasets  methods  
 ## [8] base     
 ## 
 ## other attached packages:
-##  [1] png_0.1-8          ggplot2_3.4.4      lattice_0.21-8     reshape2_1.4.4    
-##  [5] coda_0.19-4        mvabund_4.2.1      TMB_1.9.6          MASS_7.3-60       
-##  [9] glmmTMB_1.1.8-9000 knitr_1.44        
+##  [1] png_0.1-7          ggplot2_3.3.6      lattice_0.20-45    reshape2_1.4.4    
+##  [5] coda_0.19-4        mvabund_4.2.1      TMB_1.9.0          MASS_7.3-56       
+##  [9] glmmTMB_1.1.3.9000 knitr_1.39        
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] tidyselect_1.2.0          dplyr_1.1.3              
-##  [3] farver_2.1.1              R.utils_2.12.2           
-##  [5] fastmap_1.1.1             TH.data_1.1-2            
-##  [7] digest_0.6.33             estimability_1.4.1       
-##  [9] lifecycle_1.0.3           survival_3.5-5           
-## [11] statmod_1.5.0             processx_3.8.2           
-## [13] magrittr_2.0.3            compiler_4.3.1           
-## [15] rlang_1.1.1               sass_0.4.7               
-## [17] tools_4.3.1               utf8_1.2.3               
-## [19] yaml_2.3.7                prettyunits_1.2.0        
-## [21] labeling_0.4.3            pkgbuild_1.4.2           
-## [23] plyr_1.8.9                multcomp_1.4-25          
-## [25] R.cache_0.16.0            withr_2.5.1              
-## [27] numDeriv_2016.8-1.1       desc_1.4.2               
-## [29] R.oo_1.25.0               stats4_4.3.1             
-## [31] fansi_1.0.5               pkgdown.extras_0.0.0-9003
-## [33] xtable_1.8-4              colorspace_2.1-0         
-## [35] emmeans_1.8.8             scales_1.2.1             
-## [37] bbmle_1.0.25              cli_3.6.1                
-## [39] mvtnorm_1.2-3             rmarkdown_2.25           
-## [41] crayon_1.5.2              generics_0.1.3           
-## [43] bdsmatrix_1.3-6           minqa_1.2.6              
-## [45] cachem_1.0.8              stringr_1.5.0            
-## [47] splines_4.3.1             parallel_4.3.1           
-## [49] vctrs_0.6.4               boot_1.3-28.1            
-## [51] Matrix_1.6-1.1            sandwich_3.0-2           
-## [53] jsonlite_1.8.7            callr_3.7.3              
-## [55] tweedie_2.3.5             jquerylib_0.1.4          
-## [57] glue_1.6.2                nloptr_2.0.3             
-## [59] pkgdown_2.0.7             codetools_0.2-19         
-## [61] ps_1.7.5                  stringi_1.7.12           
-## [63] gtable_0.3.4              lme4_1.1-34              
-## [65] munsell_0.5.0             tibble_3.2.1             
-## [67] pillar_1.9.0              htmltools_0.5.6.1        
-## [69] R6_2.5.1                  rprojroot_2.0.3          
-## [71] evaluate_0.22             R.methodsS3_1.8.2        
-## [73] memoise_2.0.1             bslib_0.5.1              
-## [75] Rcpp_1.0.11               R.rsp_0.45.0             
-## [77] nlme_3.1-162              mgcv_1.8-42              
-## [79] xfun_0.40                 fs_1.6.3                 
-## [81] zoo_1.8-12                pkgconfig_2.0.3</code></pre>
+##  [1] sass_0.4.1                jsonlite_1.8.0           
+##  [3] splines_4.2.0             R.utils_2.11.0           
+##  [5] bslib_0.3.1               statmod_1.4.36           
+##  [7] stats4_4.2.0              highr_0.9                
+##  [9] yaml_2.3.5                numDeriv_2016.8-1.1      
+## [11] pillar_1.7.0              glue_1.6.2               
+## [13] bbmle_1.0.25              digest_0.6.29            
+## [15] minqa_1.2.4               colorspace_2.0-3         
+## [17] sandwich_3.0-1            pkgdown.extras_0.0.0-9003
+## [19] htmltools_0.5.2           Matrix_1.4-1             
+## [21] R.oo_1.24.0               plyr_1.8.7               
+## [23] pkgconfig_2.0.3           purrr_0.3.4              
+## [25] xtable_1.8-4              mvtnorm_1.1-3            
+## [27] scales_1.2.0              processx_3.5.3           
+## [29] lme4_1.1-29               emmeans_1.7.4-1          
+## [31] tibble_3.1.7              farver_2.1.0             
+## [33] generics_0.1.2            ellipsis_0.3.2           
+## [35] TH.data_1.1-1             cachem_1.0.6             
+## [37] withr_2.5.0               cli_3.3.0                
+## [39] survival_3.3-1            magrittr_2.0.3           
+## [41] crayon_1.5.1              memoise_2.0.1            
+## [43] estimability_1.3          evaluate_0.15            
+## [45] ps_1.7.0                  R.methodsS3_1.8.1        
+## [47] fs_1.5.2                  fansi_1.0.3              
+## [49] R.cache_0.15.0            nlme_3.1-157             
+## [51] pkgbuild_1.3.1            R.rsp_0.44.0             
+## [53] tools_4.2.0               prettyunits_1.1.1        
+## [55] lifecycle_1.0.1           multcomp_1.4-19          
+## [57] stringr_1.4.0             munsell_0.5.0            
+## [59] callr_3.7.0               compiler_4.2.0           
+## [61] pkgdown_2.0.3             jquerylib_0.1.4          
+## [63] rlang_1.0.2               nloptr_2.0.3             
+## [65] tweedie_2.3.3             labeling_0.4.2           
+## [67] rmarkdown_2.14            boot_1.3-28              
+## [69] gtable_0.3.0              codetools_0.2-18         
+## [71] R6_2.5.1                  zoo_1.8-10               
+## [73] bdsmatrix_1.3-4           dplyr_1.0.9              
+## [75] fastmap_1.1.0             utf8_1.2.2               
+## [77] rprojroot_2.0.3           desc_1.4.1               
+## [79] stringi_1.7.6             parallel_4.2.0           
+## [81] Rcpp_1.0.8.3              vctrs_0.4.1              
+## [83] tidyselect_1.1.2          xfun_0.31</code></pre>
 </div>
 
 
