@@ -50,7 +50,8 @@ Imports:
     Matrix,
     nlme,
     numDeriv,
-    mgcv
+    mgcv,
+    reformulas
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,

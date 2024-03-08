@@ -503,8 +503,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
-##' @importFrom lme4 findbars nobars
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
+##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
@@ -973,7 +973,7 @@ binomialType <- function(x) {
 ##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
-##' @importFrom lme4 subbars findbars mkReTrms nobars
+##' @importFrom lme4 subbars mkReTrms
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
 ##' @details
