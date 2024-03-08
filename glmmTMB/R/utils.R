@@ -351,10 +351,30 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
               }
           }
       }
+      if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
+      	ee$parameters$betadisp <- ee$parameters$betad
+      	ee$parameters$betad <- NULL
+      	pars <- c(grep("last\\.par", names(ee), value = TRUE),
+      						"par")
+      	for (p in pars) {
+      		if (!is.null(nm <- names(ee[[p]]))) {
+      			names(ee[[p]])[nm == "betad"] <- "betadisp"
+      		}
+      	}
+      	ee$data$Xdisp <- ee$data$Xd
+      	ee$data$Xd <- NULL
+      }
+      if(!"Zdisp" %in% names(ee$data)) {
+      	ee$data$Zdisp <- new("dgCMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      }
       ee2 <- oldfit$sdr$env
       if ("thetaf" %in% names(ee2$parameters)) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
+      }
+      if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
+      	ee2$parameters$betadisp <- ee2$parameters$betad
+      	ee2$parameters$betad <- NULL
       }
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
