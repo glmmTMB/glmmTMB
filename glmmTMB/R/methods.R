@@ -334,7 +334,7 @@ logLik.glmmTMB <- function(object, ...) {
   }else val <- -object$fit$objective
 
   nobs <- nobs.glmmTMB(object)
-  df <- sum( ! names(object$fit$parfull) %in% c("b", "bzi") )
+  df <- sum( ! names(object$fit$parfull) %in% c("b", "bzi", "bdisp") )
   structure(val, nobs = nobs, nall = nobs, df = df,
             class = "logLik")
 }
@@ -380,7 +380,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
       if (is.null(rownames(Q))) { ## may be missing??
           dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
       }
-      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi") )
+      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi", "bdisp") )
       Qm <- GMRFmarginal(Q, whichNotRandom)
       cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
       if (inherits(cov.all.parms, "try-error")) {

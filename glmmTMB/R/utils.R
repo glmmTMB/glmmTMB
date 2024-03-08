@@ -99,7 +99,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
 
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
-    drop_rand <- function(x) x[!x %in% c("b", "bzi")]
+    drop_rand <- function(x) x[!x %in% c("b", "bzi", "bdisp")]
     if (!include_nonest) {
         intnames <- drop_rand(names(ee$last.par))
     } else {
@@ -479,7 +479,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       }
       if (trivialFixef(nn, tag)
           ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" &&
+          && !(full && tag =="disp" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
