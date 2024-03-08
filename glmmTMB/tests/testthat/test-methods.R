@@ -229,7 +229,7 @@ structure(c(5.48098713179567, 0.0248163864044954, 183.810584890723,
     expect_equal(ci.prof0,
                  structure(c(238.216039176535, 7.99674863649355, 3.758897,
                              264.368471102549, 12.8955469713508, 3.966739),
-                           .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "d~(Intercept)"),
+                           .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "disp~(Intercept)"),
                                                         c("2.5 %", "97.5 %"))),
                  tolerance=1e-4)
 
@@ -375,7 +375,7 @@ test_that("vcov", {
     expect_equal(dim(vcov(fm2)[[1]]),c(2,2))
     expect_equal(dim(vcov(fm2,full=TRUE)),c(6,6))
     expect_equal(rownames(vcov(fm2,full=TRUE)),
-           structure(c("(Intercept)", "Days", "d~(Intercept)",
+           structure(c("(Intercept)", "Days", "disp~(Intercept)",
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
           .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))

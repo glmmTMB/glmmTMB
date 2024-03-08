@@ -148,9 +148,9 @@ test_that("Update Binomial", {
 })
 
 test_that("internal structures", {
-  ## RE terms only in cond and zi model, not disp: GH #79
+  ## RE terms in cond, zi, and disp model
   expect_equal(names(fm0$modelInfo$reTrms),
-               c("cond","zi"))
+               c("cond","zi", "disp"))
 })
 
 test_that("close to lme4 results", {

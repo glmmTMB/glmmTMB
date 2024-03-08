@@ -407,7 +407,7 @@ test_that("tweedie", {
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tolerance = 1e-1)
     expect_equal(sigma(twm), sigma(twm2), tolerance = 1e-1)
     expect_equal(ranef(twm),
-                 structure(list(cond = list(), zi = list()), class = "ranef.glmmTMB"))
+                 structure(list(cond = list(), zi = list(), disp = list()), class = "ranef.glmmTMB"))
 })
 
 test_that("gaussian_sqrt", {
