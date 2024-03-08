@@ -35,3 +35,7 @@ glmmTMB.Rproj
 *.Rout
 glmmTMB/inst/*-version
 glmmTMB/.gitsum
+*/cache
+*/figure
+*.tgz
+*.zip

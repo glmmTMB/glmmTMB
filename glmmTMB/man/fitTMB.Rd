@@ -2,27 +2,55 @@
 % Please edit documentation in R/glmmTMB.R
 \name{fitTMB}
 \alias{fitTMB}
-\title{Optimize a TMB model and package results}
+\alias{finalizeTMB}
+\title{Optimize TMB models and package results, modularly}
 \usage{
 fitTMB(TMBStruc, doOptim = TRUE)
+
+finalizeTMB(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL)
 }
 \arguments{
 \item{TMBStruc}{a list containing lots of stuff ...}
 
 \item{doOptim}{logical; do optimization? If FALSE, return TMB object}
+
+\item{obj}{object created by \code{fitTMB(., doOptim = FALSE)}}
+
+\item{fit}{a fitted object returned from \code{nlminb}, or more generally
+a similar list (i.e. containing elements \code{par}, \code{objective}, \code{convergence},
+\code{message}, \code{iterations}, \code{evaluations})}
+
+\item{h}{Hessian matrix for fit, if computed in previous step}
+
+\item{data.tmb.old}{stored TMB data, if computed in previous step}
 }
 \description{
-This function (called internally by \code{\link{glmmTMB}}) runs
+These functions (called internally by \code{\link{glmmTMB}}) perform
 the actual model optimization, after all of the appropriate structures
-have been set up. It can be useful to run \code{\link{glmmTMB}} with
-\code{doFit=TRUE}, adjust the components as required, and then
+have been set up (\code{fitTMB}), and finalize the model after
+optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}} with
+\code{doFit=FALSE}, adjust the components as required, and then
 finish the fitting process with \code{fitTMB} (however, it is the
 user's responsibility to make sure that any modifications
 create an internally consistent final fitted object).
 }
 \examples{
+## regular (non-modular) model fit
 m0 <- glmmTMB(count ~ mined + (1|site),
-             family=poisson, data=Salamanders, doFit=FALSE)
+             family=poisson, data=Salamanders)
+## construct model structures
+m1 <- update(m0, doFit=FALSE)
 names(m0)
-fitTMB(m0)
+m2 <- fitTMB(m1, doOptim = FALSE)
+## could modify the components of m1$env$data at this point ...
+## rebuild TMB structure (*may* be necessary)
+m2 <- with(m2$env,
+               TMB::MakeADFun(data,
+                               parameters,
+                               map = map,
+                               random = random,
+                               silent = silent,
+                               DLL = "glmmTMB"))
+m3 <- with(m2, nlminb(par, objective = fn, gr = gr))
+m4 <- finalizeTMB(m1, m2, m3)
 }

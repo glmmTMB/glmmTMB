@@ -5,7 +5,11 @@
 \alias{getME}
 \title{Extract or Get Generalize Components from a Fitted Mixed Effects Model}
 \usage{
-\method{getME}{glmmTMB}(object, name = c("X", "Xzi", "Z", "Zzi", "Xd", "theta", "beta"), ...)
+\method{getME}{glmmTMB}(
+  object,
+  name = c("X", "Xzi", "Z", "Zzi", "Xd", "theta", "beta", "b"),
+  ...
+)
 }
 \arguments{
 \item{object}{a fitted \code{glmmTMB} object}

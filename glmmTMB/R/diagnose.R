@@ -169,18 +169,24 @@ diagnose <- function(fit,
             h <- numDeriv::jacobian(obj$gr, pp)
             ## FIXME: consider SVD?
             ## FIXME: add explanation
-            eigs <- eigen(h)
-            ## non-positive definite means some of the eigenvectors are <= 0
-            complex_eigs <- is.complex(eigs$values)
-            if (!complex_eigs) {
-              bad <- which(eigs$values/max(eigs$values) <= eval_eps)
+            if (any(is.na(h))) {
+                bad <- NA
+                eigs <- eigen(fit$sdr$cov.fixed)
+                complex_eigs <- is.complex(eigs)
+            } else {
+                eigs <- eigen(h)
+                ## non-positive definite means some of the eigenvectors are <= 0
+                complex_eigs <- is.complex(eigs$values)
+                if (!complex_eigs) {
+                    bad <- which(eigs$values/max(eigs$values) <= eval_eps)
+                }
             }
-            if (!complex_eigs && length(bad) == 0) {
-              cat("Hessian seems OK\n")
-              prt_explain("glmmTMB's internal calculations suggested that the Hessian was bad/non-positive definite;",
-                          "however, a slower and more precise calculation suggests that it's actually OK. Your model",
-                          "may be somewhat numerically unstable.")
-              return(invisible(h)) ## bail out here
+            if (length(bad) == 0 && !complex_eigs) {
+                cat("Hessian seems OK\n")
+                prt_explain("glmmTMB's internal calculations suggested that the Hessian was bad/non-positive definite;",
+                            "however, a slower and more precise calculation suggests that it's actually OK. Your model",
+                            "may be somewhat numerically unstable.")
+                return(invisible(h)) ## bail out here
             }
             if (complex_eigs) {
               cat("Hessian has complex eigenvalues\n\n")

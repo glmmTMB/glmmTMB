@@ -38,6 +38,7 @@ findbars_x(
   debug = FALSE,
   specials = character(0),
   default.special = "us",
+  target = "|",
   expand_doublevert_method = c("diag_special", "split")
 )
 
@@ -95,8 +96,6 @@ replaceForm(term, target, repl)
    ((xx|gg)) ... [can we detect them?]}
 
 \item{preserve}{(integer) retain the specified occurrence of "value"}
-
-\item{a}{formula term}
 }
 \value{
 a list of expressions
@@ -117,6 +116,10 @@ expandAllGrpVar(quote(1|f/g/h))
 expandAllGrpVar(quote(1|f*g))
 expandAllGrpVar(quote(1|f+g))
 expandAllGrpVar(quote(a+b|f+g+h*i))
+## wish list ... this should be (1|a) + (1|a:b) + (1|a:b:c) + (1|a:b:d) ...
+## expandAllGrpVar(quote(a/b/(c+d)))
+expandAllGrpVar(quote(s(log(d), k = 4)))
+expandAllGrpVar(quote(s(log(d+1))))
 splitForm(quote(us(x,n=2)))
 findbars_x(~ 1 + (x + y || g), expand_doublevert_method = "diag_special")
 findbars_x(~ 1 + (x + y || g), expand_doublevert_method = "split")
@@ -127,7 +130,10 @@ findbars_x(~ 1 + (1|Subject))
 findbars_x(~ (1||Subject))
 findbars_x(~ (1|Subject))
 findbars_x(~ (1|Subject), default.special = NULL)
-findbars_x(~ 1 + x) 
+findbars_x(~ 1 + x)
+findbars_x(~ s(x, bs = "tp"))
+findbars_x(y ~ a + log(b) + s(x, bs = "tp") + s(y, bs = "gp"),
+   target = "s", default.special = NULL)
 inForm(z~.,quote(.))
 inForm(z~y,quote(.))
 inForm(z~a+b+c,quote(c))

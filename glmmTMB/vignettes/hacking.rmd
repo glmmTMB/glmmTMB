@@ -87,7 +87,11 @@ zo_truncated_poisson <- function(link="log") {
 
 As you can see, I haven't yet worked out the variance of a zero-one-truncated Poisson. This will only cause problems if/when a user wants to estimate Pearson residuals.
 
-If this were for long-term use, you might want to add the documentation to the `?glmmTMB::family_glmmTMB` page. This material is located in `R/family.R`, above the `nbinom2` family function.
+Ideally a `$dev.resids()` component should also be added, to return the *deviance residuals* (i.e., $2 (\log L(y_i) - \log L_{\textrm{sat}}(y_i))$, where $L_{\textrm{sat}}$ is the log-likelihood of $y_i$ under the *saturated* model; see the `$dev.resids` components of families built into base R for examples.
+
+For some families, the variance and deviance-residuals function require extra information such as a dispersion parameter. For the `nbinom1` and `nbinom2` families, `glmmTMB` does some additional stuff to store the value of the dispersion parameter in the environment of the variance/deviance residual functions (which share an environment), and to retrieve the dispersion parameter from the environment (search for ".Theta" in the R code for the package).
+
+You should also document your new family, probably in the `?glmmTMB::family_glmmTMB` page. This material is located in `R/family.R`, above the `nbinom2` family function.
 
 ### modifying glmmTMB.R
 
@@ -165,3 +169,32 @@ General advice, but written while adding a "diagonal with homogeneous variance" 
 * modify `parFun` to specify the number of parameters
 * modify documentation of `glmmTMB()`
 * run `make enum-update`
+
+# Structure of a `glmmTMB` object
+
+Since I don't think this is explicitly documented anywhere ...
+
+- `obj`: this is a TMB-object (no explicit class, just a list) as created by `TMB::MakeADFun()`. It has useful components
+   - `$fn`: the negative log-likelihood function (takes a vector of *non-random* parameters (`beta`, `betazi`, `bzi`, `theta`, `thetazi`, `psi` depending on the model; `b` and `bzi` are excluded)
+   - `$gr`: gradient of the NLL function
+   - `$env`: environment, holding useful stuff like `$random` (positions of random-effect parameters), `$last.par.best`, etc.
+   - `$report` (return derived values)
+   - `$simulate` (simulate new responses)
+- `fit`: results of optimization
+- `sdr`: results of calling `sdreport()`
+- `call`: original model call
+- `frame`: model frame
+- `modelInfo`: lots of useful information
+    - `nobs`: number of observations (should be the same as `nrow(x$frame)`)
+	- `respCol`: response column
+	- `grpVar`: (?)
+	- `family`: GLM family
+	- `contrasts`
+	- `reTrms`
+	- `terms`
+	- `reStruc`
+	- `allForm`
+	- `REML`
+	- `map`
+	- `sparseX`
+	- `parallel`

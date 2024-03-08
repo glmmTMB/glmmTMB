@@ -44,12 +44,12 @@ The value returned varies by family:
           the Beta distribution that underlies the binomial probabilities) as \code{beta}.}
      \item{genpois}{returns the index of dispersion \eqn{\phi^2}{phi^2},
           where the variance is \eqn{\mu\phi^2}{mu*phi^2} (Consul & Famoye 1992)}
-     \item{compois}{returns the value of \eqn{1/\nu}{1/nu},
-          When \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
+     \item{compois}{returns the value of \eqn{1/\nu}{1/nu};
+          when \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
           There is no closed form equation for the variance, but
-          it is approximately undersidpersed when \eqn{1/\nu <1}{1/nu <1}
-          and approximately oversidpersed when \eqn{1/\nu >1}{1/nu>1}.
-          In this implementation, \eqn{\mu}{mu} is exactly the mean (Huang 2017), which
+          it is approximately underdispersed when \eqn{1/\nu <1}{1/nu <1}
+          and approximately overdispersed when \eqn{1/\nu >1}{1/nu>1}.
+          In this implementation, \eqn{\mu}{mu} is exactly equal to the mean (Huang 2017), which
           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
      \item{tweedie}{returns the value of \eqn{\phi}{phi},
           where the variance is \eqn{\phi\mu^p}{phi*mu^p}.

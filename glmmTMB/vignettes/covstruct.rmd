@@ -2,7 +2,9 @@
 title: "Covariance structures with glmmTMB"
 author: "Kasper Kristensen and Maeve McGillycuddy"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: 
+  rmarkdown::html_vignette:
+     toc: true
 bibliography: glmmTMB.bib
 vignette: >
   %\VignetteIndexEntry{Covariance structures with glmmTMB}
@@ -54,22 +56,30 @@ set.seed(1)
 This vignette demonstrates some of the covariance structures available in the `glmmTMB` package.
 Currently the available covariance structures are:
 
-| Covariance                       | Notation      | Parameter count | Requirement |
-|----------------------------------|---------------|-----------------|-------------|
-| Heterogeneous unstructured       | `us`          |  $n(n+1)/2$     |             |
-| Heterogeneous Toeplitz           | `toep`        |  $2n-1$         |             |
-| Heterogeneous compound symmetry  | `cs`          |  $n+1$          |             |
-| Heterogeneous diagonal           | `diag`        |  $n$            |             |
-| AR(1)                            | `ar1`         |  $2$            | Unit spaced levels |
-| Ornstein-Uhlenbeck               | `ou`          |  $2$            | Coordinates |
-| Spatial exponential              | `exp`         |  $2$            | Coordinates |
-| Spatial Gaussian                 | `gau`         |  $2$            | Coordinates |
-| Spatial Matern                   | `mat`         |  $3$            | Coordinates |
-| Reduced rank                     | `rr`          |  $nd-d(d-1)/2$  | rank (d)    |
+<!-- not sure why |x| for abs value isn't working in MathJax/LateX within kable table ... -->
 
+```{r covstruct-table, echo  = FALSE, eval = TRUE}
+ctab <- read.delim(sep = "#", comment = "",
+                   header = TRUE,
+                   check.names = FALSE,
+           text = "
+ Covariance                       # Notation      # no. parameters # Requirement  # Parameters
+ Unstructured (general positive definite)      # `us`          #  $n(n+1)/2$     # # See [Mappings]
+ Heterogeneous Toeplitz           # `toep`        #  $2n-1$         #     # log-SDs ($\\theta_1-\\theta_n$); correlations $\\rho_k = \\theta_{n+k}/\\sqrt{1+\\theta_{n+k}^2}$, $k = \\textrm{abs}(i-j+1)$
+ Het. compound symmetry  # `cs`          #  $n+1$    #      # log-SDs ($\\theta_1-\\theta_n$); correlation $\\rho = \\theta_{n+1}/\\sqrt{1+\\theta_{n+1}^2}$
+ Het. diagonal           # `diag`        #  $n$            #  # log-SDs
+ AR(1)                            # `ar1`         #  $2$            # Unit spaced levels # log-SD; $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
+ Ornstein-Uhlenbeck               # `ou`          #  $2$            # Coordinates  # log-SD; log-OU rate ($\\rho = \\exp(-\\exp(\\theta_2) d_{ij})$)
+ Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
+ Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
+ Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
+ Reduced rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
+"
+)
+knitr::kable(ctab)
+```
 The word 'heterogeneous' refers to the marginal variances of the
-model. Beyond correlation parameters, a heterogeneous structure uses
-$n$ additional variance parameters where $n$ is the dimension.
+model. 
 
 Some of the structures require temporal or spatial coordinates. We
 will show examples of this in a later section.
@@ -147,7 +157,7 @@ This formula notation follows that of the `lme4` package.
 
 - The left hand side of the bar `times + 0` corresponds to a design
   matrix $Z$ linking observation vector $y$ (rows) with a random
-  effects vector $u$ (columns).
+  effects vector $u$ (columns) (see [Construction of structured covariance matrices] for why we need the `+ 0`)
 - The distribution of $u$ is `ar1` (this is the only `glmmTMB`
   specific part of the formula).
 - The right hand side of the bar splits the above specification
@@ -164,8 +174,8 @@ glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 
 For those trying to make sense of the internal parameterization, the internal
 transformation from the parameter ($\phi$) to the AR1 coefficient is
-$\phi = theta_2/sqrt(1+\theta_2^2)$; the inverse transformation is
-$\theta_2 =  \phi/sqrt(1-\phi^2)$. (The first element of the `theta` vector
+$\phi = \theta_2/\sqrt(1+\theta_2^2)$; the inverse transformation is
+$\theta_2 =  \phi/\sqrt(1-\phi^2)$. (The first element of the `theta` vector
 is the log-standard-deviation.)
 
 ### Increasing the sample size
@@ -175,9 +185,9 @@ the parameters. We could either increase the length of the time series
 or increase the number of groups. We'll try the latter:
 
 ```{r simGroup}
-simGroup <- function(g, n=6, rho=0.7) {
+simGroup <- function(g, n=6, phi=0.7) {
     x <- MASS::mvrnorm(mu = rep(0,n),
-             Sigma = rho ^ as.matrix(dist(1:n)) )   ## Simulate the process
+             Sigma = phi ^ as.matrix(dist(1:n)) )   ## Simulate the process
     y <- x + rnorm(n)                               ## Add measurement noise
     times <- factor(1:n)
     group <- factor(rep(g,n))
@@ -232,10 +242,12 @@ collecting correlation parameters within the same off-diagonal. This
 amounts to `r (n-1)` correlation parameters and `r n` variance
 parameters.
 
-> FIXME: Explain why dispformula=~1 causes over-parameterization
+We use `dispformula = ~0` to suppress the residual variance (it actually
+gets set to a small value controlled by the `zerodisp_val` argument of `glmmTMBControl()`)^[Why do we do this? Consider the slightly simplified case of a *homogeneous* Toeplitz structure where all of the variance parameters are identical. The diagonal elements of the covariance matrix are equal to $\sigma_t^2$, the off-diagonals to $\sigma_t^2 \cdot \rho(|i-j|)$. If we add a residual variance to the model then the diagonal of the combined covariance matrix becomes $\sigma_t^2 + \sigma_r^2$ and the off-diagonals become $(\sigma_t^2 + \sigma_r^2) \rho(|i-j|)$. However, by reparameterizing the Toeplitz model to $\{{\sigma_t^2}' = \sigma_t^2 + \sigma_r^2, \rho'(|i-j|) = \rho(|i-j|) \cdot \frac{\sigma_t^2}{\sigma_t^2 + \sigma_r^2}\}$ --- that is, by inflating the variance and deflating the correlation parameters --- we can get back to an equivalent Toeplitz model. This implies that the residual variance and the Toeplitz covariance parameters are jointly unidentifiable, which is likely to make problems for the fitting procedure.]
 
 ```{r fit.toep}
-fit.toep <- glmmTMB(y ~ toep(times + 0 | group), data=dat1, dispformula=~0)
+fit.toep <- glmmTMB(y ~ toep(times + 0 | group), data=dat1,
+                    dispformula=~0)
 fit.toep$sdr$pdHess ## Converged ?
 ```
 
@@ -266,7 +278,7 @@ summary(vc1R[row(vc1R)!=col(vc1R)])
 The compound symmetry structure collects all off-diagonal elements of
 the correlation matrix to one common value.
 
-> FIXME: Explain why dispformula=~1 causes over-parameterization
+We again use `dispformula = ~0` to make the model parameters identifiable (see the footnote in [The Toeplitz structure]; a similar, although slightly simpler, argument applies here).
 
 ```{r fit.cs}
 fit.cs <- glmmTMB(y ~ cs(times + 0 | group), data=dat1, dispformula=~0)
@@ -659,6 +671,95 @@ An option in `glmmTMBControl()` has been included to initialize the starting val
 - `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
 
 For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining $nd-d(d-3)/2$, (i.e. parameters `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
+
+## Construction of structured covariance matrices
+
+This section will explain how covariance matrices are constructed "under the hood", and in particular why the `0+` term is generally required in models for temporal and spatial covariances.
+
+Probably the key insight here is that the terms in a random effect (the `f` formula in a random-effects term `(f|g)` are expanded using the base-R machinery for regression model formulas. In the case of an intercept-only random effect `(1|g)`, the model matrix is a column of ones, so we have a $1 \times 1$ covariance matrix - a single variance. For a random-slopes model `(x|g)` or `(1+x|g)`, where `x` is a numeric variable, the model matrix has two columns, a column of ones and column of observed values of `x`, and the covariance matrix is $2 \times 2$ (intercept variance, slope variance, intercept-slope covariance).
+
+Things start to get weird when we have `(f|g)` (or `(1+f|g)`) where `f` is a factor (representing a categorical variable). R uses *treatment contrasts* by default; if the observed values of `f` are `c("c", "s", "v")`^[chocolate, strawberry, vanilla] the corresponding factor will have a baseline level of `"c"` by default, and the model matrix will be:
+```{r mm_int, eval = TRUE}
+model.matrix(~f, data.frame(f=factor(c("c", "s", "v"))))
+```
+i.e., an intercept (which corresponds to the predicted mean value for observations in group `c`) followed by dummy variables that describe contrasts between the predicted mean values for `s` and `c` (`fs`) and between `v` and `c` (`fv`). The covariance matrix is $3 \times 3$ and looks like this:
+
+\[
+\newcommand{\ssub}[1]{\sigma^2_{\textrm{#1}}}
+\newcommand{\csub}[2]{\sigma^2_{\textrm{#1}, \textrm{#2}}}
+\left(
+\begin{array}{ccc}
+\ssub{c} & \csub{c}{s-c} & \csub{c}{v-c} \\
+\csub{c}{s-c} & \ssub{s-c} & \csub{s-c}{v-c} \\
+\csub{c}{v-c} & \csub{s-c}{v-c} & \ssub{v-c}
+\end{array}
+\right)
+\]
+
+This might be OK for some problems, but the parameters of the model will often be more interpretable if we remove the intercept from the formula:
+
+```{r mm_noint, eval = TRUE}
+model.matrix(~0+f, data.frame(f=factor(c("c", "s", "v"))))
+```
+
+The corresponding covariance matrix is
+
+\[
+\left(
+\begin{array}{ccc}
+\ssub{c} & \csub{c}{s} & \csub{c}{v} \\
+\csub{c}{s} & \ssub{s} & \csub{s}{v} \\
+\csub{c}{v} & \csub{s}{v} & \ssub{v}
+\end{array}
+\right)
+\]
+
+This is easier to understand (the elements are the variances of the intercepts for each group, and the covariances between intercepts of different groups). If we use an 'unstructured' model (`us(f|g)`, or just plain `(f|g)`), then this reparameterization won't make any difference in the overall model fit. However, if we use a structured covariance model, then the choice matters: for example, the two models `diag(f|g)` and `diag(0+f|g)` give rise to the covariance matrices
+
+\[
+\left(
+\begin{array}{ccc}
+\ssub{c} & 0 & 0 \\
+0 & \ssub{s-c} & 0 \\
+0 & 0 & \ssub{v-c}
+\end{array}
+\right)
+\;\; \textrm{vs} \;\;
+\left(
+\begin{array}{ccc}
+\ssub{c} & 0 & 0 \\
+0 & \ssub{s} & 0 \\
+0 & 0 & \ssub{v}
+\end{array}
+\right)
+\]
+
+which *cannot* be made equivalent by changing parameters.
+
+What does this have to do with temporally/spatially structured covariance matrices? In this case, if two points are separated by a distance $d_{ij}$ (in space or time), we typically want their correlation to be $\sigma^2 \rho(d_{ij})$, where $\rho()$ is a temporal or spatial autocorrelation function (e.g. in the AR1 model, $\rho(d_{ij}) = \phi^{d_{ij}}$). So we want to set up a covariance matrix
+
+\[
+\sigma^2
+\left(
+\begin{array}{cccc}
+1            & \rho(d_{12}) & \rho(d_{13}) & \ldots \\
+\rho(d_{12}) &     1        & \rho(d_{23}) & \ldots \\
+\rho(d_{13}) & \rho(d_{23}) & 1            & \ldots \\
+\vdots       & \vdots       & \vdots       & \ddots
+\end{array}
+\right)
+\]
+
+How `glmmTMB` actually does this internally is to 
+
+- treat the temporal/spatial locations as a factor to construct the data structure for a $n \times n$ covariance matrix (where $n$ is the number of
+unique locations)
+- use the information encoded in the levels by `numFactor()` to compute the corresponding pairwise distances
+- use the prefix of the random term (e.g. `ar1` or `ou`) and the autocorrelation parameters (drawn from the parameter vector) to specify the autocorrelation function
+- use the autocorrelation function and the distances to fill in the values in the correlation matrix
+- multiply the correlation matrix by the variance (also drawn from the parameter vector) to compute the covariance matrix
+
+In order for this to work, we need the $i^\textrm{th}$ column of the corresponding model matrix to correspond to an indicator variable for whether an observation is at the $i^\textrm{th}$ location --- *not* to a contrast between the $i\textrm{th}$ level and the first level! So, we want to use e.g. `ar1(0 + time|g)`, *not* `ar1(time|g)` (which is equivalent to `ar1(1+time|g)`).
 
 ## References
 

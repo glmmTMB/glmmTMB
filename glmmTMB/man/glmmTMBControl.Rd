@@ -12,9 +12,9 @@ glmmTMBControl(
   collect = FALSE,
   parallel = getOption("glmmTMB.cores", 1L),
   eigval_check = TRUE,
-  zerodisp_val = log(sqrt(.Machine$double.eps)),
+  zerodisp_val = log(.Machine$double.eps)/4,
   start_method = list(method = NULL, jitter.sd = 0),
-  rank_check = c("warning", "adjust", "stop", "skip"),
+  rank_check = c("adjust", "warning", "stop", "skip"),
   conv_check = c("warning", "skip")
 )
 }

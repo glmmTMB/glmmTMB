@@ -1,0 +1,378 @@
+---
+title: "Kronecker products"
+date: today
+format:
+  html:
+      embed-resources: true
+bibliography: ../glmmTMB/vignettes/glmmTMB.bib
+---
+
+\newcommand{\C}{\mathbf C}
+\newcommand{\G}{\mathbf G}
+\newcommand{\Z}{\mathbf Z}
+\newcommand{\X}{\mathbf X}
+\newcommand{\b}{\mathbf b}
+\newcommand{\bbeta}{\boldsymbol \beta}
+\newcommand{\btheta}{\boldsymbol \theta}
+\newcommand{\inv}[1]{{#1}^{-1}}
+
+```{r pkgs, message = FALSE}
+library(Matrix)
+library(lme4)
+library(Rcpp)
+library(rbenchmark)
+library(glmmTMB)
+library(dplyr)
+while (!require("reformulas")) {
+    remotes::install_github("bbolker/reformulas")
+}
+```
+
+## Introduction
+
+Source code is [here](https://github.com/glmmTMB/glmmTMB/blob/master/notes/kronecker.qmd).
+
+Notes from Kasper [here](https://github.com/glmmTMB/glmmTMB/commit/0e9d26a02e5e36b74120d8c8a35eae0e0960a73b#commitcomment-125586189).
+
+We would ideally like to be able to fit models with the covariance matrices constructed from a *generic* Kronecker product, e.g. `ar1(time)` $\otimes$ `cs(treatment)`, in either `glmmTMB` or `lme4`.
+
+This is "straightforward" to implement in either package(i.e. we know, conceptually, how to do it, but it might take some work ...). It presents different challenges in each package due to their differing architectures and age.
+
+## User interface
+
+The ASREML syntax is `(f1|g1):(f2|g2)`
+
+```{r}
+```
+
+* In `lme4`, we can use the modular
+
+* 
+* for intercept-only construct $\Z$ matrix via (something like) `fac2sparse(interaction(f1, f2))` (*how do we do it for non-scalar REs?*: `interaction()` + `KhatriRao()` in some order ...?)
+* once we have the $\Z$ matrix defined, the conditional log-likelihood of observations ($\log {\cal L}(y_i|\bbeta, \b)$) takes care of itself via  $\X \bbeta + \Z \b$.
+
+How about $\log {\cal L}(\b|\btheta)$ ?
+
+* construct precision ($\inv{\G}$) matrix by getting the precision matrices $\inv{\G_1}$, $\inv{\G_2}$; then $\inv{G} = \inv{\G_1} \otimes \inv{\G_2}$ (see [Emi's cheatsheet](https://github.com/emitanaka/cheatsheets/blob/master/linear-algebra.qmd) or [Wikipedia](https://en.wikipedia.org/wiki/Kronecker_product)). **Need to make sure the ordering of $\inv G$ matches the ordering of the `b` vector**, which means checking the ordering of the results of  `interaction(levels(f1), levels(f2))` vs. the ordering of `kron(invG1, invG2)` (`invG` matrix rows/cols should correspond to levels of `f`)
+* `blockNumTheta` (i.e., number of $\theta$ parameters required for the term) will be the sum of `blockNumTheta` for each component (we do need to keep track of the individual values); ditto for `blockSize` (length of the `b` vector)
+* Once we have $\inv{\G_1}$ we should be able to compute $\log {\cal L}(\b|\btheta)$ for each block in the same way as we currently do for all different types in `termwise_nll`. Not quite sure how we would work with precision matrices/specify a MVN log-likelihood with precision rather than corr Cholesky factor supplied??
+
+This suggests that we might want to refactor `termwise_nll` so that we have an upstream function that returns the *precision matrix* given {`theta`, `blockSize`}. (Can this be applied completely generally or are there special cases? Right now we use the state-space representation for `ar1()` (but *not* for Toeplitz?), but I'm not convinced that's necessary (since AR1 has a closed-form precision matrix: machinery in `nlme`, plus can look it up elsewhere)?)
+
+New data required: need to store the codes (`blockCode` and `blockNumTheta`) for each of the factors. To allow for multiple Kronecker products $\G_1 \otimes \G_2 \otimes \G_3 \otimes \ldots$, this can be a vector. I think we could generalize the `per_term_info` struct so that, for a Kronecker product of `n` factors,
+
+- `blockCode` is a variable-length vector (length `n+1`) of integers ; if the *first* element matches the `kron` enum value, then the subsequent elements are the block codes for the factors. (If it is length-1 and not `kron`, then it is treated as a single code.)
+- `blockNumTheta` is of length `n` - number of `theta` values for each factor
+
+The `blockSize` component is a scalar (sum of block sizes for individual components; do we need to be able to have this information available elsewhere, e.g. if we want to reconstruct the individual factors?), as is `blockReps`. The `dist` (for spatial cov structs) and `times` (for time cov structs) are a little more problematic; what if there is more than one? Do we want (somehow) to generalize this component to "extra information required for this term"? Should there be a (possibly empty) vector and a (possibly empty) matrix associated with each block, whose meanings and use may vary depending on the cov type?
+
+**Or**: is there some kind of object-oriented solution to this (i.e. make a new structure that somehow inherits from the simpler version)?
+
+Will also need to implement some new covariance structures (`cor` versions of existing structures), or map variance to 1, for identifiability. Mapping will work but could get very complicated; as a design principle I would like to avoid requiring mapping *internally*, leaving any mapping for special cases needed by the user. Naming convention? `hom`+X = homogeneous-diagonal version, `cor`+X = correlation version? (e.g. `homus` is an unstructured correlation matrix + homogeneous variance, `corus` is an unstructured correlation matrix (variance fixed to 1). Is there a way to avoid repeating too much code?
+
+## next step
+
+I wanted to illustrate that this works by creating an initial model with `doFit = FALSE`, hacking `Z` etc., but I don't think this will actually work: we have to reconstruct $\inv{G}$ *at every iteration step*, which means the code needs to be inside `src/glmmTMB.cpp` ...
+
+---
+
+## lme4 hacking
+
+We can also do this in `lme4`, by hacking. We'd use the modular machinery (`?lme4::modular`).
+
+* call `lFormula` with a random effects term `(rows:cols|block)` (again, not sure how to do this with non-scalar REs?); this will set up a dense `Lambdat` matrix and an appropriate `Zt` matrix
+* make the deviance function
+* set up a wrapper function that maps $\btheta'$ (our Kronecker-product/restricted parameter set) to $\btheta$ (the full Cholesky factor that `lmer` is expecting)
+* do we have any nice Kronecker-product identities that help us get $\textrm{Chol}\left((\C_1 \C_1^\top) \otimes (\C_2 \C_2^\top)\right)$ the easy way (i.e. not by `chol(kron(crossprod()))`?
+
+@schackeKronecker2004 says
+
+$$
+A \otimes B = (L_A L_A^\top) \otimes (L_B L_B^\top) = 
+(L_A \otimes L_B) (L_A \otimes L_B)^\top
+$$
+
+Lazy test
+
+```{r kron1}
+set.seed(102)
+rc <- function(n) {
+    m <- matrix(0, n, n)
+    m[lower.tri(m, diag = TRUE)] <- rnorm(n*(n+1)/2)
+    m
+}
+tchol <- function(A) t(chol(A))
+A <- rc(3)
+B <- rc(3)
+c1 <- tchol(kronecker(tcrossprod(A), tcrossprod(B)))
+c2 <- kronecker(A,B)
+stopifnot(all.equal(c1, c2))
+```
+
+Various utilities that will come in handy ...
+
+```{r utils}
+##' unpack a list into the current (calling) environment
+##' this is a replacement for \code{with()} (which is hard to debug) and \code{attach()} (which is frowned upon by CRAN/triggers package-check warnings)
+##' (for more traditional Python tuple unpacking see the \code{zeallot} package)
+##' @param x a named vector or a list
+##' @export
+unpack <- function(x) {
+    if (any(names(x) == "")) stop("unnamed elements in x")
+    invisible(list2env(as.list(x), envir = parent.frame()))
+}
+##' convenience function for matrix display
+ifun <- function(x) {
+    x |> Matrix() |> image(sub = "", xlab = "", ylab = "")
+}
+##' convert half-vec to a lower-triangular matrix
+## https://en.wikipedia.org/wiki/Vectorization_(mathematics)#Half-vectorization
+hvec2mat <- function(x) {
+    n <- (sqrt(8*length(x)+1)-1)/2
+    m <- matrix(0, n, n)
+    m[lower.tri(m, diag = TRUE)] <- x
+    m
+}
+```
+
+@madarDirect2015b gives a general formulation for computing the Cholesky factor of AR structures directly. Section 5.1 gives a specific, simple form for the AR1 case:
+
+$$
+\ell_{ji} =
+\begin{cases}
+      \rho^{j-1} & j \ge i = 1 \\
+  \rho^{j-1} \sqrt{1-\rho^2} & j \ge 1 \ge 2
+\end{cases}
+$$
+
+
+```{Rcpp chol_fac}
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+void AR1_chol(NumericVector par, IntegerVector n, NumericVector mat) {
+    int i, j, k;
+    double aux = sqrt(1 - par[0] * par[0]);
+	Rcpp::NumericVector tmp(n[0]-1);
+
+    mat[0] = 1.0;
+    for(i = 1; i < n[0]; i++) {
+	    mat[i] = mat[i-1]*par[0];
+		tmp[i-1] = mat[i-1]*aux;
+    }
+	for (i = 1; i < n[0]; i++) {
+	   k = i*n[0]+i;
+	   for (j = i; j < n[0]; j++) {
+	      mat[k] = tmp[j-i];
+		  k++;
+	   }
+    }
+}
+```
+
+
+```{r ar1_fun}
+ar1_chol <- function(rho, sigma, n) {
+    x <- numeric(n^2)
+    AR1_chol(rho, as.integer(n), x)
+    sigma*matrix(x, n)
+}
+```
+
+
+```{r utils2}
+## generate theta parameters for an AR1 ⨂ AR1 model
+get_theta <- function(p, n_R, n_C) {
+    nm <- c("sigma", "rho_R", "rho_C")
+     if (!is.null(names(p)) && any(names(p) != "" & names(p) != nm)) {
+        stop("name mismatch")
+    }
+    unpack(setNames(p, nm))
+    K <- kronecker(ar1_chol(rho_R, sigma, n_R), ar1_chol(rho_C, 1, n_C))
+    K[lower.tri(K, diag = TRUE)]
+}
+## test
+rvec <- c(sigma = 2, rho_R = 0.8, rho_C = 0.2)
+t1 <- get_theta(rvec,  n_R = 10, n_C = 10)
+m1 <-  t1 |> hvec2mat() |> tcrossprod()
+## ifun(m1)
+## test Kronecker identity again
+m2 <- kronecker(tcrossprod(ar1_chol(0.8, 2, 10)),
+                tcrossprod(ar1_chol(0.2, 1, 10)))
+stopifnot(all.equal(m1, as.matrix(m2)))
+```
+
+Let's start by simulating some data (some of the framework here will also be useful in the fitting).
+
+- simulate multiple blocks (we could use a dummy blocking factor with a single level for all observations)
+- simulate multiple observations per row/column combo so we don't have to deal with fixing `sigma`/confounding between residual variance and random-effects variance
+
+```{r sim1}
+set.seed(101)
+dd <- expand.grid(row = 1:10, col = 1:10, block = 1:10, rep = 1:3)
+## suppress the "xx parameter not named" messages
+dd$y <- suppressMessages(
+    simulate(~ 1 + (interaction(row, col) | block),
+             newdata = dd,
+             newparams = list(beta = 0, theta = t1, sigma = 1),
+             family = gaussian)[[1]]
+    )
+```
+
+Now try to fit this. Follow the basic steps laid out in `?lme4::modular`.
+The internal structure of the Kronecker model (size of components etc.) doesn't need to change, so we don't need to mess with the internal structures &mdash; all we have to do is write a wrapper function (using our previously defined function for translating `[sigma, rho_R, rho_C]` to the `theta` vector that `lmer` is expecting).
+
+```{r setup1}
+lmod1 <- lFormula(y ~ 1 + (interaction(row, col) | block), data = dd)
+## str(f1$reTrms)
+devfun <- do.call(mkLmerDevfun, lmod1)
+## deviance (REML criterion) with original theta parameter ...
+(d1 <- devfun(t1))
+devfun2 <- function(theta0) {
+    ## right now rows/cols are hard-coded ...
+    devfun(get_theta(theta0, n_R = 10, n_C = 10))
+}
+## dev/REMLcrit with original reduced-theta parameters ...
+stopifnot(all.equal(d1, devfun2(rvec)))
+```
+
+Now fit, first going the easy way and starting from the (known) true values:
+
+```{r fit1}
+opt1 <- nloptwrap(rvec, devfun2,
+                lower = c(0, -1, -1),
+                upper = c(Inf, 1, 1))
+```
+
+The results are promising: the REML criterion is (as expected) a little bit better than the true values (`r round(d1 - opt1$fval, 1)` deviance units), the parameters are close to the true values, etc..
+
+```{r show_fit1}
+print(opt1)
+```
+
+As in `?lme4::modular`, we can stick the results back into a `merMod` structure so it can be handled nicely downstream, although we won't be able to retrieve anything about the Kronecker structure:
+
+```{r mkMerMod}
+m1 <- mkMerMod(environment(devfun), opt1, lmod1$reTrms, fr = lmod1$fr)
+```
+
+The `summary()` output is a little bit crazy because it prints the full lower triangle of the 100 $\times$ 100 covariance matrix ...
+
+```{r summary, echo = FALSE}
+sum_out <- capture.output(summary(m1))
+```
+
+```{r fakesummary, echo = FALSE, class.output="cell-output cell-output-stdout"}
+cat(c(sum_out[1:15], "\n...\n[LOTS MORE]\n...\n", sum_out[826:length(sum_out)]),
+    sep = "\n")
+```
+
+We can also try starting from neutral starting parameters (`sigma = 1, rho_R = rho_C = 0.5`). Everything still works:
+
+```{r fit2}
+## if we set the cor bounds at +/-1 we get into trouble taking the
+## chol(AR1) -- should implement it directly ...
+opt2 <- nloptwrap(c(1, 0.5, 0.5), devfun2,
+                lower = c(0, -0.99, -0.99),
+                upper = c(Inf, 0.99, 0.99))
+stopifnot(all.equal(c(opt1$par, opt1$fval), c(opt2$par, opt2$fval),
+          tolerance = 1e-4))
+```
+
+## glmmTMB
+
+In principle we can take the same approach in `glmmTMB`, but it's much worse for several reasons:
+
+```{r eval = FALSE}
+dd2 <- dd |> filter(row<=4, col<=4)
+g0 <- glmmTMB(y ~ 1 + (interaction(row, col) | block), data = dd2,
+              REML = TRUE,
+              doFit = FALSE)
+## crashes with full data set
+g1 <- fitTMB(g0, doOptim = FALSE)
+```
+
+Unfinished: need to
+
+* write the equivalent of `get_theta()` for the `glmmTMB` random-effects parameterization (i.e., appropriately get scaled correlation matrix)
+* this won't be as effective as doing the same hack in `lme4`, as we will lose the benefit of having the gradients available when doing the 'outer'/wrapper optimization ...
+
+## to do
+
+* move to `efb` repo? (Although, it's currently private ...)
+
+## junk
+
+
+### fixing sigma in `lme4`
+
+If we want to fit (e.g.) a row-by-column model without replication, we need to be able to fix/suppress the residual variation. (If we can set it to a fixed vvalue, then we can effectively suppress it by setting it to a very small value &mdash; this is not quite as good as reformulating the model to eliminate it completely, but probably good enough. This is how both `blme` and `glmmTMB` fix the `sigma` parameter (not sure how it works in `lme`). So we might want to integrate this into `lme4` (where it will be clunky, since `lme4` fits covariances *relative* to the residual variance, but should work as long as we try to fix the residual variance exactly to zero, or ridiculously small ...)
+
+I think this is how `blme` works with a fixed `sigma` ... ?
+
+```{r fix_sigma, eval = FALSE}
+objectiveValue <- merMod@resp$objective(merMod@pp$ldL2(), merMod@pp$ldRX2(), merMod@pp$sqrL(1.0), sigma^2)
+```
+
+### alternative AR1 representations
+
+```{Rcpp nlme_prec}
+#include <Rcpp.h>
+using namespace Rcpp;
+
+// [[Rcpp::export]]
+void AR1_fact(NumericVector par, IntegerVector n, NumericVector mat) {
+    int i, np1 = n[0] + 1;
+    double aux = sqrt(1 - par[0] * par[0]), aux1 = - par[0]/aux;
+
+    aux = 1/aux;
+    mat[0] = 1;
+    for(i = 1; i < n[0]; i++) {
+        mat[i * np1] = aux;
+	    mat[i + n[0] * (i - 1)] = aux1;
+    }
+}
+```
+
+```{r ar1_alt}
+## brute force computation of chol(AR1)
+ar1_chol_old <- function(rho, sigma, n) {
+    m <- matrix(0, n, n)
+    m[] <- rho^(abs(row(m)- col(m)))
+    sigma*t(chol(m))
+}
+## slightly less brute-force
+ar1_chol_2 <- function(rho, sigma, n) {
+    x <- numeric(n^2)
+    AR1_fact(rho, as.integer(n), x)
+    chol_prec <- Matrix(x, n, n)
+    ## still have to invert, although Matrix knows
+    ## it's triangular so can do this efficiently ...?
+    sigma*solve(chol_prec)
+}
+stopifnot(all.equal(as.matrix(ar1_chol_2(0.7, 1, 5)),
+                    ar1_chol_old(0.7, 1, 5)
+                    ))
+stopifnot(all.equal(ar1_chol_old(0.7, 1, 5),
+                    ar1_chol(0.7, 1, 5)
+                    ))
+```
+
+Getting the precision factor via Rcpp and then inverting is (i.e. `ar1_chol_2`) much *slower* for small/realistic-sized problems. Unsurprisingly, computing the Cholesky factor directly via Rcpp (`ar1_chol`) is fastest:
+
+```{r ar1bench_small}
+benchmark(ar1_chol(0.7, 1, 20),
+          ar1_chol_old(0.7, 1, 20),
+          ar1_chol_2(0.7, 1, 20),
+          columns = c("test", "replications", "elapsed", "relative"))
+```
+
+```{r ar1bench}
+benchmark(ar1_chol(0.7, 1, 250),
+          ar1_chol_old(0.7, 1, 250),
+          ar1_chol_2(0.7, 1, 250),
+          columns = c("test", "replications", "elapsed", "relative"))
+```
+
+## References

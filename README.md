@@ -15,11 +15,11 @@
 
 - for questions about mixed models and data analysis:
     - the [r-sig-mixed-models mailing list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) (please [subscribe to the list](https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models) before posting) or 
-	- [CrossValidated](https://stats.stackexchange.com)  
+	- [Cross Validated](https://stats.stackexchange.com)  
 The mailing list has more people who know about using mixed models in R; CrossValidated has a larger overall audience and a nicer question/answer format (allows pictures, code formatting, etc.).
 - for questions about `glmmTMB` usage:
     - `r-sig-mixed-models@r-project.org` or 
-	- [StackOverflow](https://stackoverflow.com)  
+	- [Stack Overflow](https://stackoverflow.com)  
 	(similar pros/cons as the previous point)
 - for bug, infelicity, and wishlist reporting: the [glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues) 
 - for TMB-specific questions: the [TMB users forum](https://groups.google.com/forum/#!forum/tmb-users) 

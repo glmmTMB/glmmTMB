@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -38,19 +38,22 @@
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -89,49 +92,70 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">startParams</span><span class="op">(</span>
-  <span class="va">parameters</span>,
-  <span class="va">formula</span>,
-  <span class="va">ziformula</span>,
-  <span class="va">dispformula</span>,
-  <span class="va">fr</span>,
-  <span class="va">yobs</span>,
-  <span class="va">weights</span>,
-  size <span class="op">=</span> <span class="cn">NULL</span>,
-  Xd <span class="op">=</span> <span class="cn">NULL</span>,
-  XdS <span class="op">=</span> <span class="cn">NULL</span>,
-  <span class="va">family</span>,
-  <span class="va">condReStruc</span>,
-  start <span class="op">=</span> <span class="cn">NULL</span>,
-  sparseX <span class="op">=</span> <span class="cn">NULL</span>,
-  start_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="cn">NULL</span>, jitter.sd <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>
-<span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">startParams</span><span class="op">(</span></span>
+<span>  <span class="va">parameters</span>,</span>
+<span>  <span class="va">formula</span>,</span>
+<span>  <span class="va">ziformula</span>,</span>
+<span>  <span class="va">dispformula</span>,</span>
+<span>  <span class="va">fr</span>,</span>
+<span>  <span class="va">yobs</span>,</span>
+<span>  <span class="va">weights</span>,</span>
+<span>  size <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  Xd <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  XdS <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">family</span>,</span>
+<span>  <span class="va">condReStruc</span>,</span>
+<span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sparseX <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  start_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>method <span class="op">=</span> <span class="cn">NULL</span>, jitter.sd <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>formula</dt>
 <dd><p>current formula, containing both fixed &amp; random effects</p></dd>
+
+
 <dt>ziformula</dt>
 <dd><p>a <em>one-sided</em> (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default <code>~0</code> specifies no zero-inflation. Specifying <code>~.</code> sets the zero-inflation formula identical to the right-hand side of <code>formula</code> (i.e., the conditional effects formula); terms can also be added or subtracted. <strong>When using <code>~.</code> as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped</strong>. The zero-inflation model uses a logit link.</p></dd>
+
+
 <dt>dispformula</dt>
 <dd><p>a <em>one-sided</em> formula for dispersion containing only fixed effects: the default <code>~1</code> specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see <code><a href="sigma.glmmTMB.html">sigma</a></code>. The dispersion model uses a log link. In Gaussian mixed models, <code>dispformula=~0</code> fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via <code>control=glmmTMBControl(zero_dispval=...)</code>; the default value is <code>sqrt(.Machine$double.eps)</code>.</p></dd>
+
+
 <dt>fr</dt>
 <dd><p>model frame</p></dd>
+
+
 <dt>yobs</dt>
 <dd><p>observed y</p></dd>
+
+
 <dt>weights</dt>
-<dd><p>weights, as in <code>glm</code>. Not automatically scaled to have sum 1.</p></dd>
+<dd><p>model weights (for binomial-type models, used as size/number of trials)</p></dd>
+
+
 <dt>size</dt>
 <dd><p>number of trials in binomial and betabinomial families</p></dd>
+
+
 <dt>family</dt>
 <dd><p>family object</p></dd>
+
+
 <dt>start</dt>
-<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>thetaf</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
+<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>psi</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
+
+
 <dt>sparseX</dt>
 <dd><p>see <code><a href="glmmTMB.html">glmmTMB</a></code></p></dd>
+
+
 <dt>start_method</dt>
 <dd><p>Options to initialise the starting values for rr parameters; jitter.sd adds variation to the starting values of latent variables when start = "res".</p></dd>
+
 </dl></div>
 
   </div>
@@ -146,7 +170,7 @@
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>
