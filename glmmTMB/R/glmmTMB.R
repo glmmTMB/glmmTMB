@@ -504,7 +504,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
-##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm
+##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm reOnly
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
