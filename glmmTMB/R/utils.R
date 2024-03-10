@@ -301,7 +301,7 @@ NULL
 ##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
 ##' to specify that computations should be done in parallel.)
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
-##' @return \code{TRUE} or {FALSE} depending on availability of OpenMP
+##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP
 ##' @export
 omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
