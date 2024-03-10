@@ -51,7 +51,7 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas
+    reformulas (>= 0.2.0)
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
