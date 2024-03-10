@@ -938,6 +938,7 @@ get_field <- function(object, newdata, which.response = NULL) {
 #' @param load.names (optional) a character vector of length \code{object$n_reponses} of labels to be used on response-specific loadings. Default is \code{NULL} which means the fitted model's \code{response.id} will be used to determine labels.
 #' @param score.col (optional) a vector of length \code{object$n_basis} of colours to be used for scores.
 #' @param load.col (optional) a vector of length \code{object$n_reponses} of colours to be used on response-specific loadings.
+#' @param load.name.cex (optional) a numeric indicating the scaling of response label size.
 #' @param show.top.n (optional) a numeric in [0,\code{object$n_reponses}] indicating a subset of the response-specific loadings (from largest to smallest).
 #' @param vmax.rotation a logical indicating whether to perform a varimax rotation of the loadings matrix prior to plotting.
 #' @param rm.bias a logical indicating whether to remove bias from both the scores and factor loadings by scaling them #NEEDS WORK
@@ -956,7 +957,7 @@ get_field <- function(object, newdata, which.response = NULL) {
 #' m <- mvlgcp(pt ~ (1 | tree), data = dat, weights = dat$wt, basis.functions = bfs, response.id = dat$tree)
 #' 
 #' biplot(m)
-biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col, show.top.n, vmax.rotation = FALSE, rm.bias = T) {
+biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col, load.name.alpha = 1, show.top.n, vmax.rotation = FALSE, rm.bias = T) {
 
   # use get_field() to extract loadings and scores
   suppressWarnings(assign("object", get_field(x)))
@@ -1010,7 +1011,7 @@ biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col,
     # par(mar = c(3.1,2.1,0.5,0),mgp=c(1.75,0.75,0))
     plot(b, xlim = range(b[,1]), ylim = range(b[,2]),
          pch = 16, col = score.col, ...)
-    text(x = (sub.floads[,1] * alpha) + 0.1 * sign(sub.floads[,1]), y = (sub.floads[,2] * alpha) + 0.1 * sign(sub.floads[,2]), labels = sub.names, cex = 0.75, offset = 0.8, col=load.col)
+    text(x = (sub.floads[,1] * alpha) + 0.1 * sign(sub.floads[,1]), y = (sub.floads[,2] * alpha) + 0.1 * sign(sub.floads[,2]), labels = sub.names, cex = load.name.cex, offset = 0.8, col=load.col)
     arrows(x0 = rep(0, nrow(sub.floads)), y0 = rep(0, nrow(sub.floads)), x1 = sub.floads[,1] * alpha, y1 = sub.floads[,2] * alpha, length = 0.0, angle = 30, lwd = 0.5, col=load.col)
   }
 }
