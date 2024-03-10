@@ -7,6 +7,7 @@ ndat <- data.frame(time = time(Nile), val = c(Nile))
 
 test_that("basic smooth", {
     sm0 <- gam(val ~ s(time), data = ndat, method = "REML")
+    ## debug(glmmTMB:::getXReTrms)
     sm1 <- glmmTMB(val ~ s(time), data = ndat,
                    REML = TRUE, start = list(theta = 5))
     expect_equal(predict(sm1), predict(sm1, newdata = ndat))

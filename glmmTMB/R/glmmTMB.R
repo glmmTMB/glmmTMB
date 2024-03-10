@@ -504,7 +504,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
-##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm reOnly
+##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm reOnly no_specials splitForm addForm0 makeOp
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
@@ -751,6 +751,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ## to constructing Z, but that's in lme4 so we can't change it
         ## unless absolutely necessary
         termsfun <- function(x) {
+            browser()
             ## this is a little magic: copying lme4:::mkBlist approach
             ff <- eval(substitute( ~ foo, list(foo = x[[2]]))) ## make formula from LHS
             tt <- try(terms(ff, data=fr), silent=TRUE)         ## construct terms
@@ -1854,8 +1855,10 @@ llikAIC <- function(object) {
 ## FIXME: export/import from lme4?
 ngrps <- function(object, ...) UseMethod("ngrps")
 
+#' @export
 ngrps.default <- function(object, ...) stop("Cannot extract the number of groups from this object")
 
+#' @export
 ngrps.glmmTMB <- function(object, ...) {
     res <- lapply(object$modelInfo$reTrms,
            function(x) vapply(x$flist, nlevels, 1))
@@ -1865,6 +1868,7 @@ ngrps.glmmTMB <- function(object, ...) {
 
 }
 
+#' @export
 ngrps.factor <- function(object, ...) nlevels(object)
 
 
