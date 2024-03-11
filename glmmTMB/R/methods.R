@@ -925,7 +925,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         vv <- vcov(object, include_nonest = include_nonest)[[component]]
         cf <- fixef(object)[[component]]
         ## strip tag (only really necessary for zi~, d~)
-        tag <- if (component=="disp") "d" else component
+        tag <- if (component=="disp") "disp" else component
         nn <- gsub(paste0(tag,"~"),"",colnames(vv))
         ## vcov only includes estimated (not mapped/fixed)
         ##  fixed-effect parameters

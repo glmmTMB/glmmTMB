@@ -363,9 +363,13 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       	}
       	ee$data$Xdisp <- ee$data$Xd
       	ee$data$Xd <- NULL
+      	ee$data$dispoffset <- ee$data$doffset
+      	ee$data$doffset <- NULL
       }
       if(!"Zdisp" %in% names(ee$data)) {
-      	ee$data$Zdisp <- new("dgCMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      	ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      	ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
+      	ee$parameters$thetadisp <- numeric(0)
       }
       ee2 <- oldfit$sdr$env
       if ("thetaf" %in% names(ee2$parameters)) {
