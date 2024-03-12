@@ -128,7 +128,11 @@ startParams <- function(parameters,
       resForm <- addForm(resForm, rrForm)
     }
     # residual model; assuming gaussian and fixing sd to 1
-    fit.res <- glmmTMB(resForm, data = fr.res, family = gaussian, start = list(betadisp = c(log(1))), map = list(betadisp = factor(c(NA))))
+    fit.res <- glmmTMB(resForm, data = fr.res,
+                       family = gaussian,
+                       start = list(betadisp = c(log(1))),
+                       map = list(betadisp = factor(c(NA))),
+                       control = glmmTMBControl(conv_check = "skip"))
     par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
     par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
     # Add jitter to latent variables
@@ -149,7 +153,8 @@ startParams <- function(parameters,
     # FIX ME: Need to add offset?
     fit.fixed <- glmmTMB(fixedform, data = fr, family = fam,
                          ziformula = ziformula, dispformula = dispformula,
-                         weights = weights, sparseX = sparseX)
+                         weights = weights, sparseX = sparseX,
+                         control = glmmTMBControl(conv_check = "skip"))
     fixed.pars <- fit.fixed$obj$env$parList(fit.fixed$fit$par, fit.fixed$fit$parfull)
     nu <- predict(fit.fixed)
     mu <- family$linkinv(nu)
