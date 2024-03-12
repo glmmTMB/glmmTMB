@@ -389,7 +389,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     offset = c(condList$offset),
     zioffset = c(ziList$offset),
     dispoffset = c(dispList$offset),
-    weights,
+    weights = c(weights),
     size = c(size),
     ## information about random effects structure
     terms = condReStruc,
