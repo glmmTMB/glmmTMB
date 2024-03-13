@@ -1845,7 +1845,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 map,
                                 sparseX,
                                 parallel = control$parallel,
-                                priors = set_class(priors, "glmmTMB_prior"))
+                                priors = set_class(priors, "glmmTMB_prior"),
                                 packageVersion = packageVersion("glmmTMB")))
 
     ## FIXME: are we including obj and frame or not?
