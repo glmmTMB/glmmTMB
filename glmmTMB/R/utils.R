@@ -569,9 +569,18 @@ fix_predvars <- function(pv,tt) {
 }
 
 make_pars <- function(pars, ...) {
-    ## FIXME: check for name matches, length matches etc.
     L <- list(...)
     for (nm in names(L)) {
+        unmatched <- setdiff(names(L), unique(names(pars)))
+        if (length(unmatched) > 0) {
+            warning(sprintf("unmatched parameter names: %s",
+                            paste(unmatched, collapse =", ")))
+            next
+        }
+        if ((len1 <- length(L[[nm]])) != (len2 <- sum(names(pars) == nm))) {
+            stop(sprintf("length mismatch in component %s (%d != %d)",
+                         nm, len1, len2))
+        }
         pars[names(pars) == nm] <- L[[nm]]
     }
     return(pars)
@@ -629,7 +638,7 @@ simulate_new <- function(object,
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
     ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    newdata[["..y"]] <- if (family$family == "beta_family") 1.0 else 0.5
+    newdata[["..y"]] <- if (family$family == "beta_family") 0.5 else 1.0
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
@@ -643,7 +652,7 @@ simulate_new <- function(object,
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
 
-## from rlang
+## from rlang (FIXME: put this conditionally in .onLoad, for back-compatibility)
 `%||%` <- function (x, y)  {
     if (is.null(x)) 
         y
