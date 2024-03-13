@@ -733,8 +733,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                  vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
                } else {
                  if (length(vformals) == 1) {
-                   # handle families where variance() returns the scaled variance
-                   vv <- vv * (theta / sigma(object))^2
+                     ## handle families where variance() returns the scaled variance
+                     ## FIXME: what is the logic here??
+                     vv <- vv * (theta / sigma(object))^2
                  }
                }
                r <- r/sqrt(vv)
@@ -1592,11 +1593,7 @@ weights.glmmTMB <- function(object, type="prior", ...) {
 ## @param df degrees of freedom
 ## @param component which model component to test (cond, zi, or disp)
 
-##' @rawNamespace if(getRversion() >= "3.6.0") {
-##'      S3method(multcomp::modelparm, glmmTMB)
-##' } else {
-##'    export(modelparm.glmmTMB)
-##' }
+##' @rawNamespace if(getRversion() >= "3.6.0") { S3method(multcomp::modelparm, glmmTMB) } else {  export(modelparm.glmmTMB) }
 modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
                                vcov. = function(x) vcov(x)[[component]],
                                df = NULL, component="cond", ...) {

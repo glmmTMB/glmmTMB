@@ -33,7 +33,7 @@ dat$disp = factor(dat$disp, levels = c("ten", "five"))
 m0 <<- glmmTMB(x~disp+(1|fac), dispformula=~disp, dat)
 
 test_that("disp calc", {
-    expect_equal(unname(fixef(m0)$disp), c(log(10^2), log(5^2)-log(10^2)), tol=1e-2)
+    expect_equal(unname(fixef(m0)$disp), c(log(10), log(5)-log(10)), tol=1e-2)
 })
 
 test_that("predict dispersion", {

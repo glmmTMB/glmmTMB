@@ -5,18 +5,22 @@
 \alias{gt_load}
 \title{conditionally update glmmTMB object fitted with an old TMB version}
 \usage{
-up2date(oldfit)
+up2date(oldfit, update_gauss_disp = FALSE)
 
-gt_load(fn, verbose = FALSE, mustWork = FALSE)
+gt_load(fn, verbose = FALSE, mustWork = FALSE, ...)
 }
 \arguments{
 \item{oldfit}{a fitted glmmTMB object}
+
+\item{update_gauss_disp}{update \code{betad} from variance to SD parameterization?}
 
 \item{fn}{partial path to system file (e.g. test_data/foo.rda)}
 
 \item{verbose}{print names of updated objects?}
 
 \item{mustWork}{fail if file not found?}
+
+\item{\dots}{values passed through to \code{up2date}}
 }
 \description{
 conditionally update glmmTMB object fitted with an old TMB version

@@ -128,7 +128,11 @@ startParams <- function(parameters,
       resForm <- addForm(resForm, rrForm)
     }
     # residual model; assuming gaussian and fixing sd to 1
-    fit.res <- glmmTMB(resForm, data = fr.res, family = gaussian, start = list(betad = c(log(1))), map = list(betad = factor(c(NA))))
+    fit.res <- glmmTMB(resForm, data = fr.res,
+                       family = gaussian,
+                       start = list(betad = c(log(1))),
+                       map = list(betad = factor(c(NA))),
+                       control = glmmTMBControl(conv_check = "skip"))
     par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
     par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
     # Add jitter to latent variables
@@ -149,7 +153,8 @@ startParams <- function(parameters,
     # FIX ME: Need to add offset?
     fit.fixed <- glmmTMB(fixedform, data = fr, family = fam,
                          ziformula = ziformula, dispformula = dispformula,
-                         weights = weights, sparseX = sparseX)
+                         weights = weights, sparseX = sparseX,
+                         control = glmmTMBControl(conv_check = "skip"))
     fixed.pars <- fit.fixed$obj$env$parList(fit.fixed$fit$par, fit.fixed$fit$parfull)
     nu <- predict(fit.fixed)
     mu <- family$linkinv(nu)
@@ -412,11 +417,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ##  (which confuse MakeADFun)
     yobs = c(yobs),
     respCol,
-    ## strip attributes from offset terms
+    ## strip attributes from various components ...
     offset = c(condList$offset),
     zioffset = c(ziList$offset),
     doffset = c(dispList$offset),
-    weights,
+    weights = c(weights),
     size = c(size),
     
     ## information about random effects structure
@@ -607,7 +612,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                         sm <- eval(bquote(mgcv::smoothCon(.(tt),
                                                           ## don't want intercept etc ...
                                                           absorb.cons = TRUE,
-                                                          data=mf$data)))
+                                                          data=fr)))
                         if (length(sm)>1) stop("can't handle 'by' arguments in smooths yet")
                         sm <- sm[[1]]
                         list(sm = sm,
@@ -770,7 +775,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
             return(res)
         }
-        aa <- ifelse(ss$reTrmClass=="rr",
+        aa <- ifelse(ss$reTrmClasses=="rr",
                      vapply(ss$reTrmAddArgs,
                            get_num,
                            FUN.VALUE=numeric(1)),
@@ -1084,7 +1089,7 @@ binomialType <- function(x) {
 ##' dat <- rbind(d1, d2)
 ##' m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 ##' fixef(m0)$disp
-##' c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
+##' c(log(5), log(10)-log(5)) # expected dispersion model coefficients
 ##'
 ##'
 ##' ## Using 'map' to fix random-effects SD to 10
@@ -1385,7 +1390,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            collect=FALSE,
                            parallel = getOption("glmmTMB.cores", 1L),
                            eigval_check = TRUE,
-                           zerodisp_val=log(sqrt(.Machine$double.eps)),
+                           ## want variance to be sqrt(eps), so sd = eps^(1/4)
+                           zerodisp_val=log(.Machine$double.eps)/4,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip")) {
@@ -1839,8 +1845,9 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 map,
                                 sparseX,
                                 parallel = control$parallel,
-                                priors = set_class(priors, "glmmTMB_prior")))
-    
+                                priors = set_class(priors, "glmmTMB_prior"))
+                                packageVersion = packageVersion("glmmTMB")))
+
     ## FIXME: are we including obj and frame or not?
     ##  may want model= argument as in lm() to exclude big stuff from the fit
     ## If we don't include obj we need to get the basic info out

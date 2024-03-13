@@ -1,5 +1,17 @@
+
 stopifnot(require("testthat"),
           require("glmmTMB"))
+
+drop_version <- function(obj) {
+    obj$modelInfo$packageVersion <- NULL
+    obj
+}
+
+expect_equal_nover <- function(x,y,...) {
+    expect_equal(drop_version(x),
+                 drop_version(y),
+                 ...)
+}
 
 ## loaded by gt_load() in setup_makeex.R, but need to do this
 ##  again to get it to work in devtools::check() environment (ugh)
@@ -20,9 +32,11 @@ cbpp <<- transform(cbpp, prop = incidence/size, obs=factor(seq(nrow(cbpp))))
 ##  be cosmetically different
 matchForm <- function(obj, objU, family=FALSE, fn = FALSE) {
   for(cmp in c("call","frame")) # <- more?
-     objU[[cmp]] <- obj[[cmp]]
-     ## Q: why are formulas equivalent but not identical?  A: their environments may differ
+      objU[[cmp]] <- obj[[cmp]]
+  ## Q: why are formulas equivalent but not identical?  A: their environments may differ
   objU$modelInfo$allForm <- obj$modelInfo$allForm
+  nm <- names(objU$modelInfo)
+  objU$modelInfo$packageVersion <- packageVersion("glmmTMB")
   if (family)  objU$modelInfo$family <- obj$modelInfo$family
   ## objective function/gradient may change between TMB versions
   if (fn)  {
@@ -32,6 +46,7 @@ matchForm <- function(obj, objU, family=FALSE, fn = FALSE) {
   }
   return(objU)
 }
+
 
 lm0 <- lm(Reaction~Days,sleepstudy)
 fm00 <- glmmTMB(Reaction ~ Days, sleepstudy)
@@ -69,7 +84,7 @@ test_that("Update Gaussian", {
   ## call doesn't match (formula gets mangled?)
   ## timing different
   fm1u <- update(fm0, . ~ . + Days)
-  expect_equal(fm1, matchForm(fm1, fm1u, fn=TRUE))
+  expect_equal_nover(fm1, matchForm(fm1, fm1u, fn=TRUE))
 })
 
 
@@ -117,19 +132,19 @@ test_that("Alternative family specifications [via update(.)]", {
     ## intercept-only fixed effect
 
     res_chr <- matchForm(gm0, update(gm0, family= "binomial"), fn  = TRUE)
-    expect_equal(gm0, res_chr)
-    expect_equal(gm0, matchForm(gm0, update(gm0, family= binomial()), fn = TRUE))
+    expect_equal_nover(gm0, res_chr)
+    expect_equal_nover(gm0, matchForm(gm0, update(gm0, family= binomial()), fn = TRUE))
     expect_warning(res_list <- matchForm(gm0, update(gm0, family= list(family = "binomial",
                                                        link = "logit")),
                                          family=TRUE, fn=TRUE))
-    expect_equal(gm0, res_list)
+    expect_equal_nover(gm0, res_list)
 })
 
 test_that("Update Binomial", {
   ## matchForm(): call doesn't match (formula gets mangled?)
   ## timing different
   gm1u <- update(gm0, . ~ . + period)
-  expect_equal(gm1, matchForm(gm1, gm1u, fn=TRUE), tolerance = 5e-8)
+  expect_equal_nover(gm1, matchForm(gm1, gm1u, fn=TRUE), tolerance = 5e-8)
 })
 
 test_that("internal structures", {
@@ -278,16 +293,17 @@ test_that("zero disp setting", {
     m0 <- glmmTMB(y~1, data=dd)
     v0 <- sigma(m0)^2
     m1 <- glmmTMB(y~1+(1|obs), data=dd)
-    tmpf <- function(x) c(sigma(x)^2,c(VarCorr(x)[["cond"]]$obs))
-    m <- -log10(sqrt(.Machine$double.eps))
-    pvec <- c(1,5,m,2*m,20)
-    res <- matrix(NA,ncol=2,nrow=length(pvec))
+    tmpf <- function(x) c(sigma(x)^2, c(VarCorr(x)[["cond"]]$obs))
+    m <- -log10(.Machine$double.eps^(1/4))
+    pvec <- c(1,2.5,m,2*m,10)
+    res <- matrix(NA,ncol=2,nrow=length(pvec), dimnames = list(format(pvec, digits = 3), c("sigma^2", "cond_var")))
     for (i in (seq_along(pvec))) {
         mz <- update(m1,dispformula=~0,
                      control=glmmTMBControl(zerodisp_val=log(10^(-pvec[i]))))
         res[i,] <- tmpf(mz)
     }
     res <- rbind(res,tmpf(m1))
+    ## sum of residual variance and RE variance should be approx constant/independent of fixed sigma
     expect_true(var(res[,1]+res[,2])<1e-8)
 })
 

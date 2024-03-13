@@ -86,12 +86,12 @@ test_that("varcorr_print", {
     m1 <- suppressWarnings(glmmTMB(y~c+(c|w)+(1|s),data=dd,
                   family=gaussian))
     cc <- squash_white(capture.output(print(VarCorr(m1),digits=2)))
+    ## updated for var -> SD reparam
     expect_equal(cc,
-        c("Conditional model:", "Groups Name Std.Dev. Corr",
-          "w (Intercept) 3.1e-05",
-          "c2 4.9e-06 0.98",
-          "s (Intercept) 3.4e-05",
-          "Residual 9.6e-01"))
+                 c("Conditional model:", "Groups Name Std.Dev. Corr",
+                   "w (Intercept) 9.6e-05", 
+                   "c2 4.0e-06 0.99", "s (Intercept) 9.4e-06",
+                   "Residual 9.6e-01"))
 
     ## check that all std devs are being printed (GH #851)
     cc <- capture.output(VarCorr(fm_cs2))
@@ -124,13 +124,14 @@ test_that("cov_struct_order", {
 
     fit1  <-  glmmTMB(y ~ (1|Block) + (1|Stand)+ ar1(Time +0|Stand), data = dat)
     expect_equal(unname(fit1$fit$par),
-		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
+		c(4.98852432, -2.11104196068295, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
 })
 
 test_that("hom vs het diag", {
     fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy)
     expect_equal(c(VarCorr(fmhomdiag)$cond$Subject),
                  c(69.4182616453357, 0, 0, 69.4182616453357),
-                 tolerance = 1e-6)
+                 ## tolerance loosened for var -> SD reparameterization
+                 tolerance = 2e-4)
 
 })

@@ -42,7 +42,7 @@ test_that("new levels of fixed effect factor", {
 
 test_that("new levels in RE term", {
     skip_on_cran()
-    g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
+    suppressWarnings(g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy))
     expect_error( predict(g2, nd),
                  "Prediction is not possible for terms")
 })
@@ -217,7 +217,8 @@ test_that("complex bases in dispformula", {
                  list(fit = 298.507945749154, se.fit = 4.18682101029576),
                  tolerance=1e-5)
     expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
-                 list(fit = 283.656705454758, se.fit = 4.74204256781178))
+                 list(fit = 283.656705454758, se.fit = 4.74204256781178),
+                 tolerance = 1e-6)
 })
 
 test_that("fix_predvars works for I(x^2)", {
@@ -271,14 +272,21 @@ test_that("predvars with different ns() in fixed and disp (GH #845)", {
 test_that("predvars with differing splines in fixed and RE (GH#632)", {
     library(splines)
     data(sleepstudy,package="lme4")
-    m4 <- glmmTMB(Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject), 
-                  data = sleepstudy)
-    pp <- predict(m4, newdata = data.frame(Days = 4:6, Subject = "372"),
-                  re.form = NULL, 
-                  type = "response")
+    form <- Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject)
+    ## need better/non-default starting values after var -> SD param change
+    m4 <- glmmTMB(form, data = sleepstudy,
+                  start = list(theta = c(3.28, 4.34, 3.79, 0, 0, 0)))
+    m4B <- lme4::lmer(form, data = sleepstudy, REML = FALSE)
+    nd <- data.frame(Days = 4:6, Subject = "372")
+    predict(m4B, newdata = nd, re.form = NULL, type = "response")
+    pp <- predict(m4, newdata = nd, re.form = NULL, type = "response")
+    ppB <- predict(m4B, newdata = nd, re.form = NULL, type = "response")
     ## plot(Reaction ~ Days, data = subset(sleepstudy, Subject == "372"))
     ## points(4:6, pp, col = 2, pch = 16)
-    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647))
+    ## ?? results change on var to SD switch for Gaussian model?
+    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647),
+                 tolerance = 1e-4)
+    expect_equal(unname(ppB), pp, tolerance = 1e-4)
 })
 
 test_that("contrasts carried over", {
@@ -493,3 +501,25 @@ test_that("pop-level prediction with missing grouping vars (GH #923)",
 })
 
     
+test_that("weights with attributes are OK", {
+    data(iris)
+    d <- as.data.frame(expand.grid(
+        Species = unique(iris$Species),
+        Petal.Width = 2,
+        wg = NA
+    ))
+    
+    set.seed(101)
+    iris$wg <- abs(rnorm(nrow(iris), 1, 0.1))
+    
+    attr(iris$wg, "label") <- "weighting variable"
+    
+    m <- glmmTMB(
+        Petal.Length ~ Petal.Width + (1 | Species),
+        weights = wg,
+        data = iris
+    )
+    p <- predict(m, newdata = d, re.form = NULL)
+    expect_equal(head(p),
+                 c(3.35535960506176, 4.98184089632094, 5.50821757779119))
+})

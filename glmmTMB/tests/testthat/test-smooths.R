@@ -10,7 +10,7 @@ test_that("basic smooth", {
     sm1 <- glmmTMB(val ~ s(time), data = ndat,
                    REML = TRUE, start = list(theta = 5))
     expect_equal(predict(sm1), predict(sm1, newdata = ndat))
-    expect_equal(unname(c(predict(sm0))), predict(sm1))
+    expect_equal(unname(c(predict(sm0))), predict(sm1), tolerance = 5e-5)
     expect_equal(-1*c(logLik(sm1)), unname(c(sm0$gcv.ubre)))
     r1 <- ranef(sm1)$cond[[1]]
     r2 <- split(coef(sm0), substr(names(coef(sm0)), 1, 3))[[2]]
