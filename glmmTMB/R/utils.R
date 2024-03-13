@@ -682,3 +682,17 @@ get_family <- function(family) {
     }
     return(family)
 }
+
+
+## add negative-value check to binomial initialization method
+our_binom_initialize <- function(family) {
+    newtest <- substitute(
+        ## added test for glmmTMB
+        if (any(y<0)) {
+            stop(sprintf('negative values not allowed for the %s family', FAMILY))
+        }
+      , list(FAMILY=family))
+    b0 <- binomial()$initialize
+    b0[[length(b0)+1]] <- newtest
+    return(b0)
+}
