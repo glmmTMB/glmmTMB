@@ -1,3 +1,4 @@
+#define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
 #include <TMB.hpp>
 #include "init.h"
 #include "distrib.h"
