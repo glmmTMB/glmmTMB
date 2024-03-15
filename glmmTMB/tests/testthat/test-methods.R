@@ -229,7 +229,7 @@ structure(c(5.48098713179567, 0.0248163864044954, 183.810584890723,
     expect_equal(ci.prof0,
                  structure(c(238.216039176535, 7.99674863649355, 3.758897,
                              264.368471102549, 12.8955469713508, 3.966739),
-                           .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "d~(Intercept)"),
+                           .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "disp~(Intercept)"),
                                                         c("2.5 %", "97.5 %"))),
                  tolerance=1e-4)
 
@@ -375,7 +375,7 @@ test_that("vcov", {
     expect_equal(dim(vcov(fm2)[[1]]),c(2,2))
     expect_equal(dim(vcov(fm2,full=TRUE)),c(6,6))
     expect_equal(rownames(vcov(fm2,full=TRUE)),
-           structure(c("(Intercept)", "Days", "d~(Intercept)",
+           structure(c("(Intercept)", "Days", "disp~(Intercept)",
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
           .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
@@ -532,7 +532,7 @@ test_that("confint works for models with dispformula", {
 
 simfun <- function(formula, family, data, beta=c(0,1)) {
     ss <- list(beta=beta)
-    if (grepl("nbinom",family)) ss$betad <- 0
+    if (grepl("nbinom",family)) ss$betadisp <- 0
     suppressWarnings(m1 <- glmmTMB(formula,
                                    family=family,
                                    data=data,
@@ -626,7 +626,7 @@ test_that("de novo simulation", {
                  seed = 101,
                  family = gaussian,
                  newdata = dd,
-                 newparams = list(beta = 1:2, betad = 0))
+                 newparams = list(beta = 1:2, betadisp = 0))
     expect_equal(head(ss[[1]], 2),
                       c(2.67396350948461, 5.55246185541914))
 })
@@ -638,7 +638,8 @@ test_that("de novo simulation with binomial N>1", {
                  family = binomial,
                  weights = rep(10, 10),
                  newdata = dd,
-                 newparams = list(beta = c(-0.5, 0.1)))
+                 newparams = list(beta = c(-0.5, 0.1))
+          )
     expect_equal(head(ss[[1]], 2),
                       c(3, 2))
 })

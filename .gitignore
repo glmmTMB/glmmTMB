@@ -40,3 +40,4 @@ glmmTMB/.gitsum
 */figure
 *.tgz
 *.zip
+*.dll

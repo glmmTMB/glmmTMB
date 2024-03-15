@@ -12,7 +12,7 @@ gt_load(fn, verbose = FALSE, mustWork = FALSE, ...)
 \arguments{
 \item{oldfit}{a fitted glmmTMB object}
 
-\item{update_gauss_disp}{update \code{betad} from variance to SD parameterization?}
+\item{update_gauss_disp}{update \code{betadisp} from variance to SD parameterization?}
 
 \item{fn}{partial path to system file (e.g. test_data/foo.rda)}
 

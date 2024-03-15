@@ -13,7 +13,7 @@
       \itemize{
 	\item results of fitting Gaussian models may change slightly,
 	especially for unstable fits
-	\item stored model objects need to have their \code{betad}
+	\item stored model objects need to have their \code{betadisp}
 	parameters halved for consistency: use \code{up2date(..., adjust_gauss_disp = TRUE)}
 	\item parameter estimates for dispersion components will change,
 	e.g. from \code{fixef(.)$disp} or \code{confint()} for models

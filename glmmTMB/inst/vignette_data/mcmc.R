@@ -112,7 +112,7 @@ m2 <- hack_size(m2)
 ## @knitr tmbstan_traceplot
 
 png("tmbstan_traceplot.png")
-rstan::traceplot(m2, pars=c("beta","betad","theta"))
+rstan::traceplot(m2, pars=c("beta","betadisp","theta"))
 dev.off()
 
 ## @knitr save_all

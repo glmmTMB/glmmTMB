@@ -2,13 +2,13 @@
 % Please edit documentation in R/glmmTMB.R
 \name{.checkRankX}
 \alias{.checkRankX}
-\title{Check for identifiability of fixed effects matrices X, Xzi, Xd.
+\title{Check for identifiability of fixed effects matrices X, Xzi, Xdisp.
 When rank_check='adjust', drop columns in X and remove associated parameters.}
 \usage{
 .checkRankX(TMBStruc, rank_check = c("warning", "adjust", "stop", "skip"))
 }
 \description{
-Check for identifiability of fixed effects matrices X, Xzi, Xd.
+Check for identifiability of fixed effects matrices X, Xzi, Xdisp.
 When rank_check='adjust', drop columns in X and remove associated parameters.
 }
 \keyword{internal}
