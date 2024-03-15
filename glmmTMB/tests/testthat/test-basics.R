@@ -2,8 +2,10 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
+## drop (unimportant) info that may not match across versions
 drop_version <- function(obj) {
     obj$modelInfo$packageVersion <- NULL
+    obj$modelInfo$family$initialize <- NULL  ## updated initialization expressions
     obj
 }
 
