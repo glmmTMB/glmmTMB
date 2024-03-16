@@ -42,7 +42,7 @@ jobs:
 
       - uses: r-lib/actions/setup-pandoc@v2
 
-      - uses: teatimeguest/setup-texlive-action
+      - uses: teatimeguest/setup-texlive-action@v3
         with:
           packages: >-
              scheme-basic
