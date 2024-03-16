@@ -72,11 +72,14 @@ cmod_bglmer <- bglmer(form, data=cdatx, family=binomial,
                     fixef.prior = normal(cov = diag(9,4)))
 ```
 
-Specify the same priors for `glmmTMB`:
+Specify the same priors for `glmmTMB`: note that we have to specify
+regularizing priors for the intercept and the remaining fixed-effect
+priors separately
 ```{r culcita_prior}
-cprior <- data.frame(prior = "normal(0, 3)",
-                     class = "beta",
-                     coef = "")
+cprior <- data.frame(prior = rep("normal(0,3)", 2),
+                     class = rep("beta", 2),
+                     coef = c("(Intercept)", ""))
+print(cprior)
 cmod_glmmTMB_p <- update(cmod_glmmTMB, priors = cprior)
 ```
 
