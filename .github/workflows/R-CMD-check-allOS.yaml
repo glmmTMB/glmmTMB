@@ -34,6 +34,7 @@ jobs:
         config:
           - {os: ubuntu-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'devel'}
+	  - {os: windows-latest, r: 'oldrel'}
           - {os: windows-latest, r: 'release'}
           - {os: macOS-latest, r: 'release'}
 
@@ -47,7 +48,7 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
 
