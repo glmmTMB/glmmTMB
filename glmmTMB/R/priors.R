@@ -191,6 +191,8 @@ proc_priors <- function(priors, info = NULL) {
 
 #' use of priors in glmmTMB
 #'
+#' (EXPERIMENTAL/subject to change)
+#' 
 #' \code{glmmTMB} can accept prior specifications, for doing maximum \emph{a posteriori} (MAP) estimation (or Hamiltonian MC with the \code{tmbstan} package), or (outside of a Bayesian framework) for the purposes of regularizing parameter estimates  
 #' 
 #' The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame with columns
