@@ -1,6 +1,7 @@
 
 prior_synonyms <- c("fixef" = "beta",
                     "fixef_zi" = "beta_zi",
+                    ## FIXME: update to betadisp when RE_disp is merged
                     "fixef_disp" = "betad",
                     "ranef" = "theta",
                     "ranef_zi" = "theta_zi",
@@ -38,14 +39,20 @@ proc_priors <- function(priors, info = NULL) {
     ## process prior list into TMB data structures
     ## 'info' parameter for translating elements into indices; not implemented yet
     np <- if (is.null(priors)) 0 else nrow(priors)
-    ## FIXME: do this automatically via prior_ivars?
-    prior_distrib <- prior_whichpar <- prior_elstart <- prior_elend <- prior_npar <- integer(np)
+
+    ## set up prior vectors (FIXME: should be a list?)
+    for (p in prior_ivars) {
+        assign(p, integer(np))
+    }
+
     prior_params <- list()
+
+    ## loop over prior specifications
     for (i in seq_len(np)) {
 
         ## process prior value (character to distribution code and parameter vector)
         pp <- priors[["prior"]][i]
-        pname <- gsub("\\(.*","",pp) ## strip prior name
+        pname <- gsub("\\(.*", "", pp) ## extract distribution name
         prior_distrib[i] <- .valid_prior[pname]
         if (is.na(prior_distrib[i])) stop("unknown prior distribution ",pname)
         
@@ -70,8 +77,8 @@ proc_priors <- function(priors, info = NULL) {
         if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
 
         ## figure out elements
-        ## if blank, all
-        ## if names, locate
+        ## if blank, all (except intercept for conditional distribution)
+        ## if names, locate the corresponding element(s)
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
         ## process 'coef' (particular element)
 
@@ -99,6 +106,10 @@ proc_priors <- function(priors, info = NULL) {
         if (pc == "") {
             if (substr(cl, 1, 4) == "beta") {
                 prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
+                if (cl == "beta" && "(Intercept)" %in% info$fix$cond) {
+                    prior_elstart[i] <- 1 ## skip intercept
+                    ## (assume intercept is first column of model matrix ...)
+                }
             } else {
                 prior_elend[i] <- nthetavec[[match_names(cl, prefix = "theta")]][["..total"]] -1 
             }
@@ -208,6 +219,10 @@ proc_priors <- function(priors, info = NULL) {
 #'                      coef = c("(Intercept)", "Days", "Subject"))
 #' g1 <- glmmTMB(Reaction ~ 1 + Days + (1 + Days |Subject), sleepstudy)
 #' update(g1, prior = prior1)
+#' prior2 <- data.frame(prior = c("t(0,3,3)","gamma(10,1)"),
+#'                      class = c("fixef", "ranef_sd"),
+#'                      coef = c("", "Subject"))
+#' update(g1, prior = prior2) 
 NULL
 
 
