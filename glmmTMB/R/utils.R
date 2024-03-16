@@ -726,3 +726,7 @@ our_binom_initialize <- function(family) {
     b0[[length(b0)+1]] <- newtest
     return(b0)
 }
+
+## FIXME: should do this in .onLoad but can't get it to work ...
+## masks version in base R from 4.4.0 on
+`%||%` <- function (x, y)  { if (is.null(x)) y else x }
