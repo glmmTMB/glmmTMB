@@ -77,7 +77,7 @@ proc_priors <- function(priors, info = NULL) {
         if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
 
         ## figure out elements
-        ## if blank, all (except intercept for conditional distribution)
+        ## if blank, all (except intercept)
         ## if names, locate the corresponding element(s)
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
         ## process 'coef' (particular element)
@@ -106,7 +106,7 @@ proc_priors <- function(priors, info = NULL) {
         if (pc == "") {
             if (substr(cl, 1, 4) == "beta") {
                 prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
-                if (cl == "beta" && "(Intercept)" %in% info$fix$cond) {
+                if ("(Intercept)" %in% info$fix[[match_names(cl)]]) {
                     prior_elstart[i] <- 1 ## skip intercept
                     ## (assume intercept is first column of model matrix ...)
                 }
@@ -199,7 +199,7 @@ proc_priors <- function(priors, info = NULL) {
 #' \describe{
 #' \item{\code{prior}}{character; the prior specification, e.g. "normal(0,2)"}
 #' \item{\code{class}}{the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi")}
-#' \item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. If the \code{class} element is missing, or a particular element is blank, then all of the elements of the specified parameter vector use independent priors with the given specification. The exception is the fixed-effect parameter vector for the conditional model, where the intercept (if present) is not included; the prior on the intercept must be set explicitly.}
+#' \item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. If the \code{class} element is missing, or a particular element is blank, then all of the elements of the specified parameter vector use independent priors with the given specification. The exception is for fixed-effect parameter vectors, where the intercept (if present) is not included; the prior on the intercept must be set explicitly.}
 #' }
 #' `The available prior distributions are:
 #' \itemize{
