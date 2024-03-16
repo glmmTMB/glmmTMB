@@ -9,6 +9,11 @@
         }
         emmeans::.emm_register("glmmTMB", pkgname)
     }
+    if (getRversion() < "4.4.0") {
+        `%||%` <- function (x, y)  {
+            if (is.null(x)) y else x
+        }
+    }
     checkDepPackageVersion(dep_pkg="TMB")
 }
 

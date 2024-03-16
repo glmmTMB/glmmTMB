@@ -669,13 +669,6 @@ simulate_new <- function(object,
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
 
-## from rlang (FIXME: put this conditionally in .onLoad, for back-compatibility)
-`%||%` <- function (x, y)  {
-    if (is.null(x)) 
-        y
-    else x
-}
-
 set_class <- function(x, cls, prepend = TRUE) {
     if (is.null(x)) return(NULL)
     if (!prepend) class(x) <- cls
