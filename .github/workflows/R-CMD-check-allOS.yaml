@@ -64,6 +64,7 @@ jobs:
              xcolor
              etoolbox
              caption
+             adjustbox
 
       - uses: r-lib/actions/setup-r@v2
         with:
