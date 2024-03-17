@@ -9,6 +9,10 @@
         }
         emmeans::.emm_register("glmmTMB", pkgname)
     }
+    ## https://stackoverflow.com/questions/49056642/how-to-make-variable-available-to-namespace-at-loading-time/
+    if (getRversion() < "4.4.0") {
+        assign("%||%", function (x, y)  { if (is.null(x)) y else x }, envir = topenv())
+    }
     checkDepPackageVersion(dep_pkg="TMB")
 }
 

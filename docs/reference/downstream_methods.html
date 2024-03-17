@@ -76,6 +76,9 @@ the effects package computes graphical tabular effect displays
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/priors.html">Priors in glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
@@ -135,7 +138,8 @@ conditional distribution.</p></li>
 </ul></div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">Anova.glmmTMB</span><span class="op">(</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu">Anova</span><span class="op">(</span></span>
 <span>  <span class="va">mod</span>,</span>
 <span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"II"</span>, <span class="st">"III"</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>,</span>
 <span>  test.statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Chisq"</span>, <span class="st">"F"</span><span class="op">)</span>,</span>

@@ -1,0 +1,250 @@
+---
+title: "Priors in glmmTMB"
+author: "Ben Bolker"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+bibliography: glmmTMB.bib
+vignette: >
+  %\VignetteIndexEntry{Priors in glmmTMB}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+## Motivation
+
+While `glmmTMB` is primarily designed for maximum likelihood estimation (or restricted ML), there are certain situations where it is convenient to be able to add priors for particular parameters or sets of parameters, e.g.:
+
+* to mitigate *complete separation* (technically, when there is some linear combination of parameters that divides zero from non-zero responses in a count or binomial model; in practice, typically when one treatment combination has all-zero responses)
+* to mitigate *singular fits* in random effects, i.e. when there is insufficient data to estimate a variance parameter so that single variances collapse to zero or covariance matrices are estimated with less than full rank [@chungNondegenerate2013]
+* to apply a ridge penalty to a set of parameters (corresponding to an independent Gaussian prior on each parameter)
+* more generally, to *regularize* models that would otherwise be numerically unstable
+* for models that will be used with the `tmbstan` package as part of a fully Bayesian analysis (see below)
+
+See @bannerUse2020 and @sarmaPrior2020 for some opinions/discussion of priors.
+
+When priors are specified, `glmmTMB` will fit a *maximum a posteriori* (MAP) estimate. In other words, unlike most Bayesian estimate procedures that use Markov chain Monte Carlo to sample the entire parameter space and compute (typically)  posterior mean or median value of the parameters, `glmmTMB` will find the *mode* of the posterior distribution or the *most likely* value. The MAP estimate is theoretically less useful than the posterior mean or median, but is often a useful approximation.
+
+One can apply `tmbstan` to a fitted `glmmTMB` model that specifies priors (see the [MCMC vignette](./mcmc.html) in order to get samples from the posterior distribution as in a more typical Bayesian analysis.
+
+## Load packages
+
+```{r opts, include = FALSE}
+## only run chunks if we have all required pkgs
+knitr::opts_chunk$set(eval = all(sapply(c("purrr", "blme", "broom.mixed", "dplyr", "ggplot2"), require,
+                                        character.only = TRUE)),
+                      fig.width = 7, fig.height = 5)
+## https://stackoverflow.com/questions/71683610/using-ggplot2-why-does-changing-the-color-palette-result-in-all-grey
+```
+
+```{r pkgs, message = FALSE}
+library(glmmTMB)
+library(lme4)
+library(blme)
+library(broom.mixed)
+library(purrr)
+library(dplyr)
+library(ggplot2); theme_set(theme_bw())
+OkIt <- unname(palette.colors(n = 8, palette = "Okabe-Ito"))[-1]
+```
+
+### Culcita example: near-complete separation
+
+From @bolker_glmm_2014, an example where we can regularize nearly complete separation: see the more complete description [here](https://bbolker.github.io/mixedmodels-misc/ecostats_chap.html).
+
+For comparison, we'll fit (1) unpenalized/prior-free `glmer` and `glmmTMB` models; (2) `blme::bglmer()`, which adds a prior to a `glmer` model; (3) `glmmTMB` with priors.
+
+We read the data and drop one observation that is identified as having
+an extremely large residual:
+```{r culcita_dat}
+cdat <- readRDS(system.file("vignette_data", "culcita.rds", package = "glmmTMB"))
+cdatx <- cdat[-20,]
+```
+
+Fit `glmer`, `glmmTMB` without priors, as well as a `bglmer` model with
+regularizing priors (mean 0, SD 3, expressed as a 4 $\times$ 4 diagonal
+covariance matrix with diagonal elements (variances) equal to 9:
+
+```{r culcita_mod1}
+form <- predation~ttt+(1|block)
+cmod_glmer <- glmer(form, data=cdatx, family=binomial)
+cmod_glmmTMB <- glmmTMB(form, data=cdatx, family=binomial)
+cmod_bglmer <- bglmer(form, data=cdatx, family=binomial,
+                    fixef.prior = normal(cov = diag(9,4)))
+```
+
+Specify the same priors for `glmmTMB`: note that we have to specify
+regularizing priors for the intercept and the remaining fixed-effect
+priors separately
+```{r culcita_prior}
+cprior <- data.frame(prior = rep("normal(0,3)", 2),
+                     class = rep("beta", 2),
+                     coef = c("(Intercept)", ""))
+print(cprior)
+cmod_glmmTMB_p <- update(cmod_glmmTMB, priors = cprior)
+```
+
+Check (approximate) equality of estimated coefficients:
+```{r culcita_check}
+stopifnot(all.equal(coef(summary(cmod_bglmer)),
+          coef(summary(cmod_glmmTMB_p))$cond,
+          tolerance = 5e-2))
+```
+
+Pack the models into a list and get the coefficients:
+
+```{r culcita_comp}
+cmods <- ls(pattern = "cmod_[bg].*")
+cmod_list <- mget(cmods) |> setNames(gsub("cmod_", "", cmods))
+cres <- (purrr::map_dfr(cmod_list,
+                        ~tidy(., conf.int = TRUE, effects = "fixed"),
+                        .id = "model")
+    |> select(model, term, estimate, lwr = conf.low, upr = conf.high)
+    |> mutate(across(model,
+                     ~factor(., levels = c("glmer", "glmmTMB",
+                                           "glmmTMB_p", "bglmer"))))
+)
+ggplot(cres, aes(x = estimate, y = term, colour = model)) +
+    geom_pointrange(aes(xmin = lwr, xmax = upr),
+                    position = position_dodge(width = 0.5))+
+    scale_colour_manual(values = OkIt)
+```
+
+### Gopher tortoise example: mitigate singular fit
+
+Also from @bolker_glmm_2014:
+
+```{r gophertortoise}
+gdat <- readRDS(system.file("vignette_data", "gophertortoise.rds", package = "glmmTMB"))
+form <- shells~prev+offset(log(Area))+factor(year)+(1|Site)
+gmod_glmer <- glmer(form , family=poisson, data=gdat)
+gmod_bglmer <- bglmer(form, family=poisson, data=gdat)
+## cov.prior = gamma(shape = 2.5, rate = 0, common.scale = TRUE, posterior.scale = "sd"))
+gmod_glmmTMB <- glmmTMB(form, family = poisson, data = gdat) ## 1e-5
+## bglmer default corresponds to gamma(Inf, 2.5)
+gprior <- data.frame(prior = "gamma(1e8, 2.5)",
+                     class = "theta",
+                     coef = "")
+gmod_glmmTMB_p <- update(gmod_glmmTMB, priors = gprior)
+vc1 <- c(VarCorr(gmod_glmmTMB_p)$cond$Site)
+vc2 <- c(VarCorr(gmod_bglmer)$Site)
+stopifnot(all.equal(vc1, vc2, tolerance = 5e-4))
+```
+
+Pack the models into a list and get the coefficients:
+```{r pack_models}                                            
+gmods <- ls(pattern = "gmod_[bg].*")
+gmod_list <- mget(gmods) |> setNames(gsub("gmod_", "", gmods))
+```
+
+The code for extracting CIs is currently a little bit ugly (because profile confidence intervals aren't
+quite working for `glmmTMB` objects with `broom.mixed::tidy()`, and because profile CIs can be
+fussy in any case)
+
+```{r gopher_comp, echo = FALSE, warning = FALSE, results = "hide", cache = TRUE}
+t1 <- tidy(gmod_bglmer, conf.int = TRUE, conf.method = "profile",
+           effects = "ran_pars", devtol = Inf, quiet = TRUE)
+t2 <- tidy(gmod_glmer, conf.int = TRUE, conf.method = "profile",
+           effects = "ran_pars", quiet = TRUE)
+## subscript out of bounds ... ??
+## tidy(gmod_glmmTMB_p, conf.int = TRUE, conf.method = "profile", effects = "ran_pars")
+## confint(gmod_glmmTMB_p, method = "profile", parm = "theta_",
+##         include_nonest= TRUE)
+## debug(expand_ci_with_mapped) 
+## getParnames doesn't include RE parms ... ?? need full = TRUE?
+t3A <- (exp(confint(profile(gmod_glmmTMB_p, stderr = 0.05, parm = "theta_")))
+    |> as.data.frame()
+    |> setNames(c("conf.low", "conf.high"))
+    |> mutate(estimate = attr(VarCorr(gmod_glmmTMB_p)$cond$Site, "stddev"), .before = 1))
+t3B <- tibble(estimate = attr(VarCorr(gmod_glmmTMB)$cond$Site, "stddev"),
+              conf.low = NA,
+              conf.high = NA)
+gres <- (dplyr::bind_rows(list(bglmer = t1, glmer = t2, glmmTMB = t3B, glmmTMB_p = t3A),
+                 .id = "model")
+    |> select(model, estimate, lwr = conf.low, upr = conf.high)
+)
+ggplot(gres, aes(x = estimate, y = model)) + 
+    geom_pointrange(aes(xmin = lwr, xmax = upr),
+                    position = position_dodge(width = 0.5))
+```
+
+`blme` defaults: Wishart(dim + 2.5), or gamma(2.5). For dim = 1 (scalar), Wishart(n) corresponds to chi-squared(n), or gamma(shape = n/2, scale = n/2).  Chung et al propose `gamma(2, Inf)`; not sure why `blme` uses `gamma(2.5)` instead? or if specified via Wishart, shape = 3.5 → gamma shape of 1.75?
+
+## TO DO/FIX ME
+
+- try to get internal structure of priors fixed before release, otherwise `up2date` might get annoying ...
+- document synonyms
+- why is `bglmer` profile CI failing (in `broom.mixed`, but not externally?)
+- figure out/document `blme` default priors
+- add tests!
+- document that gamma is applied on exp() scale
+   - move prior info to a separate man page?
+- implement elementwise priors
+    - start with specifying by number, do lookup by name later
+- allow multivariate (joint) priors on parameter vectors rather than iid priors?
+     - esp for correlation matrices: LKJ, Wishart etc. (from Mikael Jagan [here](https://github.com/jaganmn/misc/tree/master/tmb_distributions))
+- add beta priors for zi, corr, etc. ?
+   - number of prior parameters (save annoying C++ code); can specify via `_cor` or `_sd` on the R side (will pick out sd-specific or cor-specific elements)
+   - start and end indices in vector
+- test!
+- safety checks (e.g. error at end of switch statements in C++)
+
+
+## Development issues
+
+It seems useful to use the API/user interface from `brms`
+
+* downside: `brms`has lots of downstream dependencies that `glmmTMB` doesn't
+    * might be able to copy the relevant code (the full [file](https://github.com/paul-buerkner/brms/blob/master/R/priors.R) is 2210 lines (!), but this includes documentation and a lot of code we don't need ...
+    ```{r deps, eval = FALSE}
+	
+	rd <- \(x) tools::package_dependencies("brms", recursive = TRUE)[[x]]
+    ## rd <- \(x) packrat:::recursivePackageDependencies(x, ignores = "", lib.loc =    .libPaths()[1])
+    ## not sure why packrat and tools get different answers, but difference
+    ## doesn't matter much
+    brms_dep <- rd("brms")
+    glmmTMB_dep <- rd("glmmTMB")
+    length(setdiff(brms_dep, glmmTMB_dep))
+    ```
+* at its simplest, this is just a front-end for a data frame
+```{r brms_priors, eval = FALSE}
+## requires brms to evaluate, wanted to avoid putting it in Suggests: ...
+bprior <- c(prior_string("normal(0,10)", class = "b"),
+            prior(normal(1,2), class = b, coef = treat),
+            prior_(~cauchy(0,2), class = ~sd,
+                   group = ~subject, coef = ~Intercept))
+```
+
+```{r fake_brms_priors, echo = FALSE}
+bprior <- structure(list(prior = c("normal(0,10)", "normal(1, 2)", "cauchy(0, 2)"
+), class = c("b", "b", "sd"), coef = c("", "treat", "Intercept"
+), group = c("", "", "subject"), resp = c("", "", ""), dpar = c("", 
+"", ""), nlpar = c("", "", ""), lb = c(NA_character_, NA_character_, 
+NA_character_), ub = c(NA_character_, NA_character_, NA_character_
+), source = c("user", "user", "user")), row.names = c(NA, -3L
+), class = c("brmsprior", "data.frame"))
+```
+
+```{r brms_prior_str}
+str(bprior)
+```
+
+We probably only need to pay attention to the columns `prior`, `class`, `coef`, `group`. For our purposes, `prior` is the name and parameters; `class` will be the name of the parameter vector; `coef` will specify an index within the vector (could be a number or name?)
+
+`TMB`-side data structure:
+
+* vector of prior codes
+    * we need a new `enum`, `.valid_priors`: see `make-enum` in the Makefile
+* list of parameter vectors? or `prior_p1`, `prior_p2`, `prior_p3` (do any prior families have more than two parameters? What about non-scalar parameters, e.g. Wishart priors ... ???)
+* vector of parameter codes (another `enum`?) (`beta`, `theta`, `thetaf` ... `b` ?)
+* each index (corresponding to `coef`) is scalar, either NA (prior over all elements) or integer (a specific element)
+
+* new loop after loglik loop to add (negative log-)prior components: loop over prior spec
+
+* add `theta_corr`, `theta_sd` as enum options (synonyms: `ranef_corr`, `ranef_sd`) to specify penalizing only SD vector or only corr vector from a particular element?
+
+* 'coef' picks out elements
+   * fixed effect: find numeric index in `colnames(X)` of corresponding component
+   * random effect: find indices (start and stop?) in corresponding `theta` vector
+   * `ranef_corr`, `ranef_sd`: find indices ... (depends on RE structure)
+
+## References
