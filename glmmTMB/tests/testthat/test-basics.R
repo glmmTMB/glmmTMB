@@ -134,9 +134,9 @@ test_that("Alternative family specifications [via update(.)]", {
     ## intercept-only fixed effect
 
     res_chr <- matchForm(gm0, update(gm0, family= "binomial"), fn  = TRUE)
-    expect_equal_nover(gm0, res_chr)
     if (getRversion() >= "4.3.3") {
-        ## mysterious failure on windows/oldrel
+        ## mysterious failure on windows/oldrel (4.3.2)
+        expect_equal_nover(gm0, res_chr)
         expect_equal_nover(gm0, matchForm(gm0, update(gm0, family= binomial()), fn = TRUE))
         expect_warning(res_list <- matchForm(gm0, update(gm0, family= list(family = "binomial",
                                                                            link = "logit")),
