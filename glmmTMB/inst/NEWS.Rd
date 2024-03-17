@@ -42,6 +42,8 @@
       can occur in the response if \code{ziformula} is specified)
       \item better checking for illegal (negative or non-integer) values
       in response variables
+      \item experimental support for priors: see \code{?priors} and
+      \code{vignette("priors", package = "glmmTMB")}
     }
   } % new features
   \subsection{BUG FIXES}{

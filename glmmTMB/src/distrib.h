@@ -288,6 +288,17 @@ namespace glmmtmb{
     Type ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
     return ans;
   }
+
+
+  // FIXME: check!
+  template<class Type>
+  Type dcauchy(Type x, Type loc, Type scale, int give_log=0)
+ {
+   Type resid = (x - loc) / scale;
+   Type logans = Type(-log(M_PI)) - log(scale) - log1p(resid*resid);
+   if(give_log) return logans; else return exp(logans);
+ }
+  VECTORIZE4_ttti(dcauchy)
 } // namespace glmmtmb
 
 /* Interface to compois variance */

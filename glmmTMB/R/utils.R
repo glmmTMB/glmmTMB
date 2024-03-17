@@ -338,8 +338,11 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
+
       pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
                 "parfull")
+    
+      ## change name of thetaf to psi
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -356,6 +359,15 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
+
+    ## prior_ivars, prior_fvars are defined in priors.R
+      if (!"prior_distrib" %in% names(ee$data)) {
+          ## these are DATA_IVECTOR but apparently after processing
+          ##  TMB turns these into numeric ... ??
+          for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+          for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+      }
+
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
@@ -386,6 +398,11 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       !("dispersion" %in% names(omf))) {
       ## don't append() or c(), don't want to lose class info
       oldfit$modelInfo$family$dispersion <- 1
+  }
+  if (!"priors" %in% names(oldfit$modelInfo)) {
+      ## https://stackoverflow.com/questions/7944809/assigning-null-to-a-list-element-in-r
+      ## n.b. can't use ...$priors <- NULL
+      oldfit$modelInfo["priors"] <- list(NULL)
   }
   return(oldfit)
 }
@@ -652,11 +669,25 @@ simulate_new <- function(object,
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
 
-## from rlang (FIXME: put this conditionally in .onLoad, for back-compatibility)
-`%||%` <- function (x, y)  {
-    if (is.null(x)) 
-        y
-    else x
+set_class <- function(x, cls, prepend = TRUE) {
+    if (is.null(x)) return(NULL)
+    if (!prepend) class(x) <- cls
+    else class(x) <- c(cls, class(x))
+    x
+}
+
+## convert from parameter name to component name or vice versa
+## first name shoudl be em
+compsyn <- c(cond = "", zi = "zi", disp = "d")
+match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
+    if (to_parvec) {
+        ## "cond" -> "theta" etc.
+        return(paste0(prefix, compsyn[x]))
+    } else {
+        ## "beta" -> "cond" etc.
+        x <- gsub(prefix, "", x)
+        return(names(compsyn)[match(x, compsyn)])
+    }
 }
 
 get_family <- function(family) {
@@ -682,7 +713,6 @@ get_family <- function(family) {
     }
     return(family)
 }
-
 
 ## add negative-value check to binomial initialization method
 our_binom_initialize <- function(family) {

@@ -149,6 +149,25 @@ non-metric multidimensional scaling},
   pages={399--411}
 }
 
+
+@article{chungNondegenerate2013,
+	title = {A {Nondegenerate} {Penalized} {Likelihood} {Estimator} for {Variance} {Parameters} in {Multilevel} {Models}},
+	volume = {78},
+	issn = {0033-3123, 1860-0980},
+	url = {http://link.springer.com/article/10.1007/s11336-013-9328-2},
+	doi = {10.1007/s11336-013-9328-2},
+	abstract = {Group-level variance estimates of zero often arise when fitting multilevel or hierarchical linear models, especially when the number of groups is small. For situations where zero variances are implausible a priori, we propose a maximum penalized likelihood approach to avoid such boundary estimates. This approach is equivalent to estimating variance parameters by their posterior mode, given a weakly informative prior distribution. By choosing the penalty from the log-gamma family with shape parameter greater than 1, we ensure that the estimated variance will be positive. We suggest a default log-gamma(2,λ) penalty with λ→0, which ensures that the maximum penalized likelihood estimate is approximately one standard error from zero when the maximum likelihood estimate is zero, thus remaining consistent with the data while being nondegenerate. We also show that the maximum penalized likelihood estimator with this default penalty is a good approximation to the posterior median obtained under a noninformative prior. Our default method provides better estimates of model parameters and standard errors than the maximum likelihood or the restricted maximum likelihood estimators. The log-gamma family can also be used to convey substantive prior information. In either case—pure penalization or prior information—our recommended procedure gives nondegenerate estimates and in the limit coincides with maximum likelihood as the number of groups increases.},
+	language = {en},
+	number = {4},
+	urldate = {2015-07-15},
+	journal = {Psychometrika},
+	author = {Chung, Yeojin and Rabe-Hesketh, Sophia and Dorie, Vincent and Gelman, Andrew and Liu, Jingchen},
+	month = mar,
+	year = {2013},
+	keywords = {Psychometrics, Mixed Model, Multilevel model, penalized likelihood, Statistical Theory and Methods, Assessment, Testing and Evaluation, Bayes modal estimation, hierarchical linear model, Statistics for Social Science, Behavorial Science, Education, Public Policy, and Law, variance estimation, weakly informative prior},
+	pages = {685--709}
+}
+
 @mastersthesis{schackeKronecker2004,
   title = {On the {{Kronecker}} Product},
   author = {Sch{\"a}cke, Kathrin},
@@ -175,4 +194,39 @@ non-metric multidimensional scaling},
 	pmid = {26052169},
 	pmcid = {PMC4455603},
 	pages = {142--147}
+}
+
+@article{bannerUse2020,
+  title = {The Use of {Bayesian} Priors in Ecology: The Good, the Bad and the Not Great},
+  shorttitle = {The Use of {{Bayesian}} Priors in {{Ecology}}},
+  author = {Banner, Katharine M. and Irvine, Kathryn M. and Rodhouse, Thomas J.},
+  year = {2020},
+  journal = {Methods in Ecology and Evolution},
+  volume = {11},
+  number = {8},
+  pages = {882--889},
+  issn = {2041-210X},
+  doi = {10.1111/2041-210X.13407},
+  urldate = {2023-05-19},
+  abstract = {Bayesian data analysis (BDA) is a powerful tool for making inference from ecological data, but its full potential has yet to be realized. Despite a generally positive trajectory in research surrounding model development and assessment, far too little attention has been given to prior specification. Default priors, a sub-class of non-informative prior distributions that are often chosen without critical thought or evaluation, are commonly used in practice. We believe the fear of being too `subjective' has prevented many researchers from using any prior information in their analyses despite the fact that defending prior choice (informative or not) promotes good statistical practice. In this commentary, we provide an overview of how BDA is currently being used in a random sample of articles, discuss implications for inference if current bad practices continue, and highlight sub-fields where knowledge about the system has improved inference and promoted good statistical practices through the careful and justified use of informative priors. We hope to inspire a renewed discussion about the use of Bayesian priors in Ecology with particular attention paid to specification and justification. We also emphasize that all priors are the result of a subjective choice, and should be discussed in that way.},
+  langid = {english},
+  keywords = {Bayesian hierarchical models,good statistical practice,sensitivity analysis,subjective priors}
+}
+
+@inproceedings{sarmaPrior2020,
+  title = {Prior Setting in Practice: Strategies and Rationales Used in Choosing Prior Distributions for {Bayesian} Analysis},
+  shorttitle = {Prior {{Setting}} in {{Practice}}},
+  booktitle = {Proceedings of the 2020 {{CHI Conference}} on {{Human Factors}} in {{Computing Systems}}},
+  author = {Sarma, Abhraneel and Kay, Matthew},
+  year = {2020},
+  month = apr,
+  series = {{{CHI}} '20},
+  pages = {1--12},
+  publisher = {{Association for Computing Machinery}},
+  address = {{New York, NY, USA}},
+  doi = {10.1145/3313831.3376377},
+  urldate = {2023-05-27},
+  abstract = {Bayesian statistical analysis is steadily growing in popularity and use. Choosing priors is an integral part of Bayesian inference. While there exist extensive normative recommendations for prior setting, little is known about how priors are chosen in practice. We conducted a survey (N = 50) and interviews (N = 9) where we used interactive visualizations to elicit prior distributions from researchers experienced withBayesian statistics and asked them for rationales for those priors. We found that participants' experience and philosophy influence how much and what information they are willing to incorporate into their priors, manifesting as different levels of informativeness and skepticism. We also identified three broad strategies participants use to set their priors: centrality matching, interval matching, and visual mass allocation. We discovered that participants' understanding of the notion of 'weakly informative priors"-a commonly-recommended normative approach to prior setting-manifests very differently across participants. Our results have implications both for how to develop prior setting recommendations and how to design tools to elicit priors in Bayesian analysis.},
+  isbn = {978-1-4503-6708-0},
+  keywords = {bayesian inference,descriptive analysis,prior distributions}
 }
