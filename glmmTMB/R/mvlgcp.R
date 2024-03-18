@@ -70,6 +70,8 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
   bf.matrix.type <- match.arg(bf.matrix.type)
   
   mc <- match.call() # gets the arguments (must be updated for a point process model as below)
+  # quick fix for formulae - re-assign here so they are found when the function is operating in a function env.
+  mc$formula <- as.formula(formula)
   call.list <- as.list(mc)
   
   # check the form of the weights
@@ -130,6 +132,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
     mod$n_factors <- 0
     mod$basis.functions <- NULL
     mod$coord.names <- coord.names
+    mod$frame$coords <- data[ , coord.names]
     mod$weights <- wt.vec
     mod$response.id <- rep(1, nrow(data))
 
@@ -221,6 +224,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       mod$n_factors <- 0
       mod$basis.functions <- basis.functions
       mod$coord.names <- coord.names
+      mod$frame$coords <- data[ , coord.names]
       mod$weights <- wt.vec
       mod$response.id <- rep(1, nrow(data))
 
@@ -241,15 +245,6 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       # get the number of basis functions and responses
       if (is(basis.functions, "mgcv.bf")) {
         k <- ncol(basis.functions$re$rand$Xr)
-        # if (attr(basis.functions, "rm.fixed")) {
-        #   k <- basis.functions$sm[[1]]$bs.dim - ncol(basis.functions$re$Xf)
-        # } else {
-        #   if (attr(basis.functions, "rm.intercept")) {
-        #     k <- basis.functions$sm[[1]]$bs.dim - 1
-        #   } else {
-        #     k <- basis.functions$sm[[1]]$bs.dim
-        #   }
-        # }
       } else if (is(basis.functions, "scampr.bf")) {
         k <- nrow(basis.functions)
       } else if (is(basis.functions, "Basis")) {
@@ -341,6 +336,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       mod$n_factors <- n_factors
       mod$basis.functions <- basis.functions
       mod$coord.names <- coord.names
+      mod$frame$coords <- data[ , coord.names]
       mod$weights <- weights
       mod$response.id <- response.id
       mod$col.idx <- col.idx
@@ -847,7 +843,7 @@ get_field <- function(object, newdata, which.response = NULL) {
   # if newdata is missing using the model data
   if (missing(newdata)) {
     warning("'newdata' is not provided. Fitted values will be used...")
-    newdata <- eval(as.list(object$call)$data)
+    newdata <- object$frame$coords
   }
   # if more than two columns are supplied, check that these contain the correct coordinates
   if (ncol(newdata) > 2) {
@@ -863,53 +859,35 @@ get_field <- function(object, newdata, which.response = NULL) {
   
   # get the basis function coefficients ########################################
   
-  # get all of the random effect coefficients from the model
-  all_b <- getME.glmmTMB(object, "b")
-  
-  # get information on the other random effect terms (assumes "basis.functions" is a term reserved for these approximate field models)
-  other_re <- object$modelInfo$reStruc$condReStruc[-which(object$modelInfo$grpVar == "basis.functions")]
-  
-  # determine the number of random effects to  skip (assumes that the field(s) are last in the formula, as is the setup for mvlgcp())
-  skip_n <- do.call(sum, lapply(other_re, function(x){as.numeric(x[1]) * as.numeric(x[2])}))
-
-  # get the full set of random coefficients for the latent fields (will include zeros in the reduced rank case)
-  if (skip_n > 0) {
-    tmp.b_flds <- all_b[((skip_n)+1):length(all_b)]
-  } else {
-    tmp.b_flds <- all_b
-  }
-  
-  # check if the model is multivariate and adjust the coefficient vector accordingly
-  b_flds <- list()
-  if (object$n_factors > 0) {
-    for (i in 1:object$n_factors) {
-      b_flds[[i]] <- all_b[seq(i,length(tmp.b_flds), by = object$n_responses)]
-    }
-    # while here, extract the factor loadings for the rank reduced fields
-    Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions")]]
-  } else {
-    b_flds <- tmp.b_flds
-    Lambda <- NULL
-  }
-  b <- sapply(b_flds, cbind)
+  b <- get_bfs_coeff(object)
   
   # compute the field
   fld <- X %*% b
+  
+  # get the loadings matrix ####################################################
+  
+  if (object$n_responses == 1) {
+    Lambda <- NULL
+  } else {
+    # extract the factor loadings for the rank reduced fields
+    Lambda <- get_loadings(object)
+  }
   
   # adjust according to "which.response"
   if (!is.null(which.response)) {
     if (object$n_responses == 1) {
       
       warning("'which.response' is not applicable to a univariate model... returning the single latent field")
+      Lambda <- NULL
+      
+      # compute the field
+      fld <- X %*% b
       
     } else if (object$n_responses < length(which.response)) {
       
       stop("more fields requested through 'which.response' than responses in the fitted model. Please check and retry")
       
     } else {
-      
-      # extract the factor loadings for the rank reduced fields
-      Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions")]]
       
       # calculate the response-specific field
       if (length(which.response) > 1) {
@@ -926,6 +904,106 @@ get_field <- function(object, newdata, which.response = NULL) {
   attr(fld, "response.names") <- object$response.id
   
   return(fld)
+}
+
+#' Extract the factor loadings from a model fitted via \code{mvlgcp()}
+#'
+#' @description This function sets up the appropriate basis function matrix for the \code{newdata} provided, then multiplies by the random coefficient terms (at the mode of the Laplace approximation).
+#'
+#' @param object a fitted \code{glmmTMB} model object.
+#' 
+#' @return a matrix with m (the number of responses) rows and d (the number of latent fields for a multivariate LGCP) columns.
+#' @export
+#'
+#' @examples
+#' dat <- lansing[lansing$tree %in% c("blackoak", "hickory", "maple"), ]
+#' dat$tree <- factor(as.character(dat$tree)) # remove unused tree species
+#' 
+#' # set up the basis functions with dimension k = 100
+#' bfs <- make_basis(k = 100, dat)
+#' 
+#' # fit a multivariate LGCP to the point patterns of "blackoak", "hickory" and "maple" trees
+#' m <- mvlgcp(pt ~ (1 | tree), data = dat, weights = dat$wt, basis.functions = bfs, response.id = dat$tree)
+#' 
+#' # extract the factor loadings
+#' Lambda <- get_loadings(m)
+#' plot(Lambda)
+get_loadings <- function(object) {
+  
+  # check that the fitted model has bsais functions attached to it
+  if (is.null(object$basis.functions)) {
+    stop("Supplied fitted model does not include basis functions")
+  }
+  
+  # check if the model is multivariate and adjust the coefficient vector accordingly
+  if (object$n_factors > 0) {
+    Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions")]]
+  } else {
+    stop("The supplied model does not use a reduced rank approximation to the multivarate latent fields")
+  }
+  
+  return(Lambda)
+}
+
+#' Extract the basis function coefficients from a model fitted via \code{mvlgcp()}
+#'
+#' @description This function extracts the random coefficient terms (at the mode of the Laplace approximation) from a fitted model. It will automatically account for a reduced rank approach when the fitted model is a multivariate LGCP.
+#'
+#' @param object a fitted \code{glmmTMB} model object.
+#' 
+#' @return a matrix with k (the number/dimension of the basis functions used to approx. the latent field) rows and d (= 1 in the univariate case, or the number of latent fields for a multivariate LGCP) columns.
+#' @export
+#'
+#' @examples
+#' # using a subset of the Lansing Wood data:
+#' dat <- lansing[lansing$tree == "blackoak", ]
+#' 
+#' # set up the basis functions with dimension k = 100
+#' bfs <- make_basis(k = 100, dat)
+#' 
+#' # fit univariate LGCP to the blackoak point pattern data
+#' m <- mvlgcp(pt ~ 1, data = dat, weights = dat$wt, basis.functions = bfs)
+#' 
+#' # extract the field
+#' b <- get_bfs_coeff(m)
+#' plot(b)
+get_bfs_coeff <- function(object) {
+  
+  # check that the fitted model has bsais functions attached to it
+  if (is.null(object$basis.functions)) {
+    stop("Supplied fitted model does not include basis functions")
+  }
+
+  # get the basis function coefficients ########################################
+  
+  # get all of the random effect coefficients from the model
+  all_b <- getME.glmmTMB(object, "b")
+  
+  # get information on the other random effect terms (assumes "basis.functions" is a term reserved for these approximate field models)
+  other_re <- object$modelInfo$reStruc$condReStruc[-which(object$modelInfo$grpVar == "basis.functions")]
+  
+  # determine the number of random effects to  skip (assumes that the field(s) are last in the formula, as is the setup for mvlgcp())
+  skip_n <- do.call(sum, lapply(other_re, function(x){as.numeric(x[1]) * as.numeric(x[2])}))
+  
+  # get the full set of random coefficients for the latent fields (will include zeros in the reduced rank case)
+  if (skip_n > 0) {
+    tmp.b_flds <- all_b[((skip_n)+1):length(all_b)]
+  } else {
+    tmp.b_flds <- all_b
+  }
+  
+  # check if the model is multivariate and adjust the coefficient vector accordingly
+  b_flds <- list()
+  if (object$n_factors > 0) {
+    for (i in 1:object$n_factors) {
+      b_flds[[i]] <- tmp.b_flds[seq(i,length(tmp.b_flds), by = object$n_responses)]
+    }
+  } else {
+    b_flds <- tmp.b_flds
+  }
+  b <- sapply(b_flds, cbind)
+
+  return(b)
 }
 
 #' Create a biplot from a multivarite LGCP
@@ -957,13 +1035,11 @@ get_field <- function(object, newdata, which.response = NULL) {
 #' m <- mvlgcp(pt ~ (1 | tree), data = dat, weights = dat$wt, basis.functions = bfs, response.id = dat$tree)
 #' 
 #' biplot(m)
-biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col, load.name.alpha = 1, show.top.n, vmax.rotation = FALSE, rm.bias = T) {
+biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col, load.name.cex = 1, show.top.n, vmax.rotation = FALSE, rm.bias = T) {
 
-  # use get_field() to extract loadings and scores
-  suppressWarnings(assign("object", get_field(x)))
-  
-  fact_loads <- attr(object, "loadings")
-  bf.coeffs <- attr(object, "coefficients")
+  # extract the factor loadings and basis function coefficients
+  fact_loads <- get_loadings(x)
+  bf.coeffs <- get_bfs_coeff(x)
   
   if (vmax.rotation) {
     rot <- varimax(fact_loads)
@@ -987,7 +1063,7 @@ biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col,
   floads <- Lambda[order(arrow_lengths, decreasing = T), ]
   # get arrow names
   if (missing(load.names)) {
-    resp.names <- attr(object, "response.names")
+    resp.names <- unique(x$response.id)
     load.names <- if (is(resp.names, "factor")) {levels(resp.names)} else {as.character(unique(resp.names))}
   }
   # subset the factor loading if required

@@ -11,6 +11,7 @@
   load.names,
   score.col,
   load.col,
+  load.name.cex = 1,
   show.top.n,
   vmax.rotation = FALSE,
   rm.bias = T
@@ -28,6 +29,8 @@
 \item{score.col}{(optional) a vector of length \code{object$n_basis} of colours to be used for scores.}
 
 \item{load.col}{(optional) a vector of length \code{object$n_reponses} of colours to be used on response-specific loadings.}
+
+\item{load.name.cex}{(optional) a numeric indicating the scaling of response label size.}
 
 \item{show.top.n}{(optional) a numeric in [0,\code{object$n_reponses}] indicating a subset of the response-specific loadings (from largest to smallest).}
 
