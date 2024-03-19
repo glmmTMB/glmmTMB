@@ -1019,7 +1019,8 @@ get_bfs_coeff <- function(object) {
 #' @param load.name.cex (optional) a numeric indicating the scaling of response label size.
 #' @param show.top.n (optional) a numeric in [0,\code{object$n_reponses}] indicating a subset of the response-specific loadings (from largest to smallest).
 #' @param vmax.rotation a logical indicating whether to perform a varimax rotation of the loadings matrix prior to plotting.
-#' @param rm.bias a logical indicating whether to remove bias from both the scores and factor loadings by scaling them #NEEDS WORK
+#' @param rm.bias a logical indicating whether to remove bias from both the scores and factor loadings by scaling them # TODO: checks required
+#' @param show.all.arrows a logical indicating whether to plot all arrows/lines, even when \code{show.top.n} is used.
 #' 
 #' @return See \code{stats::biplot}
 #' @exportS3Method stats::biplot glmmTMB
@@ -1035,7 +1036,7 @@ get_bfs_coeff <- function(object) {
 #' m <- mvlgcp(pt ~ (1 | tree), data = dat, weights = dat$wt, basis.functions = bfs, response.id = dat$tree)
 #' 
 #' biplot(m)
-biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col, load.name.cex = 1, show.top.n, vmax.rotation = FALSE, rm.bias = T) {
+biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col, load.name.cex = 1, show.top.n, vmax.rotation = FALSE, rm.bias = T, show.all.arrows = F) {
 
   # extract the factor loadings and basis function coefficients
   fact_loads <- get_loadings(x)
@@ -1088,7 +1089,11 @@ biplot.glmmTMB <- function(x, ..., alpha = 0.5, load.names, score.col, load.col,
     plot(b, xlim = range(b[,1]), ylim = range(b[,2]),
          pch = 16, col = score.col, ...)
     text(x = (sub.floads[,1] * alpha) + 0.1 * sign(sub.floads[,1]), y = (sub.floads[,2] * alpha) + 0.1 * sign(sub.floads[,2]), labels = sub.names, cex = load.name.cex, offset = 0.8, col=load.col)
-    arrows(x0 = rep(0, nrow(sub.floads)), y0 = rep(0, nrow(sub.floads)), x1 = sub.floads[,1] * alpha, y1 = sub.floads[,2] * alpha, length = 0.0, angle = 30, lwd = 0.5, col=load.col)
+    if (show.all.arrows) {
+      arrows(x0 = rep(0, nrow(floads)), y0 = rep(0, nrow(floads)), x1 = floads[,1] * alpha, y1 = floads[,2] * alpha, length = 0.0, angle = 30, lwd = 0.5, col=load.col)
+    } else {
+      arrows(x0 = rep(0, nrow(sub.floads)), y0 = rep(0, nrow(sub.floads)), x1 = sub.floads[,1] * alpha, y1 = sub.floads[,2] * alpha, length = 0.0, angle = 30, lwd = 0.5, col=load.col)
+    }
   }
 }
 
