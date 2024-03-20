@@ -14,7 +14,8 @@
   load.name.cex = 1,
   show.top.n,
   vmax.rotation = FALSE,
-  rm.bias = T
+  rm.bias = T,
+  show.all.arrows = F
 )
 }
 \arguments{
@@ -36,7 +37,9 @@
 
 \item{vmax.rotation}{a logical indicating whether to perform a varimax rotation of the loadings matrix prior to plotting.}
 
-\item{rm.bias}{a logical indicating whether to remove bias from both the scores and factor loadings by scaling them #NEEDS WORK}
+\item{rm.bias}{a logical indicating whether to remove bias from both the scores and factor loadings by scaling them # TODO: checks required}
+
+\item{show.all.arrows}{a logical indicating whether to plot all arrows/lines, even when \code{show.top.n} is used.}
 }
 \value{
 See \code{stats::biplot}

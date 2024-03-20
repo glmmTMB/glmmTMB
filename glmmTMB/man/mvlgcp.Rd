@@ -13,6 +13,7 @@ mvlgcp(
   response.id,
   bf.matrix.type = c("sparse", "dense"),
   n_factors = 2,
+  mv.flds = c("both", "correlated", "independent"),
   ...
 )
 }
@@ -29,9 +30,11 @@ mvlgcp(
 
 \item{response.id}{a vector of length \code{nrow(data)} that categorises data into the various responses in the multivariate case.}
 
-\item{bf.matrix.type}{one of \code{"sparse"} or \code{"dense"} indicating whether to use a sparse/dense matrix to represent the basis function approximation to the latent field(s). The default of \code{"sparse"} is usually preferred, although in some instances (e.g. with single-response TPRS basis) using a dense matrix may be more efficient.}
+\item{bf.matrix.type}{a character string, one of \code{"sparse"} or \code{"dense"} indicating whether to use a sparse/dense matrix to represent the basis function approximation to the latent field(s). The default of \code{"sparse"} is usually preferred, although in some instances (e.g. with single-response TPRS basis) using a dense matrix may be more efficient.}
 
 \item{n_factors}{an integer describing the number of latent factors to be used to characterise the multivariate latent fields within the multivariate log-Gaussian Cox process.}
+
+\item{mv.flds}{a character string, one of \code{"both"}, \code{"correlated"}, or \code{"independent"}. Applies only to a mutlivariate LGCP and indicates whether to include: correlated latent fields (via the reduced rank approach when \code{= "correlated"}); independent latent fields (one for each response when \code{= "independent"}); or both correlated fields (via the reduced rank approach) and independent fields for each response (when \code{= "both"}). The latter is the default, allowing the correlated latent fields to capture shared spatial clustering only.}
 
 \item{...}{other terms to be passed to \code{glmmTMB()}.}
 }

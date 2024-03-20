@@ -8,8 +8,9 @@
 #' @param basis.functions a basis functions object. See \code{make_basis()}.
 #' @param coord.names a vector of two character strings describing the column names of the coordinates (horizontal and vertical resp.) within \code{data}.
 #' @param response.id a vector of length \code{nrow(data)} that categorises data into the various responses in the multivariate case. 
-#' @param bf.matrix.type one of \code{"sparse"} or \code{"dense"} indicating whether to use a sparse/dense matrix to represent the basis function approximation to the latent field(s). The default of \code{"sparse"} is usually preferred, although in some instances (e.g. with single-response TPRS basis) using a dense matrix may be more efficient.
+#' @param bf.matrix.type a character string, one of \code{"sparse"} or \code{"dense"} indicating whether to use a sparse/dense matrix to represent the basis function approximation to the latent field(s). The default of \code{"sparse"} is usually preferred, although in some instances (e.g. with single-response TPRS basis) using a dense matrix may be more efficient.
 #' @param n_factors an integer describing the number of latent factors to be used to characterise the multivariate latent fields within the multivariate log-Gaussian Cox process.
+#' @param mv.flds a character string, one of \code{"both"}, \code{"correlated"}, or \code{"independent"}. Applies only to a mutlivariate LGCP and indicates whether to include: correlated latent fields (via the reduced rank approach when \code{= "correlated"}); independent latent fields (one for each response when \code{= "independent"}); or both correlated fields (via the reduced rank approach) and independent fields for each response (when \code{= "both"}). The latter is the default, allowing the correlated latent fields to capture shared spatial clustering only.
 #' @param ... other terms to be passed to \code{glmmTMB()}.
 #'
 #' @details
@@ -64,13 +65,14 @@
 #' plot(vec2im(fld3_mv, domain$x, domain$y), main = "Multivariate LGCP\nMaple")
 #' points(dat2[dat2$pt == 1 & dat2$tree == "maple", c("x", "y")], pch = 3)
 #' par(mfrow = c(1, 1), mar = c(5.1,4.1,4.1,2.1))
-mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names = c("x", "y"), response.id, bf.matrix.type = c("sparse", "dense"), n_factors = 2, ...) {
+mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names = c("x", "y"), response.id, bf.matrix.type = c("sparse", "dense"), n_factors = 2, mv.flds = c("both", "correlated", "independent"), ...) {
   
-  # check the basis function matrix type
+  # check the arguments
   bf.matrix.type <- match.arg(bf.matrix.type)
+  mv.flds <- match.arg(mv.flds)
   
   mc <- match.call() # gets the arguments (must be updated for a point process model as below)
-  # quick fix for formulae - re-assign here so they are found when the function is operating in a function env.
+  # quick fix for formulae - re-assign here so they are found when the function is operating in, e.g., a function env.
   mc$formula <- as.formula(formula)
   call.list <- as.list(mc)
   
@@ -121,8 +123,9 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
     call.list$response.id <- NULL
     call.list$bf.matrix.type <- NULL
     call.list$n_factors <- NULL
+    call.list$mv.flds <- NULL
     
-    # NOTE: there is no need to differentiate single or mutliple responses for a Poisson process (this should be specified via random slopes/intercepts via the formula)
+    # NOTE: there is no need to differentiate single or multiple responses for a Poisson process (this should be specified via random slopes/intercepts via the formula)
     tmp.time <- system.time(assign("mod", do.call("glmmTMB", call.list)))
     # add in some extra info
     mod$call <- mc
@@ -161,8 +164,12 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
         newZ <- newZ[, (sum(basis.functions$re$pen.ind == 0) + 1):ncol(newZ)]
       }
       
+      # check there are enough data for the dummy factor for basis functions
+      if (k > nrow(call.list$data)) {
+        stop("basis dimension (k) is greater than 'nrow(data)': there are not enough data for basis functions of this dimension.")
+      }
       # set the dummy factor for the basis functions and smoothing penalty
-      call.list$data$basis.functions <- factor(rep(1:k, length.out = nrow(data)))
+      call.list$data$basis.functions <- factor(rep(1:k, length.out = nrow(call.list$data)))
       call.list$data$b <- rnorm(nrow(data)) # this needs to be any continuous variable
 
       # update the formula to include basis functions (i.e. approx. latent field)
@@ -187,6 +194,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       call.list$response.id <- NULL
       call.list$bf.matrix.type <- NULL
       call.list$n_factors <- NULL
+      call.list$mv.flds <- NULL
       
       # set the reduced rank model structure
       m.init <- do.call("glmmTMB", call.list)
@@ -254,11 +262,11 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       }
       m <- length(responses)
       
-      # set up the basis function matrix
-      newZ <- as(matrix(0, nrow = nrow(data), ncol = m * k), "sparseMatrix") # working in sparse for efficiency (or will this be more inefficient if the matrix ends up dense?)
+      # set up the basis function matrix - for reduced rank fields
+      basis.Z <- as(matrix(0, nrow = nrow(data), ncol = m * k), "sparseMatrix") # working in sparse for efficiency (or will this be more inefficient if the matrix ends up dense?)
       for (i in 1:m) {
         # calculate the response specific basis function matrix component
-        newZ[call.list$data$response.id == responses[i], (1:k) + (k * (i-1))] <- bf_matrix(basis.functions, point.locations = call.list$data[call.list$data$response.id == responses[i], coord.names], bf.matrix.type = bf.matrix.type)
+        basis.Z[call.list$data$response.id == responses[i], (1:k) + (k * (i-1))] <- bf_matrix(basis.functions, point.locations = call.list$data[call.list$data$response.id == responses[i], coord.names], bf.matrix.type = bf.matrix.type)
       }
       gc() # heavy work above so garbage collect may help
       
@@ -267,15 +275,20 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       for (i in 2:m) {
         col.idx[seq(i, m*k, by = m)] <- (1:k) + (k*(i-1))
       }
-      # adjust the column order to match that required by glmmTMB
-      newZ <- newZ[,col.idx]
       
+      # check there are enough data for the dummy factor for basis functions
+      if (k > nrow(call.list$data)) {
+        stop("basis dimension (k) is greater than 'nrow(data)': there are not enough data for basis functions of this dimension.")
+      }
       # set the dummy factor to initialise the correct dimension for Z
       call.list$data$basis.functions <- factor(rep(1:k, length.out = nrow(call.list$data)))
       
-      # update the formula to include basis functions (for some reason update() seems to add unwanted brackets # MAEVE MAY WANT TO KNOW THIS)
-      # form <- update(formula, ~ . + rr(0 + response.id|dummy_k, d))
-      call.list$formula <- as.formula(paste0(paste(deparse(call.list$formula), collapse = ""), " + rr(0 + response.id|basis.functions, n_factors)"))
+      # update the formula to include basis functions (note that update.formula doesn't work with bespoke glmmTMB covariance structures!)
+      call.list$formula <- as.formula(switch(mv.flds,
+                                             correlated = paste0(paste(deparse(call.list$formula), collapse = ""), " + rr(0 + response.id|basis.functions, n_factors)"),
+                                             independent = paste0(paste(deparse(call.list$formula), collapse = ""), " + diag(0 + response.id|basis.functions)"),
+                                             both = paste0(paste(deparse(call.list$formula), collapse = ""), " + rr(0 + response.id|basis.functions, n_factors) + diag(0 + response.id|basis.functions)")
+      ))
       
       # create an indicator for whether the model should be fitted based on the original user-setting
       not_fitting <- FALSE
@@ -292,33 +305,51 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       call.list$response.id <- NULL
       call.list$bf.matrix.type <- NULL
       call.list$n_factors <- NULL
+      call.list$mv.flds <- NULL
       
       # set the reduced rank model structure
       rrm.init <- do.call("glmmTMB", call.list)
       
+      # check the number of random effect components using the basis functions
+      n_bases <- sum(names(rrm.init$condReStruc) == "0 + response.id | basis.functions")
+      
       # check that the dimensions of the other random effects match:
       if (any(names(rrm.init$condReStruc) != "0 + response.id | basis.functions")) {
-        if (!sum(sapply(rrm.init$condReStruc[names(rrm.init$condReStruc) != "0 + response.id | basis.functions"], function(x){x[[1]] * x[[2]]})) == ncol(rrm.init$data.tmb$Z) - ncol(newZ)){
+        if (!sum(sapply(rrm.init$condReStruc[names(rrm.init$condReStruc) != "0 + response.id | basis.functions"], function(x){x[[1]] * x[[2]]})) == ncol(rrm.init$data.tmb$Z) - (ncol(basis.Z) * n_bases)){
           stop("dimension of additional random effects are incorrect, please check the model spec.")
         }
       } else {
-        if (!sapply(rrm.init$condReStruc, function(x){x[[1]] * x[[2]]}) == ncol(newZ)){
+        if (!sum(sapply(rrm.init$condReStruc, function(x){x[[1]] * x[[2]]})) == (ncol(basis.Z) * n_bases)){
           stop("internal error in the dimension of random effects approximating the latent field, please check the model spec.")
         }
       }
       
-      # replace the random effect matrix
+      # initialise the new Z matrix with any other random effects if they exist
       if (any(names(rrm.init$condReStruc) != "0 + response.id | basis.functions")) {
-        rrm.init$data.tmb$Z <- cbind(rrm.init$data.tmb$Z[,1:(ncol(rrm.init$data.tmb$Z) - ncol(newZ))], newZ)
+        newZ <- rrm.init$data.tmb$Z[,1:(ncol(rrm.init$data.tmb$Z) - (ncol(basis.Z) * n_bases))]
       } else {
-        rrm.init$data.tmb$Z <- newZ
+        newZ <- NULL
       }
+      
+      # loop through the basis function random effects and add them to the new Z matrix (depending on their covariance structure)
+      for (i_basis in which(names(rrm.init$condReStruc) == "0 + response.id | basis.functions")) {
+        if (rrm.init$condReStruc[[i_basis]]$blockCode == 9) {
+          newZ <- cbind(newZ, basis.Z[ , col.idx]) # for the rr() structure we need to re-order the columns
+        } else if (rrm.init$condReStruc[[i_basis]]$blockCode == 0) {
+          newZ <- cbind(newZ, basis.Z)
+        } else {
+          stop("RE structure for the basis functions is not yet supported")
+        }
+      }
+      
+      # replace the random effect matrix
+      rrm.init$data.tmb$Z <- newZ
       
       # set the starting pars to be calculated (gets initial factor loadings from DS residuals within rr)
       rrm.init$control$start_method$method = "res"
       
       # free up some extra space
-      rm(newZ)
+      rm(basis.Z, newZ)
       gc()
       
       # fit the model
@@ -340,6 +371,7 @@ mvlgcp <- function(formula, data, weights = NULL, basis.functions, coord.names =
       mod$weights <- weights
       mod$response.id <- response.id
       mod$col.idx <- col.idx
+      mod$mv.flds <- mv.flds
 
     }
   }
@@ -808,8 +840,8 @@ influence.glmmTMB <- function(model, ..., by.obs = FALSE) {
 #'
 #' @param object a fitted \code{glmmTMB} model object.
 #' @param newdata a data frame containing the point locations (i.e. coordinates used in the original model fit) at which to calculate the field(s). If \code{newdata} is a two-column matrix, these are assumed to be the horizontal and vertical coordinates respectively.
-#' @param which.response (optional) a single integer (or vector thereof) indicating the which of the response-specific fields to return. Applies only to multivaraite LGCP. Response numbers correspond to the response in order of \code{unique(object$response.id)}.
-#' 
+#' @param which.response (optional) a single integer (or vector thereof) indicating the which of the response-specific fields to return. Applies only to multivariate LGCP. Response numbers correspond to the response in order of \code{unique(object$response.id)}.
+#' @param combine.response.fields (optional) a logical indicating whether to combine (sum) independent and shared (reduced rank) fields when \code{which.response} is supplied. Applies only to multivariate LGCP that have \code{mv.flds = "both"} field types included. Default is \code{TRUE}.
 #' 
 #' @details
 #' The function first calculates basis functions (associated with the fitted \code{object}) at the coordinates within \code{newdata}. The resulting basis function matrix is then multiplied by the random coefficients at their mode (as used in the Laplace approximation of the marginal likelihood). If a specific response field is required, the \code{object$n_factor} latent fields are then multiplied by the response-specific factor loadings. 
@@ -834,7 +866,7 @@ influence.glmmTMB <- function(model, ..., by.obs = FALSE) {
 #' domain <- dat[dat$pt == 0, ]
 #' 
 #' plot(vec2im(fld, domain$x, domain$y), main = "Black Oak Latent Field")
-get_field <- function(object, newdata, which.response = NULL) {
+get_field <- function(object, newdata, which.response = NULL, combine.response.fields = TRUE) {
   
   # check that the fitted model has bsais functions attached to it
   if (is.null(object$basis.functions)) {
@@ -880,25 +912,50 @@ get_field <- function(object, newdata, which.response = NULL) {
       warning("'which.response' is not applicable to a univariate model... returning the single latent field")
       Lambda <- NULL
       
-      # compute the field
-      fld <- X %*% b
-      
     } else if (object$n_responses < length(which.response)) {
       
       stop("more fields requested through 'which.response' than responses in the fitted model. Please check and retry")
       
     } else {
       
-      # calculate the response-specific field
-      if (length(which.response) > 1) {
-        fld <- fld %*% t(Lambda[which.response, ])
+      # calculate the response-specific field from the shared fields
+      if (object$mv.flds %in% c("correlated", "both")) {
+        if (length(which.response) > 1) {
+          fld_cor <- fld[ , grepl("d", colnames(fld), fixed = T)] %*% t(Lambda[which.response, ])
+        } else {
+          fld_cor <- fld[ , grepl("d", colnames(fld), fixed = T)] %*% Lambda[which.response, ]
+        }
       } else {
-        fld <- fld %*% Lambda[which.response, ]
+        fld_cor <- NULL
+      }
+      # adjust these names
+      if (!is.null(fld_cor)) {
+        colnames(fld_cor) <- paste0("m", which.response)
+      }
+      # extract the response-specific field(s) from the independent fields if present
+      if (object$mv.flds %in% c("independent", "both")) {
+        if (length(which.response) > 1) {
+          fld_ind <- fld[ , paste0("m", which.response)]
+        } else {
+          fld_ind <- as.matrix(fld[ , paste0("m", which.response)])
+        }
+      } else {
+        fld_ind <- NULL
+      }
+      if (!is.null(fld_ind)) {
+        colnames(fld_ind) <- paste0("m", which.response, "_ind")
       }
       
+      # combine to return these fields
+      if (combine.response.fields & !is.null(fld_cor) & !is.null(fld_ind)) {
+        fld <- fld_cor + fld_ind
+      } else {
+        fld <- cbind(fld_cor, fld_ind)
+      }
     }
   }
   
+  # store some additional information
   attr(fld, "coefficients") <- b
   attr(fld, "loadings") <- Lambda
   attr(fld, "response.names") <- object$response.id
@@ -937,7 +994,11 @@ get_loadings <- function(object) {
   
   # check if the model is multivariate and adjust the coefficient vector accordingly
   if (object$n_factors > 0) {
-    Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions")]]
+    if (any(sapply(object$modelInfo$reStruc$condReStruc, function(x){x$blockCode}) == 9)) {
+      Lambda <- object$obj$env$report(object$fit$parfull)$fact_load[[which(object$modelInfo$grpVar == "basis.functions" & sapply(object$modelInfo$reStruc$condReStruc, function(x){x$blockCode}) == 9)]] # gets only the RE term that is called "basis.functions" and has "rr" structure (i.e. blockCode == 9)
+    } else {
+      Lambda <- NULL
+    }
   } else {
     stop("The supplied model does not use a reduced rank approximation to the multivarate latent fields")
   }
@@ -992,17 +1053,48 @@ get_bfs_coeff <- function(object) {
     tmp.b_flds <- all_b
   }
   
-  # check if the model is multivariate and adjust the coefficient vector accordingly
-  b_flds <- list()
-  if (object$n_factors > 0) {
-    for (i in 1:object$n_factors) {
-      b_flds[[i]] <- tmp.b_flds[seq(i,length(tmp.b_flds), by = object$n_responses)]
-    }
+  # check if the model is multivariate and whether the latent fields are independent, reduced rank, or both and then, adjust the coefficient vector accordingly
+  if (is.null(object$mv.flds)) {
+    b <- as.matrix(data.frame(tmp.b_flds))
+    dimnames(b) <- list(NULL, "m1")
   } else {
-    b_flds <- tmp.b_flds
+    if (object$mv.flds == "independent") {
+      # separate the independent coefficients into responses
+      b_flds <- list()
+      for (i in 1:object$n_responses) {
+        b_flds[[i]] <- tmp.b_flds[(1:object$n_basis) + ((i-1) * object$n_basis)]
+      }
+      b <- sapply(b_flds, cbind)
+      colnames(b) <- paste0("m", 1:object$n_responses)
+    } else if (object$mv.flds == "correlated") {
+      b_flds <- list()
+      for (i in 1:object$n_factors) {
+        b_flds[[i]] <- tmp.b_flds[seq(i,length(tmp.b_flds), by = object$n_responses)]
+      }
+      b <- sapply(b_flds, cbind)
+      colnames(b) <- paste0("d", 1:object$n_factors)
+    } else if (object$mv.flds == "both") {
+      # split the b into the correlated and independent fields
+      tmp.b_flds_cor <- tmp.b_flds[1:(object$n_basis * object$n_responses)]
+      tmp.b_flds_ind <- tmp.b_flds[((object$n_basis * object$n_responses) + 1):length(tmp.b_flds)]
+      # extract the zeroes from the reduced rank coefficients and separate into factors
+      b_flds_cor <- list()
+      for (i in 1:object$n_factors) {
+        b_flds_cor[[i]] <- tmp.b_flds_cor[seq(i,length(tmp.b_flds_cor), by = object$n_responses)]
+      }
+      b_cor <- sapply(b_flds_cor, cbind)
+      # separate the independent coefficients into responses
+      b_flds_ind <- list()
+      for (i in 1:object$n_responses) {
+        b_flds_ind[[i]] <- tmp.b_flds_ind[(1:object$n_basis) + ((i-1) * object$n_basis)]
+      }
+      b_ind <- sapply(b_flds_ind, cbind)
+      # combine all into a single k x (d + m) matrix
+      b <- cbind(b_cor, b_ind)
+      colnames(b) <- c(paste0("d", 1:object$n_factors), paste0("m", 1:object$n_responses))
+    }
   }
-  b <- sapply(b_flds, cbind)
-
+  
   return(b)
 }
 

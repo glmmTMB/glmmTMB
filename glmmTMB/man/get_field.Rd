@@ -4,14 +4,21 @@
 \alias{get_field}
 \title{Predict the latent field components from a model fitted via \code{mvlgcp()}}
 \usage{
-get_field(object, newdata, which.response = NULL)
+get_field(
+  object,
+  newdata,
+  which.response = NULL,
+  combine.response.fields = TRUE
+)
 }
 \arguments{
 \item{object}{a fitted \code{glmmTMB} model object.}
 
 \item{newdata}{a data frame containing the point locations (i.e. coordinates used in the original model fit) at which to calculate the field(s). If \code{newdata} is a two-column matrix, these are assumed to be the horizontal and vertical coordinates respectively.}
 
-\item{which.response}{(optional) a single integer (or vector thereof) indicating the which of the response-specific fields to return. Applies only to multivaraite LGCP. Response numbers correspond to the response in order of \code{unique(object$response.id)}.}
+\item{which.response}{(optional) a single integer (or vector thereof) indicating the which of the response-specific fields to return. Applies only to multivariate LGCP. Response numbers correspond to the response in order of \code{unique(object$response.id)}.}
+
+\item{combine.response.fields}{(optional) a logical indicating whether to combine (sum) independent and shared (reduced rank) fields when \code{which.response} is supplied. Applies only to multivariate LGCP that have \code{mv.flds = "both"} field types included. Default is \code{TRUE}.}
 }
 \value{
 a matrix with \code{nrow(newdata)} rows and k columns - where k is the number of latent fields. k = 1 in the univariate case, k = \code{length(which.response)} when supplied otherwise, k = \code{object$n_factors}.
