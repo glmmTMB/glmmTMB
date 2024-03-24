@@ -52,7 +52,7 @@
       attributes (GH #977)
     } % itemize
   } % bug fixes
-} % 1.1.8-9000
+} % 1.1.9
 
 \section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
   \subsection{NEW FEATURES}{
