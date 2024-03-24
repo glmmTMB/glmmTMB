@@ -4,7 +4,15 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.9}{
+\section{CHANGES IN VERSION 1.1.9-9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fixed bug in \code{simulate_new} for \code{family = "beta_family")
+    }
+  } % bug fixes
+} % 1.1.9-9000
+  
+\section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the underlying parameterization of the dispersion for
@@ -52,7 +60,7 @@
       attributes (GH #977)
     } % itemize
   } % bug fixes
-} % 1.1.8-9000
+} % 1.1.9
 
 \section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
   \subsection{NEW FEATURES}{
