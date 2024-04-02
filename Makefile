@@ -16,7 +16,6 @@ all:
 	make doc-update
 	make build-package
 	make install
-	make upstream-ver-update
 	make pdf
 
 enum-update:: $(PACKAGE)/R/enum.R
