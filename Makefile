@@ -46,12 +46,6 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	grep "_vprior *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_vprior//g >> $@
 	echo ")" >> $@
 
-
-upstream-ver-update: $(PACKAGE)/inst/TMB-version
-$(PACKAGE)/inst/TMB-version:
-	echo "glmmTMB:::checkDepPackageVersion('TMB',write_file=TRUE)" | $(R) --slave
-	mv TMB-version $@
-
 doc-update: $(PACKAGE)/R/*.R
 	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\")))" | $(R) --slave
 	@touch doc-update
