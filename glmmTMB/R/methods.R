@@ -421,10 +421,20 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
           xnms <- estNameList[[cnm]]
           fnm <- fullNameList[[cnm]]
           ## map <- object$obj$env$map
-          if (!include_nonest || nrow(m) == length(fnm)) {
+          if (!include_nonest ||
+              nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
-              ## mapping *or* rank-def columns dropped
+              ## some parameters mapped *to each other* (not fixed)
+              map <- object$obj$env$map
+              if (!is.null(cur_map <- map[[parnms[[i]]]]) &&
+                  length(unique(cur_map)) < length(cur_map)) {
+                  ## replicate cov rows/cols appropriately
+                  m <- m[as.numeric(cur_map), as.numeric(cur_map)]
+                  ## should fix correlations in cov matrix to 1 for mapped pairs ...
+                  warning("covariance matrices for mapped pairs are incorrect")
+              }
+              ## fixed params *or* rank-def columns dropped
               mm <- matrix(NA_real_, length(fnm), length(fnm),
                            dimnames=list(fnm, fnm))
               mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
