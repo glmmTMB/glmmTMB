@@ -431,8 +431,18 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
                   length(unique(cur_map)) < length(cur_map)) {
                   ## replicate cov rows/cols appropriately
                   m <- m[as.numeric(cur_map), as.numeric(cur_map)]
-                  ## should fix correlations in cov matrix to 1 for mapped pairs ...
-                  warning("covariance matrices for mapped pairs are incorrect")
+                  map_split <- split(seq_along(cur_map), cur_map)
+                  for (cc in map_split) {
+                      if (length(cc)==1) next
+                      ## should fix covariances in cov matrix
+                      ## equal to variance for mapped pairs ...
+                      ## combn() generates a 2-by-n matrix of pairs
+                      ccc <- combn(cc, 2)
+                      for (j in 1:ncol(ccc)) {
+                          m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
+                              m[ccc[1,j], ccc[1,j]]
+                      }
+                  }
               }
               ## fixed params *or* rank-def columns dropped
               mm <- matrix(NA_real_, length(fnm), length(fnm),
