@@ -32,9 +32,9 @@ prior1 <- data.frame(prior = c("normal(250,3)","t(0,3,3)","gamma(10,1)"),
                      class = c("fixef", "fixef", "ranef_sd"),
                      coef = c("(Intercept)", "Days", "Subject"))
 g1 <- glmmTMB(Reaction ~ 1 + Days + (1 + Days |Subject), sleepstudy)
-update(g1, prior = prior1)
+update(g1, priors = prior1)
 prior2 <- data.frame(prior = c("t(0,3,3)","gamma(10,1)"),
                      class = c("fixef", "ranef_sd"),
                      coef = c("", "Subject"))
-update(g1, prior = prior2) 
+update(g1, priors = prior2) 
 }
