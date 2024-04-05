@@ -2017,9 +2017,9 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
     }
-    if (!is.null(x$prior)) {
+    if (!is.null(x$priors)) {
         cat("\nPriors:\n")
-        print(x$prior)
+        print(x$priors)
     }
     invisible(x)
 }## print.summary.glmmTMB
