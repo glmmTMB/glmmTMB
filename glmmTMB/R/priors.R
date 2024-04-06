@@ -235,7 +235,7 @@ print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
     pstr <- character(nrow(x))
     for (i in seq_len(nrow(x))) {
         resp <- from_prior_syn(x$class[i])
-        if (nzchar(x$coef[i])) {
+        if (!is.null(x$coef) && nzchar(x$coef[i])) {
             resp <- sprintf("%s (%s)", resp, x$coef[i])
         }
         ff <- reformulate(x$prior[i], response = resp)

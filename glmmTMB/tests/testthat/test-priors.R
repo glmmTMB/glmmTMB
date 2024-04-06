@@ -103,3 +103,20 @@ test_that("print specific coefs for priors", {
     expect_true(any(grepl("fixef(DOP)", cc, fixed = TRUE)))
 })
 
+test_that("print.priors_glmmTMB works without coef column #1014", {
+  gdat <- readRDS(system.file("vignette_data", "gophertortoise.rds", package = "glmmTMB"))
+  gmod_glmmTMB <- glmmTMB(
+    shells ~ prev + offset(log(Area)) + factor(year) + (1 | Site),
+    family = poisson,
+    data = gdat
+  )
+  gprior <- data.frame(
+    prior = "gamma(1e8, 2.5)",
+    class = "ranef"
+  )
+  gmod_glmmTMB_p <- update(gmod_glmmTMB, priors = gprior)
+  x <- summary(gmod_glmmTMB_p)
+  out <- capture.output(print(x$priors))
+  expect_identical(trimws(out), "ranef ~ gamma(1e+08, 2.5)")
+  expect_no_error(print(x))
+})
