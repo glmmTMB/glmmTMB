@@ -192,9 +192,9 @@ proc_priors <- function(priors, info = NULL) {
 #' use of priors in glmmTMB
 #'
 #' (EXPERIMENTAL/subject to change)
-#' 
+#'
 #' \code{glmmTMB} can accept prior specifications, for doing maximum \emph{a posteriori} (MAP) estimation (or Hamiltonian MC with the \code{tmbstan} package), or (outside of a Bayesian framework) for the purposes of regularizing parameter estimates  
-#' 
+#'
 #' The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame with columns
 #' \describe{
 #' \item{\code{prior}}{character; the prior specification, e.g. "normal(0,2)"}
@@ -210,7 +210,7 @@ proc_priors <- function(priors, info = NULL) {
 #' \item "lkj" (correlation) [WARNING, maybe buggy at present!]
 #' }
 #' The first three are typically used for fixed effect parameters; the fourth for standard deviation parameters; and the last for correlation structures. See the "priors" vignette for examples and further information.
-#' 
+#'
 #' @name priors
 #'
 #' @examples
@@ -220,11 +220,11 @@ proc_priors <- function(priors, info = NULL) {
 #'                      class = c("fixef", "fixef", "ranef_sd"),
 #'                      coef = c("(Intercept)", "Days", "Subject"))
 #' g1 <- glmmTMB(Reaction ~ 1 + Days + (1 + Days |Subject), sleepstudy)
-#' update(g1, prior = prior1)
+#' update(g1, priors = prior1)
 #' prior2 <- data.frame(prior = c("t(0,3,3)","gamma(10,1)"),
 #'                      class = c("fixef", "ranef_sd"),
 #'                      coef = c("", "Subject"))
-#' update(g1, prior = prior2) 
+#' update(g1, priors = prior2)
 NULL
 
 
