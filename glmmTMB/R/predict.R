@@ -162,9 +162,9 @@ predict.glmmTMB <- function(object,
       }
   }
 
-   ## FIXME: DRY
-
-    beta_vars <- PL[grepl("^beta", names(PL))]
+    ## FIXME: DRY
+    ## FIXME: which components are allowable for REML? Both cond and zi?
+    beta_vars <- PL[grepl("^beta[^d]", names(PL))]
     if (omi$REML) {
         for (beta_var in names(beta_vars)) {
             beta_vec <- beta_vars[[beta_var]]
@@ -439,7 +439,6 @@ predict.glmmTMB <- function(object,
 
   if (pop_pred) {
       TMBStruc <- within(TMBStruc, {
-          ## FIXME: need to identify which parameters correspond to fixed effects!
           parameters$b[] <- 0
           mapArg$b <- factor(rep(NA,length(parameters$b)))
       })
