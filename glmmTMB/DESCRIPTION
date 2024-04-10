@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.8-9000
+Version: 1.1.9
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -42,7 +42,7 @@ Description: Fit linear and generalized linear mixed models with various
     out using the Laplace approximation. Gradients are calculated using automatic
     differentiation.
 License: AGPL-3
-Depends: R (>= 3.2.0)
+Depends: R (>= 3.6.0)
 Imports:
     methods,
     TMB (>= 1.9.0),
@@ -81,7 +81,10 @@ Suggests:
     xtable,
     huxtable,
     mvabund,
-    parallel
+    parallel,
+    blme,
+    purrr,
+    dplyr
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

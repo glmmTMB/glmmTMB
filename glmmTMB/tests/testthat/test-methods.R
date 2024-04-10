@@ -638,9 +638,26 @@ test_that("de novo simulation with binomial N>1", {
                  family = binomial,
                  weights = rep(10, 10),
                  newdata = dd,
-                 newparams = list(beta = c(-0.5, 0.1), betad = 0))
+                 newparams = list(beta = c(-0.5, 0.1)))
     expect_equal(head(ss[[1]], 2),
                       c(3, 2))
+})
+
+test_that("de novo simulation error checking", {
+    dd <- data.frame(x = 1:10)
+    expect_error(simulate_new(~ x,
+                 seed = 101,
+                 family = gaussian,
+                 newdata = dd,
+                 newparams = list(beta = 0)),
+                 "length mismatch in component beta")
+    expect_warning(simulate_new(~ x,
+                 seed = 101,
+                 family = gaussian,
+                 newdata = dd,
+                 newparams = list(beta = rep(0,2),
+                                  junk = 1:3)),
+                 "unmatched parameter names: junk")
 })
 
 
