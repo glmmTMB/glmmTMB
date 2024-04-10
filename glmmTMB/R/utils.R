@@ -299,7 +299,7 @@ omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
 }
 
-get_pars <- function(object, unlist=TRUE) {
+get_pars <- function(object, unlist=TRUE, include_random = FALSE) {
     ee <- object$obj$env
     x <- ee$last.par.best
     ## work around built-in default to parList, which
@@ -307,7 +307,7 @@ get_pars <- function(object, unlist=TRUE) {
     if (length(ee$random)>0) x <- x[-ee$random]
     p <- ee$parList(x=x)
     if (!unlist) return(p)
-    p <- unlist(p[names(p)!="b"])  ## drop primary RE
+    if (!include_random) p <- unlist(p[names(p)!="b"])  ## drop primary RE
     names(p) <- gsub("[0-9]+$","",names(p)) ## remove disambiguators
     return(p)
 }

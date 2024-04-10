@@ -123,6 +123,7 @@ predict.glmmTMB <- function(object,
                             na.action = na.pass,
                             fast=NULL,
                             debug=FALSE,
+                            map_b = NA,
                             ...) {
   ## FIXME: add re.form
 
@@ -138,6 +139,40 @@ predict.glmmTMB <- function(object,
      type <- zitype
   }
   type <- match.arg(type)
+
+    
+  omi <- object$modelInfo  ## shorthand ("**o**bject$**m**odel**I**nfo")
+
+  ## FIXME: how does map_b interact with "fast"?
+
+
+  PL <- object$obj$env$parList()
+  ## FIXME: clunky, but should be forward-compatible when we add "bdisp"
+  b_vars <- PL[grepl("^b[^e]?", names(PL))]
+  if (is.na(map_b)) {
+      map_b <- !is.null(newparams) && any(lengths(b_vars) > 0)
+  }
+
+  if (map_b) {
+      for (b_var in names(b_vars)) {
+          b_vec <- b_vars[[b_var]]
+          if (length(b_vec) > 0) {
+              omi$map[[b_var]] <- factor(rep(NA,length(b_vec)))
+          }
+      }
+  }
+
+   ## FIXME: DRY
+
+    beta_vars <- PL[grepl("^beta", names(PL))]
+    if (omi$REML) {
+        for (beta_var in names(beta_vars)) {
+            beta_vec <- beta_vars[[beta_var]]
+            if (length(beta_vec) > 0) {
+                omi$map[[beta_var]] <- factor(rep(NA,length(beta_vec)))
+            }
+        }
+    }
 
   ## FIXME: better test? () around re.form==~0 are *necessary*
   ## could steal isRE from lme4 predict.R ...
@@ -273,8 +308,6 @@ predict.glmmTMB <- function(object,
     newFr <- eval.parent(mf)
   }
 
-  omi <- object$modelInfo  ## shorthand ("**o**bject$**m**odel**I**nfo")
-
   respCol <- match(respNm <- names(omi$respCol),names(newFr))
   ## create *or* overwrite response column for prediction data with NA
   newFr[[respNm]] <- NA
@@ -406,6 +439,7 @@ predict.glmmTMB <- function(object,
 
   if (pop_pred) {
       TMBStruc <- within(TMBStruc, {
+          ## FIXME: need to identify which parameters correspond to fixed effects!
           parameters$b[] <- 0
           mapArg$b <- factor(rep(NA,length(parameters$b)))
       })

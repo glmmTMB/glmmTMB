@@ -4,6 +4,7 @@ if (!file.exists(fn)) {
 }
 
 library(tidyverse)
+library(glmmTMB)
 
 wind_data_full <- read_csv(fn)
 wind_data <- wind_data_full %>%

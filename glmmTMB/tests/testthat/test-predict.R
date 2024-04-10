@@ -55,7 +55,7 @@ test_that("new levels in AR1 (OK)", {
                    "Predicting new random effect levels")
 })
 
-context("Predict two-column response case")
+## context("Predict two-column response case")
 
 test_that("two-column response", {
     skip_on_cran()
@@ -522,4 +522,13 @@ test_that("weights with attributes are OK", {
     p <- predict(m, newdata = d, re.form = NULL)
     expect_equal(head(p),
                  c(3.35535960506176, 4.98184089632094, 5.50821757779119))
+})
+
+test_that("predict with REML=TRUE", {
+    m <- glmmTMB(
+        Petal.Length ~ Petal.Width + (1 | Species),
+        data = iris,
+        REML = TRUE)
+    predict(m)
+
 })
