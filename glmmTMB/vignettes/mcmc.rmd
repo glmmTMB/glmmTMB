@@ -97,7 +97,7 @@ The `tmbstan` package allows direct, simple access to a hybrid/Hamiltonian Monte
 ```
 (running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds)
 
-However, there are many indications (warning messages; trace plots) that the correlation parameter needs to a more informative prior. (In the plot below, the correlation parameter is shown on its unconstrained scale; the actual correlation would be $\theta_3/\sqrt{1+\theta_3^2}$.)
+However, there are many indications (warning messages; trace plots) that the correlation parameter needs to be given a more informative prior. (In the plot below, the correlation parameter is shown on its unconstrained scale; the actual correlation would be $\theta_3/\sqrt{1+\theta_3^2}$.)
 
 ```{r show_traceplot,echo=FALSE,fig.width=8,fig.height=5}
 library(png)
@@ -110,5 +110,3 @@ grid.raster(img)
 
 - solve mixing for cor parameter
 - more complex example - e.g. `Owls`
-
-

@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.8-9000}{
+\section{CHANGES IN VERSION 1.1.9}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the underlying parameterization of the dispersion for
@@ -40,6 +40,10 @@
     \itemize{
       \item lognormal-hurdle models now work (i.e., zero values
       can occur in the response if \code{ziformula} is specified)
+      \item better checking for illegal (negative or non-integer) values
+      in response variables
+      \item experimental support for priors: see \code{?priors} and
+      \code{vignette("priors", package = "glmmTMB")}
     }
   } % new features
   \subsection{BUG FIXES}{
