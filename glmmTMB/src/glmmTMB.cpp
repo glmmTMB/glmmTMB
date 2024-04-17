@@ -796,7 +796,9 @@ Type objective_function<Type>::operator() ()
 	s2 = s1 + logspace_add(etad(i), s1 - psi(0));
 	tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	SIMULATE{
-	  error("simulate not implemented yet for nbinom12 family");
+	  s1 = mu(i);
+	  s2 = mu(i) * (Type(1)+phi(i) + mu(i)/exp(psi(0)));
+	  yobs(i) = rnbinom2(s1, s2);
 	}
 	break;
       case truncated_poisson_family:
