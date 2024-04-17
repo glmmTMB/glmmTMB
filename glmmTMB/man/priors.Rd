@@ -36,5 +36,5 @@ update(g1, priors = prior1)
 prior2 <- data.frame(prior = c("t(0,3,3)","gamma(10,1)"),
                      class = c("fixef", "ranef_sd"),
                      coef = c("", "Subject"))
-update(g1, priors = prior2) 
+update(g1, priors = prior2)
 }

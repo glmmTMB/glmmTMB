@@ -33,8 +33,9 @@ enum valid_family {
   truncated_compois_family =405,
   nbinom1_family =500,
   nbinom2_family =501,
-  truncated_nbinom1_family =502,
-  truncated_nbinom2_family =503,
+  nbinom12_family =502,
+  truncated_nbinom1_family =550,
+  truncated_nbinom2_family =551,
   t_family =600,
   tweedie_family = 700,
   lognormal_family = 800
@@ -593,7 +594,7 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(theta);
   PARAMETER_VECTOR(thetazi);
 
-  // Extra family specific parameters (e.g. tweedie, t, ordbetareg)
+  // Extra family specific parameters (e.g. tweedie, t, ordbetareg, nbinom12)
   PARAMETER_VECTOR(psi);
 
   DATA_INTEGER(family);
@@ -757,11 +758,11 @@ Type objective_function<Type>::operator() ()
         s2 = s1 + etad(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	if (family != truncated_nbinom1_family) {
-		SIMULATE {
-			s1 = mu(i);
-			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-			yobs(i) = rnbinom2(s1, s2);
-		}
+	SIMULATE {
+	  s1 = mu(i);
+	  s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+	  yobs(i) = rnbinom2(s1, s2);
+	  }
 	} else {
           tmp_loglik -= log_nzprob(i);
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
@@ -789,6 +790,15 @@ Type objective_function<Type>::operator() ()
           }
         }
         break;
+      case nbinom12_family:
+	s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+	// log(var - mu) = log(mu) + log(phi + mu/psi)
+	s2 = s1 + logspace_add(etad(i), s1 - psi(0));
+	tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+	SIMULATE{
+	  error("simulate not implemented yet for nbinom12 family");
+	}
+	break;
       case truncated_poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob(i);
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
