@@ -85,7 +85,7 @@ Suggests:
     blme,
     purrr,
     dplyr
-Remotes: leeper/prediction, fsolt/dotwhisker
+Remotes: leeper/prediction, leeper/margins, fsolt/dotwhisker
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
