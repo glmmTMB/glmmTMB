@@ -130,9 +130,11 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1].}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
+##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and skew (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
 ##' }
 ##' @references
 ##' \itemize{
+##' \item Azzalini A & Capitanio A (2014). "The skew-normal and related families." Cambridge: Cambridge University Press.
 ##' \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
@@ -332,6 +334,17 @@ tweedie <- function(link="log") {
          })
     return(make_family(r,link, needs_nonneg = TRUE))
 }
+
+#' @rdname nbinom2
+#' @export
+skewnormal <- function(link="identity") {
+  r <- list(family="skewnormal",
+            variance = function(phi) {
+              phi^2
+            })
+  return(make_family(r,link, needs_nonneg = FALSE))
+}
+
 
 #' @rdname nbinom2
 #' @export

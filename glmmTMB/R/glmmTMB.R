@@ -456,7 +456,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## Extra family specific parameters
   ## FIXME: switch/rewrite to be less ugly?
-  psiLength <- if (family$family %in% c("t", "tweedie"))
+  psiLength <- if (family$family %in% c("t", "tweedie", "skewnormal"))
                { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
 
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)

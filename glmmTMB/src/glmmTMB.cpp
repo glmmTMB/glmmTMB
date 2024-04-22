@@ -37,7 +37,8 @@ enum valid_family {
   truncated_nbinom2_family =503,
   t_family =600,
   tweedie_family = 700,
-  lognormal_family = 800
+  lognormal_family = 800,
+  skewnormal_family = 900
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -679,6 +680,12 @@ Type objective_function<Type>::operator() ()
       case gaussian_family:
         tmp_loglik = dnorm(yobs(i), mu(i), phi(i), true);
         SIMULATE{yobs(i) = rnorm(mu(i), phi(i));}
+        break;
+      case skewnormal_family:
+        s1 = mu(i);
+        s2 = phi(i);
+        s3 = psi(0);
+        tmp_loglik = glmmtmb::dskewnorm(yobs(i), s1, s2, s3, true);
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
