@@ -4,6 +4,14 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.9.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
+    }
+  }
+}
+
 \section{CHANGES IN VERSION 1.1.9}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
