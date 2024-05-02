@@ -204,7 +204,7 @@ test_that("blockCode set correctly in VarCorr", {
     n <- 25                                              ## Number of time points
     x <- MASS::mvrnorm(mu = rep(0,n),
                        Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process using the MASS package
-    y <- x + rnorm(n)                                   ## Add measurement noise
+    y <- x + rnorm(n, sd = 0.1)                                   ## Add measurement noise
     times <- factor(1:n, levels=1:n)
     group <- factor(rep(1,n))
     dat0 <- data.frame(y, times, group)
