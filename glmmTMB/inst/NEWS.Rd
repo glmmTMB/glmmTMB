@@ -4,17 +4,28 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.9.9000}{
+\section{CHANGES IN VERSION 1.1.9-9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
+    } % itemize
+  } % new features
   \subsection{BUG FIXES}{
     \itemize{
+      \item simulation now works for models fitted with the (scaled) t
+	distribution (GH #1024)
       \item \code{vcov} works better for cases where \code{map} is used
       to fix sets of parameters equal to each other
     } % itemize
   } % bug fixes
-} % 1.1.9-9000
-
-}
-
+  \subsection{OTHER CHANGES}{
+    \itemize{
+      \item now imports random effect machinery from the
+      \code{reformulas} package rather than from \code{lme4}
+    } % itemize
+  } % other changes
+} % 1.1.9.9000
+  
 \section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{

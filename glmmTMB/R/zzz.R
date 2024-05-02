@@ -13,8 +13,17 @@
     if (getRversion() < "4.4.0") {
         assign("%||%", function (x, y)  { if (is.null(x)) y else x }, envir = topenv())
     }
-    checkDepPackageVersion(dep_pkg="TMB")
+    check_dep_version(dep_pkg="TMB")
 }
+
+## https://github.com/lme4/lme4/issues/768
+## https://github.com/kaskr/adcomp/issues/387
+get_abi_version <- function() {
+    if (utils::packageVersion("Matrix") < "1.6-2") return(numeric_version("0"))
+    Matrix::Matrix.Version()[["abi"]]
+}
+
+.TMB.build.version <- packageVersion("TMB")
 
 .onUnload <- function(libpath) {
   library.dynam.unload("glmmTMB", libpath)
