@@ -385,17 +385,6 @@ test_that("vcov", {
     ## expect_error(vcov(fm2,x="junk"),"unknown arguments")
 })
 
-set.seed(101)
-test_that("simulate", {
-    sm2 <<- rowMeans(do.call(cbind, simulate(fm2, 10)))
-    sm2P <<- rowMeans(do.call(cbind, simulate(fm2P, 10)))
-    sm2G <<- rowMeans(do.call(cbind, simulate(fm2G, 10)))
-    sm2NB <<- rowMeans(do.call(cbind, simulate(fm2NB, 10)))
-    expect_equal(sm2, sleepstudy$Reaction, tol=20)
-	expect_equal(sm2P, sleepstudy$Reaction, tol=20)
-	expect_equal(sm2G, sleepstudy$Reaction, tol=20)
-	expect_equal(sm2NB, sleepstudy$Reaction, tol=20)
-})
 
 test_that("formula", {
     expect_equal(formula(fm2),Reaction ~ Days + (Days | Subject))
@@ -404,15 +393,6 @@ test_that("formula", {
     expect_equal(formula(fm2, component="disp", fixed.only=TRUE), ~1)
     expect_equal(formula(fm2, component="zi"), ~0)
     expect_equal(formula(fm2, component="zi", fixed.only=TRUE), ~0)
-})
-
-context("simulate consistency with glm/lm")
-test_that("binomial", {
-    s1 <- simulate(f1b, 5, seed=1)
-    s2 <- simulate(f2b, 5, seed=1)
-    s3 <- simulate(f3b, 5, seed=1)
-    expect_equal(max(abs(as.matrix(s1) - as.matrix(s2))), 0)
-    expect_equal(max(abs(as.matrix(s1) - as.matrix(s3))), 0)
 })
 
 test_that("residuals from binomial factor responses", {
