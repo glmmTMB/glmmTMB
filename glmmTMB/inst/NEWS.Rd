@@ -4,16 +4,22 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.9.9000}{
+\section{CHANGES IN VERSION 1.1.9-9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item simulation now works for models fitted with the (scaled) t
+	distribution (GH #1024)
+    }
+  } % bug fixes
   \subsection{OTHER CHANGES}{
     \itemize{
       \item now imports random effect machinery from the
       \code{reformulas} package rather than from \code{lme4}
     }
-  }
-}
-
-\section{CHANGES IN VERSION 1.1.9}{
+  } % other changes 
+} % 1.1.9-9000
+  
+\section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the underlying parameterization of the dispersion for
