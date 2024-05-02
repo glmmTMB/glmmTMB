@@ -10,7 +10,13 @@
       \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
     }
   }
-}
+  \subsection{OTHER CHANGES}{
+    \itemize{
+      \item now imports random effect machinery from the
+      \code{reformulas} package rather than from \code{lme4}
+    } % itemize
+  } % other changes
+} % 1.1.9.9000
 
 \section{CHANGES IN VERSION 1.1.9}{
   \subsection{USER-VISIBLE CHANGES}{
