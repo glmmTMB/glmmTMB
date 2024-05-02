@@ -530,7 +530,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{mkReTrms}} from \pkg{lme4}, possibly augmented with information about \code{mgcv}-style smooth terms}
+##' \item{reTrms}{output from \code{\link{reformulas::mkReTrms}}, possibly augmented with information about \code{mgcv}-style smooth terms}
 ##' \item{ss}{splitform of the formula}
 ##' \item{aa}{additional arguments, used to obtain rank}
 ##' \item{terms}{terms for the fixed effects}
@@ -539,8 +539,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
-##' @importFrom lme4 findbars nobars
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
+##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm reOnly no_specials splitForm addForm0 makeOp
+##' @importFrom utils head
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
@@ -684,7 +685,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         if (has_re) {
             mf$formula <- ranform
             reTrms <- mkReTrms(no_specials(findbars_x(formula)),
-                               fr, reorder.terms=FALSE)
+                               fr, reorder.terms=FALSE, calc.lambdat=FALSE)
         } else {
             ## dummy elements
             reTrms <- list(Ztlist = list(), flist = list(), cnms = list(),
@@ -1010,7 +1011,7 @@ binomialType <- function(x) {
 ##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
 ##' @param priors a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
-##' @importFrom lme4 subbars findbars mkReTrms nobars
+##' @importFrom reformulas subbars mkReTrms
 ##' @importFrom Matrix t
 ##' @importFrom TMB MakeADFun sdreport
 ##' @details
@@ -1900,8 +1901,10 @@ llikAIC <- function(object) {
 ## FIXME: export/import from lme4?
 ngrps <- function(object, ...) UseMethod("ngrps")
 
+#' @export
 ngrps.default <- function(object, ...) stop("Cannot extract the number of groups from this object")
 
+#' @export
 ngrps.glmmTMB <- function(object, ...) {
     res <- lapply(object$modelInfo$reTrms,
            function(x) vapply(x$flist, nlevels, 1))
@@ -1911,6 +1914,7 @@ ngrps.glmmTMB <- function(object, ...) {
 
 }
 
+#' @export
 ngrps.factor <- function(object, ...) nlevels(object)
 
 
@@ -2017,9 +2021,9 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
     }
-    if (!is.null(x$prior)) {
+    if (!is.null(x$priors)) {
         cat("\nPriors:\n")
-        print(x$prior)
+        print(x$priors)
     }
     invisible(x)
 }## print.summary.glmmTMB
