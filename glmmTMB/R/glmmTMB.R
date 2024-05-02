@@ -455,9 +455,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   ## Extra family specific parameters
-  ## FIXME: switch/rewrite to be less ugly?
-  psiLength <- if (family$family %in% c("t", "tweedie"))
-               { 1 } else if (family$family == "ordbeta") { 2 } else { 0 }
+  psiLength <- find_psi(family$family)
 
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
@@ -952,6 +950,15 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 }
 
 .noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
+## number of additional/shape parameters (default = 0)
+.extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12'),
+                            '2' = 'ordbeta')
+find_psi <- function(f) {
+    for (i in seq_along(.extraParamFamilies)) {
+        if (f %in% .extraParamFamilies[[i]]) return(i)
+    }
+    return(0)
+}
 
 ## BMB: why not just sigma(x)!=1.0 ... ? (redundant with sigma.glmmTMB)
 usesDispersion <- function(x) {

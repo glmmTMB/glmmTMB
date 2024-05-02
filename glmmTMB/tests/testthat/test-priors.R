@@ -118,5 +118,5 @@ test_that("print.priors_glmmTMB works without coef column #1014", {
   x <- summary(gmod_glmmTMB_p)
   out <- capture.output(print(x$priors))
   expect_identical(trimws(out), "ranef ~ gamma(1e+08, 2.5)")
-  expect_no_error(print(x))
+  expect_no_error(capture.output(print(x)))
 })
