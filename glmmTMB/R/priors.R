@@ -92,7 +92,8 @@ proc_priors <- function(priors, info = NULL) {
                                 ## keep names, shift back one
                                 nm <- names(cc)
                                 if (length(cc) == 0) return(integer(0))
-                                cc <- c(1, cc) |> setNames(c(nm, "..total"))
+                                cc <- c(1, cc)
+                                names(cc) <- c(nm, "..total")
                                 return(cc)
                             })
 
@@ -102,7 +103,8 @@ proc_priors <- function(priors, info = NULL) {
         ##
 
         ## set pc to blank if missing
-        pc <- priors[["coef"]][i] %||% "" |> trimws()
+        pc <- priors[["coef"]][i] %||% ""
+        pc <- trimws(pc)
         if (pc == "") {
             if (substr(cl, 1, 4) == "beta") {
                 prior_elend[i] <- length(info$fix[[match_names(cl)]])-1

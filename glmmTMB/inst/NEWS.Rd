@@ -4,7 +4,29 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.9}{
+
+\section{CHANGES IN VERSION 1.1.9-9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
+    } % itemize
+  } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item simulation now works for models fitted with the (scaled) t
+      distribution (GH #1024)
+      \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
+    } % itemize
+  } % bug fixes
+  \subsection{OTHER CHANGES}{
+    \itemize{
+      \item now imports random effect machinery from the
+      \code{reformulas} package rather than from \code{lme4}
+    } % itemize
+  } % other changes
+} % 1.1.9.9000
+  
+\section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item the underlying parameterization of the dispersion for
