@@ -687,6 +687,9 @@ Type objective_function<Type>::operator() ()
         s2 = phi(i);
         s3 = psi(0);
         tmp_loglik = glmmtmb::dskewnorm(yobs(i), s1, s2, s3, true);
+        SIMULATE{
+           error("simulation not yet implemented for skewnormal family");
+	}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
