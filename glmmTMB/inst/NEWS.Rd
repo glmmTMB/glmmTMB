@@ -14,7 +14,8 @@
   \subsection{BUG FIXES}{
     \itemize{
       \item simulation now works for models fitted with the (scaled) t
-	distribution (GH #1024)
+      distribution (GH #1024)
+      \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
     } % itemize
   } % bug fixes
   \subsection{OTHER CHANGES}{
