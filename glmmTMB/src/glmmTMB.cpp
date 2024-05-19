@@ -100,7 +100,7 @@ enum valid_prior {
 enum valid_vprior {
   beta_vprior = 0,
   betazi_vprior = 1,
-  betad_vprior = 2,
+  betadisp_vprior = 2,
   theta_vprior = 10,
   thetazi_vprior = 20,
   psi_vprior = 30
@@ -924,7 +924,7 @@ Type objective_function<Type>::operator() ()
       switch(prior_whichpar[i]) {
       case beta_vprior: parvec = beta; break;
       case betazi_vprior: parvec = betazi; break;
-      case betad_vprior: parvec = betad; break;
+      case betadisp_vprior: parvec = betadisp; break;
       case theta_vprior: parvec = theta; break;
       case thetazi_vprior: parvec = thetazi; break;
       case psi_vprior: parvec = psi; break;
