@@ -565,6 +565,7 @@ family_params <- function(object) {
            tweedie = c("Tweedie power" = plogis(tf) + 1),
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
+           skewnormal = c("Skewnormal alpha" = tf),
            numeric(0)
            )
 }
@@ -631,7 +632,13 @@ print.glmmTMB <-
     cat("\nFixed Effects:\n")
     print(cf, ...)
   } else
-    cat("No fixed effect coefficients\n")
+      cat("No fixed effect coefficients\n")
+
+  if (!is.null(x$modelInfo$priors)) {
+      cat("\nPriors: ")
+      print(x$modelInfo$priors, compact = TRUE)
+      cat("\n")
+  }
   invisible(x)
 }
 
@@ -1303,7 +1310,7 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
 #' @param component formula for which component of the model to return (conditional, zero-inflation, or dispersion)
 #' @param fixed.only (logical) drop random effects, returning only the fixed-effect component of the formula?
 #' @param ... unused, for generic consistency
-#' @importFrom lme4 nobars
+#' @importFrom reformulas nobars
 #' @export
 formula.glmmTMB <- function(x, fixed.only=FALSE,
                             component=c("cond", "zi", "disp"),
@@ -1316,7 +1323,7 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
     af <- x$modelInfo$allForm
     ff <- if (component=="cond") af[["formula"]] else af[[paste0(component,"formula")]]
     if (fixed.only) {
-        ff <- lme4::nobars(ff)
+        ff <- nobars(ff)
     }
     return(ff)
 }

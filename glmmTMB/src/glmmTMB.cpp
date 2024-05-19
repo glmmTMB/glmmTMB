@@ -1,6 +1,8 @@
+#define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
 #include <TMB.hpp>
 #include "init.h"
 #include "distrib.h"
+#include "cordistrib.h"
 
 // don't need to include omp.h; we get it via TMB.hpp
 
@@ -31,11 +33,13 @@ enum valid_family {
   truncated_compois_family =405,
   nbinom1_family =500,
   nbinom2_family =501,
-  truncated_nbinom1_family =502,
-  truncated_nbinom2_family =503,
+  nbinom12_family =502,
+  truncated_nbinom1_family =550,
+  truncated_nbinom2_family =551,
   t_family =600,
   tweedie_family = 700,
-  lognormal_family = 800
+  lognormal_family = 800,
+  skewnormal_family = 900
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -76,6 +80,30 @@ enum valid_ziPredictCode {
   uncorrected_zipredictcode = 1,
   prob_zipredictcode = 2,
   disp_zipredictcode = 3
+};
+
+// codes for prior distributions
+enum valid_prior {
+  // real-valued
+  normal_prior = 0,
+  t_prior = 1,
+  cauchy_prior = 2,
+  // non-negative
+  gamma_prior = 10,
+  // (0,1), e.g. for zi prob
+  beta_prior = 20,
+  // correlations
+  lkj_prior = 30
+};
+
+// codes for parameter (vec) to apply prior to
+enum valid_vprior {
+  beta_vprior = 0,
+  betazi_vprior = 1,
+  betad_vprior = 2,
+  theta_vprior = 10,
+  thetazi_vprior = 20,
+  psi_vprior = 30
 };
 
 template<class Type>
@@ -573,7 +601,7 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(thetazi);
   PARAMETER_VECTOR(thetadisp);
   
-  // Extra family specific parameters (e.g. tweedie, t, ordbetareg)
+  // Extra family specific parameters (e.g. tweedie, t, ordbetareg, nbinom12)
   PARAMETER_VECTOR(psi);
 
   DATA_INTEGER(family);
@@ -587,6 +615,15 @@ Type objective_function<Type>::operator() ()
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
+  // Prior info
+
+  DATA_IVECTOR(prior_distrib);    // specify distribution
+  DATA_IVECTOR(prior_whichpar);   // specify parameter
+  DATA_IVECTOR(prior_elstart);    // starting element index
+  DATA_IVECTOR(prior_elend);      // ending element index
+  DATA_IVECTOR(prior_npar);       // number of parameters (based on prior distrib)
+  DATA_VECTOR(prior_params);      // specify parameters (concatenated)
+  
   // Joint negative log-likelihood
   Type jnll=0;
 
@@ -651,6 +688,15 @@ Type objective_function<Type>::operator() ()
       case gaussian_family:
         tmp_loglik = dnorm(yobs(i), mu(i), phi(i), true);
         SIMULATE{yobs(i) = rnorm(mu(i), phi(i));}
+        break;
+      case skewnormal_family:
+        s1 = mu(i);
+        s2 = phi(i);
+        s3 = psi(0);
+        tmp_loglik = glmmtmb::dskewnorm(yobs(i), s1, s2, s3, true);
+        SIMULATE{
+           error("simulation not yet implemented for skewnormal family");
+	}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
@@ -729,11 +775,11 @@ Type objective_function<Type>::operator() ()
         s2 = s1 + etadisp(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	if (family != truncated_nbinom1_family) {
-		SIMULATE {
-			s1 = mu(i);
-			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-			yobs(i) = rnbinom2(s1, s2);
-		}
+	SIMULATE {
+	  s1 = mu(i);
+	  s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+	  yobs(i) = rnbinom2(s1, s2);
+	  }
 	} else {
           tmp_loglik -= log_nzprob(i);
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
@@ -761,6 +807,17 @@ Type objective_function<Type>::operator() ()
           }
         }
         break;
+      case nbinom12_family:
+	s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+	// log(var - mu) = log(mu) + log(phi + mu/psi)
+	s2 = s1 + logspace_add(etad(i), s1 - psi(0));
+	tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+	SIMULATE{
+	  s1 = mu(i);
+	  s2 = mu(i) * (Type(1)+phi(i) + mu(i)/exp(psi(0)));
+	  yobs(i) = rnbinom2(s1, s2);
+	}
+	break;
       case truncated_poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob(i);
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
@@ -818,13 +875,18 @@ Type objective_function<Type>::operator() ()
         s3 = sqrt(s1);          //log-scale sd
 	tmp_loglik = zt_lik_zero(yobs(i),
 			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
-	SIMULATE{yobs(i) = exp(rnorm(s2, s3));}  // untested
+	SIMULATE{
+	  yobs(i) = exp(rnorm(s2, s3));
+	}  // untested
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);
 	s2 = exp(psi(0));
 	// since resid was scaled above, density needs to be divided by log(sd) = log(var)/2 = etadisp(i)/2
 	tmp_loglik = dt(s1, s2, true) - etadisp(i);
+	SIMULATE{
+	  yobs(i) = mu(i)+phi(i)*rt(s2);
+	}  // untested
 	break;
       default:
         error("Family not implemented!");
@@ -850,8 +912,76 @@ Type objective_function<Type>::operator() ()
 
       // Add up
       jnll -= keep(i) * tmp_loglik;
-    }
-  }
+    } // if !is.na(obs)
+    } // loop over observations
+
+    // Add priors
+    vector<Type> parvec;
+    int np = prior_distrib.size();
+    Type parval, logpriorval;
+    int par_ind = 0; // parameter index
+    for (int i = 0; i < np; i++) {
+      switch(prior_whichpar[i]) {
+      case beta_vprior: parvec = beta; break;
+      case betazi_vprior: parvec = betazi; break;
+      case betad_vprior: parvec = betad; break;
+      case theta_vprior: parvec = theta; break;
+      case thetazi_vprior: parvec = thetazi; break;
+      case psi_vprior: parvec = psi; break;
+      }
+
+      // need an if-clause here for multivariate distrib (lkj/corr parameters
+      // otherwise go element-by-element
+      if (prior_distrib[i] == lkj_prior) {
+	vector<Type> corpars = parvec.segment(prior_elstart[i] ,
+					      prior_elend[i]-prior_elstart[i]+1);
+	jnll -= glmmtmb::dlkj(corpars, prior_params[par_ind], true);
+      } else {
+	for (int j = prior_elstart[i]; j <= prior_elend[i]; j++) { // <= is on purpose here
+	  if (j >= parvec.size()) {
+	    // FIXME: should also check upstream ...
+	    error("Bad prior index!");
+	  };
+
+	parval = parvec[j];
+	switch(prior_distrib[i]) {
+	case normal_prior:
+	  s1 = prior_params[par_ind];           // mean
+	  s2 = prior_params[par_ind+1];         // sd
+	  logpriorval = dnorm(parval, s1, s2, true);
+	break;
+	case gamma_prior:
+	  s1 = prior_params[par_ind+1];           // shape
+	  s2 = prior_params[par_ind] / prior_params[par_ind+1];   // scale
+	  logpriorval = dgamma(exp(parval), s1, s2, true);
+	break;
+	case t_prior:
+	  s1 = prior_params[par_ind];           // mean
+	  s2 = prior_params[par_ind+1];         // sd
+	  s3 = prior_params[par_ind+2];         // df
+	  parval = (parval - s1)/s2;   // scale value
+	  // see note at t_family about adjusting density for scaling
+	  logpriorval = dt(parval, s3, true) - log(s2);
+	  break;
+	case cauchy_prior:
+	  s1 = prior_params[par_ind];           // loc
+	  s2 = prior_params[par_ind+1];         // scale
+	  logpriorval = glmmtmb::dcauchy(parval, s1, s2, true);
+	break;
+	default:
+	  error("Prior distribution not implemented!");
+	}
+
+	jnll -= logpriorval;
+	
+	} // loop over elements
+      }
+      // step forward in prior-parameter vector
+      par_ind += prior_npar[i];
+      
+    } // loop over priors
+    
+    
 
   // Report / ADreport / Simulate Report
   vector<matrix<Type> > corr(terms.size());

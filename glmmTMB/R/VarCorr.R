@@ -180,6 +180,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         familyStr=="gaussian" && !zeroDisp(x)
     } else TRUE
     vc.cond <- vc.zi <- vc.disp <- NULL
+    ## FIXME: repeat less
     if(length(cn <- reT$cond$cnms)) {
         vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
                         sc = sigma, useSc = useSc)
@@ -191,7 +192,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         vc.zi <- mkVC(cor = xrep$corrzi, sd = xrep$sdzi, cnms = cn,
                         sc = sigma, useSc = useSc)
         for (i in seq_along(vc.zi)) {
-            attr(vc.zi,"blockCode") <- reS$ziReStruc[[i]]$blockCode
+            attr(vc.zi[[i]],"blockCode") <- reS$ziReStruc[[i]]$blockCode
         }
     }
     if(length(cn <- reT$disp$cnms)) {

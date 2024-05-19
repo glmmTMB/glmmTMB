@@ -21,16 +21,33 @@ in_glm_fit <- function() {
     identical(up_two[[1]], quote(glm.fit))
 }
 
-make_family <- function(x, link) {
+make_family <- function(x, link, needs_nonneg = FALSE, needs_int = FALSE) {
     x <- c(x, list(link=link), make.link(link))
     ## stubs for Effect.default/glm.fit
     if (is.null(x$aic)) {
         x <- c(x,list(aic=function(...) NA_real_))
     }
     if (is.null(x$initialize)) {
-        ## should handle log-links adequately
-        x <- c(x,list(initialize=expression({mustart <- y+0.1})))
+        x <- c(x,list(initialize=
+                          substitute(env = list(FAMILY=x$family),
+            expr = expression({
+            ## should handle log-links adequately
+            mustart <- y+0.1
+            if (needs_int) {
+                if (any(abs(y - round(y)) > 0.001)) {
+                    warning(gettextf("non-integer counts in a %s response variable", 
+                                     FAMILY), domain = NA)
+                }
+            }
+            if (needs_nonneg) {
+                if (any(y < 0)) {
+                    warning(gettextf("negative values in a %s response variable", 
+                                     FAMILY), domain = NA)
+                }
+            }
+            }))))
     }
+        
     if (is.null(x$dev.resids)) {
         x <- c(x,list(dev.resids=function(y,mu,wt)  {
             if (in_glm_fit()) {
@@ -103,6 +120,7 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
 ##'      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
 ##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}. \emph{Note} that the \eqn{phi} parameter has opposite meanings in the \code{nbinom1} and \code{nbinom2} families. In \code{nbinom1} overdispersion increases with increasing \code{phi} (the Poisson limit is \code{phi=0}); in \code{nbinom2} overdispersion decreases with increasing \code{phi} (the Poisson limit is reached as \code{phi} goes to infinity).}
+##'      \item{nbinom12}{Negative binomial distribution: mixed linear/quadratic, as in the \code{DESeq2} package or as described by Lindén and Mäntyniemi (2011). \eqn{V=\mu(1+\phi+\mu/psi)}{V=mu*(1+phi+mu/psi)}. (In Lindén and Mäntyniemi's parameterization, \eqn{\omega = \phi}{omega=phi} and \eqn{\theta=1/\psi}{theta=1/psi}.) If a dispersion model is specified, it applies only to the linear (\code{phi}) term.}
 ##'      \item{truncated_nbinom2}{Zero-truncated version of nbinom2: variance expression from Shonkwiler 2016. Simulation code (for this and the other truncated count distributions) is taken from C. Geyer's functions in the \code{aster} package; the algorithms are described in \href{https://cran.r-project.org/package=aster/vignettes/trunc.pdf}{this vignette}.}
 ##'      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
 ##'      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.) Our implementation is taken from the \code{HMMpa} package, based on Joe and Zhu (2005) and implemented by Vitali Witowski.}
@@ -113,14 +131,17 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1].}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
+##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and skew (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
 ##' }
 ##' @references
 ##' \itemize{
+##' \item Azzalini A & Capitanio A (2014). "The skew-normal and related families." Cambridge: Cambridge University Press.
 ##' \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
 ##' \item Huang A (2017). "Mean-parametrized Conway–Maxwell–Poisson regression models for dispersed counts." \emph{Statistical Modelling} 17(6), 1-22.
-##' \item Joe H, Zhu R (2005). "Generalized Poisson Distribution: The Property of Mixture of Poisson and Comparison with Negative Binomial Distribution." \emph{Biometrical Journal} 47(2): 219–29. \doi{10.1002/bimj.200410102}.
+##' \item Joe H & Zhu R (2005). "Generalized Poisson Distribution: The Property of Mixture of Poisson and Comparison with Negative Binomial Distribution." \emph{Biometrical Journal} 47(2): 219–29. \doi{10.1002/bimj.200410102}.
+##' \item Lindén, A & Mäntyniemi S. (2011). "Using the Negative Binomial Distribution to Model Overdispersion in Ecological Count Data." \emph{Ecology} 92 (7): 1414–21. \doi{10.1890/10-1831.1}.
 ##' \item Morris  W (1997). "Disentangling Effects of Induced Plant Defenses and Food Quantity on Herbivores by Fitting Nonlinear Models." \emph{American Naturalist} 150:299-327.
 ##' \item Kubinec R (2022). "Ordered Beta Regression: A Parsimonious, Well-Fitting Model for Continuous Data with Lower and Upper Bounds." \emph{Political Analysis}. doi:10.1017/pan.2022.20.
 ##' \item Sellers K & Lotze T (2015). "COMPoissonReg: Conway-Maxwell Poisson (COM-Poisson) Regression". R package version 0.3.5. https://CRAN.R-project.org/package=COMPoissonReg
@@ -182,7 +203,7 @@ compois <- function(link="log") {
                if (length(phi)==1) phi <- rep(phi, length=length(mu))
                .Call("compois_calc_var", mu, 1/phi, PACKAGE="glmmTMB")
           })
-    return(make_family(r,link))
+    return(make_family(r, link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @rdname nbinom2
@@ -192,7 +213,7 @@ truncated_compois <- function(link="log") {
            variance=function(mu,phi) {
              stop("variance for truncated compois family not yet implemented")
            })
-    return(make_family(r,link))
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @rdname nbinom2
@@ -202,7 +223,7 @@ genpois <- function(link="log") {
            variance=function(mu,phi) {
                mu*phi
            })
-    return(make_family(r,link))
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @rdname nbinom2
@@ -212,7 +233,7 @@ truncated_genpois <- function(link="log") {
            variance=function(mu,phi) {
              stop("variance for truncated genpois family not yet implemented")
           })
-    return(make_family(r,link))
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @rdname nbinom2
@@ -222,7 +243,7 @@ truncated_poisson <- function(link="log") {
            variance=function(lambda) {
            (lambda+lambda^2)/(1-exp(-lambda)) - lambda^2/((1-exp(-lambda))^2)
            })
-        return(make_family(r,link))
+        return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @rdname nbinom2
@@ -248,7 +269,7 @@ truncated_nbinom2 <- function(link="log") {
                           (a*(1-pnbinom(c,mu=mu,size=theta)))
                       return(mu_star + c*(mu_star-mu) +mu_star*mu*(1+1/a)-mu_star^2)
               })
-    return(make_family(r,link))
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @rdname nbinom2
@@ -258,7 +279,7 @@ truncated_nbinom1 <- function(link="log") {
            variance=function(mu,alpha) {
                stop("variance for truncated nbinom1 family not yet implemented")
            })
-    return(make_family(r,link))
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 ## similar to mgcv::betar(), but simplified.
@@ -287,8 +308,6 @@ beta_family <- function(link="logit") {
     return(make_family(r,link))
 }
 
-## fixme: better name?
-
 #' @rdname nbinom2
 #' @export
 ## variance= (Wikipedia)
@@ -304,7 +323,7 @@ betabinomial <- function(link="logit") {
               variance = function(mu, phi) {
                   mu*(1-mu)
               },
-              initialize = binomial()$initialize)
+              initialize = our_binom_initialize(binomial()$initialize))
     return(make_family(r,link))
 }
 
@@ -315,8 +334,19 @@ tweedie <- function(link="log") {
            variance = function(mu, phi, power) {
                phi * mu ^ power
          })
-    return(make_family(r,link))
+    return(make_family(r,link, needs_nonneg = TRUE))
 }
+
+#' @rdname nbinom2
+#' @export
+skewnormal <- function(link="identity") {
+  r <- list(family="skewnormal",
+            variance = function(phi) {
+              phi^2
+            })
+  return(make_family(r,link, needs_nonneg = FALSE))
+}
+
 
 #' @rdname nbinom2
 #' @export
@@ -422,4 +452,15 @@ ordbeta <- function(link="logit") {
               variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
               )
     return(make_family(r,link))
+}
+
+#' @export
+#' @rdname nbinom2
+nbinom12 <- function(link="log") {
+    r <- list(family="nbinom12",
+              variance = function(mu, phi, psi) {
+                  return(mu*(1+phi + mu/psi))
+              }
+              )
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }

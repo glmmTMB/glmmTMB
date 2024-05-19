@@ -27,7 +27,8 @@ mkTMBStruc(
   map = NULL,
   sparseX = NULL,
   control = glmmTMBControl(),
-  old_smooths = NULL
+  old_smooths = NULL,
+  priors = NULL
 )
 }
 \arguments{
@@ -77,6 +78,7 @@ mkTMBStruc(
 
 \item{old_smooths}{(optional) smooth components from a previous fit: used when constructing a new model structure for prediction
 from an existing model. A list of smooths for each model component; each smooth has sm and re elements}
+\item{priors}{see \code{\link{priors}}}
 }
 \description{
 Extract info from formulas, reTrms, etc., format for TMB
