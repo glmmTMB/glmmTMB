@@ -384,7 +384,6 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           for (v in prior_fvars) ee$data[[v]] <- numeric(0)
       }
 
->>>>>>> master
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
