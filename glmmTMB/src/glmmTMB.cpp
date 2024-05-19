@@ -810,7 +810,7 @@ Type objective_function<Type>::operator() ()
       case nbinom12_family:
 	s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
 	// log(var - mu) = log(mu) + log(phi + mu/psi)
-	s2 = s1 + logspace_add(etad(i), s1 - psi(0));
+	s2 = s1 + logspace_add(etadisp(i), s1 - psi(0));
 	tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	SIMULATE{
 	  s1 = mu(i);
