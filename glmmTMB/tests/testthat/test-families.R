@@ -512,7 +512,7 @@ test_that("nbinom12 family", {
     ## log(phi) ~ 0.7, log(psi) ~ -0.7
     expect_equal(    m1$obj$env$last.par.best,
                  c(beta = 1.98948426828242, beta = 1.00635151325394,
-                   betad = 0.68344614610532, psi = -0.686823594633112),
+                   betadisp = 0.68344614610532, psi = -0.686823594633112),
                  tolerance = 1e-6)
     expect_equal(sigma(m1), 1.980692, tolerance = 1e-6)
 })

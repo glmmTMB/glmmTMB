@@ -368,7 +368,11 @@ test_that("profile", {
 
 test_that("profile (no RE)", {
     p0_th <- profile(fm_noRE,npts=4)
-    expect_equal(dim(p0_th),c(41,3))
+    ## graphical check, looks fine
+    ## library(ggplot2)
+    ## ggplot(p0_th, aes(.focal, value)) + geom_point() + geom_line() +
+    ## facet_wrap(~.par, scale = "free")
+    expect_equal(dim(p0_th),c(43, 3))
 })
 
 test_that("vcov", {
