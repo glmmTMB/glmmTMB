@@ -1,6 +1,18 @@
 ## exploring starting values, esp for AR1 fits
+library(tidyverse); theme_set(theme_bw())
+library(glmmTMB)
+remotes::install_github("mccarthy-m-g/alda")
+library(alda) # For data, not yet on CRAN: 
 
-## https://github.com/glmmTMB/glmmTMB/issues/1036
+get_logSD <- function(obj, data) {
+    ff <- reformulas::nobars(formula(obj))
+    lm_fit <- lm(ff, data = data)
+    return(log(abs(coef(lm_fit))))
+}
+    
+
+do_slow <- FALSE
+
 ##
 
 data(sleepstudy, cbpp, Pastes,
@@ -8,19 +20,22 @@ data(sleepstudy, cbpp, Pastes,
 fsleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
                          row=factor(seq(nrow(sleepstudy))))
 
-library(glmmTMB)
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
 VarCorr(fm_ar1)
 
-remotes::install_github("mccarthy-m-g/alda")
-library(alda) # For data, not yet on CRAN: 
+v <- get_logSD(fm_ar1, fsleepstudy)
+fm_ar1B <- update(fm_ar1, start = list(theta = c(v, v, 0)))
+
+## https://github.com/glmmTMB/glmmTMB/issues/1036
 fm2 <- glmmTMB(
     opposites_naming_score ~
         time * I(baseline_cognitive_score - 113.4571) + (time | id),
     data = opposites_naming,
     REML = TRUE
 )
+fm2B <- update(fm2, start = list(theta = c(2, 2, 0)))
+
 sval_fun <- function(theta1, theta2) {
     m <- suppressWarnings(
         update(fm2, start = list(theta = c(theta1, theta2, 0)))
@@ -32,10 +47,11 @@ sval_fun <- function(theta1, theta2) {
                       npd = is.na(AIC(m))))
 }
 sval_fun(1,1)
-vals <- expand.grid(theta1 = seq(-2, 2, length = 21),
-                    theta2 = seq(-2, 2, length = 21))
-library(tidyverse); theme_set(theme_bw())
-library(patchwork)
+
+
+if (do_slow) {
+    vals <- expand.grid(theta1 = seq(-2, 2, length = 21),
+                        theta2 = seq(-2, 2, length = 21))
 res <- purrr:::map2_dfr(vals$theta1, vals$theta2, sval_fun,
                         .progress=TRUE)
 res2 <- bind_cols(vals, res)
@@ -55,3 +71,12 @@ ggplot(filter(res2L, name == "npd"),
     geom_raster() +
     scale_fill_manual(values = c("black", "white"))
 
+}
+
+## a strategy for establishing starting values (most needed when
+## we're using an identity link?)
+
+fm2C <- update(fm2, start = list(theta = withas.list(clm),
+                                              c(`(Intercept)`, time, 0))))
+
+stopifnot(all.equal(VarCorr(fm2B), VarCorr(fm2C), tol = 1e-4))
