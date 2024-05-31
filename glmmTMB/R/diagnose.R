@@ -167,6 +167,7 @@ diagnose <- function(fit,
                 "If this is too slow, consider setting check_hessian = FALSE",
                 "\n\n")
             h <- numDeriv::jacobian(obj$gr, pp)
+            bad <- NULL
             ## FIXME: consider SVD?
             ## FIXME: add explanation
             if (any(is.na(h))) {
