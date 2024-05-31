@@ -16,6 +16,7 @@
 	distribution (GH #1024)
       \item \code{vcov} works better for cases where \code{map} is used
       to fix sets of parameters equal to each other
+      \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
     } % itemize
   } % bug fixes
   \subsection{OTHER CHANGES}{

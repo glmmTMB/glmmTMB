@@ -455,8 +455,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   ## Extra family specific parameters
-  psiLength <- find_psi(family$family)
 
+  psiLength <- find_psi(family$family)
+           
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
   # theta is 0, except if dorr, theta is 1
@@ -951,11 +952,11 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
 .noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
 ## number of additional/shape parameters (default = 0)
-.extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12'),
+.extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
                             '2' = 'ordbeta')
 find_psi <- function(f) {
     for (i in seq_along(.extraParamFamilies)) {
-        if (f %in% .extraParamFamilies[[i]]) return(i)
+        if (f %in% .extraParamFamilies[[i]]) return(as.numeric(i))
     }
     return(0)
 }

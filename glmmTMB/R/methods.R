@@ -329,25 +329,29 @@ logLik.glmmTMB <- function(object, ...) {
   }else val <- -object$fit$objective
 
   nobs <- nobs.glmmTMB(object)
-  df <- sum( ! names(object$fit$parfull) %in% c("b", "bzi") )
+  df <- npar(object)
   structure(val, nobs = nobs, nall = nobs, df = df,
             class = "logLik")
 }
 
 ##' @importFrom stats nobs
 ##' @export
-nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
+nobs.glmmTMB <- function(object, ...) {
+    sum(!is.na(object$obj$env$data$yobs))
+}
+
+##  TODO: not clear whether the effective number of parameters should be based
+##  on p=length(beta) or p=length(c(theta,beta,psi)) ... but
+##  this is just to allow things like aods3::gof to work ...
+npar <- function(object) {
+    sum(!names(object$fit$parfull) %in% c("b", "bzi", "bdisp"))
+}
 
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
 ##' @export
-##  TODO: not clear whether the residual df should be based
-##  on p=length(beta) or p=length(c(theta,beta)) ... but
-##  this is just to allow things like aods3::gof to work ...
-##  Taken from LME4, including the todo
-##
 df.residual.glmmTMB <- function(object, ...) {
-  nobs(object)-length(object$fit$par)
+  nobs(object) - npar(object)
 }
 
 
@@ -595,6 +599,7 @@ family_params <- function(object) {
            tweedie = c("Tweedie power" = plogis(tf) + 1),
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
+           skewnormal = c("Skewnormal alpha" = tf),
            numeric(0)
            )
 }

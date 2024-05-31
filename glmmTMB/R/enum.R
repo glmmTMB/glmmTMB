@@ -28,7 +28,8 @@
   truncated_nbinom2 =551,
   t =600,
   tweedie = 700,
-  lognormal = 800
+  lognormal = 800,
+  skewnormal = 900
 )
 .valid_covstruct <- c(
   diag = 0,
