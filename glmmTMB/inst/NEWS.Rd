@@ -4,7 +4,6 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-
 \section{CHANGES IN VERSION 1.1.9-9000}{
   \subsection{NEW FEATURES}{
     \itemize{
@@ -14,7 +13,9 @@
   \subsection{BUG FIXES}{
     \itemize{
       \item simulation now works for models fitted with the (scaled) t
-      distribution (GH #1024)
+	distribution (GH #1024)
+      \item \code{vcov} works better for cases where \code{map} is used
+      to fix sets of parameters equal to each other
       \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
     } % itemize
   } % bug fixes
@@ -74,7 +75,7 @@
       attributes (GH #977)
     } % itemize
   } % bug fixes
-} % 1.1.8-9000
+} % 1.1.9
 
 \section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
   \subsection{NEW FEATURES}{

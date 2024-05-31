@@ -400,12 +400,30 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   ## only actually estimated
   estNameList <- getParnames(object, full, include_mapped = FALSE, include_dropped = FALSE)
 
+  map <- object$obj$env$map
+  parnms <- c("beta","betazi", "betad")     ## parameter names
   if (full) {
       ## return a matrix
       nl <- unlist(estNameList)
       fnl <- unlist(fullNameList)
       if (!include_nonest || identical(nl, fnl)) {
-          colnames(covF) <- rownames(covF) <- unlist(estNameList)
+          if (any(vapply(map, \(x) any(duplicated(x)), logical(1)))) {
+              ## duplicate rows appropriately: *blockwise* is sufficient (can't
+              ## map elements of different vectors)
+              ind <- 0
+              for (i in seq_along(cNames)) {
+                  if (!is.null(cur_map <- parnms[[i]]) &&
+                      any(duplicated(cur_map))) {
+                      ## figure out how many components we have
+                      est_pars <- length(unique(cur_map))
+                      tot_pars <- length(cur_map)
+                      ## FIXME: stopped here
+                  }
+              }
+          }
+          ## work around naming for now ...
+          try(colnames(covF) <- rownames(covF) <- unlist(estNameList),
+              silent = TRUE)
           res <- covF
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
@@ -417,18 +435,35 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
       names(covList) <- names(cNames) ## component names
-      parnms <- c("beta","betazi", "betad")     ## parameter names
       for (i in seq_along(covList)) {
           nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
           xnms <- estNameList[[cnm]]
           fnm <- fullNameList[[cnm]]
-          ## map <- object$obj$env$map
-          if (!include_nonest || nrow(m) == length(fnm)) {
+          if (!include_nonest ||
+              nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
-              ## mapping *or* rank-def columns dropped
+              ## some parameters mapped *to each other* (not fixed)
+              if (!is.null(cur_map <- map[[parnms[[i]]]]) &&
+                  length(unique(cur_map)) < length(cur_map)) {
+                  ## replicate cov rows/cols appropriately
+                  m <- m[as.numeric(cur_map), as.numeric(cur_map)]
+                  map_split <- split(seq_along(cur_map), cur_map)
+                  for (cc in map_split) {
+                      if (length(cc)==1) next
+                      ## should fix covariances in cov matrix
+                      ## equal to variance for mapped pairs ...
+                      ## combn() generates a 2-by-n matrix of pairs
+                      ccc <- combn(cc, 2)
+                      for (j in 1:ncol(ccc)) {
+                          m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
+                              m[ccc[1,j], ccc[1,j]]
+                      }
+                  }
+              }
+              ## fixed params *or* rank-def columns dropped
               mm <- matrix(NA_real_, length(fnm), length(fnm),
                            dimnames=list(fnm, fnm))
               mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
