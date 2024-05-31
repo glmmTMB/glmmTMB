@@ -12,6 +12,7 @@
   } % new features
   \subsection{BUG FIXES}{
     \itemize{
+      \item fixed bug in \code{simulate_new} for \code{family = "beta_family")
       \item simulation now works for models fitted with the (scaled) t
 	distribution (GH #1024)
       \item \code{vcov} works better for cases where \code{map} is used
@@ -25,7 +26,7 @@
       \code{reformulas} package rather than from \code{lme4}
     } % itemize
   } % other changes
-} % 1.1.9.9000
+} % 1.1.9-9000
   
 \section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{

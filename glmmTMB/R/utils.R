@@ -646,8 +646,10 @@ simulate_new <- function(object,
     form <- object
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
-    ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    newdata[["..y"]] <- if (family$family == "beta_family") 0.5 else 1.0
+    ## insert a legal value: 1.0 is OK as long as family != "beta"
+    ## (note the family *function* is 'beta_family' but the internal
+    ##  $family value is 'beta')
+    newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
