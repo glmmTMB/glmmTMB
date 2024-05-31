@@ -645,6 +645,19 @@ test_that("de novo simulation error checking", {
                  "unmatched parameter names: junk")
 })
 
+test_that("good simulate_new response values for beta", {
+    data("sleepstudy", package = "lme4")
+    ss <- simulate_new(
+        ~ Days + (Days | Subject),
+        newdata = sleepstudy,
+        newparams = list(beta = c(-1, 0.1),
+                         theta = c(-1, -1, 0),
+                         betad = 10),
+        family = "beta_family",
+        seed = 101)
+    expect_equal(head(ss[[1]], 3),
+                 c(0.246573218210702, 0.309824346705961, 0.367484246522732))
+})
 
 test_that("weighted residuals", {
     set.seed(101)

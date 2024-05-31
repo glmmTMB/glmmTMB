@@ -6,6 +6,7 @@ library(future)
 library(progressr)
 library(patchwork)
 library(nlme)
+
 ## not working?
 ## future::plan(multisession, workers = 3)
 future::plan(sequential)
@@ -86,6 +87,7 @@ sigma(m0)
 ## non-pos-def!
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+VarCorr(fm_ar1)
 
 fm_ar1B <- lme(Reaction ~ 1, random = ~1|Subject, correlation = corAR1(form = ~1|Subject),
                fsleepstudy, method = "ML")
@@ -101,6 +103,7 @@ fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
                                 seed = 101)[[1]]
 fm_ar2 <- glmmTMB(sim ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+
 
 
 res2L <- theta_fit(model = fm_ar1)
