@@ -92,5 +92,4 @@ test_that("summary", {
 
 })
 
-
 } ## skip on CRAN
