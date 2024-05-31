@@ -1,6 +1,13 @@
 ## exploring starting values, esp for AR1 fits
 ## good commit: 5939686 (right before Gaussian parameterization switch) [Oct 2023]
 library(tidyverse); theme_set(theme_bw())
+library(furrr)
+library(future)
+library(progressr)
+library(patchwork)
+## not working?
+## future::plan(multisession, workers = 3)
+future::plan(sequential)
 library(glmmTMB)
 remotes::install_github("mccarthy-m-g/alda")
 library(alda) # For data, not yet on CRAN: 
@@ -11,7 +18,10 @@ get_logSD <- function(obj, data) {
     return(log(abs(coef(lm_fit))))
 }
 
-sval_fun <- function(theta1, theta2, model = fm2) {
+sval_fun <- function(theta1, theta2, model = fm2, fake = FALSE) {
+    if (fake) return(
+                  data.frame(var1 = NA, var2 = NA,
+                             var3 = NA, nll = NA, npd = NA))
     m <- suppressWarnings(
         update(model, start = list(theta = c(theta1, theta2, 0)))
     )
@@ -19,6 +29,8 @@ sval_fun <- function(theta1, theta2, model = fm2) {
     vv <- getME(m, "theta")
     return(data.frame(var1 = vv[1],
                       var2 = vv[2],
+                      var3 = log(sigma(m)),
+                      nll = -1*c(logLik(m)),
                       npd = is.na(AIC(m))))
 }
 
@@ -26,13 +38,11 @@ theta_fit <- function(min = -2, max = 2, n = 21, model = fm2) {
     vals <- expand.grid(theta1 = seq(min, max, length = n),
                         theta2 = seq(min, max, length = n))
     ssv <- purrr::safely(sval_fun,
-                         otherwise = data.frame(var1  = NA,
-                                                var2 = NA,
-                                                npd = NA))
+                         otherwise = sval_fun(fake=TRUE))
     sv <- function(x,y) {
         ssv(x,y, model = model)$result
     }
-    res <- purrr:::map2_dfr(vals$theta1, vals$theta2, sv,
+    res <- furrr:::future_map2_dfr(vals$theta1, vals$theta2, sv,
                             .progress=TRUE)
     res2 <- bind_cols(vals, res)
     res2L <- pivot_longer(res2, -c(theta1, theta2))
@@ -40,20 +50,25 @@ theta_fit <- function(min = -2, max = 2, n = 21, model = fm2) {
 }
 
 theta_plots <- function(res2L, minval = -3) {
-    gg1 <- ggplot(filter(res2L, name != "npd"),
+    gg_logvars <- ggplot(filter(res2L, startsWith(name, "var")),
            ## use 1e-10 (+log10 trans)
            ## to effectively put a floor on very small values
            aes(theta1, theta2, fill = pmax(value, minval))) +
         geom_raster() +
         facet_wrap(~name, scale = "free") +
         scale_fill_viridis_c()
+
+    gg_NLL <- ggplot(filter(res2L, name == "nll"),
+                  aes(theta1, theta2, fill = value)) +
+        geom_raster() +
+        scale_fill_viridis_c()
     
-    gg2 <- ggplot(filter(res2L, name == "npd"),
+    gg_npd <- ggplot(filter(res2L, name == "npd"),
                   aes(theta1, theta2, fill = factor(value))) +
         geom_raster() +
         scale_fill_manual(values = c("black", "white"))
 
-    list(gg1, gg2)
+    tibble::lst(gg_logvars, gg_NLL, gg_npd)
 }
 
 do_slow <- FALSE
@@ -77,8 +92,14 @@ saveRDS(res2L, file = "fm_ar1_mstart_oldcode.rds")
 res2L <- readRDS("fm_ar1_mstart.rds")
 filter(res2L, name == "var1" & abs(value + 0.1) < 0.1)
 res2L <- readRDS("fm_ar1_mstart_oldcode.rds")
-theta_plots(res2L)[[1]]
-theta_plots(res2L)[[2]]
+th <- theta_plots(res2L)
+th[[1]] / (th[[2]] + th[[3]])
+
+(res2L
+    |> filter(name == "nll")
+    |> filter(value < 900)
+    |> pull(value) |> ecdf() |> plot()
+)
 
 v <- get_logSD(fm_ar1, fsleepstudy)
 fm_ar1B <- update(fm_ar1, start = list(theta = c(v, v, 0)))
