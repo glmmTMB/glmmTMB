@@ -9,7 +9,51 @@ get_logSD <- function(obj, data) {
     lm_fit <- lm(ff, data = data)
     return(log(abs(coef(lm_fit))))
 }
+
+sval_fun <- function(theta1, theta2, model = fm2) {
+    m <- suppressWarnings(
+        update(model, start = list(theta = c(theta1, theta2, 0)))
+    )
+    ## is.na(AIC) is a quick-and-dirty non-pos-def detector
+    vv <- getME(m, "theta")
+    return(data.frame(var1 = vv[1],
+                      var2 = vv[2],
+                      npd = is.na(AIC(m))))
+}
+
+theta_fit <- function(min = -2, max = 2, n = 21, model = fm2) {
+    vals <- expand.grid(theta1 = seq(min, max, length = n),
+                        theta2 = seq(min, max, length = n))
+    ssv <- purrr::safely(sval_fun,
+                         otherwise = data.frame(var1  = NA,
+                                                var2 = NA,
+                                                npd = NA))
+    sv <- function(x,y) {
+        ssv(x,y, model = model)$result
+    }
+    res <- purrr:::map2_dfr(vals$theta1, vals$theta2, sv,
+                            .progress=TRUE)
+    res2 <- bind_cols(vals, res)
+    res2L <- pivot_longer(res2, -c(theta1, theta2))
+    return(res2L)
+}
+
+theta_plots <- function(res2L, minval = -3) {
+    gg1 <- ggplot(filter(res2L, name != "npd"),
+           ## use 1e-10 (+log10 trans)
+           ## to effectively put a floor on very small values
+           aes(theta1, theta2, fill = pmax(value, minval))) +
+        geom_raster() +
+        facet_wrap(~name, scale = "free") +
+        scale_fill_viridis_c()
     
+    gg2 <- ggplot(filter(res2L, name == "npd"),
+                  aes(theta1, theta2, fill = factor(value))) +
+        geom_raster() +
+        scale_fill_manual(values = c("black", "white"))
+
+    list(gg1, gg2)
+}
 
 do_slow <- FALSE
 
@@ -24,6 +68,11 @@ fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
 VarCorr(fm_ar1)
 
+res2L <- theta_fit(model = fm_ar1)
+saveRDS(res2L, file = "fm_ar1_mstart.rds")
+
+theta_plots(res2L)[[1]]
+
 v <- get_logSD(fm_ar1, fsleepstudy)
 fm_ar1B <- update(fm_ar1, start = list(theta = c(v, v, 0)))
 
@@ -36,47 +85,34 @@ fm2 <- glmmTMB(
 )
 fm2B <- update(fm2, start = list(theta = c(2, 2, 0)))
 
-sval_fun <- function(theta1, theta2) {
-    m <- suppressWarnings(
-        update(fm2, start = list(theta = c(theta1, theta2, 0)))
-    )
-    ## is.na(AIC) is a quick-and-dirty non-pos-def detector
-    vv <- unname(c(diag(VarCorr(m)$cond[[1]])))
-    return(data.frame(int_var = vv[1],
-                      time_var = vv[2],
-                      npd = is.na(AIC(m))))
-}
 sval_fun(1,1)
-
 
 if (do_slow) {
     vals <- expand.grid(theta1 = seq(-2, 2, length = 21),
                         theta2 = seq(-2, 2, length = 21))
-res <- purrr:::map2_dfr(vals$theta1, vals$theta2, sval_fun,
-                        .progress=TRUE)
-res2 <- bind_cols(vals, res)
-res2L <- pivot_longer(res2, -c(theta1, theta2))
-ggplot(filter(res2L, name != "npd"),
-       ## use 1e-10 (+log10 trans)
-       ## to effectively put a floor on very small values
-       aes(theta1, theta2, fill = value + 1e-10)) +
-    geom_raster() +
-    facet_wrap(~name, scale = "free") +
-    scale_fill_viridis_c(trans = "log10")
-
-ggplot(filter(res2L, name == "npd"),
-       ## use 1e-10 (+log10 trans)
-       ## to effectively put a floor on very small values
-       aes(theta1, theta2, fill = factor(value))) +
-    geom_raster() +
-    scale_fill_manual(values = c("black", "white"))
-
+    res <- purrr:::map2_dfr(vals$theta1, vals$theta2, sval_fun,
+                            .progress=TRUE)
+    res2 <- bind_cols(vals, res)
+    res2L <- pivot_longer(res2, -c(theta1, theta2))
+    ggplot(filter(res2L, name != "npd"),
+           ## use 1e-10 (+log10 trans)
+           ## to effectively put a floor on very small values
+           aes(theta1, theta2, fill = value + 1e-10)) +
+        geom_raster() +
+        facet_wrap(~name, scale = "free") +
+        scale_fill_viridis_c(trans = "log10")
+    
+    ggplot(filter(res2L, name == "npd"),
+           aes(theta1, theta2, fill = factor(value))) +
+        geom_raster() +
+        scale_fill_manual(values = c("black", "white"))
 }
 
 ## a strategy for establishing starting values (most needed when
 ## we're using an identity link?)
 
-fm2C <- update(fm2, start = list(theta = withas.list(clm),
+clm <- get_logSD(fm2, opposites_naming)
+fm2C <- update(fm2, start = list(theta = with(as.list(clm),
                                               c(`(Intercept)`, time, 0))))
 
 stopifnot(all.equal(VarCorr(fm2B), VarCorr(fm2C), tol = 1e-4))
