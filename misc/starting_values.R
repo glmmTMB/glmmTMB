@@ -65,6 +65,8 @@ data(sleepstudy, cbpp, Pastes,
 fsleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
                          row=factor(seq(nrow(sleepstudy))))
 
+m0 <- lm(Reaction ~ 1, fsleepstudy)
+sigma(m0)
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
 VarCorr(fm_ar1)
@@ -72,11 +74,16 @@ VarCorr(fm_ar1)
 res2L <- theta_fit(model = fm_ar1)
 saveRDS(res2L, file = "fm_ar1_mstart_oldcode.rds")
 
+res2L <- readRDS("fm_ar1_mstart.rds")
+filter(res2L, name == "var1" & abs(value + 0.1) < 0.1)
+res2L <- readRDS("fm_ar1_mstart_oldcode.rds")
 theta_plots(res2L)[[1]]
 theta_plots(res2L)[[2]]
 
 v <- get_logSD(fm_ar1, fsleepstudy)
 fm_ar1B <- update(fm_ar1, start = list(theta = c(v, v, 0)))
+fm_ar1C <- update(fm_ar1, start = list(theta = c(-0.5, 4, 0), betad=4))
+fm_ar1C <- update(fm_ar1, start = list(theta = c(-0.1, 4, 0), betad=4))
 
 ## https://github.com/glmmTMB/glmmTMB/issues/1036
 fm2 <- glmmTMB(
