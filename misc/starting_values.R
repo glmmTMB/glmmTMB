@@ -1,4 +1,5 @@
 ## exploring starting values, esp for AR1 fits
+## good commit: 5939686 (right before Gaussian parameterization switch) [Oct 2023]
 library(tidyverse); theme_set(theme_bw())
 library(glmmTMB)
 remotes::install_github("mccarthy-m-g/alda")
@@ -69,9 +70,10 @@ fm_ar1 <- glmmTMB(Reaction ~ 1 +
 VarCorr(fm_ar1)
 
 res2L <- theta_fit(model = fm_ar1)
-saveRDS(res2L, file = "fm_ar1_mstart.rds")
+saveRDS(res2L, file = "fm_ar1_mstart_oldcode.rds")
 
 theta_plots(res2L)[[1]]
+theta_plots(res2L)[[2]]
 
 v <- get_logSD(fm_ar1, fsleepstudy)
 fm_ar1B <- update(fm_ar1, start = list(theta = c(v, v, 0)))
