@@ -23,11 +23,13 @@
   truncated_compois =405,
   nbinom1 =500,
   nbinom2 =501,
-  truncated_nbinom1 =502,
-  truncated_nbinom2 =503,
+  nbinom12 =502,
+  truncated_nbinom1 =550,
+  truncated_nbinom2 =551,
   t =600,
   tweedie = 700,
-  lognormal = 800
+  lognormal = 800,
+  skewnormal = 900
 )
 .valid_covstruct <- c(
   diag = 0,

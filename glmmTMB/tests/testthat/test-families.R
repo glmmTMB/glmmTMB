@@ -498,3 +498,21 @@ test_that("t-distributed response", {
                  tolerance = 1e-6)
 })
 
+test_that("nbinom12 family", {
+    set.seed(101)
+    n <- 10000
+    x <- rnorm(n)
+    mu <- exp(2 + 1*x)
+    vv <- mu*(1+2+mu/0.5)
+    k <- mu/(vv/mu - 1)
+    dd <- data.frame(x, y = rnbinom(n, mu = mu, size = k))
+    m1 <- glmmTMB(y ~ x, family = nbinom12, data = dd)
+    ## basic test
+    ## should have phi = 2, k = 0.5
+    ## log(phi) ~ 0.7, log(psi) ~ -0.7
+    expect_equal(    m1$obj$env$last.par.best,
+                 c(beta = 1.98948426828242, beta = 1.00635151325394,
+                   betad = 0.68344614610532, psi = -0.686823594633112),
+                 tolerance = 1e-6)
+    expect_equal(sigma(m1), 1.980692, tolerance = 1e-6)
+})

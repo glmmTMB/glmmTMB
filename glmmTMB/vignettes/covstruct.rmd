@@ -67,6 +67,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Unstructured (general positive definite)      # `us`          #  $n(n+1)/2$     # # See [Mappings]
  Heterogeneous Toeplitz           # `toep`        #  $2n-1$         #     # log-SDs ($\\theta_1-\\theta_n$); correlations $\\rho_k = \\theta_{n+k}/\\sqrt{1+\\theta_{n+k}^2}$, $k = \\textrm{abs}(i-j+1)$
  Het. compound symmetry  # `cs`          #  $n+1$    #      # log-SDs ($\\theta_1-\\theta_n$); correlation $\\rho = \\theta_{n+1}/\\sqrt{1+\\theta_{n+1}^2}$
+ Homogenous diagonal     # `homdiag`     #  $1$      #  # log-SD
  Het. diagonal           # `diag`        #  $n$            #  # log-SDs
  AR(1)                            # `ar1`         #  $2$            # Unit spaced levels # log-SD; $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
  Ornstein-Uhlenbeck               # `ou`          #  $2$            # Coordinates  # log-SD; log-OU rate ($\\rho = \\exp(-\\exp(\\theta_2) d_{ij})$)
@@ -78,11 +79,12 @@ ctab <- read.delim(sep = "#", comment = "",
 )
 knitr::kable(ctab)
 ```
-The word 'heterogeneous' refers to the marginal variances of the
-model. 
+The word 'heterogeneous' refers to the marginal variances of the model. 
+
+Homogenous versions of some structures (e.g. Toeplitz, compound symmetric) can be implemented by using the `map` argument to set all log-SD parameters equal to each other.
 
 Some of the structures require temporal or spatial coordinates. We
-will show examples of this in a later section.
+will show examples in a later section.
 
 ## The AR(1) covariance structure
 
@@ -540,7 +542,8 @@ for variance parameters) and their order.
 
 ### Unstructured
 
-For an unstructured matrix of size `n`, parameters `1:n` represent the log-standard deviations while the remaining `n(n-1)/2` (i.e. `(n+1):(n:(n*(n+1)/2))`) are the elements of the *scaled* Cholesky factor of the correlation matrix, filled in row-wise order (see [TMB documentation](http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html)). In particular, if $L$ is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as $\Sigma = D^{-1/2} L L^\top D^{-1/2}$, where $D = \textrm{diag}(L L^\top)$. For a single correlation parameter $\theta_0$, this works out to $\rho = \theta_0/\sqrt{1+\theta_0^2}$.
+For an unstructured matrix of size `n`, parameters `1:n` represent the log-standard deviations while the remaining `n(n-1)/2` (i.e. `(n+1):(n:(n*(n+1)/2))`) are the elements of the *scaled* Cholesky factor of the correlation matrix, filled in row-wise order (see [TMB documentation](http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html)). In particular, if $L$ is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as $\Sigma = D^{-1/2} L L^\top D^{-1/2}$, where $D = \textrm{diag}(L L^\top)$. For a single correlation parameter $\theta_0$, this works out to $\rho = \theta_0/\sqrt{1+\theta_0^2}$
+(with inverse $\theta_0 =  \rho/\sqrt(1-\rho^2)$.
 
 (See calculations [here](https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb).)
 
