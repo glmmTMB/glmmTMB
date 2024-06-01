@@ -37,7 +37,9 @@ relatives <- function(term, names, factors){
                                         function(term2) is.relative(term, term2))]
 }
 
+## roxygen complains if this is not exported ... ?
 ## modified
+#' @export
 has.intercept.glmmTMB <- function (model, component="cond", ...) {
     nms <- names(fixef(model)[[component]])
     any(grepl("\\(Intercept\\)",nms))

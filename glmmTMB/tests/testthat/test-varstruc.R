@@ -42,7 +42,7 @@ test_that("basic ar1", {
 test_that("print ar1 (>1 RE)", {
     fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
                                     newdata=fsleepstudy,
-                                    newparams = list(beta=0, betad = 1, theta = c(1, 1, 1)),
+                                    newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
                                     family = gaussian,
                                     seed = 101)[[1]]
     fm_ar2 <- glmmTMB(sim ~ 1 +

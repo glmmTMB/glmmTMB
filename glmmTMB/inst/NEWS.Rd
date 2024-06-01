@@ -12,7 +12,7 @@
   } % new features
   \subsection{BUG FIXES}{
     \itemize{
-      \item fixed bug in \code{simulate_new} for \code{family = "beta_family")
+      \item fixed bug in \code{simulate_new} for \code{family = "beta_family"}
       \item simulation now works for models fitted with the (scaled) t
 	distribution (GH #1024)
       \item \code{vcov} works better for cases where \code{map} is used

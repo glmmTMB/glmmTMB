@@ -652,7 +652,7 @@ test_that("good simulate_new response values for beta", {
         newdata = sleepstudy,
         newparams = list(beta = c(-1, 0.1),
                          theta = c(-1, -1, 0),
-                         betad = 10),
+                         betadisp = 10),
         family = "beta_family",
         seed = 101)
     expect_equal(head(ss[[1]], 3),

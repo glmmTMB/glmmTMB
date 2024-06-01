@@ -1,5 +1,6 @@
 #define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
 #include <TMB.hpp>
+#include <R_ext/Error.h>
 #include "init.h"
 #include "distrib.h"
 #include "cordistrib.h"

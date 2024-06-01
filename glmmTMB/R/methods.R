@@ -369,6 +369,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
+##' @importFrom utils combn
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   check_dots(..., .ignore = "complete")
