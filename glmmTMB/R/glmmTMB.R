@@ -534,7 +534,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @return a list composed of
 ##' \item{X}{design matrix for fixed effects}
 ##' \item{Z}{design matrix for random effects}
-##' \item{reTrms}{output from \code{\link{reformulas::mkReTrms}}, possibly augmented with information about \code{mgcv}-style smooth terms}
+##' \item{reTrms}{output from \code{\link[reformulas]{mkReTrms}}, possibly augmented with information about \code{mgcv}-style smooth terms}
 ##' \item{ss}{splitform of the formula}
 ##' \item{aa}{additional arguments, used to obtain rank}
 ##' \item{terms}{terms for the fixed effects}
