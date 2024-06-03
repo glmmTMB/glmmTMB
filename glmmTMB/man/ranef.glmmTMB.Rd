@@ -31,9 +31,11 @@ arguments (they are unused here and will trigger an error)}
     for the conditional model.}
   \item{zi}{a list of data frames, containing random effects for
     the zero inflation.}
+  \item{disp}{a list of data frames, containing random effects
+    for the dispersion model.}
 }
 If \code{condVar=TRUE}, the individual list elements within the
-\code{cond} and \code{zi} components (corresponding to individual
+\code{cond}, \code{zi}, and \code{disp} components (corresponding to individual
 random effects terms) will have associated \code{condVar} attributes
 giving the conditional variances of the random effects values.
 These are in the form of three-dimensional arrays: see

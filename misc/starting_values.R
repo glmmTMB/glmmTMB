@@ -5,6 +5,8 @@ library(furrr)
 library(future)
 library(progressr)
 library(patchwork)
+library(nlme)
+
 ## not working?
 ## future::plan(multisession, workers = 3)
 future::plan(sequential)
@@ -82,9 +84,27 @@ fsleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
 
 m0 <- lm(Reaction ~ 1, fsleepstudy)
 sigma(m0)
+## non-pos-def!
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
 VarCorr(fm_ar1)
+
+fm_ar1B <- lme(Reaction ~ 1, random = ~1|Subject, correlation = corAR1(form = ~1|Subject),
+               fsleepstudy, method = "ML")
+intervals(fm_ar1B)
+VarCorr(fm_ar1)
+
+## what about a less painful example? Simulate something ...
+
+fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
+                                newdata=fsleepstudy,
+                                newparams = list(beta=0, betad = 1, theta = c(1, 1, 1)),
+                                family = gaussian,
+                                seed = 101)[[1]]
+fm_ar2 <- glmmTMB(sim ~ 1 +
+                      (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+
+
 
 res2L <- theta_fit(model = fm_ar1)
 saveRDS(res2L, file = "fm_ar1_mstart_oldcode.rds")

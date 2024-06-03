@@ -38,14 +38,20 @@ test_that("basic ar1", {
                  cc[1,2]^(0:(nrow(cc)-1)))
 })
 
+## change to something better behaved
 test_that("print ar1 (>1 RE)", {
+    fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
+                                    newdata=fsleepstudy,
+                                    newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
+                                    family = gaussian,
+                                    seed = 101)[[1]]
+    fm_ar2 <- glmmTMB(sim ~ 1 +
+                          (1|Subject) + ar1(row+0| Subject), fsleepstudy)
     cco <- gsub(" +"," ",
-                trimws(capture.output(print(summary(fm_ar1),digits=1))))
+                trimws(capture.output(print(summary(fm_ar2),digits=2))))
     expect_equal(cco[12:14],
-                 c("Subject (Intercept) 4e-01 0.6",
-                   "Subject.1 row1 4e+03 60.8 0.87 (ar1)",
-                   "Residual 8e+01 8.9"))
-
+                 c("Subject (Intercept) 7.0 2.6", "Subject.1 row1 5.9 2.4 0.78 (ar1)", 
+                   "Residual 8.1 2.8"))
 })
 
 test_that("ar1 requires factor time", {

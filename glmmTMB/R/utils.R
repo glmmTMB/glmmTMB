@@ -99,7 +99,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
 
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
-    drop_rand <- function(x) x[!x %in% c("b", "bzi")]
+    drop_rand <- function(x) x[!x %in% c("b", "bzi", "bdisp")]
     if (!include_nonest) {
         intnames <- drop_rand(names(ee$last.par))
     } else {
@@ -112,7 +112,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
 
     if (is.null(parm)) {
         if (!full && trivialDisp(object)) {
-            parm <- grep("betad", intnames, invert=TRUE)
+            parm <- grep("betadisp", intnames, invert=TRUE)
         } else {
             parm <- seq_along(sds)
         }
@@ -132,7 +132,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
             }
         } else if (identical(parm, "disp_") ||
                    identical(parm, "sigma")) {
-            parm <- grep("^betad", intnames)
+            parm <- grep("^betadisp", intnames)
         } else { ## generic parameter vector
             nparm <- match(parm,pnames)
             if (any(is.na(nparm))) {
@@ -323,7 +323,7 @@ isNullPointer <- function(x) {
 #'
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
-#' @param update_gauss_disp update \code{betad} from variance to SD parameterization?
+#' @param update_gauss_disp update \code{betadisp} from variance to SD parameterization?
 #' @export
 up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
@@ -346,10 +346,34 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
               }
           }
       }
+      if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
+      	ee$parameters$betadisp <- ee$parameters$betad
+      	ee$parameters$betad <- NULL
+      	pars <- c(grep("last\\.par", names(ee), value = TRUE),
+      						"par")
+      	for (p in pars) {
+      		if (!is.null(nm <- names(ee[[p]]))) {
+      			names(ee[[p]])[nm == "betad"] <- "betadisp"
+      		}
+      	}
+      	ee$data$Xdisp <- ee$data$Xd
+      	ee$data$Xd <- NULL
+      	ee$data$dispoffset <- ee$data$doffset
+      	ee$data$doffset <- NULL
+      }
+      if(!"Zdisp" %in% names(ee$data)) {
+      	ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      	ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
+      	ee$parameters$thetadisp <- numeric(0)
+      }
       ee2 <- oldfit$sdr$env
       if ("thetaf" %in% names(ee2$parameters)) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
+      }
+      if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
+      	ee2$parameters$betadisp <- ee2$parameters$betad
+      	ee2$parameters$betad <- NULL
       }
 
     ## prior_ivars, prior_fvars are defined in priors.R
@@ -363,13 +387,13 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
-          ee$parameters$betad <- ee$parameters$betad/2
+          ee$parameters$betadisp <- ee$parameters$betadisp/2
           for (p in pars) {
               if (!is.null(nm <- names(ee[[p]]))) {
-                  ee[[p]][nm == "betad"] <- ee[[p]][nm == "betad"]/2
+                  ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
               }
               if (!is.null(nm <- names(oldfit$fit[[p]]))) {
-                  oldfit$fit[[p]][nm == "betad"] <- oldfit$fit[[p]][nm == "betad"]/2
+                  oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
               }
           }
       }
@@ -470,7 +494,7 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betad","theta","thetazi","psi")
+par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
 
 ## all parameters, including both mapped and rank-dropped
 getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
@@ -488,7 +512,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       }
       if (trivialFixef(nn, tag)
           ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" &&
+          && !(full && tag =="disp" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
@@ -496,7 +520,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       return(paste(tag,nn,sep="~"))
   }
 
-  nameList <- setNames(Map(mkNames, c("", "zi", "d")),
+  nameList <- setNames(Map(mkNames, c("", "zi", "disp")),
                          names(cNames))
 
   if(full) {
@@ -515,7 +539,9 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       }
       ## nameList for estimated variables;
       nameList <- c(nameList,
-                    list(theta = reNames("cond"), thetazi = reNames("zi")))
+                    list(theta = reNames("cond"), 
+                    		 thetazi = reNames("zi"), 
+                    		 thetadisp = reNames("disp")))
 
       ##
       if (length(fp <- family_params(object)) > 0) {
@@ -612,7 +638,7 @@ make_pars <- function(pars, ...) {
 ##' the domain of the conditional distribution, and should probably not
 ##' be all zeros, but whose value is otherwise irrelevant)
 ##' @param newparams a list of parameters containing sub-vectors
-##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+##' (\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
 ##' be used in the model
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
@@ -627,7 +653,7 @@ make_pars <- function(pars, ...) {
 ##'              family = nbinom2,
 ##'              newparams = list(beta = c(2, 1),
 ##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-##'                          betad = log(2), ## log(NB dispersion)
+##'                          betadisp = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
 ##' )
 ##' head(sim_count[[1]])
