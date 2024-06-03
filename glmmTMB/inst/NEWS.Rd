@@ -8,8 +8,17 @@
   \subsection{NEW FEATURES}{
     \itemize{
       \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
+      \item random effects, including smooth terms with \code{s()}, can
+      now be included in the dispersion model. This feature is
+      EXPERIMENTAL; please post any problems to the issues list
     } % itemize
   } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the vector of fixed-effect parameters for the dispersion
+      model has changed from \code{betad} to \code{betadisp}
+    } % itemize
+  } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
       \item fixed bug in \code{simulate_new} for \code{family = "beta_family"}
