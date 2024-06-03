@@ -560,7 +560,7 @@ family_params <- function(object) {
            tweedie = c("Tweedie power" = plogis(tf) + 1),
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
-           skewnormal = c("Skewnormal alpha" = tf),
+           skewnormal = c("Skewnormal shape" = tf),
            numeric(0)
            )
 }
