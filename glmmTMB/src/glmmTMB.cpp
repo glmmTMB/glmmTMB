@@ -602,7 +602,9 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(thetazi);
   PARAMETER_VECTOR(thetadisp);
   
-  // Extra family specific parameters (e.g. tweedie, t, ordbetareg, nbinom12)
+  // Extra family specific parameters
+  // tweedie, t, ordbetareg, nbinom12, skewnormal;
+  // see .extraParamFamilies in R code for expected length
   PARAMETER_VECTOR(psi);
 
   DATA_INTEGER(family);

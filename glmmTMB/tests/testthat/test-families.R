@@ -516,3 +516,29 @@ test_that("nbinom12 family", {
                  tolerance = 1e-6)
     expect_equal(sigma(m1), 1.980692, tolerance = 1e-6)
 })
+
+test_that("skewnormal family", {
+    dd <- data.frame(dummy = rep(1, 500))
+    dd$y <- simulate_new(~1,
+                            newdata = dd,
+                            newparams = list(beta = -1,
+                                             betadisp = 3,
+                                             psi = -5),
+                            seed = 101,
+                            family = "skewnormal")[[1]]
+    expect_equal(range(dd$y), c(-64.8363758099827, 32.87734399648))
+    expect_equal(length(unique(dd$y)), 500L)
+    fit <- glmmTMB(y ~ 1,
+                   data = dd,
+                   family = "skewnormal",
+                   start = list(betadisp = log(sd(dd$y)),
+                                psi = -5))
+    expect_equal(fit$obj$env$last.par.best,
+                 c(beta = 0.0765490512716489,
+                   betadisp = 2.94927708520387,
+                   psi = -6.12362878509844),
+                 tolerance = 1e-6)
+    expect_equal(family_params(fit),
+                 c(`Skewnormal shape` = -6.12362878509844),
+                 tolerance = 1e-6)
+})
