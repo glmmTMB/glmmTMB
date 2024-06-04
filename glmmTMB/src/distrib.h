@@ -309,8 +309,8 @@ namespace glmmtmb{
     Type omega = sigma/sqrt(1 - 2/M_PI * pow(delta, 2)); 
     Type xi = mu - omega * delta * sqrt(2/M_PI); 
     
-    Type chi = std::abs(rnorm(0, 1));
-    Type nrv = rnorm(0, 1);
+    Type chi = CppAD::abs(rnorm(Type(0), Type(1)));
+    Type nrv = rnorm(Type(0), Type(1));
     Type z = delta * chi + sqrt(1 - pow(delta, 2)) * nrv;
     Type ans = xi + omega * z;
     
