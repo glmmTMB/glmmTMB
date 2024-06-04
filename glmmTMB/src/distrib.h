@@ -301,7 +301,22 @@ namespace glmmtmb{
     return ans;
   }
 
-
+  /* Simulate from skew-normal distribution */
+  template<class Type>
+  Type rskewnorm(Type mu, Type sigma, Type alpha) {
+    // Copied from R function sn::rsn
+    Type delta = alpha/sqrt(1 + pow(alpha, 2)); 
+    Type omega = sigma/sqrt(1 - 2/M_PI * pow(delta, 2)); 
+    Type xi = mu - omega * delta * sqrt(2/M_PI); 
+    
+    Type chi = CppAD::abs(rnorm(Type(0), Type(1)));
+    Type nrv = rnorm(Type(0), Type(1));
+    Type z = delta * chi + sqrt(1 - pow(delta, 2)) * nrv;
+    Type ans = xi + omega * z;
+    
+    return ans;
+  }
+  
   // FIXME: check!
   template<class Type>
   Type dcauchy(Type x, Type loc, Type scale, int give_log=0)
