@@ -208,6 +208,10 @@ test_that("blockCode set correctly in VarCorr", {
     times <- factor(1:n, levels=1:n)
     group <- factor(rep(1,n))
     dat0 <- data.frame(y, times, group)
-    model <- glmmTMB(y ~ ar1(factor(times) + 0 | group), ziformula = ~ ar1(factor(times) + 0 | group), data=dat0, family = gaussian())
+    ## suppress non-pos-def warning
+    suppressWarnings(model <- glmmTMB(y ~ ar1(factor(times) + 0 | group),
+                                      ziformula = ~ ar1(factor(times) + 0 | group),
+                                      data=dat0, family = gaussian())
+                     )
     expect_equal(attr(VarCorr(model)[["zi"]]$group, "blockCode"), c(ar1=3))
 })

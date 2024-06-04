@@ -333,7 +333,7 @@ extern "C" {
   SEXP compois_calc_var(SEXP mean, SEXP nu) {
     if (LENGTH(mean) != LENGTH(nu))
       error("'mean' and 'nu' must be vectors of same length.");
-    SEXP ans = PROTECT(allocVector(REALSXP, LENGTH(mean)));
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, LENGTH(mean)));
     for(int i=0; i<LENGTH(mean); i++)
       REAL(ans)[i] = glmmtmb::compois_calc_var(REAL(mean)[i], REAL(nu)[i]);
     UNPROTECT(1);

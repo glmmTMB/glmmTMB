@@ -4,17 +4,28 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-
 \section{CHANGES IN VERSION 1.1.9-9000}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
+      \item random effects, including smooth terms with \code{s()}, can
+      now be included in the dispersion model. This feature is
+      EXPERIMENTAL; please post any problems to the issues list
     } % itemize
   } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the vector of fixed-effect parameters for the dispersion
+      model has changed from \code{betad} to \code{betadisp}
+    } % itemize
+  } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item fixed bug in \code{simulate_new} for \code{family = "beta_family"}
       \item simulation now works for models fitted with the (scaled) t
-      distribution (GH #1024)
+	distribution (GH #1024)
+      \item \code{vcov} works better for cases where \code{map} is used
+      to fix sets of parameters equal to each other
       \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
     } % itemize
   } % bug fixes
@@ -24,7 +35,7 @@
       \code{reformulas} package rather than from \code{lme4}
     } % itemize
   } % other changes
-} % 1.1.9.9000
+} % 1.1.9-9000
   
 \section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
@@ -35,7 +46,7 @@
       \itemize{
 	\item results of fitting Gaussian models may change slightly,
 	especially for unstable fits
-	\item stored model objects need to have their \code{betad}
+	\item stored model objects need to have their \code{betadisp}
 	parameters halved for consistency: use \code{up2date(..., adjust_gauss_disp = TRUE)}
 	\item parameter estimates for dispersion components will change,
 	e.g. from \code{fixef(.)$disp} or \code{confint()} for models
@@ -74,7 +85,7 @@
       attributes (GH #977)
     } % itemize
   } % bug fixes
-} % 1.1.8-9000
+} % 1.1.9
 
 \section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
   \subsection{NEW FEATURES}{
