@@ -37,3 +37,24 @@ test_that("smooth with no fixed-effect components", {
                   dispformula = ~0, data = dd)
 
 })
+
+test_that("smooth + diag() specials", {
+    set.seed(101)
+    n <- 100
+    dd <- data.frame(y = runif(n, -80, 80), x = runif(n, -180, 180),
+                     f1 = factor(sample(1:4, size = n, replace = TRUE)),
+                     f2 = factor(sample(1:4, size = n, replace = TRUE)))
+    ff <- z ~ 1 + s(y, x, bs = "sos") + diag(f1|f2)
+    dd$z <- simulate_new(ff[-2],
+                         dispformula = ~ 0,
+                         newdata = dd,
+                         newparams = list(beta = 1, theta = rep(1, 5)),
+                         family = gaussian)[[1]]
+
+    g1 <- glmmTMB(ff, dispformula = ~0, data = dd)
+    expect_equal(getME(g1, "theta"),
+                 c(0.829644130428793, 0.789420770119563,
+                   1.1073848292829, 0.522906430406326, 
+                   1.16293701025298),
+                 tolerance = 1e-5)
+})
