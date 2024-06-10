@@ -11,12 +11,18 @@
       \item random effects, including smooth terms with \code{s()}, can
       now be included in the dispersion model. This feature is
       EXPERIMENTAL; please post any problems to the issues list
+      \item added "skewnormal" family (@psmorris) (EXPERIMENTAL:
+      some manual adjustment of starting values may be required)
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item the vector of fixed-effect parameters for the dispersion
-      model has changed from \code{betad} to \code{betadisp}
+      \item the name of the
+      vector of fixed-effect parameters for the dispersion
+      model has changed from \code{betad} to \code{betadisp};
+      code that specifies parameter values (e.g. as part
+      of a \code{start} argument or in \code{newparams} for
+      \code{simulate_new}) may need to be adjusted
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{

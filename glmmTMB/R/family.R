@@ -324,6 +324,7 @@ betabinomial <- function(link="logit") {
                   mu*(1-mu)
               },
               initialize = our_binom_initialize(binomial()$initialize))
+    ## FIXME: should add needs_int = TRUE ??
     return(make_family(r,link))
 }
 
@@ -344,7 +345,7 @@ skewnormal <- function(link="identity") {
             variance = function(phi) {
               phi^2
             })
-  return(make_family(r,link, needs_nonneg = FALSE))
+  return(make_family(r,link))
 }
 
 
