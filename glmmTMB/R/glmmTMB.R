@@ -646,8 +646,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
+            cnm <- colnames(X)
             for (s in smooth_terms2) {
-                cnm <- colnames(X)
+                if (ncol(s$re$Xf) == 0) next
                 snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
                 colnames(X) <- c(cnm, paste0(snm, seq.int(ncol(s$re$Xf))))
@@ -684,12 +685,16 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
 
         ## FIXME: check whether predvars are carried along correctly in terms
         if (!ranOK) stop("no random effects allowed in ", type, " term")
+        ## FIXME: could use doublevert_split = FALSE here to preserve
+        ##  || -> diag() behaviour if we wanted (with new reformulas version)
         RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
 
         if (has_re) {
             mf$formula <- ranform
-            reTrms <- mkReTrms(no_specials(findbars_x(formula)),
-                               fr, reorder.terms=FALSE, calc.lambdat=FALSE)
+            ## no_specials so that mkReTrms can handle it
+            reTrms <- mkReTrms(no_specials(
+                findbars_x(formula)),
+                fr, reorder.terms=FALSE, calc.lambdat=FALSE)
         } else {
             ## dummy elements
             reTrms <- list(Ztlist = list(), flist = list(), cnms = list(),
@@ -701,6 +706,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
 
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
+        ##
         ## "theta", "Lind", "lower", "Lambdat", "nl" (?) are lme4-specific
 
         ## need to fill in smooth terms in **correct locations**
@@ -718,13 +724,16 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                 augReTrms[[p]][barpos] <- reTrms[[p]]
                 names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
             }
-            ## one theta value for smooths
-            ## FIXME: do we actually use theta values?
-            ## FIXME: can we set 
-            augReTrms$theta <- rep(0, ## default value 
-                                   sum(lengths(reTrms$theta)) +
-                                   length(nonbarpos))
-            augReTrms$theta[barpos] <- reTrms$theta
+            ## This code *would* set one theta value for each smooth
+            ## glmmTMB doesn't use the theta component anyway --
+            ## and these computations break because mkReTrms doesn't know
+            ## about specials, assumes ntheta = (nlev*(nlev+1)/2)
+            ## for each smooth
+            ##
+            ## augReTrms$theta <- rep(0, ## default value 
+            ##                        sum(lengths(reTrms$theta)) +
+            ##                        length(nonbarpos))
+            ## augReTrms$theta[barpos] <- reTrms$theta
 
             ## only need one 'dummy' factor for all the smooth terms
             ff <- factor(rep(1, nobs))
@@ -749,7 +758,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
             ## store smooth info in relevant spots
             for (i in seq_along(nonbarpos)) {
-                augReTrms$smooth_info[[i]] <- smooth_terms2[[nonbarpos[i]]]
+                augReTrms$smooth_info[[nonbarpos[i]]] <- smooth_terms2[[i]]
             }
             ## reconstitute other pieces
             augReTrms$Zt <- do.call(rbind, augReTrms$Zt)
