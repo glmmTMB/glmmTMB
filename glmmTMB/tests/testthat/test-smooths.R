@@ -33,8 +33,8 @@ test_that("smooth with no fixed-effect components", {
     ## number of rows of matrices must match (see arg 2)
 
     ## fits without warnings but not sensible ...
-    g1 <- glmmTMB(x ~ 1 + s(y, x, bs = "sos"),
-                  dispformula = ~0, data = dd)
+    expect_silent(g1 <- glmmTMB(x ~ 1 + s(y, x, bs = "sos"),
+                  dispformula = ~0, data = dd))
 
 })
 
