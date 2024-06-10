@@ -1,10 +1,10 @@
 
 prior_synonyms <- c("fixef" = "beta",
-                    "fixef_zi" = "beta_zi",
-                    ## FIXME: update to betadisp when RE_disp is merged
-                    "fixef_disp" = "betad",
+                    "fixef_zi" = "betazi",
+                    "fixef_disp" = "betadisp",
                     "ranef" = "theta",
-                    "ranef_zi" = "theta_zi",
+                    "ranef_zi" = "thetazi",
+                    "ranef_disp" = "thetadisp",
                     "psi" = "shape")
 
 prior_ivars <- paste0("prior_", c("distrib", "whichpar", "elstart", "elend", "npar"))
@@ -139,7 +139,10 @@ proc_priors <- function(priors, info = NULL) {
                     w <- match(re_term, nospace(names(re_info)))
                     if (is.na(w)) {
                         ## ... or just grouping variable
-                        w <- match(re_term, gsub("^[^|]+\\|", "", nospace(names(re_info))))
+                        gvars <- gsub("^[^|]+\\|", "", nospace(names(re_info)))
+                        w <- match(re_term, gvars)
+                        if (is.na(w)) stop(sprintf("can't match random effects prior coef specification ('%s') with any random effects term or grouping variable (%s)",
+                                           re_term, paste(gvars, collapse = ", ")))
                     }
                     if (is.na(re_term)) stop("can't match prior RE term", re_term)
                     theta_start <- nthetavec[[component]][w] - 1 ## C++ index

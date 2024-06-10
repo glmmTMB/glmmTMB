@@ -120,3 +120,35 @@ test_that("print.priors_glmmTMB works without coef column #1014", {
   expect_identical(trimws(out), "ranef ~ gamma(1e+08, 2.5)")
   expect_no_error(capture.output(print(x)))
 })
+
+test_that("prior specs", {
+    skip_on_cran()
+    m2 <- glmmTMB(count ~ spp + mined + (1 | site),
+                  zi = ~ spp + mined,
+                  family = nbinom2, data = Salamanders
+                  )
+    prior6 <- data.frame(
+        prior = c("normal(250,3)", "t(0,3,3)", "t(0,3,3)", "gamma(10,1)"),
+        class = c("fixef", "fixef", "fixef_zi", "ranef_sd"),
+        coef = c(1, 2, 1, 1)
+    )
+    g6p <- suppressWarnings(update(m2, prior = prior6)) ## NPD
+    expect_equal(fixef(g6p)$cond[[1]], 248.6945, tolerance = 1e-5)
+    
+    prior7 <- data.frame(
+        prior = c("normal(250,3)", "t(0,3,3)", "t(0,3,3)", "gamma(10,1)"),
+        class = c("fixef", "fixef", "fixef_zi", "ranef_sd"),
+        coef = c("(Intercept)", "minedno", "minedno", "(Intercept)")
+    )
+    expect_error(update(m2, prior = prior7), "can't match")
+
+
+    prior8 <- prior7
+    prior8$coef[4] <- "site"
+    suppressWarnings(g8p <- update(m2, prior = prior8))
+
+    prior8$coef[4] <- "1|site"
+    suppressWarnings(g9p <- update(m2, prior = prior8))
+
+    expect_equal(getME(g8p, "theta"), getME(g9p, "theta"))
+})
