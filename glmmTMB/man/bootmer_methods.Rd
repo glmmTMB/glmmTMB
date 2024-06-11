@@ -12,7 +12,7 @@
 \arguments{
 \item{x}{a fitted glmmTMB object}
 
-\item{...}{additional arguments (for generic consistency; ignored)}
+\item{...}{extra args (required for method compatibility)}
 
 \item{object}{a fitted glmmTMB object}
 
@@ -21,9 +21,6 @@
 \item{fast}{(logical) [EXPERIMENTAL] refit by modifying existing TMB object?}
 
 \item{update_start}{(logical) use fitted coefficients as starting value?}
-
-\item{...}{additional arguments (for generic consistency; ignored)}
-
 }
 \description{
 see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details

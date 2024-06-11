@@ -1444,7 +1444,6 @@ as.data.frame.ranef.glmmTMB <- function(x, ...) {
 #' @rdname bootmer_methods
 #' @title support methods for parametric bootstrapping
 #' @param x a fitted glmmTMB object
-#' @param ... extra args (required for method compatibility)
 #' @param newresp a new response vector
 #' @export
 #' @importFrom lme4 isLMM
@@ -1466,7 +1465,7 @@ lme4::refit
 #' @param object a fitted glmmTMB object
 #' @param fast (logical) [EXPERIMENTAL] refit by modifying existing TMB object?
 #' @param update_start (logical) use fitted coefficients as starting value?
-#' @param ... additional arguments (for generic consistency; ignored)
+#' @param ... extra args (required for method compatibility)
 #' @examples
 #' if (requireNamespace("lme4")) {
 #' \dontrun{
