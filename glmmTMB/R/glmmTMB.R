@@ -1688,29 +1688,6 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
       TMBStruc <- .checkRankX(TMBStruc, control$rank_check)
     }
 
-    ## avoid repetition; rely on environment for parameters
-    optfun <- function() {
-        res <- with(obj,
-             if( length(par) ) {
-                 do.call(control$optimizer,
-                         c(list(par, fn, gr,
-                                control = control $ optCtrl),
-                           control $ optArgs))
-             } else {
-                 list( par=par, objective=fn(par))
-             })
-        ## make optim() results look like nlminb() results (which is
-        ## what glmmTMB is expecting downstream)
-        ## FIXME: what does nloptr output look like?
-        ## nlminb components: par, objective, convergence, message
-        ## optim components: par, value, counts, convergence, message
-        if ("value" %in% names(res)) {
-            res$objective <- res$value
-            res$value <- NULL
-        }
-        return(res)
-    }
-
     if (control $ profile) {
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,

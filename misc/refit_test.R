@@ -1,5 +1,7 @@
-devtools::load_all("../glmmTMB")
+devtools::load_all("glmmTMB")
 
+library(glmmTMB)
+library(waldo)
 fm1 <- glmmTMB(count~mined+(1|spp),
                ziformula=~mined,
                data=Salamanders,
@@ -7,9 +9,15 @@ fm1 <- glmmTMB(count~mined+(1|spp),
 ## single parametric bootstrap step: refit with data simulated from original model
 s1 <- simulate(fm1, seed = 101)[[1]]
 fm1R <- refit(fm1, s1)
-fm1RS <- refit(fm1, s1, fast = TRUE)
+fm1RS <- refit(fm1, s1, fast = TRUE, update_start = FALSE)
 ## needs work!
 all.equal(fm1R, fm1RS)
+
+## why are $.Phi values different??
+waldo::compare(fm1R$modelInfo, fm1RS$modelInfo, ignore_formula_env = TRUE)
+## why does $fitted get assigned differently?
+fm1R$fitted
+fm1RS$fitted
 
 nsim <- 100
 options(glmmTMB.fast_refit = FALSE)
