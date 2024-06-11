@@ -1579,6 +1579,11 @@ fast_refit <- function(object, newresp, update_start = TRUE, ...) {
     ##  and do something appropriate
     dd <- ee$data
 
+    na.act <- attr(model.frame(object), "na.action")
+    if (!is.null(na.act) && attr(na.act, "class") %in% c("omit", "exclude")) {
+        newresp <- newresp[-na.act]
+    }
+
     mismatch_fun(dd$yobs, newresp, length, "length", "%d")
     mismatch_fun(dd$yobs, newresp, storage.mode, "storage mode", "%s") 
 
