@@ -6,6 +6,10 @@ fm1 <- glmmTMB(count~mined+(1|spp),
                ziformula=~mined,
                data=Salamanders,
                family=nbinom1)
+
+data("sleepstudy", package = "lme4")
+fm2 <- glmmTMB(Reaction ~ Days + (Days | Subject), data = sleepstudy)
+
 ## single parametric bootstrap step: refit with data simulated from original model
 s1 <- simulate(fm1, seed = 101)[[1]]
 fm1R <- refit(fm1, s1)

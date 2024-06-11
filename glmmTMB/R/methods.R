@@ -1608,7 +1608,7 @@ fast_refit <- function(object, newresp, update_start = TRUE, ...) {
     return(ret)
 }
 
-    ## copied from lme4, with addition of 'component' argument
+## copied from lme4, with addition of 'component' argument
 ## FIXME: migrate back to lme4? component is NULL for back-compat.
 ## FIXME:
 ## coef() method for all kinds of "mer", "*merMod", ... objects
