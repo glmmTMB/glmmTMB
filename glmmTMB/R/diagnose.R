@@ -58,7 +58,7 @@ diagnose <- function(fit,
     pp <- ee$last.par.best
     if (!is.null(r <- ee$random)) { pp <- pp[-r] }
     ss <- suppressWarnings(summary(fit$sdr))
-    ss <- ss[grepl("^(beta|theta)", rownames(ss)), ]
+    ss <- ss[grepl("^(beta|theta|psi)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
     vv <- try(vcov(fit, full = TRUE))
     if (!inherits(vv, "try-error")) {
@@ -76,7 +76,7 @@ diagnose <- function(fit,
     ## check coefficients
     if (check_coefs) {
         ## logic: if link function for *conditional* model is unitless then all parameters need checking
-        ## otherwise only check parameters *other* than conditional model parameters ("betad", "betazi", "theta")
+        ## otherwise only check parameters *other* than conditional model parameters ("betadisp", "betazi", "theta")
         link_par <- (nn0 != "beta" |
                      family(fit)$link %in% c("log", "cloglog", "logit", "probit"))
         bigcoef <- (pp[abs(pp)>big_coef & link_par])
@@ -95,7 +95,7 @@ diagnose <- function(fit,
         }
     } ## check_coefs
     if (check_scales) {
-        all_X <- lapply(c("X","Xzi","Xd"), function(x) getME(fit,x))
+        all_X <- lapply(c("X","Xzi","Xdisp"), function(x) getME(fit,x))
         all_X <- do.call(cbind,all_X)
         colnames(all_X) <- nn[seq(ncol(all_X))]
         sdvec <- apply(all_X, 2, sd)
@@ -167,20 +167,27 @@ diagnose <- function(fit,
                 "If this is too slow, consider setting check_hessian = FALSE",
                 "\n\n")
             h <- numDeriv::jacobian(obj$gr, pp)
+            bad <- NULL
             ## FIXME: consider SVD?
             ## FIXME: add explanation
-            eigs <- eigen(h)
-            ## non-positive definite means some of the eigenvectors are <= 0
-            complex_eigs <- is.complex(eigs$values)
-            if (!complex_eigs) {
-              bad <- which(eigs$values/max(eigs$values) <= eval_eps)
+            if (any(is.na(h))) {
+                bad <- NA
+                eigs <- eigen(fit$sdr$cov.fixed)
+                complex_eigs <- is.complex(eigs)
+            } else {
+                eigs <- eigen(h)
+                ## non-positive definite means some of the eigenvectors are <= 0
+                complex_eigs <- is.complex(eigs$values)
+                if (!complex_eigs) {
+                    bad <- which(eigs$values/max(eigs$values) <= eval_eps)
+                }
             }
-            if (!complex_eigs && length(bad) == 0) {
-              cat("Hessian seems OK\n")
-              prt_explain("glmmTMB's internal calculations suggested that the Hessian was bad/non-positive definite;",
-                          "however, a slower and more precise calculation suggests that it's actually OK. Your model",
-                          "may be somewhat numerically unstable.")
-              return(invisible(h)) ## bail out here
+            if (length(bad) == 0 && !complex_eigs) {
+                cat("Hessian seems OK\n")
+                prt_explain("glmmTMB's internal calculations suggested that the Hessian was bad/non-positive definite;",
+                            "however, a slower and more precise calculation suggests that it's actually OK. Your model",
+                            "may be somewhat numerically unstable.")
+                return(invisible(h)) ## bail out here
             }
             if (complex_eigs) {
               cat("Hessian has complex eigenvalues\n\n")

@@ -4,7 +4,255 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.4}{
+\section{CHANGES IN VERSION 1.1.9-9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
+      \item random effects, including smooth terms with \code{s()}, can
+      now be included in the dispersion model. This feature is
+      EXPERIMENTAL; please post any problems to the issues list
+      \item added "skewnormal" family (@psmorris) (EXPERIMENTAL:
+      some manual adjustment of starting values may be required)
+    } % itemize
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the name of the
+      vector of fixed-effect parameters for the dispersion
+      model has changed from \code{betad} to \code{betadisp};
+      code that specifies parameter values (e.g. as part
+      of a \code{start} argument or in \code{newparams} for
+      \code{simulate_new}) may need to be adjusted
+    } % itemize
+  } % user-visible changes
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fixed bug in \code{simulate_new} for \code{family = "beta_family"}
+      \item simulation now works for models fitted with the (scaled) t
+	distribution (GH #1024)
+      \item \code{vcov} works better for cases where \code{map} is used
+      to fix sets of parameters equal to each other
+      \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
+    } % itemize
+  } % bug fixes
+  \subsection{OTHER CHANGES}{
+    \itemize{
+      \item now imports random effect machinery from the
+      \code{reformulas} package rather than from \code{lme4}
+    } % itemize
+  } % other changes
+} % 1.1.9-9000
+  
+\section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the underlying parameterization of the dispersion for
+      Gaussian models has changed from the variance to the standard deviation scale,
+      with the following user-visible consequences:
+      \itemize{
+	\item results of fitting Gaussian models may change slightly,
+	especially for unstable fits
+	\item stored model objects need to have their \code{betadisp}
+	parameters halved for consistency: use \code{up2date(..., adjust_gauss_disp = TRUE)}
+	\item parameter estimates for dispersion components will change,
+	e.g. from \code{fixef(.)$disp} or \code{confint()} for models
+	with dispersion components
+	\item any operations that directly handle dispersion parameters
+	(e.g. \code{offset} terms for dispersion models) should be
+	specified on the SD rather than the variance scale
+      }
+      \item interpretation of the \emph{weights} variable for
+      binomial-type GL(M)Ms has changed. Previously, the \emph{weights}
+      argument was \emph{ignored} for a vector- (rather than
+      matrix-valued) numeric response, if all observations were either 0 or 1.
+      Now the \emph{weights} variable is multiplied by the resonse
+      variable to compute the number of successes (consistently with
+      \code{stats::glm(., family = "binomial")}). (This change makes
+      it easier to use \emph{weights} to specify the number of trials
+      per observation for \code{simulate_new()}.)
+      \item \code{simulate_new} gives useful warning and error
+      messages about unrecognized parameter names and length mismatches
+      (length mismatches previously gave only a warning)
+    } % itemize
+  } % user-visible changes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item lognormal-hurdle models now work (i.e., zero values
+      can occur in the response if \code{ziformula} is specified)
+      \item better checking for illegal (negative or non-integer) values
+      in response variables
+      \item experimental support for priors: see \code{?priors} and
+      \code{vignette("priors", package = "glmmTMB")}
+    }
+  } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item predictions now work when \code{weights} variables have
+      attributes (GH #977)
+    } % itemize
+  } % bug fixes
+} % 1.1.9
+
+\section{CHANGES IN VERSION 1.1.8 (2023-10-07)}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item "lognormal" family available (log-Normal, parameterized
+      by the mean and standard deviation on the \emph{data scale})
+      \item an experimental implementation of penalized splines
+      (and related smooth terms) is available, 
+      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.  
+      Constructive feedback welcome at
+      \url{https://github.com/glmmTMB/glmmTMB/issues/928}
+      \item population-level prediction with new data no longer requires
+      that the variables involved in the random effects be explicitly
+      specified as \code{NA} (GH #923, Russ Lenth)
+      \item the \code{simulate} method now works for models fitted with
+      \code{family=ordbetareg} (GH #942, Daniel Lüdecke)
+      \item deviance residuals are now available for some families
+      (built-in families from base R (see \code{?family})
+      plus \code{nbinom1}, \code{nbinom2}); deviance
+      residuals for other families may be implemented on request.
+      \item setting \code{option(glmmTMB_openmp_debug=TRUE)} will
+      produce debugging output about the number of OpenMP threads used
+      \item \code{getME(., "b")} returns the vector of conditional modes
+      (BLUPs, in the case of linear mixed models)
+    } % itemize
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item changes related to handling rank-deficient fits:
+      \itemize{
+	\item default value of \code{rank_check} in
+	\code{glmmTMBControl} changed to "adjust" (i.e., rank-deficient
+	columns of fixed-effect model matrices are automatically dropped, with
+	a message, by default)
+	\item the \code{include_mapped} argument of \code{vcov} and
+	\code{confint} is changed to \code{include_nonest},
+	controlling both mapped parameters and those
+	dropped due to rank-deficiency, and is now \code{TRUE} by default for
+	\code{vcov}
+	\item \code{model.matrix} now returns the fixed-effect model matrix
+	actually used in fitting (including dropping columns for
+	rank-deficiency)
+      } %inner itemize
+      \item \code{glmmTMB} now accepts single-column matrices (e.g. as
+	produced by \code{scale} as response variables (GH #937, @santoshbs)
+    } % itemize
+  } % user-visible changes
+} % version 1.1.7.9000
+  
+\section{CHANGES IN VERSION 1.1.7 (2023-04-05)}{
+  \itemize{
+    \item \code{up2date()} adds a dispersion component to family
+    objects where required, for compatibility when checking
+    stored fits across R versions
+  }
+}
+
+\section{CHANGES IN VERSION 1.1.6 (2023-03-19)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fix bug in diagnose for Tweedie, other models with 'psi'
+      parameter (@nalimilan, GH #135)
+    }
+  }  % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added a \code{doOptim} argument to \code{fitTMB}, to return
+      the constructed TMB object without fitting the parameters
+      \item new (experimental) function \code{simulate_new}, to simulate
+      from a formula, list of parameters, and covariate data (rather
+      than from a fitted object)
+      \item \code{emmeans.glmmTMB} method adds two options
+      for the \code{component} argument: "response" and "cmean",
+      corresponding  to \code{type = "response"} and \code{type = "conditional"} 
+      in \code{predict.glmmTMB} (Russ Lenth)
+      \item new covariance structure \code{homdiag} (homogeneous diagonal;
+      the existing diagonal covariance structure, \code{diag}, assumes heterogeneous
+      variances)					    
+    }
+  } % new features
+ \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item The \code{emmeans} method for glmmTMB fits now returns infinite
+      "df" (i.e., normal- rather than t-based CIs and tests) for non-Gaussian
+      families, consistent with \code{glm} and other packages (GH #893)
+    }
+  } % user-visible changes
+}
+
+\section{CHANGES IN VERSION 1.1.5 (2022-11-16)}{
+    \subsection{BUG FIXES}{
+      \itemize{
+	\item improve predict-handling of complex bases (GH #632, #845,
+	#853)
+	\item all standard deviations are now printed in output for
+	models using \code{cs()} (GH #851)
+	\item corrected conditional and response predictions for
+	truncated distributions (GH #634, #860, #873)
+	\item \code{ranef()} now works correctly for families
+	with extra parameters (Tweedie etc.) (GH #870)
+      } % itemize
+    } % bug fixes
+    \subsection{USER-VISIBLE CHANGES}{
+      \itemize{
+	\item glmmTMB has switched to using a different (newer, under
+	active development) autodifferentiation library under the hood
+	(from \code{CppAD} to \code{TMBad}). This is likely to lead to
+	small changes in estimates, including tipping marginally stable
+	computations to instability or vice versa (e.g. presence or
+	absence of convergence warnings, positive-definite Hessian
+	warnings, \code{NaN} values of standard errors, etc.) You can revert
+	to using the older autodiff engine by commenting out the line
+	\code{PKG_CPPFLAGS = -DTMBAD_FRAMEWORK} in \code{src/Makevars}
+	and reinstalling the package (make sure to delete .o/.so files
+	from the \code{src} directory first if installing from the package
+	directory, as the Makefile doesn't recognize know that this
+	change requires recompilation).
+	\item glmmTMB now warns if fixed-effect model matrices are
+	rank deficient (i.e., perfectly collinear predictors); this
+	warning can be suppressed by setting
+	\code{glmmTMBControl(rank_check="skip")}
+	(\code{rank_check = "stop"} will throw an error).
+	If \code{rank_check="adjust"}, glmmTMB
+	will automatically drop appropriate columns from the model
+	matrix  (Daniel B. Stouffer)
+	\item the vector of "extra" family parameters
+	(Tweedie power, Student-t df,
+	etc.) has been renamed from "thetaf" to "psi"; \code{start}
+	and \code{map} arguments that set this parameter will need to
+	be changed. Users will need to run \code{up2date()}
+	when loading stored model objects from previous versions of the
+	package.
+	\item \code{predict} now warns if extra (ignored) arguments are
+	provided in \code{...}
+      } % itemize
+    } % user-visible changes
+    \subsection{NEW FEATURES}{
+      \itemize{
+	\item Student-t response distribution is now implemented (see
+	\code{\link{t_family}})
+	\item ordered beta regression as in Kubinec (2022), for
+	proportion data containing exact 0 and 1 values, is now
+	implemented (\code{\link{ordbeta}})
+	\item \code{glmmTMBControl} now has a \code{conv_check} argument
+	that allows suppressing convergence warnings
+	(the intended use is when these warnings are irrelevant,
+	e.g. when running small examples for testing purposes)
+    } % itemize
+  } % new features
+} % version 1.1.5
+
+\section{CHANGES IN VERSION 1.1.4 (2022-07-12)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item row names of \code{confint} output for random effects
+      parameters have changed (new format is
+      \code{Std.Dev} . (term) | (grouping variable) for standard
+      deviations, \code{Cor} . (term1) . (term2) | (grouping variable)
+      for correlations)
+    } % itemize
+  } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{predict(., "zprob")} now returns 0 and
@@ -14,13 +262,17 @@
       conditional values]
       \item bug fixes and other improvements for \code{diagnose} (inverted Z-score; now handles
       models without random effects)
+      \item \code{confint} now works for models with more than one
+      random effect
+      \item \code{confint} works better (although not completely) for
+  models with mapped parameters
     } % itemize
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
       \item now provides Pearson residuals for zero-inflated and
       variable-dispersion models (Brenton Wiernik)
-    }
+    } % itemize
   } % new features
 } % version 1.1.4
 
@@ -54,7 +306,7 @@
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item Double-bar notation (\code{(x+y||g)}) is now translated to a
-  diagonal-covariance term (\code{diag(x+y|g)}) rather than being split 
+  diagonal-covariance term (\code{diag(x+y|g)}) rather than being split
   into separate random effects terms as in  \code{lme4}. This should not
   change modeling results, but may change their
   presentation/ordering/etc.. (This is also a bug fix, as double-bar
@@ -77,13 +329,13 @@
     }
   }
 }
-  
+
 \section{CHANGES IN VERSION 1.1.2.2 (2021-09-01)}{
   \itemize{
     \item This is an administrative release (minor revisions for CRAN).
   }
 }
-  
+
 \section{CHANGES IN VERSION 1.1.2 (2021-07-20)}{
   \subsection{BUG FIXES}{
     \itemize{
@@ -99,11 +351,11 @@
     }
   } % user-visible changes
 } % version 1.1.2
-  
+
 \section{CHANGES IN VERSION 1.1.0 (2021-06-24)}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item reduced rank covariance for GLVMs implemented by M.McGillycuddy 
+      \item reduced rank covariance for GLVMs implemented by M.McGillycuddy
       (see covstruct vignette for details)
       \item \code{diagnose} function to investigate potential causes of convergence problems
       \item improved parallel processing (GH #620 #652)
@@ -123,11 +375,11 @@
       \code{parm="theta_"} now work correctly with more complex models
       (e.g. including both zero inflation and random effects)
       (reported by @MKie45 on Stack Overflow)
-      \item \code{confint} works for single-parameter models and those 
+      \item \code{confint} works for single-parameter models and those
       with a \code{dispformula} (GH #622)
       \item mapped (fixed) variables could give incorrect predictions (GH #644)
-      \item \code{simulate} is more robust for truncated_nbinom1 and 
-      truncated_nbinom2 (GH #572) 
+      \item \code{simulate} is more robust for truncated_nbinom1 and
+      truncated_nbinom2 (GH #572)
     }
   }
   \subsection{USER-VISIBLE CHANGES}{

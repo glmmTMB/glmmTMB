@@ -4,14 +4,14 @@
 \alias{vcov.glmmTMB}
 \title{Calculate Variance-Covariance Matrix for a Fitted glmmTMB model}
 \usage{
-\method{vcov}{glmmTMB}(object, full = FALSE, include_mapped = FALSE, ...)
+\method{vcov}{glmmTMB}(object, full = FALSE, include_nonest = TRUE, ...)
 }
 \arguments{
 \item{object}{a \dQuote{glmmTMB} fit}
 
 \item{full}{return a full variance-covariance matrix?}
 
-\item{include_mapped}{include mapped variables? (these will be given variances and covariances of NA)}
+\item{include_nonest}{include variables that are mapped \emph{or} dropped due to rank-deficiency? (these will be given variances and covariances of NA)}
 
 \item{\dots}{ignored, for method compatibility}
 }

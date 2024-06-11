@@ -13,6 +13,7 @@
   binomial = 100,
   betabinomial =101,
   beta =200,
+  ordbeta = 201,
   Gamma =300,
   poisson =400,
   truncated_poisson =401,
@@ -22,10 +23,13 @@
   truncated_compois =405,
   nbinom1 =500,
   nbinom2 =501,
-  truncated_nbinom1 =502,
-  truncated_nbinom2 =503,
+  nbinom12 =502,
+  truncated_nbinom1 =550,
+  truncated_nbinom2 =551,
   t =600,
-  tweedie = 700
+  tweedie = 700,
+  lognormal = 800,
+  skewnormal = 900
 )
 .valid_covstruct <- c(
   diag = 0,
@@ -37,11 +41,28 @@
   gau = 6,
   mat = 7,
   toep = 8,
-  rr = 9
+  rr = 9,
+  homdiag = 10
 )
 .valid_zipredictcode <- c(
   corrected = 0,
   uncorrected = 1,
   prob = 2,
   disp = 3
+)
+.valid_prior <- c(
+  normal = 0,
+  t = 1,
+  cauchy = 2,
+  gamma = 10,
+  beta = 20,
+  lkj = 30
+)
+.valid_vprior <- c(
+  beta = 0,
+  betazi = 1,
+  betad = 2,
+  theta = 10,
+  thetazi = 20,
+  psi = 30
 )

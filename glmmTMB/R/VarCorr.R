@@ -46,17 +46,17 @@ getParList <- function(object) {
 ##'           the Beta distribution that underlies the binomial probabilities) as \code{beta}.}
 ##'      \item{genpois}{returns the index of dispersion \eqn{\phi^2}{phi^2},
 ##'           where the variance is \eqn{\mu\phi^2}{mu*phi^2} (Consul & Famoye 1992)}
-##'      \item{compois}{returns the value of \eqn{1/\nu}{1/nu},
-##'           When \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
+##'      \item{compois}{returns the value of \eqn{1/\nu}{1/nu};
+##'           when \eqn{\nu=1}{nu=1}, compois is equivalent to the Poisson distribution.
 ##'           There is no closed form equation for the variance, but
-##'           it is approximately undersidpersed when \eqn{1/\nu <1}{1/nu <1}
-##'           and approximately oversidpersed when \eqn{1/\nu >1}{1/nu>1}.
-##'           In this implementation, \eqn{\mu}{mu} is exactly the mean (Huang 2017), which
+##'           it is approximately underdispersed when \eqn{1/\nu <1}{1/nu <1}
+##'           and approximately overdispersed when \eqn{1/\nu >1}{1/nu>1}.
+##'           In this implementation, \eqn{\mu}{mu} is exactly equal to the mean (Huang 2017), which
 ##'           differs from the COMPoissonReg package (Sellers & Lotze 2015).}
 ##'      \item{tweedie}{returns the value of \eqn{\phi}{phi},
 ##'           where the variance is \eqn{\phi\mu^p}{phi*mu^p}.
-##'           The value of \eqn{p} can be extracted using the internal
-##'           function \code{glmmTMB:::.tweedie_power}.}
+##'           The value of \eqn{p} can be extracted using \code{family_params}
+##'      }
 ##' }
 ##'
 ##'  The most commonly used GLM families
@@ -78,7 +78,7 @@ getParList <- function(object) {
 ## note the following line is hacked in Makefile/namespace-update to ...
 ## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
 ## also see <https://github.com/klutometis/roxygen/issues/371>
-##' @rawNamespace if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
+##' @rawNamespace if(getRversion()>='3.3.0') { importFrom(stats, sigma) } else { importFrom(lme4,sigma) }
 ##  n.b. REQUIRES roxygen2 >= 5.0
 ## @importFrom lme4 sigma
 ##' @export sigma
@@ -88,11 +88,10 @@ sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     ff <- object$modelInfo$family$family
     if (!usesDispersion(ff)) return(1.)
-    if (length(pl$betad)>1) return(NA)
+    if (length(pl$betadisp)>1) return(NA)
     switch(family(object)$family,
-           gaussian=exp(0.5*pl$betad),
-           Gamma=exp(-0.5*pl$betad),
-           exp(pl$betad))
+           Gamma=exp(-0.5*pl$betadisp),
+           exp(pl$betadisp))
 }
 
 
@@ -137,7 +136,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' @aliases VarCorr
 ##' @param x a fitted \code{glmmTMB} model
 ##' @param sigma residual standard deviation (usually set automatically from internal information)
-##' @param extra arguments (for consistency with generic method)
+##' @param ... extra arguments (for consistency with generic method)
 ##' @importFrom nlme VarCorr
 ## and re-export the generic:
 ##' @export VarCorr
@@ -160,7 +159,7 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
 ##' are structured as follows: the first n parameters are the log-standard-deviations,
 ##' while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
 ##' of the correlation matrix, filled in column-wise order
-##' (see the \href{http://kaskr.github.io/adcomp/classUNSTRUCTURED__CORR__t.html}{TMB documentation}
+##' (see the \href{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}{TMB documentation}
 ##' for further details).
 ##' @keywords internal
 VarCorr.glmmTMB <- function(x, sigma = 1, ... )
@@ -168,6 +167,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
     ## FIXME:: do we need 'sigma' any more (now that nlme generic
     ##         doesn't have it?)
+    check_dots(..., .action = "warning")
     stopifnot(is.numeric(sigma), length(sigma) == 1)
     xrep <- x$obj$env$report(x$fit$parfull)
     reT <- x$modelInfo$reTrms
@@ -179,7 +179,8 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         sigma <- sigma(x)
         familyStr=="gaussian" && !zeroDisp(x)
     } else TRUE
-    vc.cond <- vc.zi <- NULL
+    vc.cond <- vc.zi <- vc.disp <- NULL
+    ## FIXME: repeat less
     if(length(cn <- reT$cond$cnms)) {
         vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
                         sc = sigma, useSc = useSc)
@@ -191,10 +192,17 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         vc.zi <- mkVC(cor = xrep$corrzi, sd = xrep$sdzi, cnms = cn,
                         sc = sigma, useSc = useSc)
         for (i in seq_along(vc.zi)) {
-            attr(vc.zi,"blockCode") <- reS$ziReStruc[[i]]$blockCode
+            attr(vc.zi[[i]],"blockCode") <- reS$ziReStruc[[i]]$blockCode
         }
     }
-    structure(list(cond = vc.cond, zi = vc.zi),
+    if(length(cn <- reT$disp$cnms)) {
+    	vc.disp <- mkVC(cor = xrep$corrdisp, sd = xrep$sddisp, cnms = cn,
+    								sc = sigma, useSc = useSc)
+    	for (i in seq_along(vc.disp)) {
+    		attr(vc.disp,"blockCode") <- reS$dispReStruc[[i]]$blockCode
+    	}
+    }
+    structure(list(cond = vc.cond, zi = vc.zi, disp = vc.disp),
 	      sc = usesDispersion(familyStr), ## 'useScale'
 	      class = "VarCorr.glmmTMB")
 }
@@ -202,7 +210,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 ##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
 ##' @method print VarCorr.glmmTMB
 ##' @export
-## don't importFrom lme4 formatVC; use our own formatV instead!
+## don't importFrom lme4 formatVC; use our own formatVC instead!
 ##  document as it is a method with "surprising arguments":
 ##' @param x a result of \code{\link{VarCorr}(<glmmTMB>)}.
 ##' @param digits number of significant digits to use.
@@ -220,6 +228,23 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
     }
     invisible(x)
 }
+
+    formatCor <- function(x,maxlen=0, digits) {
+        ## x: correlation matrix
+        ## maxlen: max number of RE std devs per term;
+        ##         really a *minimum* length here! pad to (maxlen)
+        ##         columns as necessary
+        x <- as(x, "matrix")
+        dig <- max(2, digits - 2) # use 'digits' !
+        ## n.b. not using formatter() for correlations
+        cc <- format(round(x, dig), nsmall = dig)
+        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
+        nr <- nrow(cc)
+        if (nr < maxlen) {
+            cc <- cbind(cc, matrix("", nr, maxlen-nr))
+        }
+        return(cc)
+    }
 
 ## original from lme4
 ## had to be extended/modified to deal with glmmTMB special cases
@@ -253,22 +278,6 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     nc <- length(colnms <- c(c.nms[1:2], (use.c <- avail.c[mcc])))
     if(length(use.c) == 0)
 	stop("Must show either standard deviations or variances")
-    formatCor <- function(x,maxlen=0) {
-        ## x: correlation matrix
-        ## maxlen: max number of RE std devs per term;
-        ##         really a *minimum* length here! pad to (maxlen)
-        ##         columns as necessary
-        x <- as(x, "matrix")
-        dig <- max(2, digits - 2) # use 'digits' !
-        ## n.b. not using formatter() for correlations
-        cc <- format(round(x, dig), nsmall = dig)
-        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
-        nr <- nrow(cc)
-        if (nr < maxlen) {
-            cc <- cbind(cc, matrix("", nr, maxlen-nr))
-        }
-        return(cc)
-    }
     getCovstruct <- function(x) {
         n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
                                            .valid_covstruct)]
@@ -279,16 +288,16 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         r <- attr(x,type) ## extract stddev *or* correlation from x
         if (type=="correlation") {
             ## transform to char matrix
-            r <- formatCor(r,maxlen)
+            r <- formatCor(r,maxlen, digits)
             ## drop last column (will be blank since we blanked out
             ##  the upper triangle + diagonal)
             if (ncol(r)>maxlen)
                 r <- r[, -ncol(r), drop = FALSE]
         }
         covstruct <- getCovstruct(x)
-        if (covstruct %in% c("ar1","cs")) {
+        if (covstruct %in% c("ar1", "cs", "homdiag")) {
             r <- switch(type,
-                        stddev=r[1],
+                        stddev={ if (covstruct %in%  c("ar1", "homdiag")) r[1] else r },
                         ## select lag-1 correlation
                         ## upper tri has been erased in formatCor() ...
                         correlation=paste(r[2,1],sprintf("(%s)",covstruct))
@@ -299,8 +308,8 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
 
     ## get std devs:
     reStdDev <- lapply(varcor, getCorSD)
-    ## need correlations if
-    useCor <- (sapply(varcor,getCovstruct)!="us" |
+    ## need correlations
+    useCor <- (!grepl("us|diag", sapply(varcor,getCovstruct)) |
                sapply(reStdDev,length)>1)
     cnms <- Map(function(x,n) colnames(x)[seq(n)], varcor, lengths(reStdDev))
 

@@ -24,15 +24,29 @@
 ##' @export fixef
 ##' @export
 fixef.glmmTMB <- function(object, ...) {
-  getXnm <- function(suffix) {
-      nm <- paste0("X",suffix)
-      return(colnames(getME(object, nm)))
-  }
+
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
-  structure(list(cond = setNames(pl$beta,   getXnm("")),
-                 zi   = setNames(pl$betazi, getXnm("zi")),
-                 disp = setNames(pl$betad,  getXnm("d"))),
-            class = "fixef.glmmTMB")
+  X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "disp"))
+
+  get_vec <- function(vals, X) {
+    dropped <- attr(X, "col.dropped")
+    if (is.null(dropped)) return(setNames(vals, colnames(X)))
+    n_tot <- ncol(X) + length(dropped)
+    cc <- numeric(n_tot)
+    cc[-dropped] <- vals
+    cc[ dropped] <- NA_real_
+    nm <- character(n_tot)
+    nm[-dropped] <- colnames(X)
+    nm[ dropped] <- names(dropped)
+    setNames(cc, nm)
+  }
+
+  r <- Map(get_vec,
+           pl[c("beta", "betazi", "betadisp")],
+           X)
+  names(r) <- c("cond", "zi", "disp")
+  class(r) <- "fixef.glmmTMB"
+  r
 }
 
 ## general purpose matching between component names and printable names
@@ -68,7 +82,7 @@ noZI <- function(object) {
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
-    ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
+    ## FIXME: inconsistent tagging; should change 'Xdisp' to 'Xdisp'?
 }
 
 ##' @method print fixef.glmmTMB
@@ -101,9 +115,11 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), pri
 ##'     for the conditional model.}
 ##'   \item{zi}{a list of data frames, containing random effects for
 ##'     the zero inflation.}
+##'   \item{disp}{a list of data frames, containing random effects
+##'     for the dispersion model.}
 ##' }
 ##' If \code{condVar=TRUE}, the individual list elements within the
-##' \code{cond} and \code{zi} components (corresponding to individual
+##' \code{cond}, \code{zi}, and \code{disp} components (corresponding to individual
 ##' random effects terms) will have associated \code{condVar} attributes
 ##' giving the conditional variances of the random effects values.
 ##' These are in the form of three-dimensional arrays: see
@@ -224,17 +240,19 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   if (condVar && hasRandom(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
-                  bzi=ss[rownames(ss)=="bzi","Std. Error"])
+                  bzi=ss[rownames(ss)=="bzi","Std. Error"],
+      						bdisp=ss[rownames(ss)=="bdisp","Std. Error"])
   }  else sdl <- NULL
   structure(list(cond = arrange(pl$b, sdl$b, "cond"),
-                 zi    = arrange(pl$bzi, sdl$bzi, "zi")),
+                 zi   = arrange(pl$bzi, sdl$bzi, "zi"),
+  							 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
             class = "ranef.glmmTMB")
 }
 
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
-    print(if (simplify && length(x$zi) == 0L)
+    print(if (simplify && length(x$zi) == 0L && length(x$disp) == 0L)
               unclass(x$cond) else unclass(x),
           ...)
     invisible(x)
@@ -260,7 +278,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xd", "theta", "beta"),
+                                   "Xdisp", "theta", "beta", "b"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -277,17 +295,21 @@ getME.glmmTMB <- function(object,
   name <- match.arg(name)
 
   oo.env <- object$obj$env
-  ### Start of the switch
+  ## note, commit f35509f3c97909d07854946
+  ##  changed args of parList() from internal/dynamically changing objects
+  ##  to these stored parameters
   allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
   isSparse <- function(component) { if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
   switch(name,
          "X"     = if (!isSparse("cond")) oo.env$data$X else oo.env$data$XS,
          "Xzi"   = if (!isSparse("zi")) oo.env$data$Xzi else oo.env$data$XziS,
-         "Z"     = oo.env$data$Z,
+  			 "Xdisp" = if (!isSparse("disp")) oo.env$data$Xdisp else oo.env$data$XdispS,
+  			 "Z"     = oo.env$data$Z,
          "Zzi"   = oo.env$data$Zzi,
-         "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
-         "theta" = allpars$theta ,
-         "beta"  = unlist(allpars[c("beta","betazi","betad")]),
+  			 "Zdisp" = oo.env$data$Zdisp,
+  			 "theta" = allpars$theta ,
+         "beta"  = unlist(allpars[c("beta","betazi","betadisp")]),
+         "b" = unlist(allpars[c("b", "bzi", "bdisp")]),
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -312,25 +334,29 @@ logLik.glmmTMB <- function(object, ...) {
   }else val <- -object$fit$objective
 
   nobs <- nobs.glmmTMB(object)
-  df <- sum( ! names(object$fit$parfull) %in% c("b", "bzi") )
+  df <- npar(object)
   structure(val, nobs = nobs, nall = nobs, df = df,
             class = "logLik")
 }
 
 ##' @importFrom stats nobs
 ##' @export
-nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
+nobs.glmmTMB <- function(object, ...) {
+    sum(!is.na(object$obj$env$data$yobs))
+}
+
+##  TODO: not clear whether the effective number of parameters should be based
+##  on p=length(beta) or p=length(c(theta,beta,psi)) ... but
+##  this is just to allow things like aods3::gof to work ...
+npar <- function(object) {
+    sum(!names(object$fit$parfull) %in% c("b", "bzi", "bdisp"))
+}
 
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
 ##' @export
-##  TODO: not clear whether the residual df should be based
-##  on p=length(beta) or p=length(c(theta,beta)) ... but
-##  this is just to allow things like aods3::gof to work ...
-##  Taken from LME4, including the todo
-##
 df.residual.glmmTMB <- function(object, ...) {
-  nobs(object)-length(object$fit$par)
+  nobs(object) - npar(object)
 }
 
 
@@ -338,13 +364,14 @@ df.residual.glmmTMB <- function(object, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
-##' @param include_mapped include mapped variables? (these will be given variances and covariances of NA)
+##' @param include_nonest include variables that are mapped \emph{or} dropped due to rank-deficiency? (these will be given variances and covariances of NA)
 ##' @param \dots ignored, for method compatibility
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
+##' @importFrom utils combn
 ##' @export
-vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
+vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   check_dots(..., .ignore = "complete")
   REML <- isREML(object)
   if(is.null(sdr <- object$sdr)) {
@@ -355,9 +382,16 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
-      whichNotRandom <- which( ! rownames(Q) %in% c("b", "bzi") )
+      if (is.null(rownames(Q))) { ## may be missing??
+          dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
+      }
+      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi", "bdisp") )
       Qm <- GMRFmarginal(Q, whichNotRandom)
-      cov.all.parms <- solve(as.matrix(Qm))
+      cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
+      if (inherits(cov.all.parms, "try-error")) {
+          cov.all.parms <- matrix(NA_real_, nrow = nrow(Qm), ncol = ncol(Qm),
+                                  dimnames = dimnames(Qm))
+      }
   } else {
       cov.all.parms <- sdr$cov.fixed
   }
@@ -367,82 +401,80 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
   to_keep <- grep(keepTag,colnames(cov.all.parms)) # only keep betas
   covF <- cov.all.parms[to_keep,to_keep,drop=FALSE]
 
-  mkNames <- function(tag) {
-      X <- getME(object,paste0("X",tag))
-      if (trivialFixef(nn <- colnames(X),tag)
-          ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" &&
-               (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
-          return(character(0))
-      }
-      return(paste(tag,nn,sep="~"))
-  }
+  ## include mapped *and* dropped
+  fullNameList <- getParnames(object, full)
+  ## only actually estimated
+  estNameList <- getParnames(object, full, include_mapped = FALSE, include_dropped = FALSE)
 
-  nameList <- setNames(list(colnames(getME(object,"X")),
-                       mkNames("zi"),
-                       mkNames("d")),
-                names(cNames))
-
-  if(full) {
-      ## FIXME: haven't really decided if we should drop the
-      ##   trivial variance-covariance dispersion parameter ??
-      ## if (trivialDisp(object))
-      ##    res <- covF[-nrow(covF),-nrow(covF)]
-
-      reNames <- function(tag) {
-        re <- object$modelInfo$reStruc[[paste0(tag,"ReStruc")]]
-        num_theta <- vapply(re,"[[","blockNumTheta", FUN.VALUE = numeric(1))
-        nn <- mapply(function(n,L) paste(n, seq(L), sep="."),
-                     names(re), num_theta)
-        if (length(nn) == 0) return(nn)
-        return(paste("theta",gsub(" ", "", unlist(nn)), sep="_"))
-      }
-      ## nameList for estimated variables;
-      nameList <- c(nameList,list(theta=reNames("cond"),thetazi=reNames("zi")))
-  }
-
-
-  ## drop NA-mapped variables
-
-  ## for matching map names vs nameList components ...
-  par_components <- c("beta","betazi","betad","theta","thetazi","thetaf")
-
-  fullNameList <- nameList
   map <- object$obj$env$map
-  if (length(map)>0) {
-        ## fullNameList for all variables, including mapped vars
-      ## (nameList will get reduced shortly)
-      for (m in seq_along(map)) {
-          if (length(NAmap <- which(is.na(map[[m]])))>0) {
-              w <- match(names(map)[m],par_components) ##
-              if (length(nameList)>=w) { ## may not exist if !full
-                  nameList[[w]] <- nameList[[w]][-NAmap]
+  parnms <- c("beta","betazi", "betad")     ## parameter names
+  if (full) {
+      ## return a matrix
+      nl <- unlist(estNameList)
+      fnl <- unlist(fullNameList)
+      if (!include_nonest || identical(nl, fnl)) {
+          if (any(vapply(map, \(x) any(duplicated(x)), logical(1)))) {
+              ## duplicate rows appropriately: *blockwise* is sufficient (can't
+              ## map elements of different vectors)
+              ind <- 0
+              for (i in seq_along(cNames)) {
+                  if (!is.null(cur_map <- parnms[[i]]) &&
+                      any(duplicated(cur_map))) {
+                      ## figure out how many components we have
+                      est_pars <- length(unique(cur_map))
+                      tot_pars <- length(cur_map)
+                      ## FIXME: stopped here
+                  }
               }
           }
+          ## work around naming for now ...
+          try(colnames(covF) <- rownames(covF) <- unlist(estNameList),
+              silent = TRUE)
+          res <- covF
+      } else {
+          res <- matrix(NA_real_, length(fnl), length(fnl),
+                        dimnames = list(fnl, fnl))
+          res[nl, nl] <- covF
       }
-  }
-
-  if (full) {
-        colnames(covF) <- rownames(covF) <- unlist(nameList)
-      res <- covF        ## return just a matrix in this case
   } else {
-      ## extract block-diagonal matrix
+      ## extract matrix blocks
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
       names(covList) <- names(cNames) ## component names
-      parnms <- c("beta","betazi", "betad")     ## parameter names
+      parnms <- c("beta","betazi", "betadisp")     ## parameter names
+
       for (i in seq_along(covList)) {
           nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
-          xnms <- nameList[[cnm]]
-          if (!include_mapped || length(map)==0) {
+          xnms <- estNameList[[cnm]]
+          fnm <- fullNameList[[cnm]]
+          if (!include_nonest ||
+              nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
-              fnm <- fullNameList[[cnm]]
-              mm <- matrix(NA_real_,length(fnm),length(fnm),
-                           dimnames=list(fnm,fnm))
-              mm[nameList[[cnm]],nameList[[cnm]]] <- m
+              ## some parameters mapped *to each other* (not fixed)
+              if (!is.null(cur_map <- map[[parnms[[i]]]]) &&
+                  length(unique(cur_map)) < length(cur_map)) {
+                  ## replicate cov rows/cols appropriately
+                  m <- m[as.numeric(cur_map), as.numeric(cur_map)]
+                  map_split <- split(seq_along(cur_map), cur_map)
+                  for (cc in map_split) {
+                      if (length(cc)==1) next
+                      ## should fix covariances in cov matrix
+                      ## equal to variance for mapped pairs ...
+                      ## combn() generates a 2-by-n matrix of pairs
+                      ccc <- combn(cc, 2)
+                      for (j in 1:ncol(ccc)) {
+                          m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
+                              m[ccc[1,j], ccc[1,j]]
+                      }
+                  }
+              }
+              ## fixed params *or* rank-def columns dropped
+              mm <- matrix(NA_real_, length(fnm), length(fnm),
+                           dimnames=list(fnm, fnm))
+              mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
               m <- mm
           }
           covList[[i]] <- m
@@ -450,10 +482,12 @@ vcov.glmmTMB <- function(object, full=FALSE, include_mapped=FALSE, ...) {
       res <- covList[lengths(covList)>0]
       ##  FIXME: should vcov always return a three-element list
       ## (with NULL values for trivial models)?
-      class(res) <- c("vcov.glmmTMB","matrix")
+      class(res) <- c("vcov.glmmTMB", "matrix")
   }
   return(res)
 }
+
+    
 
 ##' @method print vcov.glmmTMB
 ##' @export
@@ -557,22 +591,45 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+#' Retrieve family-specific parameters
+#'
+#' Most conditional distributions have only parameters governing their location
+#' (retrieved via \code{predict}) and scale (\code{sigma}). A few (e.g. Tweedie, Student t, ordered beta)
+#' are characterized by one or more additional parameters.
+#' @param object glmmTMB object
+#' @return a named numeric vector
+#' @export
+family_params <- function(object) {
+    ff <- object$modelInfo$family$family
+    tf <- get_pars(object)
+    tf <- unname(split(tf, names(tf))[["psi"]])
+    switch(ff,
+           tweedie = c("Tweedie power" = plogis(tf) + 1),
+           t = c("Student-t df" = exp(tf)),
+           ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
+           skewnormal = c("Skewnormal shape" = tf),
+           numeric(0)
+           )
+}
+
+## obsolete
 .tweedie_power <- function(object) {
-    unname(plogis(get_pars(object)["thetaf"]) + 1)
+    warning(".tweedie_power is deprecated in favor of family_params()")
+    unname(plogis(get_pars(object)["psi"]) + 1)
 }
 
 ## Print family specific parameters
-## @param ff name of family (character)
 ## @param object glmmTMB output
 #' @importFrom stats plogis
-printFamily <- function(ff, object) {
-    if (ff == "tweedie") {
-        power <- .tweedie_power(object)
-        cat(sprintf("\nTweedie power parameter: %s",
-                    formatC(power, digits=3)), "\n")
-
+printFamily <- function(object) {
+    val <- family_params(object)
+    if (length(val) > 0) {
+        cat(sprintf("\n%s estimate: %s",
+                    names(val)[1],
+                    paste(formatC(val, digits=3),
+                          collapse = ", ")), "\n")
     }
-    NULL
+    invisible(NULL)
 }
 
 ##' @importFrom lme4 .prt.aictab
@@ -611,13 +668,19 @@ print.glmmTMB <-
     printDispersion(x$modelInfo$family$family,sigma(x))
   }
   ## Family specific parameters
-  printFamily(x$modelInfo$family$family, x)
+  printFamily(x)
   ## Fixed effects:
   if(length(cf <- fixef(x)) > 0) {
     cat("\nFixed Effects:\n")
     print(cf, ...)
   } else
-    cat("No fixed effect coefficients\n")
+      cat("No fixed effect coefficients\n")
+
+  if (!is.null(x$modelInfo$priors)) {
+      cat("\nPriors: ")
+      print(x$modelInfo$priors, compact = TRUE)
+      cat("\n")
+  }
   invisible(x)
 }
 
@@ -631,14 +694,29 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##'
 ##' @param object a \dQuote{glmmTMB} object
 ##' @param type (character) residual type
-##' @param \dots ignored, for method compatibility
+##' @param \dots for method compatibility (unused arguments will throw an error)
 ##' @importFrom stats fitted model.response residuals
+##' @details
+##' \itemize{
+##' \item Residuals are computed based on predictions of type "response",
+##' i.e. equal to the conditional mean for non-zero-inflated models and to \code{mu*(1-p)}
+##' for zero-inflated models
+##' \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
+##' function from the object's \code{family} component; at present this returns \code{NA} for most
+##' "exotic" families (i.e. deviance residuals are currently only
+##' implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}). Deviance residuals are based on the conditional distributions only, i.e. ignoring zero-inflation components.
+##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
+##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
+##' details on the definition of the deviance for GLMMs.
+##' }
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
+    check_dots(...)
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
-    mr <- napredict(na.act,model.response(object$frame))
+    mr <- napredict(na.act, model.response(object$frame))
     wts <- model.weights(model.frame(object))
+    if (is.null(wts)) wts <- rep(1, length(mr))
     ## binomial model specified as (success,failure)
     if (!is.null(dim(mr))) {
         wts <- mr[,1]+mr[,2]
@@ -650,25 +728,39 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
         mr <- as.numeric(as.numeric(mr)>1)
         names(mr) <- nn  ## restore stripped names
     }
-    r <- mr - fitted(object)
+    mu <- fitted(object)
+    r <- mr - mu
+    fam <- family(object)
     res <- switch(type,
            response=r,
            working = {
-               mu.eta <- family(object)$mu.eta
+               mu.eta <- fam$mu.eta
                p <- predict(object, type = "link", fast = TRUE)
                r/mu.eta(p)
            },
+           deviance = {
+               if (is.null(dr <- fam$dev.resids)) {
+                   warning(
+                       warningCondition(paste0("deviance residuals undefined for family ",
+                                              sQuote(fam$family),": returning NA"),
+                                        class = c("dev_resids_undefined", "glmmTMB_warn")))
+                   return(rep(NA_real_, length(r)))
+               }
+               d.res <- sqrt(pmax(dr(mr, mu, wts), 0))
+               ifelse(mr < mu, -d.res, d.res)
+           },
            pearson = {
-               if (is.null(v <- family(object)$variance))
+               if (is.null(v <- fam$variance)) {
                    stop("variance function undefined for family ",
-                        sQuote(family(object)$family),"; cannot compute",
+                        sQuote(fam$family),"; cannot compute",
                         " Pearson residuals")
+               }
                vformals <- names(formals(v))
                # construct argument list for variance function based on its formals
                # some argument names vary across families
                mu <- predict(object, type = "conditional")
                theta <- predict(object, type = "disp")
-               shape <- .tweedie_power(object) # FIXME: Change this to a general shape() extractor
+               shape <- family_params(object)
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
                vargs$theta <- vargs$phi <- vargs$alpha <- theta
@@ -689,8 +781,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
                  vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
                } else {
                  if (length(vformals) == 1) {
-                   # handle families where variance() returns the scaled variance
-                   vv <- vv * (theta / sigma(object))^2
+                     ## handle families where variance() returns the scaled variance
+                     ## FIXME: what is the logic here??
+                     vv <- vv * (theta / sigma(object))^2
                  }
                }
                r <- r/sqrt(vv)
@@ -714,7 +807,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
 ## @param estimate
 
 ##' @importFrom stats qchisq
-.CI_univariate_monotone <- function(object, f, reduce=NULL,
+.CI_univariate_monotone <- function(object,
+                                    f,
+                                    reduce=NULL,
                                     level=0.95,
                                     name.prepend=NULL,
                                     estimate = TRUE) {
@@ -749,9 +844,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working"), 
     ans
 }
 
-## copied from 'stats'
-
-format.perc <- function (probs, digits) {
+## copied from 'stats'; renamed to avoid false-positive check as
+## an 'apparent method'
+format_perc <- function (probs, digits) {
     paste(format(100 * probs, trim = TRUE, scientific = FALSE, digits = digits),
     "%")
 }
@@ -780,9 +875,14 @@ format.perc <- function (probs, digits) {
 ##' "profile" and "uniroot" report them on the underlying ("theta")
 ##' scale: for each random effect, the first set of parameter values
 ##' are standard deviations on the log scale, while remaining parameters
-##' represent correlations on the scaled Cholesky scale (see the
-##'
-##'
+##' represent correlations on the scaled Cholesky scale. For a random
+##' effects model with two elements (such as a random-slopes model,
+##' or a random effect of factor with two levels), there is a single
+##' correlation parameter \eqn{\theta}{theta}; the correlation is
+##' equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
+##' For random-effects terms with more than two elements, the mapping
+##' is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
+##' 
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
@@ -805,7 +905,8 @@ format.perc <- function (probs, digits) {
 ##' @param ncpus number of CPUs/cores to use for parallel computation
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
-##' @param ... arguments may be passed to \code{\link{profile.merMod}} or
+##' @param include_nonest include dummy rows for non-estimated (mapped, rank-deficient) parameters?
+##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
@@ -822,11 +923,13 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                       "uniroot"),
                              component = c("all", "cond", "zi", "other"),
                              estimate = TRUE,
+                             include_nonest = FALSE,
                              parallel = c("no", "multicore", "snow"),
                              ncpus = getOption("profile.ncpus", 1L),
                              cl = NULL,
                              full = FALSE,
                              ...) {
+    
     method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
@@ -842,24 +945,36 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     components <- match.arg(component, several.ok = TRUE)
     components.has <- function(x)
         any(match(c(x, "all"), components, nomatch=0L)) > 0L
+
+    ## expand CI matrix to include mapped parameters
+    expand_ci_with_mapped <- function(ci, parm0) {
+        parm_all <- getParms(parm0, object, full, include_nonest = TRUE)
+        pn <- unlist(getParnames(object, full))[parm_all]
+        ci_full <- matrix(NA_real_, ncol = 2, nrow = length(parm_all),
+                          dimnames = list(pn, colnames(ci)))
+        ci_full[rownames(ci), ] <- ci
+        return(ci_full)
+    }
+    
     a <- (1 - level)/2
     a <- c(a, 1 - a)
-    pct <- format.perc(a, 3)
+    pct <- format_perc(a, 3)
     fac <- qnorm(a)
     estimate <- as.logical(estimate)
     ci <- matrix(NA, nrow=0, ncol=2 + estimate,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
 
-    if (!is.null(parm) || method!="wald") {
-        parm <- getParms(parm, object, full)
+    if (!is.null(parm) || method != "wald") {
+        parm0 <- parm
+        parm <- getParms(parm, object, full, include_nonest = include_nonest)
     }
 
     wald_comp <- function(component) {
-        vv <- vcov(object)[[component]]
+        vv <- vcov(object, include_nonest = include_nonest)[[component]]
         cf <- fixef(object)[[component]]
         ## strip tag (only really necessary for zi~, d~)
-        tag <- if (component=="disp") "d" else component
+        tag <- if (component=="disp") "disp" else component
         nn <- gsub(paste0(tag,"~"),"",colnames(vv))
         ## vcov only includes estimated (not mapped/fixed)
         ##  fixed-effect parameters
@@ -881,23 +996,29 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## VarCorr -> stddev
         cfun <- function(x) {
             ss <- attr(x, "stddev")
-            names(ss) <- paste(component,"Std.Dev",names(ss),sep=".")
-            cc <- attr(x,"correlation")
+            names(ss) <- paste(component, "Std.Dev", names(ss),sep=".")
+            cc <- attr(x, "correlation")
             if (length(cc)>1) {
-                nn <- outer(colnames(cc),rownames(cc),paste,sep=".")
+                nn <- outer(colnames(cc), rownames(cc), paste, sep=".")
                 cc <- cc[lower.tri(cc)]
-                nn <- paste(component,"Cor",nn[lower.tri(nn)],sep=".")
+                nn <- paste(component, "Cor", nn[lower.tri(nn)], sep=".")
                 names(cc) <- nn
                 ss <- c(ss,cc)
             }
             return(ss)
         }
-        reduce <- function(VC) sapply(VC[[component]], cfun)
+        reduce <- function(VC) {
+            L <- lapply(VC[[component]], cfun)
+            L2 <- Map(function(x, n) setNames(x, paste(names(x), n, sep = "|")),
+                      L, names(L))
+            return(unlist(unname(L2)))
+        }
         ci.sd <- .CI_univariate_monotone(object,
                                          VarCorr,
                                          reduce = reduce,
                                          level = level,
                                          estimate = estimate)
+        
         ## would consider excluding mapped parameters here
         ## (works automatically for fixed effects via vcov)
         ## but tough because of theta <-> sd/corr mapping;
@@ -932,15 +1053,16 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     ci <- rbind(ci, ci.sigma)
                 }
             }
-            ## Tweedie power
-            if (ff == "tweedie") {
-                ci.power <- .CI_univariate_monotone(object,
-                                                    .tweedie_power,
+            ## shape parameters
+            fp <- family_params(object)
+            if (length(fp)>0) {
+                ci.shape <- .CI_univariate_monotone(object,
+                                                    family_params,
                                                     reduce = NULL,
                                                     level=level,
-                                                    name.prepend="Tweedie.power",
+                                                    name.prepend="Tweedie.power", ## FIXME
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.power)
+                ci <- rbind(ci, ci.shape)
             } ## tweedie
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
@@ -954,21 +1076,29 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
         ## Take subset
 
-        ## drop mapped values (where lower == upper)
-        ci <- ci[ci[,2]!=ci[,1], , drop=FALSE]
-
+        ## identify mapped values: lwr and upr CIs equal but *not NaN
+        ##  (which indicates a failed fit instead)
+        mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
+        if (!include_nonest) {
+            ## drop mapped values (where lower == upper)
+            ci <- ci[!mapped, , drop=FALSE]
+        } else {
+            ci[mapped, 1:2] <- NA_real_
+        }
+        
         ## now get selected parameters
         if (!is.null(parm)) {
             ci <- ci[parm, , drop=FALSE]
         } else {
             ## drop residual std dev/trivial dispersion parameter
             if (!full) {
-                ci <- ci[rownames(ci)!="sigma",, drop=FALSE]
+                ci <- ci[rownames(ci) != "sigma",, drop=FALSE]
             }
         }
 
         ## end Wald method
     } else if (method=="uniroot") {
+        parm <- getParms(parm0, object, full, include_nonest = FALSE)
         if (isREML(object)) stop("can't compute profiles for REML models at the moment (sorry)")
         ## FIXME: allow greater flexibility in specifying different
         ##  ranges, etc. for different parameters
@@ -1011,12 +1141,19 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- cbind(L,par)
         }
         ci <- rbind(ci,L) ## really just adding column names!
+        if (include_nonest) {
+            ci <- expand_ci_with_mapped(ci, parm0)
+        }
     }
     else {  ## profile CIs
+        parm <- getParms(parm0, object, full, include_nonest = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
                       parallel=parallel,ncpus=ncpus,
                       ...)
         ci <- confint(pp)
+        if (include_nonest) {
+            ci <- expand_ci_with_mapped(ci, parm0)
+        }
     }
     ## if only conditional, strip component prefix
     if (all(substr(rownames(ci),1,5)=="cond.")) {
@@ -1215,7 +1352,7 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
 #' @param component formula for which component of the model to return (conditional, zero-inflation, or dispersion)
 #' @param fixed.only (logical) drop random effects, returning only the fixed-effect component of the formula?
 #' @param ... unused, for generic consistency
-#' @importFrom lme4 nobars
+#' @importFrom reformulas nobars
 #' @export
 formula.glmmTMB <- function(x, fixed.only=FALSE,
                             component=c("cond", "zi", "disp"),
@@ -1228,7 +1365,7 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
     af <- x$modelInfo$allForm
     ff <- if (component=="cond") af[["formula"]] else af[[paste0(component,"formula")]]
     if (fixed.only) {
-        ff <- lme4::nobars(ff)
+        ff <- nobars(ff)
     }
     return(ff)
 }
@@ -1241,10 +1378,12 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
 #' @param object a fitted \code{glmmTMB} object
 #' @param component model component ("cond", "zi", or "disp"; not all models contain all components)
 #' @param part whether to return results for the fixed or random effect part of the model (at present only \code{part="fixed"} is implemented for most methods)
+#' @param include_rankdef include all columns of a rank-deficient model matrix?
 #' @param \dots additional arguments (ignored or passed to \code{\link{model.frame}})
 #' @export
 
-model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
+model.matrix.glmmTMB <- function (object, component="cond", part="fixed",
+                                  include_rankdef = FALSE, ...)
 {
     ## FIXME: model.matrix.lm has this stuff -- what does it do/do we want it?
     ## if (n_match <- match("x", names(object), 0L))
@@ -1258,15 +1397,23 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed", ...)
     ## model matrix??
     if (part != "fixed") stop("only fixed model matrices currently available")
 
-    ff <- object$modelInfo$allForm
-    form <- ff[[switch(component,
-                       cond="formula",
-                       zi="ziformula",
-                       disp="dispformula")]]
-    model.matrix(lme4::nobars(form), model.frame(object, ...),
-                 contrasts.arg = object$modelInfo$contrasts)
-    ## FIXME: what if contrasts are *different* for different components? (ugh)
-    ## should at least write a test to flag this case ...
+    if (!include_rankdef) {
+        m <- switch(component,
+                    cond =  "",
+                    zi = "zi",
+                    disp = "disp")
+        
+        X <- getME(object, paste0("X", m))
+    } else {
+        ff <- object$modelInfo$allForm
+        form <- ff[[switch(component,
+                           cond="formula",
+                           zi="ziformula",
+                           disp="dispformula")]]
+        X <- model.matrix(lme4::nobars(form), model.frame(object, ...),
+                          contrasts.arg = object$modelInfo$contrasts)
+        X
+    }
 }
 
 ## convert ranef object to a long-format data frame, e.g. suitable
@@ -1296,16 +1443,18 @@ as.data.frame.ranef.glmmTMB <- function(x, ...) {
 
 #' @rdname bootmer_methods
 #' @title support methods for parametric bootstrapping
-#' @param object a fitted glmmTMB object
+#' @param x a fitted glmmTMB object
+#' @param ... extra args (required for method compatibility)
 #' @param newresp a new response vector
 #' @export
 #' @importFrom lme4 isLMM
 #' @importFrom lme4 refit
 ## don't export refit ...
 #' @description see \code{\link[lme4]{refit}} and \code{\link[lme4:isREML]{isLMM}} for details
-isLMM.glmmTMB <- function(object) {
-   fam <- family(object)
-   fam$family=="gaussian" && fam$link=="identity"
+isLMM.glmmTMB <- function(x, ...) {
+    check_dots(...)
+    fam <- family(x)
+    fam$family=="gaussian" && fam$link=="identity"
 }
 
 #' @export
@@ -1314,6 +1463,7 @@ lme4::refit
 #' @export
 #' @rdname bootmer_methods
 #' @importFrom stats formula
+#' @param object a fitted glmmTMB object
 #' @param fast (logical) [EXPERIMENTAL] refit by modifying existing TMB object?
 #' @param update_start (logical) use fitted coefficients as starting value?
 #' @param ... additional arguments (for generic consistency; ignored)
@@ -1332,6 +1482,15 @@ lme4::refit
 #'    if (requireNamespace("boot")) {
 #'       boot.ci(b1,type="perc")
 #'     }
+#'    ## can run in parallel: may need to set up cluster explicitly,
+#'    ## use clusterEvalQ() to load packages on workers
+#'    if (requireNamespace("parallel")) {
+#'       cl <- parallel::makeCluster(2)
+#'       parallel::clusterEvalQ(cl, library("lme4"))
+#'       parallel::clusterEvalQ(cl, library("glmmTMB"))
+#'       b2 <- lme4::bootMer(fm1, FUN = function(x) fixef(x)$cond,
+#'               nsim = 10, ncpus = 2, cl = cl, parallel = "snow")
+#'    }
 #' }
 #' }
 #' @details
@@ -1499,7 +1658,8 @@ coef.glmmTMB <- function(object,
     }
     res <- list(
         cond = get.coef("cond"),
-        zi = get.coef("zi")
+        zi = get.coef("zi"),
+        disp = get.coef("disp")
     )
     if (condVar) {
         stop("condVar not (yet) available for coefficients")
@@ -1554,11 +1714,7 @@ weights.glmmTMB <- function(object, type="prior", ...) {
 ## @param df degrees of freedom
 ## @param component which model component to test (cond, zi, or disp)
 
-##' @rawNamespace if(getRversion() >= "3.6.0") {
-##'      S3method(multcomp::modelparm, glmmTMB)
-##' } else {
-##'    export(modelparm.glmmTMB)
-##' }
+##' @rawNamespace if(getRversion() >= "3.6.0") { S3method(multcomp::modelparm, glmmTMB) } else {  export(modelparm.glmmTMB) }
 modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
                                vcov. = function(x) vcov(x)[[component]],
                                df = NULL, component="cond", ...) {
@@ -1569,4 +1725,12 @@ modelparm.glmmTMB <- function (model, coef. = function(x) fixef(x)[[component]],
     RET <- list(coef = beta, vcov = sigma, df = df, estimable = estimable)
     class(RET) <- "modelparm"
     return(RET)
+}
+
+#' @rdname residuals.glmmTMB
+#' @export
+deviance.glmmTMB <- function(object, ...) {
+    check_dots(...)
+    ## consider suppressing warning of class 'na_dev_resids' ?
+    sum(residuals(object, type = "deviance")^2)
 }

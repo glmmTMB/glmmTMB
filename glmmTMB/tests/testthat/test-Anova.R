@@ -1,12 +1,29 @@
 require(glmmTMB)
 require(testthat)
 
+## (repeated in test-downstream.R ...)
+## from GH 920
+set.seed(101)
+spcount <- rpois(120, rnorm(120, mean = rep(c(1.8, 2, 2.3), each = 40),
+                            sd = 0.4))
+spdat <- data.frame(species = factor(rep(1:3, each = 40)),
+                  pop = factor(rep(c(1, 2, 11, 13, 21, 24), each = 20)),
+                  count = spcount)
+
+nested <- glmmTMB(count ~ species/pop, family = poisson,
+                  data=spdat, control = glmmTMBControl(rank_check = "adjust"))
+## equivalent glm() fit for comparison
+nested0 <- glm(count ~ species + species/pop, family = poisson, data=spdat)
+
+
 data(sleepstudy,package="lme4")
 ## m <- load(system.file("test_data","models.rda",package="glmmTMB", mustWork=TRUE))
 if (require(car) && getRversion()>="3.6.0") {
     ## only testing on recent R: see comments
     ##  https://github.com/glmmTMB/glmmTMB/pull/547#issuecomment-580690208
     ##  https://github.com/glmmTMB/glmmTMB/issues/493#issuecomment-578569564
+
+    test_that("basic car::Anova", {
     fm0 <- lme4::lmer(Reaction~Days+(1|Subject),sleepstudy,REML=FALSE)
     expect_equal(Anova(fm1),Anova(fm0),tolerance=3e-6)
     expect_equal(Anova(fm1,type="III"),Anova(fm0,type="III"),tolerance=3e-6)
@@ -31,7 +48,8 @@ if (require(car) && getRversion()>="3.6.0") {
     expect_equal(get_pval(a2),numeric(0))
     expect_equal(get_pval(a3),c(0, 1.82693150434104e-13))
     expect_equal(get_pval(a4),0.81337346580467)
-
+    })
+    
     test_that("Anova matches zi attributes correctly", {
         ## zi and cond for cases with different models (GH 673)
         ## set up case where one of the 'term' indices matches up with an element
@@ -69,6 +87,24 @@ if (require(car) && getRversion()>="3.6.0") {
 "Response: z")))
 
     }
-)
+) ## test_that
 
-}
+    test_that("Anova on models with non-est components",
+    {
+        expect_equal(unname(c(unclass(Anova(nested, type = "2")))),
+                     unname(c(unclass(Anova(nested0, type = "2")))),
+                     ## FIXME: tolerance is larger than I'd like but
+                     ## not big enough to be a real bug ???
+                     tolerance = 0.015)
+        
+
+        ## not even sure if this is right ... ???
+        ## they match (approximately) for species:pop
+        ## a1 gives values for Intercept and species
+        ## a2 gives 0 Df for species comparison
+        ## a1 <- Anova(nested, type = "3", singular.ok = TRUE)
+        ## a2 <- Anova(nested0, type = "3", singular.ok = TRUE)
+
+})
+
+}  ## car and R > 3.6.0

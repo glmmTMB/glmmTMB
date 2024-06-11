@@ -21,7 +21,8 @@ glmmTMB(
   REML = FALSE,
   start = NULL,
   map = NULL,
-  sparseX = NULL
+  sparseX = NULL,
+  priors = NULL
 )
 }
 \arguments{
@@ -33,7 +34,7 @@ glmmTMB(
 
 \item{ziformula}{a \emph{one-sided} (i.e., no response variable) formula for zero-inflation combining fixed and random effects: the default \code{~0} specifies no zero-inflation. Specifying \code{~.} sets the zero-inflation formula identical to the right-hand side of \code{formula} (i.e., the conditional effects formula); terms can also be added or subtracted. \strong{When using \code{~.} as the zero-inflation formula in models where the conditional effects formula contains an offset term, the offset term will automatically be dropped}. The zero-inflation model uses a logit link.}
 
-\item{dispformula}{a \emph{one-sided} formula for dispersion containing only fixed effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via \code{control=glmmTMBControl(zero_dispval=...)}; the default value is \code{sqrt(.Machine$double.eps)}.}
+\item{dispformula}{a \emph{one-sided} formula for dispersion combining fixed and random effects: the default \code{~1} specifies the standard dispersion given any family. The argument is ignored for families that do not have a dispersion parameter. For an explanation of the dispersion parameter for each family, see \code{\link{sigma}}. The dispersion model uses a log link. In Gaussian mixed models, \code{dispformula=~0} fixes the residual variance to be 0 (actually a small non-zero value), forcing variance into the random effects. The precise value can be controlled via \code{control=glmmTMBControl(zero_dispval=...)}; the default value is \code{sqrt(.Machine$double.eps)}.}
 
 \item{weights}{weights, as in \code{glm}. Not automatically scaled to have sum 1.}
 
@@ -61,11 +62,13 @@ because of missingness.}
 
 \item{REML}{whether to use REML estimation rather than maximum likelihood.}
 
-\item{start}{starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betad} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi} (conditional modes for conditional and zero-inflation models); \code{theta}, \code{thetazi} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); \code{thetaf} (extra family parameters, e.g., shape for Tweedie models).}
+\item{start}{starting values, expressed as a list with possible components \code{beta}, \code{betazi}, \code{betadisp} (fixed-effect parameters for conditional, zero-inflation, dispersion models); \code{b}, \code{bzi}, \code{bdisp} (conditional modes for conditional, zero-inflation, and dispersion models); \code{theta}, \code{thetazi}, \code{thetadisp} (random-effect parameters, on the standard deviation/Cholesky scale, for conditional, z-i, and disp models); \code{psi} (extra family parameters, e.g., shape for Tweedie models).}
 
 \item{map}{a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.}
 
 \item{sparseX}{a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}}
+
+\item{priors}{a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}}
 }
 \description{
 Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
@@ -86,9 +89,12 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{gau} (* Gaussian autocorrelation)
 \item \code{mat} (* Matérn process correlation)
 \item \code{toep} (* Toeplitz)
+\item \code{rr} (reduced rank/factor-analytic model)
+\item \code{homdiag} (diagonal, homogeneous variance)
 }
-Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")}< for more information.
+Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
+\item Smooths taken from the \code{mgcv} package can be included in \code{glmmTMB} formulas using \code{s}; these terms will appear as additional components in both the fixed and the random-effects terms. This functionality is \emph{experimental} for now. We recommend using \code{REML=TRUE}. See \code{\link[mgcv]{s}} for details of specifying smooths (and \code{\link[mgcv]{smooth2random}} and the appendix of Wood (2004) for technical details).
 }
 }
 \note{
@@ -133,13 +139,21 @@ d2$sd <- "five"
 dat <- rbind(d1, d2)
 m0 <- glmmTMB(x ~ sd + (1|t), dispformula=~sd, data=dat)
 fixef(m0)$disp
-c(log(5^2), log(10^2)-log(5^2)) # expected dispersion model coefficients
+c(log(5), log(10)-log(5)) # expected dispersion model coefficients
 
 
 ## Using 'map' to fix random-effects SD to 10
 m1_map <- update(m1, map=list(theta=factor(NA)),
                  start=list(theta=log(10)))
 VarCorr(m1_map)
+
+## smooth terms
+data("Nile")
+ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
+sm1 <- glmmTMB(val ~ s(time), data = ndat,
+               REML = TRUE, start = list(theta = 5))
+plot(val ~ time, data = ndat)
+lines(ndat$time, predict(sm1))
 }
 }
 \references{
@@ -148,4 +162,5 @@ Brooks, M. E., Kristensen, K., van Benthem, K. J., Magnusson, A., Berg, C. W., N
 Kristensen, K., Nielsen, A., Berg, C. W., Skaug, H. and Bell, B. (2016). TMB: Automatic differentiation and Laplace approximation. \emph{Journal of Statistical Software}, \bold{70}, 1--21.
 
 Millar, R. B. (2011). \emph{Maximum Likelihood Estimation and Inference: With Examples in R, SAS and ADMB.} Wiley, New York.
+Wood, S. N. (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models. \emph{Journal of the American Statistical Association} \bold{99}(467): 673–86. \doi{10.1198/016214504000000980}
 }

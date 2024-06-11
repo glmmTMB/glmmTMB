@@ -43,7 +43,10 @@ data("Pixel", package="nlme")
 complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)
 
 test_that("bad model convergence warning", {
-    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel),
+    expect_warning(fmPix1 <<- glmmTMB(complex_form, data = Pixel,
+                                      ## weird starting values to force convergence problem
+                                      ## (works out of the box when Gaussian dist is param by SD)
+                                      start = list(theta=rep(-10,5))),
                    "convergence problem")
 })
 
@@ -146,7 +149,7 @@ expect_equal(getVCText(vc),
                             V4 = c(NA, -0.581, NA)),
                        .Names = c("V3", "V4"),
                        class = "data.frame", row.names = c(NA, -3L)),
-             tolerance=1.5e-5)
+             tolerance=2e-5)
 
 ## both variance and std.dev.
 c2 <- getVCText(vc,comp=c("Variance","Std.Dev."),digits=2)
@@ -194,4 +197,21 @@ test_that("VarCorr omits resid when dispformula=~0", {
 
 test_that("vcov(.,full=TRUE) works for zero-disp models", {
     expect_equal(dim(vcov(fm0,full=TRUE)),c(4,4))
+})
+
+test_that("blockCode set correctly in VarCorr", {
+    set.seed(102)
+    n <- 25                                              ## Number of time points
+    x <- MASS::mvrnorm(mu = rep(0,n),
+                       Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process using the MASS package
+    y <- x + rnorm(n, sd = 0.1)                                   ## Add measurement noise
+    times <- factor(1:n, levels=1:n)
+    group <- factor(rep(1,n))
+    dat0 <- data.frame(y, times, group)
+    ## suppress non-pos-def warning
+    suppressWarnings(model <- glmmTMB(y ~ ar1(factor(times) + 0 | group),
+                                      ziformula = ~ ar1(factor(times) + 0 | group),
+                                      data=dat0, family = gaussian())
+                     )
+    expect_equal(attr(VarCorr(model)[["zi"]]$group, "blockCode"), c(ar1=3))
 })

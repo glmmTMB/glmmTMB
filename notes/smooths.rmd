@@ -1,0 +1,138 @@
+---
+title: implementing mgcv-style smooths in glmmTMB
+---
+
+
+```{r reinstall_flag}
+## make this depend on external input/commandArg/env variable?
+reinstall_pkg <- FALSE
+```
+
+As previously commented on [the glmmTMB issues list](https://github.com/glmmTMB/glmmTMB/issues/704) and [illustrated by Devin Johnson](https://gist.github.com/dsjohnson/9d66aa47557ad56438aaf75dd25910ea), `mgcv` provides facilities for exporting its smooths in a format that can work with an IID ('ridge') penalty as implemented in standard mixed-model random effects terms.
+
+This is *briefly* described in `?mgcv::smooth2random`, and the appendix of Wood (2004) gives the mathematical details (see below for reference).
+
+**fixme**: pick an example with some nonlinearity for the non-nullspace component of the smooth to capture ...
+
+## current status/example: "sort of" working
+
+I've implemented the 'front end' for this: pick the `s()` terms out of a formula, convert them with `smooth2random`, add those as appropriate to the fixed and random effect model matrices with the RE type set to "homdiag" (iid errors).
+
+For the standard `sleepstudy` example, we get results that are somewhat reasonable/match `mgcv` in some ways. We **must** use REML in order for this to work! (With default ML fit, we get a sort-of-OK fit, but some weird stuff happens - spline parameters go to tiny values, `NA/NaN` warnings, convergence failure ...
+
+```{r first_try}
+## this is slightly rude, but should be quick if already installed ...
+if (reinstall_pkg) remotes::install_github("glmmTMB/glmmTMB/glmmTMB@mgcv_smooths")
+library(glmmTMB)
+library(mgcv)
+data("sleepstudy", package = "lme4")
+gtmb1 <- glmmTMB(formula = Reaction ~ s(Days) + (1 | Subject), data = sleepstudy, REML = TRUE)
+mgcv1 <- gam(formula = Reaction ~ s(Days) + s(Subject, bs="re"), data = sleepstudy)
+```
+
+Lots of comparisons work: residual std error, intercept parameter and 'fixed' spline parameter (which determines the part of the spline corresponding to the nullspace), the random effects corresponding to the `(1|Subject)`/`s(Subject, bs = "re")` terms ...
+
+```{r compare}
+stopifnot(all.equal(sigma(mgcv1), sigma(gtmb1), tol = 1e-5))
+## intercept and nullspace fixed effect
+stopifnot(all.equal(unname(fixef(gtmb1)$cond),
+          unname(coef(mgcv1)[c("(Intercept)", "s(Days).9")]),
+          tol = 1e-6))
+## fitted values
+stopifnot(all.equal(fitted(gtmb1), unname(fitted(mgcv1)), tol = 2e-5))
+stopifnot(all.equal(predict(gtmb1), predict(gtmb1, newdata = sleepstudy)))
+
+## random effects
+bvec <- gtmb1$fit$parfull
+bvec <- bvec[names(bvec) == "b"]
+r1 <- ranef(gtmb1)$cond  ## all b-values for the smooth are tiny ... ??
+r2 <- split(coef(mgcv1), substr(names(coef(mgcv1)), 1, 3))[c(3,2)]
+names(r2) <- names(r1)
+stopifnot(all.equal(unname(unlist(r1[[1]])), unname(r2[[1]]), tol = 1e-5))
+```
+
+The log-likelihoods do *not* match (something to do with which parameters are profiled out in REML??)
+
+```{r}
+c(mgcv = logLik(mgcv1), gtmb1 = logLik(gtmb1))
+```
+
+I'm not sure how to extract the values corresponding to RE variances from `mgcv` ...
+
+Works (technically), but annoyingly non-pos-def because the smooth gets penalized to zero ... change to a better example!
+
+```{r}
+gtmb0 <- update(gtmb1, . ~  . - (1|Subject))
+```
+
+```{r nileex}
+data("Nile")
+ndat <- data.frame(time = time(Nile), val = c(Nile))
+sm0 <- gam(val ~ s(time), data = ndat, method = "REML")
+
+sm0B <- glmmTMB(val ~ s(time), data = ndat, REML = TRUE)
+
+sfun <- function(tstart) {
+    glmmTMB(val ~ s(time), data = ndat, REML = TRUE,
+            start = list(theta = tstart))
+}
+tvec <- seq(-2, 10, length = 61)
+```
+
+```{r nilefit, cache = TRUE}
+smlist <- lapply(tvec, sfun)
+```
+
+Note that this works 'reliably' only for sufficiently large starting values of theta ...  is this because
+we are fitting random effects on a raw scale rather than relative to SD?  Can we use `log(sd(response_var))` as a 
+starting value for theta in these cases? 
+
+```{r nile2}
+res <- t(thval <- sapply(smlist,
+                         \(x) c(getME(x, "theta"), x$sdr$pdHess)))
+pfun <- function() {
+    par(las = 1)
+    plot(tvec, res[,1], pch = 16, col = res[,2]+1, cex = 3,
+         xlab  = "starting theta value",
+         ylab = "theta estimate")
+    legend("right",
+           pch = 16,
+           col = 1:2,
+           legend = c("non-PD hess", "OK"))
+}
+pfun()
+png("spline_start.png")
+pfun()
+dev.off()
+```
+
+```{r nilefit}
+sm1 <- glmmTMB(val ~ s(time), data = ndat, REML = TRUE, start = list(theta = 5))
+predict(sm1, newdata = ndat)
+stopifnot(all.equal(predict(sm1), predict(sm1, newdata = ndat)))
+stopifnot(all.equal(c(unname(predict(sm0))), predict(sm1)))
+```
+
+## issues 
+
+There is a lot left to do.
+
+* test test test! See where stuff breaks.
+* better print/summary handling for smooth terms (remove them from fixed effects/print separately); more options to `fixef()` etc ...
+* documentation: where are the pitfalls?
+* can we set things up so that existing `mgcv` machinery (such as `gratia`) can work on our fits?
+* starting values for theta for smooths - how/where should we do this? I think `theta` values set in `getXReTrms()` may be ignored anyway ... ?  Look at 
+
+## architectural stuff
+
+* at present, `mkReTrms` (which is imported from `lme4`) takes only the bar-terms into account. The current strategy is to take the results and do a bunch of post-processing to add stuff from the smooth terms.  This is clunky.
+     * We could modify mkReTrms significantly (time to take it over into `reformulas` and refactor it while keeping it lme4-compliant?) to allow smooth terms to be included *in situ*
+     * We could modify the s()-terms to be dummy terms with the right dimensions, then modify in place (this is not much better than the current approach)
+* can we get rid of `no_specials` ... ??? 
+* right now we're hacking `s()` to `homdiag()`. Should we duplicate the `homdiag` code, or otherwise make "homdiag" and "s" synonyms under the hood?
+* this re-opens the can of worms about whether we should allow random effects for the dispersion term (we need to if we're going to allow smooths in the dispersion term ...)
+
+## ref
+
+Simon N Wood (2004) Stable and Efficient Multiple Smoothing Parameter Estimation for Generalized Additive Models, Journal of the American Statistical Association, 99:467, 673-686, DOI: 10.1198/016214504000000980 https://doi.org/10.1198/016214504000000980
+

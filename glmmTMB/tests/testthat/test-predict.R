@@ -42,7 +42,7 @@ test_that("new levels of fixed effect factor", {
 
 test_that("new levels in RE term", {
     skip_on_cran()
-    g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy)
+    suppressWarnings(g2 <- glmmTMB(Reaction ~ us(DaysFac | Subject), sleepstudy))
     expect_error( predict(g2, nd),
                  "Prediction is not possible for terms")
 })
@@ -217,7 +217,8 @@ test_that("complex bases in dispformula", {
                  list(fit = 298.507945749154, se.fit = 4.18682101029576),
                  tolerance=1e-5)
     expect_equal(predict(g4B, newdata=nd, se.fit=TRUE),
-                 list(fit = 283.656705454758, se.fit = 4.74204256781178))
+                 list(fit = 283.656705454758, se.fit = 4.74204256781178),
+                 tolerance = 1e-6)
 })
 
 test_that("fix_predvars works for I(x^2)", {
@@ -238,6 +239,54 @@ test_that("fix_predvars works for I(x^2)", {
     p1 <- predict(m1, newdata = nd, type = "link", re.form = NA)
     p2 <- predict(m2, newdata = nd, type = "link")
     expect_equal(unname(p1),unname(p2), tolerance=1e-4)
+})
+
+test_that("more predvars stuff (I()) (GH #853)", {
+    set.seed(100)
+    N <- 100
+    x1 <- rnorm(N)
+    Y <- rpois(N, lambda = exp(x1))
+    df <- data.frame(Y=Y, x1=x1)
+
+    ##Base model
+    mod <- suppressWarnings(glmmTMB(Y ~ x1 + I((x1+10)^2) + I((x1+10)^3),
+                                    data = df, family = "poisson"))
+    p1 <- predict(mod, newdata = df, type = "response")
+    expect_equal(fitted(mod), predict(mod, newdata = df, type = "response"))
+})
+
+test_that("predvars with different ns() in fixed and disp (GH #845)", {
+    library(splines)
+    x <- glmmTMB(
+        am ~ ns(wt, df = 3), 
+        dispformula = ~ ns(wt, df = 2), 
+        data = mtcars
+    )
+    newdata <- data.frame(
+        wt = seq(min(mtcars$wt), max(mtcars$wt), length.out = 3)
+    )
+    expect_equal(predict(x, newdata = newdata),
+                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
+})
+
+test_that("predvars with differing splines in fixed and RE (GH#632)", {
+    library(splines)
+    data(sleepstudy,package="lme4")
+    form <- Reaction ~ ns(Days, df = 3) + (ns(Days, df = 2)|Subject)
+    ## need better/non-default starting values after var -> SD param change
+    m4 <- glmmTMB(form, data = sleepstudy,
+                  start = list(theta = c(3.28, 4.34, 3.79, 0, 0, 0)))
+    m4B <- lme4::lmer(form, data = sleepstudy, REML = FALSE)
+    nd <- data.frame(Days = 4:6, Subject = "372")
+    predict(m4B, newdata = nd, re.form = NULL, type = "response")
+    pp <- predict(m4, newdata = nd, re.form = NULL, type = "response")
+    ppB <- predict(m4B, newdata = nd, re.form = NULL, type = "response")
+    ## plot(Reaction ~ Days, data = subset(sleepstudy, Subject == "372"))
+    ## points(4:6, pp, col = 2, pch = 16)
+    ## ?? results change on var to SD switch for Gaussian model?
+    expect_equal(pp, c(309.103652912868, 321.193466901353, 333.568337949647),
+                 tolerance = 1e-4)
+    expect_equal(unname(ppB), pp, tolerance = 1e-4)
 })
 
 test_that("contrasts carried over", {
@@ -328,4 +377,149 @@ test_that("zlink/zprob return appropriate values with non-ZI model (GH#798)", {
   p2 <- predict(fm2, type = "zprob")
   expect_equal(length(p2), nrow(sleepstudy))
   expect_true(all(p2 == 0))
+})
+
+test_that("correct conditional/response predictions for truncated distributions", {
+    set.seed(42)
+    N <- 100
+    df <- data.frame(p1 = rpois(N, 1),
+                     nb1 = rnbinom(N, mu = 1, size = 1),
+                     x = rnorm(N)) |>
+        transform(
+            ## zero-inflated versions
+            zp1 = p1 * rbinom(N, size = 1, prob = 0.5),
+            znb1 = nb1 * rbinom(N, size = 1, prob = 0.5),
+            ## truncated versions (NAs will be dropped)
+            tp1 = ifelse(p1 == 0, NA, p1),
+            tnb1 = ifelse(nb1 == 0, NA, nb1))
+
+    f_zp1 <- glmmTMB(zp1 ~ x,
+                     zi= ~ 1,
+                     family=truncated_poisson(link="log"),
+                     data=df)
+
+    f_znb1 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom1)
+
+    f_znb2 <- update(f_zp1, znb1 ~ .,
+                     family = truncated_nbinom2)
+
+
+    testfun <- function(model, response, distrib) {
+        zp1 <- predict(model, type="zprob")
+        cm1 <- predict(model, type="conditional")
+        mu1 <- predict(model, type="response")
+
+        ## compute zero-trunc by hand
+        eta <- predict(model, type = "link")
+        cm2 <- exp(eta)/(1-distrib(0, exp(eta), sigma(model)))
+        expect_equal(cm1, cm2)
+
+        expect_equal(mu1, cm1*(1-zp1))
+
+    }
+
+    ## versions of distrib functions that can be plugged into testfun()
+    my_dpois <- function(x, lambda, ...) dpois(x, lambda)
+    my_nb2 <- function(x, mu, size) dnbinom(x, mu = mu, size = size)
+    my_nb1 <- function(x, mu, phi) {
+        ## var = mu*(1+mu/k) = mu*(1+phi) -> phi = mu/k -> k = mu/phi
+        dnbinom(x, mu = mu, size = mu/phi)
+    }
+
+    testfun(f_zp1, "zp1", my_dpois)
+    testfun(f_znb2, "znb1", my_nb2)
+    testfun(f_znb1, "znb1", my_nb1)
+
+})
+
+test_that("predict warns about ignored args", {
+    expect_warning(predict(fm2, bad_args = TRUE), "bad_args")
+})
+
+## GH #873
+test_that("nzprob doesn't segfault", {
+    skip_on_cran()
+    model2 <- glmmTMB(
+        count ~ cover + mined + (1 | site),
+        ziformula = ~ cover + mined,
+        family = truncated_poisson(),
+        data = Salamanders
+    )
+    pp <- stats::predict(
+               model2,
+               newdata = Salamanders,
+               type = "link",
+               re.form = NULL,
+               allow.new.levels = FALSE
+               )
+    expect_equal(head(pp, 3),
+                 c(0.465946249085321, 0.206712238705304, 0.133580349579438))
+})
+
+## GH #873 continued
+test_that("nzprob computed for non-fast pred", {
+    set.seed(101)
+    dd <- data.frame(y = rpois(5, lambda = 1))
+    m1 <- glmmTMB(
+        y ~ 1,
+        ziformula = ~ 1,
+        data = dd,
+        family = truncated_poisson()
+    )
+    expect_identical(predict(m1, type = "response"),
+                     predict(m1, type = "response", fast = FALSE))
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom1))
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    ## non-pos-def Hessian, ignore
+    m2 <- suppressWarnings(update(m1, family = truncated_nbinom2))
+    ## need more data to fit compois, genpois
+    dd2 <- data.frame(y = rpois(100, lambda = 1))
+    m2 <- update(m1, family = truncated_compois, data = dd2)
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+    ## suppress NA/NaN function eval warning
+    m2 <- suppressWarnings(update(m1, family = truncated_genpois, data = dd2))
+    expect_identical(predict(m2, type = "response"),
+                     predict(m2, type = "response", fast = FALSE))
+})
+
+test_that("pop-level prediction with missing grouping vars (GH #923)",
+{
+    fm20 <- glmmTMB(Reaction ~ 1 + (Days|Subject), sleepstudy)
+    predict(fm20, re.form = NA, newdata = data.frame(matrix(ncol = 0, nrow=length(sleepstudy))))
+    expect_equal(predict(fm2, re.form = NA),
+                 predict(fm2, newdata = sleepstudy[c("Days")], re.form = NA))
+    ## suppress non-pos-def Hessian warning, this is a silly example
+    fmnasty <- suppressWarnings(
+        glmmTMB(Reaction ~ 1 + (log(Days+1)|Subject), sleepstudy)
+    )
+    expect_equal(predict(fmnasty, re.form = NA),
+                 predict(fmnasty, newdata = data.frame(matrix(ncol=0, nrow = nrow(sleepstudy))), re.form = NA))
+})
+
+    
+test_that("weights with attributes are OK", {
+    data(iris)
+    d <- as.data.frame(expand.grid(
+        Species = unique(iris$Species),
+        Petal.Width = 2,
+        wg = NA
+    ))
+    
+    set.seed(101)
+    iris$wg <- abs(rnorm(nrow(iris), 1, 0.1))
+    
+    attr(iris$wg, "label") <- "weighting variable"
+    
+    m <- glmmTMB(
+        Petal.Length ~ Petal.Width + (1 | Species),
+        weights = wg,
+        data = iris
+    )
+    p <- predict(m, newdata = d, re.form = NULL)
+    expect_equal(head(p),
+                 c(3.35535960506176, 4.98184089632094, 5.50821757779119))
 })

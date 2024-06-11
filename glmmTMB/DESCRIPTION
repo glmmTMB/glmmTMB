@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.4
+Version: 1.1.9-9000
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -13,7 +13,8 @@ Authors@R: c(person("Mollie","Brooks",
 	person("Arni","Magnusson", role="aut",
 		comment=c(ORCID="0000-0003-2769-6741")),
 	person("Maeve","McGillycuddy", role="ctb"),
-	person("Hans","Skaug",role="aut"),
+	person("Hans","Skaug",role="aut",
+	        comment=c(ORCID="0000-0003-4235-2592")),
 	person("Anders","Nielsen", role="aut",
 		comment=c(ORCID="0000-0001-9683-9262")),
 	person("Casper","Berg", role="aut",
@@ -30,7 +31,9 @@ Authors@R: c(person("Mollie","Brooks",
 	person("Mikael","Jagan", role="ctb",
 		comment = c(ORCID = "0000-0002-3542-2938")),
 	person("Brenton", "Wiernik", role="ctb",
-		comment = c(ORCID = "0000-0001-9560-6336"))
+		comment = c(ORCID = "0000-0001-9560-6336")),
+	person("Daniel B.", "Stouffer", role="ctb",
+		comment = c(ORCID = "0000-0001-9436-9674"))
 	)
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
@@ -39,14 +42,16 @@ Description: Fit linear and generalized linear mixed models with various
     out using the Laplace approximation. Gradients are calculated using automatic
     differentiation.
 License: AGPL-3
-Depends: R (>= 3.2.0)
+Depends: R (>= 3.6.0)
 Imports:
     methods,
-    TMB (>= 1.7.14),
+    TMB (>= 1.9.0),
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
-    numDeriv
+    numDeriv,
+    mgcv,
+    reformulas (>= 0.2.0)
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
@@ -76,7 +81,11 @@ Suggests:
     texreg,
     xtable,
     huxtable,
-    mvabund
+    mvabund,
+    parallel,
+    blme,
+    purrr,
+    dplyr
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
@@ -84,4 +93,4 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
-RoxygenNote: 7.1.2
+RoxygenNote: 7.3.1

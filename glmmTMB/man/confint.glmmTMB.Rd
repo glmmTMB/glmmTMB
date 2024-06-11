@@ -11,6 +11,7 @@
   method = c("wald", "Wald", "profile", "uniroot"),
   component = c("all", "cond", "zi", "other"),
   estimate = TRUE,
+  include_nonest = FALSE,
   parallel = c("no", "multicore", "snow"),
   ncpus = getOption("profile.ncpus", 1L),
   cl = NULL,
@@ -41,6 +42,8 @@ function)}
 
 \item{estimate}{(logical) add a third column with estimate ?}
 
+\item{include_nonest}{include dummy rows for non-estimated (mapped, rank-deficient) parameters?}
+
 \item{parallel}{method (if any) for parallel computation}
 
 \item{ncpus}{number of CPUs/cores to use for parallel computation}
@@ -49,7 +52,7 @@ function)}
 
 \item{full}{CIs for all parameters (including dispersion) ?}
 
-\item{...}{arguments may be passed to \code{\link{profile.merMod}} or
+\item{...}{arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
 \code{\link[TMB]{tmbroot}}}
 }
 \description{
@@ -77,7 +80,13 @@ parameters on the standard deviation/correlation scale, while
 "profile" and "uniroot" report them on the underlying ("theta")
 scale: for each random effect, the first set of parameter values
 are standard deviations on the log scale, while remaining parameters
-represent correlations on the scaled Cholesky scale (see the
+represent correlations on the scaled Cholesky scale. For a random
+effects model with two elements (such as a random-slopes model,
+or a random effect of factor with two levels), there is a single
+correlation parameter \eqn{\theta}{theta}; the correlation is
+equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
+For random-effects terms with more than two elements, the mapping
+is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
 }
 \examples{
 data(sleepstudy, package="lme4")

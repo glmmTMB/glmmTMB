@@ -4,12 +4,21 @@ several downstream packages that enable different forms of inference.
 For some methods (Anova and emmeans, but not effects at present),
 set the component argument
 to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
-for the corresponding part of a glmmTMB model.
+for the corresponding part of a glmmTMB model. 
+Support for emmeans also allows additional options 
+component = "response" (response means taking both the cond and
+zi components into account), and component = "cmean" (mean of the 
+[possibly truncated] conditional distribution).
 In particular,
 car::Anova constructs type-II and type-III Anova tables
 for the fixed effect parameters of any component
 the emmeans package computes estimated marginal means (previously known as least-squares means)
-for the fixed effects of any component
+for the fixed effects of any component, or predictions with type = "response" or
+type = "component". Note: In hurdle models, 
+component = "cmean" produces means
+of the truncated conditional distribution, while 
+component = "cond", type = "response" produces means of the untruncated
+conditional distribution.
 the effects package computes graphical tabular effect displays
 (only for the fixed effects of the conditional component)
 
@@ -31,7 +40,7 @@ the effects package computes graphical tabular effect displays
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">glmmTMB</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.3.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">1.1.8-9000</span>
       </span>
     </div>
 
@@ -52,19 +61,25 @@ the effects package computes graphical tabular effect displays
       <a href="../articles/covstruct.html">Covariance structures with glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/mcmc.html">post-hoc MCMC with glmmTMB</a>
+      <a href="../articles/hacking.html">Hacking glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/mcmc.html">Post-hoc MCMC with glmmTMB</a>
     </li>
     <li>
       <a href="../articles/miscEx.html">Miscellaneous examples</a>
     </li>
     <li>
-      <a href="../articles/model_evaluation.html">model evaluation</a>
+      <a href="../articles/model_evaluation.html">Model evaluation</a>
     </li>
     <li>
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
-      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model</a>
+      <a href="../articles/priors.html">Priors in glmmTMB</a>
+    </li>
+    <li>
+      <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
       <a href="../articles/troubleshooting.html">Troubleshooting with glmmTMB</a>
@@ -104,48 +119,79 @@ several downstream packages that enable different forms of inference.
 For some methods (<code>Anova</code> and <code>emmeans</code>, but <em>not</em> <code>effects</code> at present),
 set the <code>component</code> argument
 to "cond" (conditional, the default), "zi" (zero-inflation) or "disp" (dispersion) in order to produce results
-for the corresponding part of a <code>glmmTMB</code> model.</p>
+for the corresponding part of a <code>glmmTMB</code> model. 
+Support for <span class="pkg">emmeans</span> also allows additional options 
+<code>component = "response"</code> (response means taking both the <code>cond</code> and
+<code>zi</code> components into account), and <code>component = "cmean"</code> (mean of the 
+[possibly truncated] conditional distribution).</p>
 <p>In particular,</p><ul><li><p><code><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">car::Anova</a></code> constructs type-II and type-III Anova tables
 for the fixed effect parameters of any component</p></li>
 <li><p>the <code>emmeans</code> package computes estimated marginal means (previously known as least-squares means)
-for the fixed effects of any component</p></li>
+for the fixed effects of any component, or predictions with <code>type = "response"</code> or
+<code>type = "component"</code>. Note: In hurdle models, 
+<code>component = "cmean"</code> produces means
+of the truncated conditional distribution, while 
+<code>component = "cond", type = "response"</code> produces means of the <em>untruncated</em>
+conditional distribution.</p></li>
 <li><p>the <code>effects</code> package computes graphical tabular effect displays
 (only for the fixed effects of the conditional component)</p></li>
 </ul></div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="fu">Anova.glmmTMB</span><span class="op">(</span>
-  <span class="va">mod</span>,
-  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"II"</span>, <span class="st">"III"</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>,
-  test.statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Chisq"</span>, <span class="st">"F"</span><span class="op">)</span>,
-  component <span class="op">=</span> <span class="st">"cond"</span>,
-  vcov. <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span><span class="op">[[</span><span class="va">component</span><span class="op">]</span><span class="op">]</span>,
-  <span class="va">singular.ok</span>,
-  <span class="va">...</span>
-<span class="op">)</span>
-
-<span class="fu">Effect.glmmTMB</span><span class="op">(</span><span class="va">focal.predictors</span>, <span class="va">mod</span>, <span class="va">...</span><span class="op">)</span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="co"># S3 method for glmmTMB</span></span>
+<span><span class="fu">Anova</span><span class="op">(</span></span>
+<span>  <span class="va">mod</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"II"</span>, <span class="st">"III"</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>  test.statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Chisq"</span>, <span class="st">"F"</span><span class="op">)</span>,</span>
+<span>  component <span class="op">=</span> <span class="st">"cond"</span>,</span>
+<span>  vcov. <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov</a></span><span class="op">(</span><span class="va">mod</span><span class="op">)</span><span class="op">[[</span><span class="va">component</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>  <span class="va">singular.ok</span>,</span>
+<span>  include.rankdef.cols <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">Effect.glmmTMB</span><span class="op">(</span><span class="va">focal.predictors</span>, <span class="va">mod</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
     <h2>Arguments</h2>
     <dl><dt>mod</dt>
 <dd><p>a glmmTMB model</p></dd>
+
+
 <dt>type</dt>
 <dd><p>type of test, <code>"II"</code>, <code>"III"</code>, <code>2</code>, or <code>3</code>.  Roman numerals are equivalent to the corresponding Arabic numerals. See <code><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></code> for details.</p></dd>
+
+
 <dt>test.statistic</dt>
 <dd><p>unused: only valid choice is "Chisq" (i.e., Wald chi-squared test)</p></dd>
+
+
 <dt>component</dt>
-<dd><p>which component of the model to test/analyze ("cond", "zi", or "disp")</p></dd>
+<dd><p>which component of the model to test/analyze ("cond", "zi", or "disp")
+or, in <span class="pkg">emmeans</span> only, "response" or "cmean" as described in Details.</p></dd>
+
+
 <dt>vcov.</dt>
 <dd><p>variance-covariance matrix (usually extracted automatically)</p></dd>
+
+
 <dt>singular.ok</dt>
 <dd><p>OK to do ANOVA with singular models (unused) ?</p></dd>
+
+
+<dt>include.rankdef.cols</dt>
+<dd><p>include all columns of a rank-deficient model matrix?</p></dd>
+
+
 <dt>...</dt>
 <dd><p>Additional parameters that may be supported by the method.</p></dd>
+
+
 <dt>focal.predictors</dt>
 <dd><p>a character vector of one or more predictors in the
 model in any order.</p></dd>
+
 </dl></div>
     <div id="details">
     <h2>Details</h2>
@@ -156,39 +202,118 @@ versions of methods, e.g. <code>glmmTMB:::Anova.glmmTMB(model, ...)</code>.</p>
 
     <div id="ref-examples">
     <h2>Examples</h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span class="va">warp.lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">breaks</span> <span class="op">~</span> <span class="va">wool</span> <span class="op">*</span> <span class="va">tension</span>, data <span class="op">=</span> <span class="va">warpbreaks</span><span class="op">)</span></span>
-<span class="r-in"><span class="va">salamander1</span> <span class="op">&lt;-</span> <span class="fu"><a href="gt_load.html">up2date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"example_files"</span>,<span class="st">"salamander1.rds"</span>,package<span class="op">=</span><span class="st">"glmmTMB"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rvlenth/emmeans" class="external-link">emmeans</a></span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">warp.lm</span>, <span class="va">poly</span> <span class="op">~</span> <span class="va">tension</span> <span class="op">|</span> <span class="va">wool</span><span class="op">)</span></span>
-<span class="r-in">    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">salamander1</span>, <span class="op">~</span> <span class="va">mined</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span></span>
-<span class="r-in">    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">salamander1</span>, <span class="op">~</span> <span class="va">mined</span>, component<span class="op">=</span><span class="st">"zi"</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span></span>
-<span class="r-in"><span class="op">}</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">warp.lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="glmmTMB.html">glmmTMB</a></span><span class="op">(</span><span class="va">breaks</span> <span class="op">~</span> <span class="va">wool</span> <span class="op">*</span> <span class="va">tension</span>, data <span class="op">=</span> <span class="va">warpbreaks</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">salamander1</span> <span class="op">&lt;-</span> <span class="fu"><a href="gt_load.html">up2date</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"example_files"</span>,<span class="st">"salamander1.rds"</span>,package<span class="op">=</span><span class="st">"glmmTMB"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://github.com/rvlenth/emmeans" class="external-link">emmeans</a></span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/source.html" class="external-link">withAutoprint</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">warp.lm</span>, <span class="va">poly</span> <span class="op">~</span> <span class="va">tension</span> <span class="op">|</span> <span class="va">wool</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">salamander1</span>, <span class="op">~</span> <span class="va">mined</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span>  <span class="co"># conditional means</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">salamander1</span>, <span class="op">~</span> <span class="va">mined</span>, component<span class="op">=</span><span class="st">"cmean"</span><span class="op">)</span>     <span class="co"># same as above, but re-gridded</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">salamander1</span>, <span class="op">~</span> <span class="va">mined</span>, component<span class="op">=</span><span class="st">"zi"</span>, type<span class="op">=</span><span class="st">"response"</span><span class="op">)</span>  <span class="co"># zero probabilities</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/pkg/emmeans/man/emmeans.html" class="external-link">emmeans</a></span><span class="op">(</span><span class="va">salamander1</span>, <span class="op">~</span> <span class="va">mined</span>, component<span class="op">=</span><span class="st">"response"</span><span class="op">)</span>  <span class="co"># response means including both components</span></span></span>
+<span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Loading required package: emmeans</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  mined response     SE  df lower.CL upper.CL</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  yes      0.758 0.0432 639    0.663    0.832</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  no       0.355 0.0279 639    0.302    0.411</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; emmeans(warp.lm, poly ~ tension | wool)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $emmeans</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> wool = A:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  tension emmean   SE df lower.CL upper.CL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  L         44.6 3.44 47     37.6     51.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  M         24.0 3.44 47     17.1     30.9</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  H         24.6 3.44 47     17.6     31.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> wool = B:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  tension emmean   SE df lower.CL upper.CL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  L         28.2 3.44 47     21.3     35.1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  M         28.8 3.44 47     21.9     35.7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  H         18.8 3.44 47     11.9     25.7</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Confidence level used: 0.95 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $contrasts</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> wool = A:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  contrast  estimate   SE df t.ratio p.value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  linear      -20.00 4.86 47  -4.113  0.0002</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  quadratic    21.11 8.42 47   2.507  0.0157</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> wool = B:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  contrast  estimate   SE df t.ratio p.value</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  linear       -9.44 4.86 47  -1.942  0.0581</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  quadratic   -10.56 8.42 47  -1.253  0.2163</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; emmeans(salamander1, ~mined, type = "response")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mined rate    SE  df asymp.LCL asymp.UCL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  yes   1.09 0.254 Inf     0.692      1.72</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  no    3.42 0.311 Inf     2.862      4.09</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Confidence level used: 0.95 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intervals are back-transformed from the log scale </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; emmeans(salamander1, ~mined, component = "cmean")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mined emmean    SE  df asymp.LCL asymp.UCL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  yes     1.09 0.254 Inf     0.594      1.59</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  no      3.42 0.311 Inf     2.811      4.03</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Confidence level used: 0.95 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; emmeans(salamander1, ~mined, component = "zi", type = "response")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mined response     SE  df asymp.LCL asymp.UCL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  yes      0.758 0.0432 Inf     0.663     0.832</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  no       0.355 0.0279 Inf     0.303     0.411</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Confidence level used: 0.95 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Intervals are back-transformed from the logit scale </span>
-<span class="r-in"><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric_version.html" class="external-link">getRversion</a></span><span class="op">(</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="st">"3.6.0"</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">   <span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://r-forge.r-project.org/projects/car/" class="external-link">car</a></span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">       <span class="fu"><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></span><span class="op">(</span><span class="va">warp.lm</span>,type<span class="op">=</span><span class="st">"III"</span><span class="op">)</span></span>
-<span class="r-in">       <span class="fu"><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></span><span class="op">(</span><span class="va">salamander1</span><span class="op">)</span></span>
-<span class="r-in">       <span class="fu"><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></span><span class="op">(</span><span class="va">salamander1</span>, component<span class="op">=</span><span class="st">"zi"</span><span class="op">)</span></span>
-<span class="r-in">   <span class="op">}</span></span>
-<span class="r-in">   <span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://www.r-project.org" class="external-link">effects</a></span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span class="r-in">       <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/effects/man/effect.html" class="external-link">allEffects</a></span><span class="op">(</span><span class="va">warp.lm</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in">       <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/effects/man/effect.html" class="external-link">allEffects</a></span><span class="op">(</span><span class="va">salamander1</span><span class="op">)</span><span class="op">)</span></span>
-<span class="r-in">   <span class="op">}</span></span>
-<span class="r-in"><span class="op">}</span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; emmeans(salamander1, ~mined, component = "response")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  mined emmean     SE  df asymp.LCL asymp.UCL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  yes    0.265 0.0484 Inf      0.17      0.36</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  no     2.206 0.2165 Inf      1.78      2.63</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Confidence level used: 0.95 </span>
+<span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric_version.html" class="external-link">getRversion</a></span><span class="op">(</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="st">"3.6.0"</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>   <span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://r-forge.r-project.org/projects/car/" class="external-link">car</a></span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/source.html" class="external-link">withAutoprint</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>       <span class="fu"><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></span><span class="op">(</span><span class="va">warp.lm</span>,type<span class="op">=</span><span class="st">"III"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>       <span class="fu"><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></span><span class="op">(</span><span class="va">salamander1</span><span class="op">)</span></span></span>
+<span class="r-in"><span>       <span class="fu"><a href="https://rdrr.io/pkg/car/man/Anova.html" class="external-link">Anova</a></span><span class="op">(</span><span class="va">salamander1</span>, component<span class="op">=</span><span class="st">"zi"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   <span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   <span class="kw">if</span> <span class="op">(</span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">require</a></span><span class="op">(</span><span class="va"><a href="https://www.r-project.org" class="external-link">effects</a></span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/source.html" class="external-link">withAutoprint</a></span><span class="op">(</span><span class="op">{</span></span></span>
+<span class="r-in"><span>       <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/effects/man/effect.html" class="external-link">allEffects</a></span><span class="op">(</span><span class="va">warp.lm</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>       <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/pkg/effects/man/effect.html" class="external-link">allEffects</a></span><span class="op">(</span><span class="va">salamander1</span><span class="op">)</span><span class="op">)</span></span></span>
+<span class="r-in"><span>   <span class="op">}</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">}</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Loading required package: car</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Loading required package: carData</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; Anova(warp.lm, type = "III")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Analysis of Deviance Table (Type III Wald chisquare tests)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Response: breaks</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>                 Chisq Df Pr(&gt;Chisq)    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> (Intercept)  167.9351  1  &lt; 2.2e-16 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> wool          11.2839  1  0.0007818 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> tension       23.2023  2  9.155e-06 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> wool:tension   9.4254  2  0.0089805 ** </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; Anova(salamander1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Analysis of Deviance Table (Type II Wald chisquare tests)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Response: count</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        Chisq Df Pr(&gt;Chisq)    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mined 21.522  1  3.499e-06 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; Anova(salamander1, component = "zi")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Analysis of Deviance Table (Type II Wald chisquare tests)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Response: count</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        Chisq Df Pr(&gt;Chisq)    </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mined 43.907  1  3.444e-11 ***</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Loading required package: effects</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> Use the command</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>     lattice::trellis.par.set(effectsTheme())</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span>   to customize lattice options for effects plots.</span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> See ?effectsTheme for details.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; plot(allEffects(warp.lm))</span>
 <span class="r-plt img"><img src="downstream_methods-1.png" alt="" width="700" height="433"></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &gt; plot(allEffects(salamander1))</span>
 <span class="r-plt img"><img src="downstream_methods-2.png" alt="" width="700" height="433"></span>
 </code></pre></div>
     </div>
@@ -204,7 +329,7 @@ versions of methods, e.g. <code>glmmTMB:::Anova.glmmTMB(model, ...)</code>.</p>
 </div>
 
 <div class="pkgdown">
-  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.3 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
+  <p></p><p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7 and <a href="https://github.com/HenrikBengtsson/pkgdown.extras/">pkgdown.extras</a> 0.0.0.9003.</p>
 </div>
 
       </footer></div>

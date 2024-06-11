@@ -3,6 +3,7 @@
 .RData
 *.o
 *.so
+*.dll
 glmmTMB/vignettes/*.pdf
 glmmTMB/vignettes/*.aux
 glmmTMB/vignettes/*.log
@@ -35,3 +36,8 @@ glmmTMB.Rproj
 *.Rout
 glmmTMB/inst/*-version
 glmmTMB/.gitsum
+*/cache
+*/figure
+*.tgz
+*.zip
+*.dll

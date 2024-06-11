@@ -10,6 +10,9 @@
     <loc>/articles/glmmTMB.html</loc>
   </url>
   <url>
+    <loc>/articles/hacking.html</loc>
+  </url>
+  <url>
     <loc>/articles/index.html</loc>
   </url>
   <url>
@@ -23,6 +26,9 @@
   </url>
   <url>
     <loc>/articles/parallel.html</loc>
+  </url>
+  <url>
+    <loc>/articles/priors.html</loc>
   </url>
   <url>
     <loc>/articles/sim.html</loc>
@@ -61,6 +67,12 @@
     <loc>/reference/diagnose.html</loc>
   </url>
   <url>
+    <loc>/reference/dot-adjustX.html</loc>
+  </url>
+  <url>
+    <loc>/reference/dot-checkRankX.html</loc>
+  </url>
+  <url>
     <loc>/reference/dot-collectDuplicates.html</loc>
   </url>
   <url>
@@ -74,6 +86,9 @@
   </url>
   <url>
     <loc>/reference/expandGrpVar.html</loc>
+  </url>
+  <url>
+    <loc>/reference/family_params.html</loc>
   </url>
   <url>
     <loc>/reference/findReTrmClasses.html</loc>
@@ -145,6 +160,9 @@
     <loc>/reference/print.VarCorr.glmmTMB.html</loc>
   </url>
   <url>
+    <loc>/reference/priors.html</loc>
+  </url>
+  <url>
     <loc>/reference/profile.glmmTMB.html</loc>
   </url>
   <url>
@@ -166,10 +184,16 @@
     <loc>/reference/simulate.glmmTMB.html</loc>
   </url>
   <url>
+    <loc>/reference/simulate_new.html</loc>
+  </url>
+  <url>
     <loc>/reference/splitForm.html</loc>
   </url>
   <url>
     <loc>/reference/startParams.html</loc>
+  </url>
+  <url>
+    <loc>/reference/sub_specials.html</loc>
   </url>
   <url>
     <loc>/reference/vcov.glmmTMB.html</loc>

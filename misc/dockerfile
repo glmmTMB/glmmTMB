@@ -1,0 +1,24 @@
+FROM rocker/r2u
+RUN apt -y update
+RUN apt -y upgrade
+RUN apt -y install git-all
+RUN apt -y install texlive texlive-science texlive-latex-extra texlive-bibtex-extra texinfo
+RUN apt -y install pandoc pandoc-citeproc qpdf ghostscript fonts-inconsolata
+RUN wget https://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh
+## attempt to get just inconsolata.sty instead of 'apt -y install texlive-fonts-extra',
+## but this leads us into a maze of twisty paths, all different
+## (this version of Debian ships with TeXLive 2021, tlmgr is grumpy about not having TeXLive 2024 ...
+## RUN sh update-tlmgr-latest.sh
+## RUN mkdir -p /root/texmf
+## RUN tlmgr init-usertree
+## RUN tlmgr update --self 
+## RUN tlmgr install inconsolata 
+## RUN updmap-user
+## https://stackoverflow.com/questions/34524357/inconsolata-missing-to-build-r-vignette
+## take 2: get just the
+RUN wget https://mirrors.ctan.org/install/fonts/inconsolata.tds.zip
+RUN unzip  inconsolata.tds.zip 
+RUN mktexlsr
+RUN install2.r remotes
+RUN git clone https://github.com/glmmTMB/glmmTMB.git
+RUN r - "remotes::install_local('glmmTMB/glmmTMB', dependencies = TRUE, upgrade = 'always')"

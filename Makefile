@@ -16,7 +16,6 @@ all:
 	make doc-update
 	make build-package
 	make install
-	make upstream-ver-update
 	make pdf
 
 enum-update:: $(PACKAGE)/R/enum.R
@@ -31,17 +30,20 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ")" >> $@
 
 	echo ".valid_covstruct <- c(" >> $@
-	grep _covstruct.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
+	grep "_covstruct *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_covstruct//g >> $@
 	echo ")" >> $@
 
 	echo ".valid_zipredictcode <- c(" >> $@
 	grep _zipredictcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_zipredictcode//g >> $@
 	echo ")" >> $@
 
-upstream-ver-update: $(PACKAGE)/inst/TMB-version
-$(PACKAGE)/inst/TMB-version:
-	echo "glmmTMB:::checkDepPackageVersion('TMB',write_file=TRUE)" | $(R) --slave
-	mv TMB-version $@
+	echo ".valid_prior <- c(" >> $@
+	grep _prior.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_prior//g >> $@
+	echo ")" >> $@
+
+	echo ".valid_vprior <- c(" >> $@
+	grep "_vprior *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_vprior//g >> $@
+	echo ")" >> $@
 
 doc-update: $(PACKAGE)/R/*.R
 	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\")))" | $(R) --slave
@@ -51,7 +53,7 @@ doc-update: $(PACKAGE)/R/*.R
 
 ## list of vignette inputs:
 rnw_vig += glmmTMB model_evaluation 
-rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel
+rmd_vig += covstruct mcmc miscEx sim troubleshooting parallel hacking
 
 docdir = $(PACKAGE)/inst/doc
 vigdir = $(PACKAGE)/vignettes

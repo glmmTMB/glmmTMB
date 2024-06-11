@@ -38,14 +38,20 @@ test_that("basic ar1", {
                  cc[1,2]^(0:(nrow(cc)-1)))
 })
 
+## change to something better behaved
 test_that("print ar1 (>1 RE)", {
+    fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
+                                    newdata=fsleepstudy,
+                                    newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
+                                    family = gaussian,
+                                    seed = 101)[[1]]
+    fm_ar2 <- glmmTMB(sim ~ 1 +
+                          (1|Subject) + ar1(row+0| Subject), fsleepstudy)
     cco <- gsub(" +"," ",
-                trimws(capture.output(print(summary(fm_ar1),digits=1))))
+                trimws(capture.output(print(summary(fm_ar2),digits=2))))
     expect_equal(cco[12:14],
-                 c("Subject (Intercept) 4e-01 0.6",
-                   "Subject.1 row1 4e+03 60.8 0.87 (ar1)",
-                   "Residual 8e+01 8.9"))
-
+                 c("Subject (Intercept) 7.0 2.6", "Subject.1 row1 5.9 2.4 0.78 (ar1)", 
+                   "Residual 8.1 2.8"))
 })
 
 test_that("ar1 requires factor time", {
@@ -61,9 +67,9 @@ test_that("ar1 requires factor time", {
 })
 
 ## FIXME: simpler to check formatVC() directly?
-get_vcout <- function(x,g="\\bSubject\\b") {
+get_vcout <- function(x, g="\\bSubject\\b") {
     cc <- capture.output(print(VarCorr(x)))
-    cc1 <- grep(g,cc,value=TRUE,perl=TRUE)
+    cc1 <- grep(g, cc, value=TRUE, perl=TRUE)
     ss <- strsplit(cc1,"[^[:alnum:][:punct:]]+")[[1]]
     return(ss[nchar(ss)>0])
 }
@@ -86,12 +92,17 @@ test_that("varcorr_print", {
     m1 <- suppressWarnings(glmmTMB(y~c+(c|w)+(1|s),data=dd,
                   family=gaussian))
     cc <- squash_white(capture.output(print(VarCorr(m1),digits=2)))
+    ## updated for var -> SD reparam
     expect_equal(cc,
-        c("Conditional model:", "Groups Name Std.Dev. Corr",
-          "w (Intercept) 3.1e-05",
-          "c2 4.9e-06 0.98",
-          "s (Intercept) 3.4e-05",
-          "Residual 9.6e-01"))
+                 c("Conditional model:", "Groups Name Std.Dev. Corr",
+                   "w (Intercept) 9.6e-05", 
+                   "c2 4.0e-06 0.99", "s (Intercept) 9.4e-06",
+                   "Residual 9.6e-01"))
+
+    ## check that all std devs are being printed (GH #851)
+    cc <- capture.output(VarCorr(fm_cs2))
+    expect_equal(length(cc), 7)
+    expect_equal(length(grep("fDays", cc)), 2)
 })
 
 test_that("cov_struct_order", {
@@ -119,5 +130,14 @@ test_that("cov_struct_order", {
 
     fit1  <-  glmmTMB(y ~ (1|Block) + (1|Stand)+ ar1(Time +0|Stand), data = dat)
     expect_equal(unname(fit1$fit$par),
-		c(4.98852432, -4.22220615, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
+		c(4.98852432, -2.11104196068295, -0.76452645, -0.24762133,  0.08879302,  1.00022657), tol=1e-3)
+})
+
+test_that("hom vs het diag", {
+    fmhomdiag   <- glmmTMB(Reaction ~ Days + homdiag(Days| Subject), sleepstudy)
+    expect_equal(c(VarCorr(fmhomdiag)$cond$Subject),
+                 c(69.4182616453357, 0, 0, 69.4182616453357),
+                 ## tolerance loosened for var -> SD reparameterization
+                 tolerance = 2e-4)
+
 })

@@ -2,14 +2,14 @@ stopifnot(require("testthat"),
           require("glmmTMB"),
           require("lme4"))
 
-context("REML")
+
+fm1.glmmTMB <- glmmTMB(Reaction ~ Days + (Days | Subject),
+                       sleepstudy, REML=TRUE)
 
 test_that("REML check against lmer", {
     ## Example 1: Compare results with lmer
     fm1.lmer <- lmer(Reaction ~ Days + (Days | Subject),
                      sleepstudy, REML=TRUE)
-    fm1.glmmTMB <- glmmTMB(Reaction ~ Days + (Days | Subject),
-                           sleepstudy, REML=TRUE)
     expect_equal( logLik(fm1.lmer) , logLik(fm1.glmmTMB) )
     expect_equal(as.vector(predict(fm1.lmer)) ,
                  predict(fm1.glmmTMB), tolerance=2e-3)
@@ -29,4 +29,20 @@ test_that("REML check against lmer", {
                  predict(fm2.glmmTMB), tolerance=1e-4)
     expect_equal(vcov(fm2.glmmTMB)$cond,
                  as.matrix(vcov(fm2.lmer)) , tolerance=1e-2)
+})
+
+test_that("REML with all parameters fixed", {
+    john.alpha <- readRDS(system.file("test_data", "agridat_john.alpha.rds", package = "glmmTMB"))
+    mod6_REML <- glmmTMB(yield ~ rep + (1 | gen),
+                     start = list(theta =   log(sqrt(3)), betadisp =       log(5)),
+                     map   = list(theta =  factor(c(NA)), betadisp = factor(c(NA))),
+                     REML = TRUE,
+                     data = john.alpha)
+    mod6_ML <- update(mod6_REML, REML = FALSE)
+    expect_equal(vcov(mod6_REML), vcov(mod6_ML))
+})
+
+test_that("correct df.residual for REML=TRUE", {
+    ## nobs = 180 - 6 (beta = 2 + betadisp = 1 + theta = 3)
+    expect_equal(df.residual(fm1.glmmTMB), 174)
 })
