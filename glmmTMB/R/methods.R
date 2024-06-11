@@ -1595,16 +1595,20 @@ fast_refit <- function(object, newresp, update_start = TRUE, ...) {
     ## retrieve optimization machinery from original call (should store evaluated version
     ##  of glmmTMBControl() in model ... !
     call <- getCall(object)
-    cc <- call$control
-    cc <- if (is.null(cc)) glmmTMBControl() else eval.parent(cc)
-    if (cc$profile) stop("can't currently handle profile = TRUE")
-    fit <- optfun(obj, cc)
+    control <- object$modelInfo$control
+    if (control$profile) stop("can't currently handle profile = TRUE")
+    fit <- optfun(obj, control)
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
-    sdr <- sdreport(obj, getJointPrecision=isREML(object))
-    ret <- structure(namedList(obj, fit, sdr, call=call,
-                               frame=object$frame, modelInfo = object$modelInfo,
-                               fitted),
-                     class = "glmmTMB")
+    control$conv_check <- "skip"
+    ret <- finalizeTMB(
+        TMBStruc = list(control = control,
+                        se = is.null(object$sdr),
+                        REML = isREML(object),
+                        call = object$call,
+                        fr = object$frame_),
+        obj = obj,
+        fit = fit,
+        modelInfo = object$modelInfo)
     return(ret)
 }
 

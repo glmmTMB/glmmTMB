@@ -1767,8 +1767,12 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
 #' \code{message}, \code{iterations}, \code{evaluations})
 #' @param h Hessian matrix for fit, if computed in previous step
 #' @param data.tmb.old stored TMB data, if computed in previous step
+#' @param modelInfo component from a fitted \code{glmmTMB} model, if available
+#' @details \code{finalizeTMB} uses the following components (only) from \code{TMBStruc}: \code{control},
+#' \code{se}, \code{REML}, \code{call}, \code{fr}
 #' @export
-finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
+finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL,
+                        modelInfo = NULL) {
 
     control <- TMBStruc$control
 
@@ -1858,7 +1862,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
         obj$retape()
     }
 
-    modelInfo <- with(TMBStruc,
+    modelInfo <- modelInfo %||% with(TMBStruc,
                       namedList(nobs=nrow(data.tmb$X),
                                 respCol,
                                 grpVar,
@@ -1866,7 +1870,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 contrasts,
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList, 
-                                										 disp=dispList),
+                                                     disp=dispList),
                                                 stripReTrms),
                                 terms = lapply(list(cond=condList, zi=ziList,
                                                     disp=dispList),
@@ -1876,6 +1880,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 REML,
                                 map,
                                 sparseX,
+                                control,
                                 parallel = control$parallel,
                                 priors = set_class(priors, "glmmTMB_prior"),
                                 packageVersion = packageVersion("glmmTMB")))
