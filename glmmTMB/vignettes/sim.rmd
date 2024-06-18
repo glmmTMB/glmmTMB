@@ -109,8 +109,9 @@ The hardest piece is probably translating correlation parameters. The "covarianc
 rho_to_theta <- function(rho) rho/sqrt(1-rho^2)
 ## tests
 stopifnot(all.equal(get_cor(rho_to_theta(-0.2)), -0.2))
-stopifnot(all.equal(rho_to_theta(-0.2), put_cor(matrix(c(1,-0.2,-0.2,1), 2))))
+stopifnot(all.equal(rho_to_theta(-0.2), put_cor(-0.2, input_val = "vec")))
 ```
+
 Setting up metadata/covariates (tools in the `faux` package may also be useful for this):
 
 ```{r sim1}
