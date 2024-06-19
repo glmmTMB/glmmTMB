@@ -1607,15 +1607,26 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' @param TMBStruc a list containing lots of stuff ...
 ##' @param doOptim logical; do optimization? If FALSE, return TMB object
 ##' @examples
-##' ## regular (non-modular) model fit
+##' ## 1. regular (non-modular) model fit:
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
 ##'              family=poisson, data=Salamanders)
-##' ## construct model structures
-##' m1 <- update(m0, doFit=FALSE)
-##' names(m0)
+##' ## 2. the equivalent fit, done modularly:
+##' ##  a. 
+##' m1 <- glmmTMB(count ~ mined + (1|site),
+##'              family=poisson, data=Salamanders,
+##'              doFit = FALSE)
+##' ## result is a list of elements (data to be passed to TMB,
+##' ## random effects structures, etc.) needed to fit the model
+##' names(m1)
+##' ## b. The next step calls TMB to set up the automatic differentiation
+##' ## machinery
 ##' m2 <- fitTMB(m1, doOptim = FALSE)
-##' ## could modify the components of m1$env$data at this point ...
-##' ## rebuild TMB structure (*may* be necessary)
+##' ## The result includes initial parameter values, objective function
+##' ## (fn), gradient function (gr), etc.
+##' names(m2)
+##' ## Optionally, one could choose to 
+##' ## modify the components of m1$env$data at this point ...
+##' ## updating the TMB structure as follows may be necessary:
 ##' m2 <- with(m2$env,
 ##'                TMB::MakeADFun(data,
 ##'                                parameters,
@@ -1623,8 +1634,18 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##'                                random = random,
 ##'                                silent = silent,
 ##'                                DLL = "glmmTMB"))
+##' ## c. Use the starting values, objective function, and gradient
+##' ## function set up in the previous step to do the nonlinear optimization
 ##' m3 <- with(m2, nlminb(par, objective = fn, gr = gr))
+##' ## the resulting object contains the fitted parameters, value of
+##' ## the objective function, information on convergence, etc.
+##' names(m3)
+##' ## d. The last step is to combine the information from the previous
+##' ## three steps into a \code{glmmTMB} object that is equivalent to
+##' ## the original fit
 ##' m4 <- finalizeTMB(m1, m2, m3)
+##' m4$call$doFit <- NULL ## adjust 'call' element to match
+##' all.equal(m0, m4)
 ##' @export
 fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
