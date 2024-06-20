@@ -61,7 +61,7 @@
 .valid_vprior <- c(
   beta = 0,
   betazi = 1,
-  betad = 2,
+  betadisp = 2,
   theta = 10,
   thetazi = 20,
   psi = 30
