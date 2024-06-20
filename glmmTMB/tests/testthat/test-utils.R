@@ -52,9 +52,3 @@ test_that("put_cor", {
         }
     }
 })
-
-##' th0 <- 0.5
-##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
-##' set.seed(101)
-##' C <- get_cor(rnorm(21), return_val = "mat")
-##' ## test: round-trip
