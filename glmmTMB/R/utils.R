@@ -80,13 +80,6 @@ get_cor <- function(theta, return_val = c("vec", "mat")) {
 ##' @param input_val input a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")? 
 ##' @export
 put_cor <- function(C, input_val = c("mat", "vec")) {
-    ## need LDL composition here, induces dependence on fastmatrix package
-    ## to weaken the dependence we could
-    ## (1) do if (requireNamespace()) stuff to make this Suggests:
-    ## (2) steal code from 
-    ##  https://github.com/faosorios/fastmatrix/blob/master/pkg/src/ldl_decomp.f
-    ##  https://github.com/faosorios/fastmatrix/blob/master/pkg/R/ldl.R
-    ## (or write code calling Lapack ssptrf)
     input_val <- match.arg(input_val)
     if (input_val == "vec") {
         ## construct matrix
@@ -95,8 +88,9 @@ put_cor <- function(C, input_val = c("mat", "vec")) {
         M[upper.tri(M)] <- t(M)[upper.tri(M)]
         C <- M
     }
-    scale <- sqrt(fastmatrix::ldl(as.matrix(C))$d)
-    cc2 <- chol(C) %*% diag(1/scale)
+    cc2 <- chol(C)
+    scale <- diag(cc2)
+    cc2 <- cc2 %*% diag(1/scale)
     cc2[upper.tri(cc2)]
 }
 

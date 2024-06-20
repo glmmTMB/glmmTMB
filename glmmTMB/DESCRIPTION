@@ -51,8 +51,7 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.2.0),
-    fastmatrix
+    reformulas (>= 0.2.0)
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
