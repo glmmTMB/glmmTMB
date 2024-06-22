@@ -415,9 +415,11 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       }
 
       ## changed format of 'parallel' control to add autopar info
-      if (length(p <- oldfit$modelInfo$parallel) == 1 &&
-          is.numeric(p)) {
-          oldfit$modelInfo$parallel <- list(n = as.integer(p), autopar = NULL)
+      if (length(p <- oldfit$modelInfo$parallel) == 1) {
+          if (!(is.null(p) || is.numeric(p))) {
+              stop("oldfit$modelInfo$parallel has an unexpected value")
+          }
+          oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
       }
 
       oldfit$obj <- with(ee,
