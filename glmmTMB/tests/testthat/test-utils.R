@@ -40,3 +40,15 @@ test_that("get_cor", {
   y1 <- get_cor(theta)
   expect_equal(x, y1)
 })
+
+test_that("put_cor", {
+    round_trip <- function(C) {
+        expect_equal(get_cor(put_cor(C), return_val = "mat"), C)
+    }
+    set.seed(101)
+    for (n in 2:10) {
+        for (i in 1:10) {
+            round_trip(get_cor(rnorm(n*(n-1)/2), return_val = "mat"))
+        }
+    }
+})
