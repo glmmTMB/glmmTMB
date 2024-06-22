@@ -305,9 +305,11 @@ NULL
 ##' Checks whether OpenMP has been successfully enabled for this
 ##' installation of the package. (Use the \code{parallel} argument
 ##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
-##' to specify that computations should be done in parallel.)
+##' to specify that computations should be done in parallel.) To further
+##' trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
-##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP
+##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP,
+##' @aliases openmp
 ##' @export
 omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
@@ -410,6 +412,12 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
                   oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
               }
           }
+      }
+
+      ## changed format of 'parallel' control to add autopar info
+      if (length(p <- oldfit$modelInfo$parallel) == 1 &&
+          is.numeric(p)) {
+          oldfit$modelInfo$parallel <- list(n = as.integer(p), autopar = NULL)
       }
 
       oldfit$obj <- with(ee,

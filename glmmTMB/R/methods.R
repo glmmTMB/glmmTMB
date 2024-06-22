@@ -1106,8 +1106,8 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
         FUN <- function(n) {
-          n_orig <- openmp(n = object$modelInfo$parallel)
-          on.exit(openmp(n_orig))
+          n_orig <- do.call(openmp, object$modelInfo$parallel)
+          on.exit(do.call(openmp, n_orig))
           TMB::tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
                        ...)
         }
