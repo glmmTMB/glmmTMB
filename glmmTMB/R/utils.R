@@ -957,6 +957,7 @@ get_b_inds <- function(reStrucs, b_names, ret_val = c("indices", "terms")) {
     res <- lapply(w, function(i) seq(inds[i]+1, inds[i+1]))
     names(res) <- b_names
     res
+}
 
 ## add negative-value check to binomial initialization method
 our_binom_initialize <- function(family) {
@@ -970,3 +971,4 @@ our_binom_initialize <- function(family) {
     b0[[length(b0)+1]] <- newtest
     return(b0)
 }
+
