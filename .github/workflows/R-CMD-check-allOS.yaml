@@ -9,21 +9,11 @@
 # https://github.community/t/github-actions-working-directory-incorrectly-documented-unexpected-value-working-directory/16076
 on:
   workflow_dispatch
-#  push:
-#    branches:
-#      - main
-#      - master
-#      - github_actions
-#  pull_request:
-#    branches:
-#      - main
-#      - master
 
 name: R-CMD-check-allOS
 
 jobs:
   R-CMD-check:
-#   if: "! contains(github.event.head_commit.message, '[skip ci]')"
     runs-on: ${{ matrix.config.os }}
 
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
@@ -34,7 +24,9 @@ jobs:
         config:
           - {os: ubuntu-latest, r: 'release'}
           - {os: ubuntu-latest, r: 'devel'}
+          - {os: windows-latest, r: 'oldrel'}
           - {os: windows-latest, r: 'release'}
+          - {os: windows-latest, r: 'devel'}
           - {os: macOS-latest, r: 'release'}
 
     env:
@@ -47,9 +39,33 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: teatimeguest/setup-texlive-action@v3
+        if: runner.os != 'Linux'
+        with:
+          packages: >-
+             scheme-basic
+             inputenc
+             graphicx
+             array
+             colortbl
+             multirow
+             hhline
+             calc
+             tabularx
+             threeparttable
+             wrapfig
+             url
+             hyperref
+             fancyvrb
+             natbib
+             xcolor
+             etoolbox
+             caption
+             adjustbox
 
       - uses: r-lib/actions/setup-r@v2
         with:

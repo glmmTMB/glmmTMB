@@ -5,11 +5,7 @@
 ##'  model in any order.
 
 ##'
-##' @rawNamespace if(getRversion() >= "3.6.0") {
-##'   S3method(effects::Effect, glmmTMB)
-##' } else {
-##'   export(Effect.glmmTMB)
-##' }
+##' @rawNamespace if(getRversion() >= "3.6.0") { S3method(effects::Effect, glmmTMB)  } else { export(Effect.glmmTMB) }
 Effect.glmmTMB <- function (focal.predictors, mod, ...) {
     fam <- family(mod)
     ## code to make the 'truncated_*' families work

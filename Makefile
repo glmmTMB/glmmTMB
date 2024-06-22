@@ -16,7 +16,6 @@ all:
 	make doc-update
 	make build-package
 	make install
-	make upstream-ver-update
 	make pdf
 
 enum-update:: $(PACKAGE)/R/enum.R
@@ -49,6 +48,7 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ".valid_vprior <- c(" >> $@
 	grep "_vprior *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_vprior//g >> $@
 	echo ")" >> $@
+
 
 upstream-ver-update: $(PACKAGE)/inst/TMB-version
 $(PACKAGE)/inst/TMB-version:

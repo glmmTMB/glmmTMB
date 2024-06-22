@@ -198,3 +198,20 @@ test_that("VarCorr omits resid when dispformula=~0", {
 test_that("vcov(.,full=TRUE) works for zero-disp models", {
     expect_equal(dim(vcov(fm0,full=TRUE)),c(4,4))
 })
+
+test_that("blockCode set correctly in VarCorr", {
+    set.seed(102)
+    n <- 25                                              ## Number of time points
+    x <- MASS::mvrnorm(mu = rep(0,n),
+                       Sigma = .7 ^ as.matrix(dist(1:n)) )    ## Simulate the process using the MASS package
+    y <- x + rnorm(n, sd = 0.1)                                   ## Add measurement noise
+    times <- factor(1:n, levels=1:n)
+    group <- factor(rep(1,n))
+    dat0 <- data.frame(y, times, group)
+    ## suppress non-pos-def warning
+    suppressWarnings(model <- glmmTMB(y ~ ar1(factor(times) + 0 | group),
+                                      ziformula = ~ ar1(factor(times) + 0 | group),
+                                      data=dat0, family = gaussian())
+                     )
+    expect_equal(attr(VarCorr(model)[["zi"]]$group, "blockCode"), c(ar1=3))
+})

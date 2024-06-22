@@ -391,7 +391,7 @@ classic “sleep study” data, using the <code>sleepstudy</code> data set
 for structure and covariates. The conditional-fixed effects parameters
 (<code>beta</code>) are standard regression parameters (intercept and
 slope): we use 250 and 10, which are close to the values from the actual
-data. The only other parameter, <code>betad</code>, is the log of the
+data. The only other parameter, <code>betadisp</code>, is the log of the
 dispersion parameter, which in the specific case of the Gaussian
 (default) family is the log of the conditional (residual)
 <em>variance</em>; the standard deviation from a simple regression on
@@ -404,7 +404,7 @@ these data<a href="#fn1" class="footnote-ref" id="fnref1"><sup>1</sup></a> is ap
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>                                            <span class="at">newdata =</span> sleepstudy,</span>
 <span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                                            <span class="at">family =</span> gaussian,</span>
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                                            <span class="at">newparams =</span> <span class="fu">list</span>(<span class="at">beta =</span> <span class="fu">c</span>(<span class="dv">250</span>, <span class="dv">10</span>),</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                                                        <span class="at">betad =</span> <span class="dv">2</span><span class="sc">*</span><span class="fu">log</span>(<span class="dv">50</span>)))[[<span class="dv">1</span>]])</span></code></pre></div>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                                                        <span class="at">betadisp =</span> <span class="dv">2</span><span class="sc">*</span><span class="fu">log</span>(<span class="dv">50</span>)))[[<span class="dv">1</span>]])</span></code></pre></div>
 <p>For comparison, we’ll also fit the model and use the built-in
 simulation method:</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>ss_fit <span class="ot">&lt;-</span> <span class="fu">glmmTMB</span>(Reaction <span class="sc">~</span> Days, sleepstudy)</span>
@@ -459,13 +459,13 @@ among-subject variation in intercept and slope). As described in the
 covariance consists of the log-standard-deviations followed by the
 scaled correlations. Finally we’ll set the dispersion parameter for the
 negative binomial conditional distribution to 1 (more detail on the
-<code>betad</code> parameterization for different families is given in
+<code>betadisp</code> parameterization for different families is given in
 <code>?sigma.glmmTMB</code>).</p>
 <div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>sdvec <span class="ot">&lt;-</span>  <span class="fu">c</span>(<span class="fl">1.5</span>,<span class="fl">0.15</span>)</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>corval <span class="ot">&lt;-</span> <span class="sc">-</span><span class="fl">0.2</span></span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>thetavec <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">log</span>(sdvec), <span class="fu">rho_to_theta</span>(corval))</span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>par1 <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">beta =</span> beta_vec,</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">betad =</span> <span class="fu">log</span>(<span class="dv">1</span>),  <span class="do">## log(theta)</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>             <span class="at">betadisp =</span> <span class="fu">log</span>(<span class="dv">1</span>),  <span class="do">## log(theta)</span></span>
 <span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>             <span class="at">theta =</span> thetavec)</span></code></pre></div>
 <p>Now simulate:</p>
 <div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>dd<span class="sc">$</span>y <span class="ot">&lt;-</span> <span class="fu">simulate_new</span>(form1,</span>
@@ -527,7 +527,7 @@ vignette:</p>
 <span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>                 <span class="at">group =</span> <span class="fu">factor</span>(<span class="fu">rep</span>(<span class="dv">1</span>, n)))</span></code></pre></div>
 <p>Now using <code>simulate_new()</code> with matching parameters
 <code>beta = 0</code> (the only fixed effect is the intercept, which we
-set to zero); <code>betad = 0</code> (the log-variance of the
+set to zero); <code>betadisp = 0</code> (the log-variance of the
 measurement error [note Gaussian family uses log-variance rather than
 log-SD parameterization, although in this case it doesn’t make any
 difference …]); <code>theta[1] = 0</code> (log-SD of autoregressive
@@ -540,7 +540,7 @@ structures” vignette for details).</p>
 <span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>                   <span class="at">seed =</span> <span class="dv">101</span>,</span>
 <span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>                   <span class="at">newparams =</span> <span class="fu">list</span>(</span>
 <span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>                       <span class="at">beta =</span> <span class="dv">0</span>,   </span>
-<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">betad =</span> <span class="dv">0</span>,</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">betadisp =</span> <span class="dv">0</span>,</span>
 <span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>                       <span class="at">theta =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fu">phi_to_AR1</span>(<span class="fl">0.7</span>)))</span>
 <span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>                   )[[<span class="dv">1</span>]]</span></code></pre></div>
 <p>With a nugget variance of <span class="math inline">\(\sigma^2_n =

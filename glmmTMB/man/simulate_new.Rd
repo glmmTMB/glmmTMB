@@ -32,7 +32,7 @@ the domain of the conditional distribution, and should probably not
 be all zeros, but whose value is otherwise irrelevant)}
 
 \item{newparams}{a list of parameters containing sub-vectors
-(\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+(\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
 be used in the model. If \code{b} is specified in this list, then the conditional modes/BLUPs
 will be set to these values; otherwise they will be drawn from the appropriate Normal distribution}
 
@@ -53,7 +53,7 @@ sim_count <- simulate_new(~ mined + (1|site),
              family = nbinom2,
              newparams = list(beta = c(2, 1),
                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-                         betad = log(2), ## log(NB dispersion)
+                         betadisp = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)
 )
 sim_obj <- simulate_new(~ mined + (1|site),
