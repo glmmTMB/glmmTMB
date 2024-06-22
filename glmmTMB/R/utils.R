@@ -414,14 +414,6 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           }
       }
 
-      ## changed format of 'parallel' control to add autopar info
-      if (length(p <- oldfit$modelInfo$parallel) == 1) {
-          if (!(is.null(p) || is.numeric(p))) {
-              stop("oldfit$modelInfo$parallel has an unexpected value")
-          }
-          oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
-      }
-
       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
@@ -432,6 +424,15 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
   }
+
+  ## changed format of 'parallel' control to add autopar info
+  if (length(p <- oldfit$modelInfo$parallel) <= 1) {
+      if (!(is.null(p) || is.numeric(p))) {
+          stop("oldfit$modelInfo$parallel has an unexpected value")
+      }
+      oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
+  }
+
   ## dispersion was NULL rather than 1 in old R versions ...
   omf <- oldfit$modelInfo$family
   if (getRversion() >= "4.3.0" &&
