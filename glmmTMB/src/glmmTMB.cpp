@@ -732,6 +732,12 @@ Type objective_function<Type>::operator() ()
   PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
   PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
   PARALLEL_REGION jnll += allterms_nll(bdisp, thetadisp, termsdisp, this->do_simulate);
+
+  // int nz = 0, nnz=0;
+  // for (int i=0; i<b.size(); i++) {
+  //   if (b(i)==0) nz++; else nnz++;
+  // }
+  // printf("b nz = %d, nnz = %d\n", nz, nnz);
   
   // Linear predictor
   vector<Type> eta = Z * b + offset;
@@ -1123,10 +1129,11 @@ Type objective_function<Type>::operator() ()
   REPORT(corrzi);
   REPORT(sdzi);
   REPORT(fact_load);
+  REPORT(b);
+  REPORT(bzi);
+  
   SIMULATE {
     REPORT(yobs);
-    REPORT(b);
-    REPORT(bzi);
   }
   // For predict
   if(ziPredictCode == disp_zipredictcode) {
