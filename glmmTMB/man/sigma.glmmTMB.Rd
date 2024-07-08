@@ -55,6 +55,7 @@ The value returned varies by family:
           where the variance is \eqn{\phi\mu^p}{phi*mu^p}.
           The value of \eqn{p} can be extracted using \code{family_params}
      }
+     \item{ordbeta}{see details for \code{beta}}
 }
 
  The most commonly used GLM families
