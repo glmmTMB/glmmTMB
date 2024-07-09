@@ -77,6 +77,12 @@ enum valid_covStruct {
   homdiag_covstruct = 10
 };
 
+// should probably be named just 'predictCode';
+// originally for enabling z-i prediction
+// 'corrected' = mean prediction incorporates z-i effects
+// 'uncorrected' = mean not accounting for z-i
+// 'prob' = zero-inflation on back-transformed (probability) scale
+// 'disp' = report value of dispersion parameter
 enum valid_ziPredictCode {
   corrected_zipredictcode = 0,
   uncorrected_zipredictcode = 1,
@@ -711,6 +717,8 @@ Type objective_function<Type>::operator() ()
   // Flags
   DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
+  // 0 = no prediction; 1 = predictions on link scale; 2 = predictions on
+  // data scale; 3 = predictions of latent variables (b)
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
   // One-Step-Ahead (OSA) residuals
@@ -1131,7 +1139,6 @@ Type objective_function<Type>::operator() ()
   REPORT(fact_load);
   REPORT(b);
   REPORT(bzi);
-  
   SIMULATE {
     REPORT(yobs);
   }
@@ -1179,7 +1186,10 @@ Type objective_function<Type>::operator() ()
 	  ADREPORT(mu_predict);
   } else if (doPredict == 2) {
 	  ADREPORT(eta_predict);
+  } else if (doPredict == 3) {
+           ADREPORT(b);
+	   ADREPORT(bzi);
+	   ADREPORT(bdisp);
   }
-
   return jnll;
 }
