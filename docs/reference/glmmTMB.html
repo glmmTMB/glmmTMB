@@ -53,6 +53,9 @@
       <a href="../articles/parallel.html">Parallel optimization using glmmTMB</a>
     </li>
     <li>
+      <a href="../articles/priors.html">Priors in glmmTMB</a>
+    </li>
+    <li>
       <a href="../articles/sim.html">Simulate from a fitted glmmTMB model or a formula</a>
     </li>
     <li>
@@ -109,7 +112,8 @@
 <span>  REML <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  start <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  sparseX <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  sparseX <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  priors <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -180,7 +184,7 @@ because of missingness.</p></dd>
 
 
 <dt>start</dt>
-<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betad</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>psi</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
+<dd><p>starting values, expressed as a list with possible components <code>beta</code>, <code>betazi</code>, <code>betadisp</code> (fixed-effect parameters for conditional, zero-inflation, dispersion models); <code>b</code>, <code>bzi</code> (conditional modes for conditional and zero-inflation models); <code>theta</code>, <code>thetazi</code> (random-effect parameters, on the standard deviation/Cholesky scale, for conditional and z-i models); <code>psi</code> (extra family parameters, e.g., shape for Tweedie models).</p></dd>
 
 
 <dt>map</dt>
@@ -189,6 +193,10 @@ because of missingness.</p></dd>
 
 <dt>sparseX</dt>
 <dd><p>a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. <code>c(cond=TRUE)</code>. Default is all <code>FALSE</code></p></dd>
+
+
+<dt>priors</dt>
+<dd><p>a data frame of priors, in a similar format to that accepted by the <code>brms</code> package; see <code><a href="priors.html">priors</a></code></p></dd>
 
 </dl></div>
     <div id="details">

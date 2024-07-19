@@ -76,7 +76,7 @@ diagnose <- function(fit,
     ## check coefficients
     if (check_coefs) {
         ## logic: if link function for *conditional* model is unitless then all parameters need checking
-        ## otherwise only check parameters *other* than conditional model parameters ("betad", "betazi", "theta")
+        ## otherwise only check parameters *other* than conditional model parameters ("betadisp", "betazi", "theta")
         link_par <- (nn0 != "beta" |
                      family(fit)$link %in% c("log", "cloglog", "logit", "probit"))
         bigcoef <- (pp[abs(pp)>big_coef & link_par])
@@ -95,7 +95,7 @@ diagnose <- function(fit,
         }
     } ## check_coefs
     if (check_scales) {
-        all_X <- lapply(c("X","Xzi","Xd"), function(x) getME(fit,x))
+        all_X <- lapply(c("X","Xzi","Xdisp"), function(x) getME(fit,x))
         all_X <- do.call(cbind,all_X)
         colnames(all_X) <- nn[seq(ncol(all_X))]
         sdvec <- apply(all_X, 2, sd)
@@ -167,6 +167,7 @@ diagnose <- function(fit,
                 "If this is too slow, consider setting check_hessian = FALSE",
                 "\n\n")
             h <- numDeriv::jacobian(obj$gr, pp)
+            bad <- NULL
             ## FIXME: consider SVD?
             ## FIXME: add explanation
             if (any(is.na(h))) {

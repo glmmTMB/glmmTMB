@@ -61,7 +61,7 @@ what if you want to simulate data with specified parameters in the absence of a 
 
 ### example 1: linear regression
 
-For the first example we'll simulate something that looks like the classic "sleep study" data, using the `sleepstudy` data set for structure and covariates. The conditional-fixed effects parameters (`beta`) are standard regression parameters (intercept and slope): we use 250 and 10, which are close to the values from the actual data. The only other parameter, `betad`, is the log of the dispersion parameter, which in the specific case of the Gaussian (default) family is the log of the conditional (residual) *variance*; the standard deviation from a simple regression on these data[^1] is approximately 50, so we use `2*log(50)`.
+For the first example we'll simulate something that looks like the classic "sleep study" data, using the `sleepstudy` data set for structure and covariates. The conditional-fixed effects parameters (`beta`) are standard regression parameters (intercept and slope): we use 250 and 10, which are close to the values from the actual data. The only other parameter, `betadisp`, is the log of the dispersion parameter, which in the specific case of the Gaussian (default) family is the log of the conditional (residual) *variance*; the standard deviation from a simple regression on these data[^1] is approximately 50, so we use `2*log(50)`.
 
 [^1]: I realize this violates the assumption of *de novo* simulation that we don't know what the real data looks like yet ...
 
@@ -73,7 +73,7 @@ ss_sim <- transform(sleepstudy,
                                             newdata = sleepstudy,
                                             family = gaussian,
                                             newparams = list(beta = c(250, 10),
-                                                        betad = 2*log(50)))[[1]])
+                                                        betadisp = 2*log(50)))[[1]])
 ```
 
 For comparison, we'll also fit the model and use the built-in simulation method:
@@ -103,14 +103,16 @@ The simulated data have about the right variability, but in contrast to the real
 
 The next example will be more complex, getting into the nuts and bolts of how to translate random effects covariances into the terms that `glmmTMB` expects.
 
-The hardest piece is probably translating correlation parameters. The "covariance structures" vignette has more details on how correlation matrices are parameterized, and the `put_cor()` function is a general translator, but for the specific case of 2x2 correlation matrices (i.e. with a single correlation parameter), a correlation $\rho$ corresponds to a `glmmTMB` parameter of $\rho/\sqrt{1-\rho^2}$. Here's a utility function:
+The hardest piece is probably translating correlation parameters. The "covariance structures" vignette has more details on how correlation matrices are parameterized, and the `put_cor()` function is a general translator from a specified correlation matrix (or its lower triangular elements) to the appropriate set of `theta` parameters. For the specific case of 2x2 correlation matrices (i.e. with a single correlation parameter), a correlation $\rho$ corresponds to a `glmmTMB` parameter of $\rho/\sqrt{1-\rho^2}$. Here's a utility function:
 
 ```{r rho-to-theta}
 rho_to_theta <- function(rho) rho/sqrt(1-rho^2)
 ## tests
 stopifnot(all.equal(get_cor(rho_to_theta(-0.2)), -0.2))
-stopifnot(all.equal(rho_to_theta(-0.2), put_cor(matrix(c(1,-0.2,-0.2,1), 2))))
+## equivalent to general function
+stopifnot(all.equal(rho_to_theta(-0.2), put_cor(-0.2, input_val = "vec")))
 ```
+
 Setting up metadata/covariates (tools in the `faux` package may also be useful for this):
 
 ```{r sim1}
@@ -139,7 +141,7 @@ the "covstruct" vignette, the parameter vector for a random-effect
 covariance consists of the log-standard-deviations followed by the
 scaled correlations. Finally we'll set the dispersion parameter for
 the negative binomial conditional distribution to 1 (more detail on
-the `betad` parameterization for different families
+the `betadisp` parameterization for different families
 is given in `?sigma.glmmTMB`).
 
 ```{r params3}
@@ -147,7 +149,7 @@ sdvec <-  c(1.5,0.15)
 corval <- -0.2
 thetavec <- c(log(sdvec), rho_to_theta(corval))
 par1 <- list(beta = beta_vec,
-             betad = log(1),  ## log(theta)
+             betadisp = log(1),  ## log(theta)
              theta = thetavec)
 ```
 
@@ -213,7 +215,7 @@ dat0 <- data.frame(y,
                  group = factor(rep(1, n)))
 ```
 
-Now using `simulate_new()` with matching parameters `beta = 0` (the only fixed effect is the intercept, which we set to zero); `betad = 0` (the log-variance of the measurement error [note Gaussian family uses log-variance rather than log-SD parameterization, although in this case it doesn't make any difference ...]); `theta[1] = 0` (log-SD of autoregressive variance); and `theta[2]` specifying a correlation parameter $\phi = 0.7$ (see "Covariance structures" vignette for details).
+Now using `simulate_new()` with matching parameters `beta = 0` (the only fixed effect is the intercept, which we set to zero); `betadisp = 0` (the log-variance of the measurement error [note Gaussian family uses log-variance rather than log-SD parameterization, although in this case it doesn't make any difference ...]); `theta[1] = 0` (log-SD of autoregressive variance); and `theta[2]` specifying a correlation parameter $\phi = 0.7$ (see "Covariance structures" vignette for details).
 
 ```{r sim_new_ar1}
 phi_to_AR1 <- function(phi) phi/sqrt(1-phi^2)
@@ -222,7 +224,7 @@ s2 <- simulate_new(~ ar1(times + 0 | group),
                    seed = 101,
                    newparams = list(
                        beta = 0,   
-                       betad = 0,
+                       betadisp = 0,
                        theta = c(0, phi_to_AR1(0.7)))
                    )[[1]]
 ```

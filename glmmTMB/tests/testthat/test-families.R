@@ -15,7 +15,6 @@ simfun0 <- function(beta=c(2,1),
     return(data.frame(x,f,mu))
 }
 
-context("alternative binomial specifications")
 test_that("binomial", {
     load(system.file("testdata","radinger_dat.RData",package="lme4"))
     radinger_dat <<- radinger_dat ## global assignment for testthat
@@ -62,29 +61,44 @@ test_that("binomial", {
     expect_warning( glmmTMB(prop~1, family=binomial()) )   ## Warning as glm
     x <- c(1, 2, 3)        ## weights=1 => x > weights !
     expect_error  ( glmmTMB(x~1, family=binomial(),
-                    data = data.frame(x)))      ## Error as glm
+                            data = data.frame(x)))      ## Error as glm
+
 })
 
-context("non-integer count warnings")
-test_that("count distributions", {
-    dd <- data.frame(y=c(0.5,1,1,1))
-    for (f in c("binomial","betabinomial","poisson",
-                "genpois",
-                ## "compois", ## fails anyway ...
+## check for negative values
+test_that("detect negative values in two-column binomial response", {
+    x <- matrix(c(-1, 1, 2, 2, 3, 4), nrow = 3)
+    expect_error(glmmTMB(x~1, family=binomial(), data = NULL),
+                 "negative values not allowed")
+})
+
+count_dists <-c("poisson", "genpois", "compois",
                 "truncated_genpois",
-                # "truncated_compois",
-                "nbinom1",
-                "nbinom2"
-                # why do these truncated cases fail?
-                ##, "truncated_nbinom1",
-                ##"truncated_nbinom2"
-                )) {
-        expect_warning(m <- glmmTMB(y~1,data=dd,family=f),
-                       "non-integer")
+                "nbinom1", "nbinom2",
+                "truncated_nbinom1",
+                "truncated_nbinom2"
+                )
+
+binom_dists <- c("binomial", "betabinomial")
+
+test_that("count distributions", {
+    dd <- data.frame(y=c(0.5, rep(1:4, c(9, 2, 2, 2))))
+    for (f in count_dists) {
+        expect_warning(glmmTMB(y~1, data=dd, family=f), "non-integer")
     }
 })
 
-context("fitting exotic families")
+test_that("binom-type distributions", {
+    dd <- data.frame(y=c(0.5, rep(1:4, c(9, 2, 2, 2)))/10)
+    for (f in binom_dists) {
+        expect_warning(glmmTMB(y~1,
+                               weights = rep(10, nrow(dd)),
+                               data=dd, family=f), "non-integer")
+    }
+})
+
+
+
 test_that("beta", {
   skip_on_cran()
     set.seed(101)
@@ -333,7 +347,6 @@ test_that("truncated_genpois",{
 })
 
 
-context("trunc compois")
 ##Compois
 test_that("truncated_compois",{
     skip_on_cran()
@@ -345,7 +358,6 @@ test_that("truncated_compois",{
 	expect_equal(predict(tcmp1,type="response")[1:2], c(19.4, 7.3), tolerance = 1e-6)
 })
 
-context("compois")
 test_that("compois", {
     skip_on_cran()
 #	cmpdat <<- data.frame(f=factor(rep(c('a','b'), 10)),
@@ -356,7 +368,6 @@ test_that("compois", {
 	expect_equal(predict(cmp1,type="response")[1:2], c(19.4, 7.3), tolerance = 1e-6)
 })
 
-context("genpois")
 test_that("genpois", {
     skip_on_cran()
 	gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
@@ -365,7 +376,6 @@ test_that("genpois", {
 	expect_equal(sigma(gen1), 0.235309, tolerance = 1e-6)
 })
 
-context("tweedie")
 test_that("tweedie", {
     skip_on_cran()
     ## Boiled down tweedie:::rtweedie :
@@ -407,7 +417,7 @@ test_that("tweedie", {
     expect_equal(fixef(twm)$cond, fixef(twm2)$cond, tolerance = 1e-1)
     expect_equal(sigma(twm), sigma(twm2), tolerance = 1e-1)
     expect_equal(ranef(twm),
-                 structure(list(cond = list(), zi = list()), class = "ranef.glmmTMB"))
+                 structure(list(cond = list(), zi = list(), disp = list()), class = "ranef.glmmTMB"))
 })
 
 test_that("gaussian_sqrt", {
@@ -488,3 +498,47 @@ test_that("t-distributed response", {
                  tolerance = 1e-6)
 })
 
+test_that("nbinom12 family", {
+    set.seed(101)
+    n <- 10000
+    x <- rnorm(n)
+    mu <- exp(2 + 1*x)
+    vv <- mu*(1+2+mu/0.5)
+    k <- mu/(vv/mu - 1)
+    dd <- data.frame(x, y = rnbinom(n, mu = mu, size = k))
+    m1 <- glmmTMB(y ~ x, family = nbinom12, data = dd)
+    ## basic test
+    ## should have phi = 2, k = 0.5
+    ## log(phi) ~ 0.7, log(psi) ~ -0.7
+    expect_equal(    m1$obj$env$last.par.best,
+                 c(beta = 1.98948426828242, beta = 1.00635151325394,
+                   betadisp = 0.68344614610532, psi = -0.686823594633112),
+                 tolerance = 1e-6)
+    expect_equal(sigma(m1), 1.980692, tolerance = 1e-6)
+})
+
+test_that("skewnormal family", {
+    dd <- data.frame(dummy = rep(1, 500))
+    dd$y <- simulate_new(~1,
+                            newdata = dd,
+                            newparams = list(beta = -1,
+                                             betadisp = 3,
+                                             psi = -5),
+                            seed = 101,
+                            family = "skewnormal")[[1]]
+    expect_equal(range(dd$y), c(-64.8363758099827, 32.87734399648))
+    expect_equal(length(unique(dd$y)), 500L)
+    fit <- glmmTMB(y ~ 1,
+                   data = dd,
+                   family = "skewnormal",
+                   start = list(betadisp = log(sd(dd$y)),
+                                psi = -5))
+    expect_equal(fit$obj$env$last.par.best,
+                 c(beta = 0.0765490512716489,
+                   betadisp = 2.94927708520387,
+                   psi = -6.12362878509844),
+                 tolerance = 1e-6)
+    expect_equal(family_params(fit),
+                 c(`Skewnormal shape` = -6.12362878509844),
+                 tolerance = 1e-6)
+})

@@ -7,7 +7,7 @@
 omp_check()
 }
 \value{
-\code{TRUE} or {FALSE} depending on availability of OpenMP
+\code{TRUE} or \code{FALSE} depending on availability of OpenMP
 }
 \description{
 Checks whether OpenMP has been successfully enabled for this

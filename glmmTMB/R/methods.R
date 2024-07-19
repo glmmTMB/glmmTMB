@@ -26,7 +26,7 @@
 fixef.glmmTMB <- function(object, ...) {
 
   pl <- object$obj$env$parList(object$fit$par, object$fit$parfull)
-  X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "d"))
+  X <- Map(function(m) getME(object, paste0("X", m)), c("", "zi", "disp"))
 
   get_vec <- function(vals, X) {
     dropped <- attr(X, "col.dropped")
@@ -42,7 +42,7 @@ fixef.glmmTMB <- function(object, ...) {
   }
 
   r <- Map(get_vec,
-           pl[c("beta", "betazi", "betad")],
+           pl[c("beta", "betazi", "betadisp")],
            X)
   names(r) <- c("cond", "zi", "disp")
   class(r) <- "fixef.glmmTMB"
@@ -82,7 +82,7 @@ noZI <- function(object) {
 trivialFixef <- function(xnm,nm) {
     length(xnm)==0 ||
         (nm %in% c('d','disp') && identical(xnm,'(Intercept)'))
-    ## FIXME: inconsistent tagging; should change 'Xd' to 'Xdisp'?
+    ## FIXME: inconsistent tagging; should change 'Xdisp' to 'Xdisp'?
 }
 
 ##' @method print fixef.glmmTMB
@@ -115,9 +115,11 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), pri
 ##'     for the conditional model.}
 ##'   \item{zi}{a list of data frames, containing random effects for
 ##'     the zero inflation.}
+##'   \item{disp}{a list of data frames, containing random effects
+##'     for the dispersion model.}
 ##' }
 ##' If \code{condVar=TRUE}, the individual list elements within the
-##' \code{cond} and \code{zi} components (corresponding to individual
+##' \code{cond}, \code{zi}, and \code{disp} components (corresponding to individual
 ##' random effects terms) will have associated \code{condVar} attributes
 ##' giving the conditional variances of the random effects values.
 ##' These are in the form of three-dimensional arrays: see
@@ -238,17 +240,19 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   if (condVar && hasRandom(object))  {
       ss <- summary(object$sdr,"random")
       sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
-                  bzi=ss[rownames(ss)=="bzi","Std. Error"])
+                  bzi=ss[rownames(ss)=="bzi","Std. Error"],
+      						bdisp=ss[rownames(ss)=="bdisp","Std. Error"])
   }  else sdl <- NULL
   structure(list(cond = arrange(pl$b, sdl$b, "cond"),
-                 zi    = arrange(pl$bzi, sdl$bzi, "zi")),
+                 zi   = arrange(pl$bzi, sdl$bzi, "zi"),
+  							 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
             class = "ranef.glmmTMB")
 }
 
 ##' @method print ranef.glmmTMB
 ##' @export
 print.ranef.glmmTMB <- function(x, simplify=TRUE, ...) {
-    print(if (simplify && length(x$zi) == 0L)
+    print(if (simplify && length(x$zi) == 0L && length(x$disp) == 0L)
               unclass(x$cond) else unclass(x),
           ...)
     invisible(x)
@@ -274,7 +278,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xd", "theta", "beta", "b"),
+                                   "Xdisp", "theta", "beta", "b"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -299,12 +303,13 @@ getME.glmmTMB <- function(object,
   switch(name,
          "X"     = if (!isSparse("cond")) oo.env$data$X else oo.env$data$XS,
          "Xzi"   = if (!isSparse("zi")) oo.env$data$Xzi else oo.env$data$XziS,
-         "Z"     = oo.env$data$Z,
+  			 "Xdisp" = if (!isSparse("disp")) oo.env$data$Xdisp else oo.env$data$XdispS,
+  			 "Z"     = oo.env$data$Z,
          "Zzi"   = oo.env$data$Zzi,
-         "Xd"    = if (!isSparse("disp")) oo.env$data$Xd else oo.env$data$XdS,
-         "theta" = allpars$theta ,
-         "beta"  = unlist(allpars[c("beta","betazi","betad")]),
-         "b" = unlist(allpars[c("b", "bzi")]),
+  			 "Zdisp" = oo.env$data$Zdisp,
+  			 "theta" = allpars$theta ,
+         "beta"  = unlist(allpars[c("beta","betazi","betadisp")]),
+         "b" = unlist(allpars[c("b", "bzi", "bdisp")]),
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -329,25 +334,29 @@ logLik.glmmTMB <- function(object, ...) {
   }else val <- -object$fit$objective
 
   nobs <- nobs.glmmTMB(object)
-  df <- sum( ! names(object$fit$parfull) %in% c("b", "bzi") )
+  df <- npar(object)
   structure(val, nobs = nobs, nall = nobs, df = df,
             class = "logLik")
 }
 
 ##' @importFrom stats nobs
 ##' @export
-nobs.glmmTMB <- function(object, ...) sum(!is.na(object$obj$env$data$yobs))
+nobs.glmmTMB <- function(object, ...) {
+    sum(!is.na(object$obj$env$data$yobs))
+}
+
+##  TODO: not clear whether the effective number of parameters should be based
+##  on p=length(beta) or p=length(c(theta,beta,psi)) ... but
+##  this is just to allow things like aods3::gof to work ...
+npar <- function(object) {
+    sum(!names(object$fit$parfull) %in% c("b", "bzi", "bdisp"))
+}
 
 ##' @importFrom stats df.residual
 ##' @method df.residual glmmTMB
 ##' @export
-##  TODO: not clear whether the residual df should be based
-##  on p=length(beta) or p=length(c(theta,beta)) ... but
-##  this is just to allow things like aods3::gof to work ...
-##  Taken from LME4, including the todo
-##
 df.residual.glmmTMB <- function(object, ...) {
-  nobs(object)-length(object$fit$par)
+  nobs(object) - npar(object)
 }
 
 
@@ -360,6 +369,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
+##' @importFrom utils combn
 ##' @export
 vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   check_dots(..., .ignore = "complete")
@@ -375,7 +385,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
       if (is.null(rownames(Q))) { ## may be missing??
           dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
       }
-      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi") )
+      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi", "bdisp") )
       Qm <- GMRFmarginal(Q, whichNotRandom)
       cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
       if (inherits(cov.all.parms, "try-error")) {
@@ -396,12 +406,30 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   ## only actually estimated
   estNameList <- getParnames(object, full, include_mapped = FALSE, include_dropped = FALSE)
 
+  map <- object$obj$env$map
+  parnms <- c("beta","betazi", "betad")     ## parameter names
   if (full) {
       ## return a matrix
       nl <- unlist(estNameList)
       fnl <- unlist(fullNameList)
       if (!include_nonest || identical(nl, fnl)) {
-          colnames(covF) <- rownames(covF) <- unlist(estNameList)
+          if (any(vapply(map, \(x) any(duplicated(x)), logical(1)))) {
+              ## duplicate rows appropriately: *blockwise* is sufficient (can't
+              ## map elements of different vectors)
+              ind <- 0
+              for (i in seq_along(cNames)) {
+                  if (!is.null(cur_map <- parnms[[i]]) &&
+                      any(duplicated(cur_map))) {
+                      ## figure out how many components we have
+                      est_pars <- length(unique(cur_map))
+                      tot_pars <- length(cur_map)
+                      ## FIXME: stopped here
+                  }
+              }
+          }
+          ## work around naming for now ...
+          try(colnames(covF) <- rownames(covF) <- unlist(estNameList),
+              silent = TRUE)
           res <- covF
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
@@ -413,18 +441,37 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
       ss <- split(seq_along(colnames(covF)), colnames(covF))
       covList <- vector("list",3)
       names(covList) <- names(cNames) ## component names
-      parnms <- c("beta","betazi", "betad")     ## parameter names
+      parnms <- c("beta","betazi", "betadisp")     ## parameter names
+
       for (i in seq_along(covList)) {
           nm <- parnms[[i]]
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
           xnms <- estNameList[[cnm]]
           fnm <- fullNameList[[cnm]]
-          ## map <- object$obj$env$map
-          if (!include_nonest || nrow(m) == length(fnm)) {
+          if (!include_nonest ||
+              nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
-              ## mapping *or* rank-def columns dropped
+              ## some parameters mapped *to each other* (not fixed)
+              if (!is.null(cur_map <- map[[parnms[[i]]]]) &&
+                  length(unique(cur_map)) < length(cur_map)) {
+                  ## replicate cov rows/cols appropriately
+                  m <- m[as.numeric(cur_map), as.numeric(cur_map)]
+                  map_split <- split(seq_along(cur_map), cur_map)
+                  for (cc in map_split) {
+                      if (length(cc)==1) next
+                      ## should fix covariances in cov matrix
+                      ## equal to variance for mapped pairs ...
+                      ## combn() generates a 2-by-n matrix of pairs
+                      ccc <- combn(cc, 2)
+                      for (j in 1:ncol(ccc)) {
+                          m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
+                              m[ccc[1,j], ccc[1,j]]
+                      }
+                  }
+              }
+              ## fixed params *or* rank-def columns dropped
               mm <- matrix(NA_real_, length(fnm), length(fnm),
                            dimnames=list(fnm, fnm))
               mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
@@ -560,6 +607,7 @@ family_params <- function(object) {
            tweedie = c("Tweedie power" = plogis(tf) + 1),
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
+           skewnormal = c("Skewnormal shape" = tf),
            numeric(0)
            )
 }
@@ -626,7 +674,13 @@ print.glmmTMB <-
     cat("\nFixed Effects:\n")
     print(cf, ...)
   } else
-    cat("No fixed effect coefficients\n")
+      cat("No fixed effect coefficients\n")
+
+  if (!is.null(x$modelInfo$priors)) {
+      cat("\nPriors: ")
+      print(x$modelInfo$priors, compact = TRUE)
+      cat("\n")
+  }
   invisible(x)
 }
 
@@ -920,7 +974,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         vv <- vcov(object, include_nonest = include_nonest)[[component]]
         cf <- fixef(object)[[component]]
         ## strip tag (only really necessary for zi~, d~)
-        tag <- if (component=="disp") "d" else component
+        tag <- if (component=="disp") "disp" else component
         nn <- gsub(paste0(tag,"~"),"",colnames(vv))
         ## vcov only includes estimated (not mapped/fixed)
         ##  fixed-effect parameters
@@ -1298,7 +1352,7 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
 #' @param component formula for which component of the model to return (conditional, zero-inflation, or dispersion)
 #' @param fixed.only (logical) drop random effects, returning only the fixed-effect component of the formula?
 #' @param ... unused, for generic consistency
-#' @importFrom lme4 nobars
+#' @importFrom reformulas nobars
 #' @export
 formula.glmmTMB <- function(x, fixed.only=FALSE,
                             component=c("cond", "zi", "disp"),
@@ -1311,7 +1365,7 @@ formula.glmmTMB <- function(x, fixed.only=FALSE,
     af <- x$modelInfo$allForm
     ff <- if (component=="cond") af[["formula"]] else af[[paste0(component,"formula")]]
     if (fixed.only) {
-        ff <- lme4::nobars(ff)
+        ff <- nobars(ff)
     }
     return(ff)
 }
@@ -1347,7 +1401,7 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed",
         m <- switch(component,
                     cond =  "",
                     zi = "zi",
-                    disp = "d")
+                    disp = "disp")
         
         X <- getME(object, paste0("X", m))
     } else {
@@ -1532,7 +1586,8 @@ coef.glmmTMB <- function(object,
     }
     res <- list(
         cond = get.coef("cond"),
-        zi = get.coef("zi")
+        zi = get.coef("zi"),
+        disp = get.coef("disp")
     )
     if (condVar) {
         stop("condVar not (yet) available for coefficients")

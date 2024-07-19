@@ -74,6 +74,18 @@ namespace glmmtmb{
     else return logres;
   }
 
+  template<class Type>
+  Type dskewnorm(Type y, Type mu, Type sigma, Type alpha, int give_log=0)
+  {
+    Type delta = alpha/sqrt(1 + pow(alpha, 2)); 
+    Type omega = sigma/sqrt(1 - 2/M_PI * pow(delta, 2)); 
+    Type xi = mu - omega * delta * sqrt(2/M_PI); 
+    Type logres = 
+      log(2.0) - log(omega) + log(dnorm((y - xi)/omega, Type(0), Type(1), 0)) + log(pnorm(alpha * (y - xi)/omega));
+    if(!give_log) return exp(logres);
+    else return logres;
+  }
+  
    // from C. Geyer aster package, src/raster.c l. 175
    // Simulate from truncated poisson
    // see https://cran.r-project.org/web/packages/aster/vignettes/trunc.pdf for technical/mathematical details
@@ -288,6 +300,32 @@ namespace glmmtmb{
     Type ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
     return ans;
   }
+
+  /* Simulate from skew-normal distribution */
+  template<class Type>
+  Type rskewnorm(Type mu, Type sigma, Type alpha) {
+    // Copied from R function sn::rsn
+    Type delta = alpha/sqrt(1 + pow(alpha, 2)); 
+    Type omega = sigma/sqrt(1 - 2/M_PI * pow(delta, 2)); 
+    Type xi = mu - omega * delta * sqrt(2/M_PI); 
+    
+    Type chi = CppAD::abs(rnorm(Type(0), Type(1)));
+    Type nrv = rnorm(Type(0), Type(1));
+    Type z = delta * chi + sqrt(1 - pow(delta, 2)) * nrv;
+    Type ans = xi + omega * z;
+    
+    return ans;
+  }
+  
+  // FIXME: check!
+  template<class Type>
+  Type dcauchy(Type x, Type loc, Type scale, int give_log=0)
+ {
+   Type resid = (x - loc) / scale;
+   Type logans = Type(-log(M_PI)) - log(scale) - log1p(resid*resid);
+   if(give_log) return logans; else return exp(logans);
+ }
+  VECTORIZE4_ttti(dcauchy)
 } // namespace glmmtmb
 
 /* Interface to compois variance */
@@ -295,7 +333,7 @@ extern "C" {
   SEXP compois_calc_var(SEXP mean, SEXP nu) {
     if (LENGTH(mean) != LENGTH(nu))
       error("'mean' and 'nu' must be vectors of same length.");
-    SEXP ans = PROTECT(allocVector(REALSXP, LENGTH(mean)));
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, LENGTH(mean)));
     for(int i=0; i<LENGTH(mean); i++)
       REAL(ans)[i] = glmmtmb::compois_calc_var(REAL(mean)[i], REAL(nu)[i]);
     UNPROTECT(1);

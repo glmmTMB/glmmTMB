@@ -32,7 +32,7 @@ the domain of the conditional distribution, and should probably not
 be all zeros, but whose value is otherwise irrelevant)}
 
 \item{newparams}{a list of parameters containing sub-vectors
-(\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+(\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
 be used in the model}
 
 \item{...}{other arguments to \code{glmmTMB} (e.g. \code{family})}
@@ -55,7 +55,7 @@ sim_count <- simulate_new(~ mined + (1|site),
              family = nbinom2,
              newparams = list(beta = c(2, 1),
                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-                         betad = log(2), ## log(NB dispersion)
+                         betadisp = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)
 )
 head(sim_count[[1]])

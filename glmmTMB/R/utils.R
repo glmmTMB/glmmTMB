@@ -44,40 +44,54 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
     return(list(parallel=parallel,do_parallel=do_parallel))
 }
 
+## from length of (strictly) lower triangle, compute dimension of matrix
+get_matdim <- function(ntri) {
+    as.integer(round(0.5 * (1 + sqrt(1 + 8 * ntri))))
+}
+
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
+##' @param return_val return a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")? 
 ##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
 ##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
 ##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
-##' get_cor(c(0.5,0.2,0.5))
-##' C <- matrix(c(1,  0.2,  0.1,
-##'              0.2,  1, -0.2,
-##'              0.1,-0.2,   1),
-##'            3, 3)
-##' ## test: round-trip (almostl results in lower triangle only)
-##' stopifnot(all.equal(get_cor(put_cor(C)),
-##'                    C[lower.tri(C)]))
+##' set.seed(101)
+##' C <- get_cor(rnorm(21), return_val = "mat")
+##' ## test: round-trip
+##' stopifnot(all.equal(get_cor(put_cor(C), return_val = "mat"), C))
 ##' @export
-get_cor <- function(theta) {
-  n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
-  R <- diag(n)
-  R[upper.tri(R)] <- theta
-  R[] <- crossprod(R) # R <- t(R) %*% R
-  scale <- 1 / sqrt(diag(R))
-  R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
-  R[lower.tri(R)]
+get_cor <- function(theta, return_val = c("vec", "mat")) {
+    return_val <- match.arg(return_val)
+    n <-  get_matdim(length(theta))
+    R <- diag(n)
+    R[upper.tri(R)] <- theta
+    R[] <- crossprod(R) # R <- t(R) %*% R
+    scale <- 1 / sqrt(diag(R))
+    R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
+    if (return_val == "mat") return(R)
+    return(R[lower.tri(R)])
 }
 
 ##' @rdname get_cor
 ##' @param C a correlation matrix
+##' @param input_val input a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")? 
 ##' @export
-put_cor <- function(C) {
-    cc <- chol(C)
-    cc2 <- t(cc %*% diag(1/diag(cc)))
-    cc2[lower.tri(cc2)]
+put_cor <- function(C, input_val = c("mat", "vec")) {
+    input_val <- match.arg(input_val)
+    if (input_val == "vec") {
+        ## construct matrix
+        M <- diag(get_matdim(length(C)))
+        M[lower.tri(M)] <- C
+        M[upper.tri(M)] <- t(M)[upper.tri(M)]
+        C <- M
+    }
+    cc2 <- chol(C)
+    scale <- diag(cc2)
+    cc2 <- cc2 %*% diag(1/scale)
+    cc2[upper.tri(cc2)]
 }
 
 hasRandom <- function(x) {
@@ -99,7 +113,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
 
     ## don't use object$obj$env$random; we want to keep "beta" vals, which may be
     ## counted as "random" if using REML
-    drop_rand <- function(x) x[!x %in% c("b", "bzi")]
+    drop_rand <- function(x) x[!x %in% c("b", "bzi", "bdisp")]
     if (!include_nonest) {
         intnames <- drop_rand(names(ee$last.par))
     } else {
@@ -112,7 +126,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
 
     if (is.null(parm)) {
         if (!full && trivialDisp(object)) {
-            parm <- grep("betad", intnames, invert=TRUE)
+            parm <- grep("betadisp", intnames, invert=TRUE)
         } else {
             parm <- seq_along(sds)
         }
@@ -132,7 +146,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
             }
         } else if (identical(parm, "disp_") ||
                    identical(parm, "sigma")) {
-            parm <- grep("^betad", intnames)
+            parm <- grep("^betadisp", intnames)
         } else { ## generic parameter vector
             nparm <- match(parm,pnames)
             if (any(is.na(nparm))) {
@@ -206,40 +220,32 @@ nullSparseMatrix <- function() {
     }
 }
 
-#' Check for version mismatch in dependent binary packages
-#' @param dep_pkg upstream package
-#' @param this_pkg downstream package
-#' @param write_file (logical) write version file and quit?
-#' @param warn give warning?
-#' @return logical: TRUE if the binary versions match
-#' @importFrom utils packageVersion
-#' @export
-checkDepPackageVersion <- function(dep_pkg = "TMB",
-                                   this_pkg = "glmmTMB",
-                                   write_file = FALSE,
-                                   warn = TRUE) {
-    cur_dep_version <- as.character(packageVersion(dep_pkg))
-    fn <- sprintf("%s-version", dep_pkg)
-    if (write_file) {
-        cat(sprintf("current %s version=%s: writing file\n", dep_pkg, cur_dep_version))
-        writeLines(cur_dep_version, con = fn)
-        return(cur_dep_version)
-    }
-    fn <- system.file(fn, package=this_pkg)
-    built_dep_version <- scan(file=fn, what=character(), quiet=TRUE)
-    result_ok <- identical(built_dep_version, cur_dep_version)
-    if(warn && !result_ok) {
+
+## simplified version of glmmTMB package checking
+##' @param this_pkg downstream package being tested
+##' @param dep_pkg upstream package on which \code{this_pkg} depends
+##' @param dep_type "ABI" or "package"
+##' @param built_version a \code{numeric_version} object indicating what version of \code{dep_pkg} was used to  build \code{this_pkg}
+##' @param warn (logical) warn if condition not met?
+##' @importFrom utils packageVersion
+##' @noRd
+check_dep_version <- function(this_pkg = "glmmTMB",  dep_pkg = "TMB", dep_type = "package",
+                              built_version = .TMB.build.version,
+                              warn = TRUE) {
+    ## FIXME: replace by TMB.Version() when available ?
+    cur_version <- packageVersion(dep_pkg)
+    result_ok <- cur_version == built_version
+    if (!result_ok) {
         warning(
-            "Package version inconsistency detected.\n",
-            sprintf("%s was built with %s version %s",
-                    this_pkg, dep_pkg, built_dep_version),
-            "\n",
-            sprintf("Current %s version is %s",
-                    dep_pkg, cur_dep_version),
-            "\n",
+            sprintf("%s version mismatch: \n", dep_type),
+            sprintf("%s was built with %s %s version %s\n",
+                    this_pkg, dep_pkg, dep_type, built_version),
+            sprintf("Current %s %s version is %s\n",
+                    dep_pkg, dep_type, cur_version),
             sprintf("Please re-install %s from source ", this_pkg),
             "or restore original ",
-            sQuote(dep_pkg), " package (see '?reinstalling' for more information)"
+            sQuote(dep_pkg), " package",
+            " (see '?reinstalling' for more information)"
         )
     }
     return(result_ok)
@@ -301,7 +307,7 @@ NULL
 ##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
 ##' to specify that computations should be done in parallel.)
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
-##' @return \code{TRUE} or {FALSE} depending on availability of OpenMP
+##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP
 ##' @export
 omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
@@ -331,15 +337,18 @@ isNullPointer <- function(x) {
 #'
 #' @rdname gt_load
 #' @param oldfit a fitted glmmTMB object
-#' @param update_gauss_disp update \code{betad} from variance to SD parameterization?
+#' @param update_gauss_disp update \code{betadisp} from variance to SD parameterization?
 #' @export
 up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
       obj <- oldfit$obj
       ee <- obj$env
+
       pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
                 "parfull")
+    
+      ## change name of thetaf to psi
       if ("thetaf" %in% names(ee$parameters)) {
           ee$parameters$psi <- ee$parameters$thetaf
           ee$parameters$thetaf <- NULL
@@ -351,21 +360,54 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
               }
           }
       }
+      if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
+      	ee$parameters$betadisp <- ee$parameters$betad
+      	ee$parameters$betad <- NULL
+      	pars <- c(grep("last\\.par", names(ee), value = TRUE),
+      						"par")
+      	for (p in pars) {
+      		if (!is.null(nm <- names(ee[[p]]))) {
+      			names(ee[[p]])[nm == "betad"] <- "betadisp"
+      		}
+      	}
+      	ee$data$Xdisp <- ee$data$Xd
+      	ee$data$Xd <- NULL
+      	ee$data$dispoffset <- ee$data$doffset
+      	ee$data$doffset <- NULL
+      }
+      if(!"Zdisp" %in% names(ee$data)) {
+      	ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      	ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
+      	ee$parameters$thetadisp <- numeric(0)
+      }
       ee2 <- oldfit$sdr$env
       if ("thetaf" %in% names(ee2$parameters)) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
+      if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
+      	ee2$parameters$betadisp <- ee2$parameters$betad
+      	ee2$parameters$betad <- NULL
+      }
+
+    ## prior_ivars, prior_fvars are defined in priors.R
+      if (!"prior_distrib" %in% names(ee$data)) {
+          ## these are DATA_IVECTOR but apparently after processing
+          ##  TMB turns these into numeric ... ??
+          for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+          for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+      }
+
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
-          ee$parameters$betad <- ee$parameters$betad/2
+          ee$parameters$betadisp <- ee$parameters$betadisp/2
           for (p in pars) {
               if (!is.null(nm <- names(ee[[p]]))) {
-                  ee[[p]][nm == "betad"] <- ee[[p]][nm == "betad"]/2
+                  ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
               }
               if (!is.null(nm <- names(oldfit$fit[[p]]))) {
-                  oldfit$fit[[p]][nm == "betad"] <- oldfit$fit[[p]][nm == "betad"]/2
+                  oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
               }
           }
       }
@@ -386,6 +428,11 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       !("dispersion" %in% names(omf))) {
       ## don't append() or c(), don't want to lose class info
       oldfit$modelInfo$family$dispersion <- 1
+  }
+  if (!"priors" %in% names(oldfit$modelInfo)) {
+      ## https://stackoverflow.com/questions/7944809/assigning-null-to-a-list-element-in-r
+      ## n.b. can't use ...$priors <- NULL
+      oldfit$modelInfo["priors"] <- list(NULL)
   }
   return(oldfit)
 }
@@ -461,7 +508,7 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betad","theta","thetazi","psi")
+par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
 
 ## all parameters, including both mapped and rank-dropped
 getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
@@ -479,7 +526,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       }
       if (trivialFixef(nn, tag)
           ## if 'full', keep disp even if trivial, if used by family
-          && !(full && tag =="d" &&
+          && !(full && tag =="disp" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {
           return(character(0))
       }
@@ -487,7 +534,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       return(paste(tag,nn,sep="~"))
   }
 
-  nameList <- setNames(Map(mkNames, c("", "zi", "d")),
+  nameList <- setNames(Map(mkNames, c("", "zi", "disp")),
                          names(cNames))
 
   if(full) {
@@ -506,7 +553,9 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
       }
       ## nameList for estimated variables;
       nameList <- c(nameList,
-                    list(theta = reNames("cond"), thetazi = reNames("zi")))
+                    list(theta = reNames("cond"), 
+                    		 thetazi = reNames("zi"), 
+                    		 thetadisp = reNames("disp")))
 
       ##
       if (length(fp <- family_params(object)) > 0) {
@@ -603,7 +652,7 @@ make_pars <- function(pars, ...) {
 ##' the domain of the conditional distribution, and should probably not
 ##' be all zeros, but whose value is otherwise irrelevant)
 ##' @param newparams a list of parameters containing sub-vectors
-##' (\code{beta}, \code{betazi}, \code{betad}, \code{theta}, etc.) to
+##' (\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
 ##' be used in the model
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
@@ -618,7 +667,7 @@ make_pars <- function(pars, ...) {
 ##'              family = nbinom2,
 ##'              newparams = list(beta = c(2, 1),
 ##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-##'                          betad = log(2), ## log(NB dispersion)
+##'                          betadisp = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
 ##' )
 ##' head(sim_count[[1]])
@@ -637,8 +686,10 @@ simulate_new <- function(object,
     form <- object
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
-    ## insert a legal value: 1.0 is OK as long as family != "beta_family"
-    newdata[["..y"]] <- if (family$family == "beta_family") 1.0 else 0.5
+    ## insert a legal value: 1.0 is OK as long as family != "beta"
+    ## (note the family *function* is 'beta_family' but the internal
+    ##  $family value is 'beta')
+    newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
@@ -652,11 +703,25 @@ simulate_new <- function(object,
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
 
-## from rlang (FIXME: put this conditionally in .onLoad, for back-compatibility)
-`%||%` <- function (x, y)  {
-    if (is.null(x)) 
-        y
-    else x
+set_class <- function(x, cls, prepend = TRUE) {
+    if (is.null(x)) return(NULL)
+    if (!prepend) class(x) <- cls
+    else class(x) <- c(cls, class(x))
+    x
+}
+
+## convert from parameter name to component name or vice versa
+## first name shoudl be em
+compsyn <- c(cond = "", zi = "zi", disp = "d")
+match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
+    if (to_parvec) {
+        ## "cond" -> "theta" etc.
+        return(paste0(prefix, compsyn[x]))
+    } else {
+        ## "beta" -> "cond" etc.
+        x <- gsub(prefix, "", x)
+        return(names(compsyn)[match(x, compsyn)])
+    }
 }
 
 get_family <- function(family) {
@@ -681,4 +746,17 @@ get_family <- function(family) {
       stop("after evaluation, 'family' must have a '$family' element")
     }
     return(family)
+}
+
+## add negative-value check to binomial initialization method
+our_binom_initialize <- function(family) {
+    newtest <- substitute(
+        ## added test for glmmTMB
+        if (any(y<0)) {
+            stop(sprintf('negative values not allowed for the %s family', FAMILY))
+        }
+      , list(FAMILY=family))
+    b0 <- binomial()$initialize
+    b0[[length(b0)+1]] <- newtest
+    return(b0)
 }

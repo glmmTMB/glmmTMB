@@ -1,6 +1,9 @@
+#define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
 #include <TMB.hpp>
+#include <R_ext/Error.h>
 #include "init.h"
 #include "distrib.h"
+#include "cordistrib.h"
 
 // don't need to include omp.h; we get it via TMB.hpp
 
@@ -31,11 +34,13 @@ enum valid_family {
   truncated_compois_family =405,
   nbinom1_family =500,
   nbinom2_family =501,
-  truncated_nbinom1_family =502,
-  truncated_nbinom2_family =503,
+  nbinom12_family =502,
+  truncated_nbinom1_family =550,
+  truncated_nbinom2_family =551,
   t_family =600,
   tweedie_family = 700,
-  lognormal_family = 800
+  lognormal_family = 800,
+  skewnormal_family = 900
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -77,6 +82,30 @@ enum valid_ziPredictCode {
   uncorrected_zipredictcode = 1,
   prob_zipredictcode = 2,
   disp_zipredictcode = 3
+};
+
+// codes for prior distributions
+enum valid_prior {
+  // real-valued
+  normal_prior = 0,
+  t_prior = 1,
+  cauchy_prior = 2,
+  // non-negative
+  gamma_prior = 10,
+  // (0,1), e.g. for zi prob
+  beta_prior = 20,
+  // correlations
+  lkj_prior = 30
+};
+
+// codes for parameter (vec) to apply prior to
+enum valid_vprior {
+  beta_vprior = 0,
+  betazi_vprior = 1,
+  betadisp_vprior = 2,
+  theta_vprior = 10,
+  thetazi_vprior = 20,
+  psi_vprior = 30
 };
 
 template<class Type>
@@ -168,19 +197,19 @@ Type log1m_inverse_linkfun(Type eta, int link) {
 
 /* log-prob of non-zero value in conditional distribution  */
 template<class Type>
-Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etad, int family,
+Type calc_log_nzprob(Type mu, Type phi, Type eta, Type etadisp, int family,
 		     int link) {
   Type ans, s1, s2;
   switch (family) {
   case truncated_nbinom1_family:
-    s2 = logspace_add( Type(0), etad);      // log(1. + phi(i)
+    s2 = logspace_add( Type(0), etadisp);      // log(1. + phi(i)
     ans = logspace_sub( Type(0), -mu / phi * s2 ); // 1-prob(0)
     break;
   case truncated_nbinom2_family:
     // s1 is repeated computation from main loop ...
     s1 = log_inverse_linkfun(eta, link);          // log(mu)
     // s2 := log( 1. + mu(i) / phi(i) )
-    s2 = logspace_add( Type(0), s1 - etad );
+    s2 = logspace_add( Type(0), s1 - etadisp );
     ans = logspace_sub( Type(0), -phi * s2 );
     break;
   case truncated_poisson_family:
@@ -560,14 +589,15 @@ Type objective_function<Type>::operator() ()
   DATA_MATRIX(Xzi);
   bool sparseXzi = Xzi.rows()==0 && Xzi.cols()==0;
   DATA_SPARSE_MATRIX(Zzi);
-  DATA_MATRIX(Xd);
-  bool sparseXd = Xd.rows()==0 && Xd.cols()==0;
+  DATA_MATRIX(Xdisp);
+  bool sparseXdisp = Xdisp.rows()==0 && Xdisp.cols()==0;
+  DATA_SPARSE_MATRIX(Zdisp);
   DATA_VECTOR(yobs);
   DATA_VECTOR(size); //only used in binomial
   DATA_VECTOR(weights);
   DATA_VECTOR(offset);
   DATA_VECTOR(zioffset);
-  DATA_VECTOR(doffset);
+  DATA_VECTOR(dispoffset);
 
   // Define covariance structure for the conditional model
   DATA_STRUCT(terms, terms_t);
@@ -575,18 +605,25 @@ Type objective_function<Type>::operator() ()
   // Define covariance structure for the zero inflation
   DATA_STRUCT(termszi, terms_t);
 
+  // Define covariance structure for the dispersion model
+  DATA_STRUCT(termsdisp, terms_t);
+  
   // Parameters related to design matrices
   PARAMETER_VECTOR(beta);
   PARAMETER_VECTOR(betazi);
+  PARAMETER_VECTOR(betadisp);
   PARAMETER_VECTOR(b);
   PARAMETER_VECTOR(bzi);
-  PARAMETER_VECTOR(betad);
-
+  PARAMETER_VECTOR(bdisp);
+  
   // Joint vector of covariance parameters
   PARAMETER_VECTOR(theta);
   PARAMETER_VECTOR(thetazi);
-
-  // Extra family specific parameters (e.g. tweedie, t, ordbetareg)
+  PARAMETER_VECTOR(thetadisp);
+  
+  // Extra family specific parameters
+  // tweedie, t, ordbetareg, nbinom12, skewnormal;
+  // see .extraParamFamilies in R code for expected length
   PARAMETER_VECTOR(psi);
 
   DATA_INTEGER(family);
@@ -600,13 +637,23 @@ Type objective_function<Type>::operator() ()
   // One-Step-Ahead (OSA) residuals
   DATA_VECTOR_INDICATOR(keep, yobs);
 
+  // Prior info
+
+  DATA_IVECTOR(prior_distrib);    // specify distribution
+  DATA_IVECTOR(prior_whichpar);   // specify parameter
+  DATA_IVECTOR(prior_elstart);    // starting element index
+  DATA_IVECTOR(prior_elend);      // ending element index
+  DATA_IVECTOR(prior_npar);       // number of parameters (based on prior distrib)
+  DATA_VECTOR(prior_params);      // specify parameters (concatenated)
+  
   // Joint negative log-likelihood
   Type jnll=0;
 
   // Random effects
   PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
   PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
-
+  PARALLEL_REGION jnll += allterms_nll(bdisp, thetadisp, termsdisp, this->do_simulate);
+  
   // Linear predictor
   vector<Type> eta = Z * b + offset;
   if (!sparseX) {
@@ -622,12 +669,12 @@ Type objective_function<Type>::operator() ()
     DATA_SPARSE_MATRIX(XziS);
     etazi += XziS*betazi;
   }
-  vector<Type> etad = doffset;
-  if (!sparseXd) {
-    etad += Xd*betad;
+  vector<Type> etadisp = Zdisp * bdisp + dispoffset;
+  if (!sparseXdisp) {
+    etadisp += Xdisp*betadisp;
   } else {
-    DATA_SPARSE_MATRIX(XdS);
-    etad += XdS*betad;
+    DATA_SPARSE_MATRIX(XdispS);
+    etadisp += XdispS*betadisp;
   }
 
   // Apply link
@@ -635,13 +682,13 @@ Type objective_function<Type>::operator() ()
   for (int i = 0; i < mu.size(); i++)
     mu(i) = inverse_linkfun(eta(i), link);
   vector<Type> pz = invlogit(etazi);
-  vector<Type> phi = exp(etad);
+  vector<Type> phi = exp(etadisp);
   vector<Type> log_nzprob(eta.size());
   if (!trunc_Family(family)) {
     log_nzprob.setZero();
   } else {
     for (int i = 0; i < log_nzprob.size(); i++) {
-      log_nzprob(i) =  calc_log_nzprob(mu(i), phi(i), eta(i), etad(i),
+      log_nzprob(i) =  calc_log_nzprob(mu(i), phi(i), eta(i), etadisp(i),
 				       family, link);
     }
   }
@@ -663,6 +710,13 @@ Type objective_function<Type>::operator() ()
       case gaussian_family:
         tmp_loglik = dnorm(yobs(i), mu(i), phi(i), true);
         SIMULATE{yobs(i) = rnorm(mu(i), phi(i));}
+        break;
+      case skewnormal_family:
+        s1 = mu(i);
+        s2 = phi(i);
+        s3 = psi(0);
+        tmp_loglik = glmmtmb::dskewnorm(yobs(i), s1, s2, s3, true);
+        SIMULATE{yobs(i) = glmmtmb::rskewnorm(s1, s2, s3);}
         break;
       case poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true);
@@ -738,14 +792,14 @@ Type objective_function<Type>::operator() ()
         //   s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
         //   tmp_loglik = dnbinom2(yobs(i), s1, s2, true);
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
-        s2 = s1 + etad(i) ;                              // log(var - mu)
+        s2 = s1 + etadisp(i) ;                              // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
 	if (family != truncated_nbinom1_family) {
-		SIMULATE {
-			s1 = mu(i);
-			s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
-			yobs(i) = rnbinom2(s1, s2);
-		}
+	SIMULATE {
+	  s1 = mu(i);
+	  s2 = mu(i) * (Type(1)+phi(i));  // (1+phi) guarantees that var >= mu
+	  yobs(i) = rnbinom2(s1, s2);
+	  }
 	} else {
           tmp_loglik -= log_nzprob(i);
 	  tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
@@ -758,7 +812,7 @@ Type objective_function<Type>::operator() ()
       case nbinom2_family:
       case truncated_nbinom2_family:
         s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
-        s2 = 2. * s1 - etad(i) ;                         // log(var - mu)
+        s2 = 2. * s1 - etadisp(i) ;                         // log(var - mu)
         tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
         SIMULATE {
           s1 = mu(i);
@@ -773,6 +827,17 @@ Type objective_function<Type>::operator() ()
           }
         }
         break;
+      case nbinom12_family:
+	s1 = log_inverse_linkfun(eta(i), link);          // log(mu)
+	// log(var - mu) = log(mu) + log(phi + mu/psi)
+	s2 = s1 + logspace_add(etadisp(i), s1 - psi(0));
+	tmp_loglik = dnbinom_robust(yobs(i), s1, s2, true);
+	SIMULATE{
+	  s1 = mu(i);
+	  s2 = mu(i) * (Type(1)+phi(i) + mu(i)/exp(psi(0)));
+	  yobs(i) = rnbinom2(s1, s2);
+	}
+	break;
       case truncated_poisson_family:
         tmp_loglik = dpois(yobs(i), mu(i), true) - log_nzprob(i);
         tmp_loglik = zt_lik_nearzero(yobs(i), tmp_loglik);
@@ -830,13 +895,18 @@ Type objective_function<Type>::operator() ()
         s3 = sqrt(s1);          //log-scale sd
 	tmp_loglik = zt_lik_zero(yobs(i),
 			 dnorm(log(yobs(i)), s2, s3, true) - log(yobs(i)));
-	SIMULATE{yobs(i) = exp(rnorm(s2, s3));}  // untested
+	SIMULATE{
+	  yobs(i) = exp(rnorm(s2, s3));
+	}  // untested
         break;
       case t_family:
         s1 = (yobs(i) - mu(i))/phi(i);
 	s2 = exp(psi(0));
-	// since resid was scaled above, density needs to be divided by log(sd) = log(var)/2 = etad(i)/2
-	tmp_loglik = dt(s1, s2, true) - etad(i);
+	// since resid was scaled above, density needs to be divided by log(sd) = log(var)/2 = etadisp(i)/2
+	tmp_loglik = dt(s1, s2, true) - etadisp(i);
+	SIMULATE{
+	  yobs(i) = mu(i)+phi(i)*rt(s2);
+	}  // untested
 	break;
       default:
         error("Family not implemented!");
@@ -862,8 +932,76 @@ Type objective_function<Type>::operator() ()
 
       // Add up
       jnll -= keep(i) * tmp_loglik;
-    }
-  }
+    } // if !is.na(obs)
+    } // loop over observations
+
+    // Add priors
+    vector<Type> parvec;
+    int np = prior_distrib.size();
+    Type parval, logpriorval;
+    int par_ind = 0; // parameter index
+    for (int i = 0; i < np; i++) {
+      switch(prior_whichpar[i]) {
+      case beta_vprior: parvec = beta; break;
+      case betazi_vprior: parvec = betazi; break;
+      case betadisp_vprior: parvec = betadisp; break;
+      case theta_vprior: parvec = theta; break;
+      case thetazi_vprior: parvec = thetazi; break;
+      case psi_vprior: parvec = psi; break;
+      }
+
+      // need an if-clause here for multivariate distrib (lkj/corr parameters
+      // otherwise go element-by-element
+      if (prior_distrib[i] == lkj_prior) {
+	vector<Type> corpars = parvec.segment(prior_elstart[i] ,
+					      prior_elend[i]-prior_elstart[i]+1);
+	jnll -= glmmtmb::dlkj(corpars, prior_params[par_ind], true);
+      } else {
+	for (int j = prior_elstart[i]; j <= prior_elend[i]; j++) { // <= is on purpose here
+	  if (j >= parvec.size()) {
+	    // FIXME: should also check upstream ...
+	    error("Bad prior index!");
+	  };
+
+	parval = parvec[j];
+	switch(prior_distrib[i]) {
+	case normal_prior:
+	  s1 = prior_params[par_ind];           // mean
+	  s2 = prior_params[par_ind+1];         // sd
+	  logpriorval = dnorm(parval, s1, s2, true);
+	break;
+	case gamma_prior:
+	  s1 = prior_params[par_ind+1];           // shape
+	  s2 = prior_params[par_ind] / prior_params[par_ind+1];   // scale
+	  logpriorval = dgamma(exp(parval), s1, s2, true);
+	break;
+	case t_prior:
+	  s1 = prior_params[par_ind];           // mean
+	  s2 = prior_params[par_ind+1];         // sd
+	  s3 = prior_params[par_ind+2];         // df
+	  parval = (parval - s1)/s2;   // scale value
+	  // see note at t_family about adjusting density for scaling
+	  logpriorval = dt(parval, s3, true) - log(s2);
+	  break;
+	case cauchy_prior:
+	  s1 = prior_params[par_ind];           // loc
+	  s2 = prior_params[par_ind+1];         // scale
+	  logpriorval = glmmtmb::dcauchy(parval, s1, s2, true);
+	break;
+	default:
+	  error("Prior distribution not implemented!");
+	}
+
+	jnll -= logpriorval;
+	
+	} // loop over elements
+      }
+      // step forward in prior-parameter vector
+      par_ind += prior_npar[i];
+      
+    } // loop over priors
+    
+    
 
   // Report / ADreport / Simulate Report
   vector<matrix<Type> > corr(terms.size());
@@ -884,7 +1022,15 @@ Type objective_function<Type>::operator() ()
       sdzi(i) = termszi(i).sd;
     }
   }
-
+  vector<matrix<Type> > corrdisp(termsdisp.size());
+  vector<vector<Type> > sddisp(termsdisp.size());
+  for(int i=0; i<termsdisp.size(); i++){
+  	// NOTE: Dummy terms reported as empty
+  	if(termsdisp(i).blockNumTheta > 0){
+  		corrdisp(i) = termsdisp(i).corr;
+  		sddisp(i) = termsdisp(i).sd;
+  	}
+  }
   vector<matrix<Type> > fact_load(terms.size());
   for(int i=0; i<terms.size(); i++){
     // NOTE: Dummy terms reported as empty

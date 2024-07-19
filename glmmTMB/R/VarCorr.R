@@ -57,6 +57,7 @@ getParList <- function(object) {
 ##'           where the variance is \eqn{\phi\mu^p}{phi*mu^p}.
 ##'           The value of \eqn{p} can be extracted using \code{family_params}
 ##'      }
+##'      \item{ordbeta}{see details for \code{beta}}
 ##' }
 ##'
 ##'  The most commonly used GLM families
@@ -88,10 +89,10 @@ sigma.glmmTMB <- function(object, ...) {
     pl <- getParList(object)
     ff <- object$modelInfo$family$family
     if (!usesDispersion(ff)) return(1.)
-    if (length(pl$betad)>1) return(NA)
+    if (length(pl$betadisp)>1) return(NA)
     switch(family(object)$family,
-           Gamma=exp(-0.5*pl$betad),
-           exp(pl$betad))
+           Gamma=exp(-0.5*pl$betadisp),
+           exp(pl$betadisp))
 }
 
 
@@ -179,7 +180,8 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         sigma <- sigma(x)
         familyStr=="gaussian" && !zeroDisp(x)
     } else TRUE
-    vc.cond <- vc.zi <- NULL
+    vc.cond <- vc.zi <- vc.disp <- NULL
+    ## FIXME: repeat less
     if(length(cn <- reT$cond$cnms)) {
         vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
                         sc = sigma, useSc = useSc)
@@ -191,10 +193,17 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         vc.zi <- mkVC(cor = xrep$corrzi, sd = xrep$sdzi, cnms = cn,
                         sc = sigma, useSc = useSc)
         for (i in seq_along(vc.zi)) {
-            attr(vc.zi,"blockCode") <- reS$ziReStruc[[i]]$blockCode
+            attr(vc.zi[[i]],"blockCode") <- reS$ziReStruc[[i]]$blockCode
         }
     }
-    structure(list(cond = vc.cond, zi = vc.zi),
+    if(length(cn <- reT$disp$cnms)) {
+    	vc.disp <- mkVC(cor = xrep$corrdisp, sd = xrep$sddisp, cnms = cn,
+    								sc = sigma, useSc = useSc)
+    	for (i in seq_along(vc.disp)) {
+    		attr(vc.disp,"blockCode") <- reS$dispReStruc[[i]]$blockCode
+    	}
+    }
+    structure(list(cond = vc.cond, zi = vc.zi, disp = vc.disp),
 	      sc = usesDispersion(familyStr), ## 'useScale'
 	      class = "VarCorr.glmmTMB")
 }
