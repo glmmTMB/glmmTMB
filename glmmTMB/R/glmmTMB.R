@@ -587,6 +587,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  far up do we have to go with eval.parent? Or do we
             ##  use the environment of the formula?
             if (!is.null(old_smooths)) {
+                ## we are predicting, want to use old smooths rather than constructing new ones
                 smooth_terms2 <- lapply(old_smooths[lengths(old_smooths)>0],
                                         function(s) {
                                             if (is.null(s)) return(NULL)
@@ -608,6 +609,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                             return(s_new)
                                         })
             } else {
+                ## new smooths
                 smooth_terms2 <- lapply(smooth_terms,
                     function(tt) {
                         ## ‘smoothCon’ returns a list of smooths because factor ‘by’
@@ -647,11 +649,18 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
             cnm <- colnames(X)
-            for (s in smooth_terms2) {
+            for (si in seq_along(smooth_terms2)) {
+                s <- smooth_terms2[[si]]
+                ## indices within the beta vector corresponding to this smooth
+                ## (where do we put this?)
+                beta_ind <- ncol(X) + seq(ncol(s$re$Xf))
                 if (ncol(s$re$Xf) == 0) next
                 snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
                 colnames(X) <- c(cnm, paste0(snm, seq.int(ncol(s$re$Xf))))
+                ## store indices in smooth object
+                ## FIXME: where does this get stored?
+                smooth_terms2[[si]]$re$beta_ind <- beta_ind
             }
         }
         
@@ -721,6 +730,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             barpos <- which(ss$reTrmClasses != "s")
             nonbarpos <- which(ss$reTrmClasses == "s")
             for (p in c("Ztlist", "flist", "cnms")) {
+                ## fill in values from traditional (bar-containing) REs
                 augReTrms[[p]][barpos] <- reTrms[[p]]
                 names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
             }
@@ -744,10 +754,17 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  ... which bits are actually used hereafter?
             avec[nonbarpos] <-  length(augReTrms$flist)
             attr(augReTrms$flist, "assign") <- avec
+            browser()
+            ncol_fun <- function(x) if (is.null(x)) 0 else ncol(x))
+            b_lens <- vapply(augReTrms$Ztlist, ncol_fun, FUN.VALUE = numeric(1))
             for (i in seq_along(smooth_terms2)) {
                 s <- smooth_terms2[[i]]
                 pos <- nonbarpos[i]
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
+                b_lens[pos] <- ncol(Zt)
+                b_inds <- sum(b_lens[seq_along(b_lens)<i]) + seq(ncol(Zt))
+                ## FIXME: where does this get stored?
+                re$b_inds <- b_inds
                 npar <- nrow(Zt)
                 augReTrms$Ztlist[[pos]] <- Zt
                 nm <- attr(s$re$rand$Xr, "s.label")
