@@ -400,6 +400,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     doPredict = doPredict,
     whichPredict = whichPredict
   )
+  
+  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto")) 1 else 0
+  
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -423,21 +426,21 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   # theta is 0, otherwise
   # theta is 1 for rr_covstruct
-  # theta is parameterised to covariance matrix for propto
-  t01 <- function(ReStruc, condList){
+  # theta is parameterised to corr matrix for propto
+  t01 <- function(dorr, ReStruc, condList = NULL){
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
     theta <- rr0(nt)
     
-    if (nt > 0) {
-      blockTheta <- getVal(ReStruc,"blockNumTheta")
-      cov_code <- getVal(ReStruc, "blockCode")
-      thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
+    if (dorr) {
+      blockNumTheta <- getVal(ReStruc,"blockNumTheta")
+      blockCode  <- getVal(ReStruc, "blockCode")
+      thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
       tl <- split(theta, thetaseq)
-      for(i in seq_along(cov_code)){
-        if(cov_code[[i]] == 9) # if rr start theta at 1
-          tl[[i]] <- rep(1, blockTheta[i])
-        else if(cov_code[[i]] == 11) { # if propto then set theta to be matrix values
+      for(i in 1:length(blockCode)){
+        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") # if rr start theta at 1
+          tl[[i]] <- rep(1, blockNumTheta[i])
+        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="propto") { # if propto then set theta to be transformed values
           ## FIX ME:: Will need to add in a check to see if it's the right dimensions
           ## FIX ME:: Might have to do that at getReStruc?
           a <- condList[["aa"]][[i]]
@@ -456,8 +459,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),
                        betad   = rep(betad_init, max(ncol(Xd),ncol(XdS))),
-                       theta   = t01(condReStruc, condList),
-                       thetazi = t01(ziReStruc, ziList),
+                       theta   = t01(dorr = rrVal(condList), condReStruc, condList),
+                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),
                        psi  = psi_init
                      ))
 
@@ -477,6 +480,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
+  ### Change mapping for propto - currently only done for condReStruc
   if(any(condList$ss == "propto")){
     mapArg.orig <- mapArg
     mapArg <- map.theta.propto(condReStruc, mapArg.orig)
@@ -850,7 +854,7 @@ map.theta.propto <- function(ReStruc, map){
   cov_code <- getVal(ReStruc, "blockCode")
   thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
   tl <- split(map.theta, thetaseq)
-  for(i in seq_along(cov_code)){
+  for(i in 1:length(cov_code)){
     if(cov_code[[i]] == 11) {
       tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
     }
