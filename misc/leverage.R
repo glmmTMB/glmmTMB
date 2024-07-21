@@ -14,7 +14,10 @@
 ## A simple standalone RTMB example
 ######################################################################
 
+do_slow <- FALSE
+
 library(RTMB)
+library(Matrix)
 
 parameters <- list(
     mua=0,          ## Mean slope
@@ -70,12 +73,14 @@ Hat <- MakeTape(function(y) {
 zx <- Hat$jacobian(Hat$par())
 ## TODO: Compare with numDeriv::jacobian
 
+L_rtmb <- diag(zx)
+
 ######################################################################
 ## glmmTMB implementation
 ######################################################################
-library(Matrix)
 library(glmmTMB)
 library(RTMB)
+library(Matrix)
 
 ## @param diag Get diagonal only?
 leverage <- function(fm, diag=TRUE) {
@@ -198,6 +203,10 @@ leverage <- function(fm, diag=TRUE) {
 ## Test it
 fm <- glmmTMB(weight ~ diag(Time | Chick) + Time, data=ChickWeight)
 leverage(fm)
+
+## Warning message:
+## In GetTape(obj) : Permanently changing the global pointer of DLL 'glmmTMB'
+
 ## Check the first element:
 ## i <- 1
 ## myf <- function(eps) {
@@ -207,3 +216,41 @@ leverage(fm)
 ## }
 ## myf(0)
 ## numDeriv::jacobian(myf, 0)
+
+
+fm0 <- glmmTMB(weight ~ Time + diag(1 + Time|Chick), data=ChickWeight)
+head(predict(fm0))
+L_gt <- leverage(fm0)
+## internals of model **NOT** restored ...
+head(predict(fm0))
+fm1 <- lme4::lmer(weight ~ Time + (1 + Time || Chick), data=ChickWeight)
+L_l4 <- hatvalues(fm1)
+
+plot(L_gt,L_l4)
+
+if (do_slow) {
+    ## ridiculous brute force (finite diffs)
+    ## refit
+    fm0 <- glmmTMB(weight ~ Time + diag(1 + Time|Chick), data=ChickWeight)
+    nn <- nrow(ChickWeight)
+    L_brute_gt <- numeric(nn)
+    L_brute_l4 <- numeric(nn)
+    eps <- 0.001
+    if (interactive()) pb <- txtProgressBar(max=nn, style = 3)
+    for (i in 1:nn) {
+        if (interactive()) setTxtProgressBar(pb, i)
+        newresp <- ChickWeight$weight
+        newresp[i] <- newresp[i]+eps
+        ## test fast_refit branch???
+        L_brute_gt[i] <- (predict(refit(fm0, newresp))[i] - predict(fm0)[i])/eps
+        L_brute_l4[i] <- (predict(refit(fm1, newresp))[i] - predict(fm1)[i])/eps
+    }
+    if (interactive()) close(pb)
+    levmat <- cbind(L_brute_gt, L_brute_l4, L_gt, L_l4, L_rtmb)
+    saveRDS(levmat, file = "levmat.rds")
+} else {
+    levmat <- readRDS("levmat.rds")
+}
+pairs(levmat, gap = 0,
+      lower.panel = function(...) { points(...); abline(a=0, b=1, col = 2) },
+      upper.panel = NULL)
