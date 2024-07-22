@@ -1443,12 +1443,17 @@ glmmTMBControl <- function(optCtrl=NULL,
             parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
         }
         if (is.null(names(parallel))) stop(sQuote("parallel"), "list passed to glmmTMBControl() must be named")
-        if (is.na(parallel$n) || parallel$n < 1) {
-            stop("Number of parallel threads must be a numeric >= 1")
+        ## FIXME: more elegant way to handle possible parallel arg cases (e.g. n only, autopar only)
+        if (length(parallel$n) == 0) {
+            parallel$n <- getOption("glmmTMB.cores", 1L)
+        } else {
+            if (is.na(parallel$n) || parallel$n < 1) {
+                stop("Number of parallel threads must be a numeric >= 1")
+            }
+            parallel$n <- as.integer(parallel$n)
         }
-        parallel$n <- as.integer(parallel$n)
     }
-
+    
     rank_check <- match.arg(rank_check)
     conv_check <- match.arg(conv_check)
 

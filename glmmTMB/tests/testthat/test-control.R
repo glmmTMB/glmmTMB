@@ -78,3 +78,9 @@ test_that("parallel regions", {
 
 
 })
+
+test_that("autopar-only parallel", {
+    m1 <- glmmTMB(count ~ mined + (1|site), family = poisson, data = Salamanders)
+    m2 <- update(m1, control = glmmTMBControl(parallel = list(autopar = TRUE)))
+    expect_equal(fixef(m1), fixef(m2))
+})
