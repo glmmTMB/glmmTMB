@@ -1,3 +1,13 @@
+mk_pop_pred <- function(re.form) {
+    pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
+                           identical(re.form, NA)))
+    if (!(is.null(re.form) || pop_pred)) {
+        stop("re.form must equal NULL, NA, or ~0")
+    }
+    pop_pred
+}
+
+
 ##' Extract Fixed Effects
 ##'
 ##' Extract fixed effects from a fitted \code{glmmTMB} model.
@@ -689,12 +699,12 @@ model.frame.glmmTMB <- function(formula, ...) {
     formula$frame
 }
 
-
 ##' Compute residuals for a glmmTMB object
 ##'
 ##' @param object a \dQuote{glmmTMB} object
 ##' @param type (character) residual type
 ##' @param \dots for method compatibility (unused arguments will throw an error)
+##' @inheritParams predict.glmmTMB
 ##' @importFrom stats fitted model.response residuals
 ##' @details
 ##' \itemize{
@@ -710,11 +720,13 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' details on the definition of the deviance for GLMMs.
 ##' }
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), re.form = NULL, ...) {
     check_dots(...)
+    pop_pred <- mk_pop_pred(re.form)
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act, model.response(object$frame))
+    mu <- predict(object, re.form = re.form, fast = !pop_pred, type = "response")
     wts <- model.weights(model.frame(object))
     if (is.null(wts)) wts <- rep(1, length(mr))
     ## binomial model specified as (success,failure)
@@ -728,7 +740,6 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         mr <- as.numeric(as.numeric(mr)>1)
         names(mr) <- nn  ## restore stripped names
     }
-    mu <- fitted(object)
     r <- mr - mu
     fam <- family(object)
     res <- switch(type,
@@ -758,8 +769,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                vformals <- names(formals(v))
                # construct argument list for variance function based on its formals
                # some argument names vary across families
-               mu <- predict(object, type = "conditional")
-               theta <- predict(object, type = "disp")
+               theta <- predict(object, type = "disp", re.form = re.form)
                shape <- family_params(object)
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
@@ -773,7 +783,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                    # handle families where variance() returns the scaled variance
                    vv <- vv * theta^2
                  }
-                 zprob <- predict(object, type = "zprob")
+                 zprob <- predict(object, type = "zprob", re.form = re.form)
                  # if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
                  #   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
                  #          = Var[X] * E[B] + E[X]^2 * Var[B]
@@ -1106,8 +1116,8 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         parallel <- plist$parallel
         do_parallel <- plist$do_parallel
         FUN <- function(n) {
-          n_orig <- openmp(n = object$modelInfo$parallel)
-          on.exit(openmp(n_orig))
+          n_orig <- do.call(openmp, object$modelInfo$parallel)
+          on.exit(do.call(openmp, n_orig))
           TMB::tmbroot(obj=object$obj, name=n, target=0.5*qchisq(level,df=1),
                        ...)
         }
@@ -1305,6 +1315,7 @@ noSim <- function(x) {
 ##' @param object glmmTMB fitted model
 ##' @param nsim number of response lists to simulate. Defaults to 1.
 ##' @param seed random number seed
+##' @param re.form (Not yet implemented)
 ##' @param ... extra arguments
 ##' @details Random effects are also simulated from their estimated distribution.
 ##' Currently, it is not possible to condition on estimated random effects.
@@ -1313,11 +1324,20 @@ noSim <- function(x) {
 ##' In the binomial family case each simulation is a two-column matrix with success/failure.
 ##' @importFrom stats simulate
 ##' @export
-simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
+simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
     if(noSim(object$modelInfo$family$family))
     {
     	stop("Simulation code has not been implemented for this family")
     }
+
+    pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
+                                       identical(re.form, NA)))
+    if (!(is.null(re.form) || pop_pred)) {
+        stop("re.form must equal NULL, NA, or ~0")
+    }
+
+    if (pop_pred) stop("conditional simulation is not currently implemented")
+
     ## copied from stats::simulate.lm
     if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
         runif(1)

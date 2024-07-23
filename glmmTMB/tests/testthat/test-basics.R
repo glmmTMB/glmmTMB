@@ -6,7 +6,7 @@ stopifnot(require("testthat"),
 drop_version <- function(obj) {
     obj$modelInfo$packageVersion <- NULL
     obj$modelInfo$family$initialize <- NULL  ## updated initialization expressions
-    obj
+    obj$modelInfo$parallel <- NULL   ## parallel component changed from int to list
 }
 
 expect_equal_nover <- function(x,y,...) {

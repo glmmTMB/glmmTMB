@@ -1,0 +1,23 @@
+---
+title: "predictions, simulations, and all that"
+---
+
+This is a brain dump about the different kinds of predictions and simulations one might want to make from a fitted model, and some of the computational details that overlap/could be reused (some of this machinery is also relevant to specifying elements on which to impose prior distributions).
+
+There is also some discussion [here](https://docs.google.com/document/d/1CKQSd2gSNGCAqv4s4I0R8US1iOGP-canY0y-9iqMGqM/edit#heading=h.y5ppx0rz96at)
+
+## specifying control of "all random effects" vs. individual terms vs. components of terms
+
+* in any of the following we might want to use the same rules for every random effect in the model (analogous to `re.form = ~0`/`re.form = NA` vs. `re.form = NULL` in `lme4`)
+* we might want to use different rules for each random effect term in the model: in this case we need machinery that allows the user to specify a particular term (or terms)
+* sometimes (especially for setting priors) we might want to specify priors on particular *elements* of a random effects term, e.g. just the SD of the slopes in a random-slopes model. `re.form` also allows this level of control, e.g. `(1|f)` in a random-slopes model will set the slopes to the population-level value while setting the intercepts to their conditional means ...
+* sometimes (priors) we want to impose conditions on random effects *parameters* (SD, correlation, etc.) (`theta` values); sometimes we want to set/simulate latent variables (BLUPs/conditional models) (`b` values)
+
+## how to fix parameters
+
+* when predicting or simulating we might want to *cluster-specific* or *population-level* values, for any subset of random effect terms or components
+* for any prediction on a model with a non-identity link we might want *conditional* predictions (parameters set equal to their conditional modes for cluster-specific predictions, or latent variables set to zero for population-level predictions) or *marginal* predictions (integrate across the distribution of random effects)
+* for predicted values, we either set to `b=0`, condition on `b`, or marginalize over the distribution of `b`. The standard errors of predictions might condition some combination of `y`, `b`, and `theta` ...
+* for simulated values, we could set `b=0`, use the observed value of `b`, draw a new value of `b` from the *unconditional* distribution (i.e. conditioning only on `theta`), or draw from the *conditional* distribution (conditioning on `y`); the last choice will require more machinery, to pass the full joint precision matrix back to the TMB code (or something ...)
+* for simulations we need to (1) make sure `b` values are set to specified values (if any, for `simulate_new()`), (2) make sure `b` values are mapped, (3) set sim codes appropriately [hmm. At present we can only set sim codes at the level of a *term*, not an individual element of a term ...]
+

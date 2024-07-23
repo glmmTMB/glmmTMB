@@ -117,8 +117,8 @@ profile.glmmTMB <- function(fitted,
         function(p,s) {
             if (trace>0) cat("parameter",p,"\n")
             n_orig <- openmp(NULL)
-            openmp(n = fitted$modelInfo$parallel)
-            on.exit(openmp(n_orig))
+            do.call(openmp, fitted$modelInfo$parallel)
+            on.exit(do.call(openmp, n_orig))
             return(tmbprofile(fitted$obj,
                               name=p,
                               h=s/4,

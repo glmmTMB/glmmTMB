@@ -3,11 +3,15 @@ openmp_debug <- function() {
     getOption("glmmTMB_openmp_debug", FALSE)
 }
 
-## glmmTMB openmp controller copied from TMB (Windows needs it).
-openmp <- function (n = NULL) {
-    if (openmp_debug() && !is.null(n)) {
-        cat("setting OpenMP threads to ", n, "\n")
-    }
+## glmmTMB openmp controller copied from TMB (Windows needs it),
+## and it also lets us have more control of debug tracing etc.
+openmp <- function (n = NULL, autopar = NULL) {
+    report <-  (openmp_debug() && (!is.null(n) || !is.null(autopar)))
+    ## use deparse() etc. to handle cat(NULL), possible attributes/naming
+    prefix <- if (is.null(n) && is.null(autopar)) "current OpenMP settings:" else "setting OpenMP:"
+    if (report) cat(prefix, " threads = ", deparse(unname(c(n))),
+                    ", autopar = ", deparse(autopar), "\n",
+                    sep = "")
     ## FIXME: redundant with integer-setting within omp_num_threads C++ def in utils.cpp
     null_arg <- is.null(n)
     if (!null_arg) n <- as.integer(n)
@@ -17,7 +21,8 @@ openmp <- function (n = NULL) {
       w <- options(warn = -1)
       on.exit(options(warn = w[["warn"]]))
     }
-    TMB::openmp(n, DLL="glmmTMB")
+    tt <- TMB::openmp(n, autopar = autopar, DLL="glmmTMB")
+    return(list(n = c(tt), autopar = attr(tt, "autopar")))
 }
 
 ##' Change starting parameters, either by residual method or by user input (start)
@@ -403,6 +408,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
 
   data.tmb <- namedList(
+    ## fixed-effect (X) and random-effect (Z), dense and sparse model matrices    
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
     Z = condList$Z,
@@ -861,7 +867,7 @@ getGrpVar <- function(x)
 ##' Calculates number of random effects, number of parameters,
 ##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
-##' @param ss a character string indicating a valid covariance structure.
+##' @param ss a vector of character strings indicating a valid covariance structure (one for each RE term).
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 ##' default is to use an unstructured  variance-covariance
 ##' matrix (\code{"us"}) for all blocks).
@@ -873,6 +879,7 @@ getGrpVar <- function(x)
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
+##' \item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
@@ -888,80 +895,83 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
   ## cnms: list of column-name vectors per term
   ## flist: data frame of grouping variables (factors)
   ##   'assign' attribute gives match between RE terms and factors
-    if (is.null(reTrms)) {
-        list()
-    } else {
-        ## Get info on sizes of RE components
+    if (is.null(reTrms)) return(list())
+    
+    ## Get info on sizes of RE components
 
-        assign <- attr(reTrms$flist,"assign")
-        nreps <- vapply(assign,
-                          function(i) length(levels(reTrms$flist[[i]])),
-                          0)
-        blksize <- diff(reTrms$Gp) / nreps
-        ## figure out number of parameters from block size + structure type
+    assign <- attr(reTrms$flist,"assign")
+    nreps <- vapply(assign,
+                    function(i) length(levels(reTrms$flist[[i]])),
+                    0)
+    blksize <- diff(reTrms$Gp) / nreps
+    ## figure out number of parameters from block size + structure type
 
-        if (is.null(ss)) {
-            ss <- rep("us",length(blksize))
-        }
-
-        if ( any(is.na(aa[ss=="rr"]))) {
-          aa0 <- which(is.na(aa) & ss=="rr")
-          aa[aa0] <- 2 #set default rank to 2 if it's not specified
-        }
-
-        if ( is.null(aa)) {
-          aa <- rep(0,length(blksize)) #set rank to 0
-        }
-
-        blkrank <- aa
-        covCode <- .valid_covstruct[ss]
-        
-        parFun <- function(struc, blksize, blkrank) {
-            switch(as.character(struc),
-                   "diag" = blksize, # (heterogenous) diag
-                   "us" = blksize * (blksize+1) / 2,
-                   "cs" = blksize + 1,
-                   "ar1" = 2,
-                   "ou" = 2,
-                   "exp" = 2,
-                   "gau" = 2,
-                   "mat" = 3, 
-                   "toep" = 2 * blksize - 1,
-                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "homdiag" = 1  ## (homogeneous) diag
-                   )
-        }
-        blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
-
-        ans <- list()
-        for (i in seq_along(ss)) {
-            tmp <- list(blockReps = nreps[i],
-                        blockSize = blksize[i],
-                        blockNumTheta = blockNumTheta[[i]],
-                        blockCode = covCode[i]
-                        )
-            if(ss[i] == "ar1") {
-                ## FIXME: Keep this warning ?
-                if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                    warning("AR1 not meaningful with intercept")
-                if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                    stop("ar1() expects a single, factor variable as the time component")
-                }
-            } else if(ss[i] == "ou"){
-                times <- parseNumLevels(reTrms$cnms[[i]])
-                if (ncol(times) != 1)
-                    stop("'ou' structure is for 1D coordinates only.")
-                if (is.unsorted(times, strictly=TRUE))
-                    stop("'ou' is for strictly sorted times only.")
-                tmp$times <- drop(times)
-            } else if(ss[i] %in% c("exp", "gau", "mat")){
-                coords <- parseNumLevels(reTrms$cnms[[i]])
-                tmp$dist <- as.matrix( dist(coords) )
-            }
-            ans[[i]] <- tmp
-        }
-        setNames(ans, names(reTrms$Ztlist))
+    if (is.null(ss)) {
+        ss <- rep("us",length(blksize))
     }
+
+    if ( any(is.na(aa[ss=="rr"]))) {
+        aa0 <- which(is.na(aa) & ss=="rr")
+        aa[aa0] <- 2 #set default rank to 2 if it's not specified
+    }
+
+    if ( is.null(aa)) {
+        aa <- rep(0,length(blksize)) #set rank to 0
+    }
+
+    blkrank <- aa
+    covCode <- .valid_covstruct[ss]
+
+    ## set simulation code to 'random' for all RE by default
+    simCode <- rep(.valid_simcode[["random"]], length(ss))
+        
+    parFun <- function(struc, blksize, blkrank) {
+        switch(as.character(struc),
+               "diag" = blksize, # (heterogenous) diag
+               "us" = blksize * (blksize+1) / 2,
+               "cs" = blksize + 1,
+               "ar1" = 2,
+               "ou" = 2,
+               "exp" = 2,
+               "gau" = 2,
+               "mat" = 3, 
+               "toep" = 2 * blksize - 1,
+               "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+               "homdiag" = 1  ## (homogeneous) diag
+               )
+    }
+    blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+
+    ans <- list()
+    for (i in seq_along(ss)) {
+        tmp <- list(blockReps = nreps[i],
+                    blockSize = blksize[i],
+                    blockNumTheta = blockNumTheta[[i]],
+                    blockCode = covCode[i],
+                    simCode = simCode[i]
+                    )
+        if(ss[i] == "ar1") {
+            if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                warning("AR1 not meaningful with intercept")
+            if (length(.getXlevels(reXterms[[i]],fr))!=1) {
+                stop("ar1() expects a single, factor variable as the time component")
+            }
+        } else if(ss[i] == "ou"){
+            times <- parseNumLevels(reTrms$cnms[[i]])
+            if (ncol(times) != 1)
+                stop("'ou' structure is for 1D coordinates only.")
+            if (is.unsorted(times, strictly=TRUE))
+                stop("'ou' is for strictly sorted times only.")
+            tmp$times <- drop(times)
+        } else if(ss[i] %in% c("exp", "gau", "mat")){
+            coords <- parseNumLevels(reTrms$cnms[[i]])
+            tmp$dist <- as.matrix( dist(coords) )
+        }
+        ans[[i]] <- tmp
+    }
+    names(ans) <- names(reTrms$Ztlist)
+
+    return(ans)
 }
 
 .noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
@@ -1360,13 +1370,18 @@ glmmTMB <- function(
 ##'                  robustness when a model has many fixed effects
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
-##' @param parallel  (integer) Set number of OpenMP threads to evaluate
-##' the negative log-likelihood in parallel. The default is to evaluate
-##' models serially (i.e. single-threaded); users can set a default value
-##' for an R session via \code{options(glmmTMB.cores=<value>)}. At present
-##' reduced-rank models (i.e., a covariance structure using \code{rr(...)})
-##' cannot be fitted in parallel; the number of threads will be automatically
+##' @param parallel  (named list with an integer value \code{n} and a logical value \code{autopar},
+##' e.g. \code{list(n=4L, autopar=TRUE)}) Set number of OpenMP threads to evaluate
+##' the negative log-likelihood in parallel, and determine whether to use auto-parallelization
+##' (see \code{\link[TMB]{openmp}}). The default is to evaluate
+##' models serially (i.e. single-threaded); users can set default values
+##' for an R session via \code{options(glmmTMB.cores=<value>, glmmTMB.autopar=<value>)}.
+##' An integer number of cores (only) can be passed instead of a list, in which case the default or
+##' previously set value of \code{autopar} will be used.
+##' At present reduced-rank models (i.e., a covariance structure using \code{rr(...)})
+##' cannot be fitted in parallel unless \code{autopar=TRUE}; the number of threads will be automatically
 ##' set to 1, with a warning if this overrides the user-specified value.
+##' To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
@@ -1416,7 +1431,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = getOption("glmmTMB.cores", 1L),
+                           parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", NULL)),
                            eigval_check = TRUE,
                            ## want variance to be sqrt(eps), so sd = eps^(1/4)
                            zerodisp_val=log(.Machine$double.eps)/4,
@@ -1429,10 +1444,14 @@ glmmTMBControl <- function(optCtrl=NULL,
     }
     ## Make sure that we specify at least one thread
     if (!is.null(parallel)) {
-        if (is.na(parallel) || parallel < 1) {
+        if (length(parallel) == 1 && is.numeric(parallel)) {
+            parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
+        }
+        if (is.null(names(parallel))) stop(sQuote("parallel"), "list passed to glmmTMBControl() must be named")
+        if (is.na(parallel$n) || parallel$n < 1) {
             stop("Number of parallel threads must be a numeric >= 1")
         }
-        parallel <- as.integer(parallel)
+        parallel$n <- as.integer(parallel$n)
     }
 
     rank_check <- match.arg(rank_check)
@@ -1659,19 +1678,19 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     if ((has_any_rr(TMBStruc$condReStruc) ||
         has_any_rr(TMBStruc$ziReStruc) ||
     		 has_any_rr(TMBStruc$dispReStruc)) &&
-        TMBStruc$control$parallel > 1) {
-        warning("rr() not compatible with parallel execution: setting ncores to 1")
-        TMBStruc$control$parallel <- 1
+        TMBStruc$control$parallel$n > 1 && !isTRUE(TMBStruc$control$parallel$autopar)) {
+        warning("rr() not compatible with parallel execution unless parallel$autopar=TRUE: setting ncores to 1")
+        TMBStruc$control$parallel$n <- 1
     }
 
     ## Assign OpenMP threads
     n_orig <- openmp(NULL)
     ## Only proceed farther if OpenMP *is* supported ...
-    if (n_orig > 0) {
-        openmp(n = control$parallel)
+    if (n_orig$n > 0) {
+        with(control$parallel, openmp(n = n, autopar = autopar))
         on.exit({
-          openmp(n = n_orig)
-          })
+            do.call(openmp, n_orig)
+        })
     }
 
     if (control $ collect) {

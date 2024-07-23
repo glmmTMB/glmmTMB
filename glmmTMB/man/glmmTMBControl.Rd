@@ -10,7 +10,8 @@ glmmTMBControl(
   optimizer = nlminb,
   profile = FALSE,
   collect = FALSE,
-  parallel = getOption("glmmTMB.cores", 1L),
+  parallel = list(n = getOption("glmmTMB.cores", 1L), autopar =
+    getOption("glmmTMB.autopar", NULL)),
   eigval_check = TRUE,
   zerodisp_val = log(.Machine$double.eps)/4,
   start_method = list(method = NULL, jitter.sd = 0),
@@ -31,13 +32,18 @@ robustness when a model has many fixed effects}
 \item{collect}{(logical) Experimental option to improve speed by
 recognizing duplicated observations.}
 
-\item{parallel}{(integer) Set number of OpenMP threads to evaluate
-the negative log-likelihood in parallel. The default is to evaluate
-models serially (i.e. single-threaded); users can set a default value
-for an R session via \code{options(glmmTMB.cores=<value>)}. At present
-reduced-rank models (i.e., a covariance structure using \code{rr(...)})
-cannot be fitted in parallel; the number of threads will be automatically
-set to 1, with a warning if this overrides the user-specified value.}
+\item{parallel}{(named list with an integer value \code{n} and a logical value \code{autopar},
+e.g. \code{list(n=4L, autopar=TRUE)}) Set number of OpenMP threads to evaluate
+the negative log-likelihood in parallel, and determine whether to use auto-parallelization
+(see \code{\link[TMB]{openmp}}). The default is to evaluate
+models serially (i.e. single-threaded); users can set default values
+for an R session via \code{options(glmmTMB.cores=<value>, glmmTMB.autopar=<value>)}.
+An integer number of cores (only) can be passed instead of a list, in which case the default or
+previously set value of \code{autopar} will be used.
+At present reduced-rank models (i.e., a covariance structure using \code{rr(...)})
+cannot be fitted in parallel unless \code{autopar=TRUE}; the number of threads will be automatically
+set to 1, with a warning if this overrides the user-specified value.
+To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.}
 
 \item{eigval_check}{Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)}
 

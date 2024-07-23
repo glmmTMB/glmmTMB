@@ -4,7 +4,7 @@
 \alias{simulate.glmmTMB}
 \title{Simulate from a glmmTMB fitted model}
 \usage{
-\method{simulate}{glmmTMB}(object, nsim = 1, seed = NULL, ...)
+\method{simulate}{glmmTMB}(object, nsim = 1, seed = NULL, re.form = NULL, ...)
 }
 \arguments{
 \item{object}{glmmTMB fitted model}
@@ -12,6 +12,8 @@
 \item{nsim}{number of response lists to simulate. Defaults to 1.}
 
 \item{seed}{random number seed}
+
+\item{re.form}{(Not yet implemented)}
 
 \item{...}{extra arguments}
 }
