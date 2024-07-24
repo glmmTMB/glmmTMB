@@ -305,9 +305,11 @@ NULL
 ##' Checks whether OpenMP has been successfully enabled for this
 ##' installation of the package. (Use the \code{parallel} argument
 ##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
-##' to specify that computations should be done in parallel.)
+##' to specify that computations should be done in parallel.) To further
+##' trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
-##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP
+##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP,
+##' @aliases openmp
 ##' @export
 omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
@@ -422,6 +424,15 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
   }
+
+  ## changed format of 'parallel' control to add autopar info
+  if (length(p <- oldfit$modelInfo$parallel) <= 1) {
+      if (!(is.null(p) || is.numeric(p))) {
+          stop("oldfit$modelInfo$parallel has an unexpected value")
+      }
+      oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
+  }
+
   ## dispersion was NULL rather than 1 in old R versions ...
   omf <- oldfit$modelInfo$family
   if (getRversion() >= "4.3.0" &&
