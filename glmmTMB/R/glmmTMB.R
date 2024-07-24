@@ -439,8 +439,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     data.tmb <- c(data.tmb, prior_struc)
 
   # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
-  dorr = rrVal(condList)
+  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto")) 1 else 0
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -461,10 +460,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
            
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
-  # theta is 0, otherwise
-  # theta is 1 for rr_covstruct
+  # theta is 0, 1 for rr_covstruct
   # theta is parameterised to corr matrix for propto
-  t01 <- function(dorr, ReStruc, condList = NULL){
+  t01 <- function(dorr, ReStruc, List = NULL){
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
     theta <- rr0(nt)
@@ -499,7 +497,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
                        theta   = t01(dorr = rrVal(condList), condReStruc, condList),
                        thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
-                       thetadisp = t01(dorr=rrVal(dispList), dispReStruc),
+                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc),
                        psi  = psi_init
                      ))
 
@@ -519,7 +517,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
-  ### Change mapping for propto - currently only done for condReStruc
+  ### Change mapping for propto - FIX ME:: currently only done for condReStruc
   if(any(condList$ss == "propto")){
     mapArg.orig <- mapArg
     mapArg <- map.theta.propto(condReStruc, mapArg.orig)
@@ -719,7 +717,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
 
         ## formula <- Reaction ~ s(Days) + (1|Subject)
-        ss <- splitForm(formula)
+        ss <- splitForm(formula, specials = c(names(.valid_covstruct), "s"))
 
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
@@ -818,11 +816,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
           }
         }
-        # aa <- ifelse(ss$reTrmClasses=="rr",
-        #              vapply(ss$reTrmAddArgs,
-        #                    get_num,
-        #                    FUN.VALUE=numeric(1)),
-        #             0)
 
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
@@ -1130,6 +1123,7 @@ binomialType <- function(x) {
 ##' \item \code{toep} (* Toeplitz)
 ##' \item \code{rr} (reduced rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
+##' \item \code{propto} (* proportional to specified correlation)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1313,7 +1307,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f),delete=FALSE)
+        f <- noSpecials(sub_specials(f),delete=FALSE, specials = c(names(.valid_covstruct), "s"))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
