@@ -34,12 +34,8 @@ devtools::load_all("glmmTMB")
 data("Nile")
 ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
 
-debug(mkTMBStruc)
-debug(getXReTrms)
-
 sm1 <- glmmTMB(val ~ s(time, bs = "tp"), data = ndat,
                 REML = TRUE, start = list(theta = 5))
-
 
 lapply(sm1$modelInfo$reTrms,
        \(y) lapply(y$smooth_info, \(x) x$re$beta_ind))

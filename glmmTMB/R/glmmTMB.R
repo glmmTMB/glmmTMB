@@ -767,7 +767,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
                 b_lens[pos] <- ncol(Zt)
                 b_ind <- sum(b_lens[seq_along(b_lens)<i]) + seq(ncol(Zt))
-                browser()
                 ## perhaps redundant with b indices stored elsewhere
                 smooth_terms2[[i]]$re$b_ind <- b_ind
                 npar <- nrow(Zt)
@@ -778,7 +777,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                 augReTrms$cnms[[pos]] <- paste0("dummy", seq(npar))
                 names(augReTrms$cnms)[pos] <- "dummy"
             }
-            browser()
             ## store smooth info in relevant spots
             for (i in seq_along(nonbarpos)) {
                 augReTrms$smooth_info[[nonbarpos[i]]] <- smooth_terms2[[i]]
