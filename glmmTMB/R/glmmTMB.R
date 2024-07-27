@@ -327,7 +327,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
-    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
+    condList  <- getXReTrms(formula, mf, fr, type="coNditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)
     ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
                             old_smooths = old_smooths$zi)
@@ -653,7 +653,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
-<<<<<<< HEAD
             for (si in seq_along(smooth_terms2)) {
                 cnm <- colnames(X)  ## need to update cnm after each added term ...
                 s <- smooth_terms2[[si]]
@@ -760,17 +759,17 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  ... which bits are actually used hereafter?
             avec[nonbarpos] <-  length(augReTrms$flist)
             attr(augReTrms$flist, "assign") <- avec
-            browser()
-            ncol_fun <- function(x) if (is.null(x)) 0 else ncol(x))
+            ncol_fun <- function(x) if (is.null(x)) 0 else ncol(x)
             b_lens <- vapply(augReTrms$Ztlist, ncol_fun, FUN.VALUE = numeric(1))
             for (i in seq_along(smooth_terms2)) {
                 s <- smooth_terms2[[i]]
                 pos <- nonbarpos[i]
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
                 b_lens[pos] <- ncol(Zt)
-                b_inds <- sum(b_lens[seq_along(b_lens)<i]) + seq(ncol(Zt))
-                ## FIXME: where does this get stored?
-                re$b_inds <- b_inds
+                b_ind <- sum(b_lens[seq_along(b_lens)<i]) + seq(ncol(Zt))
+                browser()
+                ## perhaps redundant with b indices stored elsewhere
+                smooth_terms2[[i]]$re$b_ind <- b_ind
                 npar <- nrow(Zt)
                 augReTrms$Ztlist[[pos]] <- Zt
                 nm <- attr(s$re$rand$Xr, "s.label")
@@ -779,6 +778,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                 augReTrms$cnms[[pos]] <- paste0("dummy", seq(npar))
                 names(augReTrms$cnms)[pos] <- "dummy"
             }
+            browser()
             ## store smooth info in relevant spots
             for (i in seq_along(nonbarpos)) {
                 augReTrms$smooth_info[[nonbarpos[i]]] <- smooth_terms2[[i]]
