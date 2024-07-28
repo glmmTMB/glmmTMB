@@ -68,7 +68,13 @@ test_that("Fitted and residuals", {
     expect_equal(unname(which(is.na(rs.ex))),napos)
     pr.rs.ex <- pr.ex + rs.ex
     expect_equal(unname(pr.rs.ex), y.na)
-    
+
+    ##
+    m1 <- glmmTMB(count ~ cover, family = gaussian, dispformula = ~cover, data = Salamanders)
+    expect_equal(mean(residuals(m1, type = "pearson")),
+                 -5.14833310763953e-05, tolerance = 1e-6)
+    expect_equal(residuals(m1, type = "pearson"),
+                 residuals(m1)/predict(m1, type = "disp"))
 })
 
 test_that("Predict", {

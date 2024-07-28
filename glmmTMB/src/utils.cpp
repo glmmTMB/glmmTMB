@@ -9,8 +9,8 @@
 extern "C"
 SEXP omp_check(void) {
 #ifdef _OPENMP
-    return ScalarLogical(1);
+    return Rf_ScalarLogical(1);
 #else
-    return ScalarLogical(0);
+    return Rf_ScalarLogical(0);
 #endif
 }

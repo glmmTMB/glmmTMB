@@ -2,18 +2,20 @@
 % Please edit documentation in R/utils.R
 \name{omp_check}
 \alias{omp_check}
+\alias{openmp}
 \title{Check OpenMP status}
 \usage{
 omp_check()
 }
 \value{
-\code{TRUE} or \code{FALSE} depending on availability of OpenMP
+\code{TRUE} or \code{FALSE} depending on availability of OpenMP,
 }
 \description{
 Checks whether OpenMP has been successfully enabled for this
 installation of the package. (Use the \code{parallel} argument
 to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
-to specify that computations should be done in parallel.)
+to specify that computations should be done in parallel.) To further
+trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 }
 \seealso{
 \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}

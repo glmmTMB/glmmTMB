@@ -264,14 +264,14 @@ struct terms_t : vector<per_term_info<Type> > {
       (*this)(i).blockNumTheta = blockNumTheta;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
-      if(!isNull(t)){
-	RObjectTestExpectedType(t, &isNumeric, "times");
+      if(!Rf_isNull(t)){
+	RObjectTestExpectedType(t, &Rf_isNumeric, "times");
 	(*this)(i).times = asVector<Type>(t);
       }
       // Optionally, pass distance matrix:
       SEXP d = getListElement(y, "dist");
-      if(!isNull(d)){
-	RObjectTestExpectedType(d, &isMatrix, "dist");
+      if(!Rf_isNull(d)){
+	RObjectTestExpectedType(d, &Rf_isMatrix, "dist");
 	(*this)(i).dist = asMatrix<Type>(d);
       }
     }
