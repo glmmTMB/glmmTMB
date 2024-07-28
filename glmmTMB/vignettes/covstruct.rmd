@@ -20,7 +20,6 @@ library(knitr)
 library(glmmTMB)
 library(MASS)    ## for mvrnorm()
 library(TMB)     ## for tmbprofile()
-library(mvabund) ## for spider data
 ## devtools::install_github("kaskr/adcomp/TMB")  ## get development version
 knitr::opts_chunk$set(echo = TRUE, eval=if (exists("params")) params$EVAL else FALSE)
 do_image <- exists("params") && params$EVAL
@@ -642,28 +641,15 @@ One of our main motivations for adding this variance-covariance structure is to 
 A GLVM can be fit by specifying a reduced rank (`rr`) covariance structure. For example, the code for modeling the mean abundance against taxa and to account for the correlation between taxa using two latent variables is as follows
 
 ```{r rr_ex, eval = FALSE}
-if (require(mvabund)) {
-    data(spider)
-    ## organize data into long format
-    sppTot <- sort(colSums(spider$abund), decreasing = TRUE)
-    tmp <- cbind(spider$abund, spider$x)
-    tmp$id <- 1:nrow(tmp)
-    spiderDat <- reshape(tmp,
-                         idvar = "id",
-                         timevar = "Species",
-                         times =  colnames(spider$abund),
-                         varying = list(colnames(spider$abund)),
-                         v.names = "abund",
-                         direction = "long")
-    ## fit rank-reduced models with varying dimension
-    fit_list <- lapply(2:10,
-                       function(d) {
-                           fit.rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = d),
-                                             data = spiderDat)
-                       })
-    ## compare fits via AIC
-    aic_vec <- sapply(fit_list, AIC)
-    aic_vec - min(aic_vec, na.rm = TRUE)
+## fit rank-reduced models with varying dimension
+fit_list <- lapply(2:10,
+                   function(d) {
+                       glmmTMB(abund ~ Species + rr(Species + 0|id, d = d),
+                               data = spider_long)
+                   })
+## compare fits via AIC
+aic_vec <- sapply(fit_list, AIC)
+aic_vec - min(aic_vec, na.rm = TRUE)
 ```
 
 The left hand side of the bar `taxa + 0` corresponds to a factor loading matrix that accounts for the correlations among taxa. The right hand side of the bar splits the above specification independently among sites. The `d` is a non-negative integer (which defaults to 2). 
