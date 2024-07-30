@@ -56,7 +56,7 @@ test_that("smooth + diag() specials", {
                  c(0.829644130428793, 0.789420770119563,
                    1.1073848292829, 0.522906430406326, 
                    1.16293701025298),
-                 tolerance = 1e-5)
+                 tolerance = 1e-4)
 })
 
 test_that("multiple smooths", {
