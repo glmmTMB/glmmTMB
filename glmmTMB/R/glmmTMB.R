@@ -869,12 +869,13 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
     namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms)
 }
 
-##'Get theta parameterisation of a covariance structure
+##' Get theta parameterisation of a covariance structure
 ## from Balint Tamasi, TMB user's group list
 ## FIXME: names based on dimnames of Sigma?
 #' @param Sigma a covariance matrix
 #' @param corrs.only return only values corresponding to the correlation matrix parameters?
 #' @return the corresponding \code{theta} parameter vector
+#' @importFrom stats cov2cor
 as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
   logsd <- log(diag(Sigma))/2
   cr <- cov2cor(Sigma)
