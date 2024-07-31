@@ -621,9 +621,13 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
 
     // transforming u to b by multiplying by the loadings matrix
-    for(int i = 0; i < term.blockReps; i++){
-      vector<Type> usub = U.col(i).segment(0, rank);
-      U.col(i) = Lambda * usub;
+    // if simcode is 'fixed', do **not** multiply by loadings matrix
+    // (i.e. user is assumed to be passing the 'non-spherical' latent variables)
+    if (term.simCode != fix_simcode) {
+      for(int i = 0; i < term.blockReps; i++){
+	vector<Type> usub = U.col(i).segment(0, rank);
+	U.col(i) = Lambda * usub;
+      }
     }
 
     // computing the correlation matrix and std devs
