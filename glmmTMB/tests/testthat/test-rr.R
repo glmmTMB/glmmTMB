@@ -50,7 +50,8 @@ test_that("rr model fit", {
               expect_error(glmmTMB(abund ~ Species + rr(Species + 0|id, d = junk),
                                    family = poisson,
                                    data=spiderDat_common),
-                           "can't evaluate argument 'junk'")
+                           ## use . to allow for plain or fancy quotes
+                           regexp = "can't evaluate argument .junk.")
     })
 
     test_that("rr error about non-numeric d", {
