@@ -29,7 +29,7 @@ if (require("ade4") && require("ape")) {
                  tolerance = 1e-6)
   })
   
-  if (require("ade4") && require("ape") && require(nlme)) {
+  if (require("nlme")) {
     # example taken from fixcorr
     data(lizards)
     tree <- read.tree(text=lizards$hprA)
