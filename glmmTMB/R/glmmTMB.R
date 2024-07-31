@@ -960,6 +960,7 @@ getGrpVar <- function(x)
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)
+##' getReStruc(rt2)
 ##' @importFrom stats setNames dist .getXlevels
 ##' @export
 getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
@@ -984,14 +985,17 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
             ss <- rep("us",length(blksize))
         }
 
-        getRank <- function(covCode, a){
-          if(as.character(covCode) != "9") return(0)
-          else if(is.na(a)) return(2) #default is 2
-          else return(a)
+        if (is.null(aa)) {
+            aa <- rep(NA, length(blksize))
         }
 
-        covCode <- .valid_covstruct[ss]
-        blkrank <- mapply(getRank, covCode, aa)
+        getRank <- function(cov_name, a) {
+          if (cov_name != "rr") return(0) 
+          if (is.na(a)) return(2) #default rank is 2 [FIXME: don't hard-code here; specify upstream]
+          return(a)
+        }
+
+        blkrank <- mapply(getRank, ss, aa)
         
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
@@ -1010,6 +1014,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    )
         }
         blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+
+        covCode <- .valid_covstruct[ss]
 
         ans <- list()
         for (i in seq_along(ss)) {
