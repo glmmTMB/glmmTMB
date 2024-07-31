@@ -800,7 +800,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         get_arg <- function(v) {
           if (length(v) == 1) return(NA_real_)
           payload <- v[[2]]
-          res <- tryCatch(eval(payload, envir = environment(formula)),
+          ## rabbit-hole alert. Try to evaluate payload first in model frame,
+          ##  then in formula environment (... then in parent env of
+          ##  formula env ... ??)
+          res <- tryCatch(eval(payload, envir = fr,
+                               enclos = environment(formula)),
                           error = function(e)
                             stop("can't evaluate argument ",
                                  sQuote(deparse(payload)),
