@@ -887,16 +887,16 @@ as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
   return(ret)
 }
 
-##'Set map values for theta to be fixed (NA) for propto
-## FIX Me:: Will need to adjust if map is already used
-#' @param ReStruc a covariance matrix
-#' @param corrs.only return only values corresponding to the correlation matrix parameters?
+##' Set map values for theta to be fixed (NA) for propto
+## FIXME: Will need to adjust if map is already used
+#' @param ReStruc a random effects structure
+#' @param map a list of mapped elements
 #' @return the corresponding \code{theta} parameter vector
-map.theta.propto <- function(ReStruc, map){
-  if(is.null(map))
-    params <- list()
+map.theta.propto <- function(ReStruc, map) {
+  if (is.null(map))
+      params <- list()
   else
-    params <- map
+      params <- map
   
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -913,7 +913,7 @@ map.theta.propto <- function(ReStruc, map){
       tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
     }
   }
-  map.theta <- unlist(tl, use.names = F)
+  map.theta <- unlist(tl, use.names = FALSE)
   params$theta <- factor(map.theta)
 
   return(params)

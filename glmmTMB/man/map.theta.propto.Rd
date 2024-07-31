@@ -7,9 +7,9 @@
 map.theta.propto(ReStruc, map)
 }
 \arguments{
-\item{ReStruc}{a covariance matrix}
+\item{ReStruc}{a random effects structure}
 
-\item{corrs.only}{return only values corresponding to the correlation matrix parameters?}
+\item{map}{a list of mapped elements}
 }
 \value{
 the corresponding \code{theta} parameter vector
