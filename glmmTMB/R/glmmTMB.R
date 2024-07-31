@@ -796,7 +796,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ## FIXME: make sure that eval() happens in the right environment/
         ##    document potential issues
         ## Changed from getting rank to extracting additional argument for propto
-        ## FIXME: need to change so it is consisent with current version
+        ## FIXME: need to change so it is consistent with current version
         get_arg <- function(v) {
           if (length(v) == 1) return(NA_real_)
           payload <- v[[2]]
