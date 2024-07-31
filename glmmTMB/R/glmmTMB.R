@@ -666,8 +666,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
-            cnm <- colnames(X)
             for (s in smooth_terms2) {
+                cnm <- colnames(X) ## need to update cnm after each added term ...
                 if (ncol(s$re$Xf) == 0) next
                 snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
@@ -1312,7 +1312,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f),delete=FALSE, specials = c(names(.valid_covstruct), "s"))
+        f <- noSpecials(sub_specials(f), delete=FALSE, specials = c(names(.valid_covstruct), "s"))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)

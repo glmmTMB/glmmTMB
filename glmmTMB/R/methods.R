@@ -783,15 +783,20 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                  if (length(vformals) == 1) {
                      ## handle families where variance() returns the scaled variance
                      ## FIXME: what is the logic here??
-                     vv <- vv * (theta / sigma(object))^2
-                 }
-               }
+                     if (trivialDisp(object)) {
+                         vv <- vv * (theta / sigma(object))^2
+                     } else {
+                         vv <- vv * theta^2
+                     }
+                 } ## length(vformals == 1)
+               } ## noZI
                r <- r/sqrt(vv)
                if (!is.null(wts)) {
                    r <- r * sqrt(wts)
                }
                r
-    })
+           } ## end pearson
+           ) ## end switch
     return(res)
 }
 
