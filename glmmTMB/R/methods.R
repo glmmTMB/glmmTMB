@@ -123,7 +123,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), pri
 ##' random effects terms) will have associated \code{condVar} attributes
 ##' giving the conditional variances of the random effects values.
 ##' These are in the form of three-dimensional arrays: see
-##' \code{\link{ranef.merMod}} for details. The only difference between
+##' \code{\link[lme4]{ranef.merMod}} for details. The only difference between
 ##' the packages is that the attributes are called \sQuote{postVar}
 ##' in \pkg{lme4}, vs. \sQuote{condVar} in \pkg{glmmTMB}.
 ##' \item For \code{coef.glmmTMB}: a similar list, but containing
@@ -929,7 +929,7 @@ format_perc <- function (probs, digits) {
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
 ##' @param include_nonest include dummy rows for non-estimated (mapped, rank-deficient) parameters?
-##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
+##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link[TMB]{tmbprofile}}) or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
