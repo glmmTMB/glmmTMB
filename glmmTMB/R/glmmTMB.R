@@ -707,7 +707,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
 
         ## formula <- Reaction ~ s(Days) + (1|Subject)
-        ss <- splitForm(formula)
+        ss <- splitForm(formula, specials = c(names(.valid_covstruct), "s"))
 
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
@@ -1246,7 +1246,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f),delete=FALSE)
+        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), "s"))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
