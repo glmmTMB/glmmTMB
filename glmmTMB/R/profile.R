@@ -14,7 +14,7 @@
 #' @param trace print tracing information? If \code{trace=FALSE} or 0,
 #' no tracing; if \code{trace=1}, print names of parameters currently
 #' being profiled; if \code{trace>1}, turn on tracing for the
-#' underlying \code{\link{tmbprofile}} function
+#' underlying \code{\link[TMB]{tmbprofile}} function
 #' @param stderr standard errors to use as a scaling factor when picking step
 #' sizes to compute the profile; by default (if \code{stderr} is
 #' \code{NULL}, or \code{NA} for a particular element),

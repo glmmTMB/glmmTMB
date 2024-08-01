@@ -154,6 +154,10 @@ sm1 <- glmmTMB(val ~ s(time), data = ndat,
                REML = TRUE, start = list(theta = 5))
 plot(val ~ time, data = ndat)
 lines(ndat$time, predict(sm1))
+
+## reduced-rank model
+m1_rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+                              data = spider_long)
 }
 }
 \references{
