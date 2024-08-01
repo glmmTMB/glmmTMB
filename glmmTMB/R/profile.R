@@ -19,7 +19,7 @@
 #' sizes to compute the profile; by default (if \code{stderr} is
 #' \code{NULL}, or \code{NA} for a particular element),
 #' uses the estimated (Wald) standard errors of the parameters
-#' @param ... additional arguments passed to \code{\link{tmbprofile}}
+#' @param ... additional arguments passed to \code{\link[TMB]{tmbprofile}}
 #' @return An object of class \code{profile.glmmTMB}, which is also a
 #' data frame, with columns \code{.par} (parameter being profiled),
 #' \code{.focal} (value of focal parameter), value (negative log-likelihood).
