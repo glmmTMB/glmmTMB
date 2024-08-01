@@ -176,36 +176,36 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
     reStruc <- object$modelInfo$reStruc[[paste0(listname, "ReStruc")]] ## random-effects structure
     flist <- object$modelInfo$reTrms[[listname]]$flist ## list of grouping variables
     levs <- lapply(flist, levels)
-    if (!is.null(cnms)) {  ## FIXME: better test?
-      asgn <- attr(flist, "assign")
-      ## FIXME: blockReps/blockSize etc. _should_ be stored as integers ...
-      nc <- vapply(reStruc, function(x) x$blockSize, numeric(1)) ## number of RE params per block
-      nb <- vapply(reStruc, function(x) x$blockReps, numeric(1)) ## number of blocks per RE (may != nlevs in some cases)
-      nbseq <- rep.int(seq_along(nb), nb * nc)       ## splitting vector
-      ml <- split(x, nbseq)
-      for (i in seq_along(ml)) {
-          ml[[i]] <- matrix(ml[[i]], ncol = nc[i], byrow = TRUE,
-                            dimnames = list(NULL, cnms[[i]]))
-      }
-      if (!is.null(sd)) {
-          sd <- split(sd, nbseq)
-          for (i in seq_along(sd)) {
-              a <- array(NA, dim=c(nc[i], nc[i], nb[i]))
-              ## fill in diagonals: off-diagonals will stay NA (!)
-              ## unless we bother to retrieve conditional covariance info
-              ## from the fit
-              ## when nc>1, what order is the sd vector in?
-              ## guessing, level-wise
-              for (j in seq(nb[i])) {
-                  a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
-                      (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
-              }
-              sd[[i]] <- a
-          }
-      }
-      ## combine RE matrices from all terms with the same grouping factor
-      x <- lapply(seq_along(flist),
-                  function(i) {
+    if (is.null(cnms)) return(list())     ## model with no random effects ...
+    asgn <- attr(flist, "assign")
+    ## FIXME: blockReps/blockSize etc. _should_ be stored as integers ...
+    nc <- vapply(reStruc, function(x) x$blockSize, numeric(1)) ## number of RE params per block
+    nb <- vapply(reStruc, function(x) x$blockReps, numeric(1)) ## number of blocks per RE (may != nlevs in some cases)
+    nbseq <- rep.int(seq_along(nb), nb * nc)       ## splitting vector
+    ml <- split(x, nbseq)
+    for (i in seq_along(ml)) {
+        ml[[i]] <- matrix(ml[[i]], ncol = nc[i], byrow = TRUE,
+                          dimnames = list(NULL, cnms[[i]]))
+    }
+    if (!is.null(sd)) {
+        sd <- split(sd, nbseq)
+        for (i in seq_along(sd)) {
+            a <- array(NA, dim=c(nc[i], nc[i], nb[i]))
+            ## fill in diagonals: off-diagonals will stay NA (!)
+            ## unless we bother to retrieve conditional covariance info
+            ## from the fit
+            ## when nc>1, what order is the sd vector in?
+            ## guessing, level-wise
+            for (j in seq(nb[i])) {
+                a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
+                    (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
+            }
+            sd[[i]] <- a
+        }
+    } ## !is.null(sd)
+    ## combine RE matrices from all terms with the same grouping factor
+    x <- lapply(seq_along(flist),
+                function(i) {
                     m <- ml[asgn == i]
                     b2 <- vapply(m, nrow, numeric(1))
                     ub2 <- unique(b2)
@@ -218,34 +218,52 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
                                row.names = rnms,
                                check.names = FALSE)
 
-          if (!is.null(sd)) {
-              ## attach conditional variance info
-              ## called "condVar", *not* "postVar" (contrast to lme4)
-              attr(d, "condVar") <- if (length(w <- which(asgn==i))>1) {
-                                        ## FIXME: set names?
-                                        sd[w]  ## if more than one term, list
-                                  } else sd[[w]]  ## else just the array
-          }
-          return(d)
-      })
-      names(x) <- names(flist)
-      return(x)
-    } ## if !is.null(cnms)
-    else {
-      list()
-    }
+                    if (!is.null(sd)) {
+                        ## attach conditional variance info
+                        ## called "condVar", *not* "postVar" (contrast to lme4)
+                        attr(d, "condVar") <- if (length(w <- which(asgn==i))>1) {
+                                                  ## FIXME: set names?
+                                                  sd[w]  ## if more than one term, list
+                                              } else sd[[w]]  ## else just the array
+                    }
+                    return(d)
+                })
+    names(x) <- names(flist)
+    return(x)
   } ## arrange()
 
   pl <- getParList(object)  ## see VarCorr.R
+
+  all_blockcodes <- unlist(lapply(object$modelInfo$reStruc,
+                                function(x) vapply(x, function(y) y[["blockCode"]],
+                                                   numeric(1))))
+  has_rr <- any(all_blockcodes == .valid_covstruct[["rr"]])
+  ## FIXME: test what happens if condVar is FALSE and/or we run this on a model without RE?
+  ## FIXME: could probably simplify/collapse further.
+  ##  Use predict("latent") unconditionally?
   if (condVar && hasRandom(object))  {
-      ss <- summary(object$sdr,"random")
-      sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
-                  bzi=ss[rownames(ss)=="bzi","Std. Error"],
-      						bdisp=ss[rownames(ss)=="bdisp","Std. Error"])
-  }  else sdl <- NULL
+      ss <- summary(object$sdr, "random")
+      ## use sapply instead of lapply for USE.NAMES
+      ## use sapply instead of vapply for uneven-length results
+      inds <- sapply(c("b", "bzi", "bdisp"),
+                     function(x) which(rownames(ss)==x),
+                     simplify = FALSE,
+                     USE.NAMES = TRUE)
+      if (has_rr) {
+          ## for rr(), we need to fill in the *computed* latent variables and their SE
+          pred <- predict(object, type = "latent", se.fit = TRUE)
+          sdl <- list()
+          for (x in names(inds)) {
+              sdl[[x]] <- pred$se.fit[inds[[x]]]
+              pl[[x]] <- pred$fit[inds[[x]]]
+          }
+      } else {
+          sdl <- lapply(inds, function(x) ss[x, "Std. Error"])
+      }
+  } else sdl <- NULL
   structure(list(cond = arrange(pl$b, sdl$b, "cond"),
                  zi   = arrange(pl$bzi, sdl$bzi, "zi"),
-  							 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
+                 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
             class = "ranef.glmmTMB")
 }
 
