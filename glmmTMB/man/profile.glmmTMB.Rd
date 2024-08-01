@@ -53,7 +53,7 @@ underlying \code{\link[TMB]{tmbprofile}} function}
 
 \item{cl}{cluster to use for parallel computation}
 
-\item{...}{additional arguments passed to \code{\link{tmbprofile}}}
+\item{...}{additional arguments passed to \code{\link[TMB]{tmbprofile}}}
 
 \item{object}{a fitted profile (\code{profile.glmmTMB}) object}
 
