@@ -527,7 +527,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             fr, se, call, verbose, REML, map, sparseX, priors))
 }
 
-mgcv_specials <- c("s", "te", "ti")
+mgcv_specials <- c("s", "te", "ti", "t2")
 
 ##' Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
@@ -821,11 +821,17 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             tt
         }
 
-        ## HACK: should duplicate 'homdiag' definition, keep it as 's' (or call it 'mgcv_smooth")
+        ## HACK: consider duplicating 'homdiag' definition,
+        ##  keep it as 's' (or call it 'mgcv_smooth")
         ##  so we can recognize it.
         ## Here, we're using the fact that the ...AddArgs stuff is still in an unevaluated form
+        is_smooth <- function(a) {
+            r <- vapply(mgcv_specials, \(s) identical(head(a), as.symbol(s)), FUN.VALUE = logical(1))
+            any(r)
+        }
+                
         reXterms <- Map(function(f, a) {
-            if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
+            if (is_smooth(a)) NA else termsfun(f)
         }, ss$reTrmFormulas, ss$reTrmAddArgs)
 
         ss <- unlist(ss$reTrmClasses)
@@ -1245,7 +1251,8 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), mgcv_specials))
+        f <- sub_specials(f, specials = c("|", "||", mgcv_specials))
+        f <- noSpecials(f, delete=FALSE, , specials = c(names(.valid_covstruct), mgcv_specials))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
