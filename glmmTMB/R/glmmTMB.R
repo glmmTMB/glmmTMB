@@ -527,6 +527,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
             fr, se, call, verbose, REML, map, sparseX, priors))
 }
 
+mgcv_specials <- c("s", "te", "ti")
+
 ##' Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
 ##' @param mf matched call
@@ -555,7 +557,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
     has_re <- !is.null(findbars_x(formula))
-    has_smooths <- anySpecial(formula, specials = "s")
+    has_smooths <- anySpecial(formula, specials = mgcv_specials)
 
     ## fixed-effects model matrix X -
     ## remove random effect parts from formula:
@@ -582,11 +584,12 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
     } else {
         ## check for mgcv-style smooth terms, adjust accordingly ...
         if (has_smooths) {
-
-            ## extract s() terms
-            smooth_terms <- findbars_x(fixedform, default.special = NULL, target = "s")
+            ## extract s(), te(), ti() terms
+            smooth_terms <- sapply(mgcv_specials,
+                                   \(t) findbars_x(fixedform, default.special = NULL, target = t))
+            smooth_terms <- unlist(smooth_terms)
             ## *remove* s() terms from fixed formula
-            fixedform <- noSpecials(fixedform, specials = "s")
+            fixedform <- noSpecials(fixedform, specials = mgcv_specials)
 
             ## FIXME: could be fragile about eval environments (how
             ##  far up do we have to go with eval.parent? Or do we
@@ -707,7 +710,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
 
         ## formula <- Reaction ~ s(Days) + (1|Subject)
-        ss <- splitForm(formula, specials = c(names(.valid_covstruct), "s"))
+        ss <- splitForm(formula, specials = c(names(.valid_covstruct), mgcv_specials))
 
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
@@ -723,8 +726,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                               flist = vector("list", ns),
                               cnms = vector("list", ns),
                               smooth_info = vector("list", ns))
-            barpos <- which(ss$reTrmClasses != "s")
-            nonbarpos <- which(ss$reTrmClasses == "s")
+            barpos <- which(!ss$reTrmClasses %in% mgcv_specials)
+            nonbarpos <- which(ss$reTrmClasses %in% mgcv_specials)
             for (p in c("Ztlist", "flist", "cnms")) {
                 augReTrms[[p]][barpos] <- reTrms[[p]]
                 names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
@@ -773,7 +776,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             reTrms <- augReTrms
         }
 
-        ss$reTrmClasses[ss$reTrmClasses == "s"] <- "homdiag"
+        ss$reTrmClasses[ss$reTrmClasses %in% mgcv_specials] <- "homdiag"
         # FIX ME: migrate this (or something like it) down to reTrms,
         ##    allow for more different covstruct types that have additional arguments
         ##  e.g. phylo(.,tree); fixed(.,Sigma)
@@ -1242,7 +1245,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), "s"))
+        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), mgcv_specials))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
