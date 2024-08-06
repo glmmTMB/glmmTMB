@@ -12,7 +12,7 @@
   cov.fit = FALSE,
   re.form = NULL,
   allow.new.levels = FALSE,
-  type = c("link", "response", "conditional", "zprob", "zlink", "disp"),
+  type = c("link", "response", "conditional", "zprob", "zlink", "disp", "latent"),
   zitype = NULL,
   na.action = na.pass,
   fast = NULL,
@@ -48,7 +48,8 @@ and \code{mu} otherwise}
 \item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 \item{"zlink"}{predicted zero-inflation probability on the scale of
 the logit link function (returns \code{-Inf} for non-zero-inflated models)}
-\item{"disp"}{dispersion parameter however it is defined for that particular family as described in  \code{\link{sigma.glmmTMB}}}
+\item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB}})}
+\item{"latent"}{return latent variables}
 }}
 
 \item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}

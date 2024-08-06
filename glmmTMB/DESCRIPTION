@@ -81,7 +81,6 @@ Suggests:
     texreg,
     xtable,
     huxtable,
-    mvabund,
     parallel,
     blme,
     purrr,
