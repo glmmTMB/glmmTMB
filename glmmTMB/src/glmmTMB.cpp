@@ -1032,6 +1032,8 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(corrdisp);
+  REPORT(sddisp);
   REPORT(fact_load);
   REPORT(b);
   REPORT(bzi);
