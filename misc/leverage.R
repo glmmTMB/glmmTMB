@@ -84,6 +84,7 @@ library(Matrix)
 
 ## @param diag Get diagonal only?
 leverage <- function(fm, diag=TRUE) {
+    has.random <- any(fm$obj$env$lrandom())
     obj <- fm$obj
     ## We mess with these... (cleanup on exit!)
     restore.on.exit <- c("ADreport",
@@ -111,9 +112,11 @@ leverage <- function(fm, diag=TRUE) {
     pl <- obj$env$parList(par=parhat)
     yobs <- obj$env$data$yobs
     obj$env$parameters <- pl
-    theta <- parhat[!obj$env$lrandom()]
+    theta <- parhat[!obj$env$lrandom()]  ## ALL top-level parameters
     b <- parhat[obj$env$lrandom()]
-    Hbb <- obj$env$spHess(parhat, random=TRUE) ## Needed later
+    if (!is.null(obj$env$spHess)) {
+        Hbb <- obj$env$spHess(parhat, random=TRUE) ## Needed later for RE models
+    }
     ## #################################################################
     ## 1. Get partial derivatives of theta_hat wrt to yobs
     ## Note: length(yobs) much greater that length(theta)
@@ -134,7 +137,7 @@ leverage <- function(fm, diag=TRUE) {
     ThetaHat <- F$laplace(r)$newton(p)
     J <- ThetaHat$jacobian(ThetaHat$par())
     ## Extra stuff we need in (3)
-    F. <- F$jacfun() ## (yobs, b, theta) -> (yobs, b, theta)
+    F. <- F$jacfun() ## (yobs, [b], theta) -> (yobs, [b], theta)
     F. <- MakeTape(function(y) F.( c(y, parhat) ) [r] , yobs) ## yobs -> b
     Hby <- F.$jacfun(sparse=TRUE)(yobs)
     ## #################################################################
@@ -177,25 +180,33 @@ leverage <- function(fm, diag=TRUE) {
     ## 3. Get partial derivatives of mu_hat wrt yobs for fixed theta
     ## Note: Tricky!
     ##       
-    ## ################################################################# 
-    F2 <- MakeTape(function(b) {
-        par <- advector(nb + ntheta) ## glmmTMB mixes order of parameters and random effects...
-        r <- obj$env$lrandom()
-        par[r] <- b
-        par[!r] <- theta
-        F(par)
-    }, b) ## (b) -> mu
-    Hmb <- F2$jacfun(sparse=TRUE)(b) ## sparse deriv mu wrt b
-    ## Implicit function theorem gives final partial deriv matrix:
-    ##   - Hyb %*% solve(Hbb) %*% Hbm
-    ## of which we need the diagonal.
-    ## Because mu and yobs link to the same random effects, all required b-cliques are part of Hbb !
-    ## It follows that we can replace solve(Hbb) by its subset iH !
-    if (diag) {
-        iH <- TMB:::solveSubset(Hbb)
-        term2 <- -colSums( Hby * (  iH %*% t(Hmb) ) )
-    } else {
-        term2 <- -t(Hby) %*% solve(Hbb, t(Hmb))
+    ## #################################################################
+    term2 <- 0
+    if (has.random) {
+        F2 <- MakeTape(function(b) {
+            par <- advector(nb + ntheta) ## glmmTMB mixes order of parameters and random effects...
+            r <- obj$env$lrandom()
+            par[r] <- b
+            par[!r] <- theta
+            F(par)
+        }, b) ## (b) -> mu
+        Hmb <- F2$jacfun(sparse=TRUE)(b) ## sparse deriv mu wrt b
+        ## Implicit function theorem gives final partial deriv matrix:
+        ##   - Hby %*% solve(Hbb) %*% Hbm
+        ## of which we need the diagonal.
+        ## Because mu and yobs link to the same random effects, all required b-cliques are part of Hbb !
+        ## It follows that we can replace solve(Hbb) by its subset iH !
+        if (diag) {
+            if (length(b) == 0) {
+                iH <- solve(Hbb)
+            } else {
+                iH <- TMB:::solveSubset(Hbb)
+            }
+            browser()
+            term2 <- -colSums( Hby * (  iH %*% t(Hmb) ) )
+        } else {
+            term2 <- -t(Hby) %*% solve(Hbb, t(Hmb))
+        }
     }
     term1 + term2
 }
@@ -203,7 +214,6 @@ leverage <- function(fm, diag=TRUE) {
 ## Test it
 fm <- glmmTMB(weight ~ diag(Time | Chick) + Time, data=ChickWeight)
 leverage(fm)
-
 ## Warning message:
 ## In GetTape(obj) : Permanently changing the global pointer of DLL 'glmmTMB'
 
@@ -218,9 +228,14 @@ leverage(fm)
 ## numDeriv::jacobian(myf, 0)
 
 
-fm0 <- glmmTMB(weight ~ Time + diag(1 + Time|Chick), data=ChickWeight)
-head(predict(fm0))
-L_gt <- leverage(fm0)
+fm0 <- glmmTMB(weight ~ Time, data=ChickWeight)
+leverage(fm0)
+gm0 <- lm(weight ~ Time, data = ChickWeight)
+all.equal(leverage(fm0), unname(hatvalues(gm0)))
+
+fm1 <- glmmTMB(weight ~ Time + diag(1 + Time|Chick), data=ChickWeight)
+head(predict(fm1))
+L_gt <- leverage(fm1)
 ## internals of model **NOT** restored ...
 head(predict(fm0))
 fm1 <- lme4::lmer(weight ~ Time + (1 + Time || Chick), data=ChickWeight)
