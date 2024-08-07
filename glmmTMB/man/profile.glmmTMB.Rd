@@ -45,7 +45,7 @@ uses the estimated (Wald) standard errors of the parameters}
 \item{trace}{print tracing information? If \code{trace=FALSE} or 0,
 no tracing; if \code{trace=1}, print names of parameters currently
 being profiled; if \code{trace>1}, turn on tracing for the
-underlying \code{\link{tmbprofile}} function}
+underlying \code{\link[TMB]{tmbprofile}} function}
 
 \item{parallel}{method (if any) for parallel computation}
 
@@ -53,7 +53,7 @@ underlying \code{\link{tmbprofile}} function}
 
 \item{cl}{cluster to use for parallel computation}
 
-\item{...}{additional arguments passed to \code{\link{tmbprofile}}}
+\item{...}{additional arguments passed to \code{\link[TMB]{tmbprofile}}}
 
 \item{object}{a fitted profile (\code{profile.glmmTMB}) object}
 

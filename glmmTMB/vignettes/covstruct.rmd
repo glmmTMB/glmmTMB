@@ -20,7 +20,6 @@ library(knitr)
 library(glmmTMB)
 library(MASS)    ## for mvrnorm()
 library(TMB)     ## for tmbprofile()
-library(mvabund) ## for spider data
 ## devtools::install_github("kaskr/adcomp/TMB")  ## get development version
 knitr::opts_chunk$set(echo = TRUE, eval=if (exists("params")) params$EVAL else FALSE)
 do_image <- exists("params") && params$EVAL
@@ -613,7 +612,8 @@ mkfig(plot(tt2),"cs_profile_plot.png")
 usefig("cs_profile_plot.png")
 ```
 
-## General latent variable model
+### General latent variable model
+
 Consider a generalized linear mixed model
 
 \begin{equation}
@@ -642,28 +642,17 @@ One of our main motivations for adding this variance-covariance structure is to 
 A GLVM can be fit by specifying a reduced rank (`rr`) covariance structure. For example, the code for modeling the mean abundance against taxa and to account for the correlation between taxa using two latent variables is as follows
 
 ```{r rr_ex, eval = FALSE}
-if (require(mvabund)) {
-    data(spider)
-    ## organize data into long format
-    sppTot <- sort(colSums(spider$abund), decreasing = TRUE)
-    tmp <- cbind(spider$abund, spider$x)
-    tmp$id <- 1:nrow(tmp)
-    spiderDat <- reshape(tmp,
-                         idvar = "id",
-                         timevar = "Species",
-                         times =  colnames(spider$abund),
-                         varying = list(colnames(spider$abund)),
-                         v.names = "abund",
-                         direction = "long")
-    ## fit rank-reduced models with varying dimension
-    fit_list <- lapply(2:10,
-                       function(d) {
-                           fit.rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = d),
-                                             data = spiderDat)
-                       })
-    ## compare fits via AIC
-    aic_vec <- sapply(fit_list, AIC)
-    aic_vec - min(aic_vec, na.rm = TRUE)
+## fit rank-reduced models with varying dimension
+dvec <- 2:10
+fit_list <- lapply(dvec,
+                   function(d) {
+                       glmmTMB(abund ~ Species + rr(Species + 0|id, d = d),
+                               data = spider_long)
+                   })
+names(fit_list) <- dvec
+## compare fits via AIC
+aic_vec <- sapply(fit_list, AIC)
+delta_aic  <- aic_vec - min(aic_vec, na.rm = TRUE)
 ```
 
 The left hand side of the bar `taxa + 0` corresponds to a factor loading matrix that accounts for the correlations among taxa. The right hand side of the bar splits the above specification independently among sites. The `d` is a non-negative integer (which defaults to 2). 
@@ -674,6 +663,53 @@ An option in `glmmTMBControl()` has been included to initialize the starting val
 - `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
 
 For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining $nd-d(d-3)/2$, (i.e. parameters `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
+
+We can extract the random effects (predicted values for each site by species
+combination) with `ranef()`; ``as.data.frame(ranef())` (or `broom.mixed::tidy(..., effects = "ran_vals")`)
+gives the results in a more convenient format. Based on this information,
+we can plot the predictions for species (ordered by their predicted presence
+at site 1). (We've arbitrarily chosen `d=3` here.)
+
+```{r spider-re-plot, message=FALSE, fig.width = 10, fig.height=7}
+spider_rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 3),
+                     data = spider_long)
+re <- as.data.frame(ranef(spider_rr))
+re <- within(re, {
+    ## sites in numeric order
+    grp <- factor(grp, levels = unique(grp))
+    ## species in site-1-predicted-abundance order
+    term <- reorder(term, condval, function(x) x[1])
+    lwr <- condval - 2*condsd
+    upr <- condval + 2*condsd
+})
+if (require("ggplot2")) {
+    ggplot(re, aes(grp, condval)) +
+        geom_pointrange(aes(ymin=lwr, ymax = upr)) +
+        facet_wrap(~term, scale = "free")
+}
+```
+
+If we instead want to get the factor loadings by Species and *latent* variables by site, we
+can use a (so far experimental) function to get a list with components `$fl` (factor loadings)
+and `$b` (latent variables by site)
+
+```{r get-fl}
+source(system.file("misc", "extract_rr.R", package = "glmmTMB"))
+rr_info <- extract_rr(spider_rr)
+lapply(rr_info, dim)
+```
+
+We can use this information to create an (ugly) biplot. (Improvements welcome!)
+
+```{r spider-biplot, fig.width = 8, fig.height=8}
+par(las = 1)
+afac <- 4
+sp_names <- abbreviate(gsub("Species", "", rownames(rr_info$fl)))
+plot(rr_info$fl[,1], rr_info$fl[,2], xlab = "factor 1", ylab = "factor 2", pch = 16, cex = 2)
+text(rr_info$b[,1]*afac*1.05, rr_info$b[,2]*afac*1.05, rownames(rr_info$b))
+arrows(0, 0, rr_info$b[,1]*afac, rr_info$b[,2]*afac)
+text(rr_info$fl[,1], rr_info$fl[,2], sp_names, pos = 3, col = 2)
+```
 
 ## Construction of structured covariance matrices
 

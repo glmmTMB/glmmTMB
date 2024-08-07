@@ -14,12 +14,12 @@
 #' @param trace print tracing information? If \code{trace=FALSE} or 0,
 #' no tracing; if \code{trace=1}, print names of parameters currently
 #' being profiled; if \code{trace>1}, turn on tracing for the
-#' underlying \code{\link{tmbprofile}} function
+#' underlying \code{\link[TMB]{tmbprofile}} function
 #' @param stderr standard errors to use as a scaling factor when picking step
 #' sizes to compute the profile; by default (if \code{stderr} is
 #' \code{NULL}, or \code{NA} for a particular element),
 #' uses the estimated (Wald) standard errors of the parameters
-#' @param ... additional arguments passed to \code{\link{tmbprofile}}
+#' @param ... additional arguments passed to \code{\link[TMB]{tmbprofile}}
 #' @return An object of class \code{profile.glmmTMB}, which is also a
 #' data frame, with columns \code{.par} (parameter being profiled),
 #' \code{.focal} (value of focal parameter), value (negative log-likelihood).
@@ -117,8 +117,8 @@ profile.glmmTMB <- function(fitted,
         function(p,s) {
             if (trace>0) cat("parameter",p,"\n")
             n_orig <- openmp(NULL)
-            openmp(n = fitted$modelInfo$parallel)
-            on.exit(openmp(n_orig))
+            do.call(openmp, fitted$modelInfo$parallel)
+            on.exit(do.call(openmp, n_orig))
             return(tmbprofile(fitted$obj,
                               name=p,
                               h=s/4,

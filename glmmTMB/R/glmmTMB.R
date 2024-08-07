@@ -3,11 +3,15 @@ openmp_debug <- function() {
     getOption("glmmTMB_openmp_debug", FALSE)
 }
 
-## glmmTMB openmp controller copied from TMB (Windows needs it).
-openmp <- function (n = NULL) {
-    if (openmp_debug() && !is.null(n)) {
-        cat("setting OpenMP threads to ", n, "\n")
-    }
+## glmmTMB openmp controller copied from TMB (Windows needs it),
+## and it also lets us have more control of debug tracing etc.
+openmp <- function (n = NULL, autopar = NULL) {
+    report <-  (openmp_debug() && (!is.null(n) || !is.null(autopar)))
+    ## use deparse() etc. to handle cat(NULL), possible attributes/naming
+    prefix <- if (is.null(n) && is.null(autopar)) "current OpenMP settings:" else "setting OpenMP:"
+    if (report) cat(prefix, " threads = ", deparse(unname(c(n))),
+                    ", autopar = ", deparse(autopar), "\n",
+                    sep = "")
     ## FIXME: redundant with integer-setting within omp_num_threads C++ def in utils.cpp
     null_arg <- is.null(n)
     if (!null_arg) n <- as.integer(n)
@@ -17,7 +21,8 @@ openmp <- function (n = NULL) {
       w <- options(warn = -1)
       on.exit(options(warn = w[["warn"]]))
     }
-    TMB::openmp(n, DLL="glmmTMB")
+    tt <- TMB::openmp(n, autopar = autopar, DLL="glmmTMB")
+    return(list(n = c(tt), autopar = attr(tt, "autopar")))
 }
 
 ##' Change starting parameters, either by residual method or by user input (start)
@@ -646,8 +651,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
-            cnm <- colnames(X)
             for (s in smooth_terms2) {
+                cnm <- colnames(X) ## need to update cnm after each added term ...
                 if (ncol(s$re$Xf) == 0) next
                 snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
@@ -702,7 +707,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
 
         ## formula <- Reaction ~ s(Days) + (1|Subject)
-        ss <- splitForm(formula)
+        ss <- splitForm(formula, specials = c(names(.valid_covstruct), "s"))
 
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
@@ -1127,6 +1132,10 @@ binomialType <- function(x) {
 ##'                REML = TRUE, start = list(theta = 5))
 ##' plot(val ~ time, data = ndat)
 ##' lines(ndat$time, predict(sm1))
+##'
+##' ## reduced-rank model
+##' m1_rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+##'                               data = spider_long)
 ##' }
 glmmTMB <- function(
     formula,
@@ -1237,7 +1246,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f),delete=FALSE)
+        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), "s"))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
@@ -1360,13 +1369,18 @@ glmmTMB <- function(
 ##'                  robustness when a model has many fixed effects
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
-##' @param parallel  (integer) Set number of OpenMP threads to evaluate
-##' the negative log-likelihood in parallel. The default is to evaluate
-##' models serially (i.e. single-threaded); users can set a default value
-##' for an R session via \code{options(glmmTMB.cores=<value>)}. At present
-##' reduced-rank models (i.e., a covariance structure using \code{rr(...)})
-##' cannot be fitted in parallel; the number of threads will be automatically
+##' @param parallel  (named list with an integer value \code{n} and a logical value \code{autopar},
+##' e.g. \code{list(n=4L, autopar=TRUE)}) Set number of OpenMP threads to evaluate
+##' the negative log-likelihood in parallel, and determine whether to use auto-parallelization
+##' (see \code{\link[TMB]{openmp}}). The default is to evaluate
+##' models serially (i.e. single-threaded); users can set default values
+##' for an R session via \code{options(glmmTMB.cores=<value>, glmmTMB.autopar=<value>)}.
+##' An integer number of cores (only) can be passed instead of a list, in which case the default or
+##' previously set value of \code{autopar} will be used.
+##' At present reduced-rank models (i.e., a covariance structure using \code{rr(...)})
+##' cannot be fitted in parallel unless \code{autopar=TRUE}; the number of threads will be automatically
 ##' set to 1, with a warning if this overrides the user-specified value.
+##' To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
@@ -1416,7 +1430,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = getOption("glmmTMB.cores", 1L),
+                           parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", NULL)),
                            eigval_check = TRUE,
                            ## want variance to be sqrt(eps), so sd = eps^(1/4)
                            zerodisp_val=log(.Machine$double.eps)/4,
@@ -1429,12 +1443,21 @@ glmmTMBControl <- function(optCtrl=NULL,
     }
     ## Make sure that we specify at least one thread
     if (!is.null(parallel)) {
-        if (is.na(parallel) || parallel < 1) {
-            stop("Number of parallel threads must be a numeric >= 1")
+        if (length(parallel) == 1 && is.numeric(parallel)) {
+            parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
         }
-        parallel <- as.integer(parallel)
+        if (is.null(names(parallel))) stop(sQuote("parallel"), "list passed to glmmTMBControl() must be named")
+        ## FIXME: more elegant way to handle possible parallel arg cases (e.g. n only, autopar only)
+        if (length(parallel$n) == 0) {
+            parallel$n <- getOption("glmmTMB.cores", 1L)
+        } else {
+            if (is.na(parallel$n) || parallel$n < 1) {
+                stop("Number of parallel threads must be a numeric >= 1")
+            }
+            parallel$n <- as.integer(parallel$n)
+        }
     }
-
+    
     rank_check <- match.arg(rank_check)
     conv_check <- match.arg(conv_check)
 
@@ -1659,19 +1682,19 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     if ((has_any_rr(TMBStruc$condReStruc) ||
         has_any_rr(TMBStruc$ziReStruc) ||
     		 has_any_rr(TMBStruc$dispReStruc)) &&
-        TMBStruc$control$parallel > 1) {
-        warning("rr() not compatible with parallel execution: setting ncores to 1")
-        TMBStruc$control$parallel <- 1
+        TMBStruc$control$parallel$n > 1 && !isTRUE(TMBStruc$control$parallel$autopar)) {
+        warning("rr() not compatible with parallel execution unless parallel$autopar=TRUE: setting ncores to 1")
+        TMBStruc$control$parallel$n <- 1
     }
 
     ## Assign OpenMP threads
     n_orig <- openmp(NULL)
     ## Only proceed farther if OpenMP *is* supported ...
-    if (n_orig > 0) {
-        openmp(n = control$parallel)
+    if (n_orig$n > 0) {
+        with(control$parallel, openmp(n = n, autopar = autopar))
         on.exit({
-          openmp(n = n_orig)
-          })
+            do.call(openmp, n_orig)
+        })
     }
 
     if (control $ collect) {

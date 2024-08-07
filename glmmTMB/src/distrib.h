@@ -191,7 +191,7 @@ namespace glmmtmb{
       ans = rgenpois(theta, lambda);
       counter++;
     }
-    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
+    if(ans < 1.) Rf_warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
     return ans;
   }
 
@@ -285,7 +285,7 @@ namespace glmmtmb{
       ans = rcompois2(mean, nu);
       counter++;
     }
-    if(ans < 1.) warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
+    if(ans < 1.) Rf_warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
     return ans;
   }
 

@@ -305,9 +305,11 @@ NULL
 ##' Checks whether OpenMP has been successfully enabled for this
 ##' installation of the package. (Use the \code{parallel} argument
 ##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
-##' to specify that computations should be done in parallel.)
+##' to specify that computations should be done in parallel.) To further
+##' trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
-##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP
+##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP,
+##' @aliases openmp
 ##' @export
 omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
@@ -341,16 +343,27 @@ isNullPointer <- function(x) {
 #' @export
 up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
+  obj <- oldfit$obj
+  ee <- obj$env
+
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
-      obj <- oldfit$obj
-      ee <- obj$env
 
       pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
                 "parfull")
-    
+
+      ## using ee$parList() rather than ee$parameters should help
+      ##  with mapped parameter s... ??
+      params <- ee$parList()
+
+      if (length(ee$map) > 0) {
+          for (n in names(ee$map)) {
+              ee$parameters[[n]] <- params[[n]]
+          }
+      }
+      
       ## change name of thetaf to psi
-      if ("thetaf" %in% names(ee$parameters)) {
-          ee$parameters$psi <- ee$parameters$thetaf
+      if ("thetaf" %in% names(params)) {
+          ee$parameters$psi <- params$thetaf
           ee$parameters$thetaf <- NULL
           pars <- c(grep("last\\.par", names(ee), value = TRUE),
                     "par")
@@ -361,7 +374,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           }
       }
       if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
-      	ee$parameters$betadisp <- ee$parameters$betad
+      	ee$parameters$betadisp <- params$betad
       	ee$parameters$betad <- NULL
       	pars <- c(grep("last\\.par", names(ee), value = TRUE),
       						"par")
@@ -401,7 +414,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
-          ee$parameters$betadisp <- ee$parameters$betadisp/2
+          ee$parameters$betadisp <- params$betadisp/2
           for (p in pars) {
               if (!is.null(nm <- names(ee[[p]]))) {
                   ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
@@ -422,6 +435,15 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
   }
+
+  ## changed format of 'parallel' control to add autopar info
+  if (length(p <- oldfit$modelInfo$parallel) <= 1) {
+      if (!(is.null(p) || is.numeric(p))) {
+          stop("oldfit$modelInfo$parallel has an unexpected value")
+      }
+      oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
+  }
+
   ## dispersion was NULL rather than 1 in old R versions ...
   omf <- oldfit$modelInfo$family
   if (getRversion() >= "4.3.0" &&
@@ -434,6 +456,17 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## n.b. can't use ...$priors <- NULL
       oldfit$modelInfo["priors"] <- list(NULL)
   }
+
+  if ("Xd" %in% names(ee$data)) {
+      ee$data[["Xdisp"]] <- ee$data[["Xd"]]
+      ee$data[["Xd"]] <- NULL
+  }
+
+  if ("XdS" %in% names(ee$data)) {
+      ee$data[["XdispS"]] <- ee$data[["XdS"]]
+      ee$data[["XdS"]] <- NULL
+  }
+
   return(oldfit)
 }
 
@@ -515,8 +548,10 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
                            
   mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
+      if (is.null(X) && tag == "disp") stop("are you using a stored model from an earlier glmmTMB version? try running up2date()")
       dropped <- attr(X, "col.dropped") %||% numeric(0)
       ntot <- ncol(X) + length(dropped)
+      ## identical instead of ==; ncol(X) may be NULL for older models
       if (ntot == ncol(X) || !include_dropped) {
           nn <- colnames(X)
       } else {
