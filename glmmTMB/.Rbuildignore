@@ -7,7 +7,6 @@ cache$
 .*\.aux$
 .*\.log$
 .*\.out$
-.*misc/.*$
 .*gh-pages/.*$
 .RData
 revdep/

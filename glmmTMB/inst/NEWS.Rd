@@ -22,7 +22,9 @@
       model has changed from \code{betad} to \code{betadisp};
       code that specifies parameter values (e.g. as part
       of a \code{start} argument or in \code{newparams} for
-      \code{simulate_new}) may need to be adjusted
+      \code{simulate_new}) may need to be adjusted. (For
+      developers: There are similar name changes to other internal
+      model components, e.g. \code{Xd} becomes \code{Xdisp}.)
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{
@@ -32,7 +34,10 @@
 	distribution (GH #1024)
       \item \code{vcov} works better for cases where \code{map} is used
       to fix sets of parameters equal to each other
-      \item fix printing bug for zero-inflation covariance matrices (SO 78393784)
+      \item fix printing bug for zero-inflation covariance matrices (SO
+      78393784)
+      \item \code{up2date} now works for models with mapped parameters
+  (GH #874)
     } % itemize
   } % bug fixes
   \subsection{OTHER CHANGES}{

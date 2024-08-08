@@ -215,3 +215,18 @@ test_that("blockCode set correctly in VarCorr", {
                      )
     expect_equal(attr(VarCorr(model)[["zi"]]$group, "blockCode"), c(ar1=3))
 })
+
+test_that("VarCorr for models with RE in dispersion", {
+    data("sleepstudy", package = "lme4")
+
+    fit <- suppressWarnings(glmmTMB(Reaction ~ Days + (Days | Subject),
+                   dispformula = ~ Days + (Days | Subject),
+                   data = sleepstudy))
+
+    vc <- VarCorr(fit)
+    expect_equal(c(vc$disp$Subject),
+                   c(0.127005710245793, -4.71258573290661e-17, -4.71258573290661e-17, 
+                     1.865081358102e-32),
+                 tolerance = 1e-5)
+})
+
