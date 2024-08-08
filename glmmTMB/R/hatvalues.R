@@ -8,7 +8,7 @@
 ##' fm1 <- lm(weight ~ Time, data = ChickWeight)
 ##' all.equal(hatvalues(fm0), unname(hatvalues(fm1)))
 ##' fm2 <- glmmTMB(weight ~ Time + diag(Time | Chick), data=ChickWeight)
-##' fm3 <- lme4::lmer(weight ~ Time + (Time || Chick), data = ChickWeight)
+##' fm3 <- lme4::lmer(weight ~ Time + (Time || Chick), data = ChickWeight, REML = FALSE)
 ##' all.equal(hatvalues(fm2), unname(hatvalues(fm3)), tolerance = 1e-2)
 ##' @export
 hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
@@ -18,7 +18,8 @@ hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
     if (requireNamespace("RTMB")) {
         dyn.load(system.file("libs", TMB::dynlib("RTMB"), package = "RTMB"))
     } else {
-        stop("sorry, hatvalues currently require that the RTMB package be installed")
+        warning("sorry, computing hatvalues currently requires that the RTMB package be installed")
+        return(rep(NA, length=nobs(model)))
     }
     
     check_dots(...)
@@ -150,11 +151,12 @@ hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
 #' @export
 rstudent.glmmTMB <- function (model, ...) {
     ## FIXME: more careful about 0-weight, na.exclude, naming, etc.
+    ## NOT consistent with stats:::rstudent.lm [res/(infl$sigma * sqrt(1 - infl$hat))]
     check_dots(...)
     rp <- residuals(model, type = "pearson")
     r <- residuals(model, type = "deviance")
     hatval <- hatvalues(model)
-    r <- sign(r) * sqrt(r^2 + (hatvalues * rp^2)/(1 - hatvalues))
+    r <- sign(r) * sqrt(r^2 + (hatval * rp^2)/(1 - hatval))
     r[is.infinite(r)] <- NaN
     ## FIXME: account for infl$sigma
     ## (sd when obs i is dropped); should divide
