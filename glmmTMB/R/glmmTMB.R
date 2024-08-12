@@ -221,7 +221,7 @@ startParams <- function(parameters,
   }
 
   return(parameters)
-}
+} ## startParams
 
 ##' Extract info from formulas, reTrms, etc., format for TMB
 ##' @inheritParams glmmTMB
@@ -332,7 +332,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
                             old_smooths = old_smooths$zi)
     dispList  <- getXReTrms(dispformula, mf, fr, type="dispersion", contrasts=contrasts, sparse=sparseX[["disp"]],
-    												old_smooths = old_smooths$disp)
+                            old_smooths = old_smooths$disp)
 
     condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr))
@@ -340,9 +340,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
-   nobs <- nrow(fr)
+    nobs <- nrow(fr)
     
-   if (is.null(weights)) weights <- rep(1, nobs)
+    if (is.null(weights)) weights <- rep(1, nobs)
 
   size <- numeric(0)
     
@@ -402,7 +402,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       res
   }
 
-  re_info <- list(cond = comb_re("cond"), zi = comb_re("zi"))
+  re_info <- list(cond = comb_re("cond"), zi = comb_re("zi"), disp = comb_re("disp"))
 
   ## easy way to get lengths of theta of individual components??
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
@@ -652,8 +652,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
-            cnm <- colnames(X)
             for (s in smooth_terms2) {
+                cnm <- colnames(X) ## need to update cnm after each added term ...
                 if (ncol(s$re$Xf) == 0) next
                 snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
@@ -708,7 +708,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
 
         ## formula <- Reaction ~ s(Days) + (1|Subject)
-        ss <- splitForm(formula)
+        ss <- splitForm(formula, specials = c(names(.valid_covstruct), "s"))
 
         ## contains: c("Zt", "theta", "Lind", "Gp", "lower", "Lambdat", "flist", "cnms", "Ztlist", "nl")
         ## we only need "Zt", "flist", "Gp", "cnms", "Ztlist" (I think)
@@ -1137,6 +1137,10 @@ binomialType <- function(x) {
 ##'                REML = TRUE, start = list(theta = 5))
 ##' plot(val ~ time, data = ndat)
 ##' lines(ndat$time, predict(sm1))
+##'
+##' ## reduced-rank model
+##' m1_rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+##'                               data = spider_long)
 ##' }
 glmmTMB <- function(
     formula,
@@ -1247,7 +1251,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f),delete=FALSE)
+        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), "s"))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
@@ -1448,12 +1452,17 @@ glmmTMBControl <- function(optCtrl=NULL,
             parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
         }
         if (is.null(names(parallel))) stop(sQuote("parallel"), "list passed to glmmTMBControl() must be named")
-        if (is.na(parallel$n) || parallel$n < 1) {
-            stop("Number of parallel threads must be a numeric >= 1")
+        ## FIXME: more elegant way to handle possible parallel arg cases (e.g. n only, autopar only)
+        if (length(parallel$n) == 0) {
+            parallel$n <- getOption("glmmTMB.cores", 1L)
+        } else {
+            if (is.na(parallel$n) || parallel$n < 1) {
+                stop("Number of parallel threads must be a numeric >= 1")
+            }
+            parallel$n <- as.integer(parallel$n)
         }
-        parallel$n <- as.integer(parallel$n)
     }
-
+    
     rank_check <- match.arg(rank_check)
     conv_check <- match.arg(conv_check)
 

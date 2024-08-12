@@ -77,7 +77,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' \item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 ##' \item{"zlink"}{predicted zero-inflation probability on the scale of
 ##' the logit link function (returns \code{-Inf} for non-zero-inflated models)}
-##' \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB})}
+##' \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB}})}
 ##' \item{"latent"}{return latent variables}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
@@ -145,10 +145,32 @@ predict.glmmTMB <- function(object,
   ## FIXME: better test? () around re.form==~0 are *necessary*
   ## could steal isRE from lme4 predict.R ...
   pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
-                                       identical(re.form,NA)))
-  if (!(is.null(re.form) || pop_pred)) {
-      stop("re.form must equal NULL, NA, or ~0")
+                                     identical(re.form,NA)))
+  ## if (!(is.null(re.form) || pop_pred)) {
+    ## stop("re.form must equal NULL, NA, or ~0")
+    ## }
+
+  ## if pop pred set **all** sim codes to zero
+    
+  ## need to search first by grouping variable,
+  find_terms <- function(t) {
+        
+
+  ## if not full pop pred, then all terms **not** in re.form need to be zeroed
+  if (!pop_pred && !is.null(re.form)) {
+      ## process re.form
+      if (!is(re.form, "list")) {
+          re.form <- list(cond = re.form)
+      }
+      for (i in names(re.form)) {
+          set_simcodes(object$obj, val = "zero",)
+          {
+              fb <- findbars_x(re.form)
+              browser()
+          }
+      }
   }
+          
 
   ## match type arg with internal name
   ## FIXME: warn if "link"
@@ -416,9 +438,10 @@ predict.glmmTMB <- function(object,
 
   if (pop_pred) {
 
-      ## use re.form, ll. 749ff of utils.R to decide which
+      ## use re.form, in utils.R near 'n_b <- length(r1$parameters$b)' to decide which
       ##  b values to set to zero.  OK to map _all_ values in this case
       ##  (unless they're in newparams) ?
+      ## 
       ## browser()           
       TMBStruc <- within(TMBStruc, {
           parameters$b[] <- 0
@@ -458,6 +481,7 @@ predict.glmmTMB <- function(object,
 
   if (openmp_debug()) cat("TMB threads currently set to ", openmp(NULL), "\n")
   return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else "mu_predict"
+    
   if (!se.fit) {
     rr <- newObj$report(lp)
     pred <- rr[[return_par]]

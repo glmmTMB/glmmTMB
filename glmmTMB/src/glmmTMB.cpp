@@ -275,14 +275,14 @@ struct terms_t : vector<per_term_info<Type> > {
       (*this)(i).simCode = simCode;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
-      if(!isNull(t)){
-	RObjectTestExpectedType(t, &isNumeric, "times");
+      if(!Rf_isNull(t)){
+	RObjectTestExpectedType(t, &Rf_isNumeric, "times");
 	(*this)(i).times = asVector<Type>(t);
       }
       // Optionally, pass distance matrix:
       SEXP d = getListElement(y, "dist");
-      if(!isNull(d)){
-	RObjectTestExpectedType(d, &isMatrix, "dist");
+      if(!Rf_isNull(d)){
+	RObjectTestExpectedType(d, &Rf_isMatrix, "dist");
 	(*this)(i).dist = asMatrix<Type>(d);
       }
     }
@@ -344,7 +344,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd = sdvec; // For report
   }
 
-  else if (term.blockCode == us_covstruct){
+  else if (term.blockCode == us_covstruct) {
     // case: us_covstruct
     int n = term.blockSize;
     vector<Type> logsd = theta.head(n);
@@ -1140,6 +1140,8 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(corrdisp);
+  REPORT(sddisp);
   REPORT(fact_load);
   REPORT(b);
   REPORT(bzi);

@@ -73,7 +73,13 @@ test_that("Fitted and residuals", {
     expect_equal(unname(which(is.na(rs.ex))),napos)
     pr.rs.ex <- pr.ex + rs.ex
     expect_equal(unname(pr.rs.ex), y.na)
-    
+
+    ##
+    m1 <- glmmTMB(count ~ cover, family = gaussian, dispformula = ~cover, data = Salamanders)
+    expect_equal(mean(residuals(m1, type = "pearson")),
+                 -5.14833310763953e-05, tolerance = 1e-6)
+    expect_equal(residuals(m1, type = "pearson"),
+                 residuals(m1)/predict(m1, type = "disp"))
 })
 
 test_that("Pop-level residuals", {
@@ -432,7 +438,7 @@ rr <- function(txt) {
     read.table(header=TRUE,stringsAsFactors=FALSE,text=txt,
                colClasses=rep(c("character","numeric"),c(5,2)))
 }
-context("Ranef etc.")
+
 test_that("as.data.frame(ranef(.)) works",
   {
       expect_equal(
@@ -692,6 +698,26 @@ test_that("weighted residuals", {
                      tolerance = 1e-6)
     }
 })
+
+test_that("ranef for rr() models", {
+    set.seed(101)
+    m1 <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+                  data = spider_long)
+    expect_equal(tolerance = 1e-6,
+                 head(as.data.frame(ranef(m1)), 2),
+                 structure(list(component = c("cond", "cond"), grpvar = c("id", "id"),
+                                term = structure(c(1L, 1L),
+      levels = c("SpeciesAlopacce",  "SpeciesAlopcune", "SpeciesAlopfabr", "SpeciesArctlute", "SpeciesArctperi", 
+"SpeciesAuloalbi", "SpeciesPardlugu", "SpeciesPardmont", "SpeciesPardnigr", 
+"SpeciesPardpull", "SpeciesTrocterr", "SpeciesZoraspin"), class = "factor"), 
+    grp = structure(c(9L, 7L), levels = c("7", "5", "13", "4", 
+    "14", "3", "2", "6", "1", "8", "16", "12", "15", "18", "17", 
+    "19", "20", "25", "21", "11", "9", "10", "28", "26", "22", 
+    "23", "24", "27"), class = "factor"), condval = c(-0.893053872609456, 
+    -1.00956536260405), condsd = c(1.13999978200572, 1.29609467840739
+                                   )), row.names = c("cond.1", "cond.2"), class = "data.frame"))
+})
+
 # This test started also giving a warning on os "mac".
 # test_that("bad inversion in vcov", {
 #     skip_on_os(c("windows", "linux"))

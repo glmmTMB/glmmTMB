@@ -343,16 +343,27 @@ isNullPointer <- function(x) {
 #' @export
 up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
+  obj <- oldfit$obj
+  ee <- obj$env
+
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
-      obj <- oldfit$obj
-      ee <- obj$env
 
       pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
                 "parfull")
 
+      ## using ee$parList() rather than ee$parameters should help
+      ##  with mapped parameter s... ??
+      params <- ee$parList()
+
+      if (length(ee$map) > 0) {
+          for (n in names(ee$map)) {
+              ee$parameters[[n]] <- params[[n]]
+          }
+      }
+      
       ## change name of thetaf to psi
-      if ("thetaf" %in% names(ee$parameters)) {
-          ee$parameters$psi <- ee$parameters$thetaf
+      if ("thetaf" %in% names(params)) {
+          ee$parameters$psi <- params$thetaf
           ee$parameters$thetaf <- NULL
           pars <- c(grep("last\\.par", names(ee), value = TRUE),
                     "par")
@@ -363,7 +374,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           }
       }
       if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
-      	ee$parameters$betadisp <- ee$parameters$betad
+      	ee$parameters$betadisp <- params$betad
       	ee$parameters$betad <- NULL
       	pars <- c(grep("last\\.par", names(ee), value = TRUE),
       						"par")
@@ -412,7 +423,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
-          ee$parameters$betadisp <- ee$parameters$betadisp/2
+          ee$parameters$betadisp <- params$betadisp/2
           for (p in pars) {
               if (!is.null(nm <- names(ee[[p]]))) {
                   ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
@@ -421,14 +432,6 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
                   oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
               }
           }
-      }
-
-      ## changed format of 'parallel' control to add autopar info
-      if (length(p <- oldfit$modelInfo$parallel) == 1) {
-          if (!(is.null(p) || is.numeric(p))) {
-              stop("oldfit$modelInfo$parallel has an unexpected value")
-          }
-          oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
       }
 
       oldfit$obj <- with(ee,
@@ -441,11 +444,21 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
   }
-  for (t in c("condReStruc", "ziRestruc")) {
+
+  for (t in c("condReStruc", "ziRestruc", "dispReStruc")) {
       for (i in seq_along(oldfit$modelInfo$reStruc[[t]])) {
           oldfit$modelInfo$reStruc[[t]][[i]]$simCode <- .valid_simcode[["random"]]
       }
   }
+
+  ## changed format of 'parallel' control to add autopar info
+  if (length(p <- oldfit$modelInfo$parallel) <= 1) {
+      if (!(is.null(p) || is.numeric(p))) {
+          stop("oldfit$modelInfo$parallel has an unexpected value")
+      }
+      oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
+  }
+
   ## dispersion was NULL rather than 1 in old R versions ...
   omf <- oldfit$modelInfo$family
   if (getRversion() >= "4.3.0" &&
@@ -458,6 +471,17 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## n.b. can't use ...$priors <- NULL
       oldfit$modelInfo["priors"] <- list(NULL)
   }
+
+  if ("Xd" %in% names(ee$data)) {
+      ee$data[["Xdisp"]] <- ee$data[["Xd"]]
+      ee$data[["Xd"]] <- NULL
+  }
+
+  if ("XdS" %in% names(ee$data)) {
+      ee$data[["XdispS"]] <- ee$data[["XdS"]]
+      ee$data[["XdS"]] <- NULL
+  }
+
   return(oldfit)
 }
 
@@ -539,8 +563,10 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
                            
   mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
+      if (is.null(X) && tag == "disp") stop("are you using a stored model from an earlier glmmTMB version? try running up2date()")
       dropped <- attr(X, "col.dropped") %||% numeric(0)
       ntot <- ncol(X) + length(dropped)
+      ## identical instead of ==; ncol(X) may be NULL for older models
       if (ntot == ncol(X) || !include_dropped) {
           nn <- colnames(X)
       } else {
@@ -920,9 +946,12 @@ get_re_names <- function(re) {
 #' @examples
 #' data("sleepstudy", package = "lme4")
 #' fm1 <- glmmTMB(Reaction ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
-#' re <- fm1$modelInfo$reStruc
-#' get_b_inds(re, "1|Subject")
-#' @noRd
+#' re1 <- fm1$modelInfo$reStruc
+#' get_b_inds(re1, "1|Subject")
+#' fm2 <- glmmTMB(Reaction ~ 1 + (Days|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
+#' re2 <- fm2$modelInfo$reStruc
+#' get_b_inds(re2, "1|Subject")
+#' #' @noRd
 get_b_terms <- function(nms, inms) {
     squash_ws <- function(x) gsub(" ", "", x)
     nms <- squash_ws(nms)
@@ -931,8 +960,10 @@ get_b_terms <- function(nms, inms) {
     unmatched <- which(is.na(w))
     if (length(unmatched)>0) {
         w[unmatched] <- match(nms[unmatched],
-                              gsub("^(cond|zi)ReStruc\\.", "", inms))
+                              gsub("^(cond|zi|disp)ReStruc\\.", "", inms))
     }
+    ## try to match by grouping variable
+    ## (will have to search through terms by grouping variable)
     if (any(is.na(w))) {
         stop("unmatched RE terms")
     }
