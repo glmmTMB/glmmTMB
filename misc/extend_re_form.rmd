@@ -1,0 +1,26 @@
+Brain dump on what we need to do for `extend_re_form` branch (allow individual RE terms, *or components of them*, to be simulated or predicted in different ways).
+
+For simulation, we want each term/component to have the following options:
+
+* `zero`: zero out this component
+* `fix`: use estimated values
+* `random`: draw/use new random values
+* `conditional` (???): draw new values from the conditional distribution
+
+Prediction will be the same, but `random` is not sensible AFAICT.
+
+Need to:
+
+* interpret `re.form`, matching it up with particular terms/elements. If `simCode` is a *vector* of values for each RE term, we can handle this inside the C++ code ... ?
+* [ ] set corresponding `b` values to zero? or to a draw from the conditional distribution? (for simulation can we draw from the conditional distribution outside (in R) and then pass those mapped/fixed `b` values to sim?) This would be easier because we don't have to pass additional info to the TMB/C++ side, but has the disadvantage of splitting the sim random-deviate code between R and C++ ...
+ 
+`get_b_terms` and `get_b_inds()` (in `utils.R`) are the functions I had originally written to try to find `b` indices for specific terms ...
+
+```{r}
+devtools::load_all()
+data("sleepstudy", package = "lme4")
+m <- glmmTMB(Reaction ~ Days + (Days | Subject), sleepstudy)
+predict(m, re.form = ~ (1 | Subject))
+```
+
+May need to handle/search for smooth-type REs (`te`, `ti`, `s`) differently than other REs?
