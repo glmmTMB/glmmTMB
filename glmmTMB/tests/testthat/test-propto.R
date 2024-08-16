@@ -35,6 +35,8 @@ if (require("ade4") && require("ape")) {
     data(lizards)
     tree <- read.tree(text=lizards$hprA)
     liz <- lizards$traits[tree$tip.label, ]
+    liz$spp <- factor(rownames(liz), levels=rownames(liz))
+    liz$dummy <- factor(0)
     mat <- vcv(tree, corr=TRUE)# construct matrix
     fit <- gls(matur.L ~ age.mat,
                correlation = corSymm(mat[lower.tri(mat)], fixed=TRUE),
@@ -42,8 +44,6 @@ if (require("ade4") && require("ape")) {
   }
   
   test_that("test propto fit - with corr", {
-    liz$spp <- factor(rownames(liz), levels=rownames(liz))
-    liz$dummy <- factor(0)
     fit_phylo <- glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat),
                          data = liz, dispformula = ~0)
     
