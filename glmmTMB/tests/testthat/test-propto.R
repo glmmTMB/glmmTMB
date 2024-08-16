@@ -22,6 +22,7 @@ if (require("ade4") && require("ape")) {
     ft2 <- glmmTMB(y ~ x + diag( x | spp),  data = dat, family = poisson,
                    map = list(theta = factor(c(rep(1, 2)))))
     mat.I2 <- diag(2)
+    colnames(mat.I2) <- rownames(mat.I2) <- ft2$modelInfo$reTrms$cond$cnms$spp
     ft2.I <- glmmTMB(y ~ x + propto(x | spp, mat.I2), data = dat, family = poisson)
     ## check that var matrix is as the same
     expect_equal(c(VarCorr(ft2.I)$cond[[1]]),
@@ -60,23 +61,25 @@ if (require("ade4") && require("ape")) {
     
     })
   
-  ## test dimensions of matrix
-  # test_that("propto compared to mgcv", {
-  #   #TO DO
-  # })
-  # 
-  # ## test dimensions of matrix
-  #   test_that("propto error with incorrect dimensions", {
-  #     #TO DO
-  #   })
-  # 
-  #   test_that("propto error about non-matrix", {
-  #     #TO DO
-  #       # junk <- "junk"
-  #       # expect_error( glmmTMB(y ~ x + propto(x | spp, "junk"),
-  #       #                       family = poisson, data = dat),
-  #       #              "")
-  #   })
+    test_that("propto error about non-matrix", {
+        junk <- "junk"
+        expect_error( glmmTMB(y ~ x + propto(x | spp, junk), data = dat, family = poisson),
+                     "expecting a matrix for propto")
+    })
+    ## test dimensions of matrix
+    test_that("propto error with incorrect dimensions", {
+      smallmat <- mat[1:10, 1:10]
+      expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, smallmat),
+                            data = liz),
+                    "matrix is not the correct dimension")
+    })
+    ## test names of matrix
+    test_that("propto error with incorrect names", {
+      glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat),
+              data = liz)
+     #TO DO
+    })
+
     
     ## FIXME: test, remove if unnecessary
     options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?

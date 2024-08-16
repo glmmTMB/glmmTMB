@@ -820,8 +820,17 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
           }
           else if(ss$reTrmClasses[i] == "propto"){
-            if ( is.na(suppressWarnings(as.matrix( aa[i] ))) ){
-              stop("expecting a matrix for propto")
+            if( !is.matrix( aa[[i]] ) )
+              stop("expecting a matrix for propto", call. = FALSE)
+            if(!(ncol(aa[[i]]) == length(reTrms$cnms[[i]]) && nrow(aa[[i]]) == length(reTrms$cnms[[i]]) ) )
+              stop("matrix is not the correct dimensions", call. = FALSE)
+            if (is.null(colnames(aa[[i]])) || is.null(rownames(aa[[i]])))
+              stop("row and column names are required for correlation matrix", call. = FALSE)
+            if (!(is.null(colnames(aa[[i]])) && is.null(rownames(aa[[i]])))){
+              # if(!identical(colnames(aa[[i]]), reTrms$cnms[[i]]))
+              #   stop("column names of the correlation matrix do not match the terms", call. = FALSE)
+              # if(!identical(rownames(aa[[i]]), reTrms$cnms[[i]])) 
+              #   stop("row names of the correlation matrix do not match the terms", call. = FALSE)
             }
           }
         }
@@ -948,7 +957,7 @@ getGrpVar <- function(x)
 ##' matrix (\code{"us"}) for all blocks).
 ##' @param reXterms terms objects corresponding to each RE term
 ##' @param fr model frame
-##' @param aa additional arguments (i.e. rank)
+##' @param aa additional arguments (i.e. rank, or corr matrix)
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
