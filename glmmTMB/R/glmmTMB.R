@@ -825,12 +825,12 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             if(!(ncol(aa[[i]]) == length(reTrms$cnms[[i]]) && nrow(aa[[i]]) == length(reTrms$cnms[[i]]) ) )
               stop("matrix is not the correct dimensions", call. = FALSE)
             if (is.null(colnames(aa[[i]])) || is.null(rownames(aa[[i]])))
-              stop("row and column names are required for correlation matrix", call. = FALSE)
+              stop("row and column names of matrix are required", call. = FALSE)
             if (!(is.null(colnames(aa[[i]])) && is.null(rownames(aa[[i]])))){
               # if(!identical(colnames(aa[[i]]), reTrms$cnms[[i]]))
-              #   stop("column names of the correlation matrix do not match the terms", call. = FALSE)
+              #   stop("column names of the matrix do not match the terms", call. = FALSE)
               # if(!identical(rownames(aa[[i]]), reTrms$cnms[[i]])) 
-              #   stop("row names of the correlation matrix do not match the terms", call. = FALSE)
+              #   stop("row names of the matrix do not match the terms", call. = FALSE)
             }
           }
         }
