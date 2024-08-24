@@ -326,6 +326,42 @@ namespace glmmtmb{
    if(give_log) return logans; else return exp(logans);
  }
   VECTORIZE4_ttti(dcauchy)
+
+// first few Bell numbers, from https://oeis.org/A000110: 1, 1, 2, 5, 15, 52, 203, 877, 4140, 21147, 115975, 678570, 4213597, 27644437, 190899322, 1382958545, 10480142147, 82864869804, 682076806159, 5832742205057, 51724158235372, 474869816156751, 4506715738447323, 44152005855084346, 445958869294805289, 4638590332229999353, 49631246523618756274
+// implement as lookup table?
+
+// Helper function to calculate Stirling numbers of the second kind
+  double Stirling2(int n, int k) {
+    if (k == 0 && n == 0) return 1;
+    if (k == 0 || n == 0) return 0;
+    return k * Stirling2(n - 1, k) + Stirling2(n - 1, k - 1);
+  }
+
+// C++ version of the Bell function (*not* vectorized)
+  double Bell(int n) {
+    double result = 0.0;
+    
+    if (n == 0) return(1);
+    if (n < 0) error("n must be greater than or equal to 0");
+    for (int k = 1; k <= n; ++k) {
+      result += Stirling2(n, k);
+    }
+    return result;
+  }
+
+  template<class Type>
+  Type dbell(Type x, Type shape, int give_log = 0)
+  {
+
+    // check for non-integer, non-finite?
+    if (x < 0 || shape <= 0) return(NAN);
+    Type logres = x * log(shape) - expm1(shape) +
+      // clunky cast (ADvar -> double -> int)
+      log(Bell((int) asDouble(x))) - lgamma(x + 1);
+    if (!give_log) return exp(logres);
+    return logres;
+  }
+  
 } // namespace glmmtmb
 
 /* Interface to compois variance */
@@ -340,3 +376,4 @@ extern "C" {
     return ans;
   }
 }
+

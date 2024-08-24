@@ -40,7 +40,8 @@ enum valid_family {
   t_family =600,
   tweedie_family = 700,
   lognormal_family = 800,
-  skewnormal_family = 900
+  skewnormal_family = 900,
+  bell_family = 1000
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -896,6 +897,9 @@ Type objective_function<Type>::operator() ()
 	SIMULATE{
 	  yobs(i) = mu(i)+phi(i)*rt(s2);
 	}  // untested
+	break;
+      case bell_family:
+	tmp_loglik = glmmtmb::dbell(yobs(i), mu(i), true);
 	break;
       default:
         error("Family not implemented!");
