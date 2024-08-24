@@ -22,7 +22,11 @@ in_glm_fit <- function() {
 }
 
 make_family <- function(x, link, needs_nonneg = FALSE, needs_int = FALSE) {
-    x <- c(x, list(link=link), make.link(link))
+    if (is.character(link)) {
+        x <- c(x, list(link=link), make.link(link))
+    } else {
+        x <- c(x, list(link=link$name), link)
+    }
     ## stubs for Effect.default/glm.fit
     if (is.null(x$aic)) {
         x <- c(x,list(aic=function(...) NA_real_))
@@ -465,3 +469,19 @@ nbinom12 <- function(link="log") {
               )
     return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
+
+#' @export
+#' @rdname bell_family
+bell <- function(link="lambertW") {
+    if (!requireNamespace("gsl")) stop("need gsl for bell family")
+    r <- list(family="bell",
+              variance = function(mu) {
+                  mu*(1+gsl::lambertW0(mu))
+              }
+              )
+    Link <- list(link = gsl::lambert_W0,
+                 linkinv = function(x) x*exp(x),
+                 name = "lambertW")
+    return(make_family(r, Link, needs_nonneg = TRUE, needs_int = TRUE))
+}
+
