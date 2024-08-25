@@ -908,6 +908,7 @@ Type objective_function<Type>::operator() ()
 	// parameterized in terms of theta, *not* mu
 	// link had better be hard-coded in this case??
 	tmp_loglik = glmmtmb::dbell(yobs(i), exp(eta(i)), true);
+	SIMULATE{yobs(i) = glmmtmb::rbell(exp(eta(i)));}
 	break;
       default:
         error("Family not implemented!");

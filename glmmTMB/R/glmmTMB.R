@@ -1172,7 +1172,7 @@ glmmTMB <- function(
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
-    if (length(miss_comp <- setdiff(c("linkfun","variance"),fnames))>0) {
+    if (length(miss_comp <- setdiff(c("linkfun","variance"), fnames))>0) {
         warning("some components missing from ",sQuote("family"),
                 ": downstream methods may fail")
     }

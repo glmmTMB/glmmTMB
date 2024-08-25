@@ -484,9 +484,10 @@ bell <- function(link="lambertW") {
                   mu*(1+gsl::lambertW0(mu))
               }
               )
-    Link <- list(link = function(x) log(gsl::lambert_W0(x)),
+    Link <- list(linkfun = function(x) log(gsl::lambert_W0(x)),
                  linkinv = function(x) exp(x)*exp(exp(x)),
-                 name = "lambertW")
+                 name = link ## mild hack to avoid make_family passing to make.link, which has hard-coded options
+                 )
     return(make_family(r, Link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
