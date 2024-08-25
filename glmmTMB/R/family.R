@@ -481,7 +481,7 @@ bell <- function(link="lambertW") {
     if (!requireNamespace("gsl")) stop("the gsl package must be installed in order to use the Bell family")
     r <- list(family="bell",
               variance = function(mu) {
-                  mu*(1+gsl::lambertW0(mu))
+                  mu*(1+gsl::lambert_W0(mu))
               }
               )
     Link <- list(linkfun = function(x) log(gsl::lambert_W0(x)),
