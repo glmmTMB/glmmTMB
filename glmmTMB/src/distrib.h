@@ -1,6 +1,6 @@
 // additional distributions etc. for glmmTMB
+#include <vector> // for vectors in Bell()
 
-// FIXME: check proper syntax for including 
 namespace glmmtmb{
 	
   /* Not used anymore: */
@@ -331,31 +331,47 @@ namespace glmmtmb{
 // implement as lookup table?
 
 // Helper function to calculate Stirling numbers of the second kind
-  double Stirling2(int n, int k) {
-    if (k == 0 && n == 0) return 1;
-    if (k == 0 || n == 0) return 0;
-    return k * Stirling2(n - 1, k) + Stirling2(n - 1, k - 1);
-  }
+//   double Stirling2(int n, int k) {
+//     if (k == 0 && n == 0) return 1;
+//     if (k == 0 || n == 0) return 0;
+//     return k * Stirling2(n - 1, k) + Stirling2(n - 1, k - 1);
+//   }
 
-// C++ version of the Bell function (*not* vectorized)
-  double Bell(int n) {
-    double result = 0.0;
+// // C++ version of the Bell function (*not* vectorized)
+//   double Bell(int n) {
+//     double result = 0.0;
     
-    if (n == 0) return(1);
-    if (n < 0) error("n must be greater than or equal to 0");
-    for (int k = 1; k <= n; ++k) {
-      result += Stirling2(n, k);
+//     if (n == 0) return(1);
+//     if (n < 0) error("n must be greater than or equal to 0");
+//     for (int k = 1; k <= n; ++k) {
+//       result += Stirling2(n, k);
+//     }
+//     return result;
+//   }
+
+  double Bell(int n) {
+  
+    if ((n == 0) || (n == 1)) {
+      return(1);
     }
-    return result;
+    vector<double> B(n);
+    vector<double> Bneu(n);
+    B[0] = 1;
+    for (int i=0; i<(n-1); i++) {
+      Bneu[0] = B[i];
+      for (int j=1; j<=(i+1); j++) {
+	Bneu[j] = B[j - 1] + Bneu[j - 1];
+      }
+      for (int k=0; k<n; k++) B[k] = Bneu[k];
+    }
+    return Bneu[n-1];
   }
 
   template<class Type>
-  Type dbell(Type x, Type shape, int give_log = 0)
+  Type dbell(Type x, Type theta, int give_log = 0)
   {
 
-    // check for non-integer, non-finite?
-    if (x < 0 || shape <= 0) return(NAN);
-    Type logres = x * log(shape) - expm1(shape) +
+    Type logres = x * log(theta) - expm1(theta) +
       // clunky cast (ADvar -> double -> int)
       log(Bell((int) asDouble(x))) - lgamma(x + 1);
     if (!give_log) return exp(logres);

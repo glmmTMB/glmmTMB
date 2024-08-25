@@ -6,7 +6,8 @@
   inverse             = 3,
   cloglog             = 4,
   identity            = 5,
-  sqrt                = 6
+  sqrt                = 6,
+  lambertW            = 7
 )
 .valid_family <- c(
   gaussian = 0,

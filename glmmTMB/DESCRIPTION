@@ -84,7 +84,8 @@ Suggests:
     parallel,
     blme,
     purrr,
-    dplyr
+    dplyr,
+    gsl
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
