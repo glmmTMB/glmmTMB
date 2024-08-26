@@ -10,6 +10,7 @@
 ##' fm2 <- glmmTMB(weight ~ Time + diag(Time | Chick), data=ChickWeight)
 ##' fm3 <- lme4::lmer(weight ~ Time + (Time || Chick), data = ChickWeight, REML = FALSE)
 ##' all.equal(hatvalues(fm2), unname(hatvalues(fm3)), tolerance = 1e-2)
+##' @importFrom stats hatvalues
 ##' @export
 hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
 
@@ -72,7 +73,7 @@ hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
     TMB::config(tmbad.atomic_sparse_log_determinant=0, DLL="RTMB") ## TMB FIXME
     F <- RTMB::GetTape(obj)
     r <- obj$env$random ## Which are random
-    p <- tail(1:(nobs+ntheta), ntheta) ## Which are parameters *after* removing random
+    p <- (nobs+1):(nobs + ntheta) ## Which are parameters *after* removing random
     ThetaHat <- F$laplace(r)$newton(p)
     J <- ThetaHat$jacobian(ThetaHat$par())
     ## Extra stuff we need in (3)
@@ -149,6 +150,7 @@ hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
 }
 
 #' @export
+#' @importFrom stats rstudent
 rstudent.glmmTMB <- function (model, ...) {
     ## FIXME: more careful about 0-weight, na.exclude, naming, etc.
     ## NOT consistent with stats:::rstudent.lm [res/(infl$sigma * sqrt(1 - infl$hat))]

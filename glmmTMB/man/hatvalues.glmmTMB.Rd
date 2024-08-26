@@ -19,5 +19,8 @@ Hat values (and other influence measures) for glmmTMB objects
 \examples{
 fm0 <- glmmTMB(weight ~ Time, data=ChickWeight)
 fm1 <- lm(weight ~ Time, data = ChickWeight)
-all.equal(hatvalues(fm0), hatvalues(fm1))
+all.equal(hatvalues(fm0), unname(hatvalues(fm1)))
+fm2 <- glmmTMB(weight ~ Time + diag(Time | Chick), data=ChickWeight)
+fm3 <- lme4::lmer(weight ~ Time + (Time || Chick), data = ChickWeight, REML = FALSE)
+all.equal(hatvalues(fm2), unname(hatvalues(fm3)), tolerance = 1e-2)
 }
