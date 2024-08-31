@@ -34,6 +34,10 @@ allFit.methods <- data.frame(
 ## FIXME: summary/tidy methods?
 ## FIXME: exclude terrible/sensitive optimizers
 ## FIXME: expand to use optimx methods?
+## FIXME: we should only re-run the optimization, not update()! -> finalizeTMB()
+##        if necessary do the modular steps again, ideally re-use info from fitted model
+##        optional whether we should start from best fit or from default/specified starting values
+##        optional whether to include original alg
 allFit <- function(fit, methods = allFit.methods) {
     res <- vector("list", length = nrow(methods))
     names(res) <- paste(methods$optimizer,
