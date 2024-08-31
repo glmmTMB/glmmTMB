@@ -33,7 +33,6 @@ allFit.methods <- data.frame(
 ## FIXME: factory etc. to store warnings
 ## FIXME: summary/tidy methods?
 ## FIXME: exclude terrible/sensitive optimizers
-## FIXME: store timings
 ## FIXME: expand to use optimx methods?
 allFit <- function(fit, methods = allFit.methods) {
     res <- vector("list", length = nrow(methods))
@@ -49,10 +48,10 @@ allFit <- function(fit, methods = allFit.methods) {
             optim = glmmTMBControl(optimizer=optim,
                                    optArgs = list(method = alg)),
             nloptwrap1 = glmmTMBControl(optimizer=nloptwrap1,
-                                   optArgs = list(algorithm = alg)))
-        res[[i]] <- try(
-            update(fit, control = ctrl)
-        )
+                                        optArgs = list(algorithm = alg)))
+        time <- system.time(curfit <- try(update(fit, control = ctrl)))
+        attr(curfit, "system.time") <- time
+        res[[i]] <- curfit
     }
     res
 }
