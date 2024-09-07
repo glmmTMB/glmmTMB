@@ -67,42 +67,12 @@ startParams <- function(parameters,
 
     # get either dunn-smyth residuals or
     fam <- family$family
-    res.families <- c("poisson", "nbinom2", "binomial", "gaussian")
+    res.families <- c("poisson", "nbinom1", "nbinom2", "binomial", "gaussian")
     if (fam %in% res.families) {
-      #### Get the dunn smyth residuals
-      if (fam == "poisson") {
-        a <- ppois(yobs - 1, mu)
-        b <- ppois(yobs, mu)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "nbinom2") {
-        phi <- phi + 1e-05
-        a <- pnbinom(yobs - 1, mu =  mu, size = phi)
-        b <- pnbinom(yobs, mu =  mu, size = phi)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "nbinom1") {
-        phi <- phi + 1e-05
-        a <- pnbinom(yobs - 1, mu =  mu, size = mu/phi)
-        b <- pnbinom(yobs, mu =  mu, size = mu/phi)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "binomial"){
-        a <- pbinom(yobs - 1, 1, mu)
-        b <- pbinom(yobs, 1, mu)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "gaussian"){
-        resid <- yobs - mu
-      }
+        resid <- dunnsmyth_resids(yobs, mu, fam, phi)
     } else {
       resid <- family$dev.resids(y = yobs, mu = mu, wt = weights)
     }
-    resid[is.infinite(resid)] <- 0; resid[is.nan(resid)] <- 0
     resid <- as.data.frame(resid)
 
     get_rank <- function(x) {

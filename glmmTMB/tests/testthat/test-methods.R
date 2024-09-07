@@ -674,7 +674,9 @@ test_that("weighted residuals", {
                  data = cbpp, family = poisson, weights = wts)
     tmbm5 <- glmmTMB(incidence ~ period,
                      data = cbpp, family = poisson, weights = wts)
-    for  (type in eval(formals(residuals.glmmTMB)$type)) {
+    resid_types <- setdiff(eval(formals(residuals.glmmTMB)$type),
+                           "dunn-smyth")
+    for  (type in resid_types) {
         expect_equal(residuals(tmbm4, type = type),
                      residuals(tmbm5, type = type),
                      tolerance = 1e-6)
@@ -698,6 +700,15 @@ test_that("ranef for rr() models", {
     "23", "24", "27"), class = "factor"), condval = c(-0.893053872609456, 
     -1.00956536260405), condsd = c(1.13999978200572, 1.29609467840739
                                    )), row.names = c("cond.1", "cond.2"), class = "data.frame"))
+})
+
+test_that("dunn-smyth residuals", {
+    set.seed(101)
+    expect_equal(head(residuals(fm2NB, type = "dunn-smyth")),
+                 c(-0.33488756280853, -0.61829585663957,
+                   -1.66859445068795, 0.518461893827102, 
+                   1.13564440178643, 2.36498647739011),
+                 tolerance = 1e-6)
 })
 
 # This test started also giving a warning on os "mac".
