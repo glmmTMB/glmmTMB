@@ -114,3 +114,7 @@ boxplot(y~f, data = dd)
 glmmTMB(y ~ 1 + (1|f),
         data = dd,
         family = bell) |> summary()
+
+fabric <- read.table("fabric.txt", header = TRUE)
+plot(faults ~ roll_length, data = fabric)
+glmmTMB(faults ~ log(roll_length), data = fabric, family = bell)
