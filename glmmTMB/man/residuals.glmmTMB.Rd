@@ -5,7 +5,11 @@
 \alias{deviance.glmmTMB}
 \title{Compute residuals for a glmmTMB object}
 \usage{
-\method{residuals}{glmmTMB}(object, type = c("response", "pearson", "working", "deviance"), ...)
+\method{residuals}{glmmTMB}(
+  object,
+  type = c("response", "pearson", "working", "deviance", "dunn-smyth"),
+  ...
+)
 
 \method{deviance}{glmmTMB}(object, ...)
 }
