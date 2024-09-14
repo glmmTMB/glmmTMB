@@ -59,7 +59,7 @@ ordbeta(link = "logit")
 
 nbinom12(link = "log")
 
-bell(link = "lambertW")
+bell(link = "log")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}

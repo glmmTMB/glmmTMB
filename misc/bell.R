@@ -124,9 +124,32 @@ glmm.model <- glmmTMB(y ~  time*drug+ (1|id),
                       na.action = na.omit,
                       family = glmmTMB::bell())
 
-fixef(glmm.model)$cond
-fixef(fm1)
+all.equal(fixef(glmm.model)$cond, fixef(fm1))
 
 fabric <- read.table("fabric.txt", header = TRUE)
 plot(faults ~ roll_length, data = fabric)
 glmmTMB(faults ~ log(roll_length), data = fabric, family = bell)
+
+glmmadapt <- function() mixed_model(fixed = y ~ time*drug,
+                                    random = ~ 1| id,data=leprosy.long,
+                                    n_phis = 0,
+                                    family =my_bell(),max_coef_value = 50,
+                                    initial_values = list("betas" = poisson()))
+
+tmbfun <- function() glmmTMB(y ~  time*drug+ (1|id),
+                      data = leprosy.long,
+                      na.action = na.omit,
+                      family = glmmTMB::bell())
+
+library(rbenchmark)
+benchmark(glmmadapt(), tmbfun())
+
+bench::mark(glmmadapt(), tmbfun(), check = FALSE)
+
+fabric <- read.table("fabric.txt", header = TRUE)
+plot(faults ~ roll_length, data = fabric)
+
+pois_fit <- glm(faults ~ roll_length, data = fabric, family = poisson)
+bell_fit <- glmmTMB(faults ~ roll_length, data = fabric, family = bell)
+## agrees with Castellares et al. (2018
+printCoefmat(coef(summary(bell_fit))$cond, digits = 3)
