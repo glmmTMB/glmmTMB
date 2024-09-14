@@ -7,7 +7,14 @@
 \usage{
 fitTMB(TMBStruc, doOptim = TRUE)
 
-finalizeTMB(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL)
+finalizeTMB(
+  TMBStruc,
+  obj,
+  fit,
+  h = NULL,
+  data.tmb.old = NULL,
+  modelInfo = NULL
+)
 }
 \arguments{
 \item{TMBStruc}{a list containing lots of stuff ...}
@@ -23,6 +30,8 @@ a similar list (i.e. containing elements \code{par}, \code{objective}, \code{con
 \item{h}{Hessian matrix for fit, if computed in previous step}
 
 \item{data.tmb.old}{stored TMB data, if computed in previous step}
+
+\item{modelInfo}{component from a fitted \code{glmmTMB} model, if available}
 }
 \description{
 These functions (called internally by \code{\link{glmmTMB}}) perform
@@ -33,6 +42,10 @@ optimization (\code{finalizeTMB}). It can be useful to run \code{\link{glmmTMB}}
 finish the fitting process with \code{fitTMB} (however, it is the
 user's responsibility to make sure that any modifications
 create an internally consistent final fitted object).
+}
+\details{
+\code{finalizeTMB} uses the following components (only) from \code{TMBStruc}: \code{control},
+\code{se}, \code{REML}, \code{call}, \code{fr}
 }
 \examples{
 ## 1. regular (non-modular) model fit:
