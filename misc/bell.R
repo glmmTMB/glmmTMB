@@ -1,5 +1,6 @@
 library(glmmTMB)
 library(GLMMadaptive)
+library(bellreg)
 set.seed(1234)
 
 W <- gsl::lambert_W0
@@ -56,8 +57,38 @@ my_bell<- function (link = "log") {
               class = "family")
 }
 ######################
+## simulated homogeneous case
 
+set.seed(101)
+dd <- data.frame(y = bellreg::rbell(1000, theta = 1))
+## summary(dd$y)
+table(dd$y)
+m0 <- bellreg(y ~ 1, data = dd)
+m1 <- glmmTMB(y ~ 1, data = dd, family = bell, start = list(beta=0.5))
 
+## checking gradients
+
+parvec <- seq(0, 2, length = 101)
+likvec <- vapply(parvec, m1$obj$fn, numeric(1))
+likvec2 <- vapply(parvec, \(t) -sum(dbell(dd$y, theta = W(exp(t)), log = TRUE)), numeric(1))
+
+par(mfrow=c(2,1))
+plot(parvec, likvec, type = "l", col = "red", lwd = 2, log="y")
+points(parvec, likvec2, col = "blue", lwd = 2)
+
+stopifnot(max(abs(likvec-likvec2)) < 1e-5)
+
+grvec <- vapply(parvec, m1$obj$gr, numeric(1))
+plot(parvec, grvec, type = "l", col = "red", lwd = 2)
+dx <- diff(parvec[1:2])
+lines(parvec[-1]+dx/2, diff(likvec)/dx)
+abline(h=0, col="grey")
+
+m1$fit$objective + m0$fit$value
+m1$fit$objective
+m1$obj$fn(m0$fit$par)
+-sum(dbell(dd$y, theta = W(exp(m0$fit$par)), log = TRUE))
+## something slightly weird with bellreg?
 
 ################
 ## Leprosy dataset
@@ -86,7 +117,6 @@ leprosy.long <- leprosy.long[with(leprosy.long, order(id, time)),]
 fm1 <- mixed_model(fixed = y ~ time*drug, random = ~ 1| id,data=leprosy.long,
                    n_phis = 0,
                    family =my_bell(),max_coef_value = 50,initial_values = list("betas" = poisson()))# Laplace approximation
-fixef(fm1)
 summary(fm1)
 #####glmmTMB code
 glmm.model <- glmmTMB(y ~  time*drug+ (1|id),
@@ -95,25 +125,7 @@ glmm.model <- glmmTMB(y ~  time*drug+ (1|id),
                       family = glmmTMB::bell())
 
 fixef(glmm.model)$cond
-glmm.model$obj$fn()
-tmb_pars <- with(glmm.model$obj$env, last.par.best[-random])
-fm1_pars <- c(fixef(fm1), logsd=log(attr(fm1$D, "L")))
-glmm.model$obj$fn(c(fixef(fm1), log(attr(fm1$D, "L"))))
-logLik(fm1)
-summary(glmm.model)
-
-## OK, why doesn't this work? Test on something easier ...
-## set.seed(102)  ## neg log-likelihood problem
-dd <- data.frame(f = factor(rep(1:10, each = 20)))
-dd$y <- simulate_new( ~ 1 + (1|f),
-                     family = bell,
-                     newdata = dd,
-                     newparams = list(theta = 0, beta = 0))[[1]]
-
-boxplot(y~f, data = dd)
-glmmTMB(y ~ 1 + (1|f),
-        data = dd,
-        family = bell) |> summary()
+fixef(fm1)
 
 fabric <- read.table("fabric.txt", header = TRUE)
 plot(faults ~ roll_length, data = fabric)

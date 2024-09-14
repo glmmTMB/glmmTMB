@@ -475,19 +475,21 @@ nbinom12 <- function(link="log") {
 
 #' @export
 #' @rdname nbinom2
-bell <- function(link="lambertW") {
+bell <- function(link="log") {
     ## can we get away with Suggests: gsl for this?
     ## or do we need Imports: ?
-    if (!requireNamespace("gsl")) stop("the gsl package must be installed in order to use the Bell family")
+    if (!requireNamespace("gsl", quietly = TRUE)) {
+        stop("the gsl package must be installed in order to use the Bell family")
+    }
     r <- list(family="bell",
               variance = function(mu) {
                   mu*(1+gsl::lambert_W0(mu))
               }
               )
-    Link <- list(linkfun = function(x) log(gsl::lambert_W0(x)),
-                 linkinv = function(x) exp(x)*exp(exp(x)),
-                 name = link ## mild hack to avoid make_family passing to make.link, which has hard-coded options
-                 )
-    return(make_family(r, Link, needs_nonneg = TRUE, needs_int = TRUE))
+    ## Link <- list(linkfun = function(x) log(gsl::lambert_W0(x)),
+    ##              linkinv = function(x) exp(x)*exp(exp(x)),
+    ##              name = link ## mild hack to avoid make_family passing to make.link, which has hard-coded options
+    ##              )
+    return(make_family(r, link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 

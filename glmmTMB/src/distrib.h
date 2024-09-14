@@ -370,13 +370,60 @@ namespace glmmtmb{
   Type dbell(Type x, Type theta, int give_log = 0)
   {
 
-    Type logres = x * log(theta) - expm1(theta) +
+    // TMB doesn't have expm1 ... could use
+    // exp(logspace_sub(theta, Type(0))) but feels like overkill,
+    // maybe not what we want anyway?
+    Type logres = x * log(theta) - exp(theta) + 1 +
       // clunky cast (ADvar -> double -> int)
       log(Bell((int) asDouble(x))) - lgamma(x + 1);
     if (!give_log) return exp(logres);
     return logres;
   }
+
+  // taken from TMB atomic functions example,
+  //    https://kaskr.github.io/adcomp/AtomicFunctions.html
+  // if we wanted/needed to speed this up we could make use of the implementation
+  // of Fukushima 2013 doi:10.1016/j.cam.2012.11.021 from 
+  //     https://github.com/DarkoVeberic/LambertW
+
+  // Double version of Lambert W function
+double LambertW(double x) {
+  double logx = log(x);
+  double y = (logx > 0 ? logx : 0);
+  int niter = 100, i=0;
+  for (; i < niter; i++) {
+    if ( fabs( logx - log(y) - y) < 1e-9) break;
+    y -= (y - exp(logx - y)) / (1 + y);
+  }
+  if (i == niter) Rf_warning("W: failed convergence");
+  return y;
+}
   
+TMB_ATOMIC_VECTOR_FUNCTION(
+    // ATOMIC_NAME
+    LambertW
+    ,
+    // OUTPUT_DIM
+    1,
+    // ATOMIC_DOUBLE
+    ty[0] = LambertW(tx[0]); // Call the 'double' version
+    ,
+    // ATOMIC_REVERSE
+    Type W  = ty[0];                    // Function value from forward pass
+    Type DW = 1. / (exp(W) * (1. + W)); // Derivative
+    px[0] = DW * py[0];                 // Reverse mode chain rule
+)
+
+// Scalar version
+template<class Type>
+Type LambertW(Type x){
+  CppAD::vector<Type> tx(1);
+  tx[0] = x;
+  return LambertW(tx)[0];
+}
+// Vectorized version
+VECTORIZE1_t(LambertW)
+
 } // namespace glmmtmb
 
 /* Interface to compois variance */
@@ -391,4 +438,5 @@ extern "C" {
     return ans;
   }
 }
+
 

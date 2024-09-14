@@ -905,11 +905,16 @@ Type objective_function<Type>::operator() ()
 	}  // untested
 	break;
       case bell_family:
-	// parameterized in terms of theta, *not* mu
-	// link had better be hard-coded in this case??
-	tmp_loglik = glmmtmb::dbell(yobs(i), exp(eta(i)), true);
-	SIMULATE{yobs(i) = glmmtmb::rbell(exp(eta(i)));}
-	break;
+	// unfortunately need to back-transform from mu to underlying theta via Lambert W ...
+
+	// see https://stackoverflow.com/questions/92396/why-cant-variables-be-declared-in-a-switch-statement for {} 
+	{
+	  Type btheta;
+	  btheta = glmmtmb::LambertW(mu(i));
+	  tmp_loglik = glmmtmb::dbell(yobs(i), btheta, true);
+	  SIMULATE{yobs(i) = glmmtmb::rbell(btheta);}
+	  break;
+	}
       default:
         error("Family not implemented!");
       } // End switch
