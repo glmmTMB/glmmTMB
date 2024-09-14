@@ -44,40 +44,54 @@ parallel_default <- function(parallel=c("no","multicore","snow"),ncpus=1) {
     return(list(parallel=parallel,do_parallel=do_parallel))
 }
 
+## from length of (strictly) lower triangle, compute dimension of matrix
+get_matdim <- function(ntri) {
+    as.integer(round(0.5 * (1 + sqrt(1 + 8 * ntri))))
+}
+
 ##' translate vector of correlation parameters to correlation values
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
+##' @param return_val return a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")? 
 ##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
 ##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
 ##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
 ##' @examples
 ##' th0 <- 0.5
 ##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
-##' get_cor(c(0.5,0.2,0.5))
-##' C <- matrix(c(1,  0.2,  0.1,
-##'              0.2,  1, -0.2,
-##'              0.1,-0.2,   1),
-##'            3, 3)
-##' ## test: round-trip (almostl results in lower triangle only)
-##' stopifnot(all.equal(get_cor(put_cor(C)),
-##'                    C[lower.tri(C)]))
+##' set.seed(101)
+##' C <- get_cor(rnorm(21), return_val = "mat")
+##' ## test: round-trip
+##' stopifnot(all.equal(get_cor(put_cor(C), return_val = "mat"), C))
 ##' @export
-get_cor <- function(theta) {
-  n <- as.integer(round(0.5 * (1 + sqrt(1 + 8 * length(theta)))))
-  R <- diag(n)
-  R[upper.tri(R)] <- theta
-  R[] <- crossprod(R) # R <- t(R) %*% R
-  scale <- 1 / sqrt(diag(R))
-  R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
-  R[lower.tri(R)]
+get_cor <- function(theta, return_val = c("vec", "mat")) {
+    return_val <- match.arg(return_val)
+    n <-  get_matdim(length(theta))
+    R <- diag(n)
+    R[upper.tri(R)] <- theta
+    R[] <- crossprod(R) # R <- t(R) %*% R
+    scale <- 1 / sqrt(diag(R))
+    R[] <- scale * R * rep(scale, each = n) # R <- cov2cor(R)
+    if (return_val == "mat") return(R)
+    return(R[lower.tri(R)])
 }
 
 ##' @rdname get_cor
 ##' @param C a correlation matrix
+##' @param input_val input a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")? 
 ##' @export
-put_cor <- function(C) {
-    cc <- chol(C)
-    cc2 <- t(cc %*% diag(1/diag(cc)))
-    cc2[lower.tri(cc2)]
+put_cor <- function(C, input_val = c("mat", "vec")) {
+    input_val <- match.arg(input_val)
+    if (input_val == "vec") {
+        ## construct matrix
+        M <- diag(get_matdim(length(C)))
+        M[lower.tri(M)] <- C
+        M[upper.tri(M)] <- t(M)[upper.tri(M)]
+        C <- M
+    }
+    cc2 <- chol(C)
+    scale <- diag(cc2)
+    cc2 <- cc2 %*% diag(1/scale)
+    cc2[upper.tri(cc2)]
 }
 
 hasRandom <- function(x) {
@@ -291,9 +305,11 @@ NULL
 ##' Checks whether OpenMP has been successfully enabled for this
 ##' installation of the package. (Use the \code{parallel} argument
 ##' to \code{\link{glmmTMBControl}}, or set \code{options(glmmTMB.cores=[value])},
-##' to specify that computations should be done in parallel.)
+##' to specify that computations should be done in parallel.) To further
+##' trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @seealso \code{\link[TMB]{benchmark}}, \code{\link{glmmTMBControl}}
-##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP
+##' @return \code{TRUE} or \code{FALSE} depending on availability of OpenMP,
+##' @aliases openmp
 ##' @export
 omp_check <- function() {
     .Call("omp_check", PACKAGE="glmmTMB")
@@ -327,16 +343,27 @@ isNullPointer <- function(x) {
 #' @export
 up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
+  obj <- oldfit$obj
+  ee <- obj$env
+
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
-      obj <- oldfit$obj
-      ee <- obj$env
 
       pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
                 "parfull")
-    
+
+      ## using ee$parList() rather than ee$parameters should help
+      ##  with mapped parameter s... ??
+      params <- ee$parList()
+
+      if (length(ee$map) > 0) {
+          for (n in names(ee$map)) {
+              ee$parameters[[n]] <- params[[n]]
+          }
+      }
+      
       ## change name of thetaf to psi
-      if ("thetaf" %in% names(ee$parameters)) {
-          ee$parameters$psi <- ee$parameters$thetaf
+      if ("thetaf" %in% names(params)) {
+          ee$parameters$psi <- params$thetaf
           ee$parameters$thetaf <- NULL
           pars <- c(grep("last\\.par", names(ee), value = TRUE),
                     "par")
@@ -347,7 +374,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           }
       }
       if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
-      	ee$parameters$betadisp <- ee$parameters$betad
+      	ee$parameters$betadisp <- params$betad
       	ee$parameters$betad <- NULL
       	pars <- c(grep("last\\.par", names(ee), value = TRUE),
       						"par")
@@ -387,7 +414,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## switch from variance to SD parameterization
       if (update_gauss_disp &&
           family(oldfit)$family == "gaussian") {
-          ee$parameters$betadisp <- ee$parameters$betadisp/2
+          ee$parameters$betadisp <- params$betadisp/2
           for (p in pars) {
               if (!is.null(nm <- names(ee[[p]]))) {
                   ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
@@ -408,6 +435,15 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
   }
+
+  ## changed format of 'parallel' control to add autopar info
+  if (length(p <- oldfit$modelInfo$parallel) <= 1) {
+      if (!(is.null(p) || is.numeric(p))) {
+          stop("oldfit$modelInfo$parallel has an unexpected value")
+      }
+      oldfit$modelInfo$parallel <- list(n = p, autopar = NULL)
+  }
+
   ## dispersion was NULL rather than 1 in old R versions ...
   omf <- oldfit$modelInfo$family
   if (getRversion() >= "4.3.0" &&
@@ -420,6 +456,17 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## n.b. can't use ...$priors <- NULL
       oldfit$modelInfo["priors"] <- list(NULL)
   }
+
+  if ("Xd" %in% names(ee$data)) {
+      ee$data[["Xdisp"]] <- ee$data[["Xd"]]
+      ee$data[["Xd"]] <- NULL
+  }
+
+  if ("XdS" %in% names(ee$data)) {
+      ee$data[["XdispS"]] <- ee$data[["XdS"]]
+      ee$data[["XdS"]] <- NULL
+  }
+
   return(oldfit)
 }
 
@@ -501,8 +548,10 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
                            
   mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
+      if (is.null(X) && tag == "disp") stop("are you using a stored model from an earlier glmmTMB version? try running up2date()")
       dropped <- attr(X, "col.dropped") %||% numeric(0)
       ntot <- ncol(X) + length(dropped)
+      ## identical instead of ==; ncol(X) may be NULL for older models
       if (ntot == ncol(X) || !include_dropped) {
           nn <- colnames(X)
       } else {

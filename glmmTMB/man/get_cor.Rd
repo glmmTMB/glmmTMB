@@ -5,14 +5,18 @@
 \alias{put_cor}
 \title{translate vector of correlation parameters to correlation values}
 \usage{
-get_cor(theta)
+get_cor(theta, return_val = c("vec", "mat"))
 
-put_cor(C)
+put_cor(C, input_val = c("mat", "vec"))
 }
 \arguments{
 \item{theta}{vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)}
 
+\item{return_val}{return a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")?}
+
 \item{C}{a correlation matrix}
+
+\item{input_val}{input a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")?}
 }
 \value{
 a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
@@ -27,12 +31,8 @@ if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correla
 \examples{
 th0 <- 0.5
 stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
-get_cor(c(0.5,0.2,0.5))
-C <- matrix(c(1,  0.2,  0.1,
-             0.2,  1, -0.2,
-             0.1,-0.2,   1),
-           3, 3)
-## test: round-trip (almostl results in lower triangle only)
-stopifnot(all.equal(get_cor(put_cor(C)),
-                   C[lower.tri(C)]))
+set.seed(101)
+C <- get_cor(rnorm(21), return_val = "mat")
+## test: round-trip
+stopifnot(all.equal(get_cor(put_cor(C), return_val = "mat"), C))
 }

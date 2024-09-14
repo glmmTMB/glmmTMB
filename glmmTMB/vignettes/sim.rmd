@@ -103,14 +103,16 @@ The simulated data have about the right variability, but in contrast to the real
 
 The next example will be more complex, getting into the nuts and bolts of how to translate random effects covariances into the terms that `glmmTMB` expects.
 
-The hardest piece is probably translating correlation parameters. The "covariance structures" vignette has more details on how correlation matrices are parameterized, and the `put_cor()` function is a general translator, but for the specific case of 2x2 correlation matrices (i.e. with a single correlation parameter), a correlation $\rho$ corresponds to a `glmmTMB` parameter of $\rho/\sqrt{1-\rho^2}$. Here's a utility function:
+The hardest piece is probably translating correlation parameters. The "covariance structures" vignette has more details on how correlation matrices are parameterized, and the `put_cor()` function is a general translator from a specified correlation matrix (or its lower triangular elements) to the appropriate set of `theta` parameters. For the specific case of 2x2 correlation matrices (i.e. with a single correlation parameter), a correlation $\rho$ corresponds to a `glmmTMB` parameter of $\rho/\sqrt{1-\rho^2}$. Here's a utility function:
 
 ```{r rho-to-theta}
 rho_to_theta <- function(rho) rho/sqrt(1-rho^2)
 ## tests
 stopifnot(all.equal(get_cor(rho_to_theta(-0.2)), -0.2))
-stopifnot(all.equal(rho_to_theta(-0.2), put_cor(matrix(c(1,-0.2,-0.2,1), 2))))
+## equivalent to general function
+stopifnot(all.equal(rho_to_theta(-0.2), put_cor(-0.2, input_val = "vec")))
 ```
+
 Setting up metadata/covariates (tools in the `faux` package may also be useful for this):
 
 ```{r sim1}

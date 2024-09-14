@@ -40,3 +40,30 @@ test_that("get_cor", {
   y1 <- get_cor(theta)
   expect_equal(x, y1)
 })
+
+test_that("put_cor", {
+    round_trip <- function(C) {
+        expect_equal(get_cor(put_cor(C), return_val = "mat"), C)
+    }
+    set.seed(101)
+    for (n in 2:10) {
+        for (i in 1:10) {
+            round_trip(get_cor(rnorm(n*(n-1)/2), return_val = "mat"))
+        }
+    }
+})
+
+test_that("up2date for models with mapped components", {
+    m1_map <- glmmTMB(count ~ mined + (1|site),
+                  family=poisson, data=Salamanders,
+                  map=list(theta=factor(NA)),
+                  start=list(theta=log(10)))
+    ## need to save and read back in order to exercise
+    ##  reconstruction/retaping part of `up2date()`
+    fn <- tempfile()
+    saveRDS(m1_map, fn)
+    m1_mapr <- readRDS(fn)
+    m1_mapu <- up2date(m1_mapr)
+    expect_equal(vcov(m1_map), vcov(m1_mapu))
+})
+

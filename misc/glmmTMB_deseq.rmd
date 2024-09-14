@@ -1,0 +1,94 @@
+---
+title: "glmmTMB and DESeq2"
+---
+
+`DESeq2` is one of the most widely used/well-established packages for doing *differential abundance analysis*. `glmmTMB` is a general-purpose package for mixed models.
+
+Roughly speaking, `DESeq2` does the following:
+
+- estimates sensible normalization values (based on distribution of read lengths)
+- estimates coefficients for the *dispersion model* based on the entire data set (all taxa)
+   - specifically, uses a variance function $V = \mu (b + \mu/c)$, where $b$ and $c$ are estimated parameters, that generalizes the cases of the standard linear and quadratic parameterizations of the negative binomial (see e.g. Lindén and Mäntyniemi (2011) *Ecology*)
+   - regularizes the estimate of dispersion parameters by shrinking them toward the value based on the population-level values of $b$ and $c$
+   - fits negative binomial models for each taxon, returning FDR-corrected p-values
+   - optionally, provides shrinkage estimates of the taxon-specific effects
+- it additionally does some filtering based on fraction of zeros and on influence measures (?)
+
+Much of this can now be done in `glmmTMB`.
+
+## basic taxon-by-taxon fits
+
+Previously, the best one could do with `glmmTMB` was something like:
+
+```{r eval = FALSE}
+glmmTMB(counts ~ treatment + <... extra terms> + offset(log_norm),
+        family = "nbinom2",
+        data = dplyr::filter(df, taxon == focal_taxon)
+        )
+```
+and run this model for every value of `focal_taxon`. (It should be possible to write a smarter/faster version of this, see [here](https://github.com/glmmTMB/glmmTMB/pull/829/) ...)
+
+## updated nbinom12 family
+
+As of a recent development version, `glmmTMB` now offers `family = "nbinom12"`, which will fit the combined linear+quadratic form of Lindén and Mäntyniemi (2011)
+
+## fit all taxa at once (fixed effects)
+
+If we use the whole data set (in long format - not in a `phyloseq` taxon-by-sample + metadata format, we can fit this model:
+
+```{r eval = FALSE}
+glmmTMB(counts ~ 0 + taxon + taxon:(treatment + <... extra terms>) + offset(log_norm),
+        data = dplyr::filter(df, taxon == focal_taxon),
+        family = "nbinom12"
+        )
+```
+
+This will fit all taxa with the *same* dispersion parameter. If we added `dispformula = ~0 + taxon` then it would fit the dispersion parameter for every taxon separately. (However, at present it will only allow the `b` parameter from the variance function presented above, the parameter that controls the linear component of the variance, to vary across taxa - at present the `c` parameter is treated as a separate "shape" parameter of the distribution.)
+
+## estimate dispersion parameters with shrinkage
+
+`glmmTMB` recently added the ability to fit random effects in the dispersion model. If we took the model above but used `dispformula = ~ 1 + (1|taxon)`, it *should* do something closer to `DESeq2`, i.e. it will fit the dispersion parameters assuming that there is a log-Normal distribution of dispersion parameters across taxa. (As in the previous section, only the `b` parameter is controlled by this formula.)
+
+## estimate effects with shrinkage
+
+It may be better to treat taxa as a *random effect*, i.e.
+
+```r
+counts ~ 0 + (treatment + <... extra terms>|taxon) + offset(log(normalization))
+```
+
+or
+
+```r
+counts ~ 0 + diag(treatment + <... extra terms>|taxon) + offset(log(normalization))
+```
+
+## correlations among taxa
+
+`us(taxon|sample)` (not feasible) or `diag(taxon|sample)` or `rr(taxon|sample, d=...)` (reduced-rank/factor-analytic)
+
+## rank-reduced/factor-analytic models/model-based ordination
+
+The `rr` models essentially allow you to *simultaneously* do ordination (i.e., find a lower-dimensional representation of a high-dimensional data set) in the context of any other modeling components you want to add (weird conditional distribution, other grouping variables/covariates/REs/etc.).
+
+See [gllvm microbiome ordination vignette](https://jenniniku.github.io/gllvm/articles/vignette2.html); [in-press model on rr models in glmmTMB](https://www.math.mcmaster.ca/bolker/misc/mcgillycuddy2024.pdf)
+
+## zero-inflation
+
+`DESeq2` can't handle zero-inflation at all, `glmmTMB` should be able to do it easily. Z-I model can be as simple or complex as you need it to be (with sufficiently sparse/crappy data, it will be easy to identify overall 
+
+## compositionality
+
+Still hard/impossible? in glmmTMB (but, allowing negative correlations among taxa should allow an approach to that. Experiment with factor-analytic/reduced-rank models and see how well they handle this? (Would need to read up on the literature on compositionality and why it is actually a big problem/big deal to account for it, which I don't yet understand)
+
+## Dirichlet-multinomial
+
+This is a cool approach, but much more limited than its proponents suggest. The Dirichlet distribution *only* allows for correlations due (essentially) to compositionality, not to actual biologically based correlations. Hard to see how it could be implemented in `glmmTMB` without very significant efforts ...
+
+## Discrete mixture models
+
+Nice idea (explicitly model rare vs common taxa, rather than a log-Normal distribution of rarity as implied by the random effects model, and even cluster them) but hard.
+
+## Weirder conditional distributions
+
+`glmmTMB` has `nbinom1`, `nbinom2`, `nbinom12` built in (and Tweedie distributions, if one wanted).  It's possible that the distributions of microbiome read counts are too heavy-tailed even for a zero-inflated negative binomial. More exotic possibilities like the Poisson inverse-gamma could be implemented if that turned out to be useful ...

@@ -39,7 +39,7 @@ If \code{condVar=TRUE}, the individual list elements within the
 random effects terms) will have associated \code{condVar} attributes
 giving the conditional variances of the random effects values.
 These are in the form of three-dimensional arrays: see
-\code{\link{ranef.merMod}} for details. The only difference between
+\code{\link[lme4]{ranef.merMod}} for details. The only difference between
 the packages is that the attributes are called \sQuote{postVar}
 in \pkg{lme4}, vs. \sQuote{condVar} in \pkg{glmmTMB}.
 \item For \code{coef.glmmTMB}: a similar list, but containing

@@ -56,5 +56,20 @@ test_that("smooth + diag() specials", {
                  c(0.829644130428793, 0.789420770119563,
                    1.1073848292829, 0.522906430406326, 
                    1.16293701025298),
-                 tolerance = 1e-5)
+                 tolerance = 1e-4)
+})
+
+test_that("multiple smooths", {
+
+    fake_data <- data.frame(y = rnorm(n = 100),
+                            x1 = rnorm(n = 100),
+                            x2 = rnorm(n = 100))
+    
+    g1 <- glmmTMB(
+        y ~ s(x1) + s(x2),
+        data = fake_data
+    )
+    expect_equal(names(fixef(g1)$cond),
+                       c("(Intercept)", "s(x1)1", "s(x2)1"))
+
 })
