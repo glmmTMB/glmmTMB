@@ -385,7 +385,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     //  * NOTE: 'times' not used as we assume unit distance between consecutive time points.
     int n = term.blockSize;
     vector<Type> logsd = theta.head(term.blockNumTheta-1);
-    Type corr_transf = theta(term.blockNumTheta);
+    Type corr_transf = theta(term.blockNumTheta-1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
     vector<Type> sd = exp(logsd);
     Type cursd;
@@ -396,7 +396,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
       for(int i=1; i<n; i++){
 	if (term.blockCode == hetar1_covstruct) {
-	  cursd = sd(i);
+	  cursd = sd(i-1);
 	} else {
 	  cursd = sd(0);
 	}
