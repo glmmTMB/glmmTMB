@@ -42,7 +42,8 @@
   mat = 7,
   toep = 8,
   rr = 9,
-  homdiag = 10
+  homdiag = 10,
+  hetar1 = 11
 )
 .valid_zipredictcode <- c(
   corrected = 0,
