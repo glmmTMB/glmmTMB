@@ -924,16 +924,17 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
                    "diag" = blksize, # (heterogenous) diag
+                   "homdiag" = 1,  ## (homogeneous) diag
                    "us" = blksize * (blksize+1) / 2,
                    "cs" = blksize + 1,
                    "ar1" = 2,
+                   "hetar1" = blksize + 1,
                    "ou" = 2,
                    "exp" = 2,
                    "gau" = 2,
                    "mat" = 3, 
                    "toep" = 2 * blksize - 1,
-                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "homdiag" = 1  ## (homogeneous) diag
+                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2
                    )
         }
         blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
