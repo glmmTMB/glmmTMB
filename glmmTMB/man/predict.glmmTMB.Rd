@@ -87,4 +87,7 @@ predict(g0, newdata=nd, allow.new.levels=TRUE)
 nd_pop <- data.frame(Days=unique(sleepstudy$Days),
                      Subject=NA)
 predict(g0, newdata=nd_pop)
+## return latent variables (BLUPs/conditional modes/etc. ) with standard errors
+##  (actually conditional standard deviations)
+predict(g0, type = "latent", se.fit = TRUE)
 }

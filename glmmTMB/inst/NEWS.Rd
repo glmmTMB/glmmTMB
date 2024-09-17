@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.9-9000}{
+\section{CHANGES IN VERSION 1.1.10}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
@@ -13,6 +13,13 @@
       EXPERIMENTAL; please post any problems to the issues list
       \item added "skewnormal" family (@psmorris) (EXPERIMENTAL:
       some manual adjustment of starting values may be required)
+      \item \code{predict()} now offers \code{type = "latent"}, which
+      returns the values of the latent variables (with conditional
+      standard deviations if \code{se.fit = TRUE})
+      \item now works with automatic parallelization based on the
+      underlying TMBad autodiff library (specify
+      \code{parallel=list(..., autopar=TRUE)} in \code{glmmTMBControl}
+      or set \code{options(glmmTMB.autopar = TRUE)})
     } % itemize
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
@@ -37,7 +44,15 @@
       \item fix printing bug for zero-inflation covariance matrices (SO
       78393784)
       \item \code{up2date} now works for models with mapped parameters
-  (GH #874)
+      (GH #874)
+      \item \code{ranef()} now works properly for reduced-rank models
+      \item Pearson residuals now work for models with non-trivial
+      dispersion components (GH #1053)
+      \item bug fixes to \code{get_cor()}, \code{put_cor()} utility functions
+      \item \code{mgcv} smooths with no unpenalized components
+      (e.g. \code{s(..., bs  = "sos")}) now work
+      \item better calculation of \code{df.residual} when
+      \code{REML=TRUE} (#1039)=
     } % itemize
   } % bug fixes
   \subsection{OTHER CHANGES}{
