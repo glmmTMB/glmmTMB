@@ -481,8 +481,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") # if rr start theta at 1
           tl[[i]] <- rep(1, blockNumTheta[i])
         else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="propto") { # if propto then set theta to be transformed values
-          ## FIX ME:: Will need to add in a check to see if it's the right dimensions
-          ## FIX ME:: Might have to do that at getReStruc?
           a <- condList[["aa"]][[i]]
           tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
         } #end else if propto
@@ -796,7 +794,6 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ## FIXME: make sure that eval() happens in the right environment/
         ##    document potential issues
         ## Changed from getting rank to extracting additional argument for propto
-        ## FIXME: need to change so it is consistent with current version
         get_arg <- function(v) {
           if (length(v) == 1) return(NA_real_)
           payload <- v[[2]]
@@ -811,29 +808,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                  call. = FALSE))
           return(res)
         }
-
         aa <- lapply(ss$reTrmAddArgs, get_arg)
-        for (i in seq_along(ss$reTrmAddArgs)) {
-          if(ss$reTrmClasses[i] == "rr") {
-            if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
-              stop("non-numeric value for reduced-rank dimension", call. = FALSE)
-            }
-          }
-          else if(ss$reTrmClasses[i] == "propto"){
-            if( !is.matrix( aa[[i]] ) )
-              stop("expecting a matrix for propto", call. = FALSE)
-            if(!(ncol(aa[[i]]) == length(reTrms$cnms[[i]]) && nrow(aa[[i]]) == length(reTrms$cnms[[i]]) ) )
-              stop("matrix is not the correct dimensions", call. = FALSE)
-            if (is.null(colnames(aa[[i]])) || is.null(rownames(aa[[i]])))
-              stop("row and column names of matrix are required", call. = FALSE)
-            if (!(is.null(colnames(aa[[i]])) && is.null(rownames(aa[[i]])))){
-              # if(!identical(colnames(aa[[i]]), reTrms$cnms[[i]]))
-              #   stop("column names of the matrix do not match the terms", call. = FALSE)
-              # if(!identical(rownames(aa[[i]]), reTrms$cnms[[i]])) 
-              #   stop("row names of the matrix do not match the terms", call. = FALSE)
-            }
-          }
-        }
 
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
@@ -859,6 +834,18 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         reXterms <- Map(function(f, a) {
             if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
         }, ss$reTrmFormulas, ss$reTrmAddArgs)
+        
+        
+        for (i in seq_along(ss$reTrmAddArgs)) {
+          if(ss$reTrmClasses[i] == "rr") {
+            if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
+              stop("non-numeric value for reduced-rank dimension", call. = FALSE)
+            }
+          }
+          else if(ss$reTrmClasses[i] == "propto"){
+            checkProptoNames(aa = aa[[i]], cnms = reTrms$cnms[[i]], reXtrm = reXterms[[i]])
+          }
+        }
 
         ss <- unlist(ss$reTrmClasses)
 
@@ -957,7 +944,7 @@ getGrpVar <- function(x)
 ##' matrix (\code{"us"}) for all blocks).
 ##' @param reXterms terms objects corresponding to each RE term
 ##' @param fr model frame
-##' @param aa additional arguments (i.e. rank, or corr matrix)
+##' @param aa additional arguments (i.e. rank, or var-cov matrix)
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -1148,7 +1135,7 @@ binomialType <- function(x) {
 ##' \item \code{toep} (* Toeplitz)
 ##' \item \code{rr} (reduced rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
-##' \item \code{propto} (* proportional to specified correlation)
+##' \item \code{propto} (* proportional to specified variance-covariance matrix)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1700,6 +1687,36 @@ glmmTMBControl <- function(optCtrl=NULL,
       } ## loop over X components
     } ## if rank_check == 'adjust'
   return(TMBStruc)
+}
+
+##' Checks if the row or column names of the matrix in aa matches cnms
+##' @params aa additional argument of a RE term (expecting propto matrix)
+##' @params cnms column-names of Z for a random effect term
+##' @params reXtrm terms object corresponding to a RE term
+checkProptoNames <- function(aa, cnms, reXtrm){
+  if( !is.matrix( aa ) )
+    stop("expecting a matrix for propto", call. = FALSE)
+  if(!(ncol(aa) == length(cnms) && nrow(aa) == length(cnms) ) )
+    stop("matrix is not the correct dimensions", call. = FALSE)
+  if (is.null(colnames(aa)) && is.null(rownames(aa)))
+    stop("row or column names of matrix are required", call. = FALSE)
+  if (!is.null(colnames(aa)) && !is.null(rownames(aa))){
+    if(!identical(colnames(aa), rownames(aa)))
+      stop("row and column names of matrix do not match", call. = FALSE)
+    else
+      matNames <- colnames(aa)
+  }else{
+    if(!is.null(colnames(aa)))
+      matNames <- colnames(aa)
+    if(!is.null(rownames(aa)))
+      matNames <- rownames(aa)
+  }
+  if(!identical(matNames, cnms)){
+    reTrmLabs <- attr(terms(reXtrm),"term.labels")
+    aaLabs <- paste0(reTrmLabs, matNames )
+    if(!identical(aaLabs, cnms))
+      stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+  }
 }
 
 ##' Optimize TMB models and package results, modularly

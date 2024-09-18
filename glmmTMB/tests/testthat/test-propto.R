@@ -75,12 +75,15 @@ if (require("ade4") && require("ape")) {
     })
     ## test names of matrix
     test_that("propto error with incorrect names", {
-      glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat),
-              data = liz)
-     #TO DO
+      mattest <- mat
+      colnames(mattest)[1] <- "wrong"
+      rownames(mattest) <- NULL
+      expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
+              data = liz),
+              regexp = "column or row names of the matrix do not match the terms. Expecting .sppSa..sppSh..sppTl..sppMc..sppMy..sppPh..sppPg..sppPa..sppPb..sppPm..sppAe..sppTt..sppTs..sppZo..sppZv..sppLa..sppLs..sppLv.",
+      )
     })
-
-    
+ 
     ## FIXME: test, remove if unnecessary
     options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?
 } ## if require("ade4") && require("ape")
