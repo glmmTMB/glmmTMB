@@ -939,7 +939,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
     }
 }
 
-.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell")
+
 ## number of additional/shape parameters (default = 0)
 .extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
                             '2' = 'ordbeta')
@@ -1141,7 +1142,7 @@ glmmTMB <- function(
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
-    if (length(miss_comp <- setdiff(c("linkfun","variance"),fnames))>0) {
+    if (length(miss_comp <- setdiff(c("linkfun","variance"), fnames))>0) {
         warning("some components missing from ",sQuote("family"),
                 ": downstream methods may fail")
     }
