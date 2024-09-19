@@ -728,7 +728,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' details on the definition of the deviance for GLMMs.
 ##' }
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), ...) {
     check_dots(...)
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
@@ -755,6 +755,10 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                mu.eta <- fam$mu.eta
                p <- predict(object, type = "link", fast = TRUE)
                r/mu.eta(p)
+           },
+           "dunn-smyth" = {
+               phi <- na.omit(predict(object, type = "disp"))
+               dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -1684,4 +1688,33 @@ deviance.glmmTMB <- function(object, ...) {
     check_dots(...)
     ## consider suppressing warning of class 'na_dev_resids' ?
     sum(residuals(object, type = "deviance")^2)
+}
+
+dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial")
+    if (family == "gaussian") return(yobs-mu)
+    if (!family %in% res.families) {
+        stop("can't compute Dunn-Smyth residuals for family ",
+             sQuote(family))
+    }
+    args <- switch(family,
+                   nbinom2 = list(size = phi),
+                   nbinom1 = list(size = mu/(phi+ 1e-5)),
+                   binom = list(size=1),
+                   NULL
+                   )
+    ## deal with base-R's default size/prob parameterization for nbinom ...
+    pnbinom0 <- function(x, mu, ...) {
+        pnbinom(x, mu=mu, ...)
+    }
+    pfun <- switch(family,
+                   nbinom2 = pnbinom0,
+                   nbinom1 = pnbinom0,
+                   poisson = ppois,
+                   binomial = pbinom)
+    a <- do.call(pfun, c(list(yobs - 1, mu), args))
+    b <- do.call(pfun, c(list(yobs, mu), args))
+    resid <- qnorm(runif(length(yobs), min = a, max = b))
+    resid[is.infinite(resid) | is.nan(resid) ]  <- 0
+    resid
 }
