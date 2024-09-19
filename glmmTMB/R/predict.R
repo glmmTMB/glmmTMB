@@ -77,7 +77,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' \item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 ##' \item{"zlink"}{predicted zero-inflation probability on the scale of
 ##' the logit link function (returns \code{-Inf} for non-zero-inflated models)}
-##' \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB})}
+##' \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB}})}
 ##' \item{"latent"}{return latent variables}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
@@ -109,6 +109,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' nd_pop <- data.frame(Days=unique(sleepstudy$Days),
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
+##' ## return latent variables (BLUPs/conditional modes/etc. ) with standard errors
+##' ##  (actually conditional standard deviations)
+##' predict(g0, type = "latent", se.fit = TRUE)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
@@ -456,8 +459,12 @@ predict.glmmTMB <- function(object,
       on.exit(do.call(openmp, n_orig), add = TRUE)
   }
 
-  if (openmp_debug()) cat("TMB threads currently set to ", openmp(NULL), "\n")
+
+  if (openmp_debug()) {
+      cat("TMB threads currently set to ", openmp(NULL), "\n")
+  }
   return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else "mu_predict"
+
   if (!se.fit) {
     rr <- newObj$report(lp)
     pred <- rr[[return_par]]
