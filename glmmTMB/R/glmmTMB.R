@@ -1681,9 +1681,10 @@ glmmTMBControl <- function(optCtrl=NULL,
 }
 
 ##' Checks if the row or column names of the matrix in aa matches cnms
-##' @params aa additional argument of a RE term (expecting propto matrix)
-##' @params cnms column-names of Z for a random effect term
-##' @params reXtrm terms object corresponding to a RE term
+##' @param aa additional argument of a RE term (expecting propto matrix)
+##' @param cnms column-names of Z for a random effect term
+##' @param reXtrm terms object corresponding to a RE term
+##' @noRd
 checkProptoNames <- function(aa, cnms, reXtrm){
   if( !is.matrix( aa ) )
     stop("expecting a matrix for propto", call. = FALSE)
