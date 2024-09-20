@@ -76,7 +76,8 @@ enum valid_covStruct {
   mat_covstruct = 7,
   toep_covstruct = 8,
   rr_covstruct = 9,
-  homdiag_covstruct = 10
+  homdiag_covstruct = 10,
+  propto_covstruct = 11
 };
 
 // should probably be named just 'predictCode';
@@ -645,6 +646,24 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       term.sd = term.corr.diagonal().array().sqrt();
       term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
     }
+  }
+  else if (term.blockCode == propto_covstruct){
+    // case: propto_covstruct
+    int n = term.blockSize;
+    Type loglambda = theta( theta.size() - 1);
+    vector<Type> logsd = theta.head(n);
+    vector<Type> sd =  exp(logsd + loglambda/2) ;
+    vector<Type> corr_transf = theta.segment(n, theta.size() - n - 1);
+    density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
+    density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
+    }
+    term.corr = nldens.cov(); // For report
+    term.sd = sd;             // For report
   }
   else error("covStruct not implemented!");
   return ans;
