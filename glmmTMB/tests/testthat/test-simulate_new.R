@@ -6,7 +6,6 @@ pp <- list(beta = c(280, 3),
            betadisp = 1,
            theta = c(3, 0.5, 2))
 
-
 s1 <- simulate_new( ~ Days + (Days|Subject),
                    seed = 101,
                    newdata = sleepstudy,
@@ -15,10 +14,10 @@ s1 <- simulate_new( ~ Days + (Days|Subject),
 
 test_that("basic simulate_new",  {
     expect_equal(head(s1),
-                 c(273.619365803796, 277.298270862256, 277.632884563881, 282.679512117747, 
-                   285.64005553022, 288.842364174989))
+                 c(273.908009267299, 278.879666041338, 274.760596391018, 283.450108370691, 
+                   286.469055736181, 290.145189139373))
 })
-
+                 
 
 test_that("basic simulate_new, returning object", {
     s2 <- simulate_new( ~ Days + (Days|Subject),

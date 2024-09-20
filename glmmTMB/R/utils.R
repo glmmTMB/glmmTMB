@@ -674,29 +674,31 @@ collapse_list <- function(pList) {
     pvec <- unlist(unname(pList))
 }
 
-make_pars <- function(pars, ..., include_extra = TRUE) {
+make_pars <- function(pList, ..., include_extra = TRUE) {
     ## FIXME: check for name matches, length matches etc.
     ## (useful errors)
     ## better to split by name first??
 
     L <- list(...)
-    unmatched <- setdiff(names(L), unique(names(pars)))
+    unmatched <- setdiff(names(L), names(pList))
     if (length(unmatched) > 0) {
         warning(sprintf("unmatched parameter names: %s",
                         paste(unmatched, collapse =", ")))
     }
 
-    pList <- split(pars, names(pars))
-    pList <- pList[unique(names(pars))] ## correct ordering
     if (!include_extra) L <- L[intersect(names(L), names(pList))]
     for (nm in names(L)) {
         if ((len1 <- length(pList[[nm]])) == (len2 <- length(L[[nm]]))) {
-            ## skip cases with different length (== partially-mapped vectors)
             pList[[nm]] <- L[[nm]]
         } else {
-            ## FIXME: don't warn if we know we're mapping this parameter
-            warning(sprintf("length mismatch in component %s (%d != %d); not setting",
-                            nm, len1, len2))
+            ## skip cases with different length (== partially-mapped vectors)
+            plen <- len1 + length(attr(pList[[nm]], "map"))
+            ## if L[[nm]] is a list, that's because we're
+            ##  passing a partial b vector ...
+            if (plen != len2 && !is.list(L[[nm]])) {
+                warning(sprintf("length mismatch in component %s (%d != %d); not setting",
+                                nm, len1, len2))
+            }
         }
     }
     return(collapse_list(pList))
@@ -869,7 +871,7 @@ simulate_new <- function(object,
     }
 
     pars <- do.call("make_pars",
-                    c(list(r2$env$last.par), newparams,
+                    c(list(r2$env$parameters), newparams,
                       list(include_extra = FALSE)))
 
     if (!is.null(seed)) set.seed(seed)
@@ -877,7 +879,7 @@ simulate_new <- function(object,
         b_vals <- r2$simulate(par = pars)$b
         if (return_val == "pars") {
             pars <- do.call("make_pars",
-                            c(list(r2$env$last.par), newparams,
+                            c(list(r2$env$parameters), newparams,
                               list(include_extra = TRUE)))
             return(set_b(pars, b_vals))
         }
