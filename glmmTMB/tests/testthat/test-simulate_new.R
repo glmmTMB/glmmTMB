@@ -3,7 +3,7 @@ library(testthat)
 
 data("sleepstudy", package = "lme4")
 pp <- list(beta = c(280, 3),
-           betad = 1,
+           betadisp = 1,
            theta = c(3, 0.5, 2))
 
 
@@ -102,7 +102,7 @@ test_that("simulate_new with specified b (pars, b as list)", {
 })                    
 
 pp4 <- list(beta = c(280),
-           betad = 1,
+           betadisp = 1,
            theta = c(-1, 1, 0))
 
 s8 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),

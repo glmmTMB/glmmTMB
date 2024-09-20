@@ -435,7 +435,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   estNameList <- getParnames(object, full, include_mapped = FALSE, include_dropped = FALSE)
 
   map <- object$obj$env$map
-  parnms <- c("beta","betazi", "betad")     ## parameter names
+  parnms <- c("beta","betazi", "betadisp")     ## parameter names
   if (full) {
       ## return a matrix
       nl <- unlist(estNameList)
