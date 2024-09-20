@@ -85,6 +85,8 @@ Suggests:
     blme,
     purrr,
     dplyr,
+    ade4,
+    ape,
     gsl
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown

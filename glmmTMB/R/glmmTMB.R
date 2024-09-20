@@ -408,14 +408,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict
-    )
+  )
 
     ## add prior info
     data.tmb <- c(data.tmb, prior_struc)
 
   # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr")) 1 else 0
-  dorr = rrVal(condList)
+  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto")) 1 else 0
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -436,21 +435,29 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
            
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
-  # theta is 0, except if dorr, theta is 1
-  t01 <- function(dorr, condReStruc){
-    theta <- rr0(sum(getVal(condReStruc,"blockNumTheta")))
-    if(dorr){
-      nt <- 1
-      blockNumTheta <- getVal(condReStruc,"blockNumTheta")
-      blockCode <- getVal(condReStruc, "blockCode")
-      for (i in 1:length(blockCode)) {
-        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") {
-            theta[nt:(nt + blockNumTheta[i] - 1)] <- rep(1, blockNumTheta[i])
-        }
-        nt <- nt + blockNumTheta[i]
-      }
+  # theta is 0, 1 for rr_covstruct
+  # theta is parameterised to corr matrix for propto
+  t01 <- function(dorr, ReStruc, List = NULL){
+
+    nt <- sum(getVal(ReStruc, "blockNumTheta"))
+    theta <- rr0(nt)
+    
+    if (dorr) {
+      blockNumTheta <- getVal(ReStruc,"blockNumTheta")
+      blockCode  <- getVal(ReStruc, "blockCode")
+      thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
+      tl <- split(theta, thetaseq)
+      for(i in 1:length(blockCode)){
+        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") # if rr start theta at 1
+          tl[[i]] <- rep(1, blockNumTheta[i])
+        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="propto") { # if propto then set theta to be transformed values
+          a <- condList[["aa"]][[i]]
+          tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
+        } #end else if propto
+      } #end for loop
+      theta <- unlist(tl, use.names = F)
     }
-    theta
+    return(theta)
   }
 
   parameters <- with(data.tmb,
@@ -459,11 +466,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
                        betadisp= rep(betadisp_init, max(ncol(Xdisp),ncol(XdispS))),
                        b       = rep(beta_init, ncol(Z)),
-                       bzi     = rr0(ncol(Zzi)),
+                       bzi     = rr0(ncol(Zzi)),                       
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
-                       theta   = t01(dorr, condReStruc),
-                       thetazi = rr0(sum(getVal(ziReStruc,  "blockNumTheta"))),
-                       thetadisp = t01(dorr=rrVal(dispList), dispReStruc),
+                       theta   = t01(dorr = rrVal(condList), condReStruc, condList),
+                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
+                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc),
                        psi  = psi_init
                      ))
 
@@ -481,6 +488,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start = start,
                               sparseX = sparseX,
                               start_method = control$start_method)
+  }
+
+  ### Change mapping for propto - FIX ME:: currently only done for condReStruc
+  if(any(condList$ss == "propto")){
+    mapArg.orig <- mapArg
+    mapArg <- map.theta.propto(condReStruc, mapArg.orig)
   }
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
@@ -766,25 +779,22 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         # FIX ME: use NA rather than 0 as a placeholder in aa?
         ## FIXME: make sure that eval() happens in the right environment/
         ##    document potential issues
-        get_num <- function(v) {
-            if (length(v) == 1) return(NA_real_)
-            payload <- v[[2]]
-            res <- tryCatch(eval(payload, envir = environment(formula)),
-                            error = function(e)
-                              stop("can't evaluate reduced-rank dimension ",
-                                   sQuote(deparse(payload)),
-                                   .call = FALSE))
-            if (is.na(suppressWarnings(as.numeric(res)))) {
-                stop("non-numeric value for reduced-rank dimension",
-                     call. = FALSE)
-            }
-            return(res)
+        ## Changed from getting rank to extracting additional argument for propto
+        get_arg <- function(v) {
+          if (length(v) == 1) return(NA_real_)
+          payload <- v[[2]]
+          ## rabbit-hole alert. Try to evaluate payload first in model frame,
+          ##  then in formula environment (... then in parent env of
+          ##  formula env ... ??)
+          res <- tryCatch(eval(payload, envir = fr,
+                               enclos = environment(formula)),
+                          error = function(e)
+                            stop("can't evaluate argument ",
+                                 sQuote(deparse(payload)),
+                                 call. = FALSE))
+          return(res)
         }
-        aa <- ifelse(ss$reTrmClasses=="rr",
-                     vapply(ss$reTrmAddArgs,
-                           get_num,
-                           FUN.VALUE=numeric(1)),
-                    0)
+        aa <- lapply(ss$reTrmAddArgs, get_arg)
 
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
@@ -810,6 +820,18 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         reXterms <- Map(function(f, a) {
             if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
         }, ss$reTrmFormulas, ss$reTrmAddArgs)
+        
+        
+        for (i in seq_along(ss$reTrmAddArgs)) {
+          if(ss$reTrmClasses[i] == "rr") {
+            if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
+              stop("non-numeric value for reduced-rank dimension", call. = FALSE)
+            }
+          }
+          else if(ss$reTrmClasses[i] == "propto"){
+            checkProptoNames(aa = aa[[i]], cnms = reTrms$cnms[[i]], reXtrm = reXterms[[i]])
+          }
+        }
 
         ss <- unlist(ss$reTrmClasses)
 
@@ -827,6 +849,56 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
     namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms)
+}
+
+##' Get theta parameterisation of a covariance structure
+## from Balint Tamasi, TMB user's group list
+## FIXME: names based on dimnames of Sigma?
+#' @param Sigma a covariance matrix
+#' @param corrs.only return only values corresponding to the correlation matrix parameters?
+#' @return the corresponding \code{theta} parameter vector
+#' @importFrom stats cov2cor
+as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
+  logsd <- log(diag(Sigma))/2
+  cr <- cov2cor(Sigma)
+  cc <- chol(cr)
+  cc <- cc %*% diag(1 / diag(cc))
+  corrs <- cc[upper.tri(cc)]
+  if (corrs.only) return(corrs)
+  ret <- c(logsd,corrs)
+  return(ret)
+}
+
+##' Set map values for theta to be fixed (NA) for propto
+## FIXME: Will need to adjust if map is already used
+#' @param ReStruc a random effects structure
+#' @param map a list of mapped elements
+#' @return the corresponding \code{theta} parameter vector
+map.theta.propto <- function(ReStruc, map) {
+  if (is.null(map))
+      params <- list()
+  else
+      params <- map
+  
+  getVal <- function(obj, component)
+    vapply(obj, function(x) x[[component]], numeric(1))
+
+  nt <- sum(getVal(ReStruc, "blockNumTheta"))
+  map.theta <- c(1:nt) #initialises all parameters as separate values
+
+  blockTheta <- getVal(ReStruc,"blockNumTheta")
+  cov_code <- getVal(ReStruc, "blockCode")
+  thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
+  tl <- split(map.theta, thetaseq)
+  for(i in 1:length(cov_code)){
+    if(cov_code[[i]] == 11) {
+      tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
+    }
+  }
+  map.theta <- unlist(tl, use.names = FALSE)
+  params$theta <- factor(map.theta)
+
+  return(params)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -858,7 +930,7 @@ getGrpVar <- function(x)
 ##' matrix (\code{"us"}) for all blocks).
 ##' @param reXterms terms objects corresponding to each RE term
 ##' @param fr model frame
-##' @param aa additional arguments (i.e. rank)
+##' @param aa additional arguments (i.e. rank, or var-cov matrix)
 ##' @return a list
 ##' \item{blockNumTheta}{number of variance covariance parameters per term}
 ##' \item{blockSize}{size (dimension) of one block}
@@ -871,6 +943,7 @@ getGrpVar <- function(x)
 ##' rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
 ##'                     sleepstudy)$reTrms
 ##' getReStruc(rt)
+##' getReStruc(rt2)
 ##' @importFrom stats setNames dist .getXlevels
 ##' @export
 getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
@@ -895,17 +968,17 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
             ss <- rep("us",length(blksize))
         }
 
-        if ( any(is.na(aa[ss=="rr"]))) {
-          aa0 <- which(is.na(aa) & ss=="rr")
-          aa[aa0] <- 2 #set default rank to 2 if it's not specified
+        if (is.null(aa)) {
+            aa <- rep(NA, length(blksize))
         }
 
-        if ( is.null(aa)) {
-          aa <- rep(0,length(blksize)) #set rank to 0
+        getRank <- function(cov_name, a) {
+          if (cov_name != "rr") return(0) 
+          if (is.na(a)) return(2) #default rank is 2 [FIXME: don't hard-code here; specify upstream]
+          return(a)
         }
 
-        blkrank <- aa
-        covCode <- .valid_covstruct[ss]
+        blkrank <- mapply(getRank, ss, aa)
         
         parFun <- function(struc, blksize, blkrank) {
             switch(as.character(struc),
@@ -919,10 +992,13 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                    "mat" = 3, 
                    "toep" = 2 * blksize - 1,
                    "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "homdiag" = 1  ## (homogeneous) diag
+                   "homdiag" = 1,  ## (homogeneous) diag
+                   "propto" = blksize * (blksize+1) / 2 + 1 #propto (same as us, plus one extra for proportional param)
                    )
         }
         blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+
+        covCode <- .valid_covstruct[ss]
 
         ans <- list()
         for (i in seq_along(ss)) {
@@ -1044,8 +1120,9 @@ binomialType <- function(x) {
 ##' \item \code{gau} (* Gaussian autocorrelation)
 ##' \item \code{mat} (* Matérn process correlation)
 ##' \item \code{toep} (* Toeplitz)
-##' \item \code{rr} (reduced rank/factor-analytic model)
+##' \item \code{rr} (reduced-rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
+##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1233,7 +1310,7 @@ glmmTMB <- function(
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
-        f <- noSpecials(sub_specials(f), delete=FALSE, , specials = c(names(.valid_covstruct), "s"))
+        f <- noSpecials(sub_specials(f), delete=FALSE, specials = c(names(.valid_covstruct), "s"))
         formList[[i]] <- f
     }
     combForm <- do.call(addForm,formList)
@@ -1601,6 +1678,36 @@ glmmTMBControl <- function(optCtrl=NULL,
       } ## loop over X components
     } ## if rank_check == 'adjust'
   return(TMBStruc)
+}
+
+##' Checks if the row or column names of the matrix in aa matches cnms
+##' @params aa additional argument of a RE term (expecting propto matrix)
+##' @params cnms column-names of Z for a random effect term
+##' @params reXtrm terms object corresponding to a RE term
+checkProptoNames <- function(aa, cnms, reXtrm){
+  if( !is.matrix( aa ) )
+    stop("expecting a matrix for propto", call. = FALSE)
+  if(!(ncol(aa) == length(cnms) && nrow(aa) == length(cnms) ) )
+    stop("matrix is not the correct dimensions", call. = FALSE)
+  if (is.null(colnames(aa)) && is.null(rownames(aa)))
+    stop("row or column names of matrix are required", call. = FALSE)
+  if (!is.null(colnames(aa)) && !is.null(rownames(aa))){
+    if(!identical(colnames(aa), rownames(aa)))
+      stop("row and column names of matrix do not match", call. = FALSE)
+    else
+      matNames <- colnames(aa)
+  }else{
+    if(!is.null(colnames(aa)))
+      matNames <- colnames(aa)
+    if(!is.null(rownames(aa)))
+      matNames <- rownames(aa)
+  }
+  if(!identical(matNames, cnms)){
+    reTrmLabs <- attr(terms(reXtrm),"term.labels")
+    aaLabs <- paste0(reTrmLabs, matNames )
+    if(!identical(aaLabs, cnms))
+      stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+  }
 }
 
 ##' Optimize TMB models and package results, modularly
