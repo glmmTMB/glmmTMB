@@ -22,7 +22,11 @@ in_glm_fit <- function() {
 }
 
 make_family <- function(x, link, needs_nonneg = FALSE, needs_int = FALSE) {
-    x <- c(x, list(link=link), make.link(link))
+    if (is.character(link)) {
+        x <- c(x, list(link=link), make.link(link))
+    } else {
+        x <- c(x, list(link=link$name), link)
+    }
     ## stubs for Effect.default/glm.fit
     if (is.null(x$aic)) {
         x <- c(x,list(aic=function(...) NA_real_))
@@ -132,10 +136,13 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 ##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
+##' \item{bell}{Bell distribution (Castellares et al 2018). The original reference parameterizes the Bell distribution as \eqn{\mu = \theta \exp(\theta)}{mu=theta*exp(theta)}, theta>0; we fit the model on the log-theta scale (so the link function is "lambertW"; technically this is a \emph{log-Lambert-W} link, i.e. \eqn{\eta=\log(W(\mu))}{eta = log(W(mu))}).
+##' } 
 ##' }
 ##' @references
 ##' \itemize{
 ##' \item Azzalini A & Capitanio A (2014). "The skew-normal and related families." Cambridge: Cambridge University Press.
+##' \item Castellares F, Ferrari SLP, & Lemonte AJ (2018) "On the Bell Distribution and Its Associated Regression Model for Count Data" Applied Mathematical Modelling 56: 172–85. \doi{10.1016/j.apm.2017.12.014}
 ##' \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
 ##' \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 ##' \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.
@@ -465,3 +472,24 @@ nbinom12 <- function(link="log") {
               )
     return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
+
+#' @export
+#' @rdname nbinom2
+bell <- function(link="log") {
+    ## can we get away with Suggests: gsl for this?
+    ## or do we need Imports: ?
+    if (!requireNamespace("gsl", quietly = TRUE)) {
+        stop("the gsl package must be installed in order to use the Bell family")
+    }
+    r <- list(family="bell",
+              variance = function(mu) {
+                  mu*(1+gsl::lambert_W0(mu))
+              }
+              )
+    ## Link <- list(linkfun = function(x) log(gsl::lambert_W0(x)),
+    ##              linkinv = function(x) exp(x)*exp(exp(x)),
+    ##              name = link ## mild hack to avoid make_family passing to make.link, which has hard-coded options
+    ##              )
+    return(make_family(r, link, needs_nonneg = TRUE, needs_int = TRUE))
+}
+

@@ -7,7 +7,7 @@
 \usage{
 \method{residuals}{glmmTMB}(
   object,
-  type = c("response", "pearson", "working", "deviance"),
+  type = c("response", "pearson", "working", "deviance", "dunn-smyth"),
   re.form = NULL,
   ...
 )

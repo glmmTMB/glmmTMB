@@ -40,7 +40,8 @@ enum valid_family {
   t_family =600,
   tweedie_family = 700,
   lognormal_family = 800,
-  skewnormal_family = 900
+  skewnormal_family = 900,
+  bell_family = 1000
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -60,7 +61,8 @@ enum valid_link {
   inverse_link             = 3,
   cloglog_link             = 4,
   identity_link            = 5,
-  sqrt_link                = 6
+  sqrt_link                = 6,
+  lambertW_link            = 7
 };
 
 enum valid_covStruct {
@@ -146,6 +148,11 @@ Type inverse_linkfun(Type eta, int link) {
   case sqrt_link:
     ans = eta*eta; // pow(eta, Type(2)) doesn't work ... ?
     break;
+  case lambertW_link:
+    // for Bell distribution: mean = theta*exp(theta), theta 
+    ans = exp(eta)*exp(exp(eta));
+    break;
+
     // TODO: Implement remaining links
   default:
     error("Link not implemented!");
@@ -1005,6 +1012,17 @@ Type objective_function<Type>::operator() ()
 	  yobs(i) = mu(i)+phi(i)*rt(s2);
 	}  // untested
 	break;
+      case bell_family:
+	// unfortunately need to back-transform from mu to underlying theta via Lambert W ...
+
+	// see https://stackoverflow.com/questions/92396/why-cant-variables-be-declared-in-a-switch-statement for {} 
+	{
+	  Type btheta;
+	  btheta = glmmtmb::LambertW(mu(i));
+	  tmp_loglik = glmmtmb::dbell(yobs(i), btheta, true);
+	  SIMULATE{yobs(i) = glmmtmb::rbell(btheta);}
+	  break;
+	}
       default:
         error("Family not implemented!");
       } // End switch
