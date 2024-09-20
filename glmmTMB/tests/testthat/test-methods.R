@@ -654,7 +654,7 @@ test_that("de novo simulation with binomial N>1", {
 
 test_that("de novo simulation error checking", {
     dd <- data.frame(x = 1:10)
-    expect_error(simulate_new(~ x,
+    expect_warning(simulate_new(~ x,
                  seed = 101,
                  family = gaussian,
                  newdata = dd,

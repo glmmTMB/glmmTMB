@@ -678,14 +678,25 @@ make_pars <- function(pars, ..., include_extra = TRUE) {
     ## FIXME: check for name matches, length matches etc.
     ## (useful errors)
     ## better to split by name first??
+
     L <- list(...)
+    unmatched <- setdiff(names(L), unique(names(pars)))
+    if (length(unmatched) > 0) {
+        warning(sprintf("unmatched parameter names: %s",
+                        paste(unmatched, collapse =", ")))
+    }
+
     pList <- split(pars, names(pars))
     pList <- pList[unique(names(pars))] ## correct ordering
     if (!include_extra) L <- L[intersect(names(L), names(pList))]
     for (nm in names(L)) {
-        if (length(pList[[nm]]) == length(L[[nm]])) {
+        if ((len1 <- length(pList[[nm]])) == (len2 <- length(L[[nm]]))) {
             ## skip cases with different length (== partially-mapped vectors)
             pList[[nm]] <- L[[nm]]
+        } else {
+            ## FIXME: don't warn if we know we're mapping this parameter
+            warning(sprintf("length mismatch in component %s (%d != %d); not setting",
+                            nm, len1, len2))
         }
     }
     return(collapse_list(pList))
@@ -706,19 +717,11 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
     ee <- g$env
     if (terms != "ALL") stop("termwise setting of simcodes not implemented yet")
     if (terms == "ALL") {
-        for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
-        unmatched <- setdiff(names(L), unique(names(pars)))
-        if (length(unmatched) > 0) {
-            warning(sprintf("unmatched parameter names: %s",
-                            paste(unmatched, collapse =", ")))
-            next
+        for (i in seq_along(ee$data$terms)) {
+            ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
         }
-        if ((len1 <- length(L[[nm]])) != (len2 <- sum(names(pars) == nm))) {
-            stop(sprintf("length mismatch in component %s (%d != %d)",
-                         nm, len1, len2))
-        }
-        pars[names(pars) == nm] <- L[[nm]]
     }
+
 }
 
 ##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)

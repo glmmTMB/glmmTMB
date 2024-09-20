@@ -1315,7 +1315,7 @@ glmmTMB <- function(
     if (family$family == "binomial") {
         family$initialize <- our_binom_initialize(family$family)
     }
-    
+
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }

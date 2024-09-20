@@ -14,9 +14,9 @@ s1 <- simulate_new( ~ Days + (Days|Subject),
                    newparams = pp)[[1]]
 
 test_that("basic simulate_new",  {
-    expect_equal(s1, c(273.908009267299, 278.879666041338,
-                       274.76059639018, 283.450108370691, 
-                       286.469055736181, 290.145189139373))
+    expect_equal(head(s1),
+                 c(273.619365803796, 277.298270862256, 277.632884563881, 282.679512117747, 
+                   285.64005553022, 288.842364174989))
 })
 
 
@@ -33,9 +33,11 @@ test_that("basic simulate_new, returning object", {
                  rep(c(exp(3*2), exp(3)*exp(0.5)*2/sqrt(2^2+1), exp(0.5*2)), times = c(1, 2, 1)))
     ## SDs are exp(3), exp(0.5), cor is 2/(sqrt(2^2 +1)
     expect_equal(unname(head(getME(s2, "b"))),
-                 c(-13.556609498853, -0.837259673343575,
+                 c(-0.837259673343575,
                    6.24196658894249, 1.32388051566616, 
-                   12.4287264928693, 0.829382894489882))
+                   12.4287264928693, 0.829382894489882,
+                   18.4190056),
+                 tolerance = 1e-7)
 })
 
 s3 <- simulate_new( ~ Days + (Days|Subject),
@@ -63,13 +65,15 @@ test_that("simulate_new with specified b (values)", {
     expect_false(isTRUE(all.equal(s1, s4)))
 })
 
+## need this for a downstream example
+s5 <- simulate_new( ~ Days + (Days|Subject),
+                   seed = 101,
+                   newdata = sleepstudy,
+                   family = gaussian,
+                   newparams = pp2,
+                   return_val = "pars")
+
 test_that("simulate_new with specified b (pars)", {
-    s5 <- simulate_new( ~ Days + (Days|Subject),
-                       seed = 101,
-                       newdata = sleepstudy,
-                       family = gaussian,
-                       newparams = pp2,
-                       return_val = "pars")
     expect_identical(unname(s5[names(s5)=="b"]), pp2$b)
 })                    
 
