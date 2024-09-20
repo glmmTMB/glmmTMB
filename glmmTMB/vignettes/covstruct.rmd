@@ -74,7 +74,8 @@ ctab <- read.delim(sep = "#", comment = "",
  Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
  Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
  Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
- Reduced rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
+ Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
+ Proptional                       # `propto`      #  $1$            # Variance-covariance matrix
 "
 )
 knitr::kable(ctab)
@@ -613,7 +614,7 @@ mkfig(plot(tt2),"cs_profile_plot.png")
 usefig("cs_profile_plot.png")
 ```
 
-## General latent variable model
+## Generalized latent variable model
 Consider a generalized linear mixed model
 
 \begin{equation}
@@ -635,7 +636,7 @@ For GLVMs it is important to select initial starting values for the parameters b
 
 A similar method has been implemented in `glmmTMB`. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
 
-### Reduced rank
+### Reduced-rank
 
 One of our main motivations for adding this variance-covariance structure is to enable the analysis of multivariate abundance data, for example to model the abundance of different taxa across multiple sites. Typically an unstructured  random effect is assumed to account for correlation between taxa; however the number of parameters required quickly becomes large with increasing numbers of taxa. A GLVM is a flexible and more parsimonious way to account for correlation so that one can fit a joint model across many taxa.
 
@@ -674,6 +675,27 @@ An option in `glmmTMBControl()` has been included to initialize the starting val
 - `jitter.sd` adds variation to the starting values of latent variables when `method = "res"` (default 0).
 
 For a reduced rank matrix of rank `d`, parameters `1:d` represent the diagonal factor loadings while the remaining $nd-d(d-3)/2$, (i.e. parameters `(d+1):(nd-d(d-1)/2`) are the lower diagonal factor loadings filled in column-wise order. The factor loadings from a model can be obtained by `fit.rr$obj$env$report(fit.rr$fit$parfull)$fact_load[[1]]`. An appropriate rank for the model can be determined by standard model selection approaches such as information criteria (e.g. AIC or BIC) [@hui2015model].
+
+## Proptional
+
+The random effect structure `propto` fits multivariate random effects proportional to a known variance-covariance matrix.  One way the `propto` structure can be used is in phylogenetic analysis where a random effect proportional to a phylogenetic variance-covariance matrix aims to account for the correlation across species due to their shared ancestry. For example, the `carni70` data set from the `ade4` package describes the phylogeny along with the geographic range and body size of 70 carnivora. To account for the dependence among species due to shared ancestral history we can include a phylogenetically structured error term in the model via the `propto` structure as follows:
+```{r propto_ex, eval = FALSE}
+require(ade4)
+require(ape)
+data(carni70)
+carnidat <- data.frame(species = rownames(carni70$tab), carni70$tab)
+tree <- read.tree(text=carni70$tre)
+phylo_varcov <- vcv(tree)# phylogenetic variance-covariance matrix
+# row/column names of phylo_varcov must match factor levels in data
+rownames(phylo_varcov) <- colnames(rownames(phylo_varcov)) <- gsub(".", "_", rownames(phylo_varcov)) 
+carnidat$dummy <- factor(1) # a dummy grouping variable must be added to the dataset
+
+fit_phylo <- glmmTMB(log(range) ~ log(size) + propto(0 + species | dummy, phylo_varcov),
+                     data = carnidat)
+
+```
+
+`dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/columns names of the matrix match the terms in the random effect (see [Construction of structured covariance matrices] for how the terms are constructed).
 
 ## Construction of structured covariance matrices
 
