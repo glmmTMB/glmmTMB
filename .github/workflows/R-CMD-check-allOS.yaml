@@ -73,12 +73,18 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
+      - name: temporary github installs for archived pkgs
+        run: |
+          install.packages("remotes")
+          remotes::install_github("fsolt/dotwhisker")
+        shell: Rscript {0}
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck
+          extra-packages: any::rcmdcheck, dotwhisker=?ignore
           needs: check
           working-directory: ./glmmTMB
+          upgrade: 'TRUE'
 
       - name: Install extra LaTeX packages
         if: runner.os == 'Linux'
