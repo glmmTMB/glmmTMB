@@ -6,7 +6,8 @@
   inverse             = 3,
   cloglog             = 4,
   identity            = 5,
-  sqrt                = 6
+  sqrt                = 6,
+  lambertW            = 7
 )
 .valid_family <- c(
   gaussian = 0,
@@ -29,7 +30,8 @@
   t =600,
   tweedie = 700,
   lognormal = 800,
-  skewnormal = 900
+  skewnormal = 900,
+  bell = 1000
 )
 .valid_covstruct <- c(
   diag = 0,

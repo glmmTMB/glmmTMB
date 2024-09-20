@@ -52,3 +52,18 @@ test_that("put_cor", {
         }
     }
 })
+
+test_that("up2date for models with mapped components", {
+    m1_map <- glmmTMB(count ~ mined + (1|site),
+                  family=poisson, data=Salamanders,
+                  map=list(theta=factor(NA)),
+                  start=list(theta=log(10)))
+    ## need to save and read back in order to exercise
+    ##  reconstruction/retaping part of `up2date()`
+    fn <- tempfile()
+    saveRDS(m1_map, fn)
+    m1_mapr <- readRDS(fn)
+    m1_mapu <- up2date(m1_mapr)
+    expect_equal(vcov(m1_map), vcov(m1_mapu))
+})
+

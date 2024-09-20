@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.9-9000
+Version: 1.1.10
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -81,13 +81,13 @@ Suggests:
     texreg,
     xtable,
     huxtable,
-    mvabund,
     parallel,
     blme,
     purrr,
     dplyr,
     ade4,
-    ape
+    ape,
+    gsl
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

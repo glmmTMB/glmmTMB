@@ -40,7 +40,8 @@ enum valid_family {
   t_family =600,
   tweedie_family = 700,
   lognormal_family = 800,
-  skewnormal_family = 900
+  skewnormal_family = 900,
+  bell_family = 1000
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -59,7 +60,8 @@ enum valid_link {
   inverse_link             = 3,
   cloglog_link             = 4,
   identity_link            = 5,
-  sqrt_link                = 6
+  sqrt_link                = 6,
+  lambertW_link            = 7
 };
 
 enum valid_covStruct {
@@ -77,6 +79,12 @@ enum valid_covStruct {
   propto_covstruct = 11
 };
 
+// should probably be named just 'predictCode';
+// originally for enabling z-i prediction
+// 'corrected' = mean prediction incorporates z-i effects
+// 'uncorrected' = mean not accounting for z-i
+// 'prob' = zero-inflation on back-transformed (probability) scale
+// 'disp' = report value of dispersion parameter
 enum valid_ziPredictCode {
   corrected_zipredictcode = 0,
   uncorrected_zipredictcode = 1,
@@ -133,6 +141,11 @@ Type inverse_linkfun(Type eta, int link) {
   case sqrt_link:
     ans = eta*eta; // pow(eta, Type(2)) doesn't work ... ?
     break;
+  case lambertW_link:
+    // for Bell distribution: mean = theta*exp(theta), theta 
+    ans = exp(eta)*exp(exp(eta));
+    break;
+
     // TODO: Implement remaining links
   default:
     error("Link not implemented!");
@@ -632,6 +645,8 @@ Type objective_function<Type>::operator() ()
   // Flags
   DATA_INTEGER(ziPredictCode);
   bool zi_flag = (betazi.size() > 0);
+  // 0 = no prediction; 1 = predictions on link scale; 2 = predictions on
+  // data scale; 3 = predictions of latent variables (b)
   DATA_INTEGER(doPredict);
   DATA_IVECTOR(whichPredict);
   // One-Step-Ahead (OSA) residuals
@@ -908,6 +923,17 @@ Type objective_function<Type>::operator() ()
 	  yobs(i) = mu(i)+phi(i)*rt(s2);
 	}  // untested
 	break;
+      case bell_family:
+	// unfortunately need to back-transform from mu to underlying theta via Lambert W ...
+
+	// see https://stackoverflow.com/questions/92396/why-cant-variables-be-declared-in-a-switch-statement for {} 
+	{
+	  Type btheta;
+	  btheta = glmmtmb::LambertW(mu(i));
+	  tmp_loglik = glmmtmb::dbell(yobs(i), btheta, true);
+	  SIMULATE{yobs(i) = glmmtmb::rbell(btheta);}
+	  break;
+	}
       default:
         error("Family not implemented!");
       } // End switch
@@ -1043,11 +1069,13 @@ Type objective_function<Type>::operator() ()
   REPORT(sd);
   REPORT(corrzi);
   REPORT(sdzi);
+  REPORT(corrdisp);
+  REPORT(sddisp);
   REPORT(fact_load);
+  REPORT(b);
+  REPORT(bzi);
   SIMULATE {
     REPORT(yobs);
-    REPORT(b);
-    REPORT(bzi);
   }
   // For predict
   if(ziPredictCode == disp_zipredictcode) {
@@ -1093,7 +1121,10 @@ Type objective_function<Type>::operator() ()
 	  ADREPORT(mu_predict);
   } else if (doPredict == 2) {
 	  ADREPORT(eta_predict);
+  } else if (doPredict == 3) {
+           ADREPORT(b);
+	   ADREPORT(bzi);
+	   ADREPORT(bdisp);
   }
-
   return jnll;
 }

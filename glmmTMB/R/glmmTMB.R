@@ -67,42 +67,12 @@ startParams <- function(parameters,
 
     # get either dunn-smyth residuals or
     fam <- family$family
-    res.families <- c("poisson", "nbinom2", "binomial", "gaussian")
+    res.families <- c("poisson", "nbinom1", "nbinom2", "binomial", "gaussian")
     if (fam %in% res.families) {
-      #### Get the dunn smyth residuals
-      if (fam == "poisson") {
-        a <- ppois(yobs - 1, mu)
-        b <- ppois(yobs, mu)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "nbinom2") {
-        phi <- phi + 1e-05
-        a <- pnbinom(yobs - 1, mu =  mu, size = phi)
-        b <- pnbinom(yobs, mu =  mu, size = phi)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "nbinom1") {
-        phi <- phi + 1e-05
-        a <- pnbinom(yobs - 1, mu =  mu, size = mu/phi)
-        b <- pnbinom(yobs, mu =  mu, size = mu/phi)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "binomial"){
-        a <- pbinom(yobs - 1, 1, mu)
-        b <- pbinom(yobs, 1, mu)
-        u <- runif(n = nobs, min = a, max = b)
-        resid <- qnorm(u)
-      }
-      if (fam == "gaussian"){
-        resid <- yobs - mu
-      }
+        resid <- dunnsmyth_resids(yobs, mu, fam, phi)
     } else {
       resid <- family$dev.resids(y = yobs, mu = mu, wt = weights)
     }
-    resid[is.infinite(resid)] <- 0; resid[is.nan(resid)] <- 0
     resid <- as.data.frame(resid)
 
     get_rank <- function(x) {
@@ -327,7 +297,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
-    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
+    condList  <- getXReTrms(formula, mf, fr, type="coNditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)
     ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
                             old_smooths = old_smooths$zi)
@@ -605,6 +575,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  far up do we have to go with eval.parent? Or do we
             ##  use the environment of the formula?
             if (!is.null(old_smooths)) {
+                ## we are predicting, want to use old smooths rather than constructing new ones
                 smooth_terms2 <- lapply(old_smooths[lengths(old_smooths)>0],
                                         function(s) {
                                             if (is.null(s)) return(NULL)
@@ -626,6 +597,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                             return(s_new)
                                         })
             } else {
+                ## new smooths
                 smooth_terms2 <- lapply(smooth_terms,
                     function(tt) {
                         ## ‘smoothCon’ returns a list of smooths because factor ‘by’
@@ -664,12 +636,19 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         if (has_smooths) {
             if (sparse) warning("smooth terms may not be compatible with sparse X matrices")
-            for (s in smooth_terms2) {
-                cnm <- colnames(X) ## need to update cnm after each added term ...
+            for (si in seq_along(smooth_terms2)) {
+                cnm <- colnames(X)  ## need to update cnm after each added term ...
+                s <- smooth_terms2[[si]]
+                ## indices within the beta vector corresponding to this smooth
+                ## (where do we put this?)
+                beta_ind <- ncol(X) + seq(ncol(s$re$Xf))
                 if (ncol(s$re$Xf) == 0) next
                 snm <- attr(s$re$rand$Xr, "s.label")
                 X <- cbind(X, s$re$Xf)
                 colnames(X) <- c(cnm, paste0(snm, seq.int(ncol(s$re$Xf))))
+                ## store indices in smooth object
+                ## FIXME: where does this get stored?
+                smooth_terms2[[si]]$re$beta_ind <- beta_ind
             }
         }
         
@@ -739,6 +718,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             barpos <- which(ss$reTrmClasses != "s")
             nonbarpos <- which(ss$reTrmClasses == "s")
             for (p in c("Ztlist", "flist", "cnms")) {
+                ## fill in values from traditional (bar-containing) REs
                 augReTrms[[p]][barpos] <- reTrms[[p]]
                 names(augReTrms[[p]])[barpos] <- names(reTrms[[p]])
             }
@@ -762,10 +742,16 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  ... which bits are actually used hereafter?
             avec[nonbarpos] <-  length(augReTrms$flist)
             attr(augReTrms$flist, "assign") <- avec
+            ncol_fun <- function(x) if (is.null(x)) 0 else ncol(x)
+            b_lens <- vapply(augReTrms$Ztlist, ncol_fun, FUN.VALUE = numeric(1))
             for (i in seq_along(smooth_terms2)) {
                 s <- smooth_terms2[[i]]
                 pos <- nonbarpos[i]
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
+                b_lens[pos] <- ncol(Zt)
+                b_ind <- sum(b_lens[seq_along(b_lens)<i]) + seq(ncol(Zt))
+                ## perhaps redundant with b indices stored elsewhere
+                smooth_terms2[[i]]$re$b_ind <- b_ind
                 npar <- nrow(Zt)
                 augReTrms$Ztlist[[pos]] <- Zt
                 nm <- attr(s$re$rand$Xr, "s.label")
@@ -1045,7 +1031,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
     }
 }
 
-.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson")
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell")
+
 ## number of additional/shape parameters (default = 0)
 .extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
                             '2' = 'ordbeta')
@@ -1209,6 +1196,10 @@ binomialType <- function(x) {
 ##'                REML = TRUE, start = list(theta = 5))
 ##' plot(val ~ time, data = ndat)
 ##' lines(ndat$time, predict(sm1))
+##'
+##' ## reduced-rank model
+##' m1_rr <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+##'                               data = spider_long)
 ##' }
 glmmTMB <- function(
     formula,
@@ -1244,7 +1235,7 @@ glmmTMB <- function(
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
-    if (length(miss_comp <- setdiff(c("linkfun","variance"),fnames))>0) {
+    if (length(miss_comp <- setdiff(c("linkfun","variance"), fnames))>0) {
         warning("some components missing from ",sQuote("family"),
                 ": downstream methods may fail")
     }

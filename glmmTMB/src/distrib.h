@@ -1,6 +1,6 @@
 // additional distributions etc. for glmmTMB
+#include <vector> // for vectors in Bell()
 
-// FIXME: check proper syntax for including 
 namespace glmmtmb{
 	
   /* Not used anymore: */
@@ -316,7 +316,25 @@ namespace glmmtmb{
     
     return ans;
   }
-  
+
+  // Simulate from Bell distribution
+  // translated from bellreg::rbell
+  template<class Type>
+  Type rbell(Type theta) {
+
+    Type ans = 0;
+    double dtheta = asDouble(theta);
+    
+    double lambda = expm1(dtheta);
+    int N = (int) asDouble(rpois(lambda));
+    for (int i=0; i<N; i++) {
+      ans +=  rtruncated_poisson(0, dtheta);
+    }
+    
+    return ans;
+  }
+
+
   // FIXME: check!
   template<class Type>
   Type dcauchy(Type x, Type loc, Type scale, int give_log=0)
@@ -326,6 +344,86 @@ namespace glmmtmb{
    if(give_log) return logans; else return exp(logans);
  }
   VECTORIZE4_ttti(dcauchy)
+
+// first few Bell numbers, from https://oeis.org/A000110: 1, 1, 2, 5, 15, 52, 203, 877, 4140, 21147, 115975, 678570, 4213597, 27644437, 190899322, 1382958545, 10480142147, 82864869804, 682076806159, 5832742205057, 51724158235372, 474869816156751, 4506715738447323, 44152005855084346, 445958869294805289, 4638590332229999353, 49631246523618756274
+// implement as lookup table?
+
+  double Bell(int n) {
+  
+    if ((n == 0) || (n == 1)) {
+      return(1);
+    }
+    vector<double> B(n);
+    vector<double> Bneu(n);
+    B[0] = 1;
+    for (int i=0; i<(n-1); i++) {
+      Bneu[0] = B[i];
+      for (int j=1; j<=(i+1); j++) {
+	Bneu[j] = B[j - 1] + Bneu[j - 1];
+      }
+      for (int k=0; k<n; k++) B[k] = Bneu[k];
+    }
+    return Bneu[n-1];
+  }
+
+  template<class Type>
+  Type dbell(Type x, Type theta, int give_log = 0)
+  {
+
+    // TMB doesn't have expm1 ... could use
+    // exp(logspace_sub(theta, Type(0))) but feels like overkill,
+    // maybe not what we want anyway?
+    Type logres = x * log(theta) - exp(theta) + 1 +
+      // clunky cast (ADvar -> double -> int)
+      log(Bell((int) asDouble(x))) - lgamma(x + 1);
+    if (!give_log) return exp(logres);
+    return logres;
+  }
+
+  // taken from TMB atomic functions example,
+  //    https://kaskr.github.io/adcomp/AtomicFunctions.html
+  // if we wanted/needed to speed this up we could make use of the implementation
+  // of Fukushima 2013 doi:10.1016/j.cam.2012.11.021 from 
+  //     https://github.com/DarkoVeberic/LambertW
+
+  // Double version of Lambert W function
+double LambertW(double x) {
+  double logx = log(x);
+  double y = (logx > 0 ? logx : 0);
+  int niter = 100, i=0;
+  for (; i < niter; i++) {
+    if ( fabs( logx - log(y) - y) < 1e-9) break;
+    y -= (y - exp(logx - y)) / (1 + y);
+  }
+  if (i == niter) Rf_warning("W: failed convergence");
+  return y;
+}
+  
+TMB_ATOMIC_VECTOR_FUNCTION(
+    // ATOMIC_NAME
+    LambertW
+    ,
+    // OUTPUT_DIM
+    1,
+    // ATOMIC_DOUBLE
+    ty[0] = LambertW(tx[0]); // Call the 'double' version
+    ,
+    // ATOMIC_REVERSE
+    Type W  = ty[0];                    // Function value from forward pass
+    Type DW = 1. / (exp(W) * (1. + W)); // Derivative
+    px[0] = DW * py[0];                 // Reverse mode chain rule
+)
+
+// Scalar version
+template<class Type>
+Type LambertW(Type x){
+  CppAD::vector<Type> tx(1);
+  tx[0] = x;
+  return LambertW(tx)[0];
+}
+// Vectorized version
+VECTORIZE1_t(LambertW)
+
 } // namespace glmmtmb
 
 /* Interface to compois variance */
@@ -340,3 +438,5 @@ extern "C" {
     return ans;
   }
 }
+
+

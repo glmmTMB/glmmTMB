@@ -123,7 +123,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), pri
 ##' random effects terms) will have associated \code{condVar} attributes
 ##' giving the conditional variances of the random effects values.
 ##' These are in the form of three-dimensional arrays: see
-##' \code{\link{ranef.merMod}} for details. The only difference between
+##' \code{\link[lme4]{ranef.merMod}} for details. The only difference between
 ##' the packages is that the attributes are called \sQuote{postVar}
 ##' in \pkg{lme4}, vs. \sQuote{condVar} in \pkg{glmmTMB}.
 ##' \item For \code{coef.glmmTMB}: a similar list, but containing
@@ -176,36 +176,36 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
     reStruc <- object$modelInfo$reStruc[[paste0(listname, "ReStruc")]] ## random-effects structure
     flist <- object$modelInfo$reTrms[[listname]]$flist ## list of grouping variables
     levs <- lapply(flist, levels)
-    if (!is.null(cnms)) {  ## FIXME: better test?
-      asgn <- attr(flist, "assign")
-      ## FIXME: blockReps/blockSize etc. _should_ be stored as integers ...
-      nc <- vapply(reStruc, function(x) x$blockSize, numeric(1)) ## number of RE params per block
-      nb <- vapply(reStruc, function(x) x$blockReps, numeric(1)) ## number of blocks per RE (may != nlevs in some cases)
-      nbseq <- rep.int(seq_along(nb), nb * nc)       ## splitting vector
-      ml <- split(x, nbseq)
-      for (i in seq_along(ml)) {
-          ml[[i]] <- matrix(ml[[i]], ncol = nc[i], byrow = TRUE,
-                            dimnames = list(NULL, cnms[[i]]))
-      }
-      if (!is.null(sd)) {
-          sd <- split(sd, nbseq)
-          for (i in seq_along(sd)) {
-              a <- array(NA, dim=c(nc[i], nc[i], nb[i]))
-              ## fill in diagonals: off-diagonals will stay NA (!)
-              ## unless we bother to retrieve conditional covariance info
-              ## from the fit
-              ## when nc>1, what order is the sd vector in?
-              ## guessing, level-wise
-              for (j in seq(nb[i])) {
-                  a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
-                      (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
-              }
-              sd[[i]] <- a
-          }
-      }
-      ## combine RE matrices from all terms with the same grouping factor
-      x <- lapply(seq_along(flist),
-                  function(i) {
+    if (is.null(cnms)) return(list())     ## model with no random effects ...
+    asgn <- attr(flist, "assign")
+    ## FIXME: blockReps/blockSize etc. _should_ be stored as integers ...
+    nc <- vapply(reStruc, function(x) x$blockSize, numeric(1)) ## number of RE params per block
+    nb <- vapply(reStruc, function(x) x$blockReps, numeric(1)) ## number of blocks per RE (may != nlevs in some cases)
+    nbseq <- rep.int(seq_along(nb), nb * nc)       ## splitting vector
+    ml <- split(x, nbseq)
+    for (i in seq_along(ml)) {
+        ml[[i]] <- matrix(ml[[i]], ncol = nc[i], byrow = TRUE,
+                          dimnames = list(NULL, cnms[[i]]))
+    }
+    if (!is.null(sd)) {
+        sd <- split(sd, nbseq)
+        for (i in seq_along(sd)) {
+            a <- array(NA, dim=c(nc[i], nc[i], nb[i]))
+            ## fill in diagonals: off-diagonals will stay NA (!)
+            ## unless we bother to retrieve conditional covariance info
+            ## from the fit
+            ## when nc>1, what order is the sd vector in?
+            ## guessing, level-wise
+            for (j in seq(nb[i])) {
+                a[cbind(seq(nc[i]),seq(nc[i]),j)] <-
+                    (sd[[i]][nc[i]*(j-1)+seq(nc[i])])^2
+            }
+            sd[[i]] <- a
+        }
+    } ## !is.null(sd)
+    ## combine RE matrices from all terms with the same grouping factor
+    x <- lapply(seq_along(flist),
+                function(i) {
                     m <- ml[asgn == i]
                     b2 <- vapply(m, nrow, numeric(1))
                     ub2 <- unique(b2)
@@ -218,34 +218,52 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
                                row.names = rnms,
                                check.names = FALSE)
 
-          if (!is.null(sd)) {
-              ## attach conditional variance info
-              ## called "condVar", *not* "postVar" (contrast to lme4)
-              attr(d, "condVar") <- if (length(w <- which(asgn==i))>1) {
-                                        ## FIXME: set names?
-                                        sd[w]  ## if more than one term, list
-                                  } else sd[[w]]  ## else just the array
-          }
-          return(d)
-      })
-      names(x) <- names(flist)
-      return(x)
-    } ## if !is.null(cnms)
-    else {
-      list()
-    }
+                    if (!is.null(sd)) {
+                        ## attach conditional variance info
+                        ## called "condVar", *not* "postVar" (contrast to lme4)
+                        attr(d, "condVar") <- if (length(w <- which(asgn==i))>1) {
+                                                  ## FIXME: set names?
+                                                  sd[w]  ## if more than one term, list
+                                              } else sd[[w]]  ## else just the array
+                    }
+                    return(d)
+                })
+    names(x) <- names(flist)
+    return(x)
   } ## arrange()
 
   pl <- getParList(object)  ## see VarCorr.R
+
+  all_blockcodes <- unlist(lapply(object$modelInfo$reStruc,
+                                function(x) vapply(x, function(y) y[["blockCode"]],
+                                                   numeric(1))))
+  has_rr <- any(all_blockcodes == .valid_covstruct[["rr"]])
+  ## FIXME: test what happens if condVar is FALSE and/or we run this on a model without RE?
+  ## FIXME: could probably simplify/collapse further.
+  ##  Use predict("latent") unconditionally?
   if (condVar && hasRandom(object))  {
-      ss <- summary(object$sdr,"random")
-      sdl <- list(b=ss[rownames(ss)=="b","Std. Error"],
-                  bzi=ss[rownames(ss)=="bzi","Std. Error"],
-      						bdisp=ss[rownames(ss)=="bdisp","Std. Error"])
-  }  else sdl <- NULL
+      ss <- summary(object$sdr, "random")
+      ## use sapply instead of lapply for USE.NAMES
+      ## use sapply instead of vapply for uneven-length results
+      inds <- sapply(c("b", "bzi", "bdisp"),
+                     function(x) which(rownames(ss)==x),
+                     simplify = FALSE,
+                     USE.NAMES = TRUE)
+      if (has_rr) {
+          ## for rr(), we need to fill in the *computed* latent variables and their SE
+          pred <- predict(object, type = "latent", se.fit = TRUE)
+          sdl <- list()
+          for (x in names(inds)) {
+              sdl[[x]] <- pred$se.fit[inds[[x]]]
+              pl[[x]] <- pred$fit[inds[[x]]]
+          }
+      } else {
+          sdl <- lapply(inds, function(x) ss[x, "Std. Error"])
+      }
+  } else sdl <- NULL
   structure(list(cond = arrange(pl$b, sdl$b, "cond"),
                  zi   = arrange(pl$bzi, sdl$bzi, "zi"),
-  							 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
+                 disp = arrange(pl$bdisp, sdl$bdisp, "disp")),
             class = "ranef.glmmTMB")
 }
 
@@ -710,7 +728,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' details on the definition of the deviance for GLMMs.
 ##' }
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), ...) {
     check_dots(...)
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
@@ -737,6 +755,10 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                mu.eta <- fam$mu.eta
                p <- predict(object, type = "link", fast = TRUE)
                r/mu.eta(p)
+           },
+           "dunn-smyth" = {
+               phi <- na.omit(predict(object, type = "disp"))
+               dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -911,7 +933,7 @@ format_perc <- function (probs, digits) {
 ##' @param cl cluster to use for parallel computation
 ##' @param full CIs for all parameters (including dispersion) ?
 ##' @param include_nonest include dummy rows for non-estimated (mapped, rank-deficient) parameters?
-##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link{tmbprofile}}) or
+##' @param ... arguments may be passed to \code{\link{profile.glmmTMB}} (and possibly from there to \code{\link[TMB]{tmbprofile}}) or
 ##' \code{\link[TMB]{tmbroot}}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
@@ -1666,4 +1688,33 @@ deviance.glmmTMB <- function(object, ...) {
     check_dots(...)
     ## consider suppressing warning of class 'na_dev_resids' ?
     sum(residuals(object, type = "deviance")^2)
+}
+
+dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial")
+    if (family == "gaussian") return(yobs-mu)
+    if (!family %in% res.families) {
+        stop("can't compute Dunn-Smyth residuals for family ",
+             sQuote(family))
+    }
+    args <- switch(family,
+                   nbinom2 = list(size = phi),
+                   nbinom1 = list(size = mu/(phi+ 1e-5)),
+                   binom = list(size=1),
+                   NULL
+                   )
+    ## deal with base-R's default size/prob parameterization for nbinom ...
+    pnbinom0 <- function(x, mu, ...) {
+        pnbinom(x, mu=mu, ...)
+    }
+    pfun <- switch(family,
+                   nbinom2 = pnbinom0,
+                   nbinom1 = pnbinom0,
+                   poisson = ppois,
+                   binomial = pbinom)
+    a <- do.call(pfun, c(list(yobs - 1, mu), args))
+    b <- do.call(pfun, c(list(yobs, mu), args))
+    resid <- qnorm(runif(length(yobs), min = a, max = b))
+    resid[is.infinite(resid) | is.nan(resid) ]  <- 0
+    resid
 }
