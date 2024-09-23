@@ -1001,66 +1001,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
     covCode <- .valid_covstruct[ss]
 
-    ans <- list()
-    for (i in seq_along(ss)) {
-        tmp <- list(blockReps = nreps[i],
-                    blockSize = blksize[i],
-                    blockNumTheta = blockNumTheta[[i]],
-                    blockCode = covCode[i]
-                    )
-        if(ss[i] == "ar1") {
-            ## FIXME: Keep this warning ?
-            if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                warning("AR1 not meaningful with intercept")
-            if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                stop("ar1() expects a single, factor variable as the time component")
-            }
-        } else if(ss[i] == "ou") {
-            times <- parseNumLevels(reTrms$cnms[[i]])
-            if (ncol(times) != 1)
-                stop("'ou' structure is for 1D coordinates only.")
-            if (is.unsorted(times, strictly=TRUE))
-                stop("'ou' is for strictly sorted times only.")
-            tmp$times <- drop(times)
-        } else if(ss[i] %in% c("exp", "gau", "mat")){
-            coords <- parseNumLevels(reTrms$cnms[[i]])
-            tmp$dist <- as.matrix( dist(coords) )
-        }
-        ans[[i]] <- tmp
-    }
-    setNames(ans, names(reTrms$Ztlist))
-
-    if ( any(is.na(aa[ss=="rr"]))) {
-        aa0 <- which(is.na(aa) & ss=="rr")
-        aa[aa0] <- 2 #set default rank to 2 if it's not specified
-    }
-
-    if ( is.null(aa)) {
-        aa <- rep(0,length(blksize)) #set rank to 0
-    }
-
-    blkrank <- aa
-    covCode <- .valid_covstruct[ss]
-
     ## set simulation code to 'random' for all RE by default
     simCode <- rep(.valid_simcode[["random"]], length(ss))
-        
-    parFun <- function(struc, blksize, blkrank) {
-        switch(as.character(struc),
-               "diag" = blksize, # (heterogenous) diag
-               "us" = blksize * (blksize+1) / 2,
-               "cs" = blksize + 1,
-               "ar1" = 2,
-               "ou" = 2,
-               "exp" = 2,
-               "gau" = 2,
-               "mat" = 3, 
-               "toep" = 2 * blksize - 1,
-               "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-               "homdiag" = 1  ## (homogeneous) diag
-               )
-    }
-    blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
 
     ans <- list()
     for (i in seq_along(ss)) {
@@ -1071,12 +1013,13 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                     simCode = simCode[i]
                     )
         if(ss[i] == "ar1") {
+            ## FIXME: Keep this warning ?
             if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
                 warning("AR1 not meaningful with intercept")
             if (length(.getXlevels(reXterms[[i]],fr))!=1) {
                 stop("ar1() expects a single, factor variable as the time component")
             }
-        } else if(ss[i] == "ou"){
+        } else if(ss[i] == "ou") {
             times <- parseNumLevels(reTrms$cnms[[i]])
             if (ncol(times) != 1)
                 stop("'ou' structure is for 1D coordinates only.")
