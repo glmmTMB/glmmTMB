@@ -7,6 +7,8 @@
 \section{CHANGES IN VERSION 1.1.10}{
   \subsection{NEW FEATURES}{
     \itemize{
+      \item added random effect structure propto to fit multivariate random effects proportional to a known variance-covariance matrix. This feature is
+      EXPERIMENTAL; please post any problems at \url{https://github.com/glmmTMB/glmmTMB/pull/1068}. See \code{vignette("covstruct")}
       \item added "nbinom12" family after Lindén and Mäntyniemi (2011)
       \item random effects, including smooth terms with \code{s()}, can
       now be included in the dispersion model. This feature is
