@@ -13,7 +13,7 @@ The \code{priors} argument to \code{glmmTMB} must (if not NULL) be a data frame 
 \describe{
 \item{\code{prior}}{character; the prior specification, e.g. "normal(0,2)"}
 \item{\code{class}}{the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi")}
-\item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. If the \code{class} element is missing, or a particular element is blank, then all of the elements of the specified parameter vector use independent priors with the given specification. The exception is for fixed-effect parameter vectors, where the intercept (if present) is not included; the prior on the intercept must be set explicitly.}
+\item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. If the \code{class} element is missing, or a particular element is blank, then all of the elements of the specified parameter vector use independent priors with the given specification. The exception is for the fixed-effect parameter vectors ("fixef", "fixef_zi", "fixef_disp"), where the intercept (if present) is not included; the prior on the intercept must be set explicitly.}
 }
 `The available prior distributions are:
 \itemize{
@@ -37,4 +37,9 @@ prior2 <- data.frame(prior = c("t(0,3,3)","gamma(10,1)"),
                      class = c("fixef", "ranef_sd"),
                      coef = c("", "Subject"))
 update(g1, priors = prior2)
+## no prior is set for the intercept in this case - see Details above
+prior3 <- data.frame(prior = "t(0, 3, 3)",
+                     class = "fixef")
+update(g1, priors = prior3)
+
 }

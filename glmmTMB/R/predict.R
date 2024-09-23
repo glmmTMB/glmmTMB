@@ -109,6 +109,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' nd_pop <- data.frame(Days=unique(sleepstudy$Days),
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
+##' ## return latent variables (BLUPs/conditional modes/etc. ) with standard errors
+##' ##  (actually conditional standard deviations)
+##' predict(g0, type = "latent", se.fit = TRUE)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export

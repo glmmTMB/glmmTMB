@@ -40,7 +40,8 @@ enum valid_family {
   t_family =600,
   tweedie_family = 700,
   lognormal_family = 800,
-  skewnormal_family = 900
+  skewnormal_family = 900,
+  bell_family = 1000
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -59,7 +60,8 @@ enum valid_link {
   inverse_link             = 3,
   cloglog_link             = 4,
   identity_link            = 5,
-  sqrt_link                = 6
+  sqrt_link                = 6,
+  lambertW_link            = 7
 };
 
 enum valid_covStruct {
@@ -74,7 +76,10 @@ enum valid_covStruct {
   toep_covstruct = 8,
   rr_covstruct = 9,
   homdiag_covstruct = 10,
-  hetar1_covstruct = 11
+  propto_covstruct = 11,
+  // should perhaps be next to homdiag but don't want to mess
+  //  up interpretation of stored fits ...
+  hetar1_covstruct = 12
 };
 
 // should probably be named just 'predictCode';
@@ -139,6 +144,11 @@ Type inverse_linkfun(Type eta, int link) {
   case sqrt_link:
     ans = eta*eta; // pow(eta, Type(2)) doesn't work ... ?
     break;
+  case lambertW_link:
+    // for Bell distribution: mean = theta*exp(theta), theta 
+    ans = exp(eta)*exp(exp(eta));
+    break;
+
     // TODO: Implement remaining links
   default:
     error("Link not implemented!");
@@ -549,6 +559,24 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
     }
   }
+  else if (term.blockCode == propto_covstruct){
+    // case: propto_covstruct
+    int n = term.blockSize;
+    Type loglambda = theta( theta.size() - 1);
+    vector<Type> logsd = theta.head(n);
+    vector<Type> sd =  exp(logsd + loglambda/2) ;
+    vector<Type> corr_transf = theta.segment(n, theta.size() - n - 1);
+    density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
+    density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
+    }
+    term.corr = nldens.cov(); // For report
+    term.sd = sd;             // For report
+  }
   else error("covStruct not implemented!");
   return ans;
 }
@@ -909,6 +937,17 @@ Type objective_function<Type>::operator() ()
 	  yobs(i) = mu(i)+phi(i)*rt(s2);
 	}  // untested
 	break;
+      case bell_family:
+	// unfortunately need to back-transform from mu to underlying theta via Lambert W ...
+
+	// see https://stackoverflow.com/questions/92396/why-cant-variables-be-declared-in-a-switch-statement for {} 
+	{
+	  Type btheta;
+	  btheta = glmmtmb::LambertW(mu(i));
+	  tmp_loglik = glmmtmb::dbell(yobs(i), btheta, true);
+	  SIMULATE{yobs(i) = glmmtmb::rbell(btheta);}
+	  break;
+	}
       default:
         error("Family not implemented!");
       } // End switch
