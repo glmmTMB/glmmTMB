@@ -378,6 +378,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
 
   data.tmb <- namedList(
+    ## fixed-effect (X) and random-effect (Z), dense and sparse model matrices    
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
     Z = condList$Z,
@@ -924,7 +925,7 @@ getGrpVar <- function(x)
 ##' Calculates number of random effects, number of parameters,
 ##' block size and number of blocks.  Mostly for internal use.
 ##' @param reTrms random-effects terms list
-##' @param ss a character string indicating a valid covariance structure.
+##' @param ss a vector of character strings indicating a valid covariance structure (one for each RE term).
 ##' Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 ##' default is to use an unstructured  variance-covariance
 ##' matrix (\code{"us"}) for all blocks).
@@ -936,6 +937,7 @@ getGrpVar <- function(x)
 ##' \item{blockSize}{size (dimension) of one block}
 ##' \item{blockReps}{number of times the blocks are repeated (levels)}
 ##' \item{covCode}{structure code}
+##' \item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?}
 ##' @examples
 ##' data(sleepstudy, package="lme4")
 ##' rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
@@ -952,83 +954,87 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
   ## cnms: list of column-name vectors per term
   ## flist: data frame of grouping variables (factors)
   ##   'assign' attribute gives match between RE terms and factors
-    if (is.null(reTrms)) {
-        list()
-    } else {
-        ## Get info on sizes of RE components
+    if (is.null(reTrms)) return(list())
+    
+    ## Get info on sizes of RE components
 
-        assign <- attr(reTrms$flist,"assign")
-        nreps <- vapply(assign,
-                          function(i) length(levels(reTrms$flist[[i]])),
-                          0)
-        blksize <- diff(reTrms$Gp) / nreps
-        ## figure out number of parameters from block size + structure type
+    assign <- attr(reTrms$flist,"assign")
+    nreps <- vapply(assign,
+                    function(i) length(levels(reTrms$flist[[i]])),
+                    0)
+    blksize <- diff(reTrms$Gp) / nreps
+    ## figure out number of parameters from block size + structure type
 
-        if (is.null(ss)) {
-            ss <- rep("us",length(blksize))
-        }
-
-        if (is.null(aa)) {
-            aa <- rep(NA, length(blksize))
-        }
-
-        getRank <- function(cov_name, a) {
-          if (cov_name != "rr") return(0) 
-          if (is.na(a)) return(2) #default rank is 2 [FIXME: don't hard-code here; specify upstream]
-          return(a)
-        }
-
-        blkrank <- mapply(getRank, ss, aa)
-        
-        parFun <- function(struc, blksize, blkrank) {
-            switch(as.character(struc),
-                   "diag" = blksize, # (heterogenous) diag
-                   "us" = blksize * (blksize+1) / 2,
-                   "cs" = blksize + 1,
-                   "ar1" = 2,
-                   "ou" = 2,
-                   "exp" = 2,
-                   "gau" = 2,
-                   "mat" = 3, 
-                   "toep" = 2 * blksize - 1,
-                   "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
-                   "homdiag" = 1,  ## (homogeneous) diag
-                   "propto" = blksize * (blksize+1) / 2 + 1 #propto (same as us, plus one extra for proportional param)
-                   )
-        }
-        blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
-
-        covCode <- .valid_covstruct[ss]
-
-        ans <- list()
-        for (i in seq_along(ss)) {
-            tmp <- list(blockReps = nreps[i],
-                        blockSize = blksize[i],
-                        blockNumTheta = blockNumTheta[[i]],
-                        blockCode = covCode[i]
-                        )
-            if(ss[i] == "ar1") {
-                ## FIXME: Keep this warning ?
-                if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                    warning("AR1 not meaningful with intercept")
-                if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                    stop("ar1() expects a single, factor variable as the time component")
-                }
-            } else if(ss[i] == "ou"){
-                times <- parseNumLevels(reTrms$cnms[[i]])
-                if (ncol(times) != 1)
-                    stop("'ou' structure is for 1D coordinates only.")
-                if (is.unsorted(times, strictly=TRUE))
-                    stop("'ou' is for strictly sorted times only.")
-                tmp$times <- drop(times)
-            } else if(ss[i] %in% c("exp", "gau", "mat")){
-                coords <- parseNumLevels(reTrms$cnms[[i]])
-                tmp$dist <- as.matrix( dist(coords) )
-            }
-            ans[[i]] <- tmp
-        }
-        setNames(ans, names(reTrms$Ztlist))
+    if (is.null(ss)) {
+        ss <- rep("us",length(blksize))
     }
+
+    if (is.null(aa)) {
+        aa <- rep(NA, length(blksize))
+    }
+
+    getRank <- function(cov_name, a) {
+        if (cov_name != "rr") return(0) 
+        if (is.na(a)) return(2) #default rank is 2 [FIXME: don't hard-code here; specify upstream]
+        return(a)
+    }
+
+    blkrank <- mapply(getRank, ss, aa)
+    
+    parFun <- function(struc, blksize, blkrank) {
+        switch(as.character(struc),
+               "diag" = blksize, # (heterogenous) diag
+               "us" = blksize * (blksize+1) / 2,
+               "cs" = blksize + 1,
+               "ar1" = 2,
+               "ou" = 2,
+               "exp" = 2,
+               "gau" = 2,
+               "mat" = 3, 
+               "toep" = 2 * blksize - 1,
+               "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+               "homdiag" = 1,  ## (homogeneous) diag
+               "propto" = blksize * (blksize+1) / 2 + 1 #propto (same as us, plus one extra for proportional param)
+               )
+    }
+    blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+
+    covCode <- .valid_covstruct[ss]
+
+    ## set simulation code to 'random' for all RE by default
+    simCode <- rep(.valid_simcode[["random"]], length(ss))
+
+    ans <- list()
+    for (i in seq_along(ss)) {
+        tmp <- list(blockReps = nreps[i],
+                    blockSize = blksize[i],
+                    blockNumTheta = blockNumTheta[[i]],
+                    blockCode = covCode[i],
+                    simCode = simCode[i]
+                    )
+        if(ss[i] == "ar1") {
+            ## FIXME: Keep this warning ?
+            if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
+                warning("AR1 not meaningful with intercept")
+            if (length(.getXlevels(reXterms[[i]],fr))!=1) {
+                stop("ar1() expects a single, factor variable as the time component")
+            }
+        } else if(ss[i] == "ou") {
+            times <- parseNumLevels(reTrms$cnms[[i]])
+            if (ncol(times) != 1)
+                stop("'ou' structure is for 1D coordinates only.")
+            if (is.unsorted(times, strictly=TRUE))
+                stop("'ou' is for strictly sorted times only.")
+            tmp$times <- drop(times)
+        } else if(ss[i] %in% c("exp", "gau", "mat")){
+            coords <- parseNumLevels(reTrms$cnms[[i]])
+            tmp$dist <- as.matrix( dist(coords) )
+        }
+        ans[[i]] <- tmp
+    }
+    names(ans) <- names(reTrms$Ztlist)
+
+    return(ans)
 }
 
 .noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell")
@@ -1374,7 +1380,7 @@ glmmTMB <- function(
     if (family$family == "binomial") {
         family$initialize <- our_binom_initialize(family$family)
     }
-    
+
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }

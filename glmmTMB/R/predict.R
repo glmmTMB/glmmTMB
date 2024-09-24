@@ -120,7 +120,8 @@ predict.glmmTMB <- function(object,
                             newparams=NULL,
                             se.fit=FALSE,
                             cov.fit=FALSE,
-                            re.form=NULL, allow.new.levels=FALSE,
+                            re.form=NULL,
+                            allow.new.levels=FALSE,
                             type = c("link", "response",
                                      "conditional", "zprob", "zlink",
                                      "disp", "latent"),
@@ -129,7 +130,7 @@ predict.glmmTMB <- function(object,
                             fast=NULL,
                             debug=FALSE,
                             ...) {
-  ## FIXME: add re.form
+  ## FIXME: implement 'complete' re.form (e.g. identify elements of Z or b that need to be zeroed out)
 
   check_dots(..., .action = "warning")
                
@@ -417,6 +418,11 @@ predict.glmmTMB <- function(object,
   }
 
   if (pop_pred) {
+
+      ## use re.form, ll. 749ff of utils.R to decide which
+      ##  b values to set to zero.  OK to map _all_ values in this case
+      ##  (unless they're in newparams) ?
+      ## browser()           
       TMBStruc <- within(TMBStruc, {
           parameters$b[] <- 0
           mapArg$b <- factor(rep(NA,length(parameters$b)))
@@ -454,9 +460,11 @@ predict.glmmTMB <- function(object,
   }
 
 
-  if (openmp_debug()) cat("TMB threads currently set to ", openmp(NULL), "\n")
+  if (openmp_debug()) {
+      cat("TMB threads currently set to ", openmp(NULL), "\n")
+  }
   return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else "mu_predict"
-    
+
   if (!se.fit) {
     rr <- newObj$report(lp)
     pred <- rr[[return_par]]

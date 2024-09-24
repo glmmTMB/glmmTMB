@@ -51,6 +51,7 @@ bool trunc_Family(int family) {
 	  family == truncated_compois_family ||
 	  family == truncated_nbinom1_family ||
 	  family == truncated_nbinom2_family);
+  
 }
 
 enum valid_link {
@@ -92,6 +93,13 @@ enum valid_ziPredictCode {
   disp_zipredictcode = 3
 };
 
+
+enum valid_simCode {
+  zero_simcode = 0,
+  fix_simcode = 1,
+  random_simcode = 2
+};
+  
 // codes for prior distributions
 enum valid_prior {
   // real-valued
@@ -248,6 +256,7 @@ struct per_term_info {
   int blockSize;     // Size of one block
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
+  int simCode;       // Simulation code (zero, fixed, or draw new random deviate?)
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
   // Report output
@@ -266,10 +275,12 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockSize = (int) REAL(getListElement(y, "blockSize", &isNumericScalar))[0];
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
       int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
+      int simCode = (int) REAL(getListElement(y, "simCode", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
+      (*this)(i).simCode = simCode;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
       if(!Rf_isNull(t)){
@@ -286,6 +297,7 @@ struct terms_t : vector<per_term_info<Type> > {
   }
 };
 
+
 // compute log-likelihood of b (conditional modes) conditional on theta (var/cov)
 //  for a specified random-effects term 
 template <class Type>
@@ -294,12 +306,27 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   if (term.blockCode == diag_covstruct) {
     // case: diag_covstruct
     vector<Type> sd = exp(theta);
-    for(int i = 0; i < term.blockReps; i++){
+    for(int i = 0; i < term.blockReps; i++) {
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), sd, true).sum();
       if (do_simulate) {
-        U.col(i) = rnorm(Type(0), sd);
-      }
-    }
+	// FIXME this can be abstracted as a more general function (zero and fix are always the same,
+	// random_simcode will differ by type) ¿can we make 'covariance structure' a class, with nll and simulate methods??
+        switch(term.simCode) {
+	case fix_simcode:
+          // do nothing, leave U values as is
+	  break;
+	case zero_simcode:
+	  for (int j=0; j < U.rows(); j++) {
+	    U(j,i) = Type(0);
+	  };
+	  break;
+	case random_simcode:
+          U.col(i) = rnorm(Type(0), sd);
+          break;
+	default: error ("unknown simcode");
+	} // simcode
+      } // simulate
+    } // loop over blocks
     term.sd = sd; // For report
   }
   else if (term.blockCode == homdiag_covstruct) {
@@ -309,6 +336,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
           for (int j = 0; j < U.rows(); j++) {
 	    ans -= dnorm(Type(U(j,i)), Type(0), sd, true);
 	    if (do_simulate) {
+	      if (term.simCode != random_simcode) {
+		Rf_error("simcode not yet implemented for homdiag cov struct");
+	      }
 	      U(j,i) = rnorm(Type(0), sd);
 	    }	      
 	  }
@@ -333,7 +363,21 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-        U.col(i) = sd * nldens.simulate();
+        switch(term.simCode) {
+        case fix_simcode:
+          // do nothing, leave U values as is
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U.col(i) = sd * nldens.simulate();
+          break;
+        default: error ("unknown simcode");
+        } // simcode
+        
       }
     }
     term.corr = nldens.cov(); // For report
@@ -356,6 +400,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
+	if (term.simCode != random_simcode) {
+	  Rf_error("simcode not yet implemented for cs cov struct");
+	}
         U.col(i) = sd * nldens.simulate();
       }
     }
@@ -379,6 +426,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
+	if (term.simCode != random_simcode) {
+	  Rf_error("simcode not yet implemented for toep cov struct");
+	}
         U.col(i) = sd * nldens.simulate();
       }
     }
@@ -394,18 +444,35 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type corr_transf = theta(1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
     Type sd = exp(logsd);
+    
     for(int j = 0; j < term.blockReps; j++){
+       for(int i=1; i<n; i++){
+          //Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
+          ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
+      }
       ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
       if (do_simulate) {
-        U(0, j) = rnorm(Type(0), sd);
-      }
-      for(int i=1; i<n; i++){
-	ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
-        if (do_simulate) {
-          U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
-        }
-      }
-    }
+        switch(term.simCode) {
+          case fix_simcode:
+          // do nothing, leave U values as is
+             break;
+          case zero_simcode:
+            for (int i=0; i < U.rows(); i++) {
+              U(i,j) = Type(0);
+              };
+            break;
+          case random_simcode:
+            U(0, j) = rnorm(Type(0), sd);
+            for(int i=1; i<n; i++){
+              U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
+              }
+            break;
+           default: error ("unknown simcode");
+           }
+      } // do_simulate
+  }
+  
+  
     // For consistency with output for other structs we report entire
     // covariance matrix.
     if(isDouble<Type>::value) { // Disable AD for this part
@@ -428,18 +495,33 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type logsd = theta(0);
     Type corr_transf = theta(1);
     Type sd = exp(logsd);
-    for(int j = 0; j < term.blockReps; j++){
-      ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+    for(int i = 0; i < term.blockReps; i++){
+      for(int j=1; j<n; j++){
+        Type rho = exp(-exp(corr_transf) * (term.times(j) - term.times(j-1)));
+        ans -= dnorm(U(j, i), rho * U(j-1, i), sd * sqrt(1 - rho*rho), true);
+      }
+      ans -= dnorm(U(0, i), Type(0), sd, true);   // Initialize
       if (do_simulate) {
-        U(0, j) = rnorm(Type(0), sd);
-      }
-      for(int i=1; i<n; i++){
-	Type rho = exp(-exp(corr_transf) * (term.times(i) - term.times(i-1)));
-	ans -= dnorm(U(i, j), rho * U(i-1, j), sd * sqrt(1 - rho*rho), true);
-        if (do_simulate) {
-          U(i, j) = rnorm( rho * U(i-1, j), sd * sqrt(1 - rho*rho));
+        switch(term.simCode) {
+        case fix_simcode:
+          // do nothing, leave U values as is
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U(0, i) = rnorm(Type(0), sd);
+          for(int j=1; j<n; j++){
+            Type rho = exp(-exp(corr_transf) * (term.times(j) - term.times(j-1)));
+            U(j, i) = rnorm( rho * U(j-1, i), sd * sqrt(1 - rho*rho));
+          }
+          break;
+        default: error ("unknown simcode");
         }
-      }
+      } // do_simulate
+      
     }
     // For consistency with output for other structs we report entire
     // covariance matrix.
@@ -491,6 +573,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
+	if (term.simCode != random_simcode) {
+	  Rf_error("simcode not yet implemented for spatial cov structs");
+	}
         U.col(i) = sd * nldens.simulate();
       }
     }
@@ -505,7 +590,20 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int i = 0; i < term.blockReps; i++){
       ans -= dnorm(vector<Type>(U.col(i)), Type(0), 1, true).sum();
       if (do_simulate) {
-        U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+        switch(term.simCode) {
+        case fix_simcode:
+          // do nothing, leave U values as is
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U.col(i) = rnorm(U.rows(), Type(0), Type(1));
+          break;
+        default: error ("unknown simcode");
+        } // simcode
       }
     }
 
@@ -531,9 +629,13 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
 
     // transforming u to b by multiplying by the loadings matrix
-    for(int i = 0; i < term.blockReps; i++){
-      vector<Type> usub = U.col(i).segment(0, rank);
-      U.col(i) = Lambda * usub;
+    // if simcode is 'fixed', do **not** multiply by loadings matrix
+    // (i.e. user is assumed to be passing the 'non-spherical' latent variables)
+    if (term.simCode != fix_simcode) {
+      for(int i = 0; i < term.blockReps; i++){
+	vector<Type> usub = U.col(i).segment(0, rank);
+	U.col(i) = Lambda * usub;
+      }
     }
 
     // computing the correlation matrix and std devs
@@ -668,6 +770,12 @@ Type objective_function<Type>::operator() ()
   PARALLEL_REGION jnll += allterms_nll(b, theta, terms, this->do_simulate);
   PARALLEL_REGION jnll += allterms_nll(bzi, thetazi, termszi, this->do_simulate);
   PARALLEL_REGION jnll += allterms_nll(bdisp, thetadisp, termsdisp, this->do_simulate);
+
+  // int nz = 0, nnz=0;
+  // for (int i=0; i<b.size(); i++) {
+  //   if (b(i)==0) nz++; else nnz++;
+  // }
+  // printf("b nz = %d, nnz = %d\n", nz, nnz);
   
   // Linear predictor
   vector<Type> eta = Z * b + offset;
