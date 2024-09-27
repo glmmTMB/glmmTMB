@@ -4,6 +4,7 @@
 \alias{nbinom2}
 \alias{family_glmmTMB}
 \alias{nbinom1}
+\alias{nbinom12}
 \alias{compois}
 \alias{truncated_compois}
 \alias{genpois}
@@ -19,13 +20,14 @@
 \alias{ziGamma}
 \alias{t_family}
 \alias{ordbeta}
-\alias{nbinom12}
 \alias{bell}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
 
 nbinom1(link = "log")
+
+nbinom12(link = "log")
 
 compois(link = "log")
 
@@ -56,8 +58,6 @@ ziGamma(link = "inverse")
 t_family(link = "identity")
 
 ordbeta(link = "logit")
-
-nbinom12(link = "log")
 
 bell(link = "log")
 }

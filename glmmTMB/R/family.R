@@ -202,6 +202,17 @@ nbinom1 <- function(link="log") {
     return(make_family(r,link))
 }
 
+#' @export
+#' @rdname nbinom2
+nbinom12 <- function(link="log") {
+    r <- list(family="nbinom12",
+              variance = function(mu, phi, psi) {
+                  return(mu*(1+phi + mu/psi))
+              }
+              )
+    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
+}
+
 #' @rdname nbinom2
 #' @export
 compois <- function(link="log") {
@@ -460,17 +471,6 @@ ordbeta <- function(link="logit") {
               variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
               )
     return(make_family(r,link))
-}
-
-#' @export
-#' @rdname nbinom2
-nbinom12 <- function(link="log") {
-    r <- list(family="nbinom12",
-              variance = function(mu, phi, psi) {
-                  return(mu*(1+phi + mu/psi))
-              }
-              )
-    return(make_family(r,link, needs_nonneg = TRUE, needs_int = TRUE))
 }
 
 #' @export

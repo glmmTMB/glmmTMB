@@ -63,7 +63,7 @@ sim_obj <- simulate_new(~ mined + (1|site),
              family = nbinom2,
              newparams = list(beta = c(2, 1),
                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-                         betadisp = log(2), ## log(NB dispersion)
+                         betad = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)
 )
 data("sleepstudy", package = "lme4")
@@ -72,7 +72,7 @@ sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
              newdata = sleepstudy,
              family = gaussian,
              newparams = list(beta = c(280, 1),
-                         betadisp = log(2), ## log(SD)
+                         betad = log(2), ## log(SD)
                          theta = log(c(2, 2, 1))),
 )
 
