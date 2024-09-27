@@ -4,7 +4,13 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.10}{
+\section{CHANGES IN VERSION 1.1.10.9000}{
+  \subsection{NEW FEATURES}{
+    None yet.
+  }
+}
+  
+\section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item added random effect structure propto to fit multivariate random effects proportional to a known variance-covariance matrix. This feature is
