@@ -22,7 +22,7 @@ openmp <- function (n = NULL, autopar = NULL) {
       on.exit(options(warn = w[["warn"]]))
     }
     tt <- TMB::openmp(n, autopar = autopar, DLL="glmmTMB")
-    return(list(n = c(tt), autopar = attr(tt, "autopar")))
+    return(list(n = unname(c(tt)), autopar = attr(tt, "autopar")))
 }
 
 ##' Change starting parameters, either by residual method or by user input (start)
