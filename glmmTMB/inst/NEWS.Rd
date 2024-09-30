@@ -8,6 +8,11 @@
   \subsection{NEW FEATURES}{
     None yet.
   }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fix newly introduced bug in Pearson residuals for
+  zero-inflated models (GH #1101)
+  }
 }
   
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{
