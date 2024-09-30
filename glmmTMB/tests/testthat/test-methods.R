@@ -4,6 +4,11 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
 
+## handy for interactive use
+if (FALSE) {
+    source("tests/testthat/setup_makeex.R")
+}
+
 if (getRversion() < "3.3.0") {
     sigma.default <- function (object, use.fallback = TRUE, ...)
         sqrt(deviance(object, ...)/(nobs(object, use.fallback = use.fallback) -
@@ -75,6 +80,12 @@ test_that("Fitted and residuals", {
                  -5.14833310763953e-05, tolerance = 1e-6)
     expect_equal(residuals(m1, type = "pearson"),
                  residuals(m1)/predict(m1, type = "disp"))
+})
+
+test_that("Pop-level residuals", {
+    r1 <- residuals(fm2, re.form  = NA)
+    r2 <- model.response(model.frame(fm2)) - predict(fm2, re.form = NA)
+    expect_equal(r1, r2)
 })
 
 test_that("Predict", {
@@ -396,6 +407,13 @@ test_that("vcov", {
 })
 
 
+test_that("simulate with re.form = NA", {
+    s1 <- simulate(fm_diag2, seed = 101)
+    ## s1_pop <- simulate(fm_diag2, seed = 101, re.form = NA)
+    s1_lmer <- simulate(fm_diag2_lmer, seed = 101)
+    ## s1_lmer_pop <- simulate(fm_diag2_lmer, seed = 101, re.form = NA)
+})
+
 test_that("formula", {
     expect_equal(formula(fm2),Reaction ~ Days + (Days | Subject))
     expect_equal(formula(fm2, fixed.only=TRUE),Reaction ~ Days)
@@ -636,7 +654,7 @@ test_that("de novo simulation with binomial N>1", {
 
 test_that("de novo simulation error checking", {
     dd <- data.frame(x = 1:10)
-    expect_error(simulate_new(~ x,
+    expect_warning(simulate_new(~ x,
                  seed = 101,
                  family = gaussian,
                  newdata = dd,
