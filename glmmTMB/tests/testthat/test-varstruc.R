@@ -9,8 +9,6 @@ data(sleepstudy, cbpp, package = "lme4")
 ## fsleepstudy and fitted models come from inst/test_data/models.rda
 ## OR running inst/test_data/make_ex.R
 
-context("variance structures")
-
 test_that("diag", {
    ## two formulations of diag and lme4 all give same log-lik
    expect_equal(logLik(fm_diag1),logLik(fm_diag2_lmer))
@@ -40,11 +38,15 @@ test_that("basic ar1", {
 
 ## change to something better behaved
 test_that("print ar1 (>1 RE)", {
-    fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
-                                    newdata=fsleepstudy,
-                                    newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
-                                    family = gaussian,
-                                    seed = 101)[[1]]
+    ## sim order of sampling rnorm() values changed with implementation of hetar1, so use stored sim
+    ##
+    ## fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
+    ##                                 newdata=fsleepstudy,
+    ##                                 newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
+    ##                                 family = gaussian,
+    ##                                 seed = 101)[[1]]
+    ##     saveRDS(fsleepstudy$sim, file="../../inst/test_data/sim_ar1.rds",version=2)
+    fsleepstudy$sim <- readRDS(system.file("test_data", "sim_ar1.rds", package="glmmTMB"))
     fm_ar2 <- glmmTMB(sim ~ 1 +
                           (1|Subject) + ar1(row+0| Subject), fsleepstudy)
     cco <- gsub(" +"," ",
