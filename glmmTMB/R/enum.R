@@ -45,7 +45,8 @@
   toep = 8,
   rr = 9,
   homdiag = 10,
-  propto = 11
+  propto = 11,
+  hetar1 = 12
 )
 .valid_zipredictcode <- c(
   corrected = 0,
