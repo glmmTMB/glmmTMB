@@ -155,5 +155,6 @@ test_that("het ar1", {
                                        family = gaussian,
                       seed = 101)[[1]]
     suppressWarnings(fit1  <-  glmmTMB(y ~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                                      data=sleepstudy))
+                                       data=sleepstudy))
+    VarCorr(fit1)
 })
