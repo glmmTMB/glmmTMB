@@ -783,6 +783,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ifelse(mr < mu, -d.res, d.res)
            },
            pearson = {
+               mu <- predict(object, type = "conditional", re.form = re.form)
                if (is.null(v <- fam$variance)) {
                    stop("variance function undefined for family ",
                         sQuote(fam$family),"; cannot compute",
