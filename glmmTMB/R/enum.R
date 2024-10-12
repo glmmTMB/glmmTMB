@@ -22,6 +22,7 @@
   compois =403,
   truncated_genpois =404,
   truncated_compois =405,
+  zo_truncated_poisson =406,
   nbinom1 =500,
   nbinom2 =501,
   nbinom12 =502,
