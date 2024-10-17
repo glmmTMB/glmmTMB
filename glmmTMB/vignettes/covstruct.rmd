@@ -712,7 +712,7 @@ arrows(0, 0, rr_info$b[,1]*afac, rr_info$b[,2]*afac)
 text(rr_info$fl[,1], rr_info$fl[,2], sp_names, pos = 3, col = 2)
 ```
 
-## Proptional
+## Proportional
 
 The random effect structure `propto` fits multivariate random effects proportional to a known variance-covariance matrix.  One way the `propto` structure can be used is in phylogenetic analysis where a random effect proportional to a phylogenetic variance-covariance matrix aims to account for the correlation across species due to their shared ancestry. For example, the `carni70` data set from the `ade4` package describes the phylogeny along with the geographic range and body size of 70 carnivora. To account for the dependence among species due to shared ancestral history we can include a phylogenetically structured error term in the model via the `propto` structure as follows:
 ```{r propto_ex, eval = FALSE}
