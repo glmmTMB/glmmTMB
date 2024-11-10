@@ -16,6 +16,7 @@
 \alias{betabinomial}
 \alias{tweedie}
 \alias{skewnormal}
+\alias{censored_normal}
 \alias{lognormal}
 \alias{ziGamma}
 \alias{t_family}
@@ -50,6 +51,8 @@ betabinomial(link = "logit")
 tweedie(link = "log")
 
 skewnormal(link = "identity")
+
+censored_normal(link = "identity", a = 0, b = Inf)
 
 lognormal(link = "log")
 
@@ -98,8 +101,8 @@ and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)
      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
-\item{bell}{Bell distribution (see Castellares et al 2018).
-} 
+\item{bell}{Bell distribution (see Castellares et al 2018).}
+     \item{censored_normal}{Censored normal, parameterized by the mean, standard deviation, a (lower limit), and b (upper limit)}
 }
 }
 \references{

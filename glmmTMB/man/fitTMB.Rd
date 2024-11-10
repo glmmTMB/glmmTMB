@@ -39,7 +39,7 @@ create an internally consistent final fitted object).
 m0 <- glmmTMB(count ~ mined + (1|site),
              family=poisson, data=Salamanders)
 ## 2. the equivalent fit, done modularly:
-##  a. 
+##  a.
 m1 <- glmmTMB(count ~ mined + (1|site),
              family=poisson, data=Salamanders,
              doFit = FALSE)
@@ -52,7 +52,7 @@ m2 <- fitTMB(m1, doOptim = FALSE)
 ## The result includes initial parameter values, objective function
 ## (fn), gradient function (gr), etc.
 names(m2)
-## Optionally, one could choose to 
+## Optionally, one could choose to
 ## modify the components of m1$env$data at this point ...
 ## updating the TMB structure as follows may be necessary:
 m2 <- with(m2$env,

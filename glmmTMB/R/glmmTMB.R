@@ -307,15 +307,15 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr))
     ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr))
     dispReStruc <- with(dispList, getReStruc(reTrms, ss, aa, reXterms, fr))
-    
+
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
    nobs <- nrow(fr)
-    
+
    if (is.null(weights)) weights <- rep(1, nobs)
 
   size <- numeric(0)
-    
+
   ## binomial family:
   ## binomial()$initialize was only executed locally
   ## yobs could be a factor -> treat as binary following glm
@@ -358,7 +358,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## FIXME: would be nice to be able to get this with less info
   ## (for external testing etc.) but ... ??
 
-    
+
   ## isolate names for localizing priors
   get_fixnm <- function(x) c(colnames(x$X), colnames(x$XS))
   fix_nms <- list(cond = get_fixnm(condList),
@@ -378,7 +378,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   prior_struc <- proc_priors(priors, info = list(fix = fix_nms, re = re_info))
 
   data.tmb <- namedList(
-    ## fixed-effect (X) and random-effect (Z), dense and sparse model matrices    
+    ## fixed-effect (X) and random-effect (Z), dense and sparse model matrices
     X = denseXval("cond",condList),
     XS = sparseXval("cond",condList),
     Z = condList$Z,
@@ -388,7 +388,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     Xdisp = denseXval("disp",dispList),
     XdispS = sparseXval("disp",dispList),
     Zdisp=dispList$Z,
-    
+
     ## use c() on yobs, size to strip attributes such as 'AsIs'
     ##  (which confuse MakeADFun)
     yobs = c(yobs),
@@ -399,7 +399,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     dispoffset = c(dispList$offset),
     weights = c(weights),
     size = c(size),
-    
+
     ## information about random effects structure
     terms = condReStruc,
     termszi = ziReStruc,
@@ -433,7 +433,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## Extra family specific parameters
 
   psiLength <- find_psi(family$family)
-           
+
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
   # theta is 0, 1 for rr_covstruct
@@ -442,7 +442,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
     theta <- rr0(nt)
-    
+
     if (dorr) {
       blockNumTheta <- getVal(ReStruc,"blockNumTheta")
       blockCode  <- getVal(ReStruc, "blockCode")
@@ -467,10 +467,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        betazi  = rr0(max(ncol(Xzi),ncol(XziS))),
                        betadisp= rep(betadisp_init, max(ncol(Xdisp),ncol(XdispS))),
                        b       = rep(beta_init, ncol(Z)),
-                       bzi     = rr0(ncol(Zzi)),                       
+                       bzi     = rr0(ncol(Zzi)),
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
                        theta   = t01(dorr = rrVal(condList), condReStruc, condList),
-                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
+                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),
                        thetadisp = t01(dorr = rrVal(dispList), dispReStruc),
                        psi  = psi_init
                      ))
@@ -504,7 +504,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (REML) randomArg <- c(randomArg, "beta")
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
-            condList, ziList, dispList, 
+            condList, ziList, dispList,
   					condReStruc, ziReStruc, dispReStruc,
             family, contrasts, respCol,
             allForm=namedList(combForm,formula,ziformula,dispformula),
@@ -585,8 +585,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                                             if (!is.null(s$re$trans.U)) X <- X%*%s$re$trans.U
                                             X <- t(t(X)*s$re$trans.D)
                                             ## re-order columns according to random effect re-ordering...
-                                            X[,s$re$rind] <- X[,s$re$pen.ind!=0] 
-                                            ## re-order penalization index in same way  
+                                            X[,s$re$rind] <- X[,s$re$pen.ind!=0]
+                                            ## re-order penalization index in same way
                                             pen.ind <- s$re$pen.ind; s$pen.ind[s$re$rind] <- pen.ind[pen.ind>0]
                                             ## start return object...
                                             s_new <- list(re = list(rand=list(), Xf=X[,which(s$re$pen.ind==0),drop=FALSE]))
@@ -617,11 +617,11 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                              ## random effects form") ever be non-empty?
                              re = mgcv::smooth2random(sm, vnames = "", type = 2))
                     })
-                    
+
             } ## create (new) smooth terms
         } ## has_smooths
 
-        
+
         tt <- terms(fixedform)
         pv <- attr(mf$formula,"predvars")
         attr(tt, "predvars") <- fix_predvars(pv,tt)
@@ -652,7 +652,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                 smooth_terms2[[si]]$re$beta_ind <- beta_ind
             }
         }
-        
+
         ## will be 0-column matrix if fixed formula is empty
         offset <- rep(0,nobs)
         if (inForm(fixedform,quote(offset))) {
@@ -729,7 +729,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ## about specials, assumes ntheta = (nlev*(nlev+1)/2)
             ## for each smooth
             ##
-            ## augReTrms$theta <- rep(0, ## default value 
+            ## augReTrms$theta <- rep(0, ## default value
             ##                        sum(lengths(reTrms$theta)) +
             ##                        length(nonbarpos))
             ## augReTrms$theta[barpos] <- reTrms$theta
@@ -821,8 +821,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         reXterms <- Map(function(f, a) {
             if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
         }, ss$reTrmFormulas, ss$reTrmAddArgs)
-        
-        
+
+
         for (i in seq_along(ss$reTrmAddArgs)) {
           if(ss$reTrmClasses[i] == "rr") {
             if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
@@ -880,7 +880,7 @@ map.theta.propto <- function(ReStruc, map) {
       params <- list()
   else
       params <- map
-  
+
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
 
@@ -955,7 +955,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
   ## flist: data frame of grouping variables (factors)
   ##   'assign' attribute gives match between RE terms and factors
     if (is.null(reTrms)) return(list())
-    
+
     ## Get info on sizes of RE components
 
     assign <- attr(reTrms$flist,"assign")
@@ -974,13 +974,13 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
     }
 
     getRank <- function(cov_name, a) {
-        if (cov_name != "rr") return(0) 
+        if (cov_name != "rr") return(0)
         if (is.na(a)) return(2) #default rank is 2 [FIXME: don't hard-code here; specify upstream]
         return(a)
     }
 
     blkrank <- mapply(getRank, ss, aa)
-    
+
     parFun <- function(struc, blksize, blkrank) {
         switch(as.character(struc),
                "diag" = blksize, # (heterogenous) diag
@@ -990,7 +990,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                "ou" = 2,
                "exp" = 2,
                "gau" = 2,
-               "mat" = 3, 
+               "mat" = 3,
                "toep" = 2 * blksize - 1,
                "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
                "homdiag" = 1,  ## (homogeneous) diag
@@ -1041,7 +1041,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
 
 ## number of additional/shape parameters (default = 0)
 .extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
-                            '2' = 'ordbeta')
+                            '2' = c('ordbeta', 'censored_normal'))
 find_psi <- function(f) {
     for (i in seq_along(.extraParamFamilies)) {
         if (f %in% .extraParamFamilies[[i]]) return(as.numeric(i))
@@ -1237,7 +1237,7 @@ glmmTMB <- function(
     call <- mf <- mc <- match.call()
 
     family <- get_family(family)
-    
+
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
         stop("'family' must contain at least 'family' and 'link' components")
@@ -1385,6 +1385,20 @@ glmmTMB <- function(
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
     }
 
+    ## hack initialization for censored_normal
+    ## I'm not too sure how to leverage the above eval call to do the block below
+    if (family$family == "censored_normal") {
+      if (is.null(start)) {
+        start <- list()
+      }
+      start$psi <- c(family$a, family$b)
+
+      if (is.null(map)) {
+        map <- list()
+      }
+      map$psi <- factor(c(NA, NA))
+    }
+
    if (grepl("^truncated", family$family) &&
        (!is.factor(y) && any(y<0.001)) && (ziformula == ~0)) {
         stop(paste0("'", names(respCol), "'", " contains zeros (or values close to zero). ",
@@ -1527,7 +1541,7 @@ glmmTMBControl <- function(optCtrl=NULL,
             parallel$n <- as.integer(parallel$n)
         }
     }
-    
+
     rank_check <- match.arg(rank_check)
     conv_check <- match.arg(conv_check)
 
@@ -1544,7 +1558,7 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' @keywords internal
 ##' @importFrom stats runif xtabs
 .collectDuplicates <- function(data.tmb) {
-    nm <- c("X", "Z", "Xzi", "Zzi", "Xdisp", "Zdisp", 
+    nm <- c("X", "Z", "Xzi", "Zzi", "Xdisp", "Zdisp",
     				"offset", "zioffset", "dispoffset", "yobs",
             "size"[length(data.tmb$size) > 0])
     A <- do.call(cbind, data.tmb[nm])
@@ -1615,7 +1629,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## ??? FIXME: not sure whether it's best to drop elements of
     ##   assign here or later ...
     ## aa$assign <- aa$assign[to_keep]
-    ## aa$assign.dropped <- aa$assign[to_drop]  
+    ## aa$assign.dropped <- aa$assign[to_drop]
     for (nm in c("assign", "contrasts")) {
         attr(X, nm) <- aa[[nm]]
     }
@@ -1735,7 +1749,7 @@ checkProptoNames <- function(aa, cnms, reXtrm){
 ##' m0 <- glmmTMB(count ~ mined + (1|site),
 ##'              family=poisson, data=Salamanders)
 ##' ## 2. the equivalent fit, done modularly:
-##' ##  a. 
+##' ##  a.
 ##' m1 <- glmmTMB(count ~ mined + (1|site),
 ##'              family=poisson, data=Salamanders,
 ##'              doFit = FALSE)
@@ -1748,7 +1762,7 @@ checkProptoNames <- function(aa, cnms, reXtrm){
 ##' ## The result includes initial parameter values, objective function
 ##' ## (fn), gradient function (gr), etc.
 ##' names(m2)
-##' ## Optionally, one could choose to 
+##' ## Optionally, one could choose to
 ##' ## modify the components of m1$env$data at this point ...
 ##' ## updating the TMB structure as follows may be necessary:
 ##' m2 <- with(m2$env,
@@ -1923,7 +1937,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
     ## could assign this value with predict(), save a little bit??
     ## (but would have to add $na.action to the object, instead of retrieving it
     ##  from attr(x$frame, "na.action")), or continue with our own fitted.glmmTMB version
-    
+
     fitted <- NULL
 
     if (TMBStruc$se) {
@@ -1956,7 +1970,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
               par <- par[-rr]
           }
           h <- numDeriv::jacobian(obj$gr, par)
-          ## fall back to solve(optimHess(par, obj$fn, obj$gr)) ? 
+          ## fall back to solve(optimHess(par, obj$fn, obj$gr)) ?
           h <- .5 * (h + t(h))  ## symmetrize
           if (!any(is.na(h))) {
               ev <- try(
@@ -1973,7 +1987,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                   }
               } ## eig check OK
           } ## !any(is.na(h))
-        } ## !sdr$pdHess          
+        } ## !sdr$pdHess
         if (!sdr$pdHess) { ## still bad after trying numDeriv ...
               warning(paste0("Model convergence problem; ",
                              "non-positive-definite Hessian matrix. ",
@@ -2008,7 +2022,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 family,
                                 contrasts,
                                 ## FIXME:apply condList -> cond earlier?
-                                reTrms = lapply(list(cond=condList, zi=ziList, 
+                                reTrms = lapply(list(cond=condList, zi=ziList,
                                 										 disp=dispList),
                                                 stripReTrms),
                                 terms = lapply(list(cond=condList, zi=ziList,

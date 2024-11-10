@@ -39,19 +39,19 @@ make_family <- function(x, link, needs_nonneg = FALSE, needs_int = FALSE) {
             mustart <- y+0.1
             if (needs_int) {
                 if (any(abs(y - round(y)) > 0.001)) {
-                    warning(gettextf("non-integer counts in a %s response variable", 
+                    warning(gettextf("non-integer counts in a %s response variable",
                                      FAMILY), domain = NA)
                 }
             }
             if (needs_nonneg) {
                 if (any(y < 0)) {
-                    warning(gettextf("negative values in a %s response variable", 
+                    warning(gettextf("negative values in a %s response variable",
                                      FAMILY), domain = NA)
                 }
             }
             }))))
     }
-        
+
     if (is.null(x$dev.resids)) {
         x <- c(x,list(dev.resids=function(y,mu,wt)  {
             if (in_glm_fit()) {
@@ -136,8 +136,8 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 ##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
-##' \item{bell}{Bell distribution (see Castellares et al 2018).
-##' } 
+##' \item{bell}{Bell distribution (see Castellares et al 2018).}
+##'      \item{censored_normal}{Censored normal, parameterized by the mean, standard deviation, a (lower limit), and b (upper limit)}
 ##' }
 ##' @references
 ##' \itemize{
@@ -366,6 +366,17 @@ skewnormal <- function(link="identity") {
   return(make_family(r,link))
 }
 
+#' @rdname nbinom2
+#' @export
+censored_normal <- function(link="identity", a=0, b=Inf) {
+  r <- list(family="censored_normal",
+            variance = function(phi) {
+              phi^2
+            },
+            a = a,
+            b = b)
+  return(make_family(r,link))
+}
 
 #' @rdname nbinom2
 #' @export
