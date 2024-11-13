@@ -730,6 +730,18 @@ test_that("dunn-smyth residuals", {
                  tolerance = 1e-6)
 })
 
+test_that("profiling with mapped parameters", {
+    data("sleepstudy", package = "lme4")
+    m1 <- glmmTMB(Reaction ~ Days,
+                  data = sleepstudy,
+                  family = gaussian,
+                  map = list(beta = factor(c(NA, 1))),
+                  start = list(beta = c(250, 0)))
+
+    pp <- profile(m1)                         
+    expect_equal(dim(pp), c(50, 3))
+})
+
 # This test started also giving a warning on os "mac".
 # test_that("bad inversion in vcov", {
 #     skip_on_os(c("windows", "linux"))

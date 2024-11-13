@@ -9,6 +9,7 @@
     \itemize{
       \item fix newly introduced bug in Pearson residuals for
       zero-inflated models (GH #1101)
+      \item likelihood profiling now works for models with mapped parameters
     } % itemize
   } % bug fixes
 } % 1.1.10.9000
@@ -72,7 +73,7 @@
       \code{reformulas} package rather than from \code{lme4}
     } % itemize
   } % other changes
-} % 1.1.9-9000
+} % 1.1.10
   
 \section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
