@@ -132,6 +132,7 @@ predict.glmmTMB <- function(object,
                             na.action = na.pass,
                             fast=NULL,
                             debug=FALSE,
+                            slow = FALSE,  ## TEMPORARY slow-hessian comp
                             ...) {
   ## FIXME: implement 'complete' re.form (e.g. identify elements of Z or b that need to be zeroed out)
 
@@ -472,7 +473,7 @@ predict.glmmTMB <- function(object,
     rr <- newObj$report(lp)
     pred <- rr[[return_par]]
   } else {
-     if (!is.null(object$sdr)) {
+     if (!is.null(object$sdr) && !slow) {
           H <- solve(object$sdr$cov.fixed)
      } else {
           H <- with(object,optimHess(oldPar,obj$fn,obj$gr))

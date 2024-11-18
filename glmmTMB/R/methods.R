@@ -176,7 +176,7 @@ print.fixef.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3), pri
 ##' @importFrom nlme ranef
 ##' @export ranef
 ##' @export
-ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
+ranef.glmmTMB <- function(object, condVar=TRUE, slow_pred = FALSE, ...) {
   check_dots(...)
   ## The arrange() function converts a vector of random effects to a list of
   ## data frames, in the same way as lme4 does.
@@ -261,7 +261,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
                      USE.NAMES = TRUE)
       if (has_rr) {
           ## for rr(), we need to fill in the *computed* latent variables and their SE
-          pred <- predict(object, type = "latent", se.fit = TRUE)
+          pred <- predict(object, type = "latent", se.fit = TRUE, slow = slow_pred)
           sdl <- list()
           for (x in names(inds)) {
               sdl[[x]] <- pred$se.fit[inds[[x]]]
