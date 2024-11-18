@@ -472,7 +472,12 @@ predict.glmmTMB <- function(object,
     rr <- newObj$report(lp)
     pred <- rr[[return_par]]
   } else {
-    H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
+     if (!is.null(object$sdr)) {
+          H <- solve(object$sdr$cov.fixed)
+     } else {
+          H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
+     }
+
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
