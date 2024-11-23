@@ -10,8 +10,9 @@
       \item fix newly introduced bug in Pearson residuals for
       zero-inflated models (GH #1101)
       \item likelihood profiling now works for models with mapped parameters
-      \item \code{glmmTMB} would sometimes change the order of terms in
-      fixed-effect model matrices (GH #1122, @dongwenluo)
+      \item \code{glmmTMB} no longer changes the order of terms in
+      fixed-effect model matrices (GH #1122, @dongwenluo). Note that
+      this bug fix will change the order of results (parameter vectors) in some cases.
     } % itemize
   } % bug fixes
 } % 1.1.10.9000
