@@ -629,9 +629,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         terms <- list(fixed=terms(terms_fixed))
         if (!sparse) {
-            X <- model.matrix(noSpecials(fixedform), fr, contrasts)
+            X <- model.matrix(noSpecials(fixedform, specials = "offset"),
+                              fr, contrasts)
         } else {
-            X <- Matrix::sparse.model.matrix(noSpecials(fixedform), fr, contrasts)
+            X <- Matrix::sparse.model.matrix(noSpecials(fixedform, specials = "offset"), fr, contrasts)
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
