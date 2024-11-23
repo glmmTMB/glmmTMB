@@ -1305,7 +1305,8 @@ glmmTMB <- function(
     ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
         ziformula <-
-            update(RHSForm(noSpecials(formula),as.form=TRUE),
+            update(RHSForm(noSpecials(formula, specials = "offset"),
+                           as.form=TRUE),
                    ziformula)
     }
 
