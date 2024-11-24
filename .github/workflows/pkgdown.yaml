@@ -60,7 +60,7 @@ jobs:
           remotes::install_deps(pkgdir="glmmTMB", dependencies = TRUE)
           remotes::install_github("bbolker/bbmle")
           install.packages('tinytex')
-          tinytex::install_tinytex()
+          tinytex::install_tinytex(force=TRUE) ## force = TRUE?
           tinytex::tlmgr_install("koma-script") # for scrtime.sty
           tinytex::tlmgr_install("amscls")      # for amsthm.sty
           tinytex::tlmgr_install(c("multirow","colortbl","siunitx","setspace"))
