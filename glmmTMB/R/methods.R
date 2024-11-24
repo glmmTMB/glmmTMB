@@ -513,9 +513,11 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
               } ## any mapped
 
               has_dropped <- function(m) !is.null(attr(getME(object, m), "col.dropped"))
+              
               if (any_mapped && has_dropped("X") || has_dropped("Xdisp") || has_dropped("Xzi")) {
-                  warning("the combination of mapping and columns dropped because of rank-deficiency; ",
-                       "please contact the developers")
+                  warning("the combination of mapping and columns dropped because of rank-deficiency may ",
+                          "give strange vcov() results; check your answers and contact the developers with ",
+                          "a reproducible answer if necessary")
               }
 
               mm <- matrix(NA_real_, length(fnm), length(fnm),
