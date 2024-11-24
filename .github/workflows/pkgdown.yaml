@@ -37,7 +37,7 @@ jobs:
         run: |
           install.packages('remotes')
           remotes::install_github("bbolker/pkgdown.extras") # use BMB fork, for now
-	  remotes::install_version("pkgdown", "2.0.7")
+          remotes::install_version("pkgdown", "2.0.7")
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
