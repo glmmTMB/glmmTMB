@@ -33,7 +33,11 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
 #      - name: textshaping dependencies for MacOS
 # for some reason we insist on installing newer version of textshaping from source, so we need these ...
-#        run: brew install harfbuzz fribidi 
+#        run: brew install harfbuzz fribidi
+      - name: textshaping dependencies for LInux
+         run: |
+           sudo apt-get update
+           sudo apt-get -y install libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev
       - name: Install pkgdown.extras and remotes
         run: |
           install.packages('remotes')
