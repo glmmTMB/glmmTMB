@@ -559,7 +559,8 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
 
 ## all parameters, including both mapped and rank-dropped
-getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
+getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,
+                        include_mapequal = FALSE) {
                            
   mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
@@ -618,12 +619,17 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
      map <- object$obj$env$map
      if (length(map)>0) {
          for (m in seq_along(map)) {
-            if (length(NAmap <- which(is.na(map[[m]])))>0) {
+             if (!include_mapequal) {
+                 missmap <- which(is.na(map[[m]]) | duplicated(map[[m]]))
+             } else {
+                 missmap <- which(is.na(map[[m]]))
+             }
+             if (length(missmap)>0) {
                 w <- match(names(map)[m], par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
-                    nameList[[w]] <- nameList[[w]][-NAmap]
+                    nameList[[w]] <- nameList[[w]][-missmap]
                 }
-            }
+            }  ## if NA/duplicated values
          } ## for (m in seq_along(map))
      } ## if (length(map) > 0)
   }
