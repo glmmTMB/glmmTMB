@@ -37,10 +37,11 @@ jobs:
         run: |
           install.packages('remotes')
           remotes::install_github("bbolker/pkgdown.extras") # use BMB fork, for now
+	  remotes::install_version("pkgdown", "2.0.7")
         shell: Rscript {0}
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::rcmdcheck, any::Matrix
+          extra-packages: any::rcmdcheck, any::Matrix, pkgdown.extras=?ignore
           needs: check
           working-directory: ./glmmTMB
           upgrade: 'TRUE'
