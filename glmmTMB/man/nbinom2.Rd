@@ -52,7 +52,7 @@ tweedie(link = "log")
 
 skewnormal(link = "identity")
 
-censored_normal(link = "identity", a = 0, b = Inf)
+censored_normal(link = "identity", left = 0, right = Inf)
 
 lognormal(link = "log")
 

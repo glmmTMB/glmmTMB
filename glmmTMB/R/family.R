@@ -368,13 +368,19 @@ skewnormal <- function(link="identity") {
 
 #' @rdname nbinom2
 #' @export
-censored_normal <- function(link="identity", a=0, b=Inf) {
+censored_normal <- function(link="identity", left=0, right=Inf) {
   r <- list(family="censored_normal",
             variance = function(phi) {
               phi^2
             },
-            a = a,
-            b = b)
+            initialize = expression({
+              if (family$left > family$right)
+                stop("left-limit is greater than right-limit")
+              if (family$left == family$right)
+                stop("left-limit is equal to right-limit")
+            }),
+            left = left,
+            right = right)
   return(make_family(r,link))
 }
 

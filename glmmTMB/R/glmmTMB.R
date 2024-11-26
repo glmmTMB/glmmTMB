@@ -1391,7 +1391,7 @@ glmmTMB <- function(
       if (is.null(start)) {
         start <- list()
       }
-      start$psi <- c(family$a, family$b)
+      start$psi <- c(family$left, family$right)
 
       if (is.null(map)) {
         map <- list()
