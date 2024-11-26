@@ -533,7 +533,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
-##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- drop.special extractForm reOnly no_specials splitForm addForm0 makeOp
+##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- extractForm reOnly no_specials splitForm addForm0 makeOp
 ##' @importFrom utils head
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
@@ -629,9 +629,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         terms_fixed <- terms(eval(mf,envir=environment(fixedform)))
         terms <- list(fixed=terms(terms_fixed))
         if (!sparse) {
-            X <- model.matrix(drop.special(fixedform), fr, contrasts)
+            X <- model.matrix(noSpecials(fixedform, specials = "offset"),
+                              fr, contrasts)
         } else {
-            X <- Matrix::sparse.model.matrix(drop.special(fixedform), fr, contrasts)
+            X <- Matrix::sparse.model.matrix(noSpecials(fixedform, specials = "offset"), fr, contrasts)
             ## FIXME? ?sparse.model.matrix recommends MatrixModels::model.Matrix(*,sparse=TRUE)
             ##  (but we may not need it, and would add another dependency etc.)
         }
@@ -1306,7 +1307,8 @@ glmmTMB <- function(
     ## replace . in ziformula with conditional formula, ignoring offset
     if (inForm(ziformula,quote(.))) {
         ziformula <-
-            update(RHSForm(drop.special(formula),as.form=TRUE),
+            update(RHSForm(noSpecials(formula, specials = "offset"),
+                           as.form=TRUE),
                    ziformula)
     }
 

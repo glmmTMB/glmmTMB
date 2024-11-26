@@ -459,11 +459,13 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
           try(colnames(covF) <- rownames(covF) <- unlist(estNameList),
               silent = TRUE)
           res <- covF
+          ## end if (!include_nonest)
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
                         dimnames = list(fnl, fnl))
           res[nl, nl] <- covF
       }
+      ## end if (full)
   } else {
       ## extract matrix blocks
       ss <- split(seq_along(colnames(covF)), colnames(covF))
@@ -481,28 +483,51 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
               nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
+
+              ## what are all the possibilities here?
+              ## * non-estimable parameters because of rank deficiency -- values should be NA
+              ## * mapped-fixed parameters (NA)
+              ## * mapped-equal parameters (square equal-valued blocks as explained below)
+
+              ## fixed params *or* rank-def columns dropped
+              any_mapped <- !is.null(cur_map <- map[[parnms[[i]]]])
               ## some parameters mapped *to each other* (not fixed)
-              if (!is.null(cur_map <- map[[parnms[[i]]]]) &&
-                  length(unique(cur_map)) < length(cur_map)) {
+              if (any_mapped && length(unique(cur_map)) < length(cur_map)) {
                   ## replicate cov rows/cols appropriately
                   m <- m[as.numeric(cur_map), as.numeric(cur_map)]
                   map_split <- split(seq_along(cur_map), cur_map)
                   for (cc in map_split) {
                       if (length(cc)==1) next
-                      ## should fix covariances in cov matrix
-                      ## equal to variance for mapped pairs ...
+                      ## fix covariances in cov matrix
+                      ## all values equal to variance for mapped pairs ...
+                      ##  (variances of fixed parameters are all equal; correlations are == 1,
+                      ##   so covariances are also equal ... if users want something else they
+                      ##   can specify include_nonest = FALSE ...)
                       ## combn() generates a 2-by-n matrix of pairs
                       ccc <- combn(cc, 2)
                       for (j in 1:ncol(ccc)) {
                           m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
                               m[ccc[1,j], ccc[1,j]]
-                      }
-                  }
+                      } ## loop over combinations
+                  } ## loop over mapped groups
+              } ## any mapped
+
+              has_dropped <- function(m) !is.null(attr(getME(object, m), "col.dropped"))
+              
+              if (any_mapped && has_dropped("X") || has_dropped("Xdisp") || has_dropped("Xzi")) {
+                  warning("the combination of mapping and columns dropped because of rank-deficiency may ",
+                          "give strange vcov() results; check your answers and contact the developers with ",
+                          "a reproducible answer if necessary")
               }
-              ## fixed params *or* rank-def columns dropped
+
               mm <- matrix(NA_real_, length(fnm), length(fnm),
                            dimnames=list(fnm, fnm))
-              mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
+
+              estNameList <- getParnames(object, full, include_mapped = FALSE,
+                                         include_dropped = FALSE, include_mapequal = TRUE)
+
+              nms <- estNameList[[cnm]]
+              mm[nms, nms] <- m
               m <- mm
           }
           covList[[i]] <- m
@@ -783,6 +808,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ifelse(mr < mu, -d.res, d.res)
            },
            pearson = {
+               mu <- predict(object, type = "conditional", re.form = re.form)
                if (is.null(v <- fam$variance)) {
                    stop("variance function undefined for family ",
                         sQuote(fam$family),"; cannot compute",
