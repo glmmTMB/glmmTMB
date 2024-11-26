@@ -434,7 +434,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   psiLength <- find_psi(family$family)
 
-  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
+  if (family$family == "censored_normal") {
+    start.orig <- start
+    start <- start_psi_censored_normal(family$left, family$right, start.orig)
+
+    mapArg.orig <- mapArg
+    mapArg <- map_psi_censored_normal(mapArg.orig)
+  }
+
+  psi_init <- if (family$family == "ordbeta") {
+    c(-1, 1)
+  } else if (family$family == "censored_normal") {
+    start$psi
+  } else {
+    rr0(psiLength)
+  }
+
 
   # theta is 0, 1 for rr_covstruct
   # theta is parameterised to corr matrix for propto
@@ -900,6 +915,36 @@ map.theta.propto <- function(ReStruc, map) {
   params$theta <- factor(map.theta)
 
   return(params)
+}
+
+## Set start values for psi to be family$left and family$right for censored_normal if the user doesn't provide it
+start_psi_censored_normal <- function(left, right, start) {
+  if (is.null(start)) {
+    to_return <- list()
+  } else {
+    to_return <- start
+  }
+
+  if (is.null(to_return$psi)) {
+    to_return$psi <- c(left, right)
+  }
+
+  return (to_return)
+}
+
+## Set map values for psi to be fixed for censored_normal if the user doesn't provide it
+map_psi_censored_normal <- function(map) {
+  if (is.null(map)) {
+    to_return <- list()
+  } else {
+    to_return <- map
+  }
+
+  if (is.null(to_return$psi)) {
+    to_return$psi <- factor(c(NA, NA))
+  }
+
+  return (to_return)
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -1383,20 +1428,6 @@ glmmTMB <- function(
 
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
-    }
-
-    ## hack initialization for censored_normal
-    ## I'm not too sure how to leverage the above eval call to do the block below
-    if (family$family == "censored_normal") {
-      if (is.null(start)) {
-        start <- list()
-      }
-      start$psi <- c(family$left, family$right)
-
-      if (is.null(map)) {
-        map <- list()
-      }
-      map$psi <- factor(c(NA, NA))
     }
 
    if (grepl("^truncated", family$family) &&
