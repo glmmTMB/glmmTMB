@@ -515,7 +515,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   return(res)
 }
 
-    
+
 
 ##' @method print vcov.glmmTMB
 ##' @export
@@ -636,6 +636,7 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           censored_normal = tf,
            numeric(0)
            )
 }
@@ -652,10 +653,17 @@ family_params <- function(object) {
 printFamily <- function(object) {
     val <- family_params(object)
     if (length(val) > 0) {
-        cat(sprintf("\n%s estimate: %s",
-                    names(val)[1],
-                    paste(formatC(val, digits=3),
-                          collapse = ", ")), "\n")
+        ff <- object$modelInfo$family$family
+        if (ff == "censored_normal") {
+            cat(sprintf("\nCensored normal limits: (%s, %s)",
+                        formatC(val[1], digits=3),
+                        formatC(val[2], digits=3)), "\n")
+        } else {
+            cat(sprintf("\n%s estimate: %s",
+                        names(val)[1],
+                        paste(formatC(val, digits=3),
+                              collapse = ", ")), "\n")
+        }
     }
     invisible(NULL)
 }
@@ -920,7 +928,7 @@ format_perc <- function (probs, digits) {
 ##' equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
 ##' For random-effects terms with more than two elements, the mapping
 ##' is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
-##' 
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
@@ -967,7 +975,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                              cl = NULL,
                              full = FALSE,
                              ...) {
-    
+
     method <- tolower(match.arg(method))
     if (method=="wald") {
         dots <- list(...)
@@ -993,7 +1001,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ci_full[rownames(ci), ] <- ci
         return(ci_full)
     }
-    
+
     a <- (1 - level)/2
     a <- c(a, 1 - a)
     pct <- format_perc(a, 3)
@@ -1056,7 +1064,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                                          reduce = reduce,
                                          level = level,
                                          estimate = estimate)
-        
+
         ## would consider excluding mapped parameters here
         ## (works automatically for fixed effects via vcov)
         ## but tough because of theta <-> sd/corr mapping;
@@ -1123,7 +1131,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         } else {
             ci[mapped, 1:2] <- NA_real_
         }
-        
+
         ## now get selected parameters
         if (!is.null(parm)) {
             ci <- ci[parm, , drop=FALSE]
@@ -1450,7 +1458,7 @@ model.matrix.glmmTMB <- function (object, component="cond", part="fixed",
                     cond =  "",
                     zi = "zi",
                     disp = "disp")
-        
+
         X <- getME(object, paste0("X", m))
     } else {
         ff <- object$modelInfo$allForm
