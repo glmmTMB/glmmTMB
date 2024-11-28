@@ -6,7 +6,8 @@ op <- getOption("glmmTMB.cores", 1)
 on.exit(options(glmmTMB.cores = op))
 options(glmmTMB.cores = 1)
 
-if (require("ade4") && require("ape")) {
+## require() throws a warning, don't want to see it
+if (suppressWarnings(require("ade4") && require("ape"))) {
   
   set.seed(1001)
   nsp <- 50

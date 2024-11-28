@@ -77,7 +77,10 @@ enum valid_covStruct {
   toep_covstruct = 8,
   rr_covstruct = 9,
   homdiag_covstruct = 10,
-  propto_covstruct = 11
+  propto_covstruct = 11,
+  // should perhaps be next to homdiag but don't want to mess
+  //  up interpretation of stored fits ...
+  hetar1_covstruct = 12
 };
 
 // should probably be named just 'predictCode';
@@ -435,43 +438,58 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
   }
-  else if (term.blockCode == ar1_covstruct){
+  else if (term.blockCode == ar1_covstruct ||
+	   term.blockCode == hetar1_covstruct) {
     // case: ar1_covstruct
     //  * NOTE: Valid parameter space is phi in [-1, 1]
     //  * NOTE: 'times' not used as we assume unit distance between consecutive time points.
     int n = term.blockSize;
-    Type logsd = theta(0);
-    Type corr_transf = theta(1);
+    vector<Type> logsd = theta.head(term.blockNumTheta-1);
+    Type corr_transf = theta(term.blockNumTheta-1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
-    Type sd = exp(logsd);
-    
+    vector<Type> sd = exp(logsd);
+    Type cursd;
     for(int j = 0; j < term.blockReps; j++){
-       for(int i=1; i<n; i++){
-          //Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
-          ans -= dnorm(U(i, j), phi * U(i-1, j), sd * sqrt(1 - phi*phi), true);
-      }
-      ans -= dnorm(U(0, j), Type(0), sd, true);   // Initialize
+      ans -= dnorm(U(0, j), Type(0), sd(0), true);   // Initialize
       if (do_simulate) {
-        switch(term.simCode) {
+	switch(term.simCode) {
+	case fix_simcode:
+	  break;
+	case zero_simcode:
+	  U(0,j) = Type(0);
+	  break;
+	case random_simcode:
+	  U(0, j) = rnorm(Type(0), sd(0));
+	  break;
+	}
+      }
+      for(int i=1; i<n; i++){
+	if (term.blockCode == hetar1_covstruct) {
+	  cursd = sd(i-1);
+	} else {
+	  cursd = sd(0);
+	}
+	ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
+        if (do_simulate) {
+	  switch(term.simCode) {
           case fix_simcode:
           // do nothing, leave U values as is
-             break;
+	    break;
           case zero_simcode:
             for (int i=0; i < U.rows(); i++) {
               U(i,j) = Type(0);
-              };
+	    };
             break;
           case random_simcode:
-            U(0, j) = rnorm(Type(0), sd);
             for(int i=1; i<n; i++){
-              U(i, j) = rnorm( phi * U(i-1, j), sd * sqrt(1 - phi*phi) );
+              U(i, j) = rnorm( phi * U(i-1, j), cursd * sqrt(1 - phi*phi) );
               }
             break;
            default: error ("unknown simcode");
-           }
-      } // do_simulate
-  }
-  
+	  } // term.simCode
+	} // do_simulate
+      } // loop over lags
+    } // loop over blocks
   
     // For consistency with output for other structs we report entire
     // covariance matrix.
@@ -479,7 +497,11 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       term.corr.resize(n,n);
       term.sd.resize(n);
       for(int i=0; i<n; i++){
-	term.sd(i) = sd;
+	if (term.blockCode == hetar1_covstruct) {
+	  term.sd(i) = sd(i);
+	} else {
+	  term.sd(i) = sd(0);
+	}
 	for(int j=0; j<n; j++){
 	  term.corr(i,j) = pow(phi, abs(i-j));
 	}

@@ -988,6 +988,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                "us" = blksize * (blksize+1) / 2,
                "cs" = blksize + 1,
                "ar1" = 2,
+               "hetar1" = blksize + 1,
                "ou" = 2,
                "exp" = 2,
                "gau" = 2,
