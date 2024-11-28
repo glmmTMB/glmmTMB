@@ -395,3 +395,10 @@ test_that("don't mess up internal formula ordering", {
                      colnames(model.matrix(form, data = dd)))
 })
 
+test_that("subset argument", {
+    fms <- update(fm1, subset = Days > 0)
+    expect_false(isTRUE(all.equal(fixef(fm1), fixef(fms))))
+    expect_equal(fixef(fms)$cond,
+                 c(`(Intercept)` = 248.63573143019875,
+                   Days = 10.904528975303338))
+})

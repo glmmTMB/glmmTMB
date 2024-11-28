@@ -1107,6 +1107,7 @@ binomialType <- function(x) {
 ##' @param map a list specifying which parameter values should be fixed to a constant value rather than estimated. \code{map} should be a named list containing factors corresponding to a subset of the internal parameter names (see \code{start} parameter). Distinct factor values are fitted as separate parameter values, \code{NA} values are held fixed: e.g., \code{map=list(beta=factor(c(1,2,3,NA)))} would fit the first three fixed-effect parameters of the conditional model and fix the fourth parameter to its starting value. In general, users will probably want to use \code{start} to specify non-default starting values for fixed parameters. See \code{\link[TMB]{MakeADFun}} for more details.
 ##' @param sparseX a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}
 ##' @param priors a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}
+##' @param subset an optional vector specifying a subset of observations to be used in the fitting process (see \code{\link{model.frame}})
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom reformulas subbars mkReTrms
 ##' @importFrom Matrix t
@@ -1226,7 +1227,8 @@ glmmTMB <- function(
     start=NULL,
     map=NULL,
     sparseX=NULL,
-    priors=NULL
+    priors=NULL,
+    subset=NULL
     )
 {
 
