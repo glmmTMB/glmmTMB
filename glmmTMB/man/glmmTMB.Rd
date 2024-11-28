@@ -22,7 +22,8 @@ glmmTMB(
   start = NULL,
   map = NULL,
   sparseX = NULL,
-  priors = NULL
+  priors = NULL,
+  subset = NULL
 )
 }
 \arguments{
