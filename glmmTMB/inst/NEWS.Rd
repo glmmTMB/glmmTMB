@@ -4,7 +4,12 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.10.9000}{
+\section{CHANGES IN VERSION 1.1.11}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{glmmTMB} gains a \code{subset} argument (GH #1128, @strengejacke)
+    } % itemize
+  } % new features
   \subsection{BUG FIXES}{
     \itemize{
       \item fix newly introduced bug in Pearson residuals for
@@ -12,10 +17,17 @@
       \item likelihood profiling now works for models with mapped parameters
       \item \code{glmmTMB} no longer changes the order of terms in
       fixed-effect model matrices (GH #1122, @dongwenluo). Note that
-      this bug fix will change the order of results (parameter vectors) in some cases.
+      this bug fix will change the order of results (parameter vectors)
+      in some cases.
+      \item \code{vcov()} behaviour improved for models with mapped
+      parameters, especially the case where parameters are set equal rather
+      than fixed to starting values (e.g. \code{map = list(beta =
+	factor(c(1,1)))}) (GH #1120, @DrJerryTAO)
+      \item fixed newly introduced bug in Pearson residuals for
+      zero-inflated models (GH #1101, @strengejacke)
     } % itemize
   } % bug fixes
-} % 1.1.10.9000
+} % 1.1.11
   
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{
   \subsection{NEW FEATURES}{
