@@ -77,7 +77,11 @@ predicted variance (scaled by \code{sigma(.)})
 Family functions for glmmTMB
 }
 \details{
-If specified, the dispersion model uses a log link. Denoting the variance as \eqn{V}, the dispersion parameter
+If specified, the dispersion model uses a log link; additional family parameters
+(Student-t df, Tweedie power parameters, ordered beta cutpoints,
+skew-normal skew parameters, etc.) use various link functions and
+are accessible via \code{\link{family_params}}.
+Denoting the variance as \eqn{V}, the dispersion parameter
 as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 and the predicted mean as \eqn{\mu}{mu}:
  \describe{
