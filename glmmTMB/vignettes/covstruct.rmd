@@ -715,20 +715,22 @@ text(rr_info$fl[,1], rr_info$fl[,2], sp_names, pos = 3, col = 2)
 ## Proportional
 
 The random effect structure `propto` fits multivariate random effects proportional to a known variance-covariance matrix.  One way the `propto` structure can be used is in phylogenetic analysis where a random effect proportional to a phylogenetic variance-covariance matrix aims to account for the correlation across species due to their shared ancestry. For example, the `carni70` data set from the `ade4` package describes the phylogeny along with the geographic range and body size of 70 carnivora. To account for the dependence among species due to shared ancestral history we can include a phylogenetically structured error term in the model via the `propto` structure as follows:
-```{r propto_ex, eval = FALSE}
-require(ade4)
-require(ape)
-data(carni70)
-carnidat <- data.frame(species = rownames(carni70$tab), carni70$tab)
-tree <- read.tree(text=carni70$tre)
+
+```{r propto_ex}
+library(ape)
+data(carni70, package = "ade4")
+tree <- read.tree(text = carni70$tre)
 phylo_varcov <- vcv(tree)# phylogenetic variance-covariance matrix
-# row/column names of phylo_varcov must match factor levels in data
-rownames(phylo_varcov) <- colnames(rownames(phylo_varcov)) <- gsub(".", "_", rownames(phylo_varcov)) 
-carnidat$dummy <- factor(1) # a dummy grouping variable must be added to the dataset
-
-fit_phylo <- glmmTMB(log(range) ~ log(size) + propto(0 + species | dummy, phylo_varcov),
+## row/column names of phylo_varcov must match factor levels in data
+## (punctuation/separators in species names and ordering)
+spnames <- gsub("_", ".", rownames(carni70$tab))
+carnidat <- data.frame(
+    species = factor(spnames, levels = rownames(phylo_varcov)),
+    dummy = factor(1),
+    carni70$tab)
+fit_phylo <- glmmTMB(log(range) ~ log(size) +
+                         propto(0 + species | dummy, phylo_varcov),
                      data = carnidat)
-
 ```
 
 `dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/columns names of the matrix match the terms in the random effect (see [Construction of structured covariance matrices] for how the terms are constructed).
