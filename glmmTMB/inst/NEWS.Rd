@@ -7,7 +7,10 @@
 \section{CHANGES IN VERSION 1.1.11}{
   \subsection{NEW FEATURES}{
     \itemize{
-      \item \code{glmmTMB} gains a \code{subset} argument (GH #1128, @strengejacke)
+      \item \code{glmmTMB} gains a \code{subset} argument (GH #1128,
+      @strengejacke)
+      \item added a heterogeneous-variance AR1 (\code{hetar1})
+      covariance structure (GH #1095) (experimental, still prints badly)
     } % itemize
   } % new features
   \subsection{BUG FIXES}{
