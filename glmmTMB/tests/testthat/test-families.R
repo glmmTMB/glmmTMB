@@ -542,3 +542,17 @@ test_that("skewnormal family", {
                  c(`Skewnormal shape` = -6.12362878509844),
                  tolerance = 1e-6)
 })
+
+test_that("make_family initialize works", {
+    ## GH #1133
+    if (require(effects)) {
+        data("sleepstudy", package = "lme4")
+        m2 <- glmmTMB(round(Reaction) ~ Days + (1 | Subject), sleepstudy,
+                      family = truncated_nbinom2)
+        ee <- suppressWarnings(effects::Effect("Days", m3))
+        expect_equal(c(ee$fit),
+                     c(5.5317435373068, 5.6003872162399,
+                       5.669030895173, 5.77199641357265, 
+                       5.84064009250575))
+    }
+})
