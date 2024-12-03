@@ -549,7 +549,7 @@ test_that("make_family initialize works", {
         data("sleepstudy", package = "lme4")
         m2 <- glmmTMB(round(Reaction) ~ Days + (1 | Subject), sleepstudy,
                       family = truncated_nbinom2)
-        ee <- suppressWarnings(effects::Effect("Days", m3))
+        ee <- suppressWarnings(effects::Effect("Days", m2))
         expect_equal(c(ee$fit),
                      c(5.5317435373068, 5.6003872162399,
                        5.669030895173, 5.77199641357265, 
