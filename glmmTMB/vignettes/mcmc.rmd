@@ -14,15 +14,22 @@ One commonly requested feature is to be able to run a *post hoc* Markov chain Mo
 - when using such a "pseudo-Bayesian" approach, be aware that using a scaled likelihood (implicit, improper priors) can often cause problems, especially when the model is poorly constrained by the data
 - in particular, models with poorly constrained random effects (singular or nearly singular) are likely to give bad results
 - as shown below, even models that are well-behaved for frequentist fitting may need stronger priors to give well-behaved MCMC results
-- as with all MCMC analysis, it is the *user's responsibility to check for proper mixing and convergence of the chains* before drawing conclusions
+- as with all MCMC analysis, it is the *user's responsibility to check for proper mixing and convergence of the chains* (e.g. with functions from the `coda` package) before drawing conclusions
 - the first MCMC sampler illustrated below is simple (Metropolis with a multivariate normal candidate distribution). Users who want to do MCMC sampling on a regular basis should consider the [tmbstan package](https://CRAN.R-project.org/package=tmbstan), which does much more efficient hybrid/Hamiltonian Monte Carlo sampling.
 
+<!-- weird setup (code stored in inst/vignette_data/mcmc.R) is designed
+     so that we can easily re-run the MCMC chains with R CMD BATCH (or whatever)
+	 but also show the code here, without having two separate copies of the code.
+	 Perhaps too clever?
+	 -->
+	 
 ```{r knitr_setup, include=FALSE, message=FALSE}
 library(knitr)
-opts_chunk$set(echo = TRUE,
-               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
+opts_chunk$set(echo = TRUE)
+## OK to evaluate on CRAN since we have stored all the slow stuff ...
+##               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
 rc <- knitr::read_chunk
-rc(system.file("vignette_data","mcmc.R",package="glmmTMB"))
+rc(system.file("vignette_data", "mcmc.R", package="glmmTMB"))
 ```
 
 Load packages:
