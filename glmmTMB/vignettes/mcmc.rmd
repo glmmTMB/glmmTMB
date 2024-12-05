@@ -14,15 +14,22 @@ One commonly requested feature is to be able to run a *post hoc* Markov chain Mo
 - when using such a "pseudo-Bayesian" approach, be aware that using a scaled likelihood (implicit, improper priors) can often cause problems, especially when the model is poorly constrained by the data
 - in particular, models with poorly constrained random effects (singular or nearly singular) are likely to give bad results
 - as shown below, even models that are well-behaved for frequentist fitting may need stronger priors to give well-behaved MCMC results
-- as with all MCMC analysis, it is the *user's responsibility to check for proper mixing and convergence of the chains* before drawing conclusions
-- the first MCMC sampler illustrated below is simple (Metropolis with a multivariate normal candidate distribution). Users who want to do MCMC sampling on a regular basis should consider the [tmbstan package](https://CRAN.R-project.org/package=tmbstan), which does much more efficient hybrid/Hamiltonian Monte Carlo sampling.
+- as with all MCMC analysis, it is the *user's responsibility to check for proper mixing and convergence of the chains* (e.g. with functions from the `coda` package) before drawing conclusions
+- the first MCMC sampler illustrated below is simple (Metropolis with a multivariate normal candidate distribution). Users who want to do MCMC sampling on a regular basis should consider the [tmbstan package](https://CRAN.R-project.org/package=tmbstan), which does more efficient hybrid/Hamiltonian Monte Carlo sampling, and can take full advantage of `glmmTMB`'s ability to provide gradients of the log-posterior with respect to the parameters.
 
+<!-- weird setup (code stored in inst/vignette_data/mcmc.R) is designed
+     so that we can easily re-run the MCMC chains with R CMD BATCH (or whatever)
+	 but also show the code here, without having two separate copies of the code.
+	 Perhaps too clever?
+	 -->
+	 
 ```{r knitr_setup, include=FALSE, message=FALSE}
 library(knitr)
-opts_chunk$set(echo = TRUE,
-               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
+opts_chunk$set(echo = TRUE)
+## OK to evaluate on CRAN since we have stored all the slow stuff ...
+##               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
 rc <- knitr::read_chunk
-rc(system.file("vignette_data","mcmc.R",package="glmmTMB"))
+rc(system.file("vignette_data", "mcmc.R", package="glmmTMB"))
 ```
 
 Load packages:
@@ -62,31 +69,30 @@ L <- load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
 Add more informative names and transform correlation parameter (see vignette on covariance structures and parameters):
 
 ```{r add_names}
-colnames(m1) <- c(names(fixef(fm1)[[1]]),
-                  "log(sigma)",
-                  c("log(sd_Intercept)","log(sd_Days)","cor"))
-m1[,"cor"] <- sapply(m1[,"cor"], get_cor)
+colnames(m1) <- colnames(vcov(fm1, full = TRUE))
+colnames(m1)[ncol(m1)] <- "sd_site"
 ```
 
-```{r traceplot,fig.width=7}
-xyplot(m1,layout=c(2,3),asp="fill")
+```{r traceplot,fig.width=10, fig.height = 7}
+lattice::xyplot(m1,layout=c(2,3),asp="fill")
 ```
-
-The trace plots are poor, especially for the correlation; the effective sample size backs this up, as would any other diagnostics we did.
 
 ```{r effsize}
 print(effectiveSize(m1),digits=3)
 ```
 
-**In a real analysis we would stop and fix the mixing/convergence problems before proceeding**; for this simple sampler, some of our choices would be (1) simply run the chain for longer; (2) tune the candidate distribution (e.g. by using `tune` to scale some parameters, or perhaps by switching to a multivariate Student t distribution [see the `mvtnorm` package]); (3) add regularizing priors.
+These effective sizes are probably still too small.
+**In a real analysis we would stop and make sure we had addressed the mixing/convergence problems before proceeding**; for this simple sampler, some of our choices would be (1) simply run the chain for longer; (2) tune the candidate distribution (e.g. by using `tune` to scale some parameters, or perhaps by switching to a multivariate Student t distribution [see the `mvtnorm` package]); (3) add regularizing priors.
 
 Ignoring the problems and proceeding, we can compute column-wise quantiles or highest posterior density intervals (`coda::HPDinterval`) to get confidence intervals.
 Plotting posterior distributions, omitting
 the intercept because it's on a very different scale.
 
-```{r violins,echo=FALSE}
-ggplot(reshape2::melt(as.matrix(m1[,-1])),aes(x=Var2,y=value))+
-         geom_violin(fill="gray")+coord_flip()+labs(x="")
+```{r violins,echo=FALSE, fig.width = 6, fig.height = 6}
+m_long <- reshape2::melt(as.matrix(m1[,-1]))
+ggplot(m_long, aes(x=Var2, y=value))+
+    geom_violin(fill="gray")+
+    coord_flip()+labs(x="")
 ```
 
 ## tmbstan
@@ -95,18 +101,28 @@ The `tmbstan` package allows direct, simple access to a hybrid/Hamiltonian Monte
 
 ```{r do_tmbstan,eval=FALSE}
 ```
-(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds)
 
-However, there are many indications (warning messages; trace plots) that the correlation parameter needs to be given a more informative prior. (In the plot below, the correlation parameter is shown on its unconstrained scale; the actual correlation would be $\theta_3/\sqrt{1+\theta_3^2}$.)
+(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds). Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
 
-```{r show_traceplot,echo=FALSE,fig.width=8,fig.height=5}
+```{r diagnostic_tab, echo = FALSE}
+knitr::kable(dp, digits = c(0, 0, 3, 3))
+```
+
+A trace plot (`rstan::traceplot(m2, pars=c("beta","betazi","theta"))`):
+
+```{r show_traceplot,echo=FALSE,fig.width=10,fig.height=5}
 library(png)
 library(grid)
 img <- readPNG(system.file("vignette_data","tmbstan_traceplot.png",package="glmmTMB"))
 grid.raster(img)
 ```
 
-## To do
+Pairs plot (`pairs(m2, pars = c("beta", "betazi"), gap = 0)`):
 
-- solve mixing for cor parameter
-- more complex example - e.g. `Owls`
+```{r show_pairsplot,echo=FALSE,fig.width=8,fig.height=8}
+library(png)
+library(grid)
+img <- readPNG(system.file("vignette_data","tmbstan_pairsplot.png",package="glmmTMB"))
+grid.raster(img)
+```
+

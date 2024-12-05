@@ -55,18 +55,17 @@ library(coda)
 
 ## @knitr fit1
 
-data("sleepstudy",package="lme4")
-fm1 <- glmmTMB(Reaction ~ Days + (Days|Subject),
-               sleepstudy)
-
+fm1 <- glmmTMB(count ~ mined + (1|site),
+    zi=~mined,
+    family=poisson, data=Salamanders)
 
 ## @knitr setup
 
 ## FIXME: is there a better way for user to extract full coefs?
 rawcoef <- with(fm1$obj$env,last.par[-random])
-names(rawcoef) <- make.names(names(rawcoef),unique=TRUE)
+names(rawcoef) <- make.names(names(rawcoef), unique=TRUE)
 ## log-likelihood function 
-## (MCMCmetrop1R wants *positive* log-lik)
+## (run_MCMC wants *positive* log-lik)
 logpost_fun <- function(x) -fm1$obj$fn(x)
 ## check definitions
 stopifnot(all.equal(c(logpost_fun(rawcoef)),
@@ -81,7 +80,6 @@ t1 <- system.time(m1 <- run_MCMC(start=rawcoef,
 
 ## @knitr do_tmbstan
 
-## install.packages("tmbstan")
 library(tmbstan)
 t2 <- system.time(m2 <- tmbstan(fm1$obj))
 
@@ -112,12 +110,22 @@ m2 <- hack_size(m2)
 ## @knitr tmbstan_traceplot
 
 png("tmbstan_traceplot.png")
-rstan::traceplot(m2, pars=c("beta","betadisp","theta"))
+rstan::traceplot(m2, pars=c("beta","betazi","theta"))
 dev.off()
+
+## @knitr tmbstan_pairsplot
+png("tmbstan_pairsplot.png")
+suppressWarnings(
+    pairs(m2, pars = c("beta", "betazi"), gap = 0)
+)
+dev.off()
+
+## @knitr diagnostics
+dp <- bayestestR::diagnostic_posterior(m2)
 
 ## @knitr save_all
 
 ## use version=2 to allow compatibility pre-3.5.0
 ## DON'T save m2; even with size-hacking, not small enough.
 ## since PNG file is saved, we don't really need it
-save("m1","t1","t2", file="mcmc.rda", version=2)
+save("m1","t1","t2", "dp", file="mcmc.rda", version=2)
