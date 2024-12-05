@@ -11,12 +11,13 @@
       @strengejacke)
       \item added a heterogeneous-variance AR1 (\code{hetar1})
       covariance structure (GH #1095) (experimental, still prints badly)
+      \item added the Bell distribution (\code{bell()}) as in
+      Castellares et al. 2018 \doi{10.1016/j.apm.2017.12.014} (Hatice
+      Tül Kübra Akdur)
     } % itemize
   } % new features
   \subsection{BUG FIXES}{
     \itemize{
-      \item fix newly introduced bug in Pearson residuals for
-      zero-inflated models (GH #1101)
       \item likelihood profiling now works for models with mapped parameters
       \item \code{glmmTMB} no longer changes the order of terms in
       fixed-effect model matrices (GH #1122, @dongwenluo). Note that
@@ -28,6 +29,10 @@
 	factor(c(1,1)))}) (GH #1120, @DrJerryTAO)
       \item fixed newly introduced bug in Pearson residuals for
       zero-inflated models (GH #1101, @strengejacke)
+      \item fix bug in 'exotic' families (those such as truncated
+      distributions using the internal \code{make_family} helper
+      function) that caused errors when calling \code{effects::Effect()}
+      (GH #1133, @strengejacke)
     } % itemize
   } % bug fixes
 } % 1.1.11
