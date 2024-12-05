@@ -32,8 +32,10 @@ make_family <- function(x, link, needs_nonneg = FALSE, needs_int = FALSE) {
         x <- c(x,list(aic=function(...) NA_real_))
     }
     if (is.null(x$initialize)) {
-        x <- c(x,list(initialize=
-                          substitute(env = list(FAMILY=x$family),
+        x <- c(x, list(initialize=
+                           substitute(env = list(FAMILY=x$family,
+                                                 needs_nonneg = needs_nonneg,
+                                                 needs_int = needs_int),
             expr = expression({
             ## should handle log-links adequately
             mustart <- y+0.1
@@ -50,6 +52,10 @@ make_family <- function(x, link, needs_nonneg = FALSE, needs_int = FALSE) {
                 }
             }
             }))))
+        ## strip one layer of protection
+        ##   str == 'language expression ...' -> 'expression ...'
+        x$initialize <- eval(x$initialize)
+
     }
         
     if (is.null(x$dev.resids)) {
