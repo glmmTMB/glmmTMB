@@ -168,6 +168,6 @@ samples4$cor <- sapply(samples4$cor, get_cor)
 ## @knitr save_all
 
 ## use version=2 to allow compatibility pre-3.5.0
-## DON'T save models (m[0-9]); even with size-hacking, not small enough.
+## DON'T save tmbstan models (m[0-9]); even with size-hacking, not small enough.
 ## since PNG file is saved, we don't really need it
-save(list = ls(pattern = "(t|dp|samples)[0-9]+"), file="mcmc.rda", version=2)
+save(list = c("m1", ls(pattern = "(t|dp|samples)[0-9]+")), file="mcmc.rda", version=2)

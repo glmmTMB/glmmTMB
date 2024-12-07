@@ -110,7 +110,7 @@ The `tmbstan` package allows direct, simple access to a hybrid/Hamiltonian Monte
 ```{r do_tmbstan,eval=FALSE}
 ```
 
-(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds). Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
+(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds, with no parallelization; if you're going to do this a lot, you should look into the options for `rstan::sampling` for running chains in parallel). Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
 
 ```{r diagnostic_tab, echo = FALSE}
 knitr::kable(dp2, digits = c(0, 0, 3, 3))
