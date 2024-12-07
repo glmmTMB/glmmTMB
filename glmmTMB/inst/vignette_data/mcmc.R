@@ -81,11 +81,12 @@ t1 <- system.time(m1 <- run_MCMC(start=rawcoef,
 ## @knitr do_tmbstan
 
 library(tmbstan)
-t2 <- system.time(m2 <- tmbstan(fm1$obj))
+t2 <- system.time(m2 <- tmbstan(fm1$obj, seed = 101))
 
 ## @knitr stanhacks
 
 ## functions to reduce the size of stored Stan-type objects
+## obsolete?
 hack_size <- function(x, ...) {
     UseMethod("hack_size")
 }
@@ -121,11 +122,52 @@ suppressWarnings(
 dev.off()
 
 ## @knitr diagnostics
-dp <- bayestestR::diagnostic_posterior(m2)
+dp2 <- bayestestR::diagnostic_posterior(m2)
+
+## @knitr sleepstudy_tmbstan
+
+data("sleepstudy", package = "lme4")
+fm2 <- glmmTMB(Reaction ~ Days + (Days | Subject), data = sleepstudy)
+t3 <- system.time(m3 <- tmbstan(fm2$obj, seed = 101))
+
+## @knitr sleepstudy_diag
+dp3 <- bayestestR::diagnostic_posterior(m3)
+
+## @knitr sleepstudy_traceplot
+
+png("sleepstudy_traceplot.png")
+rstan::traceplot(m3, pars=c("beta","betadisp","theta"))
+dev.off()
+
+
+## @knitr sleepstudy_tmbstan_bounds
+
+sdrsum <- summary(fm2$sdr)
+par_est <- sdrsum[,"Estimate"]
+par_sd <- sdrsum[,"Std. Error"]
+t4 <- system.time(m4 <- tmbstan(fm2$obj,
+                                lower = par_est - 5*par_sd,
+                                upper = par_est + 5*par_sd,
+                                seed = 101))
+
+## @knitr sleepstudy_bounds_diag
+dp4 <- bayestestR::diagnostic_posterior(m4)
+
+## @knitr sleepstudy_bounds_traceplot
+png("sleepstudy_traceplot_bounds.png")
+rstan::traceplot(m4, pars=c("beta","betadisp","theta"))
+dev.off()
+
+## @knitr trans_param
+samples4 <- as.data.frame(extract(m4, pars=c("beta","betadisp","theta")))
+colnames(samples4) <- c(names(fixef(fm2)$cond),
+                  "log(sigma)",
+                  c("log(sd_Intercept)", "log(sd_Days)", "cor"))
+samples4$cor <- sapply(samples4$cor, get_cor)
 
 ## @knitr save_all
 
 ## use version=2 to allow compatibility pre-3.5.0
 ## DON'T save m2; even with size-hacking, not small enough.
 ## since PNG file is saved, we don't really need it
-save("m1","t1","t2", "dp", file="mcmc.rda", version=2)
+save(list = ls(pattern = "(m|t|dp|samples)[0-9]+"), file="mcmc.rda", version=2)
