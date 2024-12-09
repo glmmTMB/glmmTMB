@@ -9,6 +9,8 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
+## overview/setup
+
 One commonly requested feature is to be able to run a *post hoc* Markov chain Monte Carlo analysis based on the results of a frequentist fit. This is often a reasonable shortcut for computing confidence intervals and p-values that allow for finite-sized samples rather than relying on asymptotic sampling distributions. This vignette shows an example of such an analysis. Some caveats:
 
 - when using such a "pseudo-Bayesian" approach, be aware that using a scaled likelihood (implicit, improper priors) can often cause problems, especially when the model is poorly constrained by the data
@@ -30,7 +32,9 @@ opts_chunk$set(echo = TRUE)
 ##               eval = identical(Sys.getenv("NOT_CRAN"), "true"))
 rc <- knitr::read_chunk
 rc(system.file("vignette_data", "mcmc.R", package="glmmTMB"))
+L <- load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
 ```
+
 
 Load packages:
 
@@ -43,6 +47,15 @@ library(lattice)
 library(ggplot2); theme_set(theme_bw())
 ```
 
+This is a basic block Metropolis sampler, based on Florian Hartig's code [here](https://theoreticalecology.wordpress.com/2010/09/17/metropolis-hastings-mcmc-in-r/).
+
+```{r run_MCMC}
+```
+
+You can plug the objective function from `glmmTMB` (i.e., `fitted_model$obj$fn`) into any general-purpose MCMC package (e.g. [adaptMCMC](https://CRAN.R-project.org/package=adaptMCMC ), [MCMCpack](https://CRAN.R-project.org/package=MCMCpack) (using `MCMCmetrop1R()`), [ensemblemcmc](https://CRAN.R-project.org/package=mcmcensemble), ...); however, most of these algorithms do not take advantage of `glmmTMB`'s automatical computation of gradients; for that, we will demonstrate the use of [tmbstan](https://CRAN.R-project.org/package=tmbstan), which uses `glmmTMB`'s objective and gradient functions in conjunction with the sampling algorithms from [Stan](https://mc-stan.org/).
+
+## Salamander example
+
 Fit basic model:
 ```{r fit1}
 ```
@@ -51,19 +64,14 @@ Set up for MCMC: define scaled log-posterior function (in this case the log-like
 ```{r setup}
 ```
 
-This is a basic block Metropolis sampler, based on Florian Hartig's code [here](https://theoreticalecology.wordpress.com/2010/09/17/metropolis-hastings-mcmc-in-r/).
 
-```{r run_MCMC}
-```
+### Metropolis-Hastings
 
 Run the chain:
 
 ```{r do_run_MCMC,eval=FALSE}
 ```
 
-```{r load_MCMC, echo=FALSE, eval=TRUE}
-L <- load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
-```
 (running this chain takes `r round(t1["elapsed"],1)` seconds)
 
 Add more informative names and transform correlation parameter (see vignette on covariance structures and parameters):
@@ -95,17 +103,17 @@ ggplot(m_long, aes(x=Var2, y=value))+
     coord_flip()+labs(x="")
 ```
 
-## tmbstan
+### tmbstan
 
 The `tmbstan` package allows direct, simple access to a hybrid/Hamiltonian Monte Carlo algorithm for sampling from a TMB object; the `$obj` component of a `glmmTMB` fit is such an object. (To run this example you'll need to install the `tmbstan` package and its dependencies.)
 
 ```{r do_tmbstan,eval=FALSE}
 ```
 
-(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds). Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
+(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds, with no parallelization; if you're going to do this a lot, you should look into the options for `rstan::sampling` for running chains in parallel). Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
 
 ```{r diagnostic_tab, echo = FALSE}
-knitr::kable(dp, digits = c(0, 0, 3, 3))
+knitr::kable(dp2, digits = c(0, 0, 3, 3))
 ```
 
 A trace plot (`rstan::traceplot(m2, pars=c("beta","betazi","theta"))`):
@@ -120,9 +128,63 @@ grid.raster(img)
 Pairs plot (`pairs(m2, pars = c("beta", "betazi"), gap = 0)`):
 
 ```{r show_pairsplot,echo=FALSE,fig.width=8,fig.height=8}
-library(png)
-library(grid)
 img <- readPNG(system.file("vignette_data","tmbstan_pairsplot.png",package="glmmTMB"))
 grid.raster(img)
 ```
 
+## Sleep study example
+
+Now using the (now) classic `sleepstudy` data set included with the `lme4` package:
+
+```{r sleepstudy_tmbstan, eval = FALSE}
+```
+
+Running this chain produces *many* warnings about divergent transitions, low effective sample size, etc.; the diagnostic table confirms this.
+
+Diagnostics:
+
+```{r sleepstudy_diag, eval = FALSE}
+```
+
+```{r sleepstudy_diag_tab, echo = FALSE}
+knitr::kable(dp3, digits = c(0, 0, 3, 3))
+```
+
+The trace plot confirms that one of the chains (chain 1) is problematic:
+
+```{r sleepstudy_trace,fig.width=10,fig.height=5, echo = FALSE}
+img <- readPNG(system.file("vignette_data","sleepstudy_traceplot.png",package="glmmTMB"))
+grid.raster(img)
+```
+
+One way to address this problems is to add bounds that prevent the chains from going outside a 
+range of $\pm 5$ standard errors from the MLE (we originally used $\pm 3 \sigma$, but it looked like these bounds were being hit too frequently - if possible we want bounds that will prevent crazy behaviour but *not* otherwise constrain the chains ...)
+
+```{r sleepstudy_tmbstan_bounds, eval = FALSE}
+```
+
+The diagnostics and the trace plot look much better now ...
+
+```{r sleepstudy_bounds_diag, eval = FALSE}
+```
+
+```{r sleepstudy_bounds_diag_tab, echo = FALSE}
+knitr::kable(dp4, digits = c(0, 0, 3, 3))
+```
+
+```{r sleepstudy_trace_bounds,fig.width=10,fig.height=5, echo = FALSE}
+img <- readPNG(system.file("vignette_data","sleepstudy_traceplot_bounds.png",package="glmmTMB"))
+grid.raster(img)
+```
+
+The last step (for now) is to extract the sampled values, give them interpretable names, and transform the correlation parameter back to a more interpretable scale (see the "Covariance structures" vignette):
+
+```{r trans_param, eval = FALSE}
+```
+
+```{r sleepstudy_hist, fig.width = 10, fig.height = 5}
+m4_long <- reshape2::melt(as.matrix(samples4))
+ggplot(m4_long, aes(x = value)) + geom_histogram(bins = 50) + facet_wrap(~Var2, scale = "free")
+```
+
+A more principled, properly Bayesian way to handle this problem would be to add sensible regularizing priors. (To be done/tested; as of this writing, priors can be set on fixed effects and on random effect standard deviations, but not on random effect correlations ...)
