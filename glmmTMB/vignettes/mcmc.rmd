@@ -1,6 +1,6 @@
 ---
 title: "Post-hoc MCMC with glmmTMB"
-author: "Ben Bolker"
+author: "Ben Bolker and Mollie Brooks"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
@@ -9,15 +9,19 @@ vignette: >
   \usepackage[utf8]{inputenc}
 ---
 
-## overview/setup
+## Overview
 
-One commonly requested feature is to be able to run a *post hoc* Markov chain Monte Carlo analysis based on the results of a frequentist fit. This is often a reasonable shortcut for computing confidence intervals and p-values that allow for finite-sized samples rather than relying on asymptotic sampling distributions. This vignette shows an example of such an analysis. Some caveats:
+One commonly requested feature is to be able to run a *post hoc* Markov chain Monte Carlo analysis based on the results of a frequentist fit. This is often a reasonable shortcut for computing confidence intervals and p-values that allow for finite-sized samples rather than relying on asymptotic sampling distributions. This vignette shows examples of such an analysis. Some caveats:
 
 - when using such a "pseudo-Bayesian" approach, be aware that using a scaled likelihood (implicit, improper priors) can often cause problems, especially when the model is poorly constrained by the data
 - in particular, models with poorly constrained random effects (singular or nearly singular) are likely to give bad results
 - as shown below, even models that are well-behaved for frequentist fitting may need stronger priors to give well-behaved MCMC results
-- as with all MCMC analysis, it is the *user's responsibility to check for proper mixing and convergence of the chains* (e.g. with functions from the `coda` package) before drawing conclusions
-- the first MCMC sampler illustrated below is simple (Metropolis with a multivariate normal candidate distribution). Users who want to do MCMC sampling on a regular basis should consider the [tmbstan package](https://CRAN.R-project.org/package=tmbstan), which does more efficient hybrid/Hamiltonian Monte Carlo sampling, and can take full advantage of `glmmTMB`'s ability to provide gradients of the log-posterior with respect to the parameters.
+- as with all MCMC analysis, it is the *user's responsibility to check for proper mixing and convergence of the chains* (e.g. with functions from the `coda` package) before drawing conclusions. `tmbstan` does some checking automatically, so it produces warnings where the DIY sampler below does not.
+
+The first MCMC sampler illustrated below is conceptually simple (Metropolis with a multivariate normal candidate distribution). Users who want to do MCMC sampling with less code or on a regular basis should consider the [tmbstan package](https://CRAN.R-project.org/package=tmbstan), which does more efficient hybrid/Hamiltonian Monte Carlo sampling, and can take full advantage of `glmmTMB`'s ability to provide gradients of the log-posterior with respect to the parameters. More info on `tmbstan` and the methods that are available to use on the samples can be found on [Github](https://github.com/kaskr/tmbstan) (e.g. `methods(class="stanfit")`). It is safe to skip the Metropolis-Hastings (DIY) section of the salamander example below if the user prefers to use `tmbstan`.
+
+
+In general, you can plug the objective function from `glmmTMB` (i.e., `fitted_model$obj$fn`) into any general-purpose MCMC package (e.g. [adaptMCMC](https://CRAN.R-project.org/package=adaptMCMC ), [MCMCpack](https://CRAN.R-project.org/package=MCMCpack) (using `MCMCmetrop1R()`), [ensemblemcmc](https://CRAN.R-project.org/package=mcmcensemble), ...). However, most of these algorithms do not take advantage of `glmmTMB`'s automatic computation of gradients; for that, we will demonstrate the use of [tmbstan](https://CRAN.R-project.org/package=tmbstan), which uses `glmmTMB`'s objective and gradient functions in conjunction with the sampling algorithms from [Stan](https://mc-stan.org/).
 
 <!-- weird setup (code stored in inst/vignette_data/mcmc.R) is designed
      so that we can easily re-run the MCMC chains with R CMD BATCH (or whatever)
@@ -35,7 +39,7 @@ rc(system.file("vignette_data", "mcmc.R", package="glmmTMB"))
 L <- load(system.file("vignette_data", "mcmc.rda", package="glmmTMB"))
 ```
 
-
+## Setup
 Load packages:
 
 ```{r libs,message=FALSE}
@@ -47,25 +51,22 @@ library(lattice)
 library(ggplot2); theme_set(theme_bw())
 ```
 
-This is a basic block Metropolis sampler, based on Florian Hartig's code [here](https://theoreticalecology.wordpress.com/2010/09/17/metropolis-hastings-mcmc-in-r/).
-
-```{r run_MCMC}
-```
-
-You can plug the objective function from `glmmTMB` (i.e., `fitted_model$obj$fn`) into any general-purpose MCMC package (e.g. [adaptMCMC](https://CRAN.R-project.org/package=adaptMCMC ), [MCMCpack](https://CRAN.R-project.org/package=MCMCpack) (using `MCMCmetrop1R()`), [ensemblemcmc](https://CRAN.R-project.org/package=mcmcensemble), ...); however, most of these algorithms do not take advantage of `glmmTMB`'s automatical computation of gradients; for that, we will demonstrate the use of [tmbstan](https://CRAN.R-project.org/package=tmbstan), which uses `glmmTMB`'s objective and gradient functions in conjunction with the sampling algorithms from [Stan](https://mc-stan.org/).
-
 ## Salamander example
 
 Fit basic model:
 ```{r fit1}
 ```
 
+### Metropolis-Hastings (DIY)
+
+This is a basic block Metropolis sampler, based on Florian Hartig's code [here](https://theoreticalecology.wordpress.com/2010/09/17/metropolis-hastings-mcmc-in-r/).
+
+```{r run_MCMC}
+```
+
 Set up for MCMC: define scaled log-posterior function (in this case the log-likelihood function); extract coefficients and variance-covariance matrices as starting points.
 ```{r setup}
 ```
-
-
-### Metropolis-Hastings
 
 Run the chain:
 
@@ -110,7 +111,7 @@ The `tmbstan` package allows direct, simple access to a hybrid/Hamiltonian Monte
 ```{r do_tmbstan,eval=FALSE}
 ```
 
-(running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds, with no parallelization; if you're going to do this a lot, you should look into the options for `rstan::sampling` for running chains in parallel). Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
+Running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` seconds, with no parallelization. If you're going to do this a lot, you can use argument `cores=n` for running chains in parallel. The argument is sent to `rstan::sampling` so you should look at the helpfile `?rstan::sampling`. Running `bayestestR::diagnostic_posterior()` on the fit gives the following results:
 
 ```{r diagnostic_tab, echo = FALSE}
 knitr::kable(dp2, digits = c(0, 0, 3, 3))
@@ -157,7 +158,7 @@ img <- readPNG(system.file("vignette_data","sleepstudy_traceplot.png",package="g
 grid.raster(img)
 ```
 
-One way to address this problems is to add bounds that prevent the chains from going outside a 
+One way to address these problems is to add bounds that prevent the chains from going outside a 
 range of $\pm 5$ standard errors from the MLE (we originally used $\pm 3 \sigma$, but it looked like these bounds were being hit too frequently - if possible we want bounds that will prevent crazy behaviour but *not* otherwise constrain the chains ...)
 
 ```{r sleepstudy_tmbstan_bounds, eval = FALSE}
