@@ -86,17 +86,20 @@ namespace glmmtmb{
     else return logres;
   }
 
-  // from (currently censReg package vignette)
+  // censored normal density function adapted from censReg, Stata, and VGAM
   template<class Type>
   Type dcensnorm(Type y, Type mu, Type sigma, Type a, Type b, int give_log=0)
   {
     Type logres;
     if (y <= a) logres =
-      log(pnorm((a - mu) / sigma));
+      // log(1 - pnorm((mu - a) / sigma));
+      log(pnorm(a, mu, sigma));
     else if (y >= b) logres =
-      log(pnorm((mu - b) / sigma));
+      // log(1 - pnorm((b - mu) / sigma));
+      log(1 - pnorm(b, mu, sigma));
     else logres =
-      log(dnorm((y - mu) / sigma, Type(0), Type(1), 0)) - log(sigma);
+      // log(dnorm((y - mu) / sigma, Type(0), Type(1), 0)) - log(sigma);
+     log(dnorm(y, mu, sigma, 0));
 
     if(!give_log) return exp(logres);
     else return logres;
