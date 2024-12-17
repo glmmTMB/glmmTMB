@@ -17,6 +17,9 @@
   na.action = na.pass,
   fast = NULL,
   debug = FALSE,
+  aggregate = NULL,
+  do.bias.correct = FALSE,
+  bias.correct.control = list(sd = TRUE),
   ...
 )
 }
