@@ -1,8 +1,8 @@
-devtools::load_all("glmmTMB")
-devtools::document("glmmTMB")
-
-source("glmmTMB/tests/testthat/setup_makeex.R")
-library(glmmTMB)
+if (FALSE) {
+    devtools::load_all("glmmTMB")
+    devtools::document("glmmTMB")
+    source("glmmTMB/tests/testthat/setup_makeex.R")
+}
 if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
     fm1_lmer <- lme4::lmer(formula(fm1), lme4::sleepstudy)
     fm2_lmer <- lme4::lmer(formula(fm2), lme4::sleepstudy)
@@ -28,4 +28,7 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
         expect_equal(df1, unname(c(df2)), tolerance = 0.05)
     })
 
+    dof_kenward(fm2NB)
+
 }
+

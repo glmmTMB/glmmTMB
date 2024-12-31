@@ -91,7 +91,8 @@ Suggests:
     dplyr,
     ade4,
     ape,
-    gsl
+    gsl,
+    pbkrtest
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

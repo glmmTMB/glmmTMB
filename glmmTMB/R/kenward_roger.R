@@ -127,12 +127,12 @@ dof_kenward <- function(model) {
         Lii <- GGamma[[ii]]
         ggamma <- c(ggamma, Lii[lower.tri(Lii, diag = TRUE)])
     }
-    ggamma[[length(ggamma)+1]] <- .link_func(.family_var_func(model),model) ## Extend ggamma by the residuals variance
+    ggamma[[length(ggamma)+1]] <- family(model)$linkfun(.family_var_func(model)) ## Extend ggamma by the residuals variance
     n.ggamma <- length(ggamma)
 
     ## Find G_r:
     G <- NULL
-    Zt <- Matrix(t(as.matrix(getME(model, "Z"))),sparse = TRUE)
+    Zt <- Matrix::t(getME(model, "Z"))
     for (ss in 1:SS$n.RT) {
         ZZ <- .shget_Zt_group(ss, Zt, SS$Gp)
         n.lev <- SS$n.lev.by.RT2[ss] ## ; cat(sprintf("n.lev=%i\n", n.lev))
