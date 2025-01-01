@@ -215,12 +215,12 @@ Owls <- transform(Owls,
 
 test_that("basic zero inflation", {
        skip_on_cran()
-       if(require("pscl")) {
+       if(requireNamespace("pscl")) {
 	o0.tmb <- glmmTMB(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
                               offset(logBroodSize),
                           ziformula=~1, data = Owls,
                           family=poisson(link = "log"))
-	o0.pscl <-zeroinfl(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
+	o0.pscl <- pscl::zeroinfl(NCalls~(FoodTreatment + ArrivalTime) * SexParent +
         offset(logBroodSize)|1, data = Owls)
     expect_equal(summary(o0.pscl)$coefficients$count, summary(o0.tmb)$coefficients$cond, tolerance=1e-5)
     expect_equal(summary(o0.pscl)$coefficients$zero, summary(o0.tmb)$coefficients$zi, tolerance=1e-5)

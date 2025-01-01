@@ -2092,43 +2092,72 @@ ngrps.glmmTMB <- function(object, ...) {
 ngrps.factor <- function(object, ...) nlevels(object)
 
 
-##' @importFrom stats pnorm
+##' @importFrom stats pnorm pt
 ##' @method summary glmmTMB
+##' @title summary for glmmTMB fits
+##' @param object a fitted \code{glmmTMB} object
+##' @param ddf denominator degrees-of-freedom calculation (\code{NULL} gives standard Z-statistics
+##' (i.e., 'infinite' denominator df). \code{"KR"} gives Kenward-Roger approximation, which will
+##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}}).
+##' @param ... unused, for method compatibility
 ##' @export
-summary.glmmTMB <- function(object,...)
+summary.glmmTMB <- function(object, ddf=Inf, ...)
 {
-    if (length(list(...)) > 0) {
-        ## FIXME: need testing code
-        warning("additional arguments ignored")
-    }
+    check_dots(...)
     ## figure out useSc
     sig <- sigma(object)
 
     famL <- family(object)
 
-    mkCoeftab <- function(coefs,vcovs) {
+    if (ddf == "KR") {
+        if (!isREML(object)) {
+            warning("ddf='KR' ignored for non-REML fits")
+        } else {
+            if (family(object)$family != "gaussian") {
+                warning("ddf='KR' is untested for GLMMs. Use at your own risk!")
+            }
+            if (!trivialDisp(object) || !noZI(object)) {
+                message("ddf='KR' ignored except for conditional-distribution parameters")
+            }
+        }
+    }
+    
+    mkCoeftab <- function(coefs, vcovs, type) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
                        "Std. Error" = sqrt(diag(vcovs)))
         if (p > 0) {
-            coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]),
-                           deparse.level = 0)
-            ## statType <- if (useSc) "t" else "z"
-            statType <- "z"
+            stat <- coefs[,1]/coefs[,2]
+            statType <- if (ddf=="KR" && type == "cond") "t" else "z"
+            stat_lab <- paste(statType, "value")
+            pval_lab <- sprintf("Pr(>|%s|)", statType)
             ## ??? should we provide Wald p-values???
-            coefs <- cbind(coefs, 2*pnorm(abs(cf3), lower.tail = FALSE))
-            colnames(coefs)[3:4] <- c(paste(statType, "value"),
-                                      paste0("Pr(>|",statType,"|)"))
+            if (statType == "z") {
+                pvals <- 2*pnorm(abs(stat), lower.tail = FALSE)
+                labs <- c(stat_lab, pval_lab)
+                cc <- cbind(stat, pvals)
+            } else {
+                ddf <- c(dof_KR(object))
+                pvals <- 2*stats::pt(abs(stat), df = ddf, lower.tail = FALSE)
+                labs <- c(stat_lab, "ddf", pval_lab)
+                cc <-  cbind(stat, ddf, pvals)
+            }
+            coefs <- cbind(coefs, cc)
+            colnames(coefs)[2+seq_along(labs)] <- labs
         }
         coefs
     }
 
     ff <- fixef(object)
     vv <- vcov(object, include_nonest=TRUE)
-    coefs <- setNames(lapply(names(ff),
-            function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
-                             mkCoeftab(ff[[nm]],vv[[nm]])),
-                      names(ff))
+    coefs <- vector("list", length = length(ff))
+    names(coefs) <- names(ff)
+    for (nm in names(ff)) {
+        ## default value is NULL
+        if (!trivialFixef(names(ff[[nm]]),nm)) {
+            coefs[[nm]] <- mkCoeftab(ff[[nm]], vv[[nm]], nm)
+        }
+    }
 
     llAIC <- llikAIC(object)
 

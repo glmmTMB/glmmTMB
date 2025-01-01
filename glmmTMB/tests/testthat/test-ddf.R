@@ -1,11 +1,10 @@
-if (FALSE) {
-    devtools::load_all("glmmTMB")
-    devtools::document("glmmTMB")
-    source("glmmTMB/tests/testthat/setup_makeex.R")
-}
+library(glmmTMB)
 if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
     fm1_lmer <- lme4::lmer(formula(fm1), lme4::sleepstudy)
     fm2_lmer <- lme4::lmer(formula(fm2), lme4::sleepstudy)
+
+    fm1 <- update(fm1, REML = TRUE)
+    fm2 <- update(fm2, REML = TRUE)
     
     pbkrtest_dof <- function(m) {
         vva <- pbkrtest::vcovAdj(m)
@@ -18,17 +17,20 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
 
     test_that("approx KR df match with pbkrtest (fm1)", {
         df1 <- pbkrtest_dof(fm1_lmer)
-        df2 <- dof_kenward(fm1)
-        expect_equal(df1, unname(c(df2)), tolerance = 0.05)
+        df2 <- dof_KR(fm1)
+        expect_equal(df1, unname(c(df2)), tolerance = 1e-6)
     })
 
     test_that("approx KR df match with pbkrtest (fm2)", {
         df1 <- pbkrtest_dof(fm2_lmer)
-        df2 <- dof_kenward(fm2)
-        expect_equal(df1, unname(c(df2)), tolerance = 0.05)
+        df2 <- dof_KR(fm2)
+        expect_equal(df1, unname(c(df2)), tolerance = 1e-6)
     })
 
-    dof_kenward(fm2NB)
-
+    test_that("KR in summary", {
+        expect_identical(
+            coef(summary(fm1, ddf = "KR"))$cond[,"ddf"],
+            c(dof_KR(fm1))
+        )
+    })                     
 }
-

@@ -1,13 +1,27 @@
+#' compute Kenward-Roger degrees of freedom
+#'
+#' This function uses an adaptation of the machinery from the \code{pbkrtest} package
+#' to compute the Kenward-Roger approximation of the 'denominator degrees of freedom' for
+#' each fixed-effect coefficient in the conditional model.
+#' @return a named vector of ddf for each conditional fixed-effect parameter, with attributes 'vcov'
+#' (Kenward-Roger adjusted covariance matrix) and 'se' (the corresponding standard errors)
+#' @details this function \emph{should not be used} for models fitted with ML rather than REML;
+#' the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
+#' Use at your own risk for GLMMs!
+#' @param model a fitted \code{glmmTMB} object
 #' @export
-dof_kenward <- function(model) {
-    parameters <- rownames(summary(model)$coefficients$cond)
-    L <- as.data.frame(diag(rep(1, length(rownames(summary(model)$coefficients$cond)))))
+## FIXME: possible confusion/conflict with insight::dof_kenward ...
+dof_KR <- function(model) {
+    fe <- fixef(model)$cond
+    param_names <- names(fe)
+    L <- as.data.frame(diag(rep(1, length(fe))))
     krvcov <- .vcov_kenward_adjusted(model)
 
-    dof <- stats::setNames(sapply(L, .kenward_adjusted_ddf, model = model, adjusted_vcov = krvcov), parameters)
-
+    dof <- vapply(L, .kenward_adjusted_ddf, model = model, adjusted_vcov = krvcov,
+                  FUN.VALUE = numeric(1))
+    names(dof) <- param_names
     attr(dof, "vcov") <- krvcov
-    attr(dof, "se") <- abs(as.vector(sqrt(diag(as.matrix(krvcov)))))
+    attr(dof, "se") <- abs(sqrt(diag(krvcov)))
     dof
 }
 
@@ -157,8 +171,8 @@ dof_kenward <- function(model) {
         }
     }
 
-    ## Extend by the indentity for the residual
-    n.obs <- insight::n_obs(model)
+    ## Extend by the identity for the residual
+    n.obs <- nobs(model)
     G <- c(G, list(Matrix::sparseMatrix(1:n.obs, 1:n.obs, x = 1)))
 
     Sigma <- ggamma[[1]] * G[[1]]
@@ -274,7 +288,7 @@ dof_kenward <- function(model) {
 }
 
 .shgetME <- function(model) {
-                                        #Gp <- lme4::getME(model, "Gp")
+    ##Gp <- lme4::getME(model, "Gp")
     Gp <- unname(cumsum(c(0,sapply(model$modelInfo$reStruc$condReStruc, function(x) x$blockReps*x$blockSize))))
     n.RT <- length(Gp) - 1 ## Number of random terms (i.e. of (|)'s)
     n.lev.by.RT <- sapply(model$modelInfo$reTrms$cond$flist, nlevels)
