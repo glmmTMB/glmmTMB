@@ -16,7 +16,7 @@ Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 default is to use an unstructured  variance-covariance
 matrix (\code{"us"}) for all blocks).}
 
-\item{aa}{additional arguments (i.e. rank)}
+\item{aa}{additional arguments (i.e. rank, or var-cov matrix)}
 
 \item{reXterms}{terms objects corresponding to each RE term}
 
@@ -42,4 +42,5 @@ rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
 rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
                     sleepstudy)$reTrms
 getReStruc(rt)
+getReStruc(rt2)
 }

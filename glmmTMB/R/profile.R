@@ -78,7 +78,7 @@ profile.glmmTMB <- function(fitted,
     parm <- getParms(parm, fitted, full=TRUE)
 
     ## only need selected SDs
-    sds <- sqrt(diag(vcov(fitted,full=TRUE)))
+    sds <- sqrt(diag(vcov(fitted, full=TRUE, include_nonest = FALSE)))
     sds <- sds[parm]
 
     if (!is.null(stderr)) {

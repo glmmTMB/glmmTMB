@@ -107,7 +107,7 @@ fixef(admb0)
 fixef(admb1)
 fixef(admb3)
 ## Rename to (Intercept) and Days
-## betad will be returned by the sigma.glmmTMB() method
+## betadisp will be returned by the sigma.glmmTMB() method
 ## theta will be returned by getME
 
 ranef(tmb0)

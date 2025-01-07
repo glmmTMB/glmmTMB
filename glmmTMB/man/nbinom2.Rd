@@ -4,6 +4,7 @@
 \alias{nbinom2}
 \alias{family_glmmTMB}
 \alias{nbinom1}
+\alias{nbinom12}
 \alias{compois}
 \alias{truncated_compois}
 \alias{genpois}
@@ -19,12 +20,14 @@
 \alias{ziGamma}
 \alias{t_family}
 \alias{ordbeta}
-\alias{nbinom12}
+\alias{bell}
 \title{Family functions for glmmTMB}
 \usage{
 nbinom2(link = "log")
 
 nbinom1(link = "log")
+
+nbinom12(link = "log")
 
 compois(link = "log")
 
@@ -56,7 +59,7 @@ t_family(link = "identity")
 
 ordbeta(link = "logit")
 
-nbinom12(link = "log")
+bell(link = "log")
 }
 \arguments{
 \item{link}{(character) link function for the conditional mean ("log", "logit", "probit", "inverse", "cloglog", "identity", or "sqrt")}
@@ -74,7 +77,11 @@ predicted variance (scaled by \code{sigma(.)})
 Family functions for glmmTMB
 }
 \details{
-If specified, the dispersion model uses a log link. Denoting the variance as \eqn{V}, the dispersion parameter
+If specified, the dispersion model uses a log link; additional family parameters
+(Student-t df, Tweedie power parameters, ordered beta cutpoints,
+skew-normal skew parameters, etc.) use various link functions and
+are accessible via \code{\link{family_params}}.
+Denoting the variance as \eqn{V}, the dispersion parameter
 as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 and the predicted mean as \eqn{\mu}{mu}:
  \describe{
@@ -95,11 +102,14 @@ and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)
      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
+\item{bell}{Bell distribution (see Castellares et al 2018).
+} 
 }
 }
 \references{
 \itemize{
 \item Azzalini A & Capitanio A (2014). "The skew-normal and related families." Cambridge: Cambridge University Press.
+\item Castellares F, Ferrari SLP, & Lemonte AJ (2018) "On the Bell Distribution and Its Associated Regression Model for Count Data" Applied Mathematical Modelling 56: 172–85. \doi{10.1016/j.apm.2017.12.014}
 \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
 \item Ferrari SLP, Cribari-Neto F (2004). "Beta Regression for Modelling Rates and Proportions." \emph{J. Appl. Stat.}  31(7), 799-815.
 \item Hardin JW & Hilbe JM (2007). "Generalized linear models and extensions." Stata Press.

@@ -22,7 +22,8 @@ glmmTMB(
   start = NULL,
   map = NULL,
   sparseX = NULL,
-  priors = NULL
+  priors = NULL,
+  subset = NULL
 )
 }
 \arguments{
@@ -69,6 +70,8 @@ because of missingness.}
 \item{sparseX}{a named logical vector containing (possibly) elements named "cond", "zi", "disp" to indicate whether fixed-effect model matrices for particular model components should be generated as sparse matrices, e.g. \code{c(cond=TRUE)}. Default is all \code{FALSE}}
 
 \item{priors}{a data frame of priors, in a similar format to that accepted by the \code{brms} package; see \code{\link{priors}}}
+
+\item{subset}{an optional vector specifying a subset of observations to be used in the fitting process (see \code{\link{model.frame}})}
 }
 \description{
 Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
@@ -89,8 +92,9 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{gau} (* Gaussian autocorrelation)
 \item \code{mat} (* Matérn process correlation)
 \item \code{toep} (* Toeplitz)
-\item \code{rr} (reduced rank/factor-analytic model)
+\item \code{rr} (reduced-rank/factor-analytic model)
 \item \code{homdiag} (diagonal, homogeneous variance)
+\item \code{propto} (* proportional to user-specified variance-covariance matrix)
 }
 Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.

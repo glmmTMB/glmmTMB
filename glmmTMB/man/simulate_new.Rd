@@ -45,6 +45,9 @@ See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
 and \code{vignette("covstruct", package = "glmmTMB")}
 for more information on the parameterization of different covariance structures.
 }
+\details{
+Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
+}
 \examples{
 ## use Salamanders data for structure/covariates
 sim_count <- simulate_new(~ mined + (1|site),

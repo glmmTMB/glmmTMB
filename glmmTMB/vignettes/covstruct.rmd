@@ -65,7 +65,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Covariance                       # Notation      # no. parameters # Requirement  # Parameters
  Unstructured (general positive definite)      # `us`          #  $n(n+1)/2$     # # See [Mappings]
  Heterogeneous Toeplitz           # `toep`        #  $2n-1$         #     # log-SDs ($\\theta_1-\\theta_n$); correlations $\\rho_k = \\theta_{n+k}/\\sqrt{1+\\theta_{n+k}^2}$, $k = \\textrm{abs}(i-j+1)$
- Het. compound symmetry  # `cs`          #  $n+1$    #      # log-SDs ($\\theta_1-\\theta_n$); correlation $\\rho = \\theta_{n+1}/\\sqrt{1+\\theta_{n+1}^2}$
+ Het. compound symmetry  # `cs`          #  $n+1$    #      # log-SDs ($\\theta_1-\\theta_n$); correlation $\\{a=1/(n-1); \\rho = \\textrm{plogis}(\\theta_{n+1}) \\cdot (1+a) -a \\}$
  Homogenous diagonal     # `homdiag`     #  $1$      #  # log-SD
  Het. diagonal           # `diag`        #  $n$            #  # log-SDs
  AR(1)                            # `ar1`         #  $2$            # Unit spaced levels # log-SD; $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
@@ -73,12 +73,13 @@ ctab <- read.delim(sep = "#", comment = "",
  Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
  Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
  Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
- Reduced rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
+ Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
+ Proportional                       # `propto`      #  $1$            # Variance-covariance matrix
 "
 )
 knitr::kable(ctab)
 ```
-The word 'heterogeneous' refers to the marginal variances of the model. 
+The word 'heterogeneous' refers to the marginal variances of the model; $\textrm{plogis}(x) = (1+\exp(-x))^{-1}$
 
 Homogenous versions of some structures (e.g. Toeplitz, compound symmetric) can be implemented by using the `map` argument to set all log-SD parameters equal to each other.
 
@@ -612,7 +613,7 @@ mkfig(plot(tt2),"cs_profile_plot.png")
 usefig("cs_profile_plot.png")
 ```
 
-### General latent variable model
+## Generalized latent variable model
 
 Consider a generalized linear mixed model
 
@@ -633,9 +634,9 @@ where $\otimes$ is the Kronecker product and $\boldsymbol{\Lambda} = (\boldsymbo
 
 For GLVMs it is important to select initial starting values for the parameters because the observed likelihood may be multimodal, and maximization algorithms can end up in local maxima. @niku2019gllvm describe methods to enable faster and more reliable fits of latent variable models by carefully choosing starting values of the parameters.
 
-A similar method has been implemented in `glmmTMB`. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
+A similar method has been implemented in `glmmTMB` [@mcgillycuddyParsimoniously2024]. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
 
-### Reduced rank
+### Reduced-rank
 
 One of our main motivations for adding this variance-covariance structure is to enable the analysis of multivariate abundance data, for example to model the abundance of different taxa across multiple sites. Typically an unstructured  random effect is assumed to account for correlation between taxa; however the number of parameters required quickly becomes large with increasing numbers of taxa. A GLVM is a flexible and more parsimonious way to account for correlation so that one can fit a joint model across many taxa.
 
@@ -710,6 +711,29 @@ text(rr_info$b[,1]*afac*1.05, rr_info$b[,2]*afac*1.05, rownames(rr_info$b))
 arrows(0, 0, rr_info$b[,1]*afac, rr_info$b[,2]*afac)
 text(rr_info$fl[,1], rr_info$fl[,2], sp_names, pos = 3, col = 2)
 ```
+
+## Proportional
+
+The random effect structure `propto` fits multivariate random effects proportional to a known variance-covariance matrix.  One way the `propto` structure can be used is in phylogenetic analysis where a random effect proportional to a phylogenetic variance-covariance matrix aims to account for the correlation across species due to their shared ancestry. For example, the `carni70` data set from the `ade4` package describes the phylogeny along with the geographic range and body size of 70 carnivora. To account for the dependence among species due to shared ancestral history we can include a phylogenetically structured error term in the model via the `propto` structure as follows:
+
+```{r propto_ex}
+library(ape)
+data(carni70, package = "ade4")
+tree <- read.tree(text = carni70$tre)
+phylo_varcov <- vcv(tree)# phylogenetic variance-covariance matrix
+## row/column names of phylo_varcov must match factor levels in data
+## (punctuation/separators in species names and ordering)
+spnames <- gsub("_", ".", rownames(carni70$tab))
+carnidat <- data.frame(
+    species = factor(spnames, levels = rownames(phylo_varcov)),
+    dummy = factor(1),
+    carni70$tab)
+fit_phylo <- glmmTMB(log(range) ~ log(size) +
+                         propto(0 + species | dummy, phylo_varcov),
+                     data = carnidat)
+```
+
+`dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/columns names of the matrix match the terms in the random effect (see [Construction of structured covariance matrices] for how the terms are constructed).
 
 ## Construction of structured covariance matrices
 

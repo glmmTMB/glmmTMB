@@ -68,8 +68,11 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' \code{p} as the zero-inflation probability,
 ##' the possible choices are:
 ##' \describe{
-##' \item{"link"}{conditional mean on the scale of the link function,
-##' or equivalently the linear predictor of the conditional model}
+##' \item{"link"}{the linear predictor of the conditional model, or
+##' equivalently the conditional mean on the scale of the link function
+##' (this equivalence does not hold for truncated distributions, where
+##' the link-scaled value is not adjusted for the effect of truncation on the mean; to get the corrected value of the conditional mean on the linear predictor
+##' scale, use \code{family(m)$linkfun(predict(m, type = "conditional"))})}
 ##' \item{"response"}{expected value; this is \eqn{mu*(1-p)} for zero-inflated models
 ##' and \code{mu} otherwise}
 ##' \item{"conditional"}{mean of the conditional response; \code{mu} for all models
@@ -109,6 +112,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' nd_pop <- data.frame(Days=unique(sleepstudy$Days),
 ##'                      Subject=NA)
 ##' predict(g0, newdata=nd_pop)
+##' ## return latent variables (BLUPs/conditional modes/etc. ) with standard errors
+##' ##  (actually conditional standard deviations)
+##' predict(g0, type = "latent", se.fit = TRUE)
 ##' @importFrom TMB sdreport
 ##' @importFrom stats optimHess model.frame na.fail na.pass napredict contrasts<-
 ##' @export
@@ -479,9 +485,12 @@ predict.glmmTMB <- function(object,
       on.exit(do.call(openmp, n_orig), add = TRUE)
   }
 
-  if (openmp_debug()) cat("TMB threads currently set to ", openmp(NULL), "\n")
+
+  if (openmp_debug()) {
+      cat("TMB threads currently set to ", openmp(NULL), "\n")
+  }
   return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else "mu_predict"
-    
+
   if (!se.fit) {
     rr <- newObj$report(lp)
     pred <- rr[[return_par]]

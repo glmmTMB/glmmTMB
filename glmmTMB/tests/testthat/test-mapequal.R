@@ -21,4 +21,4 @@ test_that("vcov for equal-mapping", {
     expect_equal(v$cond[5,5], v$cond[6,6])
 })
 
-vcov(m1, full = TRUE) ## not renamed/duplicated, for now
+vcov(m1, full = TRUE)

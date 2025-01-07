@@ -445,7 +445,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ##
   }
 
-  for (t in c("condReStruc", "ziRestruc", "dispReStruc")) {
+  for (t in c("condReStruc", "ziRestruc", "dispRestruc")) {
       for (i in seq_along(oldfit$modelInfo$reStruc[[t]])) {
           oldfit$modelInfo$reStruc[[t]][[i]]$simCode <- .valid_simcode[["random"]]
       }
@@ -559,7 +559,8 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
 
 ## all parameters, including both mapped and rank-dropped
-getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
+getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,
+                        include_mapequal = FALSE) {
                            
   mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
@@ -618,12 +619,17 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
      map <- object$obj$env$map
      if (length(map)>0) {
          for (m in seq_along(map)) {
-            if (length(NAmap <- which(is.na(map[[m]])))>0) {
+             if (!include_mapequal) {
+                 missmap <- which(is.na(map[[m]]) | duplicated(map[[m]]))
+             } else {
+                 missmap <- which(is.na(map[[m]]))
+             }
+             if (length(missmap)>0) {
                 w <- match(names(map)[m], par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
-                    nameList[[w]] <- nameList[[w]][-NAmap]
+                    nameList[[w]] <- nameList[[w]][-missmap]
                 }
-            }
+            }  ## if NA/duplicated values
          } ## for (m in seq_along(map))
      } ## if (length(map) > 0)
   }
@@ -674,18 +680,31 @@ collapse_list <- function(pList) {
     pvec <- unlist(unname(pList))
 }
 
-make_pars <- function(pars, ..., include_extra = TRUE) {
+make_pars <- function(pList, ..., include_extra = TRUE) {
     ## FIXME: check for name matches, length matches etc.
     ## (useful errors)
     ## better to split by name first??
+
     L <- list(...)
-    pList <- split(pars, names(pars))
-    pList <- pList[unique(names(pars))] ## correct ordering
+    unmatched <- setdiff(names(L), names(pList))
+    if (length(unmatched) > 0) {
+        warning(sprintf("unmatched parameter names: %s",
+                        paste(unmatched, collapse =", ")))
+    }
+
     if (!include_extra) L <- L[intersect(names(L), names(pList))]
     for (nm in names(L)) {
-        if (length(pList[[nm]]) == length(L[[nm]])) {
-            ## skip cases with different length (== partially-mapped vectors)
+        if ((len1 <- length(pList[[nm]])) == (len2 <- length(L[[nm]]))) {
             pList[[nm]] <- L[[nm]]
+        } else {
+            ## skip cases with different length (== partially-mapped vectors)
+            plen <- len1 + length(attr(pList[[nm]], "map"))
+            ## if L[[nm]] is a list, that's because we're
+            ##  passing a partial b vector ...
+            if (plen != len2 && !is.list(L[[nm]])) {
+                warning(sprintf("length mismatch in component %s (%d != %d); not setting",
+                                nm, len1, len2))
+            }
         }
     }
     return(collapse_list(pList))
@@ -706,19 +725,11 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
     ee <- g$env
     if (terms != "ALL") stop("termwise setting of simcodes not implemented yet")
     if (terms == "ALL") {
-        for (i in seq_along(ee$data$terms)) ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
-        unmatched <- setdiff(names(L), unique(names(pars)))
-        if (length(unmatched) > 0) {
-            warning(sprintf("unmatched parameter names: %s",
-                            paste(unmatched, collapse =", ")))
-            next
+        for (i in seq_along(ee$data$terms)) {
+            ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
         }
-        if ((len1 <- length(L[[nm]])) != (len2 <- sum(names(pars) == nm))) {
-            stop(sprintf("length mismatch in component %s (%d != %d)",
-                         nm, len1, len2))
-        }
-        pars[names(pars) == nm] <- L[[nm]]
     }
+
 }
 
 ##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
@@ -743,6 +754,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' will be set to these values; otherwise they will be drawn from the appropriate Normal distribution
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
+##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
 ##' sim_count <- simulate_new(~ mined + (1|site),
@@ -866,7 +878,7 @@ simulate_new <- function(object,
     }
 
     pars <- do.call("make_pars",
-                    c(list(r2$env$last.par), newparams,
+                    c(list(r2$env$parameters), newparams,
                       list(include_extra = FALSE)))
 
     if (!is.null(seed)) set.seed(seed)
@@ -874,7 +886,7 @@ simulate_new <- function(object,
         b_vals <- r2$simulate(par = pars)$b
         if (return_val == "pars") {
             pars <- do.call("make_pars",
-                            c(list(r2$env$last.par), newparams,
+                            c(list(r2$env$parameters), newparams,
                               list(include_extra = TRUE)))
             return(set_b(pars, b_vals))
         }
