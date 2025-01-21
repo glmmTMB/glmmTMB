@@ -1685,6 +1685,10 @@ glmmTMBControl <- function(optCtrl=NULL,
           kept_indices <- match(colnames(adjX), colnames(curX))
           TMBStruc$parameters[[beta_name]] <- TMBStruc$parameters[[beta_name]][kept_indices]
           TMBStruc$data.tmb[[whichX]] <- adjX
+
+          ## if priors on parameters specified, adjust accordingly
+          browser()
+            
         } ## if matrix was adjusted
       } ## loop over X components
     } ## if rank_check == 'adjust'

@@ -152,3 +152,19 @@ test_that("prior specs", {
 
     expect_equal(getME(g8p, "theta"), getME(g9p, "theta"))
 })
+
+## from GH#1146
+
+rankdeficientdata <- data.frame(
+  group = rep(c('g1', 'g2', 'g3'), c(10, 20, 10)),
+  year = rep(c('y1', 'y2'), each = 20)
+)
+rankdeficientdata$y <- simulate_new(~group*year,
+                  seed = 101,
+                  newdata = rankdeficientdata,
+                  newparams = list(beta=c(10,2,4,1), betadisp = log(3)))[[1]]
+
+test_that("dropping priors for rank-def X matrix", {
+    glmmTMB(y ~ group * year, data = rankdeficientdata,
+            priors = data.frame(prior = c('normal(0, 10)'), class = c('fixef')))
+})
