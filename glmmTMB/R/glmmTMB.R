@@ -996,7 +996,9 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                "toep" = 2 * blksize - 1,
                "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
                "homdiag" = 1,  ## (homogeneous) diag
-               "propto" = blksize * (blksize+1) / 2 + 1 #propto (same as us, plus one extra for proportional param)
+               "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
+               "homcs" = 2,
+               stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
     blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
