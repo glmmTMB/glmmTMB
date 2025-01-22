@@ -362,7 +362,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                   Xdisp = denseXval("disp",dispList),
                   XdispS = sparseXval("disp",dispList))
 
-  if(control$rank_check %in% c('warning','stop','adjust')) {
+  if (control$rank_check %in% c('warning','stop','adjust')) {
       Xlist <- .checkRankX(Xlist, control$rank_check)
   }
 
@@ -379,7 +379,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   re_info <- list(cond = comb_re("cond"), zi = comb_re("zi"))
 
   ## isolate names for localizing priors
-  get_fixnm <- function(x) c(colnames(x$X), colnames(x$XS))
+  get_fixnm <- function(x) c(colnames(x[[1]]), colnames(x[[2]]))
+    
   fix_nms <- list(cond = get_fixnm(Xlist[c("X", "Xs")]),
                   zi = get_fixnm(Xlist[c("Xzi", "XziS")]),
                   disp = get_fixnm(Xlist[c("Xdisp", "XdispS")]))
@@ -1601,7 +1602,7 @@ glmmTMBControl <- function(optCtrl=NULL,
 ##' @keywords internal
 .adjustX <- function(X, tol=NULL, why_dropped=FALSE){
   # perform QR decomposition
-  qr_X <- Matrix::qr(X)
+  qr_X <- Matrix::qr(X[Matrix::rowSums(is.na(X)) == 0, , drop = FALSE])
   # check if adjustment is necessary
   if(Matrix::qr2rankMatrix(qr_X) < ncol(X)){
     # base qr

@@ -142,7 +142,6 @@ test_that("prior specs", {
     )
     expect_error(update(m2, prior = prior7), "can't match")
 
-
     prior8 <- prior7
     prior8$coef[4] <- "site"
     suppressWarnings(g8p <- update(m2, prior = prior8))
