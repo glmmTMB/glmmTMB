@@ -441,7 +441,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
       nl <- unlist(estNameList)
       fnl <- unlist(fullNameList)
       if (!include_nonest || identical(nl, fnl)) {
-          if (any(vapply(map, \(x) any(duplicated(x)), logical(1)))) {
+          if (any(vapply(map, function(x) any(duplicated(x)), FUN.VALUE = logical(1)))) {
               ## duplicate rows appropriately: *blockwise* is sufficient (can't
               ## map elements of different vectors)
               ind <- 0
