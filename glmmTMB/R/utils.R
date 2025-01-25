@@ -794,7 +794,7 @@ simulate_new <- function(object,
                          newdata, newparams, ...,
                          return_val = c("sim", "pars", "object")) {
     return_val <- match.arg(return_val)
-    family <- get_family(family)
+    family <- get_family(family, deparse(substitute(family)))
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
     newparams0 <- newparams
@@ -924,7 +924,7 @@ match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
     }
 }
 
-get_family <- function(family) {
+get_family <- function(family, f_name) {
     if (is.character(family)) {
         if (family=="beta") {
             family <- "beta_family"
@@ -941,9 +941,8 @@ get_family <- function(family) {
 
     ## FIXME: what is this doing? call to a function that's not really
     ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("after evaluation, 'family' must have a '$family' element")
+    if (isS4(family) || is.null(family$family)) {
+        stop(sprintf("after evaluation, 'family' (specified as '%s') must be a list containing a '$family' element", f_name))
     }
     return(family)
 }
