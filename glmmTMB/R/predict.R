@@ -486,12 +486,11 @@ predict.glmmTMB <- function(object,
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
-<<<<<<< HEAD
-<<<<<<< HEAD
     if (cov.fit) {
         sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
         covfit <- sdr$cov
-    } else sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE)
+    } else     sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
+
     sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
     ## split summary matrix by parameter name
     sdrsplit <- split.data.frame(sdrsum, rownames(sdrsum))
@@ -499,25 +498,10 @@ predict.glmmTMB <- function(object,
     se <- sdrsplit[[return_par]][,"Std. Error"]
     w <- which(rownames(sdrsum) == return_par)
     if (cov.fit) covfit <- covfit[w, w]
-=======
-    do.bias.correct <- (length(aggregate) > 0)
-    bias.correct.control <- if (do.bias.correct)
-                                list(sd = TRUE)
-                            else NULL
-=======
->>>>>>> d8ea81b6 (aggregate restructure)
-    sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
-    sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
-    w <- if (return_eta) "eta_predict" else "mu_predict"
-    ## multiple rows with identical names; naive indexing
-    ## e.g. sdrsum["mu_predict", ...] returns only the first instance
-    w <- which(rownames(sdrsum)==w)
+    
     if (do.bias.correct) {
         return (sdrsum[w,])
     }
-    pred <- sdrsum[w,"Estimate"]
-    se <- sdrsum[w,"Std. Error"]
->>>>>>> ec5f5d8a (aggregate option R side)
   }
   if (do.napred) {
       pred <- napredict(na.act,pred)
