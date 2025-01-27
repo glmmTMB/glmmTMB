@@ -144,11 +144,7 @@ predict.glmmTMB <- function(object,
       if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
       se.fit <- TRUE
   }
-  if (!is.null(aggregate)) {
-      se.fit <- TRUE
-      type <- "response"
-      fast <- FALSE
-  }
+ 
   ## FIXME: add re.form
   if (length(aggregate) > 0) {
     fast <- FALSE
