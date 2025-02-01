@@ -556,3 +556,27 @@ test_that("make_family initialize works", {
                        5.84064009250575))
     }
 })
+
+test_that("testing family specification", {
+    ## test S4 (motivating example was VGAM::zipoisson,
+    ##  but we want an S4 object that comes from packages we already
+    ## depend on
+
+    ## family() returns S4 object
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = Matrix::Matrix),
+                 "must be a list")
+    ## family() returns list without $family element
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = function() list()),
+                 "must be a list")
+    ## family is a non-existent object
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = zipoisson),
+                 "not found")
+    ## get(family) doesn't find a function
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = "zipoisson"),
+                 "of mode.*not found")
+
+})

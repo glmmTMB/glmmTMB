@@ -1240,7 +1240,8 @@ glmmTMB <- function(
     ##                       control = glmerControl(), ...) {
     call <- mf <- mc <- match.call()
 
-    family <- get_family(family)
+    f_name <- deparse(substitute(family))
+    family <- get_family(family, f_name)
     
     fnames <- names(family)
     if (!all(c("family","link") %in% fnames))
