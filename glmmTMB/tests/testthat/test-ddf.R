@@ -36,7 +36,8 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
 
     test_that("Satt in summary", {
         expect_identical(
-            coef(summary(fm1, ddf = "satterthwaite"))$cond[,"ddf"]
-        )
-    })                     
+            coef(summary(fm1, ddf = "satterthwaite"))$cond[,"ddf"],
+            c(dof_satt(fm1))
+        _)
+    })                 
 }

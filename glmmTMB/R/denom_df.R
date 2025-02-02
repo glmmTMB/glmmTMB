@@ -326,34 +326,29 @@ dof_KR <- function(model) {
 #' @rdname dof_KR
 #' 
 #' @export
-#' @param L a matrix of contrasts: by default, equal to an identity matrix (i.e., ddfs are returned
+#' @param L a  by default, equal to an identity matrix (i.e., ddfs are returned
 #' for each fixed-effect parameter
-dof_satt <- function(model, L = NULL) {
-
-    warning("broken! need to compare with original implementation")
-    ## https://github.com/glmmTMB/glmmTMB/issues/1139#issuecomment-2567164695
-    if (is.null(L)) {
-        L <- diag(length(fixef(model)$cond))
-    }
-
+dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     model_vcov <- vcov(model, full = TRUE)
 
-    kappa_opt <- model$fit$par
-    devfun_kappa <- model$obj$fn
     ## FIXME: do we have the Hessian somewhere already?
-    ## in any case, we can do better (jacobian!)
-    h_kappa <- numDeriv::hessian(func = devfun_kappa, x = kappa_opt)
+    kappa_opt <- model$fit$par
+    h_kappa <- numDeriv::jacobian(func = model$obj$gr, x = kappa_opt)
     eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
     cov_varpar_kappa <- with(eig_h_kappa,
-                           vectors %*% diag(1/values) %*% t(vectors))
+                             vectors %*% diag(1/values) %*% t(vectors))
 
-  jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
-  grad_kappa <- .get_gradient(jac_kappa, L)
-  var_Lbeta <- drop(t(L) %*% vcov(model)$cond %*% L)
-  v_numerator <- 2 * var_Lbeta ^ 2
-  v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
-   diag(v_numerator/v_denominator_kappa)
+    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
 
+    res <- numeric(nrow(L))
+    for (i in seq_along(res)) {
+        grad_kappa <- .get_gradient(jac_kappa, L[i,])
+        var_Lbeta <- drop(t(L[i,]) %*% vcov(model)$cond %*% L[i,])
+        v_numerator <- 2 * var_Lbeta ^ 2
+        v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
+        res[i] <- v_numerator/v_denominator_kappa
+    }
+    res
 }
 
 .covbeta_kappa <- function(kappa,md) {
