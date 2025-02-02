@@ -1,11 +1,12 @@
-#' compute Kenward-Roger degrees of freedom
+#' compute denominator degrees-of-freedom approximations
 #'
-#' This function uses an adaptation of the machinery from the \code{pbkrtest} package
+#' \code{dof_KR} uses an adaptation of the machinery from the \code{pbkrtest} package
 #' to compute the Kenward-Roger approximation of the 'denominator degrees of freedom' for
-#' each fixed-effect coefficient in the conditional model.
-#' @return a named vector of ddf for each conditional fixed-effect parameter, with attributes 'vcov'
+#' each fixed-effect coefficient in the conditional model; \code{dof_satt} does the same
+#' for Satterthwaite approximations
+#' @return a named vector of ddf for each conditional fixed-effect parameter; \code{dof_KR} includes attributes 'vcov'
 #' (Kenward-Roger adjusted covariance matrix) and 'se' (the corresponding standard errors)
-#' @details this function \emph{should not be used} for models fitted with ML rather than REML;
+#' @details Kenward-Roger adjustments \emph{should not be used} for models fitted with ML rather than REML;
 #' the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
 #' Use at your own risk for GLMMs!
 #' @param model a fitted \code{glmmTMB} object
@@ -322,24 +323,36 @@ dof_KR <- function(model) {
     lengths(lapply(glmmTMB::ranef(model)$cond, colnames))
 }
 
-dof_satt <- function(model, L) {
-  model_vcov <- vcov(model, full = TRUE)
+#' @rdname dof_KR
+#' 
+#' @export
+#' @param L a matrix of contrasts: by default, equal to an identity matrix (i.e., ddfs are returned
+#' for each fixed-effect parameter
+dof_satt <- function(model, L = NULL) {
 
-  kappa_opt <- model$fit$par
-  devfun_kappa <- model$obj$fn
-  ## FIXME: do we have the Hessian somewhere already?
-  h_kappa <- numDeriv::hessian(func = devfun_kappa, x = kappa_opt)
-  eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
-  cov_varpar_kappa <- with(eig_h_kappa,
+    warning("broken! need to compare with original implementation")
+    ## https://github.com/glmmTMB/glmmTMB/issues/1139#issuecomment-2567164695
+    if (is.null(L)) {
+        L <- diag(length(fixef(model)$cond))
+    }
+
+    model_vcov <- vcov(model, full = TRUE)
+
+    kappa_opt <- model$fit$par
+    devfun_kappa <- model$obj$fn
+    ## FIXME: do we have the Hessian somewhere already?
+    ## in any case, we can do better (jacobian!)
+    h_kappa <- numDeriv::hessian(func = devfun_kappa, x = kappa_opt)
+    eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
+    cov_varpar_kappa <- with(eig_h_kappa,
                            vectors %*% diag(1/values) %*% t(vectors))
 
   jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
-
   grad_kappa <- .get_gradient(jac_kappa, L)
   var_Lbeta <- drop(t(L) %*% vcov(model)$cond %*% L)
   v_numerator <- 2 * var_Lbeta ^ 2
   v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
-  v_numerator/v_denominator_kappa
+   diag(v_numerator/v_denominator_kappa)
 
 }
 
@@ -371,7 +384,7 @@ dof_satt <- function(model, L) {
         jac_col <- jac_matrix[, i]
         p <- sqrt(length(jac_col))
         ## get p x p matrix
-        matrix(jac_col, nrow = p, ncol = p)
+        res[[i]] <- matrix(jac_col, nrow = p, ncol = p)
     }
     res
 }

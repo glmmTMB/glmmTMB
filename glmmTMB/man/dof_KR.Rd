@@ -2,24 +2,31 @@
 % Please edit documentation in R/denom_df.R
 \name{dof_KR}
 \alias{dof_KR}
-\title{compute Kenward-Roger degrees of freedom}
+\alias{dof_satt}
+\title{compute denominator degrees-of-freedom approximations}
 \usage{
 dof_KR(model)
+
+dof_satt(model, L = NULL)
 }
 \arguments{
 \item{model}{a fitted \code{glmmTMB} object}
+
+\item{L}{a matrix of contrasts: by default, equal to an identity matrix (i.e., ddfs are returned
+for each fixed-effect parameter}
 }
 \value{
-a named vector of ddf for each conditional fixed-effect parameter, with attributes 'vcov'
+a named vector of ddf for each conditional fixed-effect parameter; \code{dof_KR} includes attributes 'vcov'
 (Kenward-Roger adjusted covariance matrix) and 'se' (the corresponding standard errors)
 }
 \description{
-This function uses an adaptation of the machinery from the \code{pbkrtest} package
+\code{dof_KR} uses an adaptation of the machinery from the \code{pbkrtest} package
 to compute the Kenward-Roger approximation of the 'denominator degrees of freedom' for
-each fixed-effect coefficient in the conditional model.
+each fixed-effect coefficient in the conditional model; \code{dof_satt} does the same
+for Satterthwaite approximations
 }
 \details{
-this function \emph{should not be used} for models fitted with ML rather than REML;
+Kenward-Roger adjustments \emph{should not be used} for models fitted with ML rather than REML;
 the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
 Use at your own risk for GLMMs!
 }

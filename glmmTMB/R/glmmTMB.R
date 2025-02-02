@@ -2145,8 +2145,7 @@ summary.glmmTMB <- function(object, ddf=c("asymptotic", "kenward-roger", "satter
                 if (ddf == "kenward-roger") {
                     df_val <- c(dof_KR(object))
                 } else if (ddf == "satterthwaite") {
-                    L_satt <- as.data.frame(diag(length(fixef(cond))))
-                    df_val <- c(dof_satt(object, L))
+                    df_val <- c(dof_satt(object))
                 }
                 pvals <- 2*stats::pt(abs(stat), df = df_val, lower.tail = FALSE)
                 labs <- c(stat_lab, "ddf", pval_lab)
