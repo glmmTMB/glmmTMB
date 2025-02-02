@@ -2092,19 +2092,23 @@ ngrps.glmmTMB <- function(object, ...) {
 #' @export
 ngrps.factor <- function(object, ...) nlevels(object)
 
+## how do emmeans, lmerTest, etc. specify ddf?
+## lmerTest: ddf = c("Satterthwaite", "Kenward-Roger", "lme4")
+## emmeans:  lmer.df = c("kenward-roger", "satterthwaite", "asymptotic")
 
 ##' @importFrom stats pnorm pt
 ##' @method summary glmmTMB
 ##' @title summary for glmmTMB fits
 ##' @param object a fitted \code{glmmTMB} object
-##' @param ddf denominator degrees-of-freedom calculation (\code{NULL} gives standard Z-statistics
-##' (i.e., 'infinite' denominator df). \code{"KR"} gives Kenward-Roger approximation, which will
-##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}}).
+##' @param ddf denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
+##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
+##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}};
+##' \code{"satterthwaite"} uses a Satterthwaite approximation
 ##' @param ... unused, for method compatibility
 ##' @export
-summary.glmmTMB <- function(object, ddf=Inf, ...)
-{
+summary.glmmTMB <- function(object, ddf=c("asymptotic", "kenward-roger", "satterthwaite"), ...) {
     check_dots(...)
+    ddf <- match.arg(ddf)
     ## figure out useSc
     sig <- sigma(object)
 
@@ -2129,7 +2133,7 @@ summary.glmmTMB <- function(object, ddf=Inf, ...)
                        "Std. Error" = sqrt(diag(vcovs)))
         if (p > 0) {
             stat <- coefs[,1]/coefs[,2]
-            statType <- if (ddf=="KR" && type == "cond") "t" else "z"
+            statType <- if (ddf!="asymptotic" && type == "cond") "t" else "z"
             stat_lab <- paste(statType, "value")
             pval_lab <- sprintf("Pr(>|%s|)", statType)
             ## ??? should we provide Wald p-values???
@@ -2138,14 +2142,20 @@ summary.glmmTMB <- function(object, ddf=Inf, ...)
                 labs <- c(stat_lab, pval_lab)
                 cc <- cbind(stat, pvals)
             } else {
-                ddf <- c(dof_KR(object))
-                pvals <- 2*stats::pt(abs(stat), df = ddf, lower.tail = FALSE)
+                if (ddf == "kenward-roger") {
+                    df_val <- c(dof_KR(object))
+                } else if (ddf == "satterthwaite") {
+                    L_satt <- as.data.frame(diag(length(fixef(cond))))
+                    df_val <- c(dof_satt(object, L))
+                }
+                pvals <- 2*stats::pt(abs(stat), df = df_val, lower.tail = FALSE)
                 labs <- c(stat_lab, "ddf", pval_lab)
-                cc <-  cbind(stat, ddf, pvals)
+                cc <-  cbind(stat, df_val, pvals)
             }
             coefs <- cbind(coefs, cc)
             colnames(coefs)[2+seq_along(labs)] <- labs
         }
+        attr(coefs, "ddf") <- ddf
         coefs
     }
 

@@ -4,14 +4,15 @@
 \alias{summary.glmmTMB}
 \title{summary for glmmTMB fits}
 \usage{
-\method{summary}{glmmTMB}(object, ddf = Inf, ...)
+\method{summary}{glmmTMB}(object, ddf = c("asymptotic", "kenward-roger", "satterthwaite"), ...)
 }
 \arguments{
 \item{object}{a fitted \code{glmmTMB} object}
 
-\item{ddf}{denominator degrees-of-freedom calculation (\code{NULL} gives standard Z-statistics
-(i.e., 'infinite' denominator df). \code{"KR"} gives Kenward-Roger approximation, which will
-be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}}).}
+\item{ddf}{denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
+(i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
+be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}};
+\code{"satterthwaite"} uses a Satterthwaite approximation}
 
 \item{...}{unused, for method compatibility}
 }

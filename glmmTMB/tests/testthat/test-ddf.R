@@ -29,7 +29,7 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
 
     test_that("KR in summary", {
         expect_identical(
-            coef(summary(fm1, ddf = "KR"))$cond[,"ddf"],
+            coef(summary(fm1, ddf = "kenward-roger"))$cond[,"ddf"],
             c(dof_KR(fm1))
         )
     })                     

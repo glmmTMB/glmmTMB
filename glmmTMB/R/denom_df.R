@@ -10,7 +10,8 @@
 #' Use at your own risk for GLMMs!
 #' @param model a fitted \code{glmmTMB} object
 #' @export
-## FIXME: possible confusion/conflict with insight::dof_kenward ...
+## avoid conflict with insight::dof_kenward ...
+## FIXME: check with various combinations of mapping etc.
 dof_KR <- function(model) {
     fe <- fixef(model)$cond
     param_names <- names(fe)
@@ -319,4 +320,67 @@ dof_KR <- function(model) {
 .get.RT.dim.by.RT <- function(model) {
     ## output: dimension (no of columns) of covariance matrix for random term ii
     lengths(lapply(glmmTMB::ranef(model)$cond, colnames))
+}
+
+dof_satt <- function(model, L) {
+  model_vcov <- vcov(model, full = TRUE)
+
+  kappa_opt <- model$fit$par
+  devfun_kappa <- model$obj$fn
+  ## FIXME: do we have the Hessian somewhere already?
+  h_kappa <- numDeriv::hessian(func = devfun_kappa, x = kappa_opt)
+  eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
+  cov_varpar_kappa <- with(eig_h_kappa,
+                           vectors %*% diag(1/values) %*% t(vectors))
+
+  jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
+
+  grad_kappa <- .get_gradient(jac_kappa, L)
+  var_Lbeta <- drop(t(L) %*% vcov(model)$cond %*% L)
+  v_numerator <- 2 * var_Lbeta ^ 2
+  v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
+  v_numerator/v_denominator_kappa
+
+}
+
+.covbeta_kappa <- function(kappa,md) {
+  sdr <- TMB::sdreport(
+    md$obj,
+    par.fixed = kappa,
+    getJointPrecision = TRUE
+  )
+  q_mat <- sdr$jointPrecision
+  which_fixed <- which(rownames(q_mat) == "beta")
+  q_marginal <- unname(GMRFmarginal(q_mat, which_fixed))
+  solve(as.matrix(q_marginal))
+}
+
+
+.get_jac_list <- function(covbeta_fun, x_opt, md, ...) {
+    jac_matrix <- numDeriv::jacobian(
+                                func = covbeta_fun,
+                                x = x_opt,
+                                md=md,
+                                ## does not help anything -
+                                ## but seems precision is already good enough:
+                                ## method.args = list(r = 6),
+                                ...
+                            )
+    res <- list()
+    for (i in seq_len(ncol(jac_matrix))) { # for each variance parameter
+        jac_col <- jac_matrix[, i]
+        p <- sqrt(length(jac_col))
+        ## get p x p matrix
+        matrix(jac_col, nrow = p, ncol = p)
+    }
+    res
+}
+
+
+.get_gradient <- function(jac, L) {
+    vapply(
+        jac,
+        FUN = function(x) sum(L * x %*% L), # = {L' Jac L}_i
+        FUN.VALUE = numeric(1L)
+    )
 }
