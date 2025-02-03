@@ -87,6 +87,7 @@ test_that("rr eigenvalues", {
 })
 
 test_that("rr binomial", {
+    ## GH 1151
     set.seed(12345)
     data <- data.frame(
         id = rep(1:5, each = 10),
