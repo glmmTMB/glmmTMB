@@ -92,7 +92,8 @@ Suggests:
     ade4,
     ape,
     gsl,
-    pbkrtest
+    pbkrtest,
+    lmerTest
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

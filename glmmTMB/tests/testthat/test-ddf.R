@@ -33,11 +33,15 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
             c(dof_KR(fm1))
         )
     })
-
-    test_that("Satt in summary", {
-        expect_identical(
-            coef(summary(fm1, ddf = "satterthwaite"))$cond[,"ddf"],
-            c(dof_satt(fm1))
-        _)
-    })                 
 }
+
+
+test_that("Satt in summary", {
+        expect_identical(
+            unname(coef(summary(fm1, ddf = "satterthwaite"))$cond[,"ddf"]),
+            c(dof_satt(fm1))
+        )
+    })               
+
+## add lmerTest comparisons?
+## emmeans

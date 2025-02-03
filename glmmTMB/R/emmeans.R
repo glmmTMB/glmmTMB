@@ -94,13 +94,15 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 
 
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi", 
-                                                                       "disp", "response", "cmean"), vcov., ...) 
-{
+                                                                       "disp", "response", "cmean"), vcov.,
+                               gllmTMB.df = getOption("glmmTMB.df", "asymptotic"),  ...) {
+
+    ## FIXME: implement a 'KR limit' argument/option that determines whether to use KR for large problems ... ??
     component <- match.arg(component)
-    L <- list(...)
-    if (length(L) > 0) {
-    }
+    check_dots(.ignore = c("misc", "options"))
     misc <- list()
+
+    ## ddf-processing
     if (family(object)$family == "gaussian") {
         dfargs <- list(df = df.residual(object))
         dffun <- function(k, dfargs) dfargs$df
