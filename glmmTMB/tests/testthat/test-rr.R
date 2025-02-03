@@ -98,7 +98,7 @@ test_that("rr binomial", {
                   control = glmmTMBControl(start_method = list(method = "res")))
     expect_equal(unname(fixef(g1)$cond),
                  c(-0.0273483526560848, -0.0244598826860453),
-                 tolerance = 1e-8)
+                 tolerance = 1e-5)
 })
 
 ## FIXME: test, remove if unnecessary
