@@ -754,6 +754,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' will be set to these values; otherwise they will be drawn from the appropriate Normal distribution
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
+##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
 ##' sim_count <- simulate_new(~ mined + (1|site),
@@ -793,7 +794,7 @@ simulate_new <- function(object,
                          newdata, newparams, ...,
                          return_val = c("sim", "pars", "object")) {
     return_val <- match.arg(return_val)
-    family <- get_family(family)
+    family <- get_family(family, deparse(substitute(family)))
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
     newparams0 <- newparams
@@ -923,7 +924,7 @@ match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
     }
 }
 
-get_family <- function(family) {
+get_family <- function(family, f_name) {
     if (is.character(family)) {
         if (family=="beta") {
             family <- "beta_family"
@@ -940,9 +941,8 @@ get_family <- function(family) {
 
     ## FIXME: what is this doing? call to a function that's not really
     ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("after evaluation, 'family' must have a '$family' element")
+    if (isS4(family) || is.null(family$family)) {
+        stop(sprintf("after evaluation, 'family' (specified as '%s') must be a list containing a '$family' element", f_name))
     }
     return(family)
 }

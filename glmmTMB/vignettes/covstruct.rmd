@@ -634,7 +634,7 @@ where $\otimes$ is the Kronecker product and $\boldsymbol{\Lambda} = (\boldsymbo
 
 For GLVMs it is important to select initial starting values for the parameters because the observed likelihood may be multimodal, and maximization algorithms can end up in local maxima. @niku2019gllvm describe methods to enable faster and more reliable fits of latent variable models by carefully choosing starting values of the parameters.
 
-A similar method has been implemented in `glmmTMB`. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
+A similar method has been implemented in `glmmTMB` [@mcgillycuddyParsimoniously2024]. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
 
 ### Reduced-rank
 

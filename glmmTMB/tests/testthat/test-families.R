@@ -542,3 +542,41 @@ test_that("skewnormal family", {
                  c(`Skewnormal shape` = -6.12362878509844),
                  tolerance = 1e-6)
 })
+
+test_that("make_family initialize works", {
+    ## GH #1133
+    if (require(effects)) {
+        data("sleepstudy", package = "lme4")
+        m2 <- glmmTMB(round(Reaction) ~ Days + (1 | Subject), sleepstudy,
+                      family = truncated_nbinom2)
+        ee <- suppressWarnings(effects::Effect("Days", m2))
+        expect_equal(c(ee$fit),
+                     c(5.5317435373068, 5.6003872162399,
+                       5.669030895173, 5.77199641357265, 
+                       5.84064009250575))
+    }
+})
+
+test_that("testing family specification", {
+    ## test S4 (motivating example was VGAM::zipoisson,
+    ##  but we want an S4 object that comes from packages we already
+    ## depend on
+
+    ## family() returns S4 object
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = Matrix::Matrix),
+                 "must be a list")
+    ## family() returns list without $family element
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = function() list()),
+                 "must be a list")
+    ## family is a non-existent object
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = zipoisson),
+                 "not found")
+    ## get(family) doesn't find a function
+    expect_error(glmmTMB(hp ~ mpg, data = mtcars,
+                         family = "zipoisson"),
+                 "of mode.*not found")
+
+})
