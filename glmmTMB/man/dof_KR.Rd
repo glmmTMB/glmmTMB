@@ -7,12 +7,12 @@
 \usage{
 dof_KR(model)
 
-dof_satt(model, L = NULL)
+dof_satt(model, L = diag(length(fixef(model)$cond)))
 }
 \arguments{
 \item{model}{a fitted \code{glmmTMB} object}
 
-\item{L}{a matrix of contrasts: by default, equal to an identity matrix (i.e., ddfs are returned
+\item{L}{a  by default, equal to an identity matrix (i.e., ddfs are returned
 for each fixed-effect parameter}
 }
 \value{
