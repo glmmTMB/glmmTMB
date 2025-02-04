@@ -143,10 +143,10 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         dffun <- function(k, dfargs) pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
     } else if (ddf == "satterthwaite") {
         dfargs <- list(object=object)
-        dffun <- function(k,dfargs) suppressMessages(dof_satt(dfargs$object,k))
-    } else if (ddf == "df.resid") {
-        dfargs <- list()
-        dffun <- function(k, dfargs) df.residual(object)
+        dffun <- function(k,dfargs) suppressMessages(dof_satt(dfargs$object, k))
+    } else if (ddf == "df.residual") {
+        dfargs <- list(object = object)
+        dffun <- function(k, dfargs) stats::df.residual(dfargs$object)
     } else if (ddf == "asymptotic") {
         dfargs <- list()
         dffun <- function(k, dfargs) Inf
