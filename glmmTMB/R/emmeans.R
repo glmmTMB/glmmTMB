@@ -95,23 +95,63 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi", 
                                                                        "disp", "response", "cmean"), vcov.,
-                               gllmTMB.df = getOption("glmmTMB.df", "asymptotic"),  ...) {
+                               ddf = getOption("glmmTMB.df", "asymptotic"),  ...) {
 
     ## FIXME: implement a 'KR limit' argument/option that determines whether to use KR for large problems ... ??
     component <- match.arg(component)
     check_dots(.ignore = c("misc", "options"))
     misc <- list()
-
     ## ddf-processing
-    if (family(object)$family == "gaussian") {
-        dfargs <- list(df = df.residual(object))
-        dffun <- function(k, dfargs) dfargs$df
+    ## 1. no random effects
+    fam <- family(object)$family
+
+    ddf_set <- function(used, requested = ddf) {
+        if (requested != used) {
+            warning("ddf '%s' specified, using ddf '%s' instead", requested, used)
+        }
+        return(used)
     }
-    else {
-        dffun <- function(k, dfargs) Inf
+    get_ddf <- function() {
+
+        if (component != "cond") return(ddf_set("asymptotic"))
+
+        if (!hasRandom(object)) {
+            if (fam != "gaussian") return(ddf_set("asymptotic"))
+            if (trivialDisp(object)) return("df.residual")  ## don't want to warn here
+            if (ddf == "kenward-roger") return(ddf_set("satterthwaite"))
+            return(ddf)
+        }
+
+        if (!isREML(object)) {
+            if (ddf == "kenward-roger") return(ddf_set("satterthwaite"))
+        }
+
+        if (fam != "gaussian" && ddf != "asymptotic") {
+            message("performance of Kenward-Roger and Satterthwaite approx for GLMMs is poorly understood")
+        }
+        return(ddf)
+    }
+
+    ddf <- get_ddf()
+
+    if (ddf == "kenward-roger") {
+        V <- vcov(object)[[component]]
+        dfargs <- list(unadjV = V,
+                       adjV = .vcov_kenward_adjusted(object))
+        V_kr <- as.matrix(dfargs$adjV)
+        V <- V_kr
+        dffun <- function(k, dfargs) pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
+    } else if (ddf == "satterthwaite") {
+        dfargs <- list(object=object)
+        dffun <- function(k,dfargs) suppressMessages(dof_satt(dfargs$object,k))
+    } else if (ddf == "df.resid") {
         dfargs <- list()
-    }
-    
+        dffun <- function(k, dfargs) df.residual(object)
+    } else if (ddf == "asymptotic") {
+        dfargs <- list()
+        dffun <- function(k, dfargs) Inf
+    } else stop(sprintf("unknown ddf specification '%s'", ddf))
+
     # internal fcn for identifying non-estimable components
     .which.nonest <- function(cmp) {
         bh <- fixef(object)[[cmp]]
