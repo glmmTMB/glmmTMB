@@ -80,7 +80,8 @@ enum valid_covStruct {
   propto_covstruct = 11,
   // should perhaps be next to homdiag but don't want to mess
   //  up interpretation of stored fits ...
-  hetar1_covstruct = 12
+  hetar1_covstruct = 12,
+  homcs_covstruct = 13
 };
 
 // should probably be named just 'predictCode';
@@ -386,11 +387,19 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
   }
-  else if (term.blockCode == cs_covstruct){
+  else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
     // case: cs_covstruct
     int n = term.blockSize;
-    vector<Type> logsd = theta.head(n);
-    Type corr_transf = theta(n);
+    int nsd = (term.blockCode == cs_covstruct ? n : 1);
+    vector<Type> logsd(n);
+    for (int i = 0; i < n; i++) {
+      if (term.blockCode == cs_covstruct) {
+	logsd(i) = theta(i);
+      } else {
+	logsd(i) = theta(0);
+      }
+    }
+    Type corr_transf = theta(nsd);
     vector<Type> sd = exp(logsd);
     Type a = Type(1) / (Type(n) - Type(1));
     Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
