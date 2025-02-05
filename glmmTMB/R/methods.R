@@ -1746,7 +1746,7 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
     args <- switch(family,
                    nbinom2 = list(size = phi),
                    nbinom1 = list(size = mu/(phi+ 1e-5)),
-                   binom = list(size=1),
+                   binomial = list(size=1),
                    NULL
                    )
     ## deal with base-R's default size/prob parameterization for nbinom ...

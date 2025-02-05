@@ -33,6 +33,8 @@
       distributions using the internal \code{make_family} helper
       function) that caused errors when calling \code{effects::Effect()}
       (GH #1133, @strengejacke)
+      \item fixed bug blocking reduced-rank models with binomial response
+      (GH #1151, @toddvogel1628)
     } % itemize
   } % bug fixes
 } % 1.1.11
