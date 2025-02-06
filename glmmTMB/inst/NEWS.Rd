@@ -14,6 +14,8 @@
       \item added the Bell distribution (\code{bell()}) as in
       Castellares et al. 2018 \doi{10.1016/j.apm.2017.12.014} (Hatice
       Tül Kübra Akdur)
+      \item experimental implementation of Kenward-Roger and
+      Satterthwaite denominator-degree-of-freedom approximations
     } % itemize
   } % new features
   \subsection{BUG FIXES}{

@@ -64,7 +64,9 @@ if (require(emmeans)) {
     e1 <- emmeans(test3,c("spp","mined"),component="zi",type="response")
     expect_is(e1, "emmGrid")
   }
-  ) ## test_that
+  ) ## test_that (big emmeans)
+
+  
 
   test_that("joint_test with non-estimable terms", {
       
