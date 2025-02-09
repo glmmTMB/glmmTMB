@@ -3,6 +3,30 @@ openmp_debug <- function() {
     getOption("glmmTMB_openmp_debug", FALSE)
 }
 
+
+## avoid repetition; rely on environment for parameters
+optfun <- function(obj, control) {
+    res <- with(obj,
+                if( length(par) ) {
+                    do.call(control$optimizer,
+                            c(list(par, fn, gr,
+                                   control = control $ optCtrl),
+                              control $ optArgs))
+                } else {
+                    list( par=par, objective=fn(par))
+                })
+    ## make optim() results look like nlminb() results (which is
+    ## what glmmTMB is expecting downstream)
+    ## FIXME: what does nloptr output look like?
+    ## nlminb components: par, objective, convergence, message
+    ## optim components: par, value, counts, convergence, message
+    if ("value" %in% names(res)) {
+        res$objective <- res$value
+        res$value <- NULL
+    }
+    return(res)
+}
+
 ## glmmTMB openmp controller copied from TMB (Windows needs it),
 ## and it also lets us have more control of debug tracing etc.
 openmp <- function (n = NULL, autopar = NULL) {
@@ -1813,31 +1837,9 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         TMBStruc$data.tmb <- .collectDuplicates(TMBStruc$data.tmb)
     }
 
+
     if(control$rank_check %in% c('warning','stop','adjust')){
       TMBStruc <- .checkRankX(TMBStruc, control$rank_check)
-    }
-
-    ## avoid repetition; rely on environment for parameters
-    optfun <- function() {
-        res <- with(obj,
-             if( length(par) ) {
-                 do.call(control$optimizer,
-                         c(list(par, fn, gr,
-                                control = control $ optCtrl),
-                           control $ optArgs))
-             } else {
-                 list( par=par, objective=fn(par))
-             })
-        ## make optim() results look like nlminb() results (which is
-        ## what glmmTMB is expecting downstream)
-        ## FIXME: what does nloptr output look like?
-        ## nlminb components: par, objective, convergence, message
-        ## optim components: par, value, counts, convergence, message
-        if ("value" %in% names(res)) {
-            res$objective <- res$value
-            res$value <- NULL
-        }
-        return(res)
     }
 
     if (control $ profile) {
@@ -1849,7 +1851,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
-        optTime <- system.time(fit <- optfun())
+        optTime <- system.time(fit <- optfun(obj, control))
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
@@ -1906,7 +1908,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         if (any(is.na(obj$gr(obj$par)))) {
             stop("some elements of gradient are NaN at starting parameter values")
         }
-        optTime <- system.time(fit <- optfun())
+        optTime <- system.time(fit <- optfun(obj, control))
     }
 
     finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old)
@@ -1919,12 +1921,17 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
 #' \code{message}, \code{iterations}, \code{evaluations})
 #' @param h Hessian matrix for fit, if computed in previous step
 #' @param data.tmb.old stored TMB data, if computed in previous step
+#' @param modelInfo component from a fitted \code{glmmTMB} model, if available
+#' @details \code{finalizeTMB} uses the following components (only) from \code{TMBStruc}: \code{control},
+#' \code{se}, \code{REML}, \code{call}, \code{fr}
 #' @export
-finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
+finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL,
+                        modelInfo = NULL) {
 
     control <- TMBStruc$control
 
     fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
+
 
     ## FIXME: not clear why this is here
     ## (fitted method uses predict(...), not stats::fitted.default)
@@ -2009,7 +2016,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
         obj$retape()
     }
 
-    modelInfo <- with(TMBStruc,
+    modelInfo <- modelInfo %||% with(TMBStruc,
                       namedList(nobs=nrow(data.tmb$X),
                                 respCol,
                                 grpVar,
@@ -2017,7 +2024,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 contrasts,
                                 ## FIXME:apply condList -> cond earlier?
                                 reTrms = lapply(list(cond=condList, zi=ziList, 
-                                										 disp=dispList),
+                                                     disp=dispList),
                                                 stripReTrms),
                                 terms = lapply(list(cond=condList, zi=ziList,
                                                     disp=dispList),
@@ -2027,6 +2034,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 REML,
                                 map,
                                 sparseX,
+                                control,
                                 parallel = control$parallel,
                                 priors = set_class(priors, "glmmTMB_prior"),
                                 packageVersion = packageVersion("glmmTMB")))

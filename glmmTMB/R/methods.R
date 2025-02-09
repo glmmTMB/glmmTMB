@@ -1517,7 +1517,6 @@ as.data.frame.ranef.glmmTMB <- function(x, ...) {
 #' @rdname bootmer_methods
 #' @title support methods for parametric bootstrapping
 #' @param x a fitted glmmTMB object
-#' @param ... extra args (required for method compatibility)
 #' @param newresp a new response vector
 #' @export
 #' @importFrom lme4 isLMM
@@ -1537,7 +1536,9 @@ lme4::refit
 #' @rdname bootmer_methods
 #' @importFrom stats formula
 #' @param object a fitted glmmTMB object
-#' @param ... additional arguments (for generic consistency; ignored)
+#' @param fast (logical) [EXPERIMENTAL] refit by modifying existing TMB object?
+#' @param update_start (logical) use fitted coefficients as starting value?
+#' @param ... extra args (required for method compatibility)
 #' @examples
 #' if (requireNamespace("lme4")) {
 #' \dontrun{
@@ -1565,9 +1566,29 @@ lme4::refit
 #' }
 #' }
 #' @details
-#' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.  They work by copying and replacing the original response column in the data frame passed to \code{glmmTMB}, so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
-#'
-refit.glmmTMB <- function(object, newresp, ...) {
+#' These methods are still somewhat experimental (check your results carefully!), but they should allow parametric bootstrapping.
+#' \itemize{
+#' \item By default (if \code{fast=FALSE}), works by copying and replacing the original response column in the data frame passed to \code{glmmTMB} and re-evaluating the original model call so they will only work properly if (1) the data frame is still available in the environment and (2) the response variable is specified as a single symbol (e.g. \code{proportion} or a two-column matrix constructed on the fly with \code{cbind()}. Untested with binomial models where the response is specified as a factor.
+#' \item If \code{fast=TRUE}, \emph{or} if \code{options(glmmTMB.fast_refit=TRUE)} is set (this feature allows use of fast refitting with \code{bootMer} from the \code{lme4} package), this works by modifying the data in the environment of the underlying TMB object and re-optimizing. Current limitations:
+#' \itemize{
+#' \item Doesn't do any convergence checking/warning
+#' \item Doesn't work with \code{profile = TRUE}
+#' \item Doesn't handle "exotic" responses (i.e. anything but a
+#' numeric vector, such as a two-column matrix or factor-valued response
+#' for a binomial model)
+#' \item Still requires access to the original environment, for reconstructing
+#' control options
+#' }
+#' }
+refit.glmmTMB <- function(object, newresp, fast = FALSE, update_start = TRUE, ...) {
+  if (missing(fast)) {
+      fast <- getOption("glmmTMB.fast_refit", FALSE)
+  }
+        
+  if (fast) return(fast_refit(object, newresp, update_start, ...))
+  if (!missing(update_start) && update_start) {
+      warning("update_start argument ignored")
+  }
   cc <- getCall(object)
   newdata <- eval.parent(cc$data)
   if (is.null(newdata)) stop("can't locate original 'data' value")
@@ -1609,6 +1630,65 @@ refit.glmmTMB <- function(object, newresp, ...) {
   return(eval(cc))
 }
 
+## old, new: data variables
+## FUN: get data characteristic
+## val_name: name of data char
+## val_fmt: sprintf format
+mismatch_fun <- function(old, new, FUN, val_name, val_fmt) {
+    oldval <- FUN(old)
+    newval <- FUN(new)
+    if (oldval != newval) {
+        ## have to insert format string weirdly
+        str <- sprintf("old response %%s (%s) doesn't match new %%s (%s)", val_fmt, val_fmt)
+        stop(sprintf(str, val_name, oldval, val_name, newval), call. = FALSE)
+    }
+}
+
+
+fast_refit <- function(object, newresp, update_start = TRUE, ...) {
+    obj <- object$obj
+    ee <- obj$env
+    ## FIXME: check for weird binomial input (factors, logical, two-column matrix ...)
+    ##  and do something appropriate
+    dd <- ee$data
+
+    na.act <- attr(model.frame(object), "na.action")
+    if (!is.null(na.act) && attr(na.act, "class") %in% c("omit", "exclude")) {
+        newresp <- newresp[-na.act]
+    }
+
+    mismatch_fun(dd$yobs, newresp, length, "length", "%d")
+    mismatch_fun(dd$yobs, newresp, storage.mode, "storage mode", "%s") 
+
+    dd$yobs <- newresp
+    assign("data", dd, ee) ## stick this in the appropriate environment
+    if (update_start) {
+        p <- ee$last.par.best
+        if (length(ee$random)>0) {
+            p <- p[-ee$random]
+        }
+        obj$par <- p
+    }
+    obj$retape()
+    ## retrieve optimization machinery from original call (should store evaluated version
+    ##  of glmmTMBControl() in model ... !
+    call <- getCall(object)
+    control <- object$modelInfo$control
+    if (control$profile) stop("can't currently handle profile = TRUE")
+    fit <- optfun(obj, control)
+    fit$parfull <- obj$env$last.par.best ## This is in sync with fit$par
+    control$conv_check <- "skip"
+    ret <- finalizeTMB(
+        TMBStruc = list(control = control,
+                        se = is.null(object$sdr),
+                        REML = isREML(object),
+                        call = object$call,
+                        fr = object$frame_),
+        obj = obj,
+        fit = fit,
+        modelInfo = object$modelInfo)
+    return(ret)
+}
 
 ## copied from lme4, with addition of 'component' argument
 ## FIXME: migrate back to lme4? component is NULL for back-compat.
