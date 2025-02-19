@@ -35,6 +35,14 @@
       (GH #1133, @strengejacke)
     } % itemize
   } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item headline of \code{print} and \code{summary} output
+      now labels the minimum of the objective function
+      (correctly) as "-2*log(L)" rather than "deviance" (GH #1156, @ladin100)
+    } % itemize
+  } % user-visible changes
+
 } % 1.1.11
   
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{

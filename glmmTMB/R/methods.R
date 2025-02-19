@@ -697,8 +697,7 @@ print.glmmTMB <-
   ## Type Of Model fit --- REML? ---['class']  & Family & Call
   .prt.call.glmmTMB(x$call, long=longCall)
   ## the 'digits' argument should have an action here
-  aictab <- c(AIC = AIC(x), BIC = BIC(x), logLik = logLik(x),
-              df.resid = df.residual(x))
+  aictab <- llikAIC(x)$AICtab
   .prt.aictab(aictab, digits=digits+1)
   ## varcorr
   if (!all(sapply(vc <- VarCorr(x),is.null))) {
