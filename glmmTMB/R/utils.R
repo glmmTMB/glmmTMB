@@ -807,6 +807,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##'                                    log(2), ## log(SD(slope))
 ##'                                    ## AR1 correlation = 0.2
 ##'                                    put_cor(0.2, input_val = "vec"))
+##'                          )
 ##' )
 ##' 
 ##' @export
