@@ -85,10 +85,10 @@ sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
                          theta = c(log(2), ## log(SD(subject))
                                    log(2), ## log(SD(slope))
                                    ## AR1 correlation = 0.2
-                                   put_cor(0.2, input_val = "vec")
+                                   put_cor(0.2, input_val = "vec"))
 )
 
 }
 \seealso{
-\code{\link{glmmTMB}}, \code{\link{family_glmmTMB}} (for conditional distribution parameterizations [\code{betadisp}]), \code{\link{putcor}} (for correlation matrix parameterizations)
+\code{\link{glmmTMB}}, \code{\link{family_glmmTMB}} (for conditional distribution parameterizations [\code{betadisp}]), \code{\link{put_cor}} (for correlation matrix parameterizations)
 }
