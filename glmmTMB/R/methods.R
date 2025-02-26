@@ -1368,8 +1368,12 @@ noSim <- function(x) {
 ##' @param object glmmTMB fitted model
 ##' @param nsim number of response lists to simulate. Defaults to 1.
 ##' @param seed random number seed
-##' @param re.form (Not yet implemented)
-##' @param ... extra arguments
+##' @param re.form specify whether to use fixed (estimated) values of the latent variables
+##' or resample from their (unconditional) distribution. \code{NULL} specifies resampling
+##' from the estimated distribution, \code{NA} or \code{~0} specifies using the estimated values.
+##' It is not currently possible to (1) choose different options for different random effect
+##' terms, or (2) simulate from the \emph{conditional} distribution of the latent variables.
+##' @param ... extra arguments (for generic consistency)
 ##' @details Random effects are also simulated from their estimated distribution.
 ##' Currently, it is not possible to condition on estimated random effects.
 ##' @return returns a list of vectors. The list has length \code{nsim}.
@@ -1378,6 +1382,9 @@ noSim <- function(x) {
 ##' @importFrom stats simulate
 ##' @export
 simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
+
+    check_dots(..., .action = "warning")
+    
     if(noSim(object$modelInfo$family$family))
     {
     	stop("Simulation code has not been implemented for this family")

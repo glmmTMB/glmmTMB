@@ -1,7 +1,7 @@
 \documentclass[12pt]{article}
 %% vignette index specifications need to be *after* \documentclass{}
 %\VignetteEngine{knitr::knitr}
-%\VignetteIndexEntry{basic examples of glmmTMB usage}
+%\VignetteIndexEntry{Basic examples of glmmTMB usage}
 %\VignettePackage{glmmTMB}
 %\VignetteDepends{ggplot2}
 %\VignetteDepends{grid}

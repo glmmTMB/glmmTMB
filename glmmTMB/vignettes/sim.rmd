@@ -12,7 +12,7 @@ vignette: >
 
 ## Simulating from a fitted model
 
-`glmmTMB` has the capability to simulate from a fitted model. These simulations resample random effects from their estimated distribution. In future versions of `glmmTMB`, it may be possible to condition on estimated random effects.
+`glmmTMB` can simulate new responses from a fitted model. These simulations resample random effects from their estimated distribution. In future versions of `glmmTMB`, it may be possible to condition on estimated random effects.
 
 ```{r setup, include=FALSE, message=FALSE}
 library(knitr)
@@ -231,7 +231,7 @@ s2 <- simulate_new(~ ar1(times + 0 | group),
 
 With a nugget variance of $\sigma^2_n = 1.0$, an autoregressive variance of $\sigma^2_a = 1$, and an autoregressive parameter of $\phi = 0.7$, we expect the ACF to be $\sigma^2_a/(\sigma^2_a + \sigma^2_n) \phi^d$ .
 
-```{r plot_acf}
+```{r plot_acf, fig.width = 7}
 a1 <- drop(acf(dat0$y, plot = FALSE)$acf)
 a2 <- drop(acf(s2, plot = FALSE)$acf)
 par(las = 1, bty = "l")
