@@ -1524,6 +1524,13 @@ glmmTMBControl <- function(optCtrl=NULL,
         if (length(parallel) == 1 && is.numeric(parallel)) {
             parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
         }
+        ## if (typically first) arg is unnamed, fill it in
+        ## would like to replicate function argument-matching rules
+        ## (assign unmatched names to blank names in order)
+        if (length(parallel) > 1 && any(blank_names <- !nzchar(names(x)))) {
+            names(parallel)[blank_names] <- setdiff(c("n", "autopar"),
+                                                    names(parallel))
+        }
         if (is.null(names(parallel))) stop(sQuote("parallel"), "list passed to glmmTMBControl() must be named")
         ## FIXME: more elegant way to handle possible parallel arg cases (e.g. n only, autopar only)
         if (length(parallel$n) == 0) {

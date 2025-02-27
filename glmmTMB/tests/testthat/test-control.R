@@ -79,8 +79,25 @@ test_that("parallel regions", {
 
 })
 
+m1 <- glmmTMB(count ~ mined + (1|site), family = poisson, data = Salamanders)
+
 test_that("autopar-only parallel", {
-    m1 <- glmmTMB(count ~ mined + (1|site), family = poisson, data = Salamanders)
     m2 <- update(m1, control = glmmTMBControl(parallel = list(autopar = TRUE)))
     expect_equal(fixef(m1), fixef(m2))
+})
+
+get_parcore_output <- function(parallel_arg) {
+    options(glmmTMB_openmp_debug = TRUE)
+    cc <- capture.output(fit <- update(m1,
+                 control = glmmTMBControl(parallel = parallel_arg)))
+    options(glmmTMB_openmp_debug = FALSE)
+    return(cc)
+}
+
+test_that("ncores/autopar argument handling", {
+    get_parcore_output(list(n = 2, autopar = TRUE))
+    get_parcore_output(list(2, autopar = TRUE))
+    get_parcore_output(2)
+    ## doesn't work (yet)
+    ## get_parcore_output(list(n = 2))
 })
