@@ -5,7 +5,7 @@ openmp_debug <- function() {
 
 ## glmmTMB openmp controller copied from TMB (Windows needs it),
 ## and it also lets us have more control of debug tracing etc.
-openmp <- function (n = NULL, autopar = NULL) {
+openmp <- function (n = NULL, autopar = get_autopar()) {
     report <-  (openmp_debug() && (!is.null(n) || !is.null(autopar)))
     ## use deparse() etc. to handle cat(NULL), possible attributes/naming
     prefix <- if (is.null(n) && is.null(autopar)) "current OpenMP settings:" else "setting OpenMP:"
@@ -1508,7 +1508,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", NULL)),
+                           parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", get_autopar())),
                            eigval_check = TRUE,
                            ## want variance to be sqrt(eps), so sd = eps^(1/4)
                            zerodisp_val=log(.Machine$double.eps)/4,
@@ -1521,13 +1521,13 @@ glmmTMBControl <- function(optCtrl=NULL,
     }
     ## Make sure that we specify at least one thread
     if (!is.null(parallel)) {
-        if (length(parallel) == 1 && is.numeric(parallel)) {
-            parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
+        if (length(parallel) == 1 && is.numeric(parallel[[1]])) {
+            parallel <- list(n = parallel[[1]], autopar = getOption("glmmTMB.autopar", get_autopar()))
         }
         ## if (typically first) arg is unnamed, fill it in
         ## would like to replicate function argument-matching rules
         ## (assign unmatched names to blank names in order)
-        if (length(parallel) > 1 && any(blank_names <- !nzchar(names(x)))) {
+        if (length(parallel) > 1 && any(blank_names <- !nzchar(names(parallel)))) {
             names(parallel)[blank_names] <- setdiff(c("n", "autopar"),
                                                     names(parallel))
         }

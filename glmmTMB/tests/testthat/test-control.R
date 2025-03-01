@@ -75,7 +75,7 @@ test_that("parallel regions", {
   expect_true( all( distFits(m1[[1]], m2[[1]]) < c(1e-4, 1e-2, 1e-4) ) )
 
   # expect_true( m1[[2]] <= m2[[2]])
-
+  
 
 })
 
@@ -88,16 +88,25 @@ test_that("autopar-only parallel", {
 
 get_parcore_output <- function(parallel_arg) {
     options(glmmTMB_openmp_debug = TRUE)
-    cc <- capture.output(fit <- update(m1,
-                 control = glmmTMBControl(parallel = parallel_arg)))
+    cc <- capture.output(
+        fit <- update(m1,
+                      control = glmmTMBControl(parallel = parallel_arg))
+    )
     options(glmmTMB_openmp_debug = FALSE)
-    return(cc)
+    cc <- grep("NULL", cc, invert = TRUE, value = TRUE)
+    n <- as.integer(gsub("\\D*(\\d+)\\D*", "\\1", cc[1], perl = TRUE))
+    ap <- as.logical(gsub(".* autopar = (.*)", "\\1", cc[1], perl = TRUE))
+    return(list(n = n, autopar = ap))
 }
 
 test_that("ncores/autopar argument handling", {
-    get_parcore_output(list(n = 2, autopar = TRUE))
-    get_parcore_output(list(2, autopar = TRUE))
-    get_parcore_output(2)
-    ## doesn't work (yet)
-    ## get_parcore_output(list(n = 2))
+    ap0 <- getOption("glmmTMB.autopar", get_autopar())
+    expect_equal(get_parcore_output(list(n = 2, autopar = TRUE)),
+                 list(n=2L, autopar=TRUE))
+    expect_equal(get_parcore_output(list(2, autopar = TRUE)),
+                                    list(n=2L, autopar=TRUE))
+    expect_equal(get_parcore_output(2),
+                 list(n = 2L, autopar = ap0))
+    expect_equal(get_parcore_output(list(n = 2)),
+                 list(n = 2L, autopar = ap0))
 })
