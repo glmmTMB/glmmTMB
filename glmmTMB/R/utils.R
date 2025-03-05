@@ -49,17 +49,30 @@ get_matdim <- function(ntri) {
     as.integer(round(0.5 * (1 + sqrt(1 + 8 * ntri))))
 }
 
-##' translate vector of correlation parameters to correlation values
+##' transform correlation parameters to and from glmmTMB parameterization
 ##' @param theta vector of internal correlation parameters (elements of scaled Cholesky factor, in \emph{row-major} order)
 ##' @param return_val return a vector of correlation values from the lower triangle ("vec"), or the full correlation matrix ("mat")? 
 ##' @return a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
-##' @details These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
-##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+##' @details
+##' \code{\link{get_cor}} transforms from the glmmTMB parameterization (components of a \code{theta} parameter vector) to correlations;
+##' \code{\link{put_cor}} does the inverse transformations, from correlations to \code{theta} values.
+##' 
+##' These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
+##' if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0} (i.e. the correlation in a 2x2 correlation matrix), this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+##'
+##' These functions also work for AR1 correlation parameters.
 ##' @examples
 ##' th0 <- 0.5
-##' stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
+##' stopifnot(all.equal(get_cor(th0), th0/sqrt(1+th0^2)))
 ##' set.seed(101)
-##' C <- get_cor(rnorm(21), return_val = "mat")
+##' ## pick 6 values for a random 4x4 correlation matrix
+##' print(C <- get_cor(rnorm(6), return_val = "mat"), digits = 3)
+##' ## transform a correlation matrix to a theta vector
+##' cor_mat <- matrix(c(1,0.3,0.1,
+##'                     0.3,1,0.2,
+##'                     0.1,0.2,1), ncol = 3)
+##' put_cor(cor_mat, "mat")
+##' put_cor(cor_mat[lower.tri(cor_mat)], "vec")
 ##' ## test: round-trip
 ##' stopifnot(all.equal(get_cor(put_cor(C), return_val = "mat"), C))
 ##' @export
@@ -751,39 +764,50 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' @param newparams a list of parameters containing sub-vectors
 ##' (\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
 ##' be used in the model. If \code{b} is specified in this list, then the conditional modes/BLUPs
-##' will be set to these values; otherwise they will be drawn from the appropriate Normal distribution
+##' will be set to these values; otherwise they will be drawn from the appropriate Normal distribution.
+##' See \code{vignette("covstruct", package = "glmmTMB")} for details on the parameterizations used
+##' for various random-effects models (i.e., \code{theta}).
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
+##' @seealso \code{\link{glmmTMB}}, \code{\link{family_glmmTMB}} (for conditional distribution parameterizations [\code{betadisp}]), \code{\link{put_cor}} (for correlation matrix parameterizations)
 ##' @examples
-##' ## use Salamanders data for structure/covariates
+##' ## use Salamanders data for observational design and covariate values
+##' ## parameters used here are sensible, but do not fit the original data
+##' params <- list(beta = c(2, 1),
+##'                betazi = c(-0.5, 0.5), ## logit-linear model for zi
+##'                betadisp = log(2), ## log(NB dispersion)
+##'                theta = log(1)) ## log(among-site SD)
 ##' sim_count <- simulate_new(~ mined + (1|site),
 ##'              newdata = Salamanders,
 ##'              zi = ~ mined,
 ##'              family = nbinom2,
-##'              newparams = list(beta = c(2, 1),
-##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-##'                          betadisp = log(2), ## log(NB dispersion)
-##'                          theta = log(1)) ## log(among-site SD)
+##'              seed = 101,
+##'              newparams = params
 ##' )
+##' ## simulate_new with return="sim" always returns a list of response vectors
+##' Salamanders$sim_count <- sim_count[[1]]    
+##' summary(glmmTMB(sim_count ~ mined + (1|site), data=Salamanders, ziformula=~mined, family=nbinom2))
+##' ## return a glmmTMB object
 ##' sim_obj <- simulate_new(~ mined + (1|site),
 ##'             return_val = "object",
 ##'              newdata = Salamanders,
 ##'              zi = ~ mined,
 ##'              family = nbinom2,
-##'              newparams = list(beta = c(2, 1),
-##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
-##'                          betad = log(2), ## log(NB dispersion)
-##'                          theta = log(1)) ## log(among-site SD)
-##' )
+##'              newparams = params)
+##' ## simulate Gaussian data, multivariate random effect
 ##' data("sleepstudy", package = "lme4")
 ##' sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
 ##'              return_val = "pars",
 ##'              newdata = sleepstudy,
 ##'              family = gaussian,
 ##'              newparams = list(beta = c(280, 1),
-##'                          betad = log(2), ## log(SD)
-##'                          theta = log(c(2, 2, 1))),
+##'                          betad = log(2), ## log(residual std err)
+##'                          theta = c(log(2), ## log(SD(subject))
+##'                                    log(2), ## log(SD(slope))
+##'                                    ## AR1 correlation = 0.2
+##'                                    put_cor(0.2, input_val = "vec"))
+##'                          )
 ##' )
 ##' 
 ##' @export
