@@ -306,7 +306,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xdisp", "theta", "beta", "b"),
+                                   "Xdisp", "theta", "beta", "b", "Gp"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -327,7 +327,8 @@ getME.glmmTMB <- function(object,
   ##  changed args of parList() from internal/dynamically changing objects
   ##  to these stored parameters
   allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
-  isSparse <- function(component) { if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
+  isSparse <- function(component) {
+      if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
   switch(name,
          "X"     = if (!isSparse("cond")) oo.env$data$X else oo.env$data$XS,
          "Xzi"   = if (!isSparse("zi")) oo.env$data$Xzi else oo.env$data$XziS,
@@ -338,6 +339,15 @@ getME.glmmTMB <- function(object,
   			 "theta" = allpars$theta ,
          "beta"  = unlist(allpars[c("beta","betazi","betadisp")]),
          "b" = unlist(allpars[c("b", "bzi", "bdisp")]),
+         "Gp" = {
+             cc <- object$modelInfo$reStruc$condReStruc
+             if (is.null(cc)){
+                 NULL
+             } else {
+                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = integer(1))
+                 unname(cumsum(c(0,v)))
+             }
+         },
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
