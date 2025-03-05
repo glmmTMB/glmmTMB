@@ -9,8 +9,6 @@ data(sleepstudy, cbpp, package = "lme4")
 ## fsleepstudy and fitted models come from inst/test_data/models.rda
 ## OR running inst/test_data/make_ex.R
 
-context("variance structures")
-
 test_that("diag", {
    ## two formulations of diag and lme4 all give same log-lik
    expect_equal(logLik(fm_diag1),logLik(fm_diag2_lmer))
@@ -22,6 +20,12 @@ test_that("cs_us", {
 ##  give same result
     expect_equal(logLik(fm_us1),logLik(fm_cs1))
     expect_equal(logLik(fm_us1),logLik(fm_us1_lmer))
+})
+
+test_that("cs_homog", {
+    fm_csh   <- glmmTMB(Reaction ~ Days + homcs(Days | Subject), sleepstudy)
+    vv <- unname(diag(VarCorr(fm_csh)[["cond"]][["Subject"]]))
+    expect_identical(vv[1], vv[2])
 })
 
 test_that("cs_homog", {
@@ -40,11 +44,15 @@ test_that("basic ar1", {
 
 ## change to something better behaved
 test_that("print ar1 (>1 RE)", {
-    fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
-                                    newdata=fsleepstudy,
-                                    newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
-                                    family = gaussian,
-                                    seed = 101)[[1]]
+    ## sim order of sampling rnorm() values changed with implementation of hetar1, so use stored sim
+    ##
+    ## fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
+    ##                                 newdata=fsleepstudy,
+    ##                                 newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
+    ##                                 family = gaussian,
+    ##                                 seed = 101)[[1]]
+    ##     saveRDS(fsleepstudy$sim, file="../../inst/test_data/sim_ar1.rds",version=2)
+    fsleepstudy$sim <- readRDS(system.file("test_data", "sim_ar1.rds", package="glmmTMB"))
     fm_ar2 <- glmmTMB(sim ~ 1 +
                           (1|Subject) + ar1(row+0| Subject), fsleepstudy)
     cco <- gsub(" +"," ",
@@ -105,28 +113,30 @@ test_that("varcorr_print", {
     expect_equal(length(grep("fDays", cc)), 2)
 })
 
+ff <- system.file("test_data","cov_struct_order.rds",package="glmmTMB")
+
+if (nchar(ff)>0) {
+    dat <- readRDS(ff)
+} else {
+    set.seed(101)
+    nb <- 100
+    ns <- nb*3
+    nt <- 100
+    cor <- .7
+    dat  <-  data.frame(Block = factor(rep(1:nb, each = ns/nb*nt)),
+                        Stand = factor(rep(1:ns, each = nt)),
+                        Time = rep(1:nt, times = ns),
+                        blockeff = rep(rnorm(nb, 0, .5), each = ns/nb*nt),
+                        standeff = rep(rnorm(ns, 0, .8), each = nt),
+                        resid = c(t(MASS::mvrnorm(ns, mu = rep(0, nt),
+                                                  Sigma = 1.2*cor^abs(outer(0:(nt-1),0:(nt-1),"-"))))))
+    dat$y  <-  with(dat, 5 + blockeff + standeff + resid)+rnorm(nrow(dat), 0, .1)
+    dat$Time  <-  factor(dat$Time)
+    ## saveRDS(dat, file="../../inst/test_data/cov_struct_order.rds",version=2)
+}
+
 test_that("cov_struct_order", {
     skip_on_cran()
-    ff <- system.file("test_data","cov_struct_order.rds",package="glmmTMB")
-    if (nchar(ff)>0) {
-        dat <- readRDS(ff)
-    } else {
-        set.seed(101)
-        nb <- 100
-        ns <- nb*3
-        nt <- 100
-        cor <- .7
-        dat  <-  data.frame(Block = factor(rep(1:nb, each = ns/nb*nt)),
-                            Stand = factor(rep(1:ns, each = nt)),
-                            Time = rep(1:nt, times = ns),
-                            blockeff = rep(rnorm(nb, 0, .5), each = ns/nb*nt),
-                            standeff = rep(rnorm(ns, 0, .8), each = nt),
-                            resid = c(t(MASS::mvrnorm(ns, mu = rep(0, nt),
-                                                      Sigma = 1.2*cor^abs(outer(0:(nt-1),0:(nt-1),"-"))))))
-        dat$y  <-  with(dat, 5 + blockeff + standeff + resid)+rnorm(nrow(dat), 0, .1)
-        dat$Time  <-  factor(dat$Time)
-        ## saveRDS(dat, file="../../inst/test_data/cov_struct_order.rds",version=2)
-    }
 
     fit1  <-  glmmTMB(y ~ (1|Block) + (1|Stand)+ ar1(Time +0|Stand), data = dat)
     expect_equal(unname(fit1$fit$par),
@@ -140,4 +150,17 @@ test_that("hom vs het diag", {
                  ## tolerance loosened for var -> SD reparameterization
                  tolerance = 2e-4)
 
+})
+
+test_that("het ar1", {
+    skip_on_cran()
+    sleepstudy$Days <- factor(sleepstudy$Days)
+    sleepstudy$y <- simulate_new(~ 1 + (1|Subject) + hetar1(Days+0| Subject),
+                      newdata=sleepstudy,
+                      newparams = list(beta=0, betadisp = 1, theta = rep(1, 12)),
+                                       family = gaussian,
+                      seed = 101)[[1]]
+    suppressWarnings(fit1  <-  glmmTMB(y ~ 1 + (1|Subject) + hetar1(Days+0| Subject),
+                                       data=sleepstudy))
+    VarCorr(fit1)
 })

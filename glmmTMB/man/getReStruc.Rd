@@ -11,12 +11,12 @@ getReStruc(reTrms, ss = NULL, aa = NULL, reXterms = NULL, fr = NULL)
 \arguments{
 \item{reTrms}{random-effects terms list}
 
-\item{ss}{a character string indicating a valid covariance structure.
+\item{ss}{a vector of character strings indicating a valid covariance structure (one for each RE term).
 Must be one of \code{names(glmmTMB:::.valid_covstruct)};
 default is to use an unstructured  variance-covariance
 matrix (\code{"us"}) for all blocks).}
 
-\item{aa}{additional arguments (i.e. rank)}
+\item{aa}{additional arguments (i.e. rank, or var-cov matrix)}
 
 \item{reXterms}{terms objects corresponding to each RE term}
 
@@ -28,6 +28,7 @@ a list
 \item{blockSize}{size (dimension) of one block}
 \item{blockReps}{number of times the blocks are repeated (levels)}
 \item{covCode}{structure code}
+\item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?}
 }
 \description{
 Calculate random effect structure
@@ -41,4 +42,5 @@ rt <- lme4::lFormula(Reaction~Days+(1|Subject)+(0+Days|Subject),
 rt2 <- lme4::lFormula(Reaction~Days+(Days|Subject),
                     sleepstudy)$reTrms
 getReStruc(rt)
+getReStruc(rt2)
 }

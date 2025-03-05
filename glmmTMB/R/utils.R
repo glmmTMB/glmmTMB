@@ -398,17 +398,26 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           ee2$parameters$psi <- ee2$parameters$thetaf
           ee2$parameters$thetaf <- NULL
       }
+
+      for (i in seq_along(ee$data$terms)) {
+          ee$data$terms[[i]]$simCode <- .valid_simcode[["random"]]
+      }
+      for (i in seq_along(ee$data$termszi)) {
+          ee$data$termszi[[i]]$simCode <- .valid_simcode[["random"]]
+      }
+      
       if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
       	ee2$parameters$betadisp <- ee2$parameters$betad
       	ee2$parameters$betad <- NULL
       }
 
-    ## prior_ivars, prior_fvars are defined in priors.R
+      ## prior_ivars, prior_fvars are defined in priors.R
       if (!"prior_distrib" %in% names(ee$data)) {
           ## these are DATA_IVECTOR but apparently after processing
           ##  TMB turns these into numeric ... ??
           for (v in prior_ivars) ee$data[[v]] <- numeric(0)
           for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+
       }
 
       ## switch from variance to SD parameterization
@@ -434,6 +443,12 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
                                       DLL = "glmmTMB"))
       oldfit$obj$env$last.par.best <- ee$last.par.best
       ##
+  }
+
+  for (t in c("condReStruc", "ziRestruc", "dispRestruc")) {
+      for (i in seq_along(oldfit$modelInfo$reStruc[[t]])) {
+          oldfit$modelInfo$reStruc[[t]][[i]]$simCode <- .valid_simcode[["random"]]
+      }
   }
 
   ## changed format of 'parallel' control to add autopar info
@@ -544,7 +559,8 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
 
 ## all parameters, including both mapped and rank-dropped
-getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE) {
+getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,
+                        include_mapequal = FALSE) {
                            
   mkNames <- function(tag="") {
       X <- getME(object,paste0("X",tag))
@@ -603,12 +619,17 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
      map <- object$obj$env$map
      if (length(map)>0) {
          for (m in seq_along(map)) {
-            if (length(NAmap <- which(is.na(map[[m]])))>0) {
-                w <- match(names(map)[m],par_components) ##
+             if (!include_mapequal) {
+                 missmap <- which(is.na(map[[m]]) | duplicated(map[[m]]))
+             } else {
+                 missmap <- which(is.na(map[[m]]))
+             }
+             if (length(missmap)>0) {
+                w <- match(names(map)[m], par_components) ##
                 if (length(nameList)>=w) { ## may not exist if !full
-                    nameList[[w]] <- nameList[[w]][-NAmap]
+                    nameList[[w]] <- nameList[[w]][-missmap]
                 }
-            }
+            }  ## if NA/duplicated values
          } ## for (m in seq_along(map))
      } ## if (length(map) > 0)
   }
@@ -652,22 +673,63 @@ fix_predvars <- function(pv,tt) {
     return(new_pv)
 }
 
-make_pars <- function(pars, ...) {
+collapse_list <- function(pList) {
+    ## workaround to get non-unique names ...
+    pList <- mapply(function(x, n) { setNames(x, rep(n, length(x))) },
+                    pList, names(pList))
+    pvec <- unlist(unname(pList))
+}
+
+make_pars <- function(pList, ..., include_extra = TRUE) {
+    ## FIXME: check for name matches, length matches etc.
+    ## (useful errors)
+    ## better to split by name first??
+
     L <- list(...)
-    for (nm in names(L)) {
-        unmatched <- setdiff(names(L), unique(names(pars)))
-        if (length(unmatched) > 0) {
-            warning(sprintf("unmatched parameter names: %s",
-                            paste(unmatched, collapse =", ")))
-            next
-        }
-        if ((len1 <- length(L[[nm]])) != (len2 <- sum(names(pars) == nm))) {
-            stop(sprintf("length mismatch in component %s (%d != %d)",
-                         nm, len1, len2))
-        }
-        pars[names(pars) == nm] <- L[[nm]]
+    unmatched <- setdiff(names(L), names(pList))
+    if (length(unmatched) > 0) {
+        warning(sprintf("unmatched parameter names: %s",
+                        paste(unmatched, collapse =", ")))
     }
-    return(pars)
+
+    if (!include_extra) L <- L[intersect(names(L), names(pList))]
+    for (nm in names(L)) {
+        if ((len1 <- length(pList[[nm]])) == (len2 <- length(L[[nm]]))) {
+            pList[[nm]] <- L[[nm]]
+        } else {
+            ## skip cases with different length (== partially-mapped vectors)
+            plen <- len1 + length(attr(pList[[nm]], "map"))
+            ## if L[[nm]] is a list, that's because we're
+            ##  passing a partial b vector ...
+            if (plen != len2 && !is.list(L[[nm]])) {
+                warning(sprintf("length mismatch in component %s (%d != %d); not setting",
+                                nm, len1, len2))
+            }
+        }
+    }
+    return(collapse_list(pList))
+}
+
+##' helper function to modify simulation settings for random effects
+##'
+##' This modifies the TMB object \emph{in place} (beware!)
+##' Ultimately this will allow \code{terms} to be a vector of term names,
+##' with a matching \code{val} vector to specify the behaviour for each term
+##'
+##' @param g a TMB object
+##' @param val a legal setting for sim codes ("zero", "random", or "fix")
+##' @param terms which terms to apply this to
+##' @export
+##' 
+set_simcodes <- function(g, val = "zero", terms = "ALL") {
+    ee <- g$env
+    if (terms != "ALL") stop("termwise setting of simcodes not implemented yet")
+    if (terms == "ALL") {
+        for (i in seq_along(ee$data$terms)) {
+            ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
+        }
+    }
+
 }
 
 ##' Simulate from covariate/metadata in the absence of a real data set (EXPERIMENTAL)
@@ -688,14 +750,13 @@ make_pars <- function(pars, ...) {
 ##' be all zeros, but whose value is otherwise irrelevant)
 ##' @param newparams a list of parameters containing sub-vectors
 ##' (\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
-##' be used in the model
+##' be used in the model. If \code{b} is specified in this list, then the conditional modes/BLUPs
+##' will be set to these values; otherwise they will be drawn from the appropriate Normal distribution
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
-##' @param show_pars (logical) print structure of parameter vector and stop without simulating?
+##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
+##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
 ##' @examples
 ##' ## use Salamanders data for structure/covariates
-##' simulate_new(~ mined + (1|site),
-##'              zi = ~ mined,
-##'              newdata = Salamanders, show_pars  = TRUE)
 ##' sim_count <- simulate_new(~ mined + (1|site),
 ##'              newdata = Salamanders,
 ##'              zi = ~ mined,
@@ -705,18 +766,41 @@ make_pars <- function(pars, ...) {
 ##'                          betadisp = log(2), ## log(NB dispersion)
 ##'                          theta = log(1)) ## log(among-site SD)
 ##' )
-##' head(sim_count[[1]])
+##' sim_obj <- simulate_new(~ mined + (1|site),
+##'             return_val = "object",
+##'              newdata = Salamanders,
+##'              zi = ~ mined,
+##'              family = nbinom2,
+##'              newparams = list(beta = c(2, 1),
+##'                          betazi = c(-0.5, 0.5), ## logit-linear model for zi
+##'                          betad = log(2), ## log(NB dispersion)
+##'                          theta = log(1)) ## log(among-site SD)
+##' )
+##' data("sleepstudy", package = "lme4")
+##' sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
+##'              return_val = "pars",
+##'              newdata = sleepstudy,
+##'              family = gaussian,
+##'              newparams = list(beta = c(280, 1),
+##'                          betad = log(2), ## log(SD)
+##'                          theta = log(c(2, 2, 1))),
+##' )
+##' 
 ##' @export
 simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
                          family = gaussian,
-                         newdata, newparams, ..., show_pars = FALSE) {
-    
-    family <- get_family(family)
-    if (!is.null(seed)) set.seed(seed)
+                         newdata, newparams, ...,
+                         return_val = c("sim", "pars", "object")) {
+    return_val <- match.arg(return_val)
+    family <- get_family(family, deparse(substitute(family)))
     ## truncate
     if (length(object) == 3) stop("simulate_new should take a one-sided formula")
+    newparams0 <- newparams
+    ## store original params
+    ## (in case we need both complete-b and unmapped-b versions)
+    
     ## fill in fake LHS
     form <- object
     form[[3]] <- form[[2]]
@@ -728,13 +812,94 @@ simulate_new <- function(object,
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
+                  ## make sure optim doesn't actually do anything
+                  ## (if return_val is "object")
+                  control = glmmTMBControl(optCtrl = list(iter.max = 0)),
                   ...,
                   doFit = FALSE)
-## construct TMB object, but don't fit it
+    ## sort out components of b (if necessary)
+    if ("b" %in% names(newparams)) {
+        components <- c("cond", "zi")
+        cnames <- paste0(components, "ReStruc")
+        tnames <- c("terms", "termszi")
+        if (!is.list(newparams$b)) {
+            b_inds <- seq_along(newparams$b)
+            for (i in seq_along(cnames)) { ## loop over RE categories in object ('cond' and 'zi')
+                for (j in seq_along(r1[[cnames[i]]])) { ## loop over terms within the category
+                    r1[[cnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
+                    r1$data.tmb[[tnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
+                }
+            }
+        } else {
+            restrucs <- r1[cnames]
+            b_inds <- get_b_inds(restrucs, names(newparams$b))
+            b_terms <- get_b_inds(restrucs, names(newparams$b),
+                                  ret_val = "terms")
+            ##  b_terms gives indices in overall sequence, not
+            ## indices per term -- we have to split these by
+            ## term. Should probably be handled upstream?
+            for (i in seq_along(cnames)) {
+                nre <- length(r1[[i]])
+                cur_b <- which(b_terms < nre)
+                if (length(cur_b) > 0) {
+                    for (j in b_terms[cur_b]) {
+                        ## ugh, have to set in two places: do this upstream
+                        ## of glmmTMB() call?
+                        r1[[cnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
+                        r1$data.tmb[[tnames[i]]][[j]]$simCode <- .valid_simcode[["fix"]]
+                    }
+                    b_terms <- b_terms[-cur_b]
+                }
+                b_terms <- b_terms - nre
+            }
+        }
+        n_b <- length(r1$parameters$b)
+        b_fac <- seq(n_b)
+        b_fac[unlist(b_inds)] <- NA
+        ## TMB complains if number of levels doesn't match values:
+        ##  make into a factor *after* setting NA values
+        b_fac <- factor(b_fac)
+        new_b <- rep(0, n_b)
+        new_b[unlist(b_inds)] <- unlist(newparams$b)
+        r1$parameters$b <- new_b
+        r1$map <- r1$mapArg <- list(b = b_fac)
+    }
+    ## construct TMB object, but don't fit it
+    ## (for cnms etc., simulations, etc.)
     r2 <- fitTMB(r1, doOptim = FALSE)
-    if (show_pars) return(r2$env$last.par)
+
+    set_b <-  function(x, b, map = NULL) {
+        if (!is.null(map)) {
+            b <- b[!is.na(map)]
+        }
+        pList <- split(x, names(x))
+        pList$b <- b
+        return(collapse_list(pList))
+    }
+
     pars <- do.call("make_pars",
-                    c(list(r2$env$last.par), newparams))
+                    c(list(r2$env$parameters), newparams,
+                      list(include_extra = FALSE)))
+
+    if (!is.null(seed)) set.seed(seed)
+    if (return_val %in% c("pars", "object")) {
+        b_vals <- r2$simulate(par = pars)$b
+        if (return_val == "pars") {
+            pars <- do.call("make_pars",
+                            c(list(r2$env$parameters), newparams,
+                              list(include_extra = TRUE)))
+            return(set_b(pars, b_vals))
+        }
+        ## FIXME: need to set start= values as well when simulating
+        ## object??
+        ## what do we do when b is specified/partially specified?
+        for (nm in names(newparams)) {
+            r1$parameters[[nm]] <- newparams[[nm]]
+        }
+        r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
+        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map$b)
+        return(r3)
+    }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
 }
 
@@ -759,7 +924,7 @@ match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
     }
 }
 
-get_family <- function(family) {
+get_family <- function(family, f_name) {
     if (is.character(family)) {
         if (family=="beta") {
             family <- "beta_family"
@@ -776,11 +941,59 @@ get_family <- function(family) {
 
     ## FIXME: what is this doing? call to a function that's not really
     ##  a family creation function?
-    if (is.null(family$family)) {
-      print(family)
-      stop("after evaluation, 'family' must have a '$family' element")
+    if (isS4(family) || is.null(family$family)) {
+        stop(sprintf("after evaluation, 'family' (specified as '%s') must be a list containing a '$family' element", f_name))
     }
     return(family)
+}
+
+## ugh, better way to do this?
+get_re_names <- function(re) {
+    names(unlist(sapply(re, function(x) sapply(x, function(y) NA))))
+}
+
+#' @param reStrucs a list containing conditional and z-i RE structures
+#' @param b_names vector of names matching RE terms
+#' @examples
+#' data("sleepstudy", package = "lme4")
+#' fm1 <- glmmTMB(Reaction ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject), sleepstudy)
+#' re <- fm1$modelInfo$reStruc
+#' get_b_inds(re, "1|Subject")
+#' @noRd
+get_b_terms <- function(nms, inms) {
+    squash_ws <- function(x) gsub(" ", "", x)
+    nms <- squash_ws(nms)
+    inms <- squash_ws(inms)
+    w <- match(nms, inms)
+    unmatched <- which(is.na(w))
+    if (length(unmatched)>0) {
+        w[unmatched] <- match(nms[unmatched],
+                              gsub("^(cond|zi)ReStruc\\.", "", inms))
+    }
+    if (any(is.na(w))) {
+        stop("unmatched RE terms")
+    }
+    return(w)
+}
+                        
+get_b_inds <- function(reStrucs, b_names, ret_val = c("indices", "terms")) {
+    ret_val <- match.arg(ret_val)
+    bfun <- function(x) {
+        if (length(x) == 0) return(numeric(0))
+        with(x, blockSize * blockReps)
+    }
+    retrms <- unlist(sapply(reStrucs, function(x) sapply(x, bfun)))
+    ## set up indices ...
+    if (ret_val == "terms") {
+        return(get_b_terms(b_names, get_re_names(reStrucs)))
+    }
+    w <- get_b_terms(b_names, get_re_names(reStrucs))
+    inds <- cumsum(c("start" = 0, retrms))
+    ## first try to match full name (component + term)
+    ## set specified values
+    res <- lapply(w, function(i) seq(inds[i]+1, inds[i+1]))
+    names(res) <- b_names
+    res
 }
 
 ## add negative-value check to binomial initialization method
@@ -795,3 +1008,4 @@ our_binom_initialize <- function(family) {
     b0[[length(b0)+1]] <- newtest
     return(b0)
 }
+

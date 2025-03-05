@@ -37,6 +37,10 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	grep _zipredictcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_zipredictcode//g >> $@
 	echo ")" >> $@
 
+	echo ".valid_simcode <- c(" >> $@
+	grep _simcode.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_simcode//g >> $@
+	echo ")" >> $@
+
 	echo ".valid_prior <- c(" >> $@
 	grep _prior.*= $(PACKAGE)/src/glmmTMB.cpp | sed s/_prior//g >> $@
 	echo ")" >> $@
@@ -44,6 +48,12 @@ $(PACKAGE)/R/enum.R: $(PACKAGE)/src/glmmTMB.cpp
 	echo ".valid_vprior <- c(" >> $@
 	grep "_vprior *=" $(PACKAGE)/src/glmmTMB.cpp | sed s/_vprior//g >> $@
 	echo ")" >> $@
+
+
+upstream-ver-update: $(PACKAGE)/inst/TMB-version
+$(PACKAGE)/inst/TMB-version:
+	echo "glmmTMB:::checkDepPackageVersion('TMB',write_file=TRUE)" | $(R) --slave
+	mv TMB-version $@
 
 doc-update: $(PACKAGE)/R/*.R
 	echo "suppressWarnings(roxygen2::roxygenize(\"$(PACKAGE)\",roclets = c(\"collate\", \"rd\")))" | $(R) --slave

@@ -379,3 +379,26 @@ test_that("handle failure in numDeriv::jacobian",
                 family = truncated_nbinom1))
    expect_is(m1, "glmmTMB")
 })
+
+test_that("don't mess up internal formula ordering", {
+    dd <- expand.grid(type = factor(c("R","S")),
+                      strainN = factor(1:3),
+                      dose = c("N","C"),
+                      rep = factor(1:5),
+                      aid = factor(1:5),
+                      rep = 1:10)
+    set.seed(101)
+    dd$l3 <- rnorm(nrow(dd))
+    form <- l3~(type/strainN)*dose
+    m1 <- glmmTMB(form, data = dd)
+    expect_identical(colnames(model.matrix(m1)),
+                     colnames(model.matrix(form, data = dd)))
+})
+
+test_that("subset argument", {
+    fms <- update(fm1, subset = Days > 0)
+    expect_false(isTRUE(all.equal(fixef(fm1), fixef(fms))))
+    expect_equal(fixef(fms)$cond,
+                 c(`(Intercept)` = 248.63573143019875,
+                   Days = 10.904528975303338))
+})

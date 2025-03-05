@@ -149,17 +149,15 @@ test_that("equivalence between 'skip' and 'warn' when confronted with identifiab
     # models with identifiability issues
     ## X
     cc1 <- glmmTMBControl(rank_check = 'skip', conv_check = 'skip')
-    ## small-eig warning
+    ## suppress 'extreme or very small eigenvalues detected' warning
     suppressWarnings(m1 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=cc1))
     expect_warning(
         m2 <- glmmTMB(y ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in conditional model are rank deficient"
     )
     expect_equal(fixef(m1), fixef(m2))
-    ## small-eig warning
-    suppressWarnings(
-        m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=cc1)
-    )
+    ## same warning
+    suppressWarnings(m1 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=cc1))
     expect_warning(
         m2 <- glmmTMB(y ~ 1, ziformula = ~ x1 + x2 + x3 + x4, data=dat, control=glmmTMBControl(rank_check='warn')),
         "fixed effects in zero-inflation model are rank deficient"

@@ -4,6 +4,11 @@ stopifnot(require("testthat"),
 data(sleepstudy, cbpp, Pastes,
      package = "lme4")
 
+## handy for interactive use
+if (FALSE) {
+    source("tests/testthat/setup_makeex.R")
+}
+
 if (getRversion() < "3.3.0") {
     sigma.default <- function (object, use.fallback = TRUE, ...)
         sqrt(deviance(object, ...)/(nobs(object, use.fallback = use.fallback) -
@@ -75,6 +80,12 @@ test_that("Fitted and residuals", {
                  -5.14833310763953e-05, tolerance = 1e-6)
     expect_equal(residuals(m1, type = "pearson"),
                  residuals(m1)/predict(m1, type = "disp"))
+})
+
+test_that("Pop-level residuals", {
+    r1 <- residuals(fm2, re.form  = NA)
+    r2 <- model.response(model.frame(fm2)) - predict(fm2, re.form = NA)
+    expect_equal(r1, r2)
 })
 
 test_that("Predict", {
@@ -396,6 +407,13 @@ test_that("vcov", {
 })
 
 
+test_that("simulate with re.form = NA", {
+    s1 <- simulate(fm_diag2, seed = 101)
+    ## s1_pop <- simulate(fm_diag2, seed = 101, re.form = NA)
+    s1_lmer <- simulate(fm_diag2_lmer, seed = 101)
+    ## s1_lmer_pop <- simulate(fm_diag2_lmer, seed = 101, re.form = NA)
+})
+
 test_that("formula", {
     expect_equal(formula(fm2),Reaction ~ Days + (Days | Subject))
     expect_equal(formula(fm2, fixed.only=TRUE),Reaction ~ Days)
@@ -636,7 +654,7 @@ test_that("de novo simulation with binomial N>1", {
 
 test_that("de novo simulation error checking", {
     dd <- data.frame(x = 1:10)
-    expect_error(simulate_new(~ x,
+    expect_warning(simulate_new(~ x,
                  seed = 101,
                  family = gaussian,
                  newdata = dd,
@@ -674,7 +692,9 @@ test_that("weighted residuals", {
                  data = cbpp, family = poisson, weights = wts)
     tmbm5 <- glmmTMB(incidence ~ period,
                      data = cbpp, family = poisson, weights = wts)
-    for  (type in eval(formals(residuals.glmmTMB)$type)) {
+    resid_types <- setdiff(eval(formals(residuals.glmmTMB)$type),
+                           "dunn-smyth")
+    for  (type in resid_types) {
         expect_equal(residuals(tmbm4, type = type),
                      residuals(tmbm5, type = type),
                      tolerance = 1e-6)
@@ -698,6 +718,46 @@ test_that("ranef for rr() models", {
     "23", "24", "27"), class = "factor"), condval = c(-0.893053872609456, 
     -1.00956536260405), condsd = c(1.13999978200572, 1.29609467840739
                                    )), row.names = c("cond.1", "cond.2"), class = "data.frame"))
+})
+
+test_that("dunn-smyth residuals", {
+    set.seed(101)
+    expect_equal(head(residuals(fm2NB, type = "dunn-smyth")),
+                 c(-0.359359541418763, -0.650271471641143,
+                   -1.65874788276259, 
+                   0.534218575163113,
+                   1.13173385534682, 2.37431279792035),
+                 tolerance = 1e-6)
+})
+
+test_that("profiling with mapped parameters", {
+    data("sleepstudy", package = "lme4")
+    m1 <- glmmTMB(Reaction ~ Days,
+                  data = sleepstudy,
+                  family = gaussian,
+                  map = list(beta = factor(c(NA, 1))),
+                  start = list(beta = c(250, 0)))
+
+    pp <- profile(m1)                         
+    expect_equal(dim(pp), c(50, 3))
+})
+
+test_that("vcov(full=TRUE) with non-NA mapped parameters", {
+    ## GH 1120
+    M0 <- suppressWarnings(
+        glmmTMB(
+            Reaction ~ Days + cs(0 + factor(Days) | Subject), dispformula = ~ 0, 
+            data = sleepstudy, REML = TRUE)
+    )
+    M0_map <- suppressWarnings(
+        update(M0,
+               map = list(theta = factor(c(rep(1, 10), 2))))
+    )
+    v0 <- vcov(M0, full = TRUE)
+    v1 <- vcov(M0_map, full = TRUE)
+    expect_identical(dim(v0), dim(v1))
+    expect_true(!any(is.na(v0)))
+    expect_equal(sum(is.na(v1)), 153L)
 })
 
 # This test started also giving a warning on os "mac".

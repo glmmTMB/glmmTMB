@@ -60,9 +60,9 @@ diagnose <- function(fit,
     ss <- suppressWarnings(summary(fit$sdr))
     ss <- ss[grepl("^(beta|theta|psi)", rownames(ss)), ]
     ## easiest way to get names corresponding to all of the parameters
-    vv <- try(vcov(fit, full = TRUE))
+    vv <- try(vcov(fit, full = TRUE, include_nonest = FALSE))
     if (!inherits(vv, "try-error")) {
-        nn <- colnames(vcov(fit, full = TRUE))
+        nn <- colnames(vv)
     } else {
         nn <- make.unique(names(pp))
         if (isREML(fit)) warning("bad vcov/REML combination is not tested, may fail")

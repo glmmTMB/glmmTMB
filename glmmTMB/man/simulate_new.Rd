@@ -12,7 +12,7 @@ simulate_new(
   newdata,
   newparams,
   ...,
-  show_pars = FALSE
+  return_val = c("sim", "pars", "object")
 )
 }
 \arguments{
@@ -33,22 +33,23 @@ be all zeros, but whose value is otherwise irrelevant)}
 
 \item{newparams}{a list of parameters containing sub-vectors
 (\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
-be used in the model}
+be used in the model. If \code{b} is specified in this list, then the conditional modes/BLUPs
+will be set to these values; otherwise they will be drawn from the appropriate Normal distribution}
 
 \item{...}{other arguments to \code{glmmTMB} (e.g. \code{family})}
 
-\item{show_pars}{(logical) print structure of parameter vector and stop without simulating?}
+\item{return_val}{what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)}
 }
 \description{
 See \code{vignette("sim", package = "glmmTMB")} for more details and examples,
 and \code{vignette("covstruct", package = "glmmTMB")}
 for more information on the parameterization of different covariance structures.
 }
+\details{
+Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
+}
 \examples{
 ## use Salamanders data for structure/covariates
-simulate_new(~ mined + (1|site),
-             zi = ~ mined,
-             newdata = Salamanders, show_pars  = TRUE)
 sim_count <- simulate_new(~ mined + (1|site),
              newdata = Salamanders,
              zi = ~ mined,
@@ -58,5 +59,24 @@ sim_count <- simulate_new(~ mined + (1|site),
                          betadisp = log(2), ## log(NB dispersion)
                          theta = log(1)) ## log(among-site SD)
 )
-head(sim_count[[1]])
+sim_obj <- simulate_new(~ mined + (1|site),
+            return_val = "object",
+             newdata = Salamanders,
+             zi = ~ mined,
+             family = nbinom2,
+             newparams = list(beta = c(2, 1),
+                         betazi = c(-0.5, 0.5), ## logit-linear model for zi
+                         betad = log(2), ## log(NB dispersion)
+                         theta = log(1)) ## log(among-site SD)
+)
+data("sleepstudy", package = "lme4")
+sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
+             return_val = "pars",
+             newdata = sleepstudy,
+             family = gaussian,
+             newparams = list(beta = c(280, 1),
+                         betad = log(2), ## log(SD)
+                         theta = log(c(2, 2, 1))),
+)
+
 }

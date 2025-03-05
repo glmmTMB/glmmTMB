@@ -1,3 +1,13 @@
+mk_pop_pred <- function(re.form) {
+    pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
+                           identical(re.form, NA)))
+    if (!(is.null(re.form) || pop_pred)) {
+        stop("re.form must equal NULL, NA, or ~0")
+    }
+    pop_pred
+}
+
+
 ##' Extract Fixed Effects
 ##'
 ##' Extract fixed effects from a fitted \code{glmmTMB} model.
@@ -425,13 +435,13 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
   estNameList <- getParnames(object, full, include_mapped = FALSE, include_dropped = FALSE)
 
   map <- object$obj$env$map
-  parnms <- c("beta","betazi", "betad")     ## parameter names
+  parnms <- c("beta","betazi", "betadisp")     ## parameter names
   if (full) {
       ## return a matrix
       nl <- unlist(estNameList)
       fnl <- unlist(fullNameList)
       if (!include_nonest || identical(nl, fnl)) {
-          if (any(vapply(map, \(x) any(duplicated(x)), logical(1)))) {
+          if (any(vapply(map, function(x) any(duplicated(x)), FUN.VALUE = logical(1)))) {
               ## duplicate rows appropriately: *blockwise* is sufficient (can't
               ## map elements of different vectors)
               ind <- 0
@@ -449,11 +459,13 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
           try(colnames(covF) <- rownames(covF) <- unlist(estNameList),
               silent = TRUE)
           res <- covF
+          ## end if (!include_nonest)
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
                         dimnames = list(fnl, fnl))
           res[nl, nl] <- covF
       }
+      ## end if (full)
   } else {
       ## extract matrix blocks
       ss <- split(seq_along(colnames(covF)), colnames(covF))
@@ -471,28 +483,51 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
               nrow(m) == length(fnm)) {
               dimnames(m) <- list(xnms,xnms)
           } else {
+
+              ## what are all the possibilities here?
+              ## * non-estimable parameters because of rank deficiency -- values should be NA
+              ## * mapped-fixed parameters (NA)
+              ## * mapped-equal parameters (square equal-valued blocks as explained below)
+
+              ## fixed params *or* rank-def columns dropped
+              any_mapped <- !is.null(cur_map <- map[[parnms[[i]]]])
               ## some parameters mapped *to each other* (not fixed)
-              if (!is.null(cur_map <- map[[parnms[[i]]]]) &&
-                  length(unique(cur_map)) < length(cur_map)) {
+              if (any_mapped && length(unique(cur_map)) < length(cur_map)) {
                   ## replicate cov rows/cols appropriately
                   m <- m[as.numeric(cur_map), as.numeric(cur_map)]
                   map_split <- split(seq_along(cur_map), cur_map)
                   for (cc in map_split) {
                       if (length(cc)==1) next
-                      ## should fix covariances in cov matrix
-                      ## equal to variance for mapped pairs ...
+                      ## fix covariances in cov matrix
+                      ## all values equal to variance for mapped pairs ...
+                      ##  (variances of fixed parameters are all equal; correlations are == 1,
+                      ##   so covariances are also equal ... if users want something else they
+                      ##   can specify include_nonest = FALSE ...)
                       ## combn() generates a 2-by-n matrix of pairs
                       ccc <- combn(cc, 2)
                       for (j in 1:ncol(ccc)) {
                           m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
                               m[ccc[1,j], ccc[1,j]]
-                      }
-                  }
+                      } ## loop over combinations
+                  } ## loop over mapped groups
+              } ## any mapped
+
+              has_dropped <- function(m) !is.null(attr(getME(object, m), "col.dropped"))
+              
+              if (any_mapped && has_dropped("X") || has_dropped("Xdisp") || has_dropped("Xzi")) {
+                  warning("the combination of mapping and columns dropped because of rank-deficiency may ",
+                          "give strange vcov() results; check your answers and contact the developers with ",
+                          "a reproducible answer if necessary")
               }
-              ## fixed params *or* rank-def columns dropped
+
               mm <- matrix(NA_real_, length(fnm), length(fnm),
                            dimnames=list(fnm, fnm))
-              mm[estNameList[[cnm]],estNameList[[cnm]]] <- m
+
+              estNameList <- getParnames(object, full, include_mapped = FALSE,
+                                         include_dropped = FALSE, include_mapequal = TRUE)
+
+              nms <- estNameList[[cnm]]
+              mm[nms, nms] <- m
               m <- mm
           }
           covList[[i]] <- m
@@ -707,12 +742,12 @@ model.frame.glmmTMB <- function(formula, ...) {
     formula$frame
 }
 
-
 ##' Compute residuals for a glmmTMB object
 ##'
 ##' @param object a \dQuote{glmmTMB} object
 ##' @param type (character) residual type
 ##' @param \dots for method compatibility (unused arguments will throw an error)
+##' @inheritParams predict.glmmTMB
 ##' @importFrom stats fitted model.response residuals
 ##' @details
 ##' \itemize{
@@ -728,11 +763,13 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' details on the definition of the deviance for GLMMs.
 ##' }
 ##' @export
-residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance"), ...) {
+residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), re.form = NULL, ...) {
     check_dots(...)
+    pop_pred <- mk_pop_pred(re.form)
     type <- match.arg(type)
     na.act <- attr(object$frame,"na.action")
     mr <- napredict(na.act, model.response(object$frame))
+    mu <- predict(object, re.form = re.form, fast = !pop_pred, type = "response")
     wts <- model.weights(model.frame(object))
     if (is.null(wts)) wts <- rep(1, length(mr))
     ## binomial model specified as (success,failure)
@@ -746,7 +783,6 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         mr <- as.numeric(as.numeric(mr)>1)
         names(mr) <- nn  ## restore stripped names
     }
-    mu <- fitted(object)
     r <- mr - mu
     fam <- family(object)
     res <- switch(type,
@@ -755,6 +791,10 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                mu.eta <- fam$mu.eta
                p <- predict(object, type = "link", fast = TRUE)
                r/mu.eta(p)
+           },
+           "dunn-smyth" = {
+               phi <- na.omit(predict(object, type = "disp"))
+               dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -768,6 +808,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ifelse(mr < mu, -d.res, d.res)
            },
            pearson = {
+               mu <- predict(object, type = "conditional", re.form = re.form)
                if (is.null(v <- fam$variance)) {
                    stop("variance function undefined for family ",
                         sQuote(fam$family),"; cannot compute",
@@ -776,8 +817,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                vformals <- names(formals(v))
                # construct argument list for variance function based on its formals
                # some argument names vary across families
-               mu <- predict(object, type = "conditional")
-               theta <- predict(object, type = "disp")
+               theta <- predict(object, type = "disp", re.form = re.form)
                shape <- family_params(object)
                vargs <- list()
                vargs$mu <- vargs$lambda <- mu
@@ -791,7 +831,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                    # handle families where variance() returns the scaled variance
                    vv <- vv * theta^2
                  }
-                 zprob <- predict(object, type = "zprob")
+                 zprob <- predict(object, type = "zprob", re.form = re.form)
                  # if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
                  #   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
                  #          = Var[X] * E[B] + E[X]^2 * Var[B]
@@ -1328,6 +1368,7 @@ noSim <- function(x) {
 ##' @param object glmmTMB fitted model
 ##' @param nsim number of response lists to simulate. Defaults to 1.
 ##' @param seed random number seed
+##' @param re.form (Not yet implemented)
 ##' @param ... extra arguments
 ##' @details Random effects are also simulated from their estimated distribution.
 ##' Currently, it is not possible to condition on estimated random effects.
@@ -1336,11 +1377,20 @@ noSim <- function(x) {
 ##' In the binomial family case each simulation is a two-column matrix with success/failure.
 ##' @importFrom stats simulate
 ##' @export
-simulate.glmmTMB<-function(object, nsim=1, seed=NULL, ...){
+simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
     if(noSim(object$modelInfo$family$family))
     {
     	stop("Simulation code has not been implemented for this family")
     }
+
+    pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
+                                       identical(re.form, NA)))
+    if (!(is.null(re.form) || pop_pred)) {
+        stop("re.form must equal NULL, NA, or ~0")
+    }
+
+    if (pop_pred) stop("conditional simulation is not currently implemented")
+
     ## copied from stats::simulate.lm
     if (!exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE))
         runif(1)
@@ -1684,4 +1734,33 @@ deviance.glmmTMB <- function(object, ...) {
     check_dots(...)
     ## consider suppressing warning of class 'na_dev_resids' ?
     sum(residuals(object, type = "deviance")^2)
+}
+
+dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial")
+    if (family == "gaussian") return(yobs-mu)
+    if (!family %in% res.families) {
+        stop("can't compute Dunn-Smyth residuals for family ",
+             sQuote(family))
+    }
+    args <- switch(family,
+                   nbinom2 = list(size = phi),
+                   nbinom1 = list(size = mu/(phi+ 1e-5)),
+                   binomial = list(size=1),
+                   NULL
+                   )
+    ## deal with base-R's default size/prob parameterization for nbinom ...
+    pnbinom0 <- function(x, mu, ...) {
+        pnbinom(x, mu=mu, ...)
+    }
+    pfun <- switch(family,
+                   nbinom2 = pnbinom0,
+                   nbinom1 = pnbinom0,
+                   poisson = ppois,
+                   binomial = pbinom)
+    a <- do.call(pfun, c(list(yobs - 1, mu), args))
+    b <- do.call(pfun, c(list(yobs, mu), args))
+    resid <- qnorm(runif(length(yobs), min = a, max = b))
+    resid[is.infinite(resid) | is.nan(resid) ]  <- 0
+    resid
 }
