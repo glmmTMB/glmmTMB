@@ -1274,7 +1274,7 @@ glmmTMB <- function(
     # substitute evaluated versions
     ## FIXME: denv leftover from lme4, not defined yet
 
-    environment(formula) <- parent.frame()
+    if (control$set_formula_env) environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)
     ## need to evaluate offset within environment
@@ -1458,6 +1458,7 @@ glmmTMB <- function(
 ##' set to 1, with a warning if this overrides the user-specified value.
 ##' To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.
 ##' @param optimizer Function to use in model fitting. See \code{Details} for required properties of this function.
+##' @param set_formula_env set formula environment to \code{parent.frame} (i.e. the frame from which \code{glmmTMB} was called)?  (This control may be useful if the formula references values in the environment, and if you define the formula in a different environment from the one where you call \code{glmmTMB}.)
 ##' @param eigval_check Check eigenvalues of variance-covariance matrix? (This test may be very slow for models with large numbers of fixed-effect parameters.)
 ##' @param zerodisp_val value of the dispersion parameter when \code{dispformula=~0} is specified
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
@@ -1507,6 +1508,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            profile=FALSE,
                            collect=FALSE,
                            parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", NULL)),
+                           set_formula_env = TRUE,
                            eigval_check = TRUE,
                            ## want variance to be sqrt(eps), so sd = eps^(1/4)
                            zerodisp_val=log(.Machine$double.eps)/4,
@@ -1542,7 +1544,9 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## profile = (length(parameters$beta) >= 2) &&
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
-    namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
+    namedList(optCtrl, profile, collect,
+              set_formula_env,
+              parallel, optimizer, optArgs,
               eigval_check, zerodisp_val, start_method, rank_check, conv_check)
 }
 

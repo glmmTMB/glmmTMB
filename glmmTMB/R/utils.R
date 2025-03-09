@@ -752,6 +752,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' (\code{beta}, \code{betazi}, \code{betadisp}, \code{theta}, etc.) to
 ##' be used in the model. If \code{b} is specified in this list, then the conditional modes/BLUPs
 ##' will be set to these values; otherwise they will be drawn from the appropriate Normal distribution
+##' @param control arguments to pass to \code{glmmTMBControl}
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
 ##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
@@ -791,7 +792,9 @@ simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
                          family = gaussian,
-                         newdata, newparams, ...,
+                         newdata, newparams,
+                         control = NULL,
+                         ...,
                          return_val = c("sim", "pars", "object")) {
     return_val <- match.arg(return_val)
     family <- get_family(family, deparse(substitute(family)))
@@ -809,12 +812,20 @@ simulate_new <- function(object,
     ## (note the family *function* is 'beta_family' but the internal
     ##  $family value is 'beta')
     newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
+    if (is.null(control)) {
+        control <- list(optCtrl = list(iter.max = 0))
+    } else {
+        ## there should be no reason to have any other optCtrl
+        ## specifications in a simulation context, so don't worry
+        ## about overwriting ...
+        control$optCtrl <- list(iter.max = 0)
+    }
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
                   ## make sure optim doesn't actually do anything
                   ## (if return_val is "object")
-                  control = glmmTMBControl(optCtrl = list(iter.max = 0)),
+                  control = do.call(glmmTMBControl, control),
                   ...,
                   doFit = FALSE)
     ## sort out components of b (if necessary)
