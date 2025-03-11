@@ -23,6 +23,12 @@ test_that("cs_us", {
 })
 
 test_that("cs_homog", {
+    fm_csh   <- glmmTMB(Reaction ~ Days + homcs(Days | Subject), sleepstudy)
+    vv <- unname(diag(VarCorr(fm_csh)[["cond"]][["Subject"]]))
+    expect_identical(vv[1], vv[2])
+})
+
+test_that("cs_homog", {
 ## *homogenous* compound symmetry vs. nested random effects
     expect_equal(logLik(fm_nest),logLik(fm_nest_lmer))
 
