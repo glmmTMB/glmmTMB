@@ -139,7 +139,7 @@ predict.glmmTMB <- function(object,
                             na.action = na.pass,
                             fast=NULL,
                             debug=FALSE,
-                            aggregate=factor(),
+                            aggregate=NULL,
                             do.bias.correct=FALSE,
                             bias.correct.control = list(sd = TRUE),
                             ...) {
@@ -152,6 +152,9 @@ predict.glmmTMB <- function(object,
       se.fit <- TRUE
   }
  
+	if(is.null(aggregate)) {
+		aggregate <- factor()
+	}
   ## FIXME: add re.form
   if (length(aggregate) > 0) {
     fast <- FALSE
