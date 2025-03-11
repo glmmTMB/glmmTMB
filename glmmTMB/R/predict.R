@@ -87,6 +87,9 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' the default (\code{na.pass}) is to predict \code{NA}
 ##' @param debug (logical) return the \code{TMBStruc} object that will be
 ##' used internally for debugging?
+##' @param aggregate (optional factor vector) sum the elements with matching factor levels
+##' @param do.bias.correct (logical) should aggregated predictions use Taylor expanded estimate of nonlinear contribution of random effects (see details)
+##' @param bias.correct.control a list sent to TMB's function \code{sdreport()}. See documentation there.
 ##' @param re.form \code{NULL} to specify individual-level predictions; \code{~0} or \code{NA} to specify population-level predictions (i.e., setting all random effects to zero)
 ##' @param allow.new.levels allow previously unobserved levels in random-effects variables? see details.
 ##' @param \dots unused - for method compatibility
@@ -98,7 +101,11 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
 
 ##' \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
+##' \item Bias corrected predictions are based on the method described in Thorson J.T. & Kristensen (2016). These should be checked carefully by the user and are not extensively tested.
 ##' }
+##' @references
+##' Thorson J.T. & Kristensen K. (2016) Implementing a generic method for bias correction in statistical models using random effects, with spatial and population dynamics examples. \emph{Fish. Res.} 175, 66-74. 
+##'
 ##'
 ##' @examples
 ##' data(sleepstudy,package="lme4")
@@ -132,7 +139,7 @@ predict.glmmTMB <- function(object,
                             na.action = na.pass,
                             fast=NULL,
                             debug=FALSE,
-                            aggregate=NULL,
+                            aggregate=factor(),
                             do.bias.correct=FALSE,
                             bias.correct.control = list(sd = TRUE),
                             ...) {
@@ -380,7 +387,7 @@ predict.glmmTMB <- function(object,
                                ziPredictCode=ziPredNm,
                                doPredict=do_pred_val,
                                whichPredict=w,
-                               aggregate=aggregate,
+                               aggregate=omi$aggregate,
                                REML=omi$REML,
                                map=omi$map,
                                sparseX=omi$sparseX,
