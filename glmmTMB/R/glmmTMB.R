@@ -2025,7 +2025,6 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                 reStruc = namedList(condReStruc, ziReStruc, dispReStruc),
                                 allForm,
                                 REML,
-                      					aggregate,
                                 map,
                                 sparseX,
                                 parallel = control$parallel,
