@@ -22,6 +22,7 @@ mkTMBStruc(
   ziPredictCode = "corrected",
   doPredict = 0,
   whichPredict = integer(0),
+  aggregate = factor(),
   REML = FALSE,
   start = NULL,
   map = NULL,
