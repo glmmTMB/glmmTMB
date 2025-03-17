@@ -406,6 +406,9 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       	ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
       	ee$parameters$thetadisp <- numeric(0)
       }
+      if (!"aggregate" %in% names(ee$data)) {
+      	ee$data[["aggregate"]] <- numeric(0)
+      } 
       ee2 <- oldfit$sdr$env
       if ("thetaf" %in% names(ee2$parameters)) {
           ee2$parameters$psi <- ee2$parameters$thetaf
@@ -446,8 +449,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
               }
           }
       }
-
-      oldfit$obj <- with(ee,
+       oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
                                       map = map,
@@ -484,7 +486,10 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## n.b. can't use ...$priors <- NULL
       oldfit$modelInfo["priors"] <- list(NULL)
   }
-
+  if (!"aggregate" %in% names(ee$data)) {
+  	ee$data[["aggregate"]] <- numeric(0)
+  }
+  
   if ("Xd" %in% names(ee$data)) {
       ee$data[["Xdisp"]] <- ee$data[["Xd"]]
       ee$data[["Xd"]] <- NULL
