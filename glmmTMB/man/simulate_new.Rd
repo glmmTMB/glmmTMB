@@ -87,7 +87,7 @@ sim_obj <- simulate_new(~ 1 + (1|Subject) + ar1(0 + factor(Days)|Subject),
                                    ## AR1 correlation = 0.2
                                    put_cor(0.2, input_val = "vec"))
                          )
-             )
+)
 
 }
 \seealso{
