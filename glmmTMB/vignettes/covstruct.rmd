@@ -738,7 +738,7 @@ fit_phylo <- glmmTMB(log(range) ~ log(size) +
                      data = carnidat)
 ```
 
-`dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/column names of the matrix match the terms in the random effect (i.e. the same values, in the same order; see [Construction of structured covariance matrices] for how the terms are constructed).
+`dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/column names of the matrix match the terms in the random effect (i.e. the same values, in the same order). In particular, this typically means that the *levels of the varying factor* (species, in the case of a phylogenetic model) should match the row/column names of the covariance matrix. Something like `data$species <- factor(data$species, levels = rownames(covmat))` should generally work. See [Construction of structured covariance matrices] for how the terms are constructed).
 
 ## Construction of structured covariance matrices
 
