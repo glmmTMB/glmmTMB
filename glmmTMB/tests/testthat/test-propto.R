@@ -6,8 +6,7 @@ op <- getOption("glmmTMB.cores", 1)
 on.exit(options(glmmTMB.cores = op))
 options(glmmTMB.cores = 1)
 
-## require() throws a warning, don't want to see it
-if (suppressWarnings(require("ade4") && require("ape"))) {
+if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
   
   set.seed(1001)
   nsp <- 50
@@ -31,9 +30,9 @@ if (suppressWarnings(require("ade4") && require("ape"))) {
                  tolerance = 1e-6)
   })
   
-  if (require("nlme")) {
+  if (require("nlme", quietly = TRUE)) {
     # example taken from fixcorr
-    data(lizards)
+    data(lizards, package = "ade4")
     tree <- read.tree(text=lizards$hprA)
     liz <- lizards$traits[tree$tip.label, ]
     liz$spp <- factor(rownames(liz), levels=rownames(liz))
@@ -84,7 +83,16 @@ if (suppressWarnings(require("ade4") && require("ape"))) {
               regexp = "column or row names of the matrix do not match the terms. Expecting names:.sppSa..sppSh..sppTl..sppMc..sppMy..sppPh..sppPg..sppPa..sppPb..sppPm..sppAe..sppTt..sppTs..sppZo..sppZv..sppLa..sppLs..sppLv.",
       )
     })
- 
+
+    test_that("propto error with unsorted names", {
+        mattest <- mat
+        colnames(mattest) <- rev(colnames(mattest))
+        rownames(mattest) <- NULL
+        expect_error(glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
+                             data = liz),
+                     "in a different order")
+    })
+    
     ## FIXME: test, remove if unnecessary
     options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?
 } ## if require("ade4") && require("ape")
