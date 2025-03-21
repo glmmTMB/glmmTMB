@@ -14,6 +14,7 @@
       \item added the Bell distribution (\code{bell()}) as in
       Castellares et al. 2018 \doi{10.1016/j.apm.2017.12.014} (Hatice
       Tül Kübra Akdur)
+      \item added aggregated predictions with bias correction as in Kindt-Larsen, Glemerec, et al. 2023 \doi{10.1098/rspb.2022.2570} and Thorson & Kristensen 2016 \doi{10.1016/j.fishres.2015.11.016}
     } % itemize
   } % new features
   \subsection{BUG FIXES}{
