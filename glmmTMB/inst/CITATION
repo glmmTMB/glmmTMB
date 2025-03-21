@@ -28,7 +28,7 @@ bibentry(bibtype = "Article",
          textVersion = "Mollie E. Brooks, Kasper Kristensen, Koen J. van Benthem, Arni Magnusson, Casper W. Berg, Anders Nielsen, Hans J. Skaug, Martin Maechler and Benjamin M. Bolker (2017). glmmTMB Balances Speed and Flexibility Among Packages for Zero-inflated Generalized Linear Mixed Modeling. The R Journal, 9(2), 378-400. doi: 10.32614/RJ-2017-066."
 )
 
-bibentry(bibtype = "misc",
+bibentry(bibtype = "Article",
   title        = "Parsimoniously Fitting Large Multivariate Random Effects in {glmmTMB}",
   author       = c(person(given = "Maeve",
                           family = "McGillycuddy",
@@ -39,6 +39,11 @@ bibentry(bibtype = "misc",
                           family = "Popovic"),
                    person(given = c("Benjamin", "M."),
                           family = "Bolker")),
-  year         = "2024",
-  url = "https://arxiv.org/abs/2411.04411"
-  )
+  journal      = "Journal of Statistical Software",
+  year         = "2025",
+  volume       = "112",
+  number       = "1",
+  pages        = "1--19",
+  doi          = "10.18637/jss.v112.i01",
+  header       = "To cite glmmTMB in publications use:"
+)
