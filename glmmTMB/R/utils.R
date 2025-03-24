@@ -594,6 +594,7 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
           nn[ dropped] <- names(dropped)
       }
       if (trivialFixef(nn, tag)
+          && !(tag == "disp" && !trivialDisp(object))
           ## if 'full', keep disp even if trivial, if used by family
           && !(full && tag =="disp" &&
                (usesDispersion(family(object)$family) && !zeroDisp(object)))) {

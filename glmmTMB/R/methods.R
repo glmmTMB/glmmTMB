@@ -1129,7 +1129,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
         ## FIXME: better to have more robust ordering
-        for (component in c("cond", "zi") ) {
+        for (component in c("cond", "zi", "disp") ) {
             if (components.has(component) &&
                 length(ranef(object)[[component]])>0) {
                 ci <- rbind(ci, wald_ci_comp(component))
