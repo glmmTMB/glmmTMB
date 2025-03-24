@@ -36,6 +36,8 @@
       (GH #1133, @strengejacke)
       \item fixed bug blocking reduced-rank models with binomial response
       (GH #1151, @toddvogel1628)
+      \item fixed minor bug with \code{confint} applied to models with
+      random effects in the dispersion model
     } % itemize
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
