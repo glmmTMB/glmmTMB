@@ -538,7 +538,7 @@ test_that("confint works for models with dispformula", {
     expect_equal(cc[grep("^disp",rownames(cc)),], ref_val, tolerance = 1e-6)
 })
 
-testthat("confint with theta_ for models with RE in dispformula", {
+test_that("confint with theta_ for models with RE in dispformula", {
     m <- glmmTMB(mpg ~ hp,
                  dispformula = ~1 + (1|cyl), data = mtcars, family = gaussian)
     expect_equal(rownames(confint(m, parm = "theta_")), "disp.Std.Dev.(Intercept)|cyl")
