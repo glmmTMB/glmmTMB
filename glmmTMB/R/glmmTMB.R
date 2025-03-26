@@ -1707,25 +1707,25 @@ checkProptoNames <- function(aa, cnms, reXtrm){
   if( !is.matrix( aa ) )
     stop("expecting a matrix for propto", call. = FALSE)
   if(!(ncol(aa) == length(cnms) && nrow(aa) == length(cnms) ) )
-    stop("matrix is not the correct dimensions", call. = FALSE)
-  if (is.null(colnames(aa)) && is.null(rownames(aa)))
-    stop("row or column names of matrix are required", call. = FALSE)
-  if (!is.null(colnames(aa)) && !is.null(rownames(aa))){
-    if(!identical(colnames(aa), rownames(aa)))
+      stop("matrix is not the correct dimensions", call. = FALSE)
+  cn <- colnames(aa)
+  rn <- rownames(aa)
+  if (is.null(cn) && is.null(rn))
+      stop("row or column names of matrix are required", call. = FALSE)
+  if((!is.null(rn) && !is.null(cn)) && !identical(cn, rn)) {
       stop("row and column names of matrix do not match", call. = FALSE)
-    else
-      matNames <- colnames(aa)
-  }else{
-    if(!is.null(colnames(aa)))
-      matNames <- colnames(aa)
-    if(!is.null(rownames(aa)))
-      matNames <- rownames(aa)
   }
-  if(!identical(matNames, cnms)){
-    reTrmLabs <- attr(terms(reXtrm),"term.labels")
-    aaLabs <- paste0(reTrmLabs, matNames )
-    if(!identical(aaLabs, cnms))
-      stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+  matNames <- if (is.null(cn)) rn else cn
+  if(!identical(matNames, cnms)) {
+      reTrmLabs <- attr(terms(reXtrm), "term.labels")
+      aaLabs <- paste0(reTrmLabs, matNames )
+      if(!identical(aaLabs, cnms)) {
+          if (identical(sort(aaLabs), sort(cnms))) {
+              stop("column/row names of the matrix match the terms, but are in a different order",
+                   call. = FALSE)
+          }
+          stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+      }
   }
 }
 
