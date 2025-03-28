@@ -1041,5 +1041,5 @@ our_binom_initialize <- function(family) {
 
 #' retrieve current value of TMB autopar setting
 get_autopar <- function() {
-    attr(TMB::openmp(), "autopar")
+    attr(TMB::openmp(), "autopar", DLL = "glmmTMB")
 }
