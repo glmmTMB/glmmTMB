@@ -1039,3 +1039,7 @@ our_binom_initialize <- function(family) {
     return(b0)
 }
 
+#' retrieve current value of TMB autopar setting
+get_autopar <- function() {
+    attr(TMB::openmp(), "autopar")
+}

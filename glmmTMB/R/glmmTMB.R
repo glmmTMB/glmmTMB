@@ -5,7 +5,7 @@ openmp_debug <- function() {
 
 ## glmmTMB openmp controller copied from TMB (Windows needs it),
 ## and it also lets us have more control of debug tracing etc.
-openmp <- function (n = NULL, autopar = NULL) {
+openmp <- function (n = NULL, autopar = get_autopar()) {
     report <-  (openmp_debug() && (!is.null(n) || !is.null(autopar)))
     ## use deparse() etc. to handle cat(NULL), possible attributes/naming
     prefix <- if (is.null(n) && is.null(autopar)) "current OpenMP settings:" else "setting OpenMP:"
@@ -1515,7 +1515,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            optimizer=nlminb,
                            profile=FALSE,
                            collect=FALSE,
-                           parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", NULL)),
+                           parallel = list(n = getOption("glmmTMB.cores", 1L), autopar = getOption("glmmTMB.autopar", get_autopar())),
                            eigval_check = TRUE,
                            ## want variance to be sqrt(eps), so sd = eps^(1/4)
                            zerodisp_val=log(.Machine$double.eps)/4,
@@ -1528,8 +1528,15 @@ glmmTMBControl <- function(optCtrl=NULL,
     }
     ## Make sure that we specify at least one thread
     if (!is.null(parallel)) {
-        if (length(parallel) == 1 && is.numeric(parallel)) {
-            parallel <- list(n = parallel, autopar = getOption("glmmTMB.autopar", NULL))
+        if (length(parallel) == 1 && is.numeric(parallel[[1]])) {
+            parallel <- list(n = parallel[[1]], autopar = getOption("glmmTMB.autopar", get_autopar()))
+        }
+        ## if (typically first) arg is unnamed, fill it in
+        ## would like to replicate function argument-matching rules
+        ## (assign unmatched names to blank names in order)
+        if (length(parallel) > 1 && any(blank_names <- !nzchar(names(parallel)))) {
+            names(parallel)[blank_names] <- setdiff(c("n", "autopar"),
+                                                    names(parallel))
         }
         if (is.null(names(parallel))) stop(sQuote("parallel"), "list passed to glmmTMBControl() must be named")
         ## FIXME: more elegant way to handle possible parallel arg cases (e.g. n only, autopar only)
@@ -1707,25 +1714,25 @@ checkProptoNames <- function(aa, cnms, reXtrm){
   if( !is.matrix( aa ) )
     stop("expecting a matrix for propto", call. = FALSE)
   if(!(ncol(aa) == length(cnms) && nrow(aa) == length(cnms) ) )
-    stop("matrix is not the correct dimensions", call. = FALSE)
-  if (is.null(colnames(aa)) && is.null(rownames(aa)))
-    stop("row or column names of matrix are required", call. = FALSE)
-  if (!is.null(colnames(aa)) && !is.null(rownames(aa))){
-    if(!identical(colnames(aa), rownames(aa)))
+      stop("matrix is not the correct dimensions", call. = FALSE)
+  cn <- colnames(aa)
+  rn <- rownames(aa)
+  if (is.null(cn) && is.null(rn))
+      stop("row or column names of matrix are required", call. = FALSE)
+  if((!is.null(rn) && !is.null(cn)) && !identical(cn, rn)) {
       stop("row and column names of matrix do not match", call. = FALSE)
-    else
-      matNames <- colnames(aa)
-  }else{
-    if(!is.null(colnames(aa)))
-      matNames <- colnames(aa)
-    if(!is.null(rownames(aa)))
-      matNames <- rownames(aa)
   }
-  if(!identical(matNames, cnms)){
-    reTrmLabs <- attr(terms(reXtrm),"term.labels")
-    aaLabs <- paste0(reTrmLabs, matNames )
-    if(!identical(aaLabs, cnms))
-      stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+  matNames <- if (is.null(cn)) rn else cn
+  if(!identical(matNames, cnms)) {
+      reTrmLabs <- attr(terms(reXtrm), "term.labels")
+      aaLabs <- paste0(reTrmLabs, matNames )
+      if(!identical(aaLabs, cnms)) {
+          if (identical(sort(aaLabs), sort(cnms))) {
+              stop("column/row names of the matrix match the terms, but are in a different order",
+                   call. = FALSE)
+          }
+          stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+      }
   }
 }
 
