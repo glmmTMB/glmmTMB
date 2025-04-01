@@ -144,12 +144,8 @@ Diagnostics:
 knitr::kable(dp3, digits = c(0, 0, 3, 3))
 ```
 
-The trace plot confirms that one of the chains (chain 1) is problematic:
+The trace plot confirms that one of the chains (chain 1) is problematic, but we don't show it to save space.
 
-```{r sleepstudy_trace,fig.width=10,fig.height=5, echo = FALSE}
-img <- readPNG(system.file("vignette_data","sleepstudy_traceplot.png",package="glmmTMB"))
-grid.raster(img)
-```
 
 One way to address these problems is to add bounds that prevent the chains from going outside a 
 range of $\pm 5$ standard errors from the MLE (we originally used $\pm 3 \sigma$, but it looked like these bounds were being hit too frequently - if possible we want bounds that will prevent crazy behaviour but *not* otherwise constrain the chains ...)
@@ -164,11 +160,6 @@ The diagnostics and the trace plot look much better now ...
 
 ```{r sleepstudy_bounds_diag_tab, echo = FALSE}
 knitr::kable(dp4, digits = c(0, 0, 3, 3))
-```
-
-```{r sleepstudy_trace_bounds,fig.width=10,fig.height=5, echo = FALSE}
-img <- readPNG(system.file("vignette_data","sleepstudy_traceplot_bounds.png",package="glmmTMB"))
-grid.raster(img)
 ```
 
 The last step (for now) is to extract the sampled values, give them interpretable names, and transform the correlation parameter back to a more interpretable scale (see the "Covariance structures" vignette):
