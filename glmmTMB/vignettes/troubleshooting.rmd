@@ -163,15 +163,24 @@ L <- gt_load("vignette_data/sherman.rda")
 The first model gives the warning: "non-integer counts in an nbinom1 model" (indicating that we probably should use a different response distribution, or round the values if that seems appropriate).
 
 
-```{r ss_ex_mod1}
+```{r ss_ex_mod1, eval = FALSE}
 summary(mod1)
 ```
+
+```{r fake_ss_ex_mod1, echo = FALSE}
+print(mod1_sum)
+```
+
 We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.
 
 Running diagnostics on the model, these are the only problems reported.
 
-```{r diag_1}
+```{r diag_1, eval = FALSE}
 d1 <- diagnose(mod1)
+```
+
+```{r fake_diag_1, echo = FALSE}
+cat(mod1_diag, "\n")
 ```
 
 Let's try dropping the zero-inflation term:
@@ -186,13 +195,17 @@ We also get a "false convergence (8)" warning; see below.
 
 The `summary()` and `diagnose()` functions reveal only the large, negative dispersion parameter:
 
-```{r ss_mod2}
+```{r ss_mod2, eval = FALSE}
 summary(mod2)
+```
+
+```{r fake_ss_ex_mod2, echo = FALSE}
+print(mod2_sum)
 ```
 
 Diagnose:
 
-```{r ss_diag2}
+```{r ss_diag2, eval = FALSE}
 diagnose(mod2)
 ```
 
