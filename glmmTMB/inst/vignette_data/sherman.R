@@ -1,5 +1,6 @@
 library(glmmTMB)
 load("sherman.rda")
+dd <- read.csv("sherman.csv")
 ## dd <- readxl::read_excel("TMB_Data.xlsx",na="NA")
 ## dd <- dd[,c("taeCPUE","Avg.Relief","site.name","reef.name")]
 
@@ -14,4 +15,4 @@ mod2_optim <- update(mod2,
 ## non-integer counts + 'false convergence'
 mod3 <- update(mod2, family=poisson)
 ## non-integer counts
-save("mod1","mod2","mod2_optim","mod3","dd",version=2, file="sherman.rda")
+save("mod1","mod2","mod2_optim","mod3",version=2, file="sherman.rda")
