@@ -13,3 +13,5 @@ revdep/
 TAGS
 _pkgdown.yaml
 .gitsum/.*$
+lineno.sty
+framed.sty
