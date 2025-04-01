@@ -117,21 +117,14 @@ Running this command, which creates 4 chains, takes `r round(t2["elapsed"],1)` s
 knitr::kable(dp2, digits = c(0, 0, 3, 3))
 ```
 
-A trace plot (`rstan::traceplot(m2, pars=c("beta","betazi","theta"))`):
+A trace plot can be made with the following code, but we won't to save space: 
 
-```{r show_traceplot,echo=FALSE,fig.width=10,fig.height=5}
-library(png)
-library(grid)
-img <- readPNG(system.file("vignette_data","tmbstan_traceplot.png",package="glmmTMB"))
-grid.raster(img)
-```
+`rstan::traceplot(m2, pars=c("beta","betazi","theta"))`
 
-Pairs plot (`pairs(m2, pars = c("beta", "betazi"), gap = 0)`):
 
-```{r show_pairsplot,echo=FALSE,fig.width=8,fig.height=8}
-img <- readPNG(system.file("vignette_data","tmbstan_pairsplot.png",package="glmmTMB"))
-grid.raster(img)
-```
+A pairs plot can be made with the following code, but we won't to save space: 
+`pairs(m2, pars = c("beta", "betazi"), gap = 0)`
+
 
 ## Sleep study example
 
