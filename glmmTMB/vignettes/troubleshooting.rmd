@@ -6,13 +6,11 @@ vignette: >
   %\VignetteIndexEntry{Troubleshooting with glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
-params:
-  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
 ---
 
 ```{r load_lib,echo=FALSE}
 library(glmmTMB)
-knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
+load(system.file("vignette_data", "troubleshooting.rda", package = "glmmTMB"))
 ```
 
 This vignette covers common problems that occur while using `glmmTMB`. 
@@ -156,28 +154,32 @@ print(s_vals,digits=3)
 
 Here is another example (from Samantha Sherman):
 
-```{r load_ss_ex,eval=TRUE}
-L <- gt_load("vignette_data/sherman.rda")
-```
-
 The first model gives the warning: "non-integer counts in an nbinom1 model" (indicating that we probably should use a different response distribution, or round the values if that seems appropriate).
 
-
-```{r ss_ex_mod1}
-summary(mod1)
+```{r ss_ex_mod1, eval = FALSE}
+summary(mod_list$base)
 ```
+
+```{r fake_ss_ex_mod1, echo = FALSE}
+print(mod_sum$base)
+```
+
 We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.
 
 Running diagnostics on the model, these are the only problems reported.
 
-```{r diag_1}
-d1 <- diagnose(mod1)
+```{r diag_1, eval = FALSE}
+diag_base <- diagnose(mod_list$base)
+```
+
+```{r fake_diag_1, echo = FALSE}
+cat(mod_diag$base, sep = "\n")
 ```
 
 Let's try dropping the zero-inflation term:
 
 ```{r ss_mod2_up, eval=FALSE}
-mod2 <- update(mod1, ziformula=~0)
+mod_list$nozi <- update(mod_list$base, ziformula=~0)
 ```
 
 We also get a "false convergence (8)" warning; see below.
@@ -186,14 +188,22 @@ We also get a "false convergence (8)" warning; see below.
 
 The `summary()` and `diagnose()` functions reveal only the large, negative dispersion parameter:
 
-```{r ss_mod2}
-summary(mod2)
+```{r ss_mod2, eval = FALSE}
+summary(mod_list$nozi)
+```
+
+```{r fake_ss_ex_mod2, echo = FALSE}
+print(mod_sum$nozi)
 ```
 
 Diagnose:
 
-```{r ss_diag2}
-diagnose(mod2)
+```{r ss_fake_diag2, eval = FALSE}
+diagnose(mod_list$nozi)
+```
+
+```{r ss_diag2, echo = FALSE}
+cat(mod_diag$nozi, sep = "\n")
 ```
 
 The "false convergence" warning comes from the `nlminb()` optimizer, and is [difficult to interpret and resolve](https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean). The documentation says that the cause of this warning is that:
@@ -202,17 +212,22 @@ The "false convergence" warning comes from the `nlminb()` optimizer, and is [dif
 
 The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We'll try option 3 and refit with the BFGS option from `optim()`:
 
-```{r ss_mod2optim,eval=TRUE}
-mod2_optim <- update(mod2,
-                control=glmmTMBControl(optimizer=optim,
-                                       optArgs=list(method="BFGS")))
+```{r ss_mod2optim ,eval=FALSE}
+mod_list$nozi_optim <- update(mod_list$nozi,
+                              control=glmmTMBControl(optimizer=optim,
+                                                     optArgs=list(method="BFGS")))
 ```
 
 BFGS doesn't give us any warnings. Comparing the parameter estimates:
 
-```{r ss_mod2optim_comp,eval=TRUE}
-(parcomp <- cbind(nlminb=unlist(fixef(mod2)),
-                  optim=unlist(fixef(mod2_optim))))
+```{r fake_ss_mod2optim_comp,eval= FALSE}
+(parcomp <- cbind(nlminb=unlist(fixef(mod_list$nozi)),
+                  optim=unlist(fixef(mod_list$nozi_optim))))
+```
+
+```{r ss_mod2optim_comp, echo = FALSE}
+(parcomp <- cbind(nlminb=mod_pars$nozi,
+                  optim=mod_pars$nozi_optim))
 ```
 
 ```{r comp, echo=FALSE,eval=TRUE}
@@ -227,21 +242,29 @@ The conditional-model parameters are practically identical. The dispersion param
 Simplify the model by switching from NB1 to Poisson:
 
 ```{r mod3_up, eval=FALSE}
-mod3 <- update(mod2, family=poisson)
+mod_list$pois <- update(mod2, family=poisson)
 ```
 
-```{r ss_mod3}
-summary(mod3)
+```{r fake_ss_mod3, eval = FALSE}
+summary(mod_list$pois)
 ```
 
-```{r ss_diag3}
-diagnose(mod3)
+```{r ss_mod3, echo = FALSE}
+print(mod_sum$pois)
+```
+
+```{r fake_ss_diag3, eval = FALSE}
+diagnose(mod_list$pois)
+```
+
+```{r ss_diag3, echo = FALSE}
+cat(mod_diag$pois, sep = "\n")
 ```
 
 You can also check directly whether the Hessian (curvature) of the model is OK by examining the `pdHess` ("positive-definite Hessian") component of the `sdr` ("standard deviation report") component of the model:
 
-```{r checkhess}
-mod3$sdr$pdHess					      
+```{r checkhess, eval = FALSE}
+mod_list$pois$sdr$pdHess					      
 ```
                                               
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.
