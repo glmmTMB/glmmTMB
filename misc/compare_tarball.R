@@ -2,6 +2,7 @@ old_tb <- "~/Downloads/glmmTMB_1.1.10.tar.gz"
 new_tb <- "glmmTMB_1.1.11.tar.gz"
 ord_var <- "diff"
 
+rev_sort <- function(x, var) x[order(x[[var]], decreasing = TRUE), ]
 hack_date <- function(x) {
     gsub("([A-Z][a-z]{2}) +([0-9]{1,2})","\\1_\\2", x)
 }
@@ -17,6 +18,9 @@ get_tb_info <- function(tb) {
     )
 }
 
+new_sizes  <- get_tb_info(new_tb) |> rev_sort("size")
+View(new_sizes)
+
 mm <- merge(get_tb_info(old_tb), get_tb_info(new_tb), by = "path", all = TRUE,
             suffixes = c(".old", ".new"))
 ## include only changed files
@@ -24,9 +28,9 @@ mm <- (mm
     |> subset(is.na(size.old) | (!is.na(size.new) & size.new != size.old))
     |> transform(size.old = ifelse(is.na(size.old), 0, size.old))
     |> transform(diff = size.new - size.old)
+    |> rev_sort(ord_var)
 )
 
-mm <- mm[order(mm[[ord_var]], decreasing = TRUE),]
 
 View(mm)
 
