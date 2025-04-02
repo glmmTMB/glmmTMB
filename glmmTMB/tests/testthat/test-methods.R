@@ -781,3 +781,13 @@ test_that("vcov(full=TRUE) with non-NA mapped parameters", {
 #         expect_true(all(is.na(vcov(m)$cond)))
 #     }
 # })
+
+test_that("handle empty betadisp in vcov", {
+    m <- glmmTMB(count ~ DOP, dispformula = ~ DOP,
+                 data = Salamanders,
+                 family = poisson)
+    expect_equal(lengths(fixef(m)),
+                 c(cond = 2L, zi = 0L, disp = 0L))
+    expect_equal(vcov(m)$disp,
+                 matrix(NA_real_, dimnames = list("disp~", "disp~")))
+})
