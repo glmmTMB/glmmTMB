@@ -1,7 +1,9 @@
 ## https://github.com/glmmTMB/glmmTMB/issues/995
 remotes::install_github("mrc-ide/memprof")
 remotes::install_github("bbolker/reformulas", ref = "sparse_contrasts_hack")
-devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
+remotes::install_github("glmmTMB/glmmTMB/glmmTMB", ref = "ar_memfix")
+library(glmmTMB)
+## devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
 
 options(glmmTMB.cores = 8L, glmmTMB.autopar = TRUE)
 
@@ -77,3 +79,17 @@ system.time(
 ## 3725.322   89.118 1479.448 
 
 max(res_ar1_lg$memory_use$rss/1e9)  ## 8 Gig
+
+
+### example from #995
+library(memprof)
+library(glmmTMB)
+options(glmmTMB.cores = 8L, glmmTMB.autopar = TRUE)
+ngroup <- 5
+ntime <- 100000
+n <- ngroup * ntime
+d <- data.frame(group=gl(ngroup, ntime), times=numFactor(1:ntime), y=rnorm(n))
+res_ar1_lg2 <- with_monitor(
+    glmmTMB(y~ou(times+0|group), data=d,
+            control=glmmTMBControl(optCtrl=list(trace=10)))
+)

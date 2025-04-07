@@ -4,6 +4,8 @@ stopifnot(require("testthat"),
 source(system.file("test_data/glmmTMB-test-funs.R",
                    package="glmmTMB", mustWork=TRUE))
 
+devtools::load_all("glmmTMB")
+
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
 fm1C <-   lmer(distance ~ age + (age|Subject), data = Orthodont,

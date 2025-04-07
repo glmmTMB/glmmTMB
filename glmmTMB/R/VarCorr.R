@@ -175,37 +175,33 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     reS <- x$modelInfo$reStruc
     familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {
-        ## *only* report residual variance for Gaussian family ...
-        ## *not* usesDispersion(familyStr)
-        sigma <- sigma(x)
-        familyStr=="gaussian" && !zeroDisp(x)
-    } else TRUE
-    vc.cond <- vc.zi <- vc.disp <- NULL
-    ## FIXME: repeat less
-    if(length(cn <- reT$cond$cnms)) {
-        vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
-                        sc = sigma, useSc = useSc)
-        for (i in seq_along(vc.cond)) {
-            attr(vc.cond[[i]],"blockCode") <- reS$condReStruc[[i]]$blockCode
+                 ## *only* report residual variance for Gaussian family ...
+                 ## *not* usesDispersion(familyStr)
+                 sigma <- sigma(x)
+                 familyStr=="gaussian" && !zeroDisp(x)
+             } else TRUE
+    comp_nms <- c("", "zi", "disp")
+    comp_nms2 <- c("cond", "zi", "disp")
+    corr_list <- vector(mode="list", length=length(comp_nms2))
+    names(corr_list) <- comp_nms2
+    
+    for (i in seq_along(comp_nms)) {
+        if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
+            vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
+                       sd  = xrep[[paste0("sd", comp_nms[i])]],
+                       cnms = cn,
+                       sc = sigma, useSc = useSc)
+            for (j in seq_along(vc)) {
+                bc <- reS[[paste0(comp_nms2[i],  "ReStruc")]][[j]]$blockCode
+                attr(vc[[j]],"blockCode") <- bc
+                class(vc[[j]]) <- c(paste0("vcmat_", bc), class(vc[[j]]))
+            }
+            corr_list[[comp_nms2[[i]]]] <- vc
         }
     }
-    if(length(cn <- reT$zi$cnms)) {
-        vc.zi <- mkVC(cor = xrep$corrzi, sd = xrep$sdzi, cnms = cn,
-                        sc = sigma, useSc = useSc)
-        for (i in seq_along(vc.zi)) {
-            attr(vc.zi[[i]],"blockCode") <- reS$ziReStruc[[i]]$blockCode
-        }
-    }
-    if(length(cn <- reT$disp$cnms)) {
-    	vc.disp <- mkVC(cor = xrep$corrdisp, sd = xrep$sddisp, cnms = cn,
-    								sc = sigma, useSc = useSc)
-    	for (i in seq_along(vc.disp)) {
-    		attr(vc.disp,"blockCode") <- reS$dispReStruc[[i]]$blockCode
-    	}
-    }
-    structure(list(cond = vc.cond, zi = vc.zi, disp = vc.disp),
+    structure(corr_list,
 	      sc = usesDispersion(familyStr), ## 'useScale'
-	      class = "VarCorr.glmmTMB")
+	      class = c("VarCorr.glmmTMB"))
 }
 
 ##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
@@ -230,22 +226,88 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
     invisible(x)
 }
 
-    formatCor <- function(x,maxlen=0, digits) {
-        ## x: correlation matrix
-        ## maxlen: max number of RE std devs per term;
-        ##         really a *minimum* length here! pad to (maxlen)
-        ##         columns as necessary
-        x <- as(x, "matrix")
-        dig <- max(2, digits - 2) # use 'digits' !
-        ## n.b. not using formatter() for correlations
-        cc <- format(round(x, dig), nsmall = dig)
-        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
-        nr <- nrow(cc)
-        if (nr < maxlen) {
-            cc <- cbind(cc, matrix("", nr, maxlen-nr))
-        }
-        return(cc)
+formatCor <- function(x,maxlen=0, digits) {
+    ## x: correlation matrix
+    ## maxlen: max number of RE std devs per term;
+    ##         really a *minimum* length here! pad to (maxlen)
+    ##         columns as necessary
+    x <- as(x, "matrix")
+    dig <- max(2, digits - 2) # use 'digits' !
+    ## n.b. not using formatter() for correlations
+    cc <- format(round(x, dig), nsmall = dig)
+    cc[!lower.tri(cc)] <- ""  ## empty lower triangle
+    nr <- nrow(cc)
+    if (nr < maxlen) {
+        cc <- cbind(cc, matrix("", nr, maxlen-nr))
     }
+    return(cc)
+}
+
+## format columns corresponding to std. dev. and/or variance
+##' @param reStdDev a vector of standard deviations
+##' @param a character vector indicating which scales to include
+##' @param digits number of significant digits
+##' @param formatter formatting function
+##' @param maxlen maximum number of rows to display
+##' @param ... additional arguments to formatter
+##' @examples
+##' gt_load("test_data/models.rda")
+##' format_sdvar(reStdDev = 1:3, use.c = c("Variance", "Std.Dev."))
+##' format_sdvar(attr(VarCorr(fm1)$cond$Subject, "stddev"))
+## FIXME: avoid repeating defaults
+## FIXME: add residuals/useSc 
+format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen = 10,
+                         digits = max(3, getOption("digits") - 2), ...) {
+    res <- list()
+    if("Variance" %in% use.c)
+	res <- c(res,
+                 list(Variance = formatter(unlist(reStdDev)^2, digits = digits, ...)))
+    if("Std.Dev." %in% use.c)
+	res <- c(res, list(`Std.Dev`=formatter(unlist(reStdDev),   digits = digits, ...)))
+    mat <- do.call(cbind, res)
+    colnames(mat) <- names(res)
+    mat <- mat[1:min(maxlen,nrow(mat)), , drop = FALSE] 
+    return(mat)
+}
+
+
+#' @rdname formatVC.default
+#' @export
+format_cov <- function(x, type = "stddev", maxlen = 0, ...) {
+    UseMethod("format_cov")
+}
+
+#' @export
+format_cov.default <- function(x, type="stddev", maxlen=0, ...) {
+    
+        r <- attr(x,type) ## extract stddev *or* correlation from x
+        if (type=="correlation") {
+            ## transform to char matrix
+            r <- formatCor(r,maxlen, digits)
+            ## drop last column (will be blank since we blanked out
+            ##  the upper triangle + diagonal)
+            if (ncol(r)>maxlen)
+                r <- r[, -ncol(r), drop = FALSE]
+        }
+        ## TEMPORARY
+        getCovstruct <- function(x) {
+            n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
+                                               .valid_covstruct)]
+            if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
+            return(n)
+        }
+
+        covstruct <- getCovstruct(x)
+        if (covstruct %in% c("hetar1", "ar1", "cs", "homdiag")) {
+            r <- switch(type,
+                        stddev={ if (covstruct %in%  c("ar1", "homdiag")) r[1] else r },
+                        ## select lag-1 correlation
+                        ## upper tri has been erased in formatCor() ...
+                        correlation=paste(r[2,1],sprintf("(%s)",covstruct))
+                        )
+        }
+        return(r)
+}
 
 ## original from lme4
 ## had to be extended/modified to deal with glmmTMB special cases
@@ -285,30 +347,9 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
         return(n)
     }
-    getCorSD <- function(x,type="stddev",maxlen=0) {
-        r <- attr(x,type) ## extract stddev *or* correlation from x
-        if (type=="correlation") {
-            ## transform to char matrix
-            r <- formatCor(r,maxlen, digits)
-            ## drop last column (will be blank since we blanked out
-            ##  the upper triangle + diagonal)
-            if (ncol(r)>maxlen)
-                r <- r[, -ncol(r), drop = FALSE]
-        }
-        covstruct <- getCovstruct(x)
-        if (covstruct %in% c("hetar1", "ar1", "cs", "homdiag")) {
-            r <- switch(type,
-                        stddev={ if (covstruct %in%  c("ar1", "homdiag")) r[1] else r },
-                        ## select lag-1 correlation
-                        ## upper tri has been erased in formatCor() ...
-                        correlation=paste(r[2,1],sprintf("(%s)",covstruct))
-                        )
-        }
-        return(r)
-    }  ## getCorSD
 
     ## get std devs:
-    reStdDev <- lapply(varcor, getCorSD)
+    reStdDev <- lapply(varcor, get_corSD)
     ## need correlations
     useCor <- (!grepl("us|diag", sapply(varcor,getCovstruct)) |
                sapply(reStdDev,length)>1)
@@ -317,7 +358,7 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     if(useScale) {
         reStdDev <- c(reStdDev,
                       list(Residual = unname(attr(varcor, "sc"))))
-     }
+    }
 
     reLens <- lengths(reStdDev)
     nr <- sum(reLens)
@@ -325,16 +366,14 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     reMat[1+cumsum(reLens)-reLens, "Groups"] <- names(reLens)
 
     reMat[,"Name"] <- c(unlist(cnms), if(useScale) "")
-    if("Variance" %in% use.c)
-	reMat[,"Variance"] <- formatter(unlist(reStdDev)^2, digits = digits, ...)
-    if("Std.Dev." %in% use.c)
-	reMat[,"Std.Dev."] <- formatter(unlist(reStdDev),   digits = digits, ...)
+
+    ## want everything below here wrapped in format_cov
+    
     if (any(useCor)) {
         ## get corrs
 	maxlen <- max(reLens)
-	corr <-
-	    do.call(rbind,lapply(varcor, getCorSD,
-                                         type="correlation", maxlen=maxlen))
+	corr <- do.call(rbind,lapply(varcor, get_corSD,
+                                     type="correlation", maxlen=maxlen))
         ## add blank values as necessary
 	if (nrow(corr) < nrow(reMat))
 	    corr <- rbind(corr, matrix("", nrow(reMat) - nrow(corr), ncol(corr)))
