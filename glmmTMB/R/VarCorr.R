@@ -194,7 +194,7 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
             for (j in seq_along(vc)) {
                 bc <- reS[[paste0(comp_nms2[i],  "ReStruc")]][[j]]$blockCode
                 attr(vc[[j]],"blockCode") <- bc
-                class(vc[[j]]) <- c(paste0("vcmat_", bc), class(vc[[j]]))
+                class(vc[[j]]) <- c(paste0("vcmat_", names(bc)), class(vc[[j]]))
             }
             corr_list[[comp_nms2[[i]]]] <- vc
         }
@@ -243,7 +243,7 @@ formatCor <- function(x,maxlen=0, digits) {
     return(cc)
 }
 
-## format columns corresponding to std. dev. and/or variance
+##' format columns corresponding to std. dev. and/or variance
 ##' @param reStdDev a vector of standard deviations
 ##' @param a character vector indicating which scales to include
 ##' @param digits number of significant digits
@@ -255,62 +255,57 @@ formatCor <- function(x,maxlen=0, digits) {
 ##' format_sdvar(reStdDev = 1:3, use.c = c("Variance", "Std.Dev."))
 ##' format_sdvar(attr(VarCorr(fm1)$cond$Subject, "stddev"))
 ## FIXME: avoid repeating defaults
-## FIXME: add residuals/useSc 
 format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen = 10,
                          digits = max(3, getOption("digits") - 2), ...) {
     res <- list()
     if("Variance" %in% use.c)
-	res <- c(res,
+        res <- c(res,
                  list(Variance = formatter(unlist(reStdDev)^2, digits = digits, ...)))
     if("Std.Dev." %in% use.c)
-	res <- c(res, list(`Std.Dev`=formatter(unlist(reStdDev),   digits = digits, ...)))
+        res <- c(res, list(`Std.Dev`=formatter(unlist(reStdDev),   digits = digits, ...)))
     mat <- do.call(cbind, res)
     colnames(mat) <- names(res)
+    rownm <- names(res[[1]])  %||% ""
+    mat <- cbind(Name = rownm, mat)
     mat <- mat[1:min(maxlen,nrow(mat)), , drop = FALSE] 
     return(mat)
 }
 
 
-#' @rdname formatVC.default
-#' @export
-format_cov <- function(x, type = "stddev", maxlen = 0, ...) {
-    UseMethod("format_cov")
+##' format correlation matrix
+##' @rdname format_sdvar
+##' @param x a square numeric matrix)
+##' @param maxdim maximum number of rows/columns to display
+##' @param digits digits for format
+##' @examples
+##' gt_load("test_data/models.rda")
+##' format_corr(attr(VarCorr(fm1)$cond$Subject, "correlation"))
+## FIXME: avoid repeating defaults
+##' @export
+format_corr <- function(x, maxdim=Inf, digits=2, ...) {
+    UseMethod("format_corr")
+}
+
+##' @export
+format_corr.default <- function(x, maxdim = Inf, digits=2, ...) {
+    if (is.null(x)) return("")
+    x <- attr(x, "correlation")
+    x <- as(x, "matrix")
+    extra_rows <- (nrow(x) > maxdim)
+    newdim <- min(maxdim, nrow(x))
+    cc <- format(round(x, digits), nsmall = digits)
+    cc[upper.tri(cc, diag = TRUE)] <- ""  ## empty lower triangle
+    if (extra_rows) cc <- rbind(cc, "...")
+    cc
 }
 
 #' @export
-format_cov.default <- function(x, type="stddev", maxlen=0, ...) {
-    
-        r <- attr(x,type) ## extract stddev *or* correlation from x
-        if (type=="correlation") {
-            ## transform to char matrix
-            r <- formatCor(r,maxlen, digits)
-            ## drop last column (will be blank since we blanked out
-            ##  the upper triangle + diagonal)
-            if (ncol(r)>maxlen)
-                r <- r[, -ncol(r), drop = FALSE]
-        }
-        ## TEMPORARY
-        getCovstruct <- function(x) {
-            n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
-                                               .valid_covstruct)]
-            if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
-            return(n)
-        }
-
-        covstruct <- getCovstruct(x)
-        if (covstruct %in% c("hetar1", "ar1", "cs", "homdiag")) {
-            r <- switch(type,
-                        stddev={ if (covstruct %in%  c("ar1", "homdiag")) r[1] else r },
-                        ## select lag-1 correlation
-                        ## upper tri has been erased in formatCor() ...
-                        correlation=paste(r[2,1],sprintf("(%s)",covstruct))
-                        )
-        }
-        return(r)
+format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
+    return(matrix(""))
 }
 
-## original from lme4
-## had to be extended/modified to deal with glmmTMB special cases
+
+## original from lme4, *heavily* modified
 ##' "format()" the 'VarCorr' matrix of the random effects -- for
 ##' print()ing and show()ing
 ##'
@@ -331,16 +326,21 @@ format_cov.default <- function(x, type="stddev", maxlen=0, ...) {
 ##' @importFrom methods as
 formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
 		     comp = "Std.Dev.", formatter = format,
-                     useScale = attr(varcor, "useSc"),
-                     ...)
+         useScale = attr(varcor, "useSc"),
+         ...)
 {
-    c.nms <- c("Groups", "Name", "Variance", "Std.Dev.")
-    avail.c <- c.nms[-(1:2)]
-    if(anyNA(mcc <- pmatch(comp, avail.c)))
-	stop("Illegal 'comp': ", comp[is.na(mcc)])
-    nc <- length(colnms <- c(c.nms[1:2], (use.c <- avail.c[mcc])))
-    if(length(use.c) == 0)
-	stop("Must show either standard deviations or variances")
+
+    comp_opts <- c("Variance", "Std.Dev.")
+    if(anyNA(mcc <- pmatch(comp, comp_opts))) {
+        stop("Illegal 'comp': ", comp[is.na(mcc)])
+    }
+    use_c <- comp_opts[mcc]
+    if (length(use_c) == 0) {
+        stop("Must report either standard deviations or variances")
+    }
+
+    col_nms <- c("Group", "Name", use_c)
+
     getCovstruct <- function(x) {
         n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
                                            .valid_covstruct)]
@@ -348,36 +348,66 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         return(n)
     }
 
+    termnames <- names(varcor)
+
     ## get std devs:
-    reStdDev <- lapply(varcor, get_corSD)
-    ## need correlations
-    useCor <- (!grepl("us|diag", sapply(varcor,getCovstruct)) |
-               sapply(reStdDev,length)>1)
-    cnms <- Map(function(x,n) colnames(x)[seq(n)], varcor, lengths(reStdDev))
+    reStdDev <- lapply(varcor, function(x) attr(x, "stddev"))
+
+    ## get corrs
+    corr_out <- lapply(varcor, format_corr)
 
     if(useScale) {
         reStdDev <- c(reStdDev,
                       list(Residual = unname(attr(varcor, "sc"))))
+        termnames <- c(termnames, "Residual")
+        ## dummy correlation for Residual
+        corr_out <- c(corr_out, list(matrix("")))
     }
 
-    reLens <- lengths(reStdDev)
-    nr <- sum(reLens)
-    reMat <- array('', c(nr, nc), list(rep.int('', nr), colnms))
-    reMat[1+cumsum(reLens)-reLens, "Groups"] <- names(reLens)
 
-    reMat[,"Name"] <- c(unlist(cnms), if(useScale) "")
+    sdvar_out <- lapply(reStdDev, format_sdvar, digits = digits, comp = comp_opts, formatter = formatter)
 
-    ## want everything below here wrapped in format_cov
+
+    assemble_sdcor(sdvar_out, corr_out, termnames)
+}
+
+pad_blank <- function(m, max_rows=0, max_cols=0) {
+    m <- as.matrix(m) ## handle scalar case
+    if ((xrows <- (max_rows - nrow(m))) > 0) {
+        m <- rbind(m, matrix("", nrow = xrows, ncol = ncol(m)))
+    }
+    if ((xcols <- (max_cols - ncol(m))) > 0) {
+        m <- cbind(m, matrix("", ncol = xcols, nrow = nrow(m)))
+    }
+    return(m)
+}
+
+## patch together sd/var info, correlation info, group names
+assemble_sdcor <- function(sdvar_out, corr_out, termnames) {
+
+    sdvar_rows <- vapply(sdvar_out, nrow, numeric(1))
+    corr_rows <- vapply(corr_out, nrow, numeric(1))
+    max_rows <- pmax(sdvar_rows, corr_rows)
+
+    nt <- length(corr_out)
+    corr_cols <- vapply(corr_out, ncol, numeric(1))
+    max_cols <- rep(max(corr_cols), nt)
+
+    termnames_out <- mapply(pad_blank, termnames, max_rows, SIMPLIFY = FALSE)
+    termnames_out <- do.call(rbind, termnames_out)
     
-    if (any(useCor)) {
-        ## get corrs
-	maxlen <- max(reLens)
-	corr <- do.call(rbind,lapply(varcor, get_corSD,
-                                     type="correlation", maxlen=maxlen))
-        ## add blank values as necessary
-	if (nrow(corr) < nrow(reMat))
-	    corr <- rbind(corr, matrix("", nrow(reMat) - nrow(corr), ncol(corr)))
-	colnames(corr) <- c("Corr", rep.int("", max(0L, ncol(corr)-1L)))
-	cbind(reMat, corr)
-    } else reMat
+    sdvar_out <- mapply(pad_blank, sdvar_out, max_rows, max_cols, SIMPLIFY = FALSE)
+    sdvar_out <- do.call(rbind, sdvar_out)
+
+    corr_out <- mapply(pad_blank, corr_out, max_cols = max_cols, max_rows = max_rows, SIMPLIFY = FALSE)
+    corr_out <- do.call(rbind, corr_out)
+    ## FIXME: should we enable names here? lots of stuff to worry about
+    ##  (first, making sure that null correlation matrices are unnamed)
+    colnames(corr_out) <- NULL 
+
+    res <- cbind(termnames_out, sdvar_out, corr_out)
+    rownames(res) <- rep("", nrow(res))
+    
+    return(res)
+    
 }

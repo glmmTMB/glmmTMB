@@ -4,8 +4,6 @@ stopifnot(require("testthat"),
 source(system.file("test_data/glmmTMB-test-funs.R",
                    package="glmmTMB", mustWork=TRUE))
 
-devtools::load_all("glmmTMB")
-
 data("Orthodont", package="nlme")
 fm1 <- glmmTMB(distance ~ age + (age|Subject), data = Orthodont)
 fm1C <-   lmer(distance ~ age + (age|Subject), data = Orthodont,
@@ -232,3 +230,12 @@ test_that("VarCorr for models with RE in dispersion", {
                  tolerance = 1e-5)
 })
 
+## need to fix diag, comp symm ...
+skip <- c("fm_ar1") ## only one that doesn't work so far ...
+for (m in setdiff(gt_load("test_data/models.rda"), skip)) {
+    obj <- get(m)
+    if (!inherits(obj, "glmmTMB")) next
+    cat(m, "\n")
+    print(VarCorr(obj))
+    cat("\n\n")
+}

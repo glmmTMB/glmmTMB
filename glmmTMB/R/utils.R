@@ -507,15 +507,11 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
 #'
 #' @param fn partial path to system file (e.g. test_data/foo.rda)
 #' @param verbose print names of updated objects?
-#' @param mustWork fail if file not found?
 #' @param \dots values passed through to \code{up2date}
 #' @export
-gt_load <- function(fn, verbose=FALSE, mustWork = FALSE, ...) {
+gt_load <- function(fn, verbose=FALSE, ...) {
     sf <- system.file(fn, package = "glmmTMB")
-    found_file <- file.exists(sf)
-    if (mustWork && !found_file) {
-        stop("couldn't find system file ", sf)
-    }
+    if (!file.exists(sf)) return(NULL)
 
     L <- load(sf)
     for (m in L) {
@@ -525,7 +521,7 @@ gt_load <- function(fn, verbose=FALSE, mustWork = FALSE, ...) {
         }
         assign(m, get(m), parent.env(), envir = parent.frame())
     }
-    return(found_file)
+    return(L)
 }
 
 #' truncated distributions
