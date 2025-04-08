@@ -262,7 +262,7 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen 
         res <- c(res,
                  list(Variance = formatter(unlist(reStdDev)^2, digits = digits, ...)))
     if("Std.Dev." %in% use.c)
-        res <- c(res, list(`Std.Dev`=formatter(unlist(reStdDev),   digits = digits, ...)))
+        res <- c(res, list(`Std.Dev.`=formatter(unlist(reStdDev),   digits = digits, ...)))
     mat <- do.call(cbind, res)
     colnames(mat) <- names(res)
     rownm <- names(res[[1]])  %||% ""
@@ -394,9 +394,11 @@ assemble_sdcor <- function(sdvar_out, corr_out, termnames) {
     corr_out <- do.call(rbind, corr_out)
     ## FIXME: should we enable names here? lots of stuff to worry about
     ##  (first, making sure that null correlation matrices are unnamed)
-    colnames(corr_out) <- NULL 
+    if (any(corr_out != "")) {
+        colnames(corr_out) <- c("Corr", rep("", ncol(corr_out)-1))
+    }
 
-    res <- cbind(termnames_out, sdvar_out, corr_out)
+    res <- cbind(Group = termnames_out, sdvar_out, corr_out)
     rownames(res) <- rep("", nrow(res))
     
     return(res)
