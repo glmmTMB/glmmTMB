@@ -100,6 +100,8 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
     stopifnot(length(cnms) == (nc <- length(cor)),  nc == length(sd),
               is.list(cnms), is.list(cor), is.list(sd),
               is.character(nnms <- names(cnms)), nzchar(nnms))
+
+    browser()
     ##
     ## FIXME: do we want this?  Maybe not.
     ## Potential problem: the names of the elements of the VarCorr() list
@@ -114,13 +116,17 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
     do1cov <- function(sd, cor, n = length(sd)) {
         sd * cor * rep(sd, each = n)
     }
-    docov <- function(sd,cor,nm) {
-        ## diagonal model:
+    docov <- function(sd, cor, nm) {
+        ## diagonal model OR ar1/ou without filled-in corr
         diagmodel <- identical(dim(cor),c(0L,0L))
         if (diagmodel) cor <- diag(length(sd))
         cov <- do1cov(sd, cor)
-        names(sd) <- nm
-        dimnames(cov) <- dimnames(cor) <- list(nm,nm)
+        ## may not want full names (e.g. ou/ar1 models)
+        names(sd) <- nm[seq_along(sd)]
+        ## skip naming if null cov/cor matrix
+        if (nrow(cov) > 0) {
+            dimnames(cov) <- dimnames(cor) <- list(nm,nm)
+        }
         structure(cov,stddev=sd,correlation=cor)
     }
     ss <- setNames(mapply(docov,sd,cor,cnms,SIMPLIFY=FALSE),nnms)
@@ -267,7 +273,8 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen 
     colnames(mat) <- names(res)
     rownm <- names(res[[1]])  %||% ""
     mat <- cbind(Name = rownm, mat)
-    mat <- mat[1:min(maxlen,nrow(mat)), , drop = FALSE] 
+    mat <- mat[1:min(maxlen,nrow(mat)), , drop = FALSE]
+    rownames(mat) <- NULL
     return(mat)
 }
 
@@ -304,6 +311,12 @@ format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
     return(matrix(""))
 }
 
+#' @export
+format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
+    browser()
+    return(matrix(""))
+}
+
 ## FIXME: get specials for ou, compsymm, spatial matrices, etc..
 
 ## original from lme4, *heavily* modified
@@ -335,12 +348,10 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     if(anyNA(mcc <- pmatch(comp, comp_opts))) {
         stop("Illegal 'comp': ", comp[is.na(mcc)])
     }
-    use_c <- comp_opts[mcc]
-    if (length(use_c) == 0) {
+    use.c <- comp_opts[mcc]
+    if (length(use.c) == 0) {
         stop("Must report either standard deviations or variances")
     }
-
-    col_nms <- c("Group", "Name", use_c)
 
     termnames <- names(varcor)
 
@@ -348,7 +359,7 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     reStdDev <- lapply(varcor, function(x) attr(x, "stddev"))
 
     ## get corr outputs
-    corr_out <- lapply(varcor, format_corr)
+    corr_out <- lapply(varcor, format_corr, digits = digits)
 
     if(useScale) {
         reStdDev <- c(reStdDev,
@@ -357,8 +368,17 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         ## dummy correlation for Residual
         corr_out <- c(corr_out, list(matrix("")))
     }
-    sdvar_out <- lapply(reStdDev, format_sdvar, digits = digits, comp = comp_opts, formatter = formatter)
-    ## stick it all together
+
+    ## in order to get everything formatted consistently we have to collapse the std devs to a single
+    ## vector, format them all at once, then split them back up (e.g. to insert extra spaces where necessary)
+
+    formatted_sdvar <- format_sdvar(unlist(unname(reStdDev)), digits = digits, comp = comp_opts, formatter = formatter, use.c = use.c)
+    ## split back into chunks
+    sdvar_out <- split.data.frame(formatted_sdvar,
+                                    rep(seq(length(reStdDev)), lengths(reStdDev)))
+    names(sdvar_out) <- names(reStdDev)
+    
+    ## stick it all back together, properly spaced
     assemble_sdcor(sdvar_out, corr_out, termnames)
 }
 
@@ -386,21 +406,26 @@ assemble_sdcor <- function(sdvar_out, corr_out, termnames) {
 
     termnames_out <- mapply(pad_blank, termnames, max_rows, SIMPLIFY = FALSE)
     termnames_out <- do.call(rbind, termnames_out)
+    colnames(termnames_out) <- "Groups"
     
     sdvar_out <- mapply(pad_blank, sdvar_out, max_rows, max_cols, SIMPLIFY = FALSE)
     sdvar_out <- do.call(rbind, sdvar_out)
 
     corr_out <- mapply(pad_blank, corr_out, max_cols = max_cols, max_rows = max_rows, SIMPLIFY = FALSE)
     corr_out <- do.call(rbind, corr_out)
-    ## FIXME: should we enable names here? lots of stuff to worry about
-    ##  (first, making sure that null correlation matrices are unnamed)
-    if (any(corr_out != "")) {
+    if (all(corr_out == "")) {
+        corr_out <- NULL
+    } else {
         colnames(corr_out) <- c("Corr", rep("", ncol(corr_out)-1))
     }
+    ## FIXME: should we enable column names here? spacing, abbrev, etc to worry about
+    ##  (first, making sure that null correlation matrices are unnamed)
 
-    res <- cbind(Group = termnames_out, sdvar_out, corr_out)
+    res <- cbind(termnames_out, sdvar_out, corr_out)
     rownames(res) <- rep("", nrow(res))
     
     return(res)
     
 }
+
+

@@ -531,7 +531,20 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
 	} // do_simulate
       } // loop over lags
     } // loop over blocks
-    // previously reporting corr matrix; don't waste memory doing it
+    if(isDouble<Type>::value) { // Disable AD for this part
+      // report *only* phi in the corr struct
+      term.corr.resize(1,1);
+      term.corr(0,0) = phi;
+      if (term.blockCode == hetar1_covstruct) {
+        term.sd.resize(n);
+        for(int i=0; i<n; i++){
+          term.sd(i) = sd(i);
+        }
+      } else {
+        term.sd.resize(1);
+        term.sd(0) = sd(0);
+      }
+    }
   }
   else if (term.blockCode == ou_covstruct){
     // case: ou_covstruct
@@ -568,9 +581,18 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         default: error ("unknown simcode");
         }
       } // do_simulate
+
       
     }
-  }
+    // Report only the sd and the decay parameter
+    if(isDouble<Type>::value) { // Disable AD for this part
+      term.corr.resize(1,1);
+      term.sd.resize(1);
+      term.sd(0) = sd;
+      term.corr(0,0) = exp(corr_transf);
+    }
+  } // OU covstruct
+  
   // Spatial correlation structures
   else if (term.blockCode == exp_covstruct ||
            term.blockCode == gau_covstruct ||

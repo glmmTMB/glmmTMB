@@ -235,8 +235,9 @@ test_that("VarCorr for models with RE in dispersion", {
 })
 
 ## need to fix diag, comp symm ...
-skip <- c("fm_ar1") ## only one that doesn't work so far ...
-for (m in setdiff(gt_load("test_data/models.rda"), skip)) {
+skip_models <- c("fm_ar1") ## only one that doesn't work so far ...
+models <- setdiff(gt_load("test_data/models.rda"), skip_models)
+for (m in models) {
     obj <- get(m)
     if (!inherits(obj, "glmmTMB")) next
     cat(m, "\n")
