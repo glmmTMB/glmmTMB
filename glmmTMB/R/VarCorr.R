@@ -326,9 +326,10 @@ format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
     return(matrix(paste(cc, "(ar1)")))
 }
 
+#' @export
 format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
     x <- attr(x, "correlation")
-    cc <- format(round(x, digits), nsmall = digits)
+    cc <- format(round(x[2,1], digits), nsmall = digits)
     return(matrix(paste(cc, "(cs)")))
 }
 
