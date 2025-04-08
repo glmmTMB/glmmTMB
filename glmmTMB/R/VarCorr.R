@@ -95,8 +95,14 @@ sigma.glmmTMB <- function(object, ...) {
            exp(pl$betadisp))
 }
 
-
-mkVC <- function(cor, sd, cnms, sc, useSc) {
+##' @noRd
+##' @param cor list of correlation matrices/structures
+##' @param sd list of sd vectors
+##' @param cnms vector of term names
+##' @param sc
+##' @param bc vector of block codes
+##' @param useSc use scale parameter?
+mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
     stopifnot(length(cnms) == (nc <- length(cor)),  nc == length(sd),
               is.list(cnms), is.list(cor), is.list(sd),
               is.character(nnms <- names(cnms)), nzchar(nnms))
@@ -114,7 +120,8 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
     do1cov <- function(sd, cor, n = length(sd)) {
         sd * cor * rep(sd, each = n)
     }
-    docov <- function(sd, cor, nm) {
+    docov <- function(sd, cor, nm, bc) {
+        browser()
         maxdim <- max(length(sd), nrow(cor))
         ## extend sd if necessary
         if (length(sd)==1 && maxdim > 1) {
@@ -124,19 +131,23 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         if (length(nm) > maxdim) {
             nm <- nm[seq(maxdim)]
         }
-        ## diagonal model OR ar1/ou without filled-in corr
+        ## what do we do with models without fully filled in cor structures?
+        ## (diag, ar1, cs, ...)
         diagmodel <- identical(dim(cor),c(0L,0L))
         if (diagmodel) cor <- diag(length(sd))
-        cov <- do1cov(sd, cor)
+        cov <- matrix(numeric(0))
+        if (length(sd) == 1 || length(sd) == nrow(cor)) {
+            cov <- do1cov(sd, cor)
+        }
         ## may not want full names (e.g. ou/ar1 models)
         names(sd) <- nm[seq_along(sd)]
         ## skip naming if null cov/cor matrix
-        if (nrow(cov) > 0) {
+        if (!is.null(cov) && nrow(cov) > 0) {
             dimnames(cov) <- dimnames(cor) <- list(nm,nm)
         }
-        structure(cov,stddev=sd,correlation=cor)
+        structure(cov, stddev=sd, correlation=cor)
     }
-    ss <- setNames(mapply(docov,sd,cor,cnms,SIMPLIFY=FALSE),nnms)
+    ss <- setNames(mapply(docov, sd, cor, cnms, bc, SIMPLIFY=FALSE),nnms)
     ## ONLY first element -- otherwise breaks formatVC
     ## FIXME: do we want a message/warning here, or elsewhere,
     ##   when the 'Residual' var parameters are truncated?
@@ -197,17 +208,21 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     comp_nms2 <- c("cond", "zi", "disp")
     corr_list <- vector(mode="list", length=length(comp_nms2))
     names(corr_list) <- comp_nms2
-    
+
     for (i in seq_along(comp_nms)) {
+        restruc <- reS[[paste0(comp_nms2[i],  "ReStruc")]]
+        ## lapply() rather than [vs]apply, don't want to lose names
+        bcvec <- lapply(restruc, function(x) x[["blockCode"]])
         if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
             vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
                        sd  = xrep[[paste0("sd", comp_nms[i])]],
                        cnms = cn,
-                       sc = sigma, useSc = useSc)
+                       sc = sigma,
+                       bc = bcvec,
+                       useSc = useSc)
             for (j in seq_along(vc)) {
-                bc <- reS[[paste0(comp_nms2[i],  "ReStruc")]][[j]]$blockCode
-                attr(vc[[j]],"blockCode") <- bc
-                class(vc[[j]]) <- c(paste0("vcmat_", names(bc)), class(vc[[j]]))
+                attr(vc[[j]],"blockCode") <- bcvec[[j]]
+                class(vc[[j]]) <- c(paste0("vcmat_", names(bcvec[[j]])), class(vc[[j]]))
             }
             corr_list[[comp_nms2[[i]]]] <- vc
         }
@@ -237,23 +252,6 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 	      quote = FALSE, ...)
     }
     invisible(x)
-}
-
-formatCor <- function(x,maxlen=0, digits) {
-    ## x: correlation matrix
-    ## maxlen: max number of RE std devs per term;
-    ##         really a *minimum* length here! pad to (maxlen)
-    ##         columns as necessary
-    x <- as(x, "matrix")
-    dig <- max(2, digits - 2) # use 'digits' !
-    ## n.b. not using formatter() for correlations
-    cc <- format(round(x, dig), nsmall = dig)
-    cc[!lower.tri(cc)] <- ""  ## empty lower triangle
-    nr <- nrow(cc)
-    if (nr < maxlen) {
-        cc <- cbind(cc, matrix("", nr, maxlen-nr))
-    }
-    return(cc)
 }
 
 ##' format columns corresponding to std. dev. and/or variance
@@ -296,7 +294,7 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen 
 ##' format_corr(attr(VarCorr(fm1)$cond$Subject, "correlation"))
 ## FIXME: avoid repeating defaults
 ##' @export
-format_corr <- function(x, maxdim=Inf, digits=2, ...) {
+format_corr <- function(x, maxdim=Inf, digits=2, maxlen = 10, ...) {
     UseMethod("format_corr")
 }
 
@@ -341,7 +339,8 @@ format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
 ##'
 ##' @title Format the 'VarCorr' Matrix of Random Effects
 ##' @param varcor a \code{\link{VarCorr}} (-like) matrix with attributes.
-##' @param digits the number of significant digits.
+##' @param digits the number of significant digits for standard deviations and variances
+##' @param corr_digits the number of significant digits for correlations
 ##' @param comp character vector of length one or two indicating which
 ##' columns out of "Variance" and "Std.Dev." should be shown in the
 ##' formatted output.
@@ -350,14 +349,18 @@ format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
 ##' \emph{not} the correlations which (currently) are always formatted
 ##' as "0.nnn"
 ##' @param useScale whether to report a scale parameter (e.g. residual standard deviation)
+##' @param maxdim maximum dimensions (numbers of standard deviations/variances and number of
+##' rows of correlation matrices) to report per random effects term
 ##' @param ... optional arguments for \code{formatter(*)} in addition
 ##' to the first (numeric vector) and \code{digits}.
 ##' @return a character matrix of formatted VarCorr entries from \code{varcor}.
 ##' @importFrom methods as
 formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
-		     comp = "Std.Dev.", formatter = format,
-         useScale = attr(varcor, "useSc"),
-         ...)
+                     corr_digits = max(2, digits-2),
+                     maxdim = 10,
+                     comp = "Std.Dev.", formatter = format,
+                     useScale = attr(varcor, "useSc"),
+                     ...)
 {
 
     comp_opts <- c("Variance", "Std.Dev.")
@@ -375,7 +378,7 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     reStdDev <- lapply(varcor, function(x) attr(x, "stddev"))
 
     ## get corr outputs
-    corr_out <- lapply(varcor, format_corr, digits = digits)
+    corr_out <- lapply(varcor, format_corr, digits = corr_digits, maxdim = maxdim)
 
     if(useScale) {
         reStdDev <- c(reStdDev,
@@ -388,10 +391,19 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     ## in order to get everything formatted consistently we have to collapse the std devs to a single
     ## vector, format them all at once, then split them back up (e.g. to insert extra spaces where necessary)
 
+    trunc_rows <- function(x) {
+        if (nrow(x) > maxdim) {
+            x <- rbind(x[1:maxdim,,drop = FALSE], rep("...", ncol(x)))
+        }
+        return(x)
+    }
+    
     formatted_sdvar <- format_sdvar(unlist(unname(reStdDev)), digits = digits, comp = comp_opts, formatter = formatter, use.c = use.c)
     ## split back into chunks
     sdvar_out <- split.data.frame(formatted_sdvar,
-                                    rep(seq(length(reStdDev)), lengths(reStdDev)))
+                                  rep(seq(length(reStdDev)), lengths(reStdDev)))
+    sdvar_out <- lapply(sdvar_out, trunc_rows)
+    
     names(sdvar_out) <- names(reStdDev)
     
     ## stick it all back together, properly spaced

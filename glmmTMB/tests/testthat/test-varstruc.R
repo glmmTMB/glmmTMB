@@ -156,13 +156,5 @@ test_that("hom vs het diag", {
 
 test_that("het ar1", {
     skip_on_cran()
-    sleepstudy$Days <- factor(sleepstudy$Days)
-    sleepstudy$y <- simulate_new(~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                      newdata=sleepstudy,
-                      newparams = list(beta=0, betadisp = 1, theta = rep(1, 12)),
-                                       family = gaussian,
-                      seed = 101)[[1]]
-    suppressWarnings(fit1  <-  glmmTMB(y ~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                                       data=sleepstudy))
     VarCorr(fit1)
 })

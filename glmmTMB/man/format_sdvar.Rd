@@ -14,7 +14,7 @@ format_sdvar(
   ...
 )
 
-format_corr(x, maxdim = Inf, digits = 2, ...)
+format_corr(x, maxdim = Inf, digits = 2, maxlen = 10, ...)
 }
 \arguments{
 \item{reStdDev}{a vector of standard deviations}
