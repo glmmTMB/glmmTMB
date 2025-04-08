@@ -33,7 +33,7 @@ as "0.nnn"}
 to the first (numeric vector) and \code{digits}.}
 }
 \value{
-a character matrix of formatted VarCorr entries from \code{varc}.
+a character matrix of formatted VarCorr entries from \code{varcor}.
 }
 \description{
 "format()" the 'VarCorr' matrix of the random effects -- for

@@ -101,8 +101,6 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
               is.list(cnms), is.list(cor), is.list(sd),
               is.character(nnms <- names(cnms)), nzchar(nnms))
 
-    browser()
-    ##
     ## FIXME: do we want this?  Maybe not.
     ## Potential problem: the names of the elements of the VarCorr() list
     ##  are not necessarily unique (e.g. fm2 from example("lmer") has *two*
@@ -117,6 +115,15 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
         sd * cor * rep(sd, each = n)
     }
     docov <- function(sd, cor, nm) {
+        maxdim <- max(length(sd), nrow(cor))
+        ## extend sd if necessary
+        if (length(sd)==1 && maxdim > 1) {
+            sd <- rep(sd, maxdim)
+        }
+        ## truncate names if necessary
+        if (length(nm) > maxdim) {
+            nm <- nm[seq(maxdim)]
+        }
         ## diagonal model OR ar1/ou without filled-in corr
         diagmodel <- identical(dim(cor),c(0L,0L))
         if (diagmodel) cor <- diag(length(sd))
@@ -308,13 +315,21 @@ format_corr.default <- function(x, maxdim = Inf, digits=2, ...) {
 
 #' @export
 format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
+    ## empty correlation
     return(matrix(""))
 }
 
 #' @export
 format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
-    browser()
-    return(matrix(""))
+    x <- attr(x, "correlation")
+    cc <- format(round(x, digits), nsmall = digits)
+    return(matrix(paste(cc, "(ar1)")))
+}
+
+format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
+    x <- attr(x, "correlation")
+    cc <- format(round(x, digits), nsmall = digits)
+    return(matrix(paste(cc, "(cs)")))
 }
 
 ## FIXME: get specials for ou, compsymm, spatial matrices, etc..

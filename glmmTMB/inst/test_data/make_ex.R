@@ -65,10 +65,12 @@ fm_diag2_lmer <- lme4::lmer(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subjec
 
 fm_us1 <- glmmTMB(Reaction ~ Days + (Days| Subject), fsleepstudy)
 fm_cs1 <- glmmTMB(Reaction ~ Days + cs(Days| Subject), fsleepstudy)
+
 fm_us1_lmer <- lme4::lmer(Reaction ~ Days + ( Days  | Subject),
                fsleepstudy, REML=FALSE)
 
 fm_cs2 <- glmmTMB(Reaction ~ Days + cs(fDays| Subject), fsleepstudy)
+fm_hcs2 <- glmmTMB(Reaction ~ Days + homcs(fDays| Subject), fsleepstudy)
 
 ## these would be equivalent to a compound symmetry model with *homog* variance
 fm_nest <- glmmTMB(Reaction ~ Days + (1| Subject/fDays), fsleepstudy)
@@ -78,6 +80,11 @@ fm_nest_lmer <- lme4::lmer(Reaction ~ Days + (1|Subject/fDays), fsleepstudy,
 ## model with ~ Days + ... gives non-pos-def Hessian
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+
+## non-pos-def but maybe that's OK?
+fm_hetar1 <- glmmTMB(Reaction ~ 1 +
+                         (1|Subject) + hetar1(Days+0| Subject), fsleepstudy)
+
 
 if (save_image) save.image(file="models.rda", version=2)
 

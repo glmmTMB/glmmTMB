@@ -36,10 +36,12 @@ test_that("cs_homog", {
 
 test_that("basic ar1", {
     vv <- VarCorr(fm_ar1)[["cond"]]
-    cc <- cov2cor(vv[[2]])
-    expect_equal(cc[1,],cc[,1])
-    expect_equal(unname(cc[1,]),
-                 cc[1,2]^(0:(nrow(cc)-1)))
+    expect_equal(c(attr(vv[[2]], "correlation")), 0.87299, tolerance = 1e-5)
+    ## ar1 no longer gives full correlation matrix: do we need an option to do so?
+    ## cc <- cov2cor(vv[[2]])
+    ## expect_equal(cc[1,],cc[,1])
+    ## expect_equal(unname(cc[1,]),
+    ##              cc[1,2]^(0:(nrow(cc)-1)))
 })
 
 ## change to something better behaved
