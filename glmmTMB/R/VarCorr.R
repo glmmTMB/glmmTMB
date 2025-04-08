@@ -304,6 +304,7 @@ format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
     return(matrix(""))
 }
 
+## FIXME: get specials for ou, compsymm, spatial matrices, etc..
 
 ## original from lme4, *heavily* modified
 ##' "format()" the 'VarCorr' matrix of the random effects -- for
@@ -322,7 +323,7 @@ format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
 ##' @param useScale whether to report a scale parameter (e.g. residual standard deviation)
 ##' @param ... optional arguments for \code{formatter(*)} in addition
 ##' to the first (numeric vector) and \code{digits}.
-##' @return a character matrix of formatted VarCorr entries from \code{varc}.
+##' @return a character matrix of formatted VarCorr entries from \code{varcor}.
 ##' @importFrom methods as
 formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
 		     comp = "Std.Dev.", formatter = format,
@@ -341,19 +342,12 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
 
     col_nms <- c("Group", "Name", use_c)
 
-    getCovstruct <- function(x) {
-        n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
-                                           .valid_covstruct)]
-        if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
-        return(n)
-    }
-
     termnames <- names(varcor)
 
-    ## get std devs:
+    ## get std devs (wait until after processing useScale to create output matrices)
     reStdDev <- lapply(varcor, function(x) attr(x, "stddev"))
 
-    ## get corrs
+    ## get corr outputs
     corr_out <- lapply(varcor, format_corr)
 
     if(useScale) {
@@ -363,11 +357,8 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
         ## dummy correlation for Residual
         corr_out <- c(corr_out, list(matrix("")))
     }
-
-
     sdvar_out <- lapply(reStdDev, format_sdvar, digits = digits, comp = comp_opts, formatter = formatter)
-
-
+    ## stick it all together
     assemble_sdcor(sdvar_out, corr_out, termnames)
 }
 

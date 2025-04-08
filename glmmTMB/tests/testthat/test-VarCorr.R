@@ -21,6 +21,7 @@ stripTMBVC <- function(x) {
     r <- VarCorr(x)[["cond"]]
     for (i in seq_along(r)) {
         attr(r[[i]],"blockCode") <- NULL
+        class(r[[i]]) <- c("matrix", "array")
     }
     return(r)
 }
