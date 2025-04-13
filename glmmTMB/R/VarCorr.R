@@ -99,7 +99,7 @@ sigma.glmmTMB <- function(object, ...) {
 ##' @param cor list of correlation matrices/structures
 ##' @param sd list of sd vectors
 ##' @param cnms vector of term names
-##' @param sc
+##' @param sc scale parameter (sigma)
 ##' @param bc vector of block codes
 ##' @param useSc use scale parameter?
 mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
@@ -121,7 +121,6 @@ mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
         sd * cor * rep(sd, each = n)
     }
     docov <- function(sd, cor, nm, bc) {
-        browser()
         maxdim <- max(length(sd), nrow(cor))
         ## extend sd if necessary
         if (length(sd)==1 && maxdim > 1) {

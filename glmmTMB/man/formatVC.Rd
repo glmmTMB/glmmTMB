@@ -7,7 +7,7 @@
 formatVC(
   varcor,
   digits = max(3, getOption("digits") - 2),
-  corr_digits = digits - 1,
+  corr_digits = max(2, digits - 2),
   maxdim = 10,
   comp = "Std.Dev.",
   formatter = format,
