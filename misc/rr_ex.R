@@ -1,4 +1,6 @@
-## we want to try to compute a reduced-rank neg log likelihood in two different ways
+## we want to try to compute a reduced-rank neg log likelihood in two different ways:
+##  * with spherical random effects, parameterized by factor loading matrix (eta = X*beta + Z*Lambda*u, u ~ dnorm())
+##  * with nonspherical random effects, param by inverse factor loading matrix (eta = X*beta + Z*b, b ~ dmvnorm(Phi)
 
 library(glmmTMB)
 library(reformulas)
@@ -40,13 +42,14 @@ dd$y <- simulate_new(RHSForm(form, as.form = TRUE),
                                       theta = rnorm(ntheta),
                                       betadisp = -1))[[1]]
 
-rt <- mkReTrms(findbars(form), fr = model.frame (~ f + g, data = dd), calc.lambda = FALSE)
-Z <- t(rt$Zt)
 m1 <- glmmTMB(y ~ 1 + rr(f | g, d = d), 
               data = dd, 
               family = gaussian,
               control = glmmTMBControl(optCtrl = list(iter.max=1000,
                                                       eval.max=1000)))
+
+rt <- mkReTrms(findbars(form), fr = model.frame (~ f + g, data = dd), calc.lambda = FALSE)
+Z <- t(rt$Zt)
 
 ## 1. using spherical random effects
 f_spher <- function(par) {
@@ -59,17 +62,16 @@ f_spher <- function(par) {
     -sum(dnorm(y, drop(mu), sd1, log = TRUE)) - sum(dnorm(u, log = TRUE))
 }
 theta0 <- rnorm(d*nlev - choose(d,2))
-par0 <- list(beta0 = 0, logsd = 0, theta = rnorm(ntheta),
-                 u = rep(0, nu))
+u0 <- rnorm(nu)
+par0 <- list(beta0 = 0, logsd = 0, theta = theta0,
+                 u = u0)
 f_spher(par0)
 gc()
 ff0 <- MakeADFun(f_spher, par0)
 ff0$fn()
 
-## why does this go up?
 ff1 <- MakeADFun(f_spher, par0, random = "u", silent = TRUE)
 ff1$fn()
-
 
 ## 2. using non-spherical random effects
 f_nonspher <- function(par) {
@@ -83,8 +85,20 @@ f_nonspher <- function(par) {
     -sum(dnorm(y, mu, sd1, log = TRUE)) + (sum(u^2) - logdetphi + d*log(2*pi))/2
 }
 
-par1 <- list(beta0 = 0, logsd = 0, theta = rnorm(ntheta),
-             b = rep(0, nlev*ngrp))
+Lambda0 <- to_factormat(theta0, d)
+Phi0 <- MASS::ginv(Lambda0)
+stopifnot(all.equal(Phi0 %*% Lambda0, diag(3)))
+
+b0 <- Lambda0 %*% matrix(u0, nrow = d)
+stopifnot(all.equal(Phi0 %*% b0, matrix(u0, nrow = d)))
+
+## if we want to show that the log-likelihoods are *exactly* equivalent
+## it's slightly tricky;
+## Phi0 is a different shape/doesn't preserve the upper-triangle-zero
+## constraint ...
+
+par1 <- list(beta0 = 0, logsd = 0, theta = from_factormat
+             b = b0)
 f_nonspher(par1)
 ff2 <- MakeADFun(f_nonspher, par1)
 ff2$fn()
