@@ -11,7 +11,7 @@ glmmTMBControl(
   profile = FALSE,
   collect = FALSE,
   parallel = list(n = getOption("glmmTMB.cores", 1L), autopar =
-    getOption("glmmTMB.autopar", NULL)),
+    getOption("glmmTMB.autopar", get_autopar())),
   eigval_check = TRUE,
   zerodisp_val = log(.Machine$double.eps)/4,
   start_method = list(method = NULL, jitter.sd = 0),

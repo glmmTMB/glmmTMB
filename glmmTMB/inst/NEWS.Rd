@@ -14,6 +14,7 @@
       \item added the Bell distribution (\code{bell()}) as in
       Castellares et al. 2018 \doi{10.1016/j.apm.2017.12.014} (Hatice
       Tül Kübra Akdur)
+      \item added aggregated predictions with bias correction as in Kindt-Larsen, Glemerec, et al. 2023 \doi{10.1098/rspb.2022.2570} and Thorson & Kristensen 2016 \doi{10.1016/j.fishres.2015.11.016}
     } % itemize
   } % new features
   \subsection{BUG FIXES}{
@@ -35,8 +36,18 @@
       (GH #1133, @strengejacke)
       \item fixed bug blocking reduced-rank models with binomial response
       (GH #1151, @toddvogel1628)
+      \item fixed minor bug with \code{confint} applied to models with
+      random effects in the dispersion model
     } % itemize
   } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item headline of \code{print} and \code{summary} output
+      now labels the minimum of the objective function
+      (correctly) as "-2*log(L)" rather than "deviance" (GH #1156, @ladin100)
+    } % itemize
+  } % user-visible changes
+
 } % 1.1.11
   
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{

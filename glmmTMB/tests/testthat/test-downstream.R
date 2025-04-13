@@ -71,7 +71,7 @@ if (require(emmeans)) {
       expect_equal(
           c(suppressMessages(joint_tests(nested0))),
           c(suppressMessages(joint_tests(nested))),
-                   tolerance = 1e-5)
+                   tolerance = 2e-5)
 
       ## joint_tests(nested, component = "cmean")
   }

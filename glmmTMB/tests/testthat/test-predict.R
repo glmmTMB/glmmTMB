@@ -55,8 +55,6 @@ test_that("new levels in AR1 (OK)", {
                    "Predicting new random effect levels")
 })
 
-context("Predict two-column response case")
-
 test_that("two-column response", {
     skip_on_cran()
     fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial,

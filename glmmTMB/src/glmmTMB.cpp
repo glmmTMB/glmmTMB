@@ -165,6 +165,38 @@ Type inverse_linkfun(Type eta, int link) {
   return ans;
 }
 
+template<class Type>
+Type linkfun(Type mu, int link) {
+  Type ans;
+  switch (link) {
+  case log_link:
+    ans = log(mu);
+    break;
+  case identity_link:
+    ans = mu;
+    break;
+  case logit_link:
+    ans = logit(mu);
+    break;
+  case probit_link:
+    ans = qnorm(mu);
+    break;
+  case cloglog_link:
+    ans = log(-log(Type(1)-mu));
+    break;
+  case inverse_link:
+    ans = Type(1) / mu;
+    break;
+  case sqrt_link:
+    ans = sqrt(mu);
+    break;
+    // TODO: Implement remaining links
+  default:
+    error("Link not implemented!");
+  } // End switch
+  return ans;
+}
+
 /* logit transformed inverse_linkfun without losing too much
    accuracy */
 template<class Type>
@@ -1252,6 +1284,22 @@ Type objective_function<Type>::operator() ()
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
+
+  DATA_FACTOR(aggregate);
+  if (aggregate.size() > 0) {
+    if (aggregate.size() != mu_predict.size())
+      Rf_error("'aggregate' wrong size");
+    vector<Type> tmp(NLEVELS(aggregate));
+    tmp.setZero();
+    for (int i=0; i<aggregate.size(); i++) {
+      tmp[aggregate[i]] += mu_predict[i];
+    }
+    mu_predict = tmp;
+    for (int i=0; i<tmp.size(); i++) {
+      tmp[i] = linkfun(tmp[i], link);
+    }
+    eta_predict = tmp;
+  }
 
   REPORT(mu_predict);
   REPORT(eta_predict);
