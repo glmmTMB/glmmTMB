@@ -61,59 +61,60 @@ startParams <- function(parameters,
     ## fits a reduced rank model to obtain starting values for the latent variables and the factor loadings
     rrValues <- function(yobs, weights, fr, mu,
                        family, formula, ziformula, dispformula, condReStruc,
-                       phi = NULL, jitter.sd = 0){
-    nobs <- length(yobs)
-    resid <- rep(NA, nobs)
+                       phi = NULL, jitter.sd = 0) {
+        nobs <- length(yobs)
+        resid <- rep(NA, nobs)
 
-    # get either dunn-smyth residuals or
-    fam <- family$family
-    res.families <- c("poisson", "nbinom1", "nbinom2", "binomial", "gaussian")
-    if (fam %in% res.families) {
-        resid <- dunnsmyth_resids(yobs, mu, fam, phi)
-    } else {
-      resid <- family$dev.resids(y = yobs, mu = mu, wt = weights)
-    }
-    resid <- as.data.frame(resid)
+                                        # get either dunn-smyth residuals or
+        fam <- family$family
+        res.families <- c("poisson", "nbinom1", "nbinom2", "binomial", "gaussian")
+        if (fam %in% res.families) {
+            resid <- dunnsmyth_resids(yobs, mu, fam, phi)
+        } else {
+            resid <- family$dev.resids(y = yobs, mu = mu, wt = weights)
+        }
+        resid <- as.data.frame(resid)
 
-    get_rank <- function(x) {
-      if (x[["blockCode"]] != .valid_covstruct[["rr"]]) return(0)
-      p <- x$blockSize
-      nt <- x$blockNumTheta
-      rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
-      return(rank)
-    }
+        get_rank <- function(x) {
+            if (!x[["blockCode"]] %in% .valid_covstruct[[c("rr", "rr_inv")]]) return(0)
+            p <- x$blockSize
+            nt <- x$blockNumTheta
+            rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
+            return(rank)
+        }
 
-    rank <- vapply(condReStruc,
-                   get_rank,
-                   FUN.VALUE=numeric(1))
-    nlv <- rank[rank > 0]
-    namBlk <- names(nlv)
+        rank <- vapply(condReStruc,
+                       get_rank,
+                       FUN.VALUE=numeric(1))
+        nlv <- rank[rank > 0]
+        namBlk <- names(nlv)
 
-    par.list <- vector("list", length = 3)
-    names(par.list) <- c("theta", "b", "fact_load")
-    # Use glmmTMB to get initial starting values for factor loadings and latent variables
-    fr.res <- cbind(fr, resid)
-    ranForm <- no_specials(findbars_x(RHSForm(formula)))
-    nrr <- length(namBlk)
-    rrTrm <- lapply(1:length(namBlk), function(x) as.character(ranForm[ranForm == namBlk][[x]]))
-    x <- sapply(1:nrr, function(x) paste(rrTrm[[x]][2], rrTrm[[x]][1], rrTrm[[x]][3]))
-    resForm <- formula(paste("resid ~ 0 "))
-    for(i in 1:nrr){
-      rrForm <- formula(paste("~ rr(", x[i], ",", nlv[i], ")"))
-      resForm <- addForm(resForm, rrForm)
-    }
-    # residual model; assuming gaussian and fixing sd to 1
-    fit.res <- glmmTMB(resForm, data = fr.res,
-                       family = gaussian,
-                       start = list(betadisp = c(log(1))),
-                       map = list(betadisp = factor(c(NA))),
-                       control = glmmTMBControl(conv_check = "skip"))
-    par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
-    par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
-    # Add jitter to latent variables
-    par.list$b <- par.list$b + rnorm(length(par.list$b), 0, jitter.sd)
+        par.list <- vector("list", length = 3)
+        names(par.list) <- c("theta", "b", "fact_load")
+        ## Use glmmTMB to get initial starting values for factor loadings and latent variables
+        fr.res <- cbind(fr, resid)
+        ranForm <- no_specials(findbars_x(RHSForm(formula)))
+        nrr <- length(namBlk)
+        rrTrm <- lapply(1:length(namBlk), function(x) as.character(ranForm[ranForm == namBlk][[x]]))
+        x <- sapply(1:nrr, function(x) paste(rrTrm[[x]][2], rrTrm[[x]][1], rrTrm[[x]][3]))
+        resForm <- formula(paste("resid ~ 0 "))
+        for(i in 1:nrr){
+            rrForm <- formula(paste("~ rr(", x[i], ",", nlv[i], ")"))
+            resForm <- addForm(resForm, rrForm)
+        }
+        ## residual model; assuming gaussian and fixing sd to 1
+        fit.res <- glmmTMB(resForm,
+                           data = fr.res,
+                           family = gaussian,
+                           start = list(betadisp = c(log(1))),
+                           map = list(betadisp = factor(c(NA))),
+                           control = glmmTMBControl(conv_check = "skip"))
+        par.list$theta <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$theta
+        par.list$b <- fit.res$obj$env$parList(fit.res$fit$par, fit.res$fit$parfull)$b
+        ## Add jitter to latent variables
+        par.list$b <- par.list$b + rnorm(length(par.list$b), 0, jitter.sd)
 
-    return(par.list)
+        return(par.list)
   }
 
   # Fit a fixed model to get the starting values for the fixed parameters, call rrValues to get starting parameters for the rr cov struct (theta and b)
@@ -160,7 +161,7 @@ startParams <- function(parameters,
     for (j in seq_along(condReStruc)) {
       nt <- condReStruc[[j]]$blockNumTheta
       nb <- condReStruc[[j]]$blockReps * condReStruc[[j]]$blockSize
-      if (condReStruc[[j]]$blockCode == .valid_covstruct[["rr"]]) {
+      if (condReStruc[[j]]$blockCode %in% .valid_covstruct[c("rr", "rr_inv")]) {
         start$b[bp:(bp + nb - 1)] <- rrStart$b[brrp:(brrp + nb - 1)]
         start$theta[tp:(tp + nt - 1)] <- rrStart$theta[trrp:(trrp + nt - 1)]
         brrp <- brrp + nb; trrp <- trrp + nt
@@ -421,8 +422,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## add X matrices, prior info
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
-  # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto")) 1 else 0
+  ## do we need to tweak initial values for covstruct?
+  specialInits <- function(lst) as.numeric(any(lst$ss %in% c("rr", "rr_inv", "propto")))
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -443,8 +444,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
            
   psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
 
-  # theta is 0, 1 for rr_covstruct
-  # theta is parameterised to corr matrix for propto
+  ## theta is 0, 1 for rr_covstruct
+  ## theta is parameterised to corr matrix for propto
+  ## FIXME: rename function and first argument to be more general  
   t01 <- function(dorr, ReStruc, List = NULL){
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
@@ -455,15 +457,20 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       blockCode  <- getVal(ReStruc, "blockCode")
       thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
       tl <- split(theta, thetaseq)
-      for(i in 1:length(blockCode)){
-        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") # if rr start theta at 1
-          tl[[i]] <- rep(1, blockNumTheta[i])
-        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="propto") { # if propto then set theta to be transformed values
-          a <- condList[["aa"]][[i]]
-          tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
-        } #end else if propto
+      for(i in 1:length(blockCode)) {
+          covstruct <- names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]
+          tl[[i]] <- switch(covstruct,
+                            ## fill theta with 1 (not 0)
+                            rr_inv = ,
+                            rr = rep(1, blockNumTheta[i]),
+                            propto = {
+                                ## set theta to transformed values
+                                a <- condList[["aa"]][[i]]
+                                c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
+                            },
+                            tl[[i]])
       } #end for loop
-      theta <- unlist(tl, use.names = F)
+      theta <- unlist(tl, use.names = FALSE)
     }
     return(theta)
   }
@@ -476,9 +483,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),                       
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
-                       theta   = t01(dorr = rrVal(condList), condReStruc, condList),
-                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
-                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc),
+                       theta   = t01(dorr = specialInits(condList), condReStruc, condList),
+                       thetazi = t01(dorr = specialInits(ziList), ziReStruc, ziList),                       
+                       thetadisp = t01(dorr = specialInits(dispList), dispReStruc),
                        psi  = psi_init
                      ))
 
@@ -1001,7 +1008,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                "gau" = 2,
                "mat" = 3, 
                "toep" = 2 * blksize - 1,
-               "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2, #rr
+               "rr_inv" = ,
+               "rr" = blksize * blkrank - (blkrank - 1) * blkrank / 2,
                "homdiag" = 1,  ## (homogeneous) diag
                "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
                "homcs" = 2,

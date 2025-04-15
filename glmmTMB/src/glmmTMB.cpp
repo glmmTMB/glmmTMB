@@ -81,7 +81,8 @@ enum valid_covStruct {
   // should perhaps be next to homdiag but don't want to mess
   //  up interpretation of stored fits ...
   hetar1_covstruct = 12,
-  homcs_covstruct = 13
+  homcs_covstruct = 13,
+  rr_inv_covstruct = 14
 };
 
 // should probably be named just 'predictCode';
@@ -696,8 +697,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // (i.e. user is assumed to be passing the 'non-spherical' latent variables)
     if (term.simCode != fix_simcode) {
       for(int i = 0; i < term.blockReps; i++){
-	vector<Type> usub = U.col(i).segment(0, rank);
-	U.col(i) = Lambda * usub;
+        vector<Type> usub = U.col(i).segment(0, rank);
+        U.col(i) = Lambda * usub;
       }
     }
 
@@ -709,7 +710,40 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       term.sd = term.corr.diagonal().array().sqrt();
       term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
     }
-  }
+  } // end rr_covstruct
+    else if (term.blockCode == rr_inv_covstruct){
+    // case: reduced rank, inverse parameterization
+    // constructing the *inverse* factor loadings matrix
+    int p = term.blockSize;
+    int nt = theta.size();
+    int rank = (2*p + 1 -  (int)sqrt(pow(2.0*p + 1, 2) - 8*nt) ) / 2 ;
+    int k = 0;
+    matrix<Type> Phi(rank, p);
+    for (int i = 0; i < p; i++) {  // fill row-wise
+      for (int j = 0; j < rank; j++) {
+        if (j < i)
+          Phi(i, j) = 0;
+        else 
+          Phi(i, j) = theta[k++];
+      }
+    }
+
+    // computing log-likelihood based on *spherical* (iid N(0,1)) random effects
+    for(int i = 0; i < term.blockReps; i++){
+      ans -= dnorm(vector<Type>(Phi * matrix<Type>(U.col(i))), Type(0), 1, true).sum();
+      if (do_simulate) {
+        error("simulation not implemented yet");
+      } // simcode
+    }
+
+    // computing the correlation matrix and std devs
+    // (the same D^(-1/2) L L^T D^(-1/2) transformation that we use for correlations
+
+    // don't compute corr matrix here ...
+    // (may run into trouble with VarCorr etc)
+
+    } // end rr_inv_covstruct
+
   else if (term.blockCode == propto_covstruct){
     // case: propto_covstruct
     int n = term.blockSize;

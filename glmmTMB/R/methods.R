@@ -247,6 +247,7 @@ ranef.glmmTMB <- function(object, condVar=TRUE, ...) {
   all_blockcodes <- unlist(lapply(object$modelInfo$reStruc,
                                 function(x) vapply(x, function(y) y[["blockCode"]],
                                                    numeric(1))))
+  ## pick out only rr, not rr_inv for this special case
   has_rr <- any(all_blockcodes == .valid_covstruct[["rr"]])
   ## FIXME: test what happens if condVar is FALSE and/or we run this on a model without RE?
   ## FIXME: could probably simplify/collapse further.
