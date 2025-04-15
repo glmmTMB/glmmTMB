@@ -527,7 +527,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
                                          include_dropped = FALSE, include_mapequal = TRUE)
 
               nms <- estNameList[[cnm]]
-              mm[nms, nms] <- m
+              if (length(m)>0) mm[nms, nms] <- m
               m <- mm
           }
           covList[[i]] <- m

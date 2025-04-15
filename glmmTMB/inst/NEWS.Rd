@@ -4,7 +4,11 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.11}{
+\section{CHANGES IN VERSION 1.1.11.9000}{
+  % nothing yet
+}
+
+\section{CHANGES IN VERSION 1.1.11 (2025-04-02)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{glmmTMB} gains a \code{subset} argument (GH #1128,
