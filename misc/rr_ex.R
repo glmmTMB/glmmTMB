@@ -1,8 +1,24 @@
 ## we want to try to compute a reduced-rank neg log likelihood in two different ways:
 ##  * with spherical random effects, parameterized by factor loading matrix (eta = X*beta + Z*Lambda*u, u ~ dnorm())
 ##  * with nonspherical random effects, param by inverse factor loading matrix (eta = X*beta + Z*b, b ~ dmvnorm(Phi)
-## The hope is that using nonspherical random effects 
+## The hope is that using nonspherical random effects will speed up leverage calculations by making the latent-variable
+## Hessian sparser, although in preliminary tests below it seems to slow down the fitting machinery itself.
 
+## Current status: still fighting with how/whether to include log(det(tcrossprod(Phi))) in the non-spherical log-likelihood ...
+## I think I need it as a Jacobian term to account for moving from b = (Lambda u) to u (i.e., left-multiplying by Phi) ?
+## Still a bit confused; leave it out if we just want to match NLLs between spherical and non-spherical parameterizations,
+## but need to include it in the random-effects/Laplace-approximated version?
+## At the moment the non-spherical stuff doesn't seem to be working; I believe the precision is going to zero/RE variance to infinity
+## so that the latent variables can match the data more or less exactly ...
+
+## u = vector of spherical latent vars
+## n = length(u)
+## b 
+## penalty for spherical random effects: NLL(u ~ MVN(0, I)) = -sum(dnorm(u)) = sum(u^2)/2 + n/2*log(2*pi)
+##
+## penalty for non-spherical random effects:
+##   NLL(b ~ MVN(0, Sigma)) = -sum(dmvnorm(b[,i], Sigma0)) = sum(b[,i] %*% invSigma %*% t(b[,i])/2) + n*log(det(invSigma))
+##   = sum(tcrossprod(b[,i] %*% Phi)) + n*log(det(Phi)) +
 library(glmmTMB)
 library(reformulas)
 library(Matrix)
@@ -32,7 +48,8 @@ from_factormat <- function(x) {
 logdet <- ADjoint(
     function(x) determinant(x, log=TRUE)$modulus,
     function(x, y, dy) t(solve(x)) * dy,
-    name = "logdet")
+    name = "logdet"
+)
 
 set.seed(101)
 ngrp <- 30
@@ -90,6 +107,8 @@ stopifnot(all.equal(nll0, ff0$fn()))
 
 ff1 <- mk_f_spher(par0, dd, d)
 ff1$fn()
+pp1 <- ff1$env$parList()
+pp1_b <- c(ff1$report()$b)
 
 ## 2. using non-spherical random effects
 f_nonspher <- function(par) {
@@ -99,41 +118,61 @@ f_nonspher <- function(par) {
     } else {
         Phi <- t(matrix(theta, ncol = d))
     }
+    ngrp <- length(b)/length(Phi)
     mu <- drop(beta0 + Z %*% b)
     sd1 <- exp(logsd)
     b <- matrix(b, nrow = nlev)
     u <- drop(Phi %*% b)
-    ## logdetphi <- logdet(crossprod(Phi))
-    ## nllpen <- (sum(u^2) - logdetphi + d*log(2*pi))/2
+    nllpen <- -sum(dnorm(u, log = TRUE))
+    if (jac_corr) {
+        logdetphi <- ngrp*logdet(tcrossprod(Phi))
+        nllpen <- nllpen - logdetphi  ## sign ???
+    }
     REPORT(mu)
     REPORT(b)
-    nllpen <- -sum(dnorm(u, log = TRUE))
     -sum(dnorm(y, mu, sd1, log = TRUE)) + nllpen 
 }
-mk_f_nonspher <- function(par, dd, d, random = "b", raw_phi = FALSE) {
+
+mk_f_nonspher <- function(par, dd, d, random = "b", raw_phi = FALSE, jac_corr = TRUE) {
     MakeADFun(f_nonspher, par, random = random, silent = TRUE)
 }
 
+## Phi0 %*% Lambda0 = I
 Lambda0 <- to_factormat(theta0, d)
 Phi0 <- MASS::ginv(Lambda0)
 stopifnot(all.equal(Phi0 %*% Lambda0, diag(3)))
 
-## 
+## Phi %*% b == u
 b0 <- Lambda0 %*% matrix(u0, nrow = d)
 stopifnot(all.equal(Phi0 %*% b0, matrix(u0, nrow = d)))
 
 ## for this section, keep full inverse factor loading matrix (without zeroing the upper triangle),
 ## to ensure comparability between original and inverse parameterizations
 raw_phi <- TRUE
+jac_corr <- FALSE
 par1 <- list(beta0 = 0, logsd = 0, theta = t(Phi0), b = c(b0))
 nll1 <- f_nonspher(par1)
 stopifnot(all.equal(nll1, nll0))
 
-ff2 <- mk_f_nonspher(par1, dd, d, random = character(0), raw_phi = TRUE)
+ff2 <- mk_f_nonspher(par1, dd, d, random = character(0), raw_phi = TRUE, jac_corr = FALSE)
 ff2$fn()
 stopifnot(all.equal(nll1, ff2$fn()))
+pp2 <- ff2$env$parList()
 
-ff3 <- mk_f_nonspher(par1, dd, d, raw_phi = TRUE)
+jac_corr <- TRUE
+f_nonspher(par1)
+
+## with random effects
+ff3 <- mk_f_nonspher(par1, dd, d, raw_phi = TRUE, jac_corr = TRUE)
+ff3$fn()
+pp3 <- ff3$env$parList()
+
+## check results (estimated b/u values)
+## shouldn't these be identical? very weakly correlated
+head(pp3$b)
+head(pp1_b)
+plot(ff3$report()$mu, ff1$report()$mu)
+
 ## nonspher much slower than spher for a single function evaluation
 benchmark(spher = ff1$fn(), nonspher = ff3$fn())
 
@@ -146,7 +185,7 @@ par1B <- list(beta0 = 0, logsd = 0, theta = from_factormat(t(Phi0)), b = c(b0))
 f_nonspher(par1B)
 ## not very different from example with inverse factor loading
 ## matrix complete (i.e., not zeroing out the triangle: 3027.73 vs 3027.744
-ff4 <- mk_f_nonspher(par1B, dd, d, raw_phi = FALSE)
+ff4 <- mk_f_nonspher(par1B, dd, d, raw_phi = FALSE, jac_corr = TRUE)
 ff4$fn()  ## 92.01678 (vs 1854 for original parameterization with inner optimization ...)
 
 ## do optimization
@@ -206,7 +245,7 @@ if (do_slow) {
         res[[i]] <- tibble::lst(rpar0, rpar1, rfit0, rfit1, rfit2, slik0, slik1, t0, t1, t2)
         saveRDS(res, file = "rr_sim_results.rds")
     }
-}
+} else res <- readRDS("rr_sim_results.rds")
 
 
 ## NEXT:
@@ -239,8 +278,9 @@ spider_p1 <- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
                      family = poisson,
                      data=spiderDat_common)
 
-debug(glmmTMB)
 spider_p2 <- glmmTMB(abund ~ Species + rr_inv(Species + 0|id, d = 1),
                      family = poisson,
                      data=spiderDat_common)
 
+spider_p1$obj$fn()
+spider_p2$obj$fn()
