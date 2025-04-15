@@ -141,8 +141,11 @@ system.time(
 )
 ## takes 8 times longer, but doesn't get stuck
 
+## but ... RTMB agrees with glmmTMB fit
+c(fit1$object, c(-1*logLik(m1)))
+
 flatten <- function(x) c(as.matrix(x))
-pmat <- cbind(nonspher=flatten(ff1$report()$mu), spher=flatten(ff4$report()$mu), true = dd$y)
+pmat <- cbind(nonspher=flatten(ff1$report()$mu), spher=flatten(ff4$report()$mu), glmmTMB = predict(m1), true = dd$y)
 pairs(pmat, gap = 0)
 hist(pmat[,"spher"]-pmat[,"true"])
 ## precision-matrix version is getting to the right place ...
@@ -175,9 +178,10 @@ t(sapply(res, \(x) c(x$slik0, x$slik1)))
 all(sapply(res, \(x) c(x$rfit0$convergence, x$rfit1$convergence)) == 0)
 
 ## NEXT:
-## * Compare with built-in rr()?
+## * Compare with built-in rr()? (DONE)
 ## * Try setting starting values based on Dunn-Smyth glm resids?
 ## * Simulate new data each time?
+## * see what happens with DEoptim? (i.e. is the likelihood surface horrible/multimodal?)
 
 ### playing with inverses
 
