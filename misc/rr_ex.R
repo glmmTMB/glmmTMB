@@ -18,7 +18,12 @@
 ##
 ## penalty for non-spherical random effects:
 ##   NLL(b ~ MVN(0, Sigma)) = -sum(dmvnorm(b[,i], Sigma0)) = sum(b[,i] %*% invSigma %*% t(b[,i])/2) + n*log(det(invSigma))
-##   = sum(tcrossprod(b[,i] %*% Phi)) + n*log(det(Phi)) +
+##   = sum(tcrossprod(b[,i] %*% Phi)) + ngrp*log(det(Phi))/2 + n*log(2*pi)/2
+
+## do I need a Jacobian correction??? What is the Jacobian of b = Lambda %*% u? Just Lambda ... log(abs(det(Lambda)))?
+## (do I need the pseudo-determinant of Lambda again?)
+## or is the log(det()) term in the MVN really just equivalent to a Jacobian correction?
+
 library(glmmTMB)
 library(reformulas)
 library(Matrix)
@@ -87,11 +92,13 @@ f_spher <- function(par) {
     Lambda <- matrix(0, nrow = nlev, ncol = d)
     Lambda[row(Lambda) >= col(Lambda)] <- theta
     b <- Lambda %*% matrix(u, nrow = d)
-    mu <- beta0 + Z %*% c(b)
+    mu <- drop(beta0 + Z %*% c(b))
     sd1 <- exp(logsd)
     REPORT(mu)
     REPORT(b)
-    -sum(dnorm(y, drop(mu), sd1, log = TRUE)) - sum(dnorm(u, log = TRUE))
+    nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
+    nllpen <- -sum(dnorm(u, log = TRUE))
+    nll + nllpen
 }
 mk_f_spher <- function(par, dd, d, random = "u") {
     MakeADFun(f_spher, par, random = random, silent = TRUE)
@@ -137,6 +144,8 @@ mk_f_nonspher <- function(par, dd, d, random = "b", raw_phi = FALSE, jac_corr = 
     MakeADFun(f_nonspher, par, random = random, silent = TRUE)
 }
 
+## check transformations, getting ready for non-spherical equivalents
+
 ## Phi0 %*% Lambda0 = I
 Lambda0 <- to_factormat(theta0, d)
 Phi0 <- MASS::ginv(Lambda0)
@@ -145,6 +154,37 @@ stopifnot(all.equal(Phi0 %*% Lambda0, diag(3)))
 ## Phi %*% b == u
 b0 <- Lambda0 %*% matrix(u0, nrow = d)
 stopifnot(all.equal(Phi0 %*% b0, matrix(u0, nrow = d)))
+
+
+logdetstar <- function(X, tol = 1e-16) {
+    ee <- eigen(X, only.value = TRUE)$values
+    sum(log(ee[ee>tol]))
+}
+
+## how about a completely naive approach based on non-spherical REs?
+## uses stuff that probably won't work in RTMB (e.g. MASS::ginv for generalized inverse;
+##  maybe also eigenvalue calculation?
+f_nonspher_1 <- function(par) {
+    getAll(par, dd)
+    mu <- drop(beta0 + Z %*% b)
+    Lambda <- matrix(0, nrow = nlev, ncol = d)
+    Lambda[row(Lambda) >= col(Lambda)] <- theta
+    n <- length(b)
+    ngrp <- n/length(Lambda)
+    ## presumably won't work with RTMB ...
+    Sigma <- tcrossprod(Lambda)
+    Sigmainv <- MASS::ginv(Sigma)
+    sd1 <- exp(logsd)
+    b <- matrix(b, nrow = nlev)
+    nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
+    nllpen <- sum(b %*% Sigmainv %*% t(b))/2 + ngrp*logdetstar(Sigma)/2 + n*log(2*pi)/2
+    REPORT(mu)
+    REPORT(b)
+    nll + nllpen
+}
+
+par2 <- list(theta = theta0, b = c(b0), beta0 = 0, logsd = 0)
+f_nonspher_1(par2)
 
 ## for this section, keep full inverse factor loading matrix (without zeroing the upper triangle),
 ## to ensure comparability between original and inverse parameterizations
