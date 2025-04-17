@@ -4,7 +4,7 @@
 ## The hope is that using nonspherical random effects will speed up leverage calculations by making the latent-variable
 ## Hessian sparser, although in preliminary tests below it seems to slow down the fitting machinery itself.
 
-## Current status: still fighting with how/whether to include log(det(tcrossprod(Phi))) in the non-spherical log-likelihood ...
+## Current status: still fighting with how/whether to subtract log(det(tcrossprod(Phi))) in the non-spherical log-likelihood ...
 ## I think I need it as a Jacobian term to account for moving from b = (Lambda u) to u (i.e., left-multiplying by Phi) ?
 ## Still a bit confused; leave it out if we just want to match NLLs between spherical and non-spherical parameterizations,
 ## but need to include it in the random-effects/Laplace-approximated version?
@@ -57,12 +57,12 @@ logdet <- ADjoint(
 )
 
 set.seed(101)
-ngrp <- 30
+ngrp <- 23
 nlev <- 30
 d <- 3
 ntheta <- nlev*d - choose(d,2)
-nu <- d*nlev
-nb <- ngrp*nlev
+nu <- d*ngrp     ## number of spherical LVs
+nb <- nlev*ngrp  ## number of nonspher LVs
 dd <- expand.grid(f = factor(1:ngrp),
                   g = factor(1:nlev))
 form <- y ~ 1 + rr(0 + f | g, d = d)
@@ -74,8 +74,8 @@ dd$y <- simulate_new(RHSForm(form, as.form = TRUE),
                                       betadisp = -1))[[1]]
 
 fitfun <- function(dd) {
-    glmmTMB(y ~ 1 + rr(f | g, d = d), 
-            data = dd, 
+    glmmTMB(form,
+            data = dd,
             family = gaussian,
             control = glmmTMBControl(optCtrl = list(iter.max=1000,
                                                     eval.max=1000)))
@@ -89,8 +89,7 @@ Z <- t(rt$Zt)
 ## 1. using spherical random effects
 f_spher <- function(par) {
     getAll(par, dd)
-    Lambda <- matrix(0, nrow = nlev, ncol = d)
-    Lambda[row(Lambda) >= col(Lambda)] <- theta
+    Lambda <- to_factormat(theta, d)
     b <- Lambda %*% matrix(u, nrow = d)
     mu <- drop(beta0 + Z %*% c(b))
     sd1 <- exp(logsd)
@@ -100,6 +99,7 @@ f_spher <- function(par) {
     nllpen <- -sum(dnorm(u, log = TRUE))
     nll + nllpen
 }
+
 mk_f_spher <- function(par, dd, d, random = "u") {
     MakeADFun(f_spher, par, random = random, silent = TRUE)
 }
@@ -130,6 +130,7 @@ f_nonspher <- function(par) {
     sd1 <- exp(logsd)
     b <- matrix(b, nrow = nlev)
     u <- drop(Phi %*% b)
+    nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
     nllpen <- -sum(dnorm(u, log = TRUE))
     if (jac_corr) {
         logdetphi <- ngrp*logdet(tcrossprod(Phi))
@@ -137,7 +138,7 @@ f_nonspher <- function(par) {
     }
     REPORT(mu)
     REPORT(b)
-    -sum(dnorm(y, mu, sd1, log = TRUE)) + nllpen 
+    nll + nllpen 
 }
 
 mk_f_nonspher <- function(par, dd, d, random = "b", raw_phi = FALSE, jac_corr = TRUE) {
@@ -167,15 +168,13 @@ logdetstar <- function(X, tol = 1e-16) {
 f_nonspher_1 <- function(par) {
     getAll(par, dd)
     mu <- drop(beta0 + Z %*% b)
-    Lambda <- matrix(0, nrow = nlev, ncol = d)
-    Lambda[row(Lambda) >= col(Lambda)] <- theta
+    Lambda <- to_factormat(theta, d)
     n <- length(b)
-    ngrp <- n/length(Lambda)
     ## presumably won't work with RTMB ...
     Sigma <- tcrossprod(Lambda)
     Sigmainv <- MASS::ginv(Sigma)
     sd1 <- exp(logsd)
-    b <- matrix(b, nrow = nlev)
+    b <- matrix(b, nrow = ngrp)
     nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
     nllpen <- sum(b %*% Sigmainv %*% t(b))/2 + ngrp*logdetstar(Sigma)/2 + n*log(2*pi)/2
     REPORT(mu)
@@ -260,6 +259,7 @@ simfun <- function() {
     return(dd_sim)
 }
 
+fn <- "rr_sim_results.rds"
 if (do_slow) {
     set.seed(101)
     nsims <- 50
@@ -283,10 +283,11 @@ if (do_slow) {
         t1 <- system.time(rfit1 <- with(ff4, nlminb(par, fn, gr, control = ctrl)))
         t2 <- system.time(rfit2 <- fitfun(dd_sim))
         res[[i]] <- tibble::lst(rpar0, rpar1, rfit0, rfit1, rfit2, slik0, slik1, t0, t1, t2)
-        saveRDS(res, file = "rr_sim_results.rds")
+        saveRDS(res, file = fn)
     }
-} else res <- readRDS("rr_sim_results.rds")
-
+} else {
+    if (file.exists(fn)) res <- readRDS(fn)
+}
 
 ## NEXT:
 ## * Compare with built-in rr()? (DONE)
