@@ -65,8 +65,8 @@ d <- 3
 ntheta <- nlev*d - choose(d,2)
 nu <- d*ngrp     ## number of spherical LVs
 nb <- nlev*ngrp  ## number of nonspher LVs
-dd <- expand.grid(f = factor(1:ngrp),
-                  g = factor(1:nlev))
+dd <- expand.grid(f = factor(1:nlev),
+                  g = factor(1:ngrp))
 form <- y ~ 1 + rr(0 + f | g, d = d)
 dd$y <- simulate_new(RHSForm(form, as.form = TRUE),
                      newdata = dd, 
@@ -85,6 +85,7 @@ fitfun <- function(dd) {
 
 m1 <- fitfun(dd)
 
+## construct Z matrix
 rt <- mkReTrms(findbars(form), fr = model.frame (~ f + g, data = dd), calc.lambda = FALSE)
 Z <- t(rt$Zt)
 
@@ -94,44 +95,44 @@ f_spher <- function(par) {
     Lambda <- to_factormat(theta, d)
     b <- Lambda %*% matrix(u, nrow = d)
     mu <- drop(beta0 + Z %*% c(b))
-    sd1 <- exp(logsd)
     REPORT(mu)
     REPORT(b)
-    nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
+    nll <- -sum(dnorm(y, mu, exp(logsd), log = TRUE))
     nllpen <- -sum(dnorm(u, log = TRUE))
     nll + nllpen
 }
 
+## containerized version of MakeADFun
 mk_f_spher <- function(par, dd, d, random = "u") {
     MakeADFun(f_spher, par, random = random, silent = TRUE)
 }
 
-theta0 <- rnorm(d*nlev - choose(d,2))
+theta0 <- rnorm(ntheta)
 u0 <- rnorm(nu)
 par0 <- list(beta0 = 0, logsd = 0, theta = theta0, u = u0)
 nll0 <- f_spher(par0)
-gc()
 ff0 <- MakeADFun(f_spher, par0)
 stopifnot(all.equal(nll0, ff0$fn()))
 
 ff1 <- mk_f_spher(par0, dd, d)
 ff1$fn()
+
 pp1 <- ff1$env$parList()
 pp1_b <- c(ff1$report()$b)
 
 ## 2. using non-spherical random effects
 f_nonspher <- function(par) {
     getAll(par, dd)
+    ## construct factor matrix with or without constraints?
     if (!raw_phi) {
-        Phi <- t(to_factormat(theta, d))
+        Phi <- t(to_factormat(theta, d))   ## zero-triangle
     } else {
-        Phi <- t(matrix(theta, ncol = d))
+        Phi <- t(matrix(theta, ncol = d))  ## no
     }
     mu <- drop(beta0 + Z %*% b)
-    sd1 <- exp(logsd)
     b <- matrix(b, nrow = nlev)
     u <- drop(Phi %*% b)
-    nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
+    nll <- -sum(dnorm(y, mu, exp(logsd), log = TRUE))
     nllpen <- -sum(dnorm(u, log = TRUE))
     if (jac_corr) {
         logdetphi <- ngrp*logdet(tcrossprod(Phi))
@@ -157,50 +158,20 @@ stopifnot(all.equal(Phi0 %*% Lambda0, diag(3)))
 b0 <- Lambda0 %*% matrix(u0, nrow = d)
 stopifnot(all.equal(Phi0 %*% b0, matrix(u0, nrow = d)))
 
-logdetstar <- function(X, tol = 1e-16) {
-    ee <- eigen(X, only.value = TRUE)$values
-    sum(log(ee[ee>tol]))
-}
-
-## how about a completely naive approach based on non-spherical REs?
-## uses stuff that probably won't work in RTMB (e.g. MASS::ginv for generalized inverse;
-##  maybe also eigenvalue calculation?
-f_nonspher_1 <- function(par) {
-    getAll(par, dd)
-    mu <- drop(beta0 + Z %*% b)
-    Lambda <- to_factormat(theta, d)
-    n <- length(b)
-    ## presumably won't work with RTMB ...
-    Sigma <- tcrossprod(Lambda)
-    Sigmainv <- MASS::ginv(Sigma)
-    sd1 <- exp(logsd)
-    b <- matrix(b, nrow = ngrp)
-    nll <- -sum(dnorm(y, mu, sd1, log = TRUE))
-    nllpen <- sum(b %*% Sigmainv %*% t(b))/2 + ngrp*logdetstar(Sigma)/2 + n*log(2*pi)/2
-    REPORT(mu)
-    REPORT(b)
-    nll + nllpen
-}
-
-par2 <- list(theta = theta0, b = c(b0), beta0 = 0, logsd = 0)
-f_nonspher_1(par2)
-
 ## for this section, keep full inverse factor loading matrix (without zeroing the upper triangle),
 ## to ensure comparability between original and inverse parameterizations
 raw_phi <- TRUE
 jac_corr <- FALSE
 par1 <- list(beta0 = 0, logsd = 0, theta = t(Phi0), b = c(b0))
 nll1 <- f_nonspher(par1)
-## equal *without* Jacobian/logdet??
+## says we *DON'T* need Jacobian correction (I can talk myself into this),
+## as we're still evaluating the log-likelihood of u|theta (not b|theta)
 stopifnot(all.equal(nll1, nll0))
 
 ff2 <- mk_f_nonspher(par1, dd, d, random = character(0), raw_phi = TRUE, jac_corr = FALSE)
 ff2$fn()
 stopifnot(all.equal(nll1, ff2$fn()))
 pp2 <- ff2$env$parList()
-
-jac_corr <- TRUE
-f_nonspher(par1)
 
 ## with random effects
 ff3 <- mk_f_nonspher(par1, dd, d, raw_phi = TRUE, jac_corr = TRUE)
@@ -242,7 +213,9 @@ system.time(
 c(fit1$object, c(-1*logLik(m1)))
 
 flatten <- function(x) c(as.matrix(x))
-pmat <- cbind(nonspher=flatten(ff1$report()$mu), spher=flatten(ff4$report()$mu), glmmTMB = predict(m1), true = dd$y)
+pmat <- cbind(nonspher=flatten(ff1$report()$mu),
+              spher=flatten(ff4$report()$mu),
+              glmmTMB = predict(m1), true = dd$y)
 pairs(pmat, gap = 0)
 hist(pmat[,"spher"]-pmat[,"true"])
 ## precision-matrix version is getting to the right place ...
