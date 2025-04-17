@@ -57,6 +57,8 @@ logdet <- ADjoint(
 )
 
 set.seed(101)
+## WARNING: we'll assume ngrp/nlev/d are fixed throughout this
+## example, modifying them will break stuff
 ngrp <- 23
 nlev <- 30
 d <- 3
@@ -125,7 +127,6 @@ f_nonspher <- function(par) {
     } else {
         Phi <- t(matrix(theta, ncol = d))
     }
-    ngrp <- length(b)/length(Phi)
     mu <- drop(beta0 + Z %*% b)
     sd1 <- exp(logsd)
     b <- matrix(b, nrow = nlev)
@@ -155,7 +156,6 @@ stopifnot(all.equal(Phi0 %*% Lambda0, diag(3)))
 ## Phi %*% b == u
 b0 <- Lambda0 %*% matrix(u0, nrow = d)
 stopifnot(all.equal(Phi0 %*% b0, matrix(u0, nrow = d)))
-
 
 logdetstar <- function(X, tol = 1e-16) {
     ee <- eigen(X, only.value = TRUE)$values
@@ -191,6 +191,7 @@ raw_phi <- TRUE
 jac_corr <- FALSE
 par1 <- list(beta0 = 0, logsd = 0, theta = t(Phi0), b = c(b0))
 nll1 <- f_nonspher(par1)
+## equal *without* Jacobian/logdet??
 stopifnot(all.equal(nll1, nll0))
 
 ff2 <- mk_f_nonspher(par1, dd, d, random = character(0), raw_phi = TRUE, jac_corr = FALSE)
@@ -224,7 +225,7 @@ par1B <- list(beta0 = 0, logsd = 0, theta = from_factormat(t(Phi0)), b = c(b0))
 f_nonspher(par1B)
 ## not very different from example with inverse factor loading
 ## matrix complete (i.e., not zeroing out the triangle: 3027.73 vs 3027.744
-ff4 <- mk_f_nonspher(par1B, dd, d, raw_phi = FALSE, jac_corr = TRUE)
+ff4 <- mk_f_nonspher(par1B, dd, d, raw_phi = FALSE, jac_corr = FALSE)
 ff4$fn()  ## 92.01678 (vs 1854 for original parameterization with inner optimization ...)
 
 ## do optimization
