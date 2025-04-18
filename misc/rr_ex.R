@@ -1,28 +1,45 @@
-## we want to try to compute a reduced-rank neg log likelihood in two different ways:
-##  * with spherical random effects, parameterized by factor loading matrix (eta = X*beta + Z*Lambda*u, u ~ dnorm())
-##  * with nonspherical random effects, param by inverse factor loading matrix (eta = X*beta + Z*b, b ~ dmvnorm(Phi)
-## The hope is that using nonspherical random effects will speed up leverage calculations by making the latent-variable
-## Hessian sparser, although in preliminary tests below it seems to slow down the fitting machinery itself.
+## we want to try to compute a reduced-rank neg log likelihood in two
+## different ways:
 
-## Current status: still fighting with how/whether to subtract log(det(tcrossprod(Phi))) in the non-spherical log-likelihood ...
-## I think I need it as a Jacobian term to account for moving from b = (Lambda u) to u (i.e., left-multiplying by Phi) ?
-## Still a bit confused; leave it out if we just want to match NLLs between spherical and non-spherical parameterizations,
-## but need to include it in the random-effects/Laplace-approximated version?
-## At the moment the non-spherical stuff doesn't seem to be working; I believe the precision is going to zero/RE variance to infinity
-## so that the latent variables can match the data more or less exactly ...
+## * with spherical random effects, parameterized by factor loading
+## matrix (eta = X*beta + Z*Lambda*u, u ~ dnorm())
+
+## * with nonspherical random effects, param by inverse factor loading
+## matrix (eta = X*beta + Z*b, b ~ dmvnorm(Phi)
+
+## The hope is that using nonspherical random effects will speed up
+## leverage calculations by making the latent-variable Hessian
+## sparser, although in preliminary tests below it seems to slow down
+## the fitting machinery itself.
+
+## Current status: still fighting with how/whether to subtract
+## log(det(tcrossprod(Phi))) in the non-spherical log-likelihood ...
+## I think I need it as a Jacobian term to account for moving from b =
+## (Lambda u) to u (i.e., left-multiplying by Phi) ?  Still a bit
+## confused; leave it out if we just want to match NLLs between
+## spherical and non-spherical parameterizations, but need to include
+## it in the random-effects/Laplace-approximated version?  At the
+## moment the non-spherical stuff doesn't seem to be working; I
+## believe the precision is going to zero/RE variance to infinity so
+## that the latent variables can match the data more or less exactly
+## ...
 
 ## u = vector of spherical latent vars
 ## n = length(u)
-## b 
-## penalty for spherical random effects: NLL(u ~ MVN(0, I)) = -sum(dnorm(u)) = sum(u^2)/2 + n/2*log(2*pi)
+## b
+
+## penalty for spherical random effects:
+## NLL(u ~ MVN(0, I)) = -sum(dnorm(u)) = sum(u^2)/2 + n/2*log(2*pi)
 ##
 ## penalty for non-spherical random effects:
-##   NLL(b ~ MVN(0, Sigma)) = -sum(dmvnorm(b[,i], Sigma0)) = sum(b[,i] %*% invSigma %*% t(b[,i])/2) + n*log(det(invSigma))
+##   NLL(b ~ MVN(0, Sigma)) = -sum(dmvnorm(b[,i], Sigma0)) =
+## sum(b[,i] %*% invSigma %*% t(b[,i])/2) + n*log(det(invSigma))
 ##   = sum(tcrossprod(b[,i] %*% Phi)) + ngrp*log(det(Phi))/2 + n*log(2*pi)/2
 
-## do I need a Jacobian correction??? What is the Jacobian of b = Lambda %*% u? Just Lambda ... log(abs(det(Lambda)))?
-## (do I need the pseudo-determinant of Lambda again?)
-## or is the log(det()) term in the MVN really just equivalent to a Jacobian correction?
+## TO DO:
+## * check Hessian patterns (how?)
+## * try to figure out why Laplace approx is giving different answers for
+##   spherical vs nonspherical; what can we do with TMB objects?
 
 library(glmmTMB)
 library(reformulas)
