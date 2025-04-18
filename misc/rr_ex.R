@@ -7,7 +7,7 @@
 ## * with nonspherical random effects, param by inverse factor loading
 ## matrix (eta = X*beta + Z*b, b ~ dmvnorm(Phi)
 
-## The hope is that using nonspherical random effects will speed up
+## The hope is that using nonspherical randomeffects will speed up
 ## leverage calculations by making the latent-variable Hessian
 ## sparser, although in preliminary tests below it seems to slow down
 ## the fitting machinery itself.
@@ -128,9 +128,12 @@ theta0 <- rnorm(ntheta)
 u0 <- rnorm(nu)
 par0 <- list(beta0 = 0, logsd = 0, theta = theta0, u = u0)
 nll0 <- f_spher(par0)
+## spherical log-lik *without* random effects
 ff0 <- MakeADFun(f_spher, par0)
+## RTMB and base-R agree (again, no RE)
 stopifnot(all.equal(nll0, ff0$fn()))
 
+## with RE
 ff1 <- mk_f_spher(par0, dd, d)
 ff1$fn()
 
@@ -181,18 +184,23 @@ raw_phi <- TRUE
 jac_corr <- FALSE
 par1 <- list(beta0 = 0, logsd = 0, theta = t(Phi0), b = c(b0))
 nll1 <- f_nonspher(par1)
-## says we *DON'T* need Jacobian correction (I can talk myself into this),
-## as we're still evaluating the log-likelihood of u|theta (not b|theta)
+## base-R (i.e., no RE)
+
+## we *don't* need to worry about the Jacobian correction as we're
+## still evaluating the log-likelihood of u|theta (not b|theta)
 stopifnot(all.equal(nll1, nll0))
 
+## RTMB, without random effects
 ff2 <- mk_f_nonspher(par1, dd, d, random = character(0), raw_phi = TRUE, jac_corr = FALSE)
 ff2$fn()
+## identical to nll0 (R evaluation of spher), nll1 (RTMB evaluation of spher w/o Laplace approx)
+## (suggests we didn't screw up the calculation)
 stopifnot(all.equal(nll1, ff2$fn()))
 pp2 <- ff2$env$parList()
 
 ## with random effects
 ff3 <- mk_f_nonspher(par1, dd, d, raw_phi = TRUE, jac_corr = TRUE)
-ff3$fn()
+c(spher = ff1$fn(), nonspher = ff3$fn())
 pp3 <- ff3$env$parList()
 
 ## check results (estimated b/u values)
@@ -200,6 +208,10 @@ pp3 <- ff3$env$parList()
 head(pp3$b)
 head(pp1_b)
 plot(ff3$report()$mu, ff1$report()$mu)
+
+## these do **not** agree
+plot(ff3$report()$b, ff1$report()$b)
+
 
 ## nonspher much slower than spher for a single function evaluation
 benchmark(spher = ff1$fn(), nonspher = ff3$fn())
