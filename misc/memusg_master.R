@@ -41,7 +41,7 @@ testframe2 <- expand.grid(nsubj = seq(5, 40, by = 5),
     ## order by expected mem usg, to try to get in as many as possible
     ##  before out-of-memory crash
     arrange(ntheta*nobs)
-write.csv(testframe2, "reproducible/mem_testvals2.csv")
+write.csv(testframe2, "mem_testvals2.csv")
 
 ## first pass
 if (FALSE) {
@@ -80,5 +80,8 @@ if (do_slow_tests) {
     }
 }
 
-    
-
+## still something funky with with(), I think ...
+t100 <- testframe2[100,] 
+attach(t100)
+on.exit(detach(t100))
+with_monitor(peakRAM_testfun(nsubj, ntax, d, include_ttt, use_rr = FALSE))

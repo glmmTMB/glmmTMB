@@ -238,7 +238,14 @@ leverage <- function(fm, diag=TRUE) {
     term1 + term2
 }
 
+#' @param nsubj number of subjects
+#' @param ntax number of taxa
+#' @param d reduced-rank dimension
+#' @param use_rr use reduced-rank model?
+#' @param include_ttt include treatment-by-taxon effect?
+#' @param seed random number seed
 peakRAM_testfun <- function(nsubj = 100, ntax = 100, d = 2,
+                            use_rr = TRUE,
                             include_ttt = FALSE, seed = 101,
                             vars_include = c("nsubj", "ntax", "d", "include_ttt")) {
 
@@ -253,18 +260,24 @@ peakRAM_testfun <- function(nsubj = 100, ntax = 100, d = 2,
                       taxon = factor(seq(ntax)))
     dd$group <- factor(ifelse(as.numeric(dd$subject) < nsubj %/% 2, "a", "b"))
 
-    if (include_ttt) {
-        form <- y  ~ 1 + us(1 + group | taxon) + rr(0 + taxon | subject, d)
+    fvec <- "1"
+    if (use_rr) {
+        fvec <- c(fvec, paste0("rr(0 + taxon | subject, d)"))
     } else {
-        form <- y ~ 1 + rr(0 + taxon | subject, d)
+        fvec <- c(fvec, paste0("cs(1 + group | taxon)"))
     }
+    if (include_ttt) {
+        fvec <- c(fvec, paste0("us(1 + group | taxon)"))
+    }
+    form <- reformulate(fvec, response = "y")
+    nth <- ntheta(nsubj, ntax, d, include_ttt, use_rr)
     dd$y <- simulate_new( form[-2],
                  family = nbinom2,
                  newdata = dd,
                  control = list(set_formula_env = FALSE),
                  newparams = list(beta = 1,
                                   betadisp = 1,
-                                  theta = rep(0.1, ntheta(nsubj, ntax, d, include_ttt)))
+                                  theta = rep(0.1, nth))
                  )[[1]]
     ## have to run this without parallelization, since we had to turn off
     ## OpenMP for leverage calculations (we could try to load the full
@@ -286,8 +299,11 @@ peakRAM_testfun <- function(nsubj = 100, ntax = 100, d = 2,
     rbind(tmpf(p1), tmpf(p2, task = "leverage"))
 }
 
+ifp <- function(cond, val) as.numeric(cond)*val
 
-ntheta <- function(nsubj = 100, ntax = 100, d = 2, include_ttt = FALSE) {
+ntheta <- function(nsubj = 100, ntax = 100, d = 2, include_ttt = FALSE,
+                   use_rr = TRUE) {
     rr_n <- ntax*d - choose(d,2)
-    rr_n + ifelse(include_ttt, 3, 0)
+    np <- ifp(include_ttt, 3) + ifp(use_rr, rr_n) + ifp(!use_rr, 2)
+    return(np)
 }
