@@ -47,6 +47,7 @@ library(Matrix)
 library(RTMB)
 library(rbenchmark)
 library(vegan)  ## for procrustes()
+library(gridExtra) ## grid.arrange() for Matrix plots
 do_slow <- FALSE
 
 #' convert parameter vector to constrained factor loading matrix
@@ -120,8 +121,8 @@ f_spher <- function(par) {
 }
 
 ## containerized version of MakeADFun
-mk_f_spher <- function(par, dd, d, random = "u") {
-    MakeADFun(f_spher, par, random = random, silent = TRUE)
+mk_f_spher <- function(par, dd, d, random = "u", silent = FALSE) {
+    MakeADFun(f_spher, par, random = random, silent = silent)
 }
 
 theta0 <- rnorm(ntheta)
@@ -163,8 +164,8 @@ f_nonspher <- function(par) {
     nll + nllpen 
 }
 
-mk_f_nonspher <- function(par, dd, d, random = "b", raw_phi = FALSE, jac_corr = TRUE) {
-    MakeADFun(f_nonspher, par, random = random, silent = TRUE)
+mk_f_nonspher <- function(par, dd, d, random = "b", raw_phi = FALSE, jac_corr = TRUE, silent = FALSE) {
+    MakeADFun(f_nonspher, par, random = random, silent = silent)
 }
 
 ## check transformations, getting ready for non-spherical equivalents
@@ -199,7 +200,7 @@ stopifnot(all.equal(nll1, ff2$fn()))
 pp2 <- ff2$env$parList()
 
 ## with random effects
-ff3 <- mk_f_nonspher(par1, dd, d, raw_phi = TRUE, jac_corr = TRUE)
+ff3 <- mk_f_nonspher(par1, dd, d, raw_phi = TRUE, jac_corr = FALSE)
 c(spher = ff1$fn(), nonspher = ff3$fn())
 pp3 <- ff3$env$parList()
 
@@ -207,17 +208,40 @@ pp3 <- ff3$env$parList()
 ## shouldn't these be identical? very weakly correlated
 head(pp3$b)
 head(pp1_b)
+
+op <- par(mfrow=c(1,2))
 plot(ff3$report()$mu, ff1$report()$mu)
-
-## these do **not** agree
 plot(ff3$report()$b, ff1$report()$b)
+par(op)
 
+## Hessian
+s1 <- TMB::sdreport(ff1, getJointPrecision = TRUE)
+s3 <- TMB::sdreport(ff3, getJointPrecision = TRUE)
+grid.arrange(image(s1$jointPrecision),
+             image(s3$jointPrecision), nrow = 1)
+
+op <- par(mfrow=c(1,2))
+hist(log10(abs(1e-16 + s1$jointPrecision@x)), main = "spherical")
+hist(log10(abs(1e-16 + s3$jointPrecision@x)), main = "non-spherical")
+par(op)
+
+c(mean(s1$jointPrecision@x == 0),  ## 0.18
+  mean(s3$jointPrecision@x == 0))  ## 0.74
+
+c(sum(s1$jointPrecision@x > 0),  ## 5K
+  sum(s3$jointPrecision@x > 0))  ## 40K
+
+## what else can we find out about the inner optimization step and
+## why it is (apparently) not working for the non-spherical case?
 
 ## nonspher much slower than spher for a single function evaluation
 benchmark(spher = ff1$fn(), nonspher = ff3$fn())
 
 ## not as much difference for gradients, but still slower (9x)
 benchmark(spher = ff1$gr(), nonspher = ff3$gr())
+
+## STOP HERE
+
 
 ## now use identifiability constraint
 raw_phi <- FALSE 
