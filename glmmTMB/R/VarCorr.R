@@ -264,7 +264,7 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 ##' @param formatter formatting function
 ##' @param ... additional arguments to formatter
 ##' @examples
-##' gt_load("test_data/models.rda")
+##' invisible(gt_load("test_data/models.rda"))
 ##' format_sdvar(reStdDev = 1:3, use.c = c("Variance", "Std.Dev."))
 ##' format_sdvar(attr(VarCorr(fm1)$cond$Subject, "stddev"))
 ##' @export
@@ -291,9 +291,6 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format,
 ##' @param maxdim maximum number of rows/columns to display
 ##' @param digits digits for format
 ##' @param ... additional parameters
-##' @examples
-##' gt_load("test_data/models.rda")
-##' format_corr(attr(VarCorr(fm1)$cond$Subject, "correlation"))
 ## FIXME: avoid repeating defaults
 ##' @export
 format_corr <- function(x, maxdim=Inf, digits=2, maxlen = 10, ...) {
