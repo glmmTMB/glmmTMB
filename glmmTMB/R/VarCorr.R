@@ -135,13 +135,17 @@ mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
         diagmodel <- identical(dim(cor),c(0L,0L))
         if (diagmodel) cor <- diag(length(sd))
         cov <- matrix(numeric(0))
-        if (length(sd) == 1 || length(sd) == nrow(cor)) {
-            cov <- do1cov(sd, cor)
+        if (identical(c(cor), NaN)) {
+            cov <- NA
+        } else {
+            if (length(sd) == 1 || length(sd) == nrow(cor)) {
+                cov <- do1cov(sd, cor)
+            }
         }
         ## may not want full names (e.g. ou/ar1 models)
         names(sd) <- nm[seq_along(sd)]
         ## skip naming if null cov/cor matrix
-        if (!is.null(cov) && nrow(cov) > 0) {
+        if (!identical(cov, NA) && !is.null(cov) && nrow(cov) > 0) {
             dimnames(cov) <- dimnames(cor) <- list(nm,nm)
         }
         structure(cov, stddev=sd, correlation=cor)
@@ -313,14 +317,18 @@ get_sd.vcmat_ar1 <- function(x) {
 
 ##' @export
 format_corr.default <- function(x, maxdim = Inf, digits=2, ...) {
-    if (is.null(x)) return("")
+    if (length(x)==0) return("")
     x <- attr(x, "correlation")
     x <- as(x, "matrix")
     extra_rows <- (nrow(x) > maxdim)
     newdim <- min(maxdim, nrow(x))
-    cc <- format(round(x, digits), nsmall = digits)
-    cc[upper.tri(cc, diag = TRUE)] <- ""  ## empty lower triangle
-    if (extra_rows) cc <- rbind(cc, "...")
+    if (identical(c(x), NaN)) {
+        cc <- matrix("(not stored)")
+    } else {
+        cc <- format(round(x, digits), nsmall = digits)
+        cc[upper.tri(cc, diag = TRUE)] <- ""  ## empty upper triangle
+        if (extra_rows) cc <- rbind(cc, "...")
+    }
     cc
 }
 

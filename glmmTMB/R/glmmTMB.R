@@ -1570,7 +1570,8 @@ glmmTMBControl <- function(optCtrl=NULL,
     ##           (family$family != "tweedie")
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
-              eigval_check, zerodisp_val, start_method, rank_check, conv_check)
+              eigval_check, zerodisp_val, start_method, rank_check, conv_check,
+              full_corr)
 }
 
 ##' collapse duplicated observations

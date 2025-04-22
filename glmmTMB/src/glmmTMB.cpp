@@ -1,5 +1,15 @@
 #define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
 #define DISABLE_AD if(isDouble<Type>::value)
+#define NAN std::numeric_limits<double>::quiet_NaN()
+// set correlation matrix for output, unless corr output has been disabled
+// (make this a function instead?
+#define SET_COR    if (term.fullCor == 1) { \
+      term.corr = nldens.cov(); \
+    } else { \
+      term.corr.resize(1,1); \
+      term.corr(0,0) = NAN; \
+    }
+
 #include <TMB.hpp>
 #include <R_ext/Error.h>
 #include "init.h"
@@ -420,7 +430,10 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         
       }
     }
-    if (term.fullCor==1) term.corr = nldens.cov(); // For report
+
+    // FIXME: DRY/make this into a function or macro
+    SET_COR;
+    
     term.sd = sd;             // For report
   }
   else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
@@ -442,19 +455,19 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     matrix<Type> corr(n,n);
     for(int i=0; i<n; i++)
       for(int j=0; j<n; j++)
-	corr(i,j) = (i==j ? Type(1) : rho);
+        corr(i,j) = (i==j ? Type(1) : rho);
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-	if (term.simCode != random_simcode) {
-	  Rf_error("simcode not yet implemented for cs cov struct");
-	}
+        if (term.simCode != random_simcode) {
+          Rf_error("simcode not yet implemented for cs cov struct");
+        }
         U.col(i) = sd * nldens.simulate();
       }
     }
-    if (term.fullCor==1) term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else if (term.blockCode == toep_covstruct){
@@ -480,7 +493,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    if (term.fullCor==1) term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else if (term.blockCode == ar1_covstruct ||
@@ -745,7 +758,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    if (term.fullCor==1) term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else error("covStruct not implemented!");
