@@ -19,6 +19,7 @@ test_that("basic example #1", {
     f1 <- fitFun(sleepstudy)
     uncall <- function(x) {
         x$call <- NULL
+        attr(x$fit, "optTime") <- NULL ## don't compare times
         return(x)
     }
     expect_equal(uncall(f0),uncall(f1))
