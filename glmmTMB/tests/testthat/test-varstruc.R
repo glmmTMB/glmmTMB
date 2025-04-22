@@ -35,13 +35,10 @@ test_that("cs_homog", {
 })
 
 test_that("basic ar1", {
+    ## base fm_ar1 does include corr matrix
     vv <- VarCorr(fm_ar1)[["cond"]]
-    expect_equal(c(attr(vv[[2]], "correlation")), 0.87299, tolerance = 1e-5)
-    ## ar1 no longer gives full correlation matrix: do we need an option to do so?
-    ## cc <- cov2cor(vv[[2]])
-    ## expect_equal(cc[1,],cc[,1])
-    ## expect_equal(unname(cc[1,]),
-    ##              cc[1,2]^(0:(nrow(cc)-1)))
+    expect_equal(attr(vv[[2]], "correlation")[2,1], 0.87299, tolerance = 1e-5)
+    ## also need to test 
 })
 
 ## change to something better behaved
@@ -156,5 +153,5 @@ test_that("hom vs het diag", {
 
 test_that("het ar1", {
     skip_on_cran()
-    VarCorr(fit1)
+    VarCorr(fm_hetar1)
 })

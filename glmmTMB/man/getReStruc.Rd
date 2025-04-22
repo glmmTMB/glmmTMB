@@ -6,7 +6,14 @@
 Calculates number of random effects, number of parameters,
 block size and number of blocks.  Mostly for internal use.}
 \usage{
-getReStruc(reTrms, ss = NULL, aa = NULL, reXterms = NULL, fr = NULL)
+getReStruc(
+  reTrms,
+  ss = NULL,
+  aa = NULL,
+  reXterms = NULL,
+  fr = NULL,
+  full_cor = NULL
+)
 }
 \arguments{
 \item{reTrms}{random-effects terms list}

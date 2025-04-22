@@ -81,6 +81,10 @@ fm_nest_lmer <- lme4::lmer(Reaction ~ Days + (1|Subject/fDays), fsleepstudy,
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
 
+fm_ar1_nocor <- glmmTMB(Reaction ~ 1 +
+                            (1|Subject) + ar1(row+0| Subject), fsleepstudy,
+                        control = glmmTMBControl(full_cor = FALSE))
+
 
 fsleepstudy_big <- expand.grid(Subject = 1:100, fDays = factor(1:10))
 fsleepstudy_big$Reaction <- simulate_new(~ 1 + (1|Subject) + hetar1(fDays+0| Subject),

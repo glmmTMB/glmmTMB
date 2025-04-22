@@ -3,31 +3,31 @@
 \name{format_sdvar}
 \alias{format_sdvar}
 \alias{format_corr}
+\alias{get_sd}
 \title{format columns corresponding to std. dev. and/or variance}
 \usage{
 format_sdvar(
   reStdDev,
   use.c = "Std.Dev.",
   formatter = format,
-  maxlen = 10,
   digits = max(3, getOption("digits") - 2),
   ...
 )
 
 format_corr(x, maxdim = Inf, digits = 2, maxlen = 10, ...)
+
+get_sd(x, ...)
 }
 \arguments{
 \item{reStdDev}{a vector of standard deviations}
 
 \item{formatter}{formatting function}
 
-\item{maxlen}{maximum number of rows to display}
-
 \item{digits}{digits for format}
 
-\item{...}{additional arguments to formatter}
+\item{...}{additional parameters}
 
-\item{x}{a square numeric matrix)}
+\item{x}{a square numeric matrix}
 
 \item{maxdim}{maximum number of rows/columns to display}
 
@@ -35,8 +35,6 @@ format_corr(x, maxdim = Inf, digits = 2, maxlen = 10, ...)
 }
 \description{
 format columns corresponding to std. dev. and/or variance
-
-format correlation matrix
 }
 \examples{
 gt_load("test_data/models.rda")

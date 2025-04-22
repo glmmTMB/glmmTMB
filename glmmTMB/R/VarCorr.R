@@ -258,14 +258,13 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 ##' @param a character vector indicating which scales to include
 ##' @param digits number of significant digits
 ##' @param formatter formatting function
-##' @param maxlen maximum number of rows to display
 ##' @param ... additional arguments to formatter
 ##' @examples
 ##' gt_load("test_data/models.rda")
 ##' format_sdvar(reStdDev = 1:3, use.c = c("Variance", "Std.Dev."))
 ##' format_sdvar(attr(VarCorr(fm1)$cond$Subject, "stddev"))
 ## FIXME: avoid repeating defaults
-format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen = 10,
+format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format,
                          digits = max(3, getOption("digits") - 2), ...) {
     res <- list()
     if("Variance" %in% use.c)
@@ -277,17 +276,16 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen 
     colnames(mat) <- names(res)
     rownm <- names(res[[1]])  %||% ""
     mat <- cbind(Name = rownm, mat)
-    mat <- mat[1:min(maxlen,nrow(mat)), , drop = FALSE]
     rownames(mat) <- NULL
     return(mat)
 }
 
 
-##' format correlation matrix
 ##' @rdname format_sdvar
-##' @param x a square numeric matrix)
+##' @param x a square numeric matrix
 ##' @param maxdim maximum number of rows/columns to display
 ##' @param digits digits for format
+##' @param ... additional parameters
 ##' @examples
 ##' gt_load("test_data/models.rda")
 ##' format_corr(attr(VarCorr(fm1)$cond$Subject, "correlation"))
@@ -295,6 +293,22 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format, maxlen 
 ##' @export
 format_corr <- function(x, maxdim=Inf, digits=2, maxlen = 10, ...) {
     UseMethod("format_corr")
+}
+
+##' @rdname format_sdvar
+##' @export
+get_sd <- function(x, ...) {
+    UseMethod("get_sd")
+}
+
+##' @export
+get_sd.default <- function(x, ...) {
+    attr(x, "stddev")
+}
+
+##' @export
+get_sd.vcmat_ar1 <- function(x) {
+    attr(x, "stddev")[1]
 }
 
 ##' @export
@@ -319,9 +333,16 @@ format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
 #' @export
 format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
     x <- attr(x, "correlation")
-    cc <- format(round(x, digits), nsmall = digits)
+    if (length(x)==1) {
+        cc <- format(round(x, digits), nsmall = digits)
+    } else {
+        cc <- format(round(x[2,1], digits), nsmall = digits)
+    }
     return(matrix(paste(cc, "(ar1)")))
 }
+
+#' @export
+format_corr.vcmat_hetar1 <- format_corr.vcmat_ar1
 
 #' @export
 format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
@@ -374,7 +395,10 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     termnames <- names(varcor)
 
     ## get std devs (wait until after processing useScale to create output matrices)
-    reStdDev <- lapply(varcor, function(x) attr(x, "stddev"))
+    ## ugh, want to restrict lengths of sd that get reported: do we need methods/special
+    ##   cases for this as well?
+
+    reStdDev <- lapply(varcor, get_sd)
 
     ## get corr outputs
     corr_out <- lapply(varcor, format_corr, digits = corr_digits, maxdim = maxdim)

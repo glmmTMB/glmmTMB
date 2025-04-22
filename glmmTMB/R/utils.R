@@ -415,11 +415,11 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
           ee2$parameters$thetaf <- NULL
       }
 
-      for (i in seq_along(ee$data$terms)) {
-          ee$data$terms[[i]]$simCode <- .valid_simcode[["random"]]
-      }
-      for (i in seq_along(ee$data$termszi)) {
-          ee$data$termszi[[i]]$simCode <- .valid_simcode[["random"]]
+      for (comp in c("terms", "termszi", "termsdisp")) {
+          for (i in seq_along(ee$data[[comp]])) {
+              ee$data[[comp]][[i]]$simCode <- .valid_simcode[["random"]]
+              ee$data[[comp]][[i]]$fullCor <- 1.0
+          }
       }
       
       if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY

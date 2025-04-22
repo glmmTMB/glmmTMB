@@ -305,9 +305,17 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     dispList  <- getXReTrms(dispformula, mf, fr, type="dispersion", contrasts=contrasts, sparse=sparseX[["disp"]],
     												old_smooths = old_smooths$disp)
 
-    condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr))
-    ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr))
-    dispReStruc <- with(dispList, getReStruc(reTrms, ss, aa, reXterms, fr))
+    nRE <- vapply(list(condList, ziList, dispList),
+                  function(x) length(x[["ss"]]), FUN.VALUE = numeric(1))
+    nREtot <- sum(nRE)
+    full_cor <- control$full_cor %||% TRUE
+    if (!length(full_cor) %in% c(1, nREtot)) stop("length of control$full_cor should be 1 or equal to the total number of random effect terms ",
+                                               sprintf("%d != 1 or %d", length(full_cor), nREtot))
+    full_cor <- rep(full_cor, length.out = nREtot)
+    fc_list <- split(full_cor, factor(rep(1:3, times = nRE), levels=1:3))
+    condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[1]]))
+    ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[2]]))
+    dispReStruc <- with(dispList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[3]]))
     
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
@@ -956,12 +964,12 @@ getGrpVar <- function(x)
 ##' getReStruc(rt2)
 ##' @importFrom stats setNames dist .getXlevels
 ##' @export
-getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
+getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_cor=NULL) {
 
-  ## information from ReTrms is contained in cnms, flist elements
-  ## cnms: list of column-name vectors per term
-  ## flist: data frame of grouping variables (factors)
-  ##   'assign' attribute gives match between RE terms and factors
+    ## information from ReTrms is contained in cnms, flist elements
+    ## cnms: list of column-name vectors per term
+    ## flist: data frame of grouping variables (factors)
+    ##   'assign' attribute gives match between RE terms and factors
     if (is.null(reTrms)) return(list())
     
     ## Get info on sizes of RE components
@@ -1021,7 +1029,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL) {
                     blockSize = blksize[i],
                     blockNumTheta = blockNumTheta[[i]],
                     blockCode = covCode[i],
-                    simCode = simCode[i]
+                    simCode = simCode[i],
+                    fullCor = as.integer(full_cor[i])
                     )
         if(ss[i] == "ar1") {
             ## FIXME: Keep this warning ?
@@ -1472,6 +1481,7 @@ glmmTMB <- function(
 ##' @param start_method (list) Options to initialize the starting values when fitting models with reduced-rank (\code{rr}) covariance structures; \code{jitter.sd} adds variation to the starting values of latent variables when \code{method = "res"}.
 ##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).
 ##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
+##' @param full_cor compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1521,7 +1531,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            zerodisp_val=log(.Machine$double.eps)/4,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
-                           conv_check = c("warning", "skip")) {
+                           conv_check = c("warning", "skip"),
+                           full_corr = TRUE) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
