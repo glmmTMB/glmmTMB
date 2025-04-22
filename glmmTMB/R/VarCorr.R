@@ -290,6 +290,7 @@ format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format,
 ##' @param x a square numeric matrix
 ##' @param maxdim maximum number of rows/columns to display
 ##' @param digits digits for format
+##' @param maxlen maximum number of rows to display
 ##' @param ... additional parameters
 ## FIXME: avoid repeating defaults
 ##' @export

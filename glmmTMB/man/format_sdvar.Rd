@@ -32,6 +32,8 @@ get_sd(x, ...)
 \item{x}{a square numeric matrix}
 
 \item{maxdim}{maximum number of rows/columns to display}
+
+\item{maxlen}{maximum number of rows to display}
 }
 \description{
 format columns corresponding to std. dev. and/or variance
