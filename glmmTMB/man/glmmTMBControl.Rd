@@ -56,7 +56,7 @@ To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.}
 
 \item{conv_check}{Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)}
 
-\item{full_cor}{compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually}
+\item{full_corr}{compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually}
 }
 \description{
 Control parameters for glmmTMB optimization

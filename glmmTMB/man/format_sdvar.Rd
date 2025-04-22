@@ -21,6 +21,8 @@ get_sd(x, ...)
 \arguments{
 \item{reStdDev}{a vector of standard deviations}
 
+\item{use.c}{a character vector indicating which scales to include}
+
 \item{formatter}{formatting function}
 
 \item{digits}{digits for format}
@@ -30,8 +32,6 @@ get_sd(x, ...)
 \item{x}{a square numeric matrix}
 
 \item{maxdim}{maximum number of rows/columns to display}
-
-\item{a}{character vector indicating which scales to include}
 }
 \description{
 format columns corresponding to std. dev. and/or variance

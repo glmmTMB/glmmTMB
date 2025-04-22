@@ -259,7 +259,7 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 
 ##' format columns corresponding to std. dev. and/or variance
 ##' @param reStdDev a vector of standard deviations
-##' @param a character vector indicating which scales to include
+##' @param use.c a character vector indicating which scales to include
 ##' @param digits number of significant digits
 ##' @param formatter formatting function
 ##' @param ... additional arguments to formatter
@@ -267,6 +267,7 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 ##' gt_load("test_data/models.rda")
 ##' format_sdvar(reStdDev = 1:3, use.c = c("Variance", "Std.Dev."))
 ##' format_sdvar(attr(VarCorr(fm1)$cond$Subject, "stddev"))
+##' @export
 ## FIXME: avoid repeating defaults
 format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format,
                          digits = max(3, getOption("digits") - 2), ...) {
@@ -311,7 +312,7 @@ get_sd.default <- function(x, ...) {
 }
 
 ##' @export
-get_sd.vcmat_ar1 <- function(x) {
+get_sd.vcmat_ar1 <- function(x, ...) {
     attr(x, "stddev")[1]
 }
 

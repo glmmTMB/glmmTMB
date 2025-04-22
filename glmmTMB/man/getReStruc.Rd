@@ -36,6 +36,7 @@ a list
 \item{blockReps}{number of times the blocks are repeated (levels)}
 \item{covCode}{structure code}
 \item{simCode}{simulation code; should we "zero" (set to zero/ignore), "fix" (set to existing parameter values), "random" (draw new random deviations)?}
+\item{fullCor}{logical vector (compute/store full correlation matrix?)}
 }
 \description{
 Calculate random effect structure
