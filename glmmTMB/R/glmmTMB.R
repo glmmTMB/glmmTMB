@@ -1856,7 +1856,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
-        optTime <- system.time(fit <- optfun())
+        optTime <- system.time(fit <- optfun(), gcFirst = FALSE)
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
@@ -1913,9 +1913,10 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         if (any(is.na(obj$gr(obj$par)))) {
             stop("some elements of gradient are NaN at starting parameter values")
         }
-        optTime <- system.time(fit <- optfun())
+        optTime <- system.time(fit <- optfun(), gcFirst = FALSE)
     }
 
+    attr(fit, "optTime") <- optTime
     finalizeTMB(TMBStruc, obj, fit, h, data.tmb.old)
 }
 
