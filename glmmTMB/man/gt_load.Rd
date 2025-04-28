@@ -7,7 +7,7 @@
 \usage{
 up2date(oldfit, update_gauss_disp = FALSE)
 
-gt_load(fn, verbose = FALSE, mustWork = FALSE, ...)
+gt_load(fn, verbose = FALSE, ...)
 }
 \arguments{
 \item{oldfit}{a fitted glmmTMB object}
@@ -17,8 +17,6 @@ gt_load(fn, verbose = FALSE, mustWork = FALSE, ...)
 \item{fn}{partial path to system file (e.g. test_data/foo.rda)}
 
 \item{verbose}{print names of updated objects?}
-
-\item{mustWork}{fail if file not found?}
 
 \item{\dots}{values passed through to \code{up2date}}
 }

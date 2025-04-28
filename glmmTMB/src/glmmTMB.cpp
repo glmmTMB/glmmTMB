@@ -1,4 +1,15 @@
 #define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
+#define DISABLE_AD if(isDouble<Type>::value)
+#define NAN std::numeric_limits<double>::quiet_NaN()
+// set correlation matrix for output, unless corr output has been disabled
+// (make this a function instead?
+#define SET_COR    if (term.fullCor == 1) { \
+      term.corr = nldens.cov(); \
+    } else { \
+      term.corr.resize(1,1); \
+      term.corr(0,0) = NAN; \
+    }
+
 #include <TMB.hpp>
 #include <R_ext/Error.h>
 #include "init.h"
@@ -293,6 +304,7 @@ struct per_term_info {
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   int simCode;       // Simulation code (zero, fixed, or draw new random deviate?)
+  int fullCor;       // Compute/store full correlation matrix?
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
   // Report output
@@ -312,11 +324,13 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
       int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
       int simCode = (int) REAL(getListElement(y, "simCode", &isNumericScalar))[0];
+      int fullCor = (int) REAL(getListElement(y, "fullCor", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
       (*this)(i).simCode = simCode;
+      (*this)(i).fullCor = fullCor;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
       if(!Rf_isNull(t)){
@@ -416,7 +430,10 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         
       }
     }
-    term.corr = nldens.cov(); // For report
+
+    // FIXME: DRY/make this into a function or macro
+    SET_COR;
+    
     term.sd = sd;             // For report
   }
   else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
@@ -426,9 +443,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     vector<Type> logsd(n);
     for (int i = 0; i < n; i++) {
       if (term.blockCode == cs_covstruct) {
-	logsd(i) = theta(i);
+        logsd(i) = theta(i);
       } else {
-	logsd(i) = theta(0);
+        logsd(i) = theta(0);
       }
     }
     Type corr_transf = theta(nsd);
@@ -438,19 +455,19 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     matrix<Type> corr(n,n);
     for(int i=0; i<n; i++)
       for(int j=0; j<n; j++)
-	corr(i,j) = (i==j ? Type(1) : rho);
+        corr(i,j) = (i==j ? Type(1) : rho);
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-	if (term.simCode != random_simcode) {
-	  Rf_error("simcode not yet implemented for cs cov struct");
-	}
+        if (term.simCode != random_simcode) {
+          Rf_error("simcode not yet implemented for cs cov struct");
+        }
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else if (term.blockCode == toep_covstruct){
@@ -476,7 +493,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else if (term.blockCode == ar1_covstruct ||
@@ -493,24 +510,24 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     for(int j = 0; j < term.blockReps; j++){
       ans -= dnorm(U(0, j), Type(0), sd(0), true);   // Initialize
       if (do_simulate) {
-	switch(term.simCode) {
-	case fix_simcode:
-	  break;
-	case zero_simcode:
-	  U(0,j) = Type(0);
-	  break;
-	case random_simcode:
-	  U(0, j) = rnorm(Type(0), sd(0));
-	  break;
-	}
+        switch(term.simCode) {
+        case fix_simcode:
+          break;
+        case zero_simcode:
+          U(0,j) = Type(0);
+          break;
+        case random_simcode:
+          U(0, j) = rnorm(Type(0), sd(0));
+          break;
+        }
       }
       for(int i=1; i<n; i++){
-	if (term.blockCode == hetar1_covstruct) {
-	  cursd = sd(i-1);
-	} else {
-	  cursd = sd(0);
-	}
-	ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
+        if (term.blockCode == hetar1_covstruct) {
+          cursd = sd(i-1);
+        } else {
+          cursd = sd(0);
+        }
+      ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
         if (do_simulate) {
 	  switch(term.simCode) {
           case fix_simcode:
@@ -531,24 +548,30 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
 	} // do_simulate
       } // loop over lags
     } // loop over blocks
-  
-    // For consistency with output for other structs we report entire
-    // covariance matrix.
-    if(isDouble<Type>::value) { // Disable AD for this part
-      term.corr.resize(n,n);
-      term.sd.resize(n);
-      for(int i=0; i<n; i++){
-	if (term.blockCode == hetar1_covstruct) {
-	  term.sd(i) = sd(i);
-	} else {
-	  term.sd(i) = sd(0);
-	}
-	for(int j=0; j<n; j++){
-	  term.corr(i,j) = pow(phi, abs(i-j));
-	}
+    DISABLE_AD { // Disable AD for this part
+      if (term.fullCor == 0) {
+        // report *only* phi in the corr struct
+        term.corr.resize(1,1);
+        term.corr(0,0) = phi;
+      } else {
+        term.corr.resize(n,n);
+        for (int i=0; i<n; i++) {
+          for(int j=0; j<n; j++){
+            term.corr(i,j) = pow(phi, abs(i-j));
+          }
+        }
       }
-    }
-  }
+      if (term.blockCode == hetar1_covstruct) {
+        term.sd.resize(n);
+        for(int i=0; i<n; i++){
+          term.sd(i) = sd(i);
+        }
+      } else {
+        term.sd.resize(1);
+        term.sd(0) = sd(0);
+      }
+    } // DISABLE_AD
+  } // [het]ar1_covstruct
   else if (term.blockCode == ou_covstruct){
     // case: ou_covstruct
     //  * NOTE: this is the continuous time version of ar1.
@@ -584,22 +607,30 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         default: error ("unknown simcode");
         }
       } // do_simulate
+
       
     }
-    // For consistency with output for other structs we report entire
-    // covariance matrix.
-    if(isDouble<Type>::value) { // Disable AD for this part
-      term.corr.resize(n,n);
-      term.sd.resize(n);
-      for(int i=0; i<n; i++){
-	term.sd(i) = sd;
-	for(int j=0; j<n; j++){
-	  term.corr(i,j) =
-	    exp(-exp(corr_transf) * CppAD::abs(term.times(i) - term.times(j)));
-	}
+    // Report only the sd and the decay parameter
+    DISABLE_AD { // Disable AD for this part
+      if (term.fullCor==1) {
+        term.corr.resize(n,n);
+        term.sd.resize(n);
+        for(int i=0; i<n; i++) {
+          term.sd(i) = sd;
+          for(int j=0; j<n; j++){
+            term.corr(i,j) =
+              exp(-exp(corr_transf) * CppAD::abs(term.times(i) - term.times(j)));
+          }
+        }
+      } else {
+        term.corr.resize(1,1);
+        term.sd.resize(1);
+        term.sd(0) = sd;
+        term.corr(0,0) = exp(corr_transf);
       }
     }
-  }
+  } // OU covstruct
+  
   // Spatial correlation structures
   else if (term.blockCode == exp_covstruct ||
            term.blockCode == gau_covstruct ||
@@ -642,7 +673,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = corr;   // For report
+    if (term.fullCor==1) term.corr = corr;   // For report
     term.sd.resize(n);  // For report
     term.sd.fill(sd);
   }
@@ -696,18 +727,20 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // (i.e. user is assumed to be passing the 'non-spherical' latent variables)
     if (term.simCode != fix_simcode) {
       for(int i = 0; i < term.blockReps; i++){
-	vector<Type> usub = U.col(i).segment(0, rank);
-	U.col(i) = Lambda * usub;
+        vector<Type> usub = U.col(i).segment(0, rank);
+        U.col(i) = Lambda * usub;
       }
     }
 
     // computing the correlation matrix and std devs
     // (the same D^(-1/2) L L^T D^(-1/2) transformation that we use for correlations
     term.fact_load = Lambda;
-    if(isDouble<Type>::value) {
-      term.corr = Lambda * Lambda.transpose();
-      term.sd = term.corr.diagonal().array().sqrt();
-      term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
+    if (term.fullCor==1) {
+      DISABLE_AD {
+        term.corr = Lambda * Lambda.transpose();
+        term.sd = term.corr.diagonal().array().sqrt();
+        term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
+      }
     }
   }
   else if (term.blockCode == propto_covstruct){
@@ -725,7 +758,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else error("covStruct not implemented!");

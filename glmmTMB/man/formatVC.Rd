@@ -7,6 +7,8 @@
 formatVC(
   varcor,
   digits = max(3, getOption("digits") - 2),
+  corr_digits = max(2, digits - 2),
+  maxdim = 10,
   comp = "Std.Dev.",
   formatter = format,
   useScale = attr(varcor, "useSc"),
@@ -16,7 +18,12 @@ formatVC(
 \arguments{
 \item{varcor}{a \code{\link{VarCorr}} (-like) matrix with attributes.}
 
-\item{digits}{the number of significant digits.}
+\item{digits}{the number of significant digits for standard deviations and variances}
+
+\item{corr_digits}{the number of significant digits for correlations}
+
+\item{maxdim}{maximum dimensions (numbers of standard deviations/variances and number of
+rows of correlation matrices) to report per random effects term}
 
 \item{comp}{character vector of length one or two indicating which
 columns out of "Variance" and "Std.Dev." should be shown in the
@@ -33,7 +40,7 @@ as "0.nnn"}
 to the first (numeric vector) and \code{digits}.}
 }
 \value{
-a character matrix of formatted VarCorr entries from \code{varc}.
+a character matrix of formatted VarCorr entries from \code{varcor}.
 }
 \description{
 "format()" the 'VarCorr' matrix of the random effects -- for

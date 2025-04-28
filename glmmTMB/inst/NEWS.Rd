@@ -5,8 +5,20 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.11.9000}{
-  % nothing yet
-}
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new argument \code{full_corr} for \code{glmmTMBControl} to
+      enable/disable computation and storage of full correlation
+      matrices for random effect terms
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item improved formatting of random effects standard
+      deviations/variances/correlation matrices
+    }
+  } % user-visible changes
+} % 1.1.11.9000 (devel)
 
 \section{CHANGES IN VERSION 1.1.11 (2025-04-02)}{
   \subsection{NEW FEATURES}{

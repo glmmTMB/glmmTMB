@@ -113,9 +113,9 @@ test_that("VarCorr", {
    vv <- VarCorr(fm2)
    vv2 <- vv$cond$Subject
    expect_equal(dim(vv2),c(2,2))
-   expect_equal(outer(attr(vv2,"stddev"),
-                      attr(vv2,"stddev"))*attr(vv2,"correlation"),
-                vv2,check.attributes=FALSE)
+   expect_equal(unclass(outer(attr(vv2,"stddev"),
+                      attr(vv2,"stddev"))*attr(vv2,"correlation")),
+                unclass(vv2),check.attributes=FALSE)
    vvd <- VarCorr(fm2diag)
    expect_equal(vvd$cond$Subject[1,2],0) ## off-diagonal==0
 })
