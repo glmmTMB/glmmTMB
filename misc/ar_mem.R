@@ -1,7 +1,5 @@
 ## https://github.com/glmmTMB/glmmTMB/issues/995
 remotes::install_github("mrc-ide/memprof")
-remotes::install_github("bbolker/reformulas", ref = "sparse_contrasts_hack")
-remotes::install_github("glmmTMB/glmmTMB/glmmTMB", ref = "ar_memfix")
 library(glmmTMB)
 ## devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
 
@@ -40,6 +38,7 @@ res <- with_monitor(fitfun(dd))
 plot(rss~time, data = res$memory_use)
 ## max mem use, in GB
 print(max(res$memory_use$rss/1e9)) ## 0.464, 0.521 with multiple cores?
+## now 0.37
 
 dd2 <- simfun(nobs = 1e5, ntimes = 1e3, seed = 101)
 res2 <- with_monitor(fitfun(dd2))
@@ -71,14 +70,15 @@ system.time(
         glmmTMB(y ~ x1 + x2 + x3 + x4 + x5 + ar1(0 + tvec|id) + (1|id),
                 dispformula = ~ 0,
                 data = dd,
-                control = glmmTMBControl(optCtrl = list(trace = 10))
+                control = glmmTMBControl(optCtrl = list(trace = 10),
+                                         full_cor = FALSE)
                 )
     )
 )
 ##     user   system  elapsed 
 ## 3725.322   89.118 1479.448 
 
-max(res_ar1_lg$memory_use$rss/1e9)  ## 8 Gig
+max(res_ar1_lg$memory_use$rss/1e9)  ## 6 Gig
 
 
 ### example from #995
@@ -91,5 +91,5 @@ n <- ngroup * ntime
 d <- data.frame(group=gl(ngroup, ntime), times=numFactor(1:ntime), y=rnorm(n))
 res_ar1_lg2 <- with_monitor(
     glmmTMB(y~ou(times+0|group), data=d,
-            control=glmmTMBControl(optCtrl=list(trace=10)))
+            control=glmmTMBControl(optCtrl=list(trace=10), full_cor = FALSE))
 )
