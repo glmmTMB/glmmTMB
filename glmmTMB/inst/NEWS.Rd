@@ -5,11 +5,21 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.11.9000}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item default value for \code{allow.new.levels} in
+      \code{predict.glmmTMB} is now NULL, meaning that
+      new levels in grouping variables are allowed when
+      predicting at the population level (i.e., \code{re.form}
+      is \code{NA} or \code{~0}) - unless \code{allow.new.levels} is explicitly set to
+      TRUE (GH#1189, @fisher-j)
+    }
+  } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
-      matrices for random effect terms
+      matrices for random effect terms (helps with GH#995)
     }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
