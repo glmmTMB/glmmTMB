@@ -536,3 +536,23 @@ test_that("pearson resids of ZI models", {
 
     }
 })
+
+## GH 1189
+test_that("allow.new.levels TRUE when re.form = NA", 
+          {
+              nd <- subset(sleepstudy, Subject=="308", select=-1)[1,]
+              nd$Subject <- "new"
+              
+              expect_warning(predict(fm2, newdata=nd),
+                           "Predicting new random effect levels")
+              expect_equal(predict(fm2, newdata = nd, re.form = NA),
+                           251.404341632295,
+                           tolerance = 1e-6)
+
+              suppressWarnings(g1 <- glmmTMB(Reaction ~ 1 + (1 | Subject/Days),
+                                             sleepstudy))
+              expect_equal(predict(g1,
+                                   newdata = data.frame(Days = NA, Subject = NA),
+                                   re.form = NA), 298.507889474305,
+                           tolerance = 1e-6)
+})
