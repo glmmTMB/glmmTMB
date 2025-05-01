@@ -93,3 +93,20 @@ res_ar1_lg2 <- with_monitor(
     glmmTMB(y~ou(times+0|group), data=d,
             control=glmmTMBControl(optCtrl=list(trace=10), full_cor = FALSE))
 )
+max(res_ar1_lg2$memory_use$rss/1e9)  ## 7 Gig
+
+library(memprof)
+library(glmmTMB)
+options(glmmTMB.cores = 8L, glmmTMB.autopar = TRUE)
+set.seed(101)
+ngroup <- 22
+ntime <- 250000  ## 
+n <- ngroup * ntime
+d <- data.frame(group=gl(ngroup, ntime), times=numFactor(1:ntime), y=rnorm(n))
+res_ar1_lg3 <- with_monitor(
+    glmmTMB(y~ou(times+0|group), data=d,
+            control=glmmTMBControl(optCtrl=list(trace=10), full_cor = FALSE),
+            verbose = TRUE)
+)
+max(res_ar1_lg3$memory_use$rss/1e9)  ## ???
+
