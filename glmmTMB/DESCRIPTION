@@ -55,7 +55,8 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.2.0)
+    reformulas (>= 0.2.0),
+    pbkrtest
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
@@ -91,7 +92,8 @@ Suggests:
     dplyr,
     ade4,
     ape,
-    gsl
+    gsl,
+    lmerTest
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

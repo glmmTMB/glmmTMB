@@ -10,6 +10,8 @@
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
       matrices for random effect terms
+      \item experimental implementation of Kenward-Roger and
+      Satterthwaite denominator-degree-of-freedom approximations
     }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
