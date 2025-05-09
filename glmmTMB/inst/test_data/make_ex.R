@@ -53,8 +53,8 @@ gm1 <- glmmTMB(cbind(incidence, size-incidence) ~ period + (1|herd),
 
  ## covariance structures
 
-  fsleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
-                        row=factor(seq(nrow(sleepstudy))))
+fsleepstudy <- transform(sleepstudy,fDays=cut(Days,c(0,3,6,10),right=FALSE),
+                         row=factor(seq(nrow(sleepstudy))))
 
  ## two equivalent diagonal constructions
 fm_diag1 <- glmmTMB(Reaction ~ Days + diag(Days| Subject), fsleepstudy)
@@ -65,10 +65,12 @@ fm_diag2_lmer <- lme4::lmer(Reaction ~ Days + ( 1  | Subject) + (0+Days | Subjec
 
 fm_us1 <- glmmTMB(Reaction ~ Days + (Days| Subject), fsleepstudy)
 fm_cs1 <- glmmTMB(Reaction ~ Days + cs(Days| Subject), fsleepstudy)
+
 fm_us1_lmer <- lme4::lmer(Reaction ~ Days + ( Days  | Subject),
                fsleepstudy, REML=FALSE)
 
 fm_cs2 <- glmmTMB(Reaction ~ Days + cs(fDays| Subject), fsleepstudy)
+fm_hcs2 <- glmmTMB(Reaction ~ Days + homcs(fDays| Subject), fsleepstudy)
 
 ## these would be equivalent to a compound symmetry model with *homog* variance
 fm_nest <- glmmTMB(Reaction ~ Days + (1| Subject/fDays), fsleepstudy)
@@ -78,6 +80,22 @@ fm_nest_lmer <- lme4::lmer(Reaction ~ Days + (1|Subject/fDays), fsleepstudy,
 ## model with ~ Days + ... gives non-pos-def Hessian
 fm_ar1 <- glmmTMB(Reaction ~ 1 +
                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+
+fm_ar1_nocor <- glmmTMB(Reaction ~ 1 +
+                            (1|Subject) + ar1(row+0| Subject), fsleepstudy,
+                        control = glmmTMBControl(full_cor = FALSE))
+
+
+fsleepstudy_big <- expand.grid(Subject = 1:100, fDays = factor(1:10))
+fsleepstudy_big$Reaction <- simulate_new(~ 1 + (1|Subject) + hetar1(fDays+0| Subject),
+                             newdata=fsleepstudy_big,
+                             newparams = list(beta=0, betadisp = -2,
+                                              theta = rep(2, 12)),
+                             family = gaussian,
+                             seed = 101)[[1]]
+
+fm_hetar1 <- glmmTMB(Reaction ~ 1 + hetar1(fDays + 0| Subject), fsleepstudy_big)
+
 
 if (save_image) save.image(file="models.rda", version=2)
 

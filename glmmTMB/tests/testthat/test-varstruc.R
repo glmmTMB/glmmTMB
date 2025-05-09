@@ -23,17 +23,22 @@ test_that("cs_us", {
 })
 
 test_that("cs_homog", {
+    fm_csh   <- glmmTMB(Reaction ~ Days + homcs(Days | Subject), sleepstudy)
+    vv <- unname(diag(VarCorr(fm_csh)[["cond"]][["Subject"]]))
+    expect_identical(vv[1], vv[2])
+})
+
+test_that("cs_homog", {
 ## *homogenous* compound symmetry vs. nested random effects
     expect_equal(logLik(fm_nest),logLik(fm_nest_lmer))
 
 })
 
 test_that("basic ar1", {
+    ## base fm_ar1 does include corr matrix
     vv <- VarCorr(fm_ar1)[["cond"]]
-    cc <- cov2cor(vv[[2]])
-    expect_equal(cc[1,],cc[,1])
-    expect_equal(unname(cc[1,]),
-                 cc[1,2]^(0:(nrow(cc)-1)))
+    expect_equal(attr(vv[[2]], "correlation")[2,1], 0.87299, tolerance = 1e-5)
+    ## also need to test 
 })
 
 ## change to something better behaved
@@ -148,13 +153,5 @@ test_that("hom vs het diag", {
 
 test_that("het ar1", {
     skip_on_cran()
-    sleepstudy$Days <- factor(sleepstudy$Days)
-    sleepstudy$y <- simulate_new(~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                      newdata=sleepstudy,
-                      newparams = list(beta=0, betadisp = 1, theta = rep(1, 12)),
-                                       family = gaussian,
-                      seed = 101)[[1]]
-    suppressWarnings(fit1  <-  glmmTMB(y ~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                                       data=sleepstudy))
-    VarCorr(fit1)
+    VarCorr(fm_hetar1)
 })

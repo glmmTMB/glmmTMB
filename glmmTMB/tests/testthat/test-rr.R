@@ -77,14 +77,29 @@ test_that("rr model fit", {
                                       newparams=list(beta = beta,
                                                      theta=theta,sigma=1))[[1]])
 
-    test_that("rr eigenvalues", {
-        m1 <- glmmTMB(w ~ 1 + rr(x+y+z|g1,2), data=dd)
-        eigenvalues <- zapsmall(eigen(VarCorr(m1)$cond$g1)$values)
-        expect_equal(eigenvalues[3:4], c(0, 0))
-        m2 <- glmmTMB(w ~ 1 + rr(x+y+z|g1,3)  + (x+y+z|g2), data=dd)
-        eigenvalues <- zapsmall(eigen(VarCorr(m2)$cond$g1)$values)
-        expect_equal(eigenvalues[4], 0)
-    })
+test_that("rr eigenvalues", {
+    m1 <- glmmTMB(w ~ 1 + rr(x+y+z|g1,2), data=dd)
+    eigenvalues <- zapsmall(eigen(VarCorr(m1)$cond$g1)$values)
+    expect_equal(eigenvalues[3:4], c(0, 0))
+    m2 <- glmmTMB(w ~ 1 + rr(x+y+z|g1,3)  + (x+y+z|g2), data=dd)
+    eigenvalues <- zapsmall(eigen(VarCorr(m2)$cond$g1)$values)
+    expect_equal(eigenvalues[4], 0)
+})
 
-    ## FIXME: test, remove if unnecessary
-    options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?
+test_that("rr binomial", {
+    ## GH 1151
+    set.seed(12345)
+    data <- data.frame(
+        id = rep(1:5, each = 10),
+        x = rep(1:10, 5),
+        y = round(runif(50))
+    )
+    g1 <- glmmTMB(y ~ x + rr(x | id, 2), family="binomial", data = data,
+                  control = glmmTMBControl(start_method = list(method = "res")))
+    expect_equal(unname(fixef(g1)$cond),
+                 c(-0.0273483526560848, -0.0244598826860453),
+                 tolerance = 1e-5)
+})
+
+## FIXME: test, remove if unnecessary
+options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?

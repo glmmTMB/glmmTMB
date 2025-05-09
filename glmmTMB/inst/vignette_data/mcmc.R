@@ -139,6 +139,9 @@ png("sleepstudy_traceplot.png")
 rstan::traceplot(m3, pars=c("beta","betadisp","theta"))
 dev.off()
 
+png("sleepstudy_traceplot_theta3.png")
+rstan::traceplot(m3, pars=c("theta[3]"))
+dev.off()
 
 ## @knitr sleepstudy_tmbstan_bounds
 
@@ -156,6 +159,10 @@ dp4 <- bayestestR::diagnostic_posterior(m4)
 ## @knitr sleepstudy_bounds_traceplot
 png("sleepstudy_traceplot_bounds.png")
 rstan::traceplot(m4, pars=c("beta","betadisp","theta"))
+dev.off()
+
+png("sleepstudy_traceplot_bounds_theta3.png")
+rstan::traceplot(m4, pars=c("theta[3]"))
 dev.off()
 
 ## @knitr trans_param

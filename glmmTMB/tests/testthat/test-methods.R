@@ -113,9 +113,9 @@ test_that("VarCorr", {
    vv <- VarCorr(fm2)
    vv2 <- vv$cond$Subject
    expect_equal(dim(vv2),c(2,2))
-   expect_equal(outer(attr(vv2,"stddev"),
-                      attr(vv2,"stddev"))*attr(vv2,"correlation"),
-                vv2,check.attributes=FALSE)
+   expect_equal(unclass(outer(attr(vv2,"stddev"),
+                      attr(vv2,"stddev"))*attr(vv2,"correlation")),
+                unclass(vv2),check.attributes=FALSE)
    vvd <- VarCorr(fm2diag)
    expect_equal(vvd$cond$Subject[1,2],0) ## off-diagonal==0
 })
@@ -538,6 +538,12 @@ test_that("confint works for models with dispformula", {
     expect_equal(cc[grep("^disp",rownames(cc)),], ref_val, tolerance = 1e-6)
 })
 
+test_that("confint with theta_ for models with RE in dispformula", {
+    m <- glmmTMB(mpg ~ hp,
+                 dispformula = ~1 + (1|cyl), data = mtcars, family = gaussian)
+    expect_equal(rownames(confint(m, parm = "theta_")), "disp.Std.Dev.(Intercept)|cyl")
+})
+         
 simfun <- function(formula, family, data, beta=c(0,1)) {
     ss <- list(beta=beta)
     if (grepl("nbinom",family)) ss$betadisp <- 0
@@ -775,3 +781,13 @@ test_that("vcov(full=TRUE) with non-NA mapped parameters", {
 #         expect_true(all(is.na(vcov(m)$cond)))
 #     }
 # })
+
+test_that("handle empty betadisp in vcov", {
+    m <- glmmTMB(count ~ DOP, dispformula = ~ DOP,
+                 data = Salamanders,
+                 family = poisson)
+    expect_equal(lengths(fixef(m)),
+                 c(cond = 2L, zi = 0L, disp = 0L))
+    expect_equal(vcov(m)$disp,
+                 matrix(NA_real_, dimnames = list("disp~", "disp~")))
+})

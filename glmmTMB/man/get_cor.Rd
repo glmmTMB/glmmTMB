@@ -3,7 +3,7 @@
 \name{get_cor}
 \alias{get_cor}
 \alias{put_cor}
-\title{translate vector of correlation parameters to correlation values}
+\title{transform correlation parameters to and from glmmTMB parameterization}
 \usage{
 get_cor(theta, return_val = c("vec", "mat"))
 
@@ -22,17 +22,29 @@ put_cor(C, input_val = c("mat", "vec"))
 a vector of correlation values (\code{get_cor}) or glmmTMB scaled-correlation parameters (\code{put_cor})
 }
 \description{
-translate vector of correlation parameters to correlation values
+transform correlation parameters to and from glmmTMB parameterization
 }
 \details{
+\code{\link{get_cor}} transforms from the glmmTMB parameterization (components of a \code{theta} parameter vector) to correlations;
+\code{\link{put_cor}} does the inverse transformations, from correlations to \code{theta} values.
+
 These functions follow the definition at \url{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}:
-if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0}, this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+if \eqn{L} is the lower-triangular matrix with 1 on the diagonal and the correlation parameters in the lower triangle, then the correlation matrix is defined as \eqn{\Sigma = D^{-1/2} L L^\top D^{-1/2}}{Sigma = sqrt(D) L L' sqrt(D)}, where \eqn{D = \textrm{diag}(L L^\top)}{D = diag(L L')}. For a single correlation parameter \eqn{\theta_0}{theta0} (i.e. the correlation in a 2x2 correlation matrix), this works out to \eqn{\rho = \theta_0/\sqrt{1+\theta_0^2}}{rho = theta0/sqrt(1+theta0^2)}. The \code{get_cor} function returns the elements of the lower triangle of the correlation matrix, in column-major order.
+
+These functions also work for AR1 correlation parameters.
 }
 \examples{
 th0 <- 0.5
-stopifnot(all.equal(get_cor(th0),th0/sqrt(1+th0^2)))
+stopifnot(all.equal(get_cor(th0), th0/sqrt(1+th0^2)))
 set.seed(101)
-C <- get_cor(rnorm(21), return_val = "mat")
+## pick 6 values for a random 4x4 correlation matrix
+print(C <- get_cor(rnorm(6), return_val = "mat"), digits = 3)
+## transform a correlation matrix to a theta vector
+cor_mat <- matrix(c(1,0.3,0.1,
+                    0.3,1,0.2,
+                    0.1,0.2,1), ncol = 3)
+put_cor(cor_mat, "mat")
+put_cor(cor_mat[lower.tri(cor_mat)], "vec")
 ## test: round-trip
 stopifnot(all.equal(get_cor(put_cor(C), return_val = "mat"), C))
 }

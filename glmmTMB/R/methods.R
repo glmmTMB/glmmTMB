@@ -537,7 +537,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
                                          include_dropped = FALSE, include_mapequal = TRUE)
 
               nms <- estNameList[[cnm]]
-              mm[nms, nms] <- m
+              if (length(m)>0) mm[nms, nms] <- m
               m <- mm
           }
           covList[[i]] <- m
@@ -707,8 +707,7 @@ print.glmmTMB <-
   ## Type Of Model fit --- REML? ---['class']  & Family & Call
   .prt.call.glmmTMB(x$call, long=longCall)
   ## the 'digits' argument should have an action here
-  aictab <- c(AIC = AIC(x), BIC = BIC(x), logLik = logLik(x),
-              df.resid = df.residual(x))
+  aictab <- llikAIC(x)$AICtab
   .prt.aictab(aictab, digits=digits+1)
   ## varcorr
   if (!all(sapply(vc <- VarCorr(x),is.null))) {
@@ -1140,7 +1139,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
         ## FIXME: better to have more robust ordering
-        for (component in c("cond", "zi") ) {
+        for (component in c("cond", "zi", "disp") ) {
             if (components.has(component) &&
                 length(ranef(object)[[component]])>0) {
                 ci <- rbind(ci, wald_ci_comp(component))
@@ -1756,7 +1755,7 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
     args <- switch(family,
                    nbinom2 = list(size = phi),
                    nbinom1 = list(size = mu/(phi+ 1e-5)),
-                   binom = list(size=1),
+                   binomial = list(size=1),
                    NULL
                    )
     ## deal with base-R's default size/prob parameterization for nbinom ...

@@ -16,7 +16,7 @@
 %\VignetteDepends{texreg}
 %\VignetteDepends{xtable}
 %\VignetteDepends{huxtable}
-\usepackage{lineno}
+%\usepackage{lineno}
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage[american]{babel}
