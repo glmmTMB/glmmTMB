@@ -334,6 +334,8 @@ predict.glmmTMB <- function(object,
   }
   augFr <- rbind(object$frame,newFr)
   facs <- which(vapply(augFr,is.factor,logical(1)))
+       ##  I believe all the machinery here is for resolving
+       ##    https://github.com/glmmTMB/glmmTMB/issues/439     
   for (fnm in names(augFr)[facs]) {
       c1 <- safe_contrasts(object$frame[[fnm]])
       c2 <- safe_contrasts(newFr[[fnm]])
