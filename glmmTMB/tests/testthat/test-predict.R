@@ -294,13 +294,14 @@ test_that("contrasts carried over", {
                        grp=factor(c("a","b")))
     contrasts(iris2$Species) <- contr.sum
     contrasts(iris2$grp) <- contr.sum
-    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
-    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    mod1 <- glmmTMB(Sepal.Length ~ Species, iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species, iris2)
+    ## create prediction frame with a new species
     iris3 <- iris[1,]
     iris3$Species <- "extra"
     ## these are not *exactly* equal because of numeric differences
     ##  when estimating parameters differently ... (?)
-    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    expect_equal(predict(mod1), predict(mod2), tolerance=1e-6)
     ## make sure we actually imposed contrasts correctly/differently
     expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
     expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
@@ -318,6 +319,26 @@ test_that("contrasts carried over", {
     expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
                  5.843333, tolerance=1e-6)
 
+    
+    zipm3 = glmmTMB(
+        count ~ spp * mined + (1 | site:mined),
+        Salamanders,
+        family = "poisson"
+    )
+
+    ss <- transform(Salamanders, site = factor(site, ordered = FALSE))
+    zz <- update(zipm3, data = ss)
+    predict(zipm3, newdata = head(Salamanders, 22))
+    predict(zz, newdata = head(Salamanders, 22))
+    predict(zz, newdata = head(ss, 22))
+
+    head(predict(zipm3, newdata = head(Salamanders, 23)))
+
+    form <- count ~ spp * mined + (1 | site:mined)
+    all.vars(form)
+    ## [3] picks out grouping vars: [[1]] is needed to extract just the term we want
+    grpvars <- unlist(lapply(findbars(form),
+                             function(x) all.vars(x[3][[1]])))
 })
 
 test_that("dispersion", {
