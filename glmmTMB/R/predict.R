@@ -334,17 +334,21 @@ predict.glmmTMB <- function(object,
                    dimnames=list(new_levels,colnames(c1))))
     }
 
-    browser()       
     augFr <- rbind(object$frame, newFr)
     facs <- which(vapply(augFr, is.factor, FUN.VALUE = logical(1)))
     ##  I believe all the machinery here is for resolving
     ##    https://github.com/glmmTMB/glmmTMB/issues/439
 
-    facs <- names(augFr)[facs]
+    fnms <- names(augFr)[facs]
+    form <- formula(object)
+    ## vars on LEFT side of (f|g) only
+    re_vars <- unlist(lapply(findbars(form), function(x) all.vars(x[2][[1]])))
+    nongrpvars <- union(all.vars(nobars(form)), re_vars)
+    ## want to exclude factors that appear *only* in grpvars
+    ## (== include vars from fixed effects and varying terms)
+    fnms <- fnms[fnms %in% nongrpvars]
     
-    grpvars <- unlist(lapply(findbars(form), function(x) all.vars(x[3][[1]])))
-    
-    for (fnm in names(augFr)[facs]) {
+    for (fnm in fnms) {
       c1 <- safe_contrasts(object$frame[[fnm]])
       c2 <- safe_contrasts(newFr[[fnm]])
       if (!allow.new.levels) {
