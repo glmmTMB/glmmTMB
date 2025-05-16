@@ -708,7 +708,7 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ## no_specials so that mkReTrms can handle it
             reTrms <- mkReTrms(no_specials(
                 findbars_x(formula)),
-                fr, reorder.terms=FALSE, calc.lambdat=FALSE)
+                fr, reorder.terms=FALSE, calc.lambdat=FALSE, sparse = TRUE)
         } else {
             ## dummy elements
             reTrms <- list(Ztlist = list(), flist = list(), cnms = list(),

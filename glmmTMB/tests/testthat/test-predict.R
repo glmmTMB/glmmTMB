@@ -294,16 +294,17 @@ test_that("contrasts carried over", {
                        grp=factor(c("a","b")))
     contrasts(iris2$Species) <- contr.sum
     contrasts(iris2$grp) <- contr.sum
-    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
-    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    mod1 <- glmmTMB(Sepal.Length ~ Species, iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species, iris2)
+    ## create prediction frame with a new species
     iris3 <- iris[1,]
     iris3$Species <- "extra"
     ## these are not *exactly* equal because of numeric differences
     ##  when estimating parameters differently ... (?)
-    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    expect_equal(predict(mod1), predict(mod2), tolerance=1e-6)
     ## make sure we actually imposed contrasts correctly/differently
     expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
-    expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    expect_warning(predict(mod1,newdata=iris2), "contrasts mismatch")
     expect_equal(predict(mod1,newdata=iris2,allow.new.levels=TRUE),
                  predict(mod1,newdata=iris))
     mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
@@ -317,7 +318,20 @@ test_that("contrasts carried over", {
     ## works with char rather than factor in new group vble
     expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
                  5.843333, tolerance=1e-6)
-
+    zipm3 <- glmmTMB(
+        count ~ spp * mined + (1 | site:mined),
+        Salamanders,
+        family = "poisson"
+    )
+    ss <- transform(Salamanders, site = factor(site, ordered = FALSE))
+    zz <- update(zipm3, data = ss)
+    expect_no_warning(p1 <- predict(zipm3, newdata = head(Salamanders, 22)))
+    p2 <- predict(zz, newdata = head(Salamanders, 22))
+    p3 <- predict(zz, newdata = head(ss, 22))
+    p4 <- predict(zipm3, newdata = head(Salamanders, 23))
+    expect_equal(p1, p2)
+    expect_equal(p2, p3)
+    expect_equal(p3, p4[1:22])
 })
 
 test_that("dispersion", {
