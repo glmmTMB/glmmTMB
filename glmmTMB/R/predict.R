@@ -2,59 +2,59 @@
 ## Assert that we can use old model (data.tmb0) as basis for
 ## predictions using the new data (data.tmb1):
 assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) {
-    ## Check terms. Only 'blockReps' and 'blockSize' are allowed to
-    ## change.  Note that we allow e.g. spatial covariance matrices to
-    ## change, while e.g. an unstrucured covariance must remain the
-    ## same.
-    checkTerms <- function(t1, t0) {
-        ## Defensive check:
-        stopifnot(identical(names(t1), names(t0)))
-        ## *Never* allowed to differ:
-        testIdentical <- function(checkNm) {
-            unlist( Map( function(x,y)
-                identical(x[checkNm], y[checkNm]), t0, t1) )
-        }
-        ok <- testIdentical( c("blockNumTheta", "blockCode") )
-        if ( ! all(ok) ) {
-            msg <- c("Prediction is not possible for terms: ",
-                     paste(names(t1)[!ok], collapse=", "), "\n",
-                     "Probably some factor levels in 'newdata' require fitting a new model.")
-            stop(msg)
-        }
-        ## Sometimes allowed to differ:
-        if ( ! allow.new.levels ) {
-            ok <- testIdentical( c( "blockReps", "blockSize") )
-            if ( ! all(ok) ) {
-                msg <- c("Predicting new random effect levels for terms: ",
-                         paste(names(t1)[!ok], collapse=", "), "\n",
-                         "Disable this warning with 'allow.new.levels=TRUE'")
-                ## FIXME: warning or error ?
-                warning(msg)
-            }
-        }
+  ## Check terms. Only 'blockReps' and 'blockSize' are allowed to
+  ## change.  Note that we allow e.g. spatial covariance matrices to
+  ## change, while e.g. an unstrucured covariance must remain the
+  ## same.
+  checkTerms <- function(t1, t0) {
+    ## Defensive check:
+    stopifnot(identical(names(t1), names(t0)))
+    ## *Never* allowed to differ:
+    testIdentical <- function(checkNm) {
+      unlist( Map( function(x,y)
+        identical(x[checkNm], y[checkNm]), t0, t1) )
     }
-    checkTerms( data.tmb1$terms,   data.tmb0$terms )
-    checkTerms( data.tmb1$termszi, data.tmb0$termszi )
-    checkTerms( data.tmb1$termsdisp, data.tmb0$termsdisp )
-    ## Fixed effect parameters must be identical
-    checkModelMatrix <- function(X1, X0) {
-        if( !identical(colnames(X1), colnames(X0)) ) {
-            msg <- c("Prediction is not possible for unknown fixed effects: ",
-                     paste( setdiff(colnames(X1), colnames(X0)), collapse=", "), "\n",
-                     "Probably some factor levels in 'newdata' require fitting a new model.")
-            stop(msg)
-        }
+    ok <- testIdentical( c("blockNumTheta", "blockCode") )
+    if ( ! all(ok) ) {
+      msg <- c("Prediction is not possible for terms: ",
+               paste(names(t1)[!ok], collapse=", "), "\n",
+               "Probably some factor levels in 'newdata' require fitting a new model.")
+      stop(msg)
     }
-    ## get whichever of the model matrices is non-zero
-    getX <- function(data,suffix="") {
-        denseX <- data[[paste0("X",suffix)]]
-        sparseX <- data[[paste0("X",suffix,"S")]]
-        if (ncol(denseX)>0) denseX else sparseX
+    ## Sometimes allowed to differ:
+    if ( ! allow.new.levels ) {
+      ok <- testIdentical( c( "blockReps", "blockSize") )
+      if ( ! all(ok) ) {
+        msg <- c("Predicting new random effect levels for terms: ",
+                 paste(names(t1)[!ok], collapse=", "), "\n",
+                 "Disable this warning with 'allow.new.levels=TRUE'")
+        ## FIXME: warning or error ?
+        warning(msg)
+      }
     }
-    checkModelMatrix(getX(data.tmb1), getX(data.tmb0))
-    checkModelMatrix(getX(data.tmb1,"zi"), getX(data.tmb0,"zi"))
-    checkModelMatrix(getX(data.tmb1,"disp"), getX(data.tmb0,"disp"))
-    NULL
+  }
+  checkTerms( data.tmb1$terms,   data.tmb0$terms )
+  checkTerms( data.tmb1$termszi, data.tmb0$termszi )
+  checkTerms( data.tmb1$termsdisp, data.tmb0$termsdisp )
+  ## Fixed effect parameters must be identical
+  checkModelMatrix <- function(X1, X0) {
+    if( !identical(colnames(X1), colnames(X0)) ) {
+      msg <- c("Prediction is not possible for unknown fixed effects: ",
+               paste( setdiff(colnames(X1), colnames(X0)), collapse=", "), "\n",
+               "Probably some factor levels in 'newdata' require fitting a new model.")
+      stop(msg)
+    }
+  }
+  ## get whichever of the model matrices is non-zero
+  getX <- function(data,suffix="") {
+    denseX <- data[[paste0("X",suffix)]]
+    sparseX <- data[[paste0("X",suffix,"S")]]
+    if (ncol(denseX)>0) denseX else sparseX
+  }
+  checkModelMatrix(getX(data.tmb1), getX(data.tmb0))
+  checkModelMatrix(getX(data.tmb1,"zi"), getX(data.tmb0,"zi"))
+  checkModelMatrix(getX(data.tmb1,"disp"), getX(data.tmb0,"disp"))
+  NULL
 }
 
 ##' prediction
@@ -146,16 +146,17 @@ predict.glmmTMB <- function(object,
   ## FIXME: implement 'complete' re.form (e.g. identify elements of Z or b that need to be zeroed out)
 
   check_dots(..., .action = "warning")
-               
+  
   if (cov.fit) {
-      if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
-      se.fit <- TRUE
+    if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
+    se.fit <- TRUE
   }
- 
-	if(is.null(aggregate)) {
-		aggregate <- factor()
-	}
+  
+  if(is.null(aggregate)) {
+    aggregate <- factor()
+  }
   ## FIXME: add re.form
+  
   if (length(aggregate) > 0) {
     fast <- FALSE
   }
@@ -163,8 +164,8 @@ predict.glmmTMB <- function(object,
     se.fit <- TRUE
   }
   if (!is.null(zitype)) {
-     warning("zitype is deprecated: please use type instead")
-     type <- zitype
+    warning("zitype is deprecated: please use type instead")
+    type <- zitype
   }
   type <- match.arg(type)
 
@@ -173,7 +174,7 @@ predict.glmmTMB <- function(object,
   pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
                                        identical(re.form,NA)))
   if (!(is.null(re.form) || pop_pred)) {
-      stop("re.form must equal NULL, NA, or ~0")
+    stop("re.form must equal NULL, NA, or ~0")
   }
 
   ## match type arg with internal name
@@ -202,12 +203,12 @@ predict.glmmTMB <- function(object,
 
   ## what to ADREPORT:
   ## 0 = no pred; 1 = response scale; 2 = link scale; 3 = latent vars
-    do_pred_val <- if (!se.fit) {  0
-                   } else if (type == "latent") {
-                       3
-                   } else if (!grepl("link",type)) {
-                       1
-                   } else 2
+  do_pred_val <- if (!se.fit) {  0
+  } else if (type == "latent") {
+    3
+  } else if (!grepl("link",type)) {
+    1
+  } else 2
 
   na.act <- attr(model.frame(object),"na.action")
   do.napred <- missing(newdata) && !is.null(na.act)
@@ -245,109 +246,126 @@ predict.glmmTMB <- function(object,
     ## putting add=TRUE first would be more readable,
     ##  but that tickles a bug in R < 4.0.2
     on.exit(
-        expr=    {
-            for (i in names(orig_vals)) {
-                dd[[i]] <- orig_vals[[i]]
-                assign("data",dd, environment(object$obj$fn))
-            }
-        },
-        add = TRUE)
+      expr=    {
+        for (i in names(orig_vals)) {
+          dd[[i]] <- orig_vals[[i]]
+          assign("data",dd, environment(object$obj$fn))
+        }
+      },
+      add = TRUE)
     ## end of 'fast predict'
-   }  else {
+  }  else {
 
-  mc <- mf <- object$call
-  ## FIXME: DRY so much
-  ## now work on evaluating model frame
-  ## do we want to re-do this part???
+    mc <- mf <- object$call
+    ## FIXME: DRY so much
+    ## now work on evaluating model frame
+    ## do we want to re-do this part???
 
-  ## need to 'fix' call to proper model.frame call whether or not
-  ## we have new data, because ... (??)
-  m <- match(c("subset", "weights", "offset", "na.action"),
-             names(mf), 0L)
-  mf <- mf[c(1L, m)]
+    ## need to 'fix' call to proper model.frame call whether or not
+    ## we have new data, because ... (??)
+    m <- match(c("subset", "weights", "offset", "na.action"),
+               names(mf), 0L)
+    mf <- mf[c(1L, m)]
 
-  mf$drop.unused.levels <- TRUE
-  mf[[1]] <- as.name("model.frame")
-  ## substitute *combined* data frame, in hopes of getting all of the
-  ##  bits we need for any of the model frames ...
-  tt <- terms(object$modelInfo$allForm$combForm)
-  pv <- attr(terms(model.frame(object)),"predvars")
-  ## get rid of response variable     
-  attr(tt,"predvars") <- pv[-2] ## was: fix_predvars(pv,tt)
-  mf$formula <- RHSForm(tt, as.form=TRUE)
+    mf$drop.unused.levels <- TRUE
+    mf[[1]] <- as.name("model.frame")
+    ## substitute *combined* data frame, in hopes of getting all of the
+    ##  bits we need for any of the model frames ...
+    tt <- terms(object$modelInfo$allForm$combForm)
+    pv <- attr(terms(model.frame(object)),"predvars")
+    ## get rid of response variable     
+    attr(tt,"predvars") <- pv[-2] ## was: fix_predvars(pv,tt)
+    mf$formula <- RHSForm(tt, as.form=TRUE)
 
-  ## fix_predvars (in utils.R) is NO LONGER USED
-  ## We now rely on the 'variables' and 'predvars' attributes matching
-  ## up correctly, **except for the response variable**, from the
-  ## terms of 'combForm' and the model frame, and working with whatever
-  ## newdata= argument is provided.
-  ## Passes existing tests/known cases.
-  ## We should still be on the lookout for crazy/unforeseen
-  ## usage of data-dependent bases (e.g. polynomials or splines with
-  ## different arguments in different parts of the model ...)
-  ## This could be further improved by making RHSForm()
-  ##  use delete.response() -- handles dropping response from predvars
-  ## Would still need careful testing etc..
+    ## fix_predvars (in utils.R) is NO LONGER USED
+    ## We now rely on the 'variables' and 'predvars' attributes matching
+    ## up correctly, **except for the response variable**, from the
+    ## terms of 'combForm' and the model frame, and working with whatever
+    ## newdata= argument is provided.
+    ## Passes existing tests/known cases.
+    ## We should still be on the lookout for crazy/unforeseen
+    ## usage of data-dependent bases (e.g. polynomials or splines with
+    ## different arguments in different parts of the model ...)
+    ## This could be further improved by making RHSForm()
+    ##  use delete.response() -- handles dropping response from predvars
+    ## Would still need careful testing etc..
 
-       
-  if (is.null(newdata)) {
-    mf$data <- mc$data ## restore original data
-    newFr <- object$frame
-  } else {
-    mf$na.action <- na.action
-    if (pop_pred) {
+    
+    if (is.null(newdata)) {
+      mf$data <- mc$data ## restore original data
+      newFr <- object$frame
+    } else {
+      mf$na.action <- na.action
+      if (pop_pred) {
         ## add missing components in newdata
         ## (placeholder only to avoid error in model frame construction:
         ##  value shouldn't matter since all b values will be fixed to NA anyway ...)
         req_vars <- all.vars(RHSForm(formula(object, reOnly = TRUE)))
         for (fnew in setdiff(req_vars, names(newdata))) {
-            newdata[[fnew]] <- NA
+          newdata[[fnew]] <- NA
         }
+      }
+      mf$data <- newdata
+      newFr <- eval.parent(mf)
     }
-    mf$data <- newdata
-    newFr <- eval.parent(mf)
-  }
 
-  omi <- object$modelInfo  ## shorthand ("**o**bject$**m**odel**I**nfo")
+    omi <- object$modelInfo  ## shorthand ("**o**bject$**m**odel**I**nfo")
 
-  respCol <- match(respNm <- names(omi$respCol),names(newFr))
-  ## create *or* overwrite response column for prediction data with NA
-  newFr[[respNm]] <- NA
+    respCol <- match(respNm <- names(omi$respCol),names(newFr))
+    ## create *or* overwrite response column for prediction data with NA
+    newFr[[respNm]] <- NA
 
-  ## FIXME: not yet handling population-level predictions (re.form
-  ##  or new levels/allow.new.levels)
+    ## FIXME: not yet handling population-level predictions (re.form
+    ##  or new levels/allow.new.levels)
 
-  ## append to existing model frame
-  ## rbind loses attributes!
-  ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
-  ## at this point I'm not even sure if contrasts are actually *used*
-  ## for anything in the prediction process: do mismatches even matter?
-  safe_contrasts <- function(x) {
+    ## append to existing model frame
+    ## rbind loses attributes!
+    ## https://stackoverflow.com/questions/46258816/copy-attributes-when-using-rbind
+    ## at this point I'm not even sure if contrasts are actually *used*
+    ## for anything in the prediction process: do mismatches even matter?
+    safe_contrasts <- function(x) {
       if (length(levels(x))<2) return(NULL) else return(contrasts(x))
-  }
-  aug_contrasts <- function(c1,new_levels) {
+    }
+    aug_contrasts <- function(c1, new_levels = NULL) {
       rbind(c1,
             matrix(0,
                    ncol=ncol(c1),
                    nrow=length(new_levels),
                    dimnames=list(new_levels,colnames(c1))))
-  }
-  augFr <- rbind(object$frame,newFr)
-  facs <- which(vapply(augFr,is.factor,logical(1)))
-  for (fnm in names(augFr)[facs]) {
+    }
+
+    augFr <- rbind(object$frame, newFr)
+    facs <- which(vapply(augFr, is.factor, FUN.VALUE = logical(1)))
+    ##  I believe all the machinery here is for resolving
+    ##    https://github.com/glmmTMB/glmmTMB/issues/439
+
+    fnms <- names(augFr)[facs]
+    form <- formula(object)
+    ## vars on LEFT side of (f|g) only
+    re_vars <- unlist(lapply(findbars(form), function(x) all.vars(x[2][[1]])))
+    nongrpvars <- union(all.vars(nobars(form)), re_vars)
+    ## want to exclude factors that appear *only* in grpvars
+    ## (== include vars from fixed effects and varying terms)
+    fnms <- fnms[fnms %in% nongrpvars]
+    
+    for (fnm in fnms) {
       c1 <- safe_contrasts(object$frame[[fnm]])
       c2 <- safe_contrasts(newFr[[fnm]])
       if (!allow.new.levels) {
-          c1_sub <- c1[rownames(c2),colnames(c2),drop=FALSE]
-          if (!is.null(c2) &&
-              ## maybe too coarse, but as mentioned above, I don't
-              ##  even know if such mismatches really matter ...
-              !(isTRUE(all.equal(c1_sub,c2)) ||
-                isTRUE(all.equal(c1,c2)))) {
-              stop("contrasts mismatch between original and prediction frame in variable ",
-                   sQuote(fnm))
+        ## subset contrasts to those relevant to newFr
+        ## if rownames(c2) is NULL this won't do what we want ...
+        if (!is.null(c2)) {
+          row_ind <- rownames(c2) %||% seq_len(nrow(c2))
+          c1_sub <- c1[row_ind, colnames(c2), drop=FALSE]
+          ## maybe too coarse, but as mentioned above, I don't
+          ##  even know if such mismatches really matter ...
+          if(!(isTRUE(all.equal(c1_sub,c2)) ||
+                 isTRUE(all.equal(c1, c2)))) {
+            warning("contrasts mismatch between original and prediction frame in variable ",
+                    sQuote(fnm))
           }
-      }
+        } ## !is.null(c2)
+      } ## !allow.new.levels
       ## DON'T check for contrasts mismatch with new levels
       ##   (hope we don't miss anything important!)
       ## what do we do here?
@@ -355,119 +373,119 @@ predict.glmmTMB <- function(object,
       ##  but they break the contrast construction. Extend the contrast
       ##  matrix with a properly labeled zero matrix.
       if (!is.null(c1)) {
-          new_levels <- stats::na.omit(setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]])))
-          contrasts(augFr[[fnm]]) <- aug_contrasts(c1,new_levels)
+        new_levels <- stats::na.omit(setdiff(unique(newFr[[fnm]]),levels(object$frame[[fnm]])))
+        contrasts(augFr[[fnm]]) <- aug_contrasts(c1,new_levels)
       }
-  }
+    }
 
-  ## Pointers into 'new rows' of augmented data frame.
-  w <- nrow(object$fr) + seq_len(nrow(newFr))
+    ## Pointers into 'new rows' of augmented data frame.
+    w <- nrow(object$fr) + seq_len(nrow(newFr))
 
-  ## Variety of possible binomial inputs are taken care of by
-  ## 'mkTMBStruc' further down.
-  yobs <- augFr[[names(omi$respCol)]]
+    ## Variety of possible binomial inputs are taken care of by
+    ## 'mkTMBStruc' further down.
+    yobs <- augFr[[names(omi$respCol)]]
 
-   ## extract smooth information
-   ## NULL if missing
-   old_smooths <- lapply(omi$reTrms, function(x) x[["smooth_info"]])
+    ## extract smooth information
+    ## NULL if missing
+    old_smooths <- lapply(omi$reTrms, function(x) x[["smooth_info"]])
 
-  ## need eval.parent() because we will do eval(mf) down below ...
-  TMBStruc <-
-        ## FIXME: make first arg of mkTMBStruc into a formula list
-        ## with() interfering with eval.parent() ?
-        eval.parent(mkTMBStruc(RHSForm(omi$allForm$formula,as.form=TRUE),
-                               omi$allForm$ziformula,
-                               omi$allForm$dispformula,
-                               omi$allForm$combForm,
-                               mf,
-                               fr=augFr,
-                               yobs=yobs,
-                               respCol=respCol,
-                               ## need to strip attributes
-                               weights=c(model.weights(augFr)),
-                               contrasts=omi$contrasts,
-                               family=omi$family,
-                               ziPredictCode=ziPredNm,
-                               doPredict=do_pred_val,
-                               whichPredict=w,
-                               aggregate=aggregate,
-                               REML=omi$REML,
-                               map=omi$map,
-                               sparseX=omi$sparseX,
-                               old_smooths = old_smooths,
-                               ## don't need priors when predicting ...
-                               priors = NULL)
-                    )
+    ## need eval.parent() because we will do eval(mf) down below ...
+    TMBStruc <-
+      ## FIXME: make first arg of mkTMBStruc into a formula list
+      ## with() interfering with eval.parent() ?
+      eval.parent(mkTMBStruc(RHSForm(omi$allForm$formula,as.form=TRUE),
+                             omi$allForm$ziformula,
+                             omi$allForm$dispformula,
+                             omi$allForm$combForm,
+                             mf,
+                             fr=augFr,
+                             yobs=yobs,
+                             respCol=respCol,
+                             ## need to strip attributes
+                             weights=c(model.weights(augFr)),
+                             contrasts=omi$contrasts,
+                             family=omi$family,
+                             ziPredictCode=ziPredNm,
+                             doPredict=do_pred_val,
+                             whichPredict=w,
+                             aggregate=aggregate,
+                             REML=omi$REML,
+                             map=omi$map,
+                             sparseX=omi$sparseX,
+                             old_smooths = old_smooths,
+                             ## don't need priors when predicting ...
+                             priors = NULL)
+                  )
 
     ## drop rank-deficient columns if necessary
     for (nm in c("", "zi", "disp")) {
-        xnm <- paste0("X", nm)
-        betanm <- paste0("beta", nm)
-        X <- getME(object, xnm)
-        if (prod(dim(X)) > 0 && !is.null(dd <- attr(X, "col.dropped"))) {
-            if (is(X, "Matrix")) xnm <- paste0(xnm, "S")
-            TMBStruc$data.tmb[[xnm]] <- TMBStruc$data.tmb[[xnm]][,-dd]
-            TMBStruc$parameters[[betanm]] <- TMBStruc$parameters[[betanm]][-dd]
-        }
-  }
+      xnm <- paste0("X", nm)
+      betanm <- paste0("beta", nm)
+      X <- getME(object, xnm)
+      if (prod(dim(X)) > 0 && !is.null(dd <- attr(X, "col.dropped"))) {
+        if (is(X, "Matrix")) xnm <- paste0(xnm, "S")
+        TMBStruc$data.tmb[[xnm]] <- TMBStruc$data.tmb[[xnm]][,-dd]
+        TMBStruc$parameters[[betanm]] <- TMBStruc$parameters[[betanm]][-dd]
+      }
+    }
 
-  ## short-circuit
-  if(debug) return(TMBStruc)
+    ## short-circuit
+    if(debug) return(TMBStruc)
 
-  ## Check that the model specification is unchanged:
-  assertIdenticalModels(TMBStruc$data.tmb,
-                        object$obj$env$data, allow.new.levels)
+    ## Check that the model specification is unchanged:
+    assertIdenticalModels(TMBStruc$data.tmb,
+                          object$obj$env$data, allow.new.levels)
 
-  ## Check that the necessary predictor variables are finite (not NA nor NaN)
-  if (se.fit) {
-    with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
-                             any(!is.finite(Z@x)) |
-                             any(!is.finite(Xzi)) |
-                             any(!is.finite(Zzi@x)) |
-                             any(!is.finite(Xdisp))
-    ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
+    ## Check that the necessary predictor variables are finite (not NA nor NaN)
+    if (se.fit) {
+      with(TMBStruc$data.tmb, if(any(!is.finite(X)) |
+                                   any(!is.finite(Z@x)) |
+                                   any(!is.finite(Xzi)) |
+                                   any(!is.finite(Zzi@x)) |
+                                   any(!is.finite(Xdisp))
+                                 ) stop("Some variables in newdata needed for predictions contain NAs or NaNs.
            This is currently incompatible with se.fit=TRUE or cov.fit=TRUE."))
-  }
+    }
 
-  ## FIXME: what if newparams only has a subset of components?
+    ## FIXME: what if newparams only has a subset of components?
 
-  if (!is.null(maparg <- TMBStruc$mapArg)) {
-     full_pars <- get_pars(object, unlist=FALSE)
-     for (i in names(maparg)) {
-         mapind <- which(is.na(maparg[[i]]))
-         if (length(mapind)>0) {
-             TMBStruc$parameters[[i]][mapind] <- full_pars[[i]][mapind]
-         }
-     }
-  }
+    if (!is.null(maparg <- TMBStruc$mapArg)) {
+      full_pars <- get_pars(object, unlist=FALSE)
+      for (i in names(maparg)) {
+        mapind <- which(is.na(maparg[[i]]))
+        if (length(mapind)>0) {
+          TMBStruc$parameters[[i]][mapind] <- full_pars[[i]][mapind]
+        }
+      }
+    }
 
-  if (pop_pred) {
+    if (pop_pred) {
 
       ## use re.form, ll. 749ff of utils.R to decide which
       ##  b values to set to zero.  OK to map _all_ values in this case
       ##  (unless they're in newparams) ?
       TMBStruc <- within(TMBStruc, {
-          parameters$b[] <- 0
-          mapArg$b <- factor(rep(NA,length(parameters$b)))
+        parameters$b[] <- 0
+        mapArg$b <- factor(rep(NA,length(parameters$b)))
       })
-  }
+    }
 
-  n_orig <- do.call(openmp, object$modelInfo$parallel)
-  if (openmp_debug()) {
+    n_orig <- do.call(openmp, object$modelInfo$parallel)
+    if (openmp_debug()) {
       cat("predict: setting OpenMP threads to ", n_orig, " on exit\n")
-  }
-  on.exit(do.call(openmp, n_orig), add = TRUE)
+    }
+    on.exit(do.call(openmp, n_orig), add = TRUE)
 
-  newObj <- with(TMBStruc,
-                 MakeADFun(data.tmb,
-                           parameters,
-                           map = mapArg,
-                           random = randomArg,
-                           profile = NULL, # TODO: Optionally "beta"
-                           silent = TRUE,
-                           DLL = "glmmTMB"))
-  newObj$fn(oldPar)  ## call once to update internal structures
-  lp <- newObj$env$last.par
+    newObj <- with(TMBStruc,
+                   MakeADFun(data.tmb,
+                             parameters,
+                             map = mapArg,
+                             random = randomArg,
+                             profile = NULL, # TODO: Optionally "beta"
+                             silent = TRUE,
+                             DLL = "glmmTMB"))
+    newObj$fn(oldPar)  ## call once to update internal structures
+    lp <- newObj$env$last.par
 
   }  ## NOT fast
 
@@ -477,14 +495,14 @@ predict.glmmTMB <- function(object,
   ## autopar switches from NULL to FALSE (default)  
   parallel <- object$modelInfo$parallel
   if (!all(sapply(parallel, is.null))) {
-      n_orig <- openmp()
-      do.call(openmp, parallel)
-      on.exit(do.call(openmp, n_orig), add = TRUE)
+    n_orig <- openmp()
+    do.call(openmp, parallel)
+    on.exit(do.call(openmp, n_orig), add = TRUE)
   }
 
 
   if (openmp_debug()) {
-      cat("TMB threads currently set to ", openmp(NULL), "\n")
+    cat("TMB threads currently set to ", openmp(NULL), "\n")
   }
   return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else "mu_predict"
 
@@ -497,8 +515,8 @@ predict.glmmTMB <- function(object,
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
     if (cov.fit) {
-        sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
-        covfit <- sdr$cov
+      sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
+      covfit <- sdr$cov
     } else     sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
 
     sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
@@ -510,17 +528,17 @@ predict.glmmTMB <- function(object,
     if (cov.fit) covfit <- covfit[w, w]
     
     if (do.bias.correct) {
-        return (sdrsum[w,])
+      return (sdrsum[w,])
     }
   }
   if (do.napred) {
-      pred <- napredict(na.act,pred)
-      if (se.fit) se <- napredict(na.act,se)
-      if (cov.fit) {
-          tmp <- covfit
-          covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
-          covfit[!is.na(covfit)] <- as.vector(tmp)
-      }
+    pred <- napredict(na.act,pred)
+    if (se.fit) se <- napredict(na.act,se)
+    if (cov.fit) {
+      tmp <- covfit
+      covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
+      covfit[!is.na(covfit)] <- as.vector(tmp)
+    }
   }
   if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))
 }
