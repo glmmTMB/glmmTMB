@@ -98,8 +98,7 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' \itemize{
 ##' \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
 ##' \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
-##' However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
-
+##' However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels} is \code{NULL} (the default) and \code{re.form} is not NA, or if \code{allow.new.levels} is explicitly set to \code{TRUE}.
 ##' \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
 ##' \item Bias corrected predictions are based on the method described in Thorson J.T. & Kristensen (2016). These should be checked carefully by the user and are not extensively tested.
 ##' }
@@ -131,7 +130,7 @@ predict.glmmTMB <- function(object,
                             se.fit=FALSE,
                             cov.fit=FALSE,
                             re.form=NULL,
-                            allow.new.levels=FALSE,
+                            allow.new.levels=NULL,
                             type = c("link", "response",
                                      "conditional", "zprob", "zlink",
                                      "disp", "latent"),
@@ -146,7 +145,17 @@ predict.glmmTMB <- function(object,
   ## FIXME: implement 'complete' re.form (e.g. identify elements of Z or b that need to be zeroed out)
 
   check_dots(..., .action = "warning")
+
+  ## FIXME: better test? () around re.form==~0 are *necessary*
+  ## could steal isRE from lme4 predict.R ...
+  pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
+                                       identical(re.form,NA)))
+  if (!(is.null(re.form) || pop_pred)) {
+      stop("re.form must equal NULL, NA, or ~0")
+  }
   
+  allow.new.levels <- allow.new.levels %||% pop_pred
+
   if (cov.fit) {
     if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
     se.fit <- TRUE
@@ -168,15 +177,7 @@ predict.glmmTMB <- function(object,
     type <- zitype
   }
   type <- match.arg(type)
-
-  ## FIXME: better test? () around re.form==~0 are *necessary*
-  ## could steal isRE from lme4 predict.R ...
-  pop_pred <- (!is.null(re.form) && ((re.form==~0) ||
-                                       identical(re.form,NA)))
-  if (!(is.null(re.form) || pop_pred)) {
-    stop("re.form must equal NULL, NA, or ~0")
-  }
-
+  
   ## match type arg with internal name
   ## FIXME: warn if "link"
   ziPredNm <- switch(type,
