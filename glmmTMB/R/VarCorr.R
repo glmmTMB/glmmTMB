@@ -309,10 +309,18 @@ get_sd.default <- function(x, ...) {
     attr(x, "stddev")
 }
 
+## single-variance models
 ##' @export
 get_sd.vcmat_ar1 <- function(x, ...) {
     attr(x, "stddev")[1]
 }
+
+##' @export
+get_sd.vcmat_homdiag <- get_sd.vcmat_ar1
+
+##' @export
+get_sd.vcmat_homcs <- get_sd.vcmat_ar1
+
 
 ##' @export
 format_corr.default <- function(x, maxdim = Inf, digits=2, ...) {
@@ -338,6 +346,9 @@ format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
 }
 
 #' @export
+format_corr.vcmat_homdiag <- format_corr.vcmat_diag
+
+#' @export
 format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
     x <- attr(x, "correlation")
     if (length(x)==1) {
@@ -357,6 +368,9 @@ format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
     cc <- format(round(x[2,1], digits), nsmall = digits)
     return(matrix(paste(cc, "(cs)")))
 }
+
+#' @export
+format_corr.vcmat_homcs <- format_corr.vcmat_cs
 
 ## FIXME: get specials for ou, compsymm, spatial matrices, etc..
 

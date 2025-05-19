@@ -241,4 +241,8 @@ for (m in models) {
     obj <- get(m)
     if (!inherits(obj, "glmmTMB")) next
     capture.output(print(VarCorr(obj)))
+    if (FALSE) {
+      cat("\n***", m, "\n")
+      print(VarCorr(obj))
+    }
 }
