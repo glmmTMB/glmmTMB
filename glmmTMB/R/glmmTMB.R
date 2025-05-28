@@ -1484,6 +1484,7 @@ glmmTMB <- function(
 ##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).
 ##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @param full_cor compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually
+##' @param nAGQ number of adaptive Gauss-Hermite quadrature points to use in the Laplace approximation of the marginal likelihood. The default value is 1, which corresponds to the standard Laplace approximation. Higher values (e.g., 2 or 3) may improve accuracy for some models, but will increase computation time.
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1534,7 +1535,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip"),
-                           full_cor = TRUE) {
+                           full_cor = TRUE,
+                           nAGQ = 1) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1573,7 +1575,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
               eigval_check, zerodisp_val, start_method, rank_check, conv_check,
-              full_cor)
+              full_cor, nAGQ)
 }
 
 ##' collapse duplicated observations

@@ -55,7 +55,8 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.1)
+    reformulas (>= 0.4.1),
+    aghq
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,

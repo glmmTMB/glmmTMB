@@ -1,0 +1,10 @@
+Refs:
+
+* https://arxiv.org/pdf/2101.04468
+* https://arxiv.org/abs/2101.04468
+* https://github.com/glmmTMB/glmmTMB/issues/1182
+
+* adjust `smooth` argument to `MakeADFun`
+    * how does this interact with `profile` setting?
+	* call `aghq` rather than `nlminb` to optimize; pass optimizer control args through appropriately (any chance of standardizing between these and optimizer control args for `nlminb` etc.?)
+	* handle separation of fixed vs random parameters appropriately downstream (e.g. we can no longer rely on `obj$env$par[-random]` etc.; refactor/abstract operations like "get latent variables", "get fixed-effect parameters", etc.. (Is it true that AGHQ doesn't distinguish between latent variables and other params?)
