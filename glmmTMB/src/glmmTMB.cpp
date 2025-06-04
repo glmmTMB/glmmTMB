@@ -508,7 +508,13 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     vector<Type> sd = exp(logsd);
     Type cursd;
     for(int j = 0; j < term.blockReps; j++){
-      ans -= dnorm(U(0, j), Type(0), sd(0), true);   // Initialize
+      // Initialize
+      if (term.blockCode == hetar1_covstruct) {
+        ans -= dnorm(U(0, j) / sd(0), Type(0), Type(1), true);
+      } else { // ar1_covstruct
+        ans -= dnorm(U(0, j), Type(0), sd(0), true);  
+        ans += log(sd(0));
+      }
       if (do_simulate) {
         switch(term.simCode) {
         case fix_simcode:
@@ -523,11 +529,13 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
       for(int i=1; i<n; i++){
         if (term.blockCode == hetar1_covstruct) {
-          cursd = sd(i-1);
-        } else {
+          ans -= dnorm(U(i, j) / sd(i), phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi), true);
+          ans += log(sd(i));
+        } else { // ar1_covstruct
           cursd = sd(0);
+          ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
         }
-      ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
+      
         if (do_simulate) {
 	  switch(term.simCode) {
           case fix_simcode:
