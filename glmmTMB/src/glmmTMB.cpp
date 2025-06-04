@@ -511,9 +511,9 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       // Initialize
       if (term.blockCode == hetar1_covstruct) {
         ans -= dnorm(U(0, j) / sd(0), Type(0), Type(1), true);
+        ans += log(sd(0));
       } else { // ar1_covstruct
         ans -= dnorm(U(0, j), Type(0), sd(0), true);  
-        ans += log(sd(0));
       }
       if (do_simulate) {
         switch(term.simCode) {
