@@ -1041,6 +1041,10 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
             if (length(.getXlevels(reXterms[[i]],fr))!=1) {
                 stop("ar1() expects a single, factor variable as the time component")
             }
+        } else if (ss[i] == "hetar1") { 
+           if (length(.getXlevels(reXterms[[i]],fr))!=1) {
+             stop("hetar1() expects a single, factor variable as the time component")
+           }
         } else if(ss[i] == "ou") {
             times <- parseNumLevels(reTrms$cnms[[i]])
             if (ncol(times) != 1)

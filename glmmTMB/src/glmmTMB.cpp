@@ -506,54 +506,64 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type corr_transf = theta(term.blockNumTheta-1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
     vector<Type> sd = exp(logsd);
-    Type cursd;
+    
     for(int j = 0; j < term.blockReps; j++){
       // Initialize
       if (term.blockCode == hetar1_covstruct) {
         ans -= dnorm(U(0, j) / sd(0), Type(0), Type(1), true);
-        ans += log(sd(0));
+        ans += logsd(0);
       } else { // ar1_covstruct
-        ans -= dnorm(U(0, j), Type(0), sd(0), true);  
+        ans -= dnorm(U(0, j), Type(0), sd(0), true);
       }
       if (do_simulate) {
         switch(term.simCode) {
-        case fix_simcode:
-          break;
-        case zero_simcode:
-          U(0,j) = Type(0);
-          break;
-        case random_simcode:
-          U(0, j) = rnorm(Type(0), sd(0));
-          break;
+          case fix_simcode:
+            break;
+          case zero_simcode:
+            U(0,j) = Type(0);
+            break;
+          case random_simcode:
+            if (term.blockCode == hetar1_covstruct) {
+              U(0, j) = rnorm(Type(0), Type(1));
+            } else { // ar1_covstruct
+              U(0, j) = rnorm(Type(0), sd(0));
+            }
+            break;
         }
       }
-      for(int i=1; i<n; i++){
+      for(int i=1; i<n; i++) {
+
         if (term.blockCode == hetar1_covstruct) {
           ans -= dnorm(U(i, j) / sd(i), phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi), true);
-          ans += log(sd(i));
+          ans += logsd(i);
         } else { // ar1_covstruct
-          cursd = sd(0);
-          ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
+          ans -= dnorm(U(i, j), phi * U(i-1, j), sd(0) * sqrt(1 - phi*phi), true);
         }
       
         if (do_simulate) {
-	  switch(term.simCode) {
-          case fix_simcode:
-          // do nothing, leave U values as is
-	    break;
-          case zero_simcode:
-            for (int i=0; i < U.rows(); i++) {
-              U(i,j) = Type(0);
-	    };
-            break;
-          case random_simcode:
-            for(int i=1; i<n; i++){
-              U(i, j) = rnorm( phi * U(i-1, j), cursd * sqrt(1 - phi*phi) );
+	        switch(term.simCode) {
+            case fix_simcode:
+              // do nothing, leave U values as is
+	            break;
+            case zero_simcode:
+              for (int i=0; i < U.rows(); i++) {
+                U(i, j) = Type(0);
+	            };
+              break;
+            case random_simcode:
+              if (term.blockCode == hetar1_covstruct) {
+                for(int i=1; i<n; i++) {
+                  U(i, j) = rnorm(phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi));
+                }
+              } else {
+                for(int i=1; i<n; i++) {
+                  U(i, j) = rnorm(phi * U(i-1, j), sd(0) * sqrt(1 - phi*phi));
+                }
               }
-            break;
-           default: error ("unknown simcode");
-	  } // term.simCode
-	} // do_simulate
+              break;
+            default: error ("unknown simcode");
+	        } // term.simCode
+      	} // do_simulate
       } // loop over lags
     } // loop over blocks
     DISABLE_AD { // Disable AD for this part
@@ -578,7 +588,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         term.sd.resize(1);
         term.sd(0) = sd(0);
       }
-    } // DISABLE_AD
+    } // DISABLE_AD 
   } // [het]ar1_covstruct
   else if (term.blockCode == ou_covstruct){
     // case: ou_covstruct

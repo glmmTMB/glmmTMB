@@ -155,3 +155,43 @@ test_that("het ar1", {
     skip_on_cran()
     VarCorr(fm_hetar1)
 })
+
+
+test_that("basic hetar1", {
+  ## base fm_ar1 does include corr matrix
+  vv <- VarCorr(fm_hetar1)[["cond"]]
+  expect_equal(attr(vv[[1]], "correlation")[1,10], 0.9978619, tolerance = 1e-5)
+  ## also need to test 
+})
+
+## change to something better behaved
+# test_that("print hetar1 (>1 RE)", {
+#   ## sim order of sampling rnorm() values changed with implementation of hetar1, so use stored sim
+#   ##
+#   ## fsleepstudy$sim <- simulate_new(~ 1 + (1|Subject) + ar1(row+0| Subject),
+#   ##                                 newdata=fsleepstudy,
+#   ##                                 newparams = list(beta=0, betadisp = 1, theta = c(1, 1, 1)),
+#   ##                                 family = gaussian,
+#   ##                                 seed = 101)[[1]]
+#   ##     saveRDS(fsleepstudy$sim, file="../../inst/test_data/sim_ar1.rds",version=2)
+#   fsleepstudy$sim <- readRDS(system.file("test_data", "sim_ar1.rds", package="glmmTMB"))
+#   fm_ar2 <- glmmTMB(sim ~ 1 +
+#                       (1|Subject) + ar1(row+0| Subject), fsleepstudy)
+#   cco <- gsub(" +"," ",
+#               trimws(capture.output(print(summary(fm_ar2),digits=2))))
+#   expect_equal(cco[12:14],
+#                c("Subject (Intercept) 7.0 2.6", "Subject.1 row1 5.9 2.4 0.78 (ar1)", 
+#                  "Residual 8.1 2.8"))
+# })
+
+test_that("hetar1 requires factor time", {
+  skip_on_cran()
+  expect_error(glmmTMB(Reaction ~ 1 +
+                         (1|Subject) + hetar1(as.numeric(fDays)+0| Subject), fsleepstudy_big),
+               "expects a single")
+  ## works even when the factor is a weird/hard-to-recognize component
+  expect_is(glmmTMB(Reaction ~ 1 +
+                      (1|Subject) + hetar1(relevel(factor(fDays),"2")+0| Subject),
+                    fsleepstudy_big),
+            "glmmTMB")
+})
