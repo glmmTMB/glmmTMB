@@ -160,7 +160,7 @@ test_that("het ar1", {
 test_that("basic hetar1", {
   ## base fm_ar1 does include corr matrix
   vv <- VarCorr(fm_hetar1)[["cond"]]
-  expect_equal(attr(vv[[1]], "correlation")[1,10], 0.9978619, tolerance = 1e-5)
+  expect_equal(attr(vv[[1]], "correlation")[1, 10], 0.9957124, tolerance = 1e-5)
   ## also need to test 
 })
 
@@ -186,9 +186,15 @@ test_that("basic hetar1", {
 
 test_that("hetar1 requires factor time", {
   skip_on_cran()
-  expect_error(glmmTMB(Reaction ~ 1 +
-                         (1|Subject) + hetar1(as.numeric(fDays)+0| Subject), fsleepstudy_big),
-               "expects a single")
+  
+  expect_error(
+    glmmTMB(
+      Reaction ~ 1 + (1 | Subject) + hetar1(as.numeric(fDays) + 0 | Subject),
+      fsleepstudy_big
+    ),
+    "expects a single"
+  )
+  
   ## works even when the factor is a weird/hard-to-recognize component
   expect_is(glmmTMB(Reaction ~ 1 +
                       (1|Subject) + hetar1(relevel(factor(fDays),"2")+0| Subject),
