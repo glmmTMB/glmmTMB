@@ -86,20 +86,41 @@ fm_ar1_nocor <- glmmTMB(Reaction ~ 1 +
                         control = glmmTMBControl(full_cor = FALSE))
 
 
-fsleepstudy_big <- expand.grid(Subject = 1:100, fDays = factor(1:10))
-fsleepstudy_big$Reaction <- 
+# fsleepstudy_big <- expand.grid(Subject = 1:100, fDays = factor(1:10))
+# fsleepstudy_big$Reaction <- simulate_new(~ 1 + (1|Subject) + hetar1(fDays+0| Subject),
+#                                          newdata=fsleepstudy_big,
+#                                          newparams = list(beta=0, betadisp = -2,
+#                                                           theta = rep(2, 12)),
+#                                          family = gaussian,
+#                                          seed = 101)[[1]]
+# 
+# 
+# fm_hetar1 <- glmmTMB(Reaction ~ 1 + hetar1(fDays + 0| Subject), fsleepstudy_big)
+
+# This is a simulated version of a basketball data set found here:
+# https://www.utstat.toronto.edu/~brunner/data/legal/Bball1.data.txt
+bball <-
+  expand.grid(
+    Subject = 1:58,
+    Hand = factor(c("Lhand", "Rhand")),
+    Spot = factor(c("LeftBaseline", "Middle", "RightBaseline"))
+  )
+
+bball$Hit <- 
   simulate_new(
-    ~ 1 + (1|Subject) + hetar1(fDays+0 | Subject),
-    newdata = fsleepstudy_big,
-    newparams = list(beta = 0, betadisp = -2, theta = rep(2, 12)),
-    family = gaussian,
+    ~ 1 + (1 | Subject) + Hand + Spot + hetar1(0 + Spot | Subject),
+    newdata = bball,
+    newparams = list(beta = c(1, 1, 1, 1), theta = rep(2, 5)),
+    family = binomial,
     seed = 101
   )[[1]]
 
-fsleepstudy_big$Reaction_binary <- as.integer(fsleepstudy_big$Reaction >= 0)
-
 fm_hetar1 <-
-  glmmTMB(Reaction_binary ~ 1 + hetar1(fDays + 0 | Subject), fsleepstudy_big)
+  glmmTMB(
+    Hit ~ Hand + Spot + hetar1(0 + Spot | Subject),
+    family = binomial(link = "logit"),
+    data = bball
+  )
 
 if (save_image) save.image(file="models.rda", version=2)
 

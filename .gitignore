@@ -7,6 +7,8 @@
 *.so
 *.dll
 Bball1.txt
+Bball2.csv
+bball2_het_ar1.sas
 hetar1_debug.R
 glmmTMB/vignettes/*.pdf
 glmmTMB/vignettes/*.aux
