@@ -504,7 +504,16 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     int n = term.blockSize;
     vector<Type> logsd = theta.head(term.blockNumTheta-1);
     Type corr_transf = theta(term.blockNumTheta-1);
-    Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
+
+    Type phi;
+    if (term.blockCode == hetar1_covstruct) {
+      // Use the same transformation as in the cs_covstruct case.
+      Type a = Type(1) / (Type(n) - Type(1));
+      phi = invlogit(corr_transf) * (Type(1) + a) - a;
+    } else {
+      phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
+    }
+
     vector<Type> sd = exp(logsd);
     
     for(int j = 0; j < term.blockReps; j++){
