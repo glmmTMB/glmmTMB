@@ -101,19 +101,26 @@ fm_ar1_nocor <- glmmTMB(Reaction ~ 1 +
 # https://www.utstat.toronto.edu/~brunner/data/legal/Bball1.data.txt
 bball <-
   expand.grid(
-    Subject = 1:58,
+    Subject = factor(1:58),
     Hand = factor(c("Lhand", "Rhand")),
     Spot = factor(c("LeftBaseline", "Middle", "RightBaseline"))
   )
 
 bball$Hit <- 
-  simulate_new(
-    ~ 1 + (1 | Subject) + Hand + Spot + hetar1(0 + Spot | Subject),
-    newdata = bball,
-    newparams = list(beta = c(1, 1, 1, 1), theta = rep(2, 5)),
-    family = binomial,
-    seed = 101
-  )[[1]]
+  as.integer(
+    simulate_new(
+      ~ 1 + (1 | Subject) + Hand + Spot + hetar1(0 + Spot | Subject),
+      newdata = bball,
+      newparams = list(beta = c(1, 1, 1, 1), theta = rep(2, 5)),
+      family = binomial,
+      seed = 101
+    )[[1]]
+  )
+
+# Sort by Subject, then Hand, then Spot
+bball <- bball[evalq(order(Subject, Hand, Spot), bball), ]
+
+# readr::write_csv(bball, here::here("inst", "test_data", "Bball2.csv"))
 
 fm_hetar1 <-
   glmmTMB(

@@ -158,9 +158,17 @@ test_that("het ar1", {
 
 
 test_that("basic hetar1", {
+  expect_equal(
+    fixef(fm_hetar1)$cond,
+    c("(Intercept)" = 9.59751869,
+      "HandRhand" = 2.60544858,
+      "SpotMiddle" = -0.03084867,
+      "SpotRightBaseline" = -1.88387051),
+    tolerance = 1e-5
+  )
   ## base fm_ar1 does include corr matrix
   vv <- VarCorr(fm_hetar1)[["cond"]]
-  expect_equal(attr(vv[[1]], "correlation")[2, 1], 0.9846275, tolerance = 1e-5)
+  expect_equal(attr(vv[[1]], "correlation")[2, 1], 0.9780059, tolerance = 1e-5)
   ## also need to test 
 })
 
@@ -197,7 +205,7 @@ test_that("hetar1 requires factor time", {
   
   ## works even when the factor is a weird/hard-to-recognize component
   expect_is(glmmTMB(Hit ~ 
-                      1 + (1|Subject) +
+                      1 + (1|Subject) + relevel(factor(Spot),"Middle") +
                       hetar1(relevel(factor(Spot),"Middle")+0| Subject),
                     bball),
             "glmmTMB")
