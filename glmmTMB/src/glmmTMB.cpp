@@ -533,6 +533,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
             break;
           case random_simcode:
             if (term.blockCode == hetar1_covstruct) {
+              // Added this: sd(0) *
               U(0, j) = sd(0) * rnorm(Type(0), Type(1));
             } else { // ar1_covstruct
               U(0, j) = rnorm(Type(0), sd(0));
@@ -561,6 +562,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
               break;
             case random_simcode:
               if (term.blockCode == hetar1_covstruct) {
+                // Removed the for-loop, which I think was simulating all timepoints except the first one over and over again
+                // Also, added sd(i) *
                 //for(int i=1; i<n; i++) {
                   U(i, j) = sd(i) * rnorm(phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi));
                 //}

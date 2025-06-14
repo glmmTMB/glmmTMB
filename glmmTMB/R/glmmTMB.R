@@ -1147,6 +1147,7 @@ binomialType <- function(x) {
 ##' \itemize{
 ##' \item \code{diag} (diagonal, heterogeneous variance)
 ##' \item \code{ar1} (autoregressive order-1, homogeneous variance)
+##' \item \code{hetar1} (autoregressive order-1, heterogeneous variance)
 ##' \item \code{cs} (compound symmetric, heterogeneous variance)
 ##' \item \code{ou} (* Ornstein-Uhlenbeck, homogeneous variance)
 ##' \item \code{exp} (* exponential autocorrelation)
