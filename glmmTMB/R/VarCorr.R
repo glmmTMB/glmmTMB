@@ -345,8 +345,7 @@ format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
     } else {
         cc <- format(round(x[2,1], digits), nsmall = digits)
     }
-    cov_struct <- if (inherits(x, "vcmat_hetar1")) "(hetar1)" else "(ar1)"
-    return(matrix(paste(cc, cov_struct)))
+    return(matrix(paste(cc, "(ar1)")))
 }
 
 #' @export
