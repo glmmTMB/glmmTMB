@@ -188,7 +188,6 @@ test_that("simulate_new, b partially fixed (pars)", {
 
 # hetar1
 
-
 pp7 <- list(beta = c(280),
             betadisp = 1,
             theta = c(-1, seq(from = 1.05, by = -0.01, length.out = 10), 0))
@@ -208,9 +207,8 @@ s16 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
 
 test_that("simulate_new with two RE terms", {
   expect_equal(unname(head(s16)),
-               c(-0.119942121932298, 0.203239358640131, -0.248297964136576, 
+               c(-0.119942121932298, 0.203239358640131, -0.248297964136576,
                  0.078858438002708, 0.114325605998615, 0.431878061822679))
-  
 })
 
 nb <- sum(names(s16) == "b")
@@ -259,10 +257,3 @@ test_that("simulate_new, b partially fixed (pars)", {
                  0.078858438002708, 0.114325605998615, 0.431878061822679))
   expect_identical(bvec[-(1:ns)], pp9$b[[1]])
 })
-
-## s14 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
-##                     seed = 101,
-##                    newdata = sleepstudy,
-##                     family = gaussian,
-##                    newparams = pp6,
-##                     return_val = "object")
