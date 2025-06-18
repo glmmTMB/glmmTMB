@@ -74,7 +74,8 @@ test_that("ar1 and hetar1 require factor time", {
                           (1|Subject) + ar1(relevel(factor(row),"2")+0| Subject),
                       fsleepstudy),
               "glmmTMB")
-    expect_is(glmmTMB(Reaction ~ 1 + hetar1(relevel(fDays,"[3,6)")+0| Subject),
+    expect_is(glmmTMB(Reaction ~ 1 +
+                          (1|Subject) + hetar1(relevel(fDays,"[6,10)")+0| Subject),
                       fsleepstudy),
               "glmmTMB")
 })
@@ -160,19 +161,19 @@ test_that("hom vs het diag", {
 test_that("basic hetar1", {
     skip_on_cran()
     vv <- VarCorr(fm_hetar1)[["cond"]]
-    expect_equal(attr(vv[[1]], "correlation")[2,1], 0.9388559, tolerance = 1e-5)
+    expect_equal(attr(vv[[1]], "correlation")[2,1], 0.8861108, tolerance = 1e-5)
     expect_equal(
       attr(vv[[1]], "stddev"),
       c(
-        fDays1 = 9.60733, fDays2 = 9.24817, fDays3 = 9.516402, fDays4 = 9.731101, 
-        fDays5 = 9.993215, fDays6 = 10.077718, fDays7 = 10.362068, fDays8 = 10.26694,
-        fDays9 = 10.405891, fDays10 = 10.007693
+        fDays1 = 3.41933, fDays2 = 3.26796, fDays3 = 3.46971, fDays4 = 3.51311, 
+        fDays5 = 3.64887, fDays6 = 3.6512, fDays7 = 3.80629, fDays8 = 3.74593,
+        fDays9 = 3.80094, fDays10 = 3.54704
       ),
       tolerance = 1e-3
     )
     expect_equal(
       fixef(fm_hetar1)$cond,
-      c("(Intercept)" = -1.376882),
+      c("(Intercept)" = -0.4591782),
       tolerance = 1e-5
     )
 })
