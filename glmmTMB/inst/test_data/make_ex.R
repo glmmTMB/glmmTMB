@@ -92,7 +92,7 @@ fsleepstudy_big <- expand.grid(Subject = 1:100, fDays = factor(1:10))
 fsleepstudy_big$Reaction <- simulate_new(~ 1 + (1|Subject) + hetar1(fDays+0| Subject),
                                          newdata=fsleepstudy_big,
                                          newparams = list(beta=0, betadisp = -2,
-                                                          theta = rep(2, 12)),
+                                                          theta = rep(1, 12)),
                                          family = gaussian,
                                          seed = 101)[[1]]
 
