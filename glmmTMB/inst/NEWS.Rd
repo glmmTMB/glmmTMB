@@ -13,6 +13,8 @@
       predicting at the population level (i.e., \code{re.form}
       is \code{NA} or \code{~0}) - unless \code{allow.new.levels} is explicitly set to
       TRUE (GH#1189, @fisher-j)
+      \item implementation of \code{hetar1} covstruct was wrong, fixed now
+      (GH #1204, Daniel Sabanés Bové and Nik Krieger)
     }
   } % bug fixes
   \subsection{NEW FEATURES}{

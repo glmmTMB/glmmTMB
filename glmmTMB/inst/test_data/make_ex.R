@@ -85,17 +85,19 @@ fm_ar1_nocor <- glmmTMB(Reaction ~ 1 +
                             (1|Subject) + ar1(row+0| Subject), fsleepstudy,
                         control = glmmTMBControl(full_cor = FALSE))
 
+fm_hetar1 <- glmmTMB(Reaction ~ 1 + hetar1(fDays+0| Subject), fsleepstudy)
+fm_hetar1
 
 fsleepstudy_big <- expand.grid(Subject = 1:100, fDays = factor(1:10))
 fsleepstudy_big$Reaction <- simulate_new(~ 1 + (1|Subject) + hetar1(fDays+0| Subject),
-                             newdata=fsleepstudy_big,
-                             newparams = list(beta=0, betadisp = -2,
-                                              theta = rep(2, 12)),
-                             family = gaussian,
-                             seed = 101)[[1]]
+                                         newdata=fsleepstudy_big,
+                                         newparams = list(beta=0, betadisp = -2,
+                                                          theta = rep(1, 12)),
+                                         family = gaussian,
+                                         seed = 101)[[1]]
+
 
 fm_hetar1 <- glmmTMB(Reaction ~ 1 + hetar1(fDays + 0| Subject), fsleepstudy_big)
-
 
 if (save_image) save.image(file="models.rda", version=2)
 

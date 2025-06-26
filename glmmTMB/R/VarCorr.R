@@ -77,7 +77,7 @@ getParList <- function(object) {
 ##' @param \dots (ignored; for method compatibility)
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
-## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
+## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
 ## also see <https://github.com/klutometis/roxygen/issues/371>
 ##' @rawNamespace if(getRversion()>='3.3.0') { importFrom(stats, sigma) } else { importFrom(lme4,sigma) }
 ##  n.b. REQUIRES roxygen2 >= 5.0

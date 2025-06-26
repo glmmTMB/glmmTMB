@@ -1034,12 +1034,12 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                     simCode = simCode[i],
                     fullCor = as.integer(full_cor[i])
                     )
-        if(ss[i] == "ar1") {
+        if(ss[i] %in% c("ar1", "hetar1")) {
             ## FIXME: Keep this warning ?
             if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                warning("AR1 not meaningful with intercept")
+                warning(paste0(ss[i], "() not meaningful with intercept"))
             if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                stop("ar1() expects a single, factor variable as the time component")
+                stop(paste0(ss[i], "() expects a single, factor variable as the time component"))
             }
         } else if(ss[i] == "ou") {
             times <- parseNumLevels(reTrms$cnms[[i]])
@@ -1143,6 +1143,7 @@ binomialType <- function(x) {
 ##' \itemize{
 ##' \item \code{diag} (diagonal, heterogeneous variance)
 ##' \item \code{ar1} (autoregressive order-1, homogeneous variance)
+##' \item \code{hetar1} (autoregressive order-1, heterogeneous variance)
 ##' \item \code{cs} (compound symmetric, heterogeneous variance)
 ##' \item \code{ou} (* Ornstein-Uhlenbeck, homogeneous variance)
 ##' \item \code{exp} (* exponential autocorrelation)
