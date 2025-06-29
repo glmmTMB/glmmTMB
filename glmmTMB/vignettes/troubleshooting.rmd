@@ -24,7 +24,9 @@ If your problem is not covered below, there's a chance it has been solved in the
 
 This warning (`Model convergence problem; non-positive-definite Hessian matrix`) states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).
 
-It will usually be accompanied by `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run `summary()` on the resulting model, you'll get the warning `In sqrt(diag(vcov)) : NaNs produced`.
+It will usually be accompanied by `NaN` or `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. Running `summary()` on the fitted model will produce the warning `In sqrt(diag(vcovs)) : NaNs produced`.
+
+You can retrieve the log-likelihoods for such poorly fitted models (and use them to compute AIC and BIC in turn); the log-likelihood is intentionally set to `NA` in the model output to prevent users from inadvertently including poorly fitted models in a model comparison. For a fitted model `fit`, `fit$fit$objective` (if the model was fitted with the default `nlminb` optimizer) will retrieve the *negative* log-likelihood. Alternatively, `fit$obj$fn()` will call the underlying TMB objective function with the best-fitted parameters and should retrieve the same value. *Blindly using such values can be dangerous*; a non-positive-definite Hessian often indicates non-ignorable problems with the model.
 
 These problems are most likely:
 
@@ -33,6 +35,7 @@ These problems are most likely:
 - when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)
 - when dispersion is estimated to be near zero
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
+- when a model that tries to capture overdispersion (e.g. negative binomial, beta-binomial) is used in situations where the underlying data is equidispersed or underdispersed
 
 How do we diagnose the problem?
 
@@ -41,7 +44,7 @@ How do we diagnose the problem?
 Consider this example:
 
 ```{r non-pos-def,cache=TRUE, warning=FALSE}
-zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
+zinbm0 <- glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
 First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for a logit link, this
@@ -53,14 +56,17 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
-**FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below)
+```{r get_vals_zinbm0, echo = FALSE}
+fezi <- fixef(zinbm0)
+zi_int <- round(fezi$zi[["(Intercept)"]])
+```
 
-The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
-are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
+The zero-inflation intercept parameter is tiny ($\approx `r zi_int`$): since the parameters
+are estimated on the logit scale, we back-transform with `plogis()` to see the at the zero-inflation probability for the baseline level is about `r sprintf("%1.2g", plogis(zi_int))`. Most of the other ZI parameters are large and positive, compensating for the intercept: the estimated zero-inflation probabilities for all species are
 
 ```{r f_zi2}
 ff <- fixef(zinbm0)$zi
-round(plogis(c(sppGP=unname(ff[1]),ff[-1]+ff[1])),3)
+signif(plogis(c(sppGP=unname(ff[1]),ff[-1]+ff[1])), 2)
 ```
 
 Since the baseline probability is already effectively zero,
@@ -73,7 +79,7 @@ for example, we could use a model that compared the first species ("GP") to the 
 
 ```{r salfit2,cache=TRUE}
 Salamanders <- transform(Salamanders, GP=as.numeric(spp=="GP"))
-zinbm0_A = update(zinbm0, ziformula=~GP)
+zinbm0_A <- update(zinbm0, ziformula=~GP)
 ```
 
 This fits without a warning, although the GP zero-inflation parameter is still extreme:
@@ -88,7 +94,7 @@ This again fits without an error, although both the average level of
 zero-inflation and the among-species variation are estimated as very small:
 
 ```{r salfit3,cache=TRUE}
-zinbm0_B = update(zinbm0, ziformula=~(1|spp))
+zinbm0_B <- update(zinbm0, ziformula=~(1|spp))
 fixef(zinbm0_B)[["zi"]]
 VarCorr(zinbm0_B)
 ```
@@ -101,14 +107,20 @@ The original analysis considered variation in zero-inflation by site status
 to estimate two parameters (mined + difference between mined and no-mining)
 rather than 7 (one per species) for the zero-inflation model.
 
-```{r zinbm1,cache=TRUE}
-zinbm1 = glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family=nbinom2)
+```{r zinbm1}
+zinbm1 <- glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family=nbinom2)
 fixef(zinbm1)[["zi"]]
 ```
 
+```{r fezi1, echo = FALSE}
+fezi1 <- fixef(zinbm1)[["zi"]]
+plstr <- sprintf("plogis(%1.2f-%1.1f)", fezi1[1], abs(fezi1[2]))
+plval <- signif(plogis(sum(fezi1)), 1)
+```
+
 This again fits without a warning, but we see that the zero-inflation is effectively
-zero in the unmined ("minedno") condition (`plogis(0.38-17.5)` is
-approximately $4 \times 10^{-8}$). We can estimate the confidence interval, but
+zero in the unmined ("minedno") condition (``r plstr``) is
+approximately $`r plval`$. We can estimate the confidence interval, but
 it takes some extra work: the default Wald standard errors and confidence intervals
 are useless in this case.
 
@@ -116,12 +128,18 @@ are useless in this case.
 ## at present we need to specify the parameter by number; for
 ##  extreme cases need to specify the parameter range
 ## (not sure why the upper bound needs to be so high ... ?)
-cc = confint(zinbm1,method="uniroot",parm=9, parm.range=c(-20,20))
+cc <- confint(zinbm1,method="uniroot",parm=9, parm.range=c(-20,20))
 print(cc)
 ```
 
-The lower CI is not defined; the upper CI is -2.08, i.e. we can state
-that the zero-inflation probability is less than `plogis(-2.08)` = 0.11.
+```{r zi1_civals, echo=FALSE}
+plstr <- sprintf("plogis(%1.2f)", cc[1,2])
+plval <- signif(plogis(cc[1,2]),2)
+
+```
+
+The lower CI is not defined; the upper CI is `r signif(cc[1,2],2)`, i.e. we can state
+that the zero-inflation probability is less than ``r plstr`` $\approx$  `r plval`
 
 More broadly, general inspection of the data (e.g., plotting the response against potential covariates)
 should help to diagnose overly complex models.
