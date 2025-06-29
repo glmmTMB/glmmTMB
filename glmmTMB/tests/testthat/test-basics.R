@@ -408,7 +408,7 @@ test_that("start argument is a named list", {
                "'start' should be a named list")
 })
 
-test_that("start argument is a named list", {
-  expect_error(glmmTMB(mpg ~ hp, data = mtcars, start = list(junk = 1))
+test_that("start argument has correct elements", {
+  expect_error(glmmTMB(mpg ~ hp, data = mtcars, start = list(junk = 1)),
                "unrecognized vector")
 })
