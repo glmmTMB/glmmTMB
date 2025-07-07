@@ -178,9 +178,14 @@ startParams <- function(parameters,
                        parameters, jitter.sd)
   }
 
+  expected_params <- paste(sprintf("'%s'", names(parameters)), collapse = ", ")
+  if (!is.null(start) && !(is.list(start) && !is.null(names(start)))) {
+    stop(sprintf("'start' should be a named list (with some subset of elements %s)", expected_params),
+         call. = FALSE)
+  }
   for (p in names(start)) {
     if (!(p %in% names(parameters))) {
-      stop(sprintf("unrecognized vector '%s' in %s",p,sQuote("start")),
+      stop(sprintf("unrecognized vector '%s' in %s (expected elements are %s)", p, sQuote("start"), expected_params),
            call. = FALSE)
     }
     if ((Lp <- length(parameters[[p]])) !=  (Ls <- length(start[[p]]))) {
@@ -2227,4 +2232,3 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
     }
     invisible(x)
 }## print.summary.glmmTMB
-
