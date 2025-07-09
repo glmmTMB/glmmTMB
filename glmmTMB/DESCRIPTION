@@ -93,6 +93,7 @@ Suggests:
     blme,
     purrr,
     dplyr,
+    RTMB,
     ade4,
     ape,
     gsl
