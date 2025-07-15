@@ -361,103 +361,107 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
 
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
 
-      pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
-                "parfull")
+    pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
+              "parfull")
 
-      ## using ee$parList() rather than ee$parameters should help
-      ##  with mapped parameter s... ??
-      params <- ee$parList()
+    ## using ee$parList() rather than ee$parameters should help
+    ##  with mapped parameters... ??
+    params <- ee$parList()
 
-      if (length(ee$map) > 0) {
-          for (n in names(ee$map)) {
-              ee$parameters[[n]] <- params[[n]]
-          }
+    if (length(ee$map) > 0) {
+      for (n in names(ee$map)) {
+        ee$parameters[[n]] <- params[[n]]
       }
-      
-      ## change name of thetaf to psi
-      if ("thetaf" %in% names(params)) {
-          ee$parameters$psi <- params$thetaf
-          ee$parameters$thetaf <- NULL
-          pars <- c(grep("last\\.par", names(ee), value = TRUE),
-                    "par")
-          for (p in pars) {
-              if (!is.null(nm <- names(ee[[p]]))) {
-                  names(ee[[p]])[nm == "thetaf"] <- "psi"
-              }
-          }
+    }
+
+    ## all elements containing parameter values
+    par_els <- c(grep("last\\.par", names(ee), value = TRUE), "par")
+
+    ## rename in place rather than assigning/NULLing
+    rename_fun <- function(x, oldname, newname) {
+      nm <- names(x)
+      names(x)[nm == oldname] <- newname
+      x
+    }
+    
+    ## change name of thetaf to psi
+    if ("thetaf" %in% names(params)) {
+      ee$parameters <- rename_fun(ee$parameters, "thetaf", "psi")
+      for (p in par_els) {
+        if (!is.null(nm <- names(ee[[p]]))) {
+          ee[[p]] <- rename_fun(ee[[p]], "thetaf", "psi")
+        }
       }
-      if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
-      	ee$parameters$betadisp <- params$betad
-      	ee$parameters$betad <- NULL
-      	pars <- c(grep("last\\.par", names(ee), value = TRUE),
-      						"par")
-      	for (p in pars) {
-      		if (!is.null(nm <- names(ee[[p]]))) {
-      			names(ee[[p]])[nm == "betad"] <- "betadisp"
+    }
+    
+    if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
+      ## CHECK me:
+      ee$parameters <- rename_fun(ee$parameters, "betad", "betadisp")
+      for (p in par_els) {
+        if (!is.null(nm <- names(ee[[p]]))) {
+          ee[[p]] <- rename_fun(ee[[p]], "betad", "betadisp")
       		}
-      	}
-      	ee$data$Xdisp <- ee$data$Xd
-      	ee$data$Xd <- NULL
-      	ee$data$dispoffset <- ee$data$doffset
-      	ee$data$doffset <- NULL
       }
-      if(!"Zdisp" %in% names(ee$data)) {
-      	ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
-      	ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
-      	ee$parameters$thetadisp <- numeric(0)
-      }
-      if (!"aggregate" %in% names(ee$data)) {
-      	ee$data[["aggregate"]] <- numeric(0)
-      } 
-      ee2 <- oldfit$sdr$env
-      if ("thetaf" %in% names(ee2$parameters)) {
-          ee2$parameters$psi <- ee2$parameters$thetaf
-          ee2$parameters$thetaf <- NULL
-      }
+      ee$data <- rename_fun(ee$data, "Xd", "Xdisp")
+      ee$data <- rename_fun(ee$data, "doffset", "dispoffset")
+    }
+    if(!"Zdisp" %in% names(ee$data)) {
+      ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
+      ee$parameters$thetadisp <- numeric(0)
+    }
+    if (!"aggregate" %in% names(ee$data)) {
+      ee$data[["aggregate"]] <- numeric(0)
+    } 
+    ee2 <- oldfit$sdr$env
+    if ("thetaf" %in% names(ee2$parameters)) {
+      ee2$parameters <- rename_fun(ee2$parameters, "thetaf", "psi")
+    }
+    if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
+      ee2$parameters <- rename_fun(ee2$parameters, "betad", "betadisp")
+    }
 
-      for (comp in c("terms", "termszi", "termsdisp")) {
-          for (i in seq_along(ee$data[[comp]])) {
-              ee$data[[comp]][[i]]$simCode <- .valid_simcode[["random"]]
-              ee$data[[comp]][[i]]$fullCor <- 1.0
-          }
+    for (comp in c("terms", "termszi", "termsdisp")) {
+      for (i in seq_along(ee$data[[comp]])) {
+        ee$data[[comp]][[i]]$simCode <- .valid_simcode[["random"]]
+        ee$data[[comp]][[i]]$fullCor <- 1.0
       }
+    }
       
-      if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
-      	ee2$parameters$betadisp <- ee2$parameters$betad
-      	ee2$parameters$betad <- NULL
-      }
 
-      ## prior_ivars, prior_fvars are defined in priors.R
-      if (!"prior_distrib" %in% names(ee$data)) {
-          ## these are DATA_IVECTOR but apparently after processing
-          ##  TMB turns these into numeric ... ??
-          for (v in prior_ivars) ee$data[[v]] <- numeric(0)
-          for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+    ## prior_ivars, prior_fvars are defined in priors.R
+    if (!"prior_distrib" %in% names(ee$data)) {
+      ## these are DATA_IVECTOR but apparently after processing
+      ##  TMB turns these into numeric ... ??
+      for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+      for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+      
+    }
 
+    ## switch from variance to SD parameterization
+    if (update_gauss_disp &&
+        family(oldfit)$family == "gaussian") {
+      ee$parameters$betadisp <- ee$parameters$betadisp/2
+      for (p in par_els) {
+        if (!is.null(nm <- names(ee[[p]]))) {
+          ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
+        }
+        if (!is.null(nm <- names(oldfit$fit[[p]]))) {
+          oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
+        }
       }
-
-      ## switch from variance to SD parameterization
-      if (update_gauss_disp &&
-          family(oldfit)$family == "gaussian") {
-          ee$parameters$betadisp <- params$betadisp/2
-          for (p in pars) {
-              if (!is.null(nm <- names(ee[[p]]))) {
-                  ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
-              }
-              if (!is.null(nm <- names(oldfit$fit[[p]]))) {
-                  oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
-              }
-          }
-      }
-       oldfit$obj <- with(ee,
+    }
+    oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
                                       silent = silent,
                                       DLL = "glmmTMB"))
-      oldfit$obj$env$last.par.best <- ee$last.par.best
-      ##
+
+    oldfit$obj$env$last.par.best <- ee$last.par.best
+    ## oldfit$obj$env$last.par <- ee$last.par ??
+    ##
   }
 
   for (t in c("condReStruc", "ziRestruc", "dispRestruc")) {
