@@ -4,7 +4,7 @@
 #PKG_CXXFLAGS=$(SHLIB_OPENMP_CXXFLAGS)
 
 # this is the code needed by e.g. data.table to get multithreading working on macosx
-PKG_CPPFLAGS = -DTMBAD_FRAMEWORK # gls
+PKG_CPPFLAGS = @PKG_CPPFLAGS@ # gls
 PKG_CFLAGS = @PKG_CFLAGS@ @openmp_cflags@
 PKG_CXXFLAGS = @PKG_CXXFLAGS@ @openmp_cxxflags@
 PKG_LIBS = @PKG_LIBS@ $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) @openmp_cflags@
