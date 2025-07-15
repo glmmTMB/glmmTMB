@@ -109,6 +109,8 @@ detect_openmp () {
 
   # No support for OpenMP available
   export R_OPENMP_ENABLED=0
+  # If we get here no OPENMP, so just set needed CPPFLAGS
+  export PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
 }
 
 detect_openmp
