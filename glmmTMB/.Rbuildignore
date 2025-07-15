@@ -1,6 +1,6 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-figure$
+^figure$
 cache$
 .*\.bbl$
 .*\.blg$
@@ -24,4 +24,4 @@ sherman.csv
 lineno.sty
 ## rmarkdown/knitr cache trash
 ## would like to get rid of *_files/.*$ but need example_files, not sure how to include/exclude
-
+^.DS_Store
