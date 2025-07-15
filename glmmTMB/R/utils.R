@@ -358,6 +358,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   obj <- oldfit$obj
   ee <- obj$env
+  ee2 <- oldfit$sdr$env
 
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
 
@@ -387,6 +388,10 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     ## change name of thetaf to psi
     if ("thetaf" %in% names(params)) {
       ee$parameters <- rename_fun(ee$parameters, "thetaf", "psi")
+      ee2$parameters <- rename_fun(ee2$parameters, "thetaf", "psi")
+      oldfit$fit$par <- rename_fun(oldfit$fit$par, "thetaf", "psi")
+      oldfit$fit$parfull <- rename_fun(oldfit$fit$parfull, "thetaf", "psi")
+
       for (p in par_els) {
         if (!is.null(nm <- names(ee[[p]]))) {
           ee[[p]] <- rename_fun(ee[[p]], "thetaf", "psi")
@@ -395,8 +400,10 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     }
     
     if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
-      ## CHECK me:
       ee$parameters <- rename_fun(ee$parameters, "betad", "betadisp")
+      ee2$parameters <- rename_fun(ee2$parameters, "betad", "betadisp")
+      oldfit$fit$par <- rename_fun(oldfit$fit$par, "betad", "betadisp")
+      oldfit$fit$parfull <- rename_fun(oldfit$fit$parfull, "betad", "betadisp")
       for (p in par_els) {
         if (!is.null(nm <- names(ee[[p]]))) {
           ee[[p]] <- rename_fun(ee[[p]], "betad", "betadisp")
@@ -412,13 +419,6 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     }
     if (!"aggregate" %in% names(ee$data)) {
       ee$data[["aggregate"]] <- numeric(0)
-    } 
-    ee2 <- oldfit$sdr$env
-    if ("thetaf" %in% names(ee2$parameters)) {
-      ee2$parameters <- rename_fun(ee2$parameters, "thetaf", "psi")
-    }
-    if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
-      ee2$parameters <- rename_fun(ee2$parameters, "betad", "betadisp")
     }
 
     for (comp in c("terms", "termszi", "termsdisp")) {
@@ -451,6 +451,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
         }
       }
     }
+
     oldfit$obj <- with(ee,
                        TMB::MakeADFun(data,
                                       parameters,
@@ -459,9 +460,16 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
                                       silent = silent,
                                       DLL = "glmmTMB"))
 
-    oldfit$obj$env$last.par.best <- ee$last.par.best
-    ## oldfit$obj$env$last.par <- ee$last.par ??
-    ##
+    ## replace carefully (ordering problem)
+    replace_vals <- function(x, y) {
+      for (nm in unique(names(x))) {
+        x[names(x)==nm] <- y[names(y)==nm]
+      }
+      x
+    }
+
+    oldfit$obj$env$last.par.best <- replace_vals(oldfit$obj$env$last.par.best, ee$last.par.best)
+
   }
 
   for (t in c("condReStruc", "ziRestruc", "dispRestruc")) {
