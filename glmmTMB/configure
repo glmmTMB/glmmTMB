@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 
+## configure script modified from that used by the data.table package
+## https://github.com/Rdatatable/data.table/blob/master/configure
+
 # Find R compilers
 CXX=`${R_HOME}/bin/R CMD config CXX`
 CPPFLAGS=`${R_HOME}/bin/R CMD config CPPFLAGS`
