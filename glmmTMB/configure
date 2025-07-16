@@ -5,6 +5,9 @@ CXX=`${R_HOME}/bin/R CMD config CXX`
 CPPFLAGS=`${R_HOME}/bin/R CMD config CPPFLAGS`
 CXXFLAGS=`${R_HOME}/bin/R CMD config CXXFLAGS`
 
+# set preprocessor flag needed
+PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
+
 # compiler and flags to 'cc' file
 echo "CXX=${CXX}" > inst/cc
 echo "CXXFLAGS=${CXXFLAGS}" >> inst/cc
@@ -46,7 +49,6 @@ detect_openmp () {
     if ${CXX} ${CXXFLAGS} -fopenmp test-omp.cpp >> config.log 2>&1; then
       echo "yes"
       export PKG_CXXFLAGS="${PKG_CXXFLAGS} -fopenmp"
-      export PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
       export PKG_LIBS="${PKG_LIBS} $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)"
       export R_OPENMP_ENABLED=1
       return
@@ -61,7 +63,6 @@ detect_openmp () {
     printf "%s" "* checking if R installation supports OpenMP with \"-Xclang -fopenmp\" ... "
     if CPPFLAGS="${CPPFLAGS} -Xclang -fopenmp" PKG_LIBS="-lomp" "${R_HOME}/bin/R" CMD SHLIB test-omp.cpp >> config.log 2>&1; then
       echo "yes"
-      export PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
       export PKG_CXXFLAGS="${PKG_CXXFLAGS} -Xclang -fopenmp"
       export PKG_LIBS="${PKG_LIBS} -lomp"
       export R_OPENMP_ENABLED=1
@@ -74,7 +75,6 @@ detect_openmp () {
     printf "%s" "* checking if R installation supports OpenMP with \"-fopenmp\" ... "
     if CPPFLAGS="${CPPFLAGS} -fopenmp" "${R_HOME}/bin/R" CMD SHLIB test-omp.cpp >> config.log 2>&1; then
       echo "yes"
-      export PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
       export PKG_CXXFLAGS="${PKG_CXXFLAGS} -fopenmp"
       export PKG_LIBS="${PKG_LIBS} -fopenmp"
       export R_OPENMP_ENABLED=1
@@ -95,7 +95,6 @@ detect_openmp () {
       LIBOMP_LINK="-L${HOMEBREW_PREFIX}/opt/libomp/lib -lomp"
       if ${CXX} ${CXXFLAGS} ${LIBOMP_INCLUDE} ${LIBOMP_LINK} test-omp.cpp >> config.log 2>&1; then
         echo "yes"
-        export PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
         export PKG_CXXFLAGS="${PKG_CXXFLAGS} ${LIBOMP_INCLUDE}"
         export PKG_LIBS="${PKG_LIBS} ${LIBOMP_LINK}"
         export R_OPENMP_ENABLED=1
@@ -109,8 +108,6 @@ detect_openmp () {
 
   # No support for OpenMP available
   export R_OPENMP_ENABLED=0
-  # If we get here no OPENMP, so just set needed CPPFLAGS
-  export PKG_CPPFLAGS="${PKG_CPPFLAGS} -DTMBAD_FRAMEWORK"
 }
 
 detect_openmp
