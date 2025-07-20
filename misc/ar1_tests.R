@@ -99,3 +99,5 @@ summary(fit_gls)
   ##> day:group!day!cor 0.6730390 0.1691804 3.978232     U 0.4
   ##> units!R           1.0505278 0.2814746 3.732230     P 0.0`
 }
+
+sessionInfo()
