@@ -15,6 +15,8 @@
       TRUE (GH#1189, @fisher-j)
       \item implementation of \code{hetar1} covstruct was wrong, fixed now
       (GH #1204, Daniel Sabanés Bové and Nik Krieger)
+      \item prediction on rank-deficient X matrices could throw a false
+      positive error (Erin McCallum, \url{https://stackoverflow.com/q/77517125/190277})
     }
   } % bug fixes
   \subsection{NEW FEATURES}{

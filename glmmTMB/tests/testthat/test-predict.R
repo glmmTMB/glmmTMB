@@ -570,3 +570,31 @@ test_that("allow.new.levels TRUE when re.form = NA",
                                    re.form = NA), 298.507889474305,
                            tolerance = 1e-6)
 })
+
+## https://stackoverflow.com/q/77517125/190277
+test_that("prediction from rank-deficient X matrices", {
+  x <- c("A", "B", "C", "D"); y <- c("exposed", "ref1", "ref2")
+  set.seed(123)
+  dat <- data.frame(time = rep(x, each=20, times=3),
+                    lake = rep(y, each = 80),
+                    min = runif(n=240, min=4.5, max=5.5),
+                    count = rnbinom(n=240,mu=10,size=100))
+  dat2 <- subset(dat, time!="A" | lake !="ref1")
+  suppressMessages(
+    model <-glmmTMB(count~time*lake, family=nbinom1,
+                    control = glmmTMBControl(rank_check = "adjust"),
+                    offset=log(min), data=dat2))
+  pred_data <- data.frame(
+    lake = rep(c("exposed", "ref1", "ref2"), c(4L, 3L, 4L)),
+    min = 1,
+    time = c(x, x[-1], x)  ## drop level A for lake 2
+  )
+
+  pp <- suppressMessages(
+    predict(model, newdata = pred_data, type = 'response', se.fit=FALSE)
+  )
+  expect_equal(head(pp, 3), c(1.89088787010282, 1.83544974589453, 2.02668291828295),
+               tolerance = 1e-6)
+})
+             
+
