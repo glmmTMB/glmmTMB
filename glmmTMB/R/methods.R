@@ -1763,3 +1763,34 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
     resid[is.infinite(resid) | is.nan(resid) ]  <- 0
     resid
 }
+
+#' Extract Grouping Factors from an Object
+#' 
+#' This (simplified) method for \code{\link[nlme]{getGroups}} extracts the grouping factor
+#' for a specified level of the random effects structure in a \code{glmmTMB} object.
+#' 
+#' @param object a fitted \code{glmmTMB} object.
+#' @param level the level of the random effects structure to extract.
+#' @param ... additional arguments (not used).
+#' @return A factor representing the grouping structure at the specified level,
+#'   with a \code{group} attribute indicating the name of the grouping factor.
+#' 
+#' @export
+#' @importFrom nlme getGroups
+#' @method getGroups glmmTMB
+#' 
+#' @examples 
+#' model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' getGroups(model)
+getGroups.glmmTMB <- function(object, level = 1, ...) {
+    flist <- object$modelInfo$reTrms$cond$flist
+    n_flist <- length(flist)
+    if (level > n_flist) {
+        stop("level cannot be greater than number of random effect groups (", n_flist, ")")
+    }
+    names_flist <- names(flist)
+    structure(
+        flist[[level]],
+        group = names_flist[level]
+    )
+}

@@ -791,3 +791,37 @@ test_that("handle empty betadisp in vcov", {
     expect_equal(vcov(m)$disp,
                  matrix(NA_real_, dimnames = list("disp~", "disp~")))
 })
+
+test_that("getGroups works as expected with a single group", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    result <- getGroups(m)
+    expected <- structure(
+        factor(Salamanders$sample),
+        group = "sample"
+    )
+    expect_identical(result, expected)
+})
+
+test_that("getGroups works with multiple groups", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+
+    result1 <- getGroups(m)
+    result2 <- getGroups(m, level = 2)
+    
+    expected1 <- structure(
+        factor(Salamanders$sample),
+        group = "sample"
+    )
+    expected2 <- structure(
+        factor(Salamanders$mined),
+        group = "mined"
+    )
+
+    expect_identical(result1, expected1)
+    expect_identical(result2, expected2)
+})
+
+test_that("getGroups throws an error for a too large level", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+    expect_error(getGroups(m, level = 3), "level cannot be greater")
+})
