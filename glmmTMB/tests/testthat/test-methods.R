@@ -825,3 +825,15 @@ test_that("getGroups throws an error for a too large level", {
     m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
     expect_error(getGroups(m, level = 3), "level cannot be greater")
 })
+
+test_that("bread works as expected with defaults and full matrix", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+    
+    result <- bread(m)
+    expected <- vcov(m)$cond
+    expect_identical(result, expected)
+
+    result_full <- bread(m, full = TRUE)
+    expected_full <- vcov(m, full = TRUE)
+    expect_identical(result_full, expected_full)
+})

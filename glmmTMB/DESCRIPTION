@@ -95,7 +95,8 @@ Suggests:
     dplyr,
     ade4,
     ape,
-    gsl
+    gsl,
+    sandwich
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

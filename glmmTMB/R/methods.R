@@ -1794,3 +1794,32 @@ getGroups.glmmTMB <- function(object, level = 1, ...) {
         group = names_flist[level]
     )
 }
+
+#' Bread Matrix for Sandwich Estimator
+#' 
+#' This method for \code{\link[sandwich]{bread}} returns the variance-covariance
+#' matrix (bread) for a fitted \code{glmmTMB} model.
+#' 
+#' @param x a fitted \code{glmmTMB} object.
+#' @inheritParams vcov.glmmTMB
+#' @param ... ignored additional arguments (only for methods compatibility).
+#' 
+#' @return The bread matrix, which is just the variance-covariance matrix.
+#' 
+#' @details Please note that non-estimable parameters are omitted in the result.
+#' 
+#' @importFrom sandwich bread
+#' @export
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' bread(m)
+#' bread(m, full = TRUE)
+bread.glmmTMB <- function(x, full = FALSE, ...) {
+    check_dots(..., .ignore = "complete")
+    res <- vcov(x, full = full, include_nonest = FALSE)
+    if (full) {
+        res
+    } else {
+        res$cond
+    }
+}

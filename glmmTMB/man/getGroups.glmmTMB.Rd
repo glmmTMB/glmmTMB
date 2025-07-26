@@ -7,20 +7,19 @@
 \method{getGroups}{glmmTMB}(object, level = 1, ...)
 }
 \arguments{
-\item{object}{a fitted \code{glmmTMB} object}
+\item{object}{a fitted \code{glmmTMB} object.}
 
-\item{level}{the level of the random effects structure to extract}
+\item{level}{the level of the random effects structure to extract.}
 
-\item{...}{additional arguments (not used)}
+\item{...}{additional arguments (not used).}
 }
 \value{
 A factor representing the grouping structure at the specified level,
   with a \code{group} attribute indicating the name of the grouping factor.
 }
 \description{
-This method for \code{\link[nlme]{getGroups}} extracts the grouping factor
-for a specified level of the random effects structure in a
-\code{glmmTMB} object.
+This (simplified) method for \code{\link[nlme]{getGroups}} extracts the grouping factor
+for a specified level of the random effects structure in a \code{glmmTMB} object.
 }
 \examples{
 model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
