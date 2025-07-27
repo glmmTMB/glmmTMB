@@ -900,3 +900,21 @@ test_that("estfun works for nested random effects", {
     )
     expect_equal(result_level2, expected_level2, tolerance = 1e-3)
 })
+
+test_that("meatHC works as expected (based on estfun)", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)  
+    result <- expect_silent(meatHC(m))
+    expected <- matrix(
+        c(335.28, -1704.23, -1704.23, 9005.2),
+        nrow = 2, ncol = 2,
+        dimnames = list(
+            c("(Intercept)", "DOP"), 
+            c("(Intercept)", "DOP")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result2 <- expect_silent(meatHC(m, full = TRUE))
+    expect_is(result2, "matrix")
+    expect_identical(dim(result2), c(3L, 3L))
+})

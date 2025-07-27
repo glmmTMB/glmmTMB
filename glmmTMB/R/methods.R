@@ -1929,3 +1929,39 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...) {
     }
     cluster_score_vectors
 }
+
+#' Simple Cluster Based Meat Matrix Estimator
+#' 
+#' This (simplified) method for a new S3 generic based on \code{\link[sandwich]{meatHC}} computes 
+#' the meat matrix for a fitted \code{glmmTMB} model, which is the cross-product of the cluster-wise 
+#' score vectors (empirical estimating functions) extracted by \code{\link[sandwich]{estfun}}.
+#' 
+#' @param x a fitted \code{glmmTMB} object.
+#' @param ... additional arguments passed to \code{\link[sandwich]{estfun}}, in particular
+#'   `full` and `cluster` arguments.
+#' @return A square matrix where each element represents the cross-product of the score vectors
+#'  for the parameters in the model. The rows and columns are named according to the parameter names.
+#' 
+#' @note This meat matrix is not scaled by the number of clusters.
+meatHC <- function(x, ...) {
+    UseMethod("meatHC")
+}
+
+#' @export
+#' @rdname meatHC
+meatHC.default <- function(x, ...) {
+    sandwich::meatHC(x, ...)
+}
+
+#' @export
+#' @examples
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' meat(m)
+#' meat(m, full = TRUE)
+#' @rdname meatHC
+meatHC.glmmTMB <- function(x, ...) {
+    score_vectors <- sandwich::estfun(x, ...)
+    res <- crossprod(score_vectors)
+    rownames(res) <- colnames(res) <- colnames(score_vectors)
+    res
+}
