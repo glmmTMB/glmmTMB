@@ -8,8 +8,10 @@ ar1_cor <- function(n, rho) {
                     (1:n - 1))
   rho^exponent
 }
+
 ndays <- 20
 ngrps <- 10
+true_cor <- 0.7
 y <- MASS::mvrnorm(n = 1, 
                    mu = rep(0, ndays * ngrps), 
                    kronecker(diag(ngrps), ar1_cor(ndays, 0.7))) +
@@ -18,8 +20,7 @@ y <- MASS::mvrnorm(n = 1,
 data <- expand.grid(day = factor(1:ndays), group = LETTERS[1:ngrps]) |> 
   transform(y = y,
             nday = as.numeric(day),
-            obs = factor(seq(nrow(data))))
-
+            obs = ndays*ngrps)
 
 if (!dir.exists("older_lib")) {
   dir.create("older_lib")
@@ -36,19 +37,36 @@ if (!dir.exists("new_lib")) {
   remotes::install_github("glmmTMB/glmmTMB/glmmTMB", lib = "new_lib")
 }
 
-
 fitfun <- function(lib) {
   library(glmmTMB, lib.loc = lib)
   on.exit(detach("package:glmmTMB", unload = TRUE))
   print(packageVersion("glmmTMB"))
   fit_glmm <- glmmTMB(y ~  1 + ar1(0 + day|group), data, REML = TRUE)
   ## have to print here, print method goes away when we unload ....
-  print(VarCorr(fit_glmm))
+  vv <- VarCorr(fit_glmm)
+  res <- c(ar1_sd = sqrt(vv$cond[[1]][1,1]),
+           ar1_cor = cov2cor(vv$cond[[1]])[2,1],
+           res_sd = sigma(fit_glmm))
+  print(vv)
+  print(logLik(fit_glmm))
+  res <- c(res, nll = -1*c(logLik(fit_glmm)))
+  invisible(res)
 }
 
 fitfun("older_lib")
 fitfun("old_lib")
 fitfun("new_lib")
+
+
+## ??? SOMETIMES ??? (something fragile/mutable?)
+##   Groups   Name Std.Dev. Corr       
+##   group    day1 1.21247  0.478 (ar1)
+##   Residual      0.90617             
+
+r_older <- fitfun("older_lib")
+r_old <- fitfun("old_lib")
+r_new <- fitfun("new_lib")
+>>>>>>> master
 
 ## all identical:
 
@@ -62,15 +80,20 @@ fitfun("new_lib")
 fit_gls <- gls(y ~  1,
                correlation = corAR1(form = ~nday|group),
                data = data, method = "REML")
+
+ar1_rho <-  coef(fit_gls$modelStruct$corStruct, uncon = FALSE)
 fit_gls2 <- gls(y ~  1,
                correlation = corExp(form = ~nday|group),
                data = data, method = "REML")
-exp(-1/0.656019) ## matches rho from fit_gls
-all.equal(logLik(fit_gls), logLik(fit_gls2))
+exp_range <-  coef(fit_gls2$modelStruct$corStruct, uncon = FALSE)
+stopifnot(all.equal(ar1_rho, exp(-1/exp_range)))
+stopifnot(all.equal(logLik(fit_gls), logLik(fit_gls2)))
 fit_gls3 <- gls(y ~  1,
                correlation = corExp(form = ~nday|group, nugget = TRUE),
                data = data, method = "REML")
-exp(-1/3.513614)  ## 0.7523
+exp_range3 <-  coef(fit_gls3$modelStruct$corStruct, uncon = FALSE)[["range"]]
+exp(-1/exp_range3)  ## 0.7523
+
 
 ## translate range to rho?
 
@@ -84,3 +107,5 @@ summary(fit_gls)
   ##> day:group!day!cor 0.6730390 0.1691804 3.978232     U 0.4
   ##> units!R           1.0505278 0.2814746 3.732230     P 0.0`
 }
+
+sessionInfo()
