@@ -7,7 +7,7 @@
 \method{estfun}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), ...)
 }
 \arguments{
-\item{x}{a fitted \code{glmmTMB} object.}
+\item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}
 
 \item{full}{logical; if \code{TRUE}, return the full score vectors including random effects,
 otherwise only the fixed effects part.}
@@ -25,11 +25,6 @@ A matrix where each row corresponds to a cluster and each column
 This method for \code{\link[sandwich]{estfun}} extracts the
 clusterwise score vectors (empirical estimating functions)
 from a fitted \code{glmmTMB} model.
-}
-\details{
-Note that if a REML fit was used then there are no fixed effect
-  parameters in the model, therefore the score vectors will be for the
-  variance parameters only.
 }
 \note{
 If crossed random effects are used in the model, this function will not correctly 

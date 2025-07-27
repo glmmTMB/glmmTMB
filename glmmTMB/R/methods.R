@@ -1816,6 +1816,8 @@ bread.glmmTMB <- function(x, full = FALSE, ...) {
     check_dots(..., .ignore = "complete")
     res <- vcov(x, full = full)
     if (full) {
+        # If we don't do this we get named dimnames which complicates testing.
+        rownames(res) <- colnames(res) <- unname(rownames(res))
         res
     } else {
         res$cond
@@ -1828,7 +1830,7 @@ bread.glmmTMB <- function(x, full = FALSE, ...) {
 #' clusterwise score vectors (empirical estimating functions)
 #' from a fitted \code{glmmTMB} model.
 #' 
-#' @param x a fitted \code{glmmTMB} object.
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
 #' @param full logical; if \code{TRUE}, return the full score vectors including random effects,
 #'   otherwise only the fixed effects part.
 #' @param cluster a factor indicating the cluster structure of the data.
@@ -1836,10 +1838,6 @@ bread.glmmTMB <- function(x, full = FALSE, ...) {
 #' @return A matrix where each row corresponds to a cluster and each column
 #'   corresponds to a parameter in the model. The values are the empirical estimating functions
 #'  (score vectors) for each parameter in each cluster.
-#' 
-#' @details Note that if a REML fit was used then there are no fixed effect
-#'   parameters in the model, therefore the score vectors will be for the
-#'   variance parameters only.
 #' 
 #' @note If crossed random effects are used in the model, this function will not correctly 
 #'   calculate the score vectors in general, and warnings will be issued. In general,
@@ -1855,6 +1853,7 @@ bread.glmmTMB <- function(x, full = FALSE, ...) {
 estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...) {
     check_dots(..., .ignore = "complete")
 
+    stopifnot(!x$modelInfo$REML)
     stopifnot(is.logical(full) && length(full) == 1L)
     stopifnot(is.factor(cluster) && !any(is.na(cluster)) && length(cluster) == nobs(x))
     
@@ -1921,9 +1920,9 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...) {
     rownames(cluster_score_vectors) <- levels(cluster)
     colnames(cluster_score_vectors) <- par_names
 
-    # If the model was fit with ML and we don't want the full score vectors,
+    # If we don't want the full score vectors,
     # only keep the fixed effects part.
-    if (!x$modelInfo$REML && !full) {
+    if (!full) {
         beta_inds <- which(names(x$fit$par) == "beta")
         cluster_score_vectors <- cluster_score_vectors[, beta_inds, drop = FALSE]
     }
@@ -1936,7 +1935,7 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...) {
 #' the meat matrix for a fitted \code{glmmTMB} model, which is the cross-product of the cluster-wise 
 #' score vectors (empirical estimating functions) extracted by \code{\link[sandwich]{estfun}}.
 #' 
-#' @param x a fitted \code{glmmTMB} object.
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
 #' @param ... additional arguments passed to \code{\link[sandwich]{estfun}}, in particular
 #'   `full` and `cluster` arguments.
 #' @return A square matrix where each element represents the cross-product of the score vectors
@@ -1963,5 +1962,55 @@ meatHC.glmmTMB <- function(x, ...) {
     score_vectors <- sandwich::estfun(x, ...)
     res <- crossprod(score_vectors)
     rownames(res) <- colnames(res) <- colnames(score_vectors)
+    res
+}
+
+#' Sandwich Estimator based on Bread and Meat Matrices
+#' 
+#' This (simplified) method for a new S3 generic based on \code{\link[sandwich]{sandwich}} 
+#' computes the sandwich estimator for a fitted \code{glmmTMB} model.
+#' 
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
+#' @param full logical; if \code{TRUE}, return the full sandwich matrix including variance components,
+#'  otherwise only the fixed effects part (if the model was fit with ML).
+#' @param cluster a factor indicating the cluster structure of the data.
+#' @param ... ignored by the \code{glmmTMB} method.
+#' @return A square matrix representing the sandwich estimator.
+#' 
+#' @export
+#' @rdname sandwich
+sandwich <- function(x, ...) {
+    UseMethod("sandwich")
+}
+
+#' @export
+#' @rdname sandwich
+sandwich.default <- function(x, ...) {
+    sandwich::sandwich(x, ...)
+}
+
+#' @export
+#' @rdname sandwich
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | site), data = Salamanders, family = nbinom1)
+#' sandwich(m)
+#' sandwich(m, full = TRUE)
+sandwich.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...) {
+    check_dots(..., .ignore = "complete")
+
+    stopifnot(is.logical(full) && length(full) == 1L)
+
+    # Note that we always start from the full sandwich, and then subset
+    # below if we don't want the full sandwich.
+    bread_matrix <- bread(x, full = TRUE, ...)
+    meat_matrix <- meatHC(x, full = TRUE, cluster = cluster, ...)
+    res <- bread_matrix %*% meat_matrix %*% bread_matrix
+
+    if (!full) {
+        # If we don't want the full sandwich, only keep the fixed effects part.
+        beta_inds <- which(names(x$fit$par) == "beta")
+        res <- res[beta_inds, beta_inds, drop = FALSE]
+    }
+
     res
 }

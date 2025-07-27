@@ -13,7 +13,7 @@ meatHC(x, ...)
 \method{meatHC}{glmmTMB}(x, ...)
 }
 \arguments{
-\item{x}{a fitted \code{glmmTMB} object.}
+\item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}
 
 \item{...}{additional arguments passed to \code{\link[sandwich]{estfun}}, in particular
 `full` and `cluster` arguments.}

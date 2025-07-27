@@ -918,3 +918,19 @@ test_that("meatHC works as expected (based on estfun)", {
     expect_is(result2, "matrix")
     expect_identical(dim(result2), c(3L, 3L))
 })
+
+test_that("sandwich works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|site), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(sandwich(m))
+    expect_is(result, "matrix")
+    expect_identical(dim(result), c(2L, 2L))
+    expect_identical(rownames(result), c("(Intercept)", "DOP"))
+    expect_identical(colnames(result), c("(Intercept)", "DOP"))
+    
+    result_full <- expect_silent(sandwich(m, full = TRUE))
+    expect_is(result_full, "matrix")
+    expect_identical(dim(result_full), c(3L, 3L))
+    expect_identical(rownames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
+    expect_identical(colnames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
+})
