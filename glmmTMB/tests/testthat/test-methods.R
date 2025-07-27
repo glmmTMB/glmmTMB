@@ -837,3 +837,66 @@ test_that("bread works as expected with defaults and full matrix", {
     expected_full <- vcov(m, full = TRUE)
     expect_identical(result_full, expected_full)
 })
+
+test_that("estfun works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+
+    result <- expect_silent(estfun(m))
+    expected <- matrix(
+        c(-1.785, -9.514, -3.778, 15.077, 22.661, 37.064, 21.783, -81.507),
+        nrow = 4, ncol = 2,
+        dimnames = list(
+            c("1", "2", "3", "4"), 
+            c("(Intercept)", "DOP")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result_full <- expect_silent(estfun(m, full = TRUE))
+    expected_extra_col <- c(-0.579, 0.065, -0.496, 1.011)
+    expected_full <- cbind(expected, expected_extra_col)
+    colnames(expected_full)[3] <- "theta_1|sample.1"
+    expect_equal(result_full, expected_full, tolerance = 1e-3)
+})
+
+test_that("estfun gives a warning for non-nested random effects", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+    expect_warning(estfun(m), "please check whether the random effects are indeed nested")
+
+    # With supplying a custom cluster vector it still gives the warning.
+    cluster <- with(Salamanders, interaction(sample, mined))
+    expect_warning(estfun(m, cluster = cluster), "please check whether the random effects are indeed nested")
+})
+
+test_that("estfun works for nested random effects", {
+    set.seed(101)
+    spcount <- rpois(
+        n = 210, 
+        lambda = rnorm(210, mean = rep(c(1.8, 2, 2.3), each = 70), sd = 0.4)
+    )
+    spdat <- data.frame(
+        species = factor(rep(1:3, each = 70)),
+        pop = factor(rep(c(1, 2, 11, 13, 21, 24), each = 35)),
+        count = spcount
+    )
+    m <- glmmTMB(
+        count ~ (1 |species/pop), 
+        family = poisson,
+        data=spdat
+    ) 
+    result <- expect_silent(estfun(m))
+    expected <- matrix(
+        c(6.342, -10.933, -5.121, -2.235, 9.88, 2.068), 
+        nrow = 6, ncol = 1, 
+        dimnames = list(c("1:1", "2:1", "11:2", "13:2", "21:3", "24:3"), "(Intercept)")
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result_level2 <- expect_silent(estfun(m, cluster = getGroups(m, level = 2)))
+    expected_level2 <- matrix(
+        c(-4.592, -7.357, 11.948),
+        nrow = 3, ncol = 1,
+        dimnames = list(c("1", "2", "3"), "(Intercept)")
+    )
+    expect_equal(result_level2, expected_level2, tolerance = 1e-3)
+})

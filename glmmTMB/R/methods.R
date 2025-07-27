@@ -1806,8 +1806,6 @@ getGroups.glmmTMB <- function(object, level = 1, ...) {
 #' 
 #' @return The bread matrix, which is just the variance-covariance matrix.
 #' 
-#' @details Please note that non-estimable parameters are omitted in the result.
-#' 
 #' @importFrom sandwich bread
 #' @export
 #' @examples 
@@ -1816,10 +1814,118 @@ getGroups.glmmTMB <- function(object, level = 1, ...) {
 #' bread(m, full = TRUE)
 bread.glmmTMB <- function(x, full = FALSE, ...) {
     check_dots(..., .ignore = "complete")
-    res <- vcov(x, full = full, include_nonest = FALSE)
+    res <- vcov(x, full = full)
     if (full) {
         res
     } else {
         res$cond
     }
+}
+
+#' Extract Empirical Estimating Functions
+#' 
+#' This method for \code{\link[sandwich]{estfun}} extracts the
+#' clusterwise score vectors (empirical estimating functions)
+#' from a fitted \code{glmmTMB} model.
+#' 
+#' @param x a fitted \code{glmmTMB} object.
+#' @param full logical; if \code{TRUE}, return the full score vectors including random effects,
+#'   otherwise only the fixed effects part.
+#' @param cluster a factor indicating the cluster structure of the data.
+#' @param ... additional arguments (ignored).
+#' @return A matrix where each row corresponds to a cluster and each column
+#'   corresponds to a parameter in the model. The values are the empirical estimating functions
+#'  (score vectors) for each parameter in each cluster.
+#' 
+#' @details Note that if a REML fit was used then there are no fixed effect
+#'   parameters in the model, therefore the score vectors will be for the
+#'   variance parameters only.
+#' 
+#' @note If crossed random effects are used in the model, this function will not correctly 
+#'   calculate the score vectors in general, and warnings will be issued. In general,
+#'   this function should be used with models with a single level of random effects
+#'   or nested random effects only.
+#' 
+#' @importFrom sandwich estfun
+#' @export
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' estfun(m)
+#' estfun(m, full = TRUE)
+estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...) {
+    check_dots(..., .ignore = "complete")
+
+    stopifnot(is.logical(full) && length(full) == 1L)
+    stopifnot(is.factor(cluster) && !any(is.na(cluster)) && length(cluster) == nobs(x))
+    
+    # Save original weights, negative log-likelihood
+    # and gradient.
+    original_weights <- x$obj$env$data$weights
+    original_neg_log_lik <- x$obj$fn(x$fit$par)
+
+    # Prepare zero weights vector for below.
+    zero_weights <- rep(0, stats::nobs(x))
+
+    # Make sure that we will restore the weights
+    # at exit of this function.
+    on.exit({
+        # Reset the weights to the original values.
+        x$obj$env$data$weights <- original_weights
+        # Retape the TMB object to apply the changes.
+        x$obj$retape(set.defaults = FALSE)
+    })
+
+    # Obtain results across all clusters.
+    cluster_results <- lapply(levels(cluster), function(this_cluster) {
+        # Which observations belong to this cluster?
+        belongs_cluster <- cluster == this_cluster
+
+        # Define new weights.
+        new_weights <- ifelse(belongs_cluster, original_weights, zero_weights)    
+
+        # Modify the weights in the TMB object.
+        x$obj$env$data$weights <- new_weights
+
+        # Retape the TMB object to apply the changes.
+        x$obj$retape(set.defaults = FALSE)
+
+        # Compute the negative log-likelihood and the gradient for this cluster.
+        neg_log_lik <- x$obj$fn(x$fit$par)
+        gradient <- x$obj$gr(x$fit$par)
+
+        list(
+            neg_log_lik = neg_log_lik, 
+            gradient = gradient
+        )
+    })
+    
+    # Check that the sum of the negative log-likelihoods is equal to the
+    # original negative log-likelihood of the whole model.
+    sum_neg_log_lik <- sum(sapply(cluster_results, `[[`, "neg_log_lik"))
+    compare_neg_log_lik <- all.equal(sum_neg_log_lik, original_neg_log_lik, check.attributes = FALSE, tolerance = 1e-6)
+    
+    if (!isTRUE(compare_neg_log_lik)) {
+        warning(
+            "The sum of the negative log-likelihoods of the clusters ", signif(sum_neg_log_lik), 
+            " does not match the joint negative log-likelihood of the whole model ", signif(original_neg_log_lik),
+            ", please check whether the random effects are indeed nested."
+        )
+    }
+
+    # Calculate score vectors.
+    gradient_matrix <- do.call(rbind, lapply(cluster_results, `[[`, "gradient"))
+    cluster_score_vectors <- - gradient_matrix
+
+    # Assign names: clusters for the rows, parameters for the columns.
+    par_names <- unlist(getParnames(object = x, full = TRUE), use.names = FALSE)
+    rownames(cluster_score_vectors) <- levels(cluster)
+    colnames(cluster_score_vectors) <- par_names
+
+    # If the model was fit with ML and we don't want the full score vectors,
+    # only keep the fixed effects part.
+    if (!x$modelInfo$REML && !full) {
+        beta_inds <- which(names(x$fit$par) == "beta")
+        cluster_score_vectors <- cluster_score_vectors[, beta_inds, drop = FALSE]
+    }
+    cluster_score_vectors
 }

@@ -20,9 +20,6 @@ The bread matrix, which is just the variance-covariance matrix.
 This method for \code{\link[sandwich]{bread}} returns the variance-covariance
 matrix (bread) for a fitted \code{glmmTMB} model.
 }
-\details{
-Please note that non-estimable parameters are omitted in the result.
-}
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
 bread(m)
