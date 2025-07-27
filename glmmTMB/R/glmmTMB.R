@@ -303,7 +303,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
-    condList  <- getXReTrms(formula, mf, fr, type="coNditional", contrasts=contrasts, sparse=sparseX[["cond"]],
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)
     ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
                             old_smooths = old_smooths$zi)
@@ -839,10 +839,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ## HACK: should duplicate 'homdiag' definition, keep it as 's' (or call it 'mgcv_smooth")
         ##  so we can recognize it.
         ## Here, we're using the fact that the ...AddArgs stuff is still in an unevaluated form
-        reXterms <- Map(function(f, a) {
-            if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
-        }, ss$reTrmFormulas, ss$reTrmAddArgs)
-        
+        drop_s <- function(f, a) {
+            if (identical(a[[1]], as.symbol('s'))) NA else termsfun(f)
+        }
+        reXterms <- Map(drop_s, ss$reTrmFormulas, ss$reTrmAddArgs)
         
         for (i in seq_along(ss$reTrmAddArgs)) {
           if(ss$reTrmClasses[i] == "rr") {
