@@ -934,3 +934,73 @@ test_that("sandwich works as expected", {
     expect_identical(rownames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
     expect_identical(colnames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
 })
+
+test_that("vcovHC works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(vcovHC(m))
+    expected <- matrix(
+        c(0.004208, -0.006926, -0.006926, 0.01176), 
+        nrow = 2, ncol = 2,
+        dimnames = list(
+            c("(Intercept)", "DOP"), 
+            c("(Intercept)", "DOP")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result_full <- expect_silent(vcovHC(m, full = TRUE))
+    expected_full <- matrix(
+        c(0.004208, -0.006926, 0.018482, -0.006926, 0.01176, 
+-0.03534, 0.018482, -0.03534, 0.153068),
+        nrow = 3, ncol = 3,
+        dimnames = list(
+            c("(Intercept)", "DOP", "theta_1|sample.1"),
+            c("(Intercept)", "DOP", "theta_1|sample.1")
+        )
+    )
+    expect_equal(result_full, expected_full, tolerance = 1e-3)
+})
+
+test_that("vcovHC gives the same result as clubSandwich::vcovCR with CR0 for Gaussian model", {
+    data(Orthodont, package = "nlme")
+    m <- glmmTMB(distance ~ age + (1 | Subject), data = Orthodont)
+    result <- expect_silent(vcovHC(m))
+    # m_nlme <- nlme::lme(distance ~ age, random = ~ 1 | Subject, data = Orthodont, method = "ML")
+    # clubSandwich::vcovCR(m_nlme, type = "CR0")
+    expected <- matrix(
+        c(0.578747142203931, -0.0451156454808717, -0.0451156454808717, 0.00488899049941574),
+        nrow = 2, ncol = 2,
+        dimnames = list(
+            c("(Intercept)", "age"), 
+            c("(Intercept)", "age")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-5)
+})
+
+test_that("vcovHC gives the same result as GLMMadaptive for a binomial model", {
+    data("cbpp", package = "lme4")
+    m <- glmmTMB(incidence/size ~ period + (1 | herd), weights = size, family=binomial, data = cbpp)
+    result <- expect_silent(vcovHC(m, full = TRUE))
+    # m_glmmadapt <- GLMMadaptive::mixed_model(
+    #     fixed = cbind(incidence, size - incidence) ~ period,
+    #     random = ~ 1 | herd,
+    #     data = cbpp,
+    #     family = binomial(link = "logit")
+    # )
+    # vcov(m_glmmadapt, sandwich = TRUE)
+    expected <- matrix(
+        c(0.0819566301253873, -0.0959871872360134, -0.0705793434980425, -0.0574313147519239, 0.00171777726409861, 
+        -0.0959871872360134, 0.206662334096555, 0.173759701425569, 0.0563436296455722, 0.0100668788284029,
+        -0.0705793434980425, 0.173759701425569, 0.263707940623115, 0.00823895476900997, 0.0169440575924404, 
+        -0.0574313147519239, 0.0563436296455722, 0.00823895476900998, 0.131068427322698, -0.0162614031219817,
+        0.00171777726409861, 0.0100668788284029, 0.0169440575924404, -0.0162614031219817, 0.028816056733942),
+        nrow = 5, ncol = 5,
+        dimnames = list(
+            c("(Intercept)", "period2", "period3", "period4", "theta_1|herd.1"),
+            c("(Intercept)", "period2", "period3", "period4", "theta_1|herd.1")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+})

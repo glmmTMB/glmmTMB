@@ -2014,3 +2014,51 @@ sandwich.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), ...)
 
     res
 }
+
+#' Cluster Robust Variance-Covariance Matrix Estimator
+#' 
+#' This method for \code{\link[sandwich]{vcovHC}} computes the cluster-robust 
+#' variance-covariance matrix for a \code{glmmTMB} model fitted with ML.
+#' 
+#' @details The sandwich estimator is computed as `B %*% M %*% B` where 
+#'   `B` is the bread matrix and `M` is the meat matrix.
+#'   The bread matrix is just the usual inverse Hessian obtained by
+#'   `vcov()`. The meat matrix is calculated as the sum of the cluster-wise
+#'   score vector cross-products.
+#' 
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
+#' @param type only "HC0" is currently supported for \code{glmmTMB} models.
+#' @param sandwich logical; if \code{TRUE}, return the sandwich estimator,
+#'   otherwise only the meat matrix is returned.
+#' @param ... additional arguments passed to \code{\link{meatHC}} and
+#'   \code{\link{sandwich}}, in particular `full` and `cluster` arguments.
+#' @return A square matrix representing the cluster-robust variance-covariance matrix.
+#' 
+#' @importFrom sandwich vcovHC
+#' @export
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' 
+#' # Standard variance-covariance matrix:
+#' vcov(m)$cond
+#' 
+#' # Cluster-robust variance-covariance matrix:
+#' vcovHC(m)
+#' 
+#' # Include the variance parameters:
+#' vcovHC(m, full = TRUE)
+#' 
+#' # This can be compared with:
+#' vcov(m, full = TRUE)
+#' 
+#' # Only look at the meat part:
+#' vcovHC(m, sandwich = FALSE)
+vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
+    type <- match.arg(type)
+    stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
+    if (sandwich) {
+        sandwich(x, ...)
+    } else {
+        meatHC(x, ...)
+    }
+}
