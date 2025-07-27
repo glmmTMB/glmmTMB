@@ -21,7 +21,8 @@ if (do_installs) {
   inst_pkgs("./dev_lib", "1.9.11", "1.1.9")
   inst_pkgs("./dev_lib_update", "1.9.17", "1.1.11")
   inst_pkgs("./dev_lib_intermediate", "1.9.17", "1.1.10")
-
+  dir.create("./dev_lib_devel")
+  remotes::install_github("glmmTMB/glmmTMB/glmmTMB", lib = "dev_lib_devel")
 }
 
 get_vals <- function(which = c("residuals", "model"), up2date = TRUE) {
@@ -44,9 +45,12 @@ plot(res1)
 
 res2 = with_libpaths(new = "./dev_lib_update/",
                      code = get_vals())
+max(res2)
 plot(res2)
 
-
+res3 = with_libpaths(new = "./dev_lib_devel/",
+                     code = get_vals())
+max(res3)
 
 ## MINIMAL
 
@@ -173,3 +177,73 @@ legend("topleft",legend = c("up2date","original"),col = c("orange2","lightblue4"
 plot(res2,res1,pch = 16,col = "lightblue3")
 abline(0,1,lty = 2)
 mtext("Comparison residuals",side = 3,outer = T,font = 2,line = -1,cex = 1.5)
+
+###
+
+library(Matrix)
+##devtools::load_all("~/R/pkgs/glmmTMB/glmmTMB")
+library(glmmTMB)
+mod0 <- get(load("./cod.growth_oldTMB.RData"))
+
+get_pars <- function(mod) with(mod$obj$env, parList(par = last.par.best))
+my_resids <- function(mod) {
+  X <- glmmTMB::getME(mod, "X")
+  Z <- glmmTMB::getME(mod, "Z")
+  pp <- get_pars(mod)
+  pred <- with(pp, X %*% beta + Z %*% b)
+  drop(model.response(model.frame(mod0)) - pred)
+}
+
+cmpfun <- function(mod) {
+  ee <- mod$obj$env
+  p1 <- ee$last.par.best
+  p2 <- ee$parameters
+  L1 <- lengths(split(p1, names(p1)))
+  L2 <- lengths(p2)
+  pL <- ee$parList(par = p1)
+  L3 <- lengths(pL)
+  list(L1, L2[L2>0], L3[L3>0],
+       pL$betadisp, tail(pL$b, 1))
+}
+
+## already different orders ...
+cmpfun(mod0)
+mod0 <- get(load("./cod.growth_oldTMB.RData"))
+cmpfun(mod0)  ## b, beta switched but doesn't seem to matter?
+## [[1]]
+##     b  beta betad theta 
+##   121     8     1     2 
+## [[2]]
+##  beta     b betad theta 
+##     8   121     1     2 
+## [[3]]
+##  beta     b betad theta 
+##     8   121     1     2 
+## [[4]]
+## NULL
+## [[5]]
+## [1] -0.02734755
+
+max(r0 <- my_resids(mod0))
+## debug(glmmTMB::up2date)
+mod0 <- get(load("./cod.growth_oldTMB.RData"))
+max(r1 <- my_resids(mod1 <- up2date(mod0)), do_pkg = FALSE)
+cmpfun(mod1)
+## definitely messed up ... but orders seem OK?
+
+debug(up2date)
+LL <- lengths(obj$env$parameters)
+LL[LL>0]
+## current order:
+##    beta        b    theta betadisp 
+##       8      121        2        1
+lengths(split(obj$env$last.par.best, names(obj$env$last.par.best)))
+## already in a different order ... ??? how did that happen?
+##        b     beta betadisp    theta 
+##      121        8        1        2 
+
+mod0 <- get(load("./cod.growth_oldTMB.RData"))
+max(r2 <- my_resids(mod2 <- up2date(mod0, update_gauss_disp = TRUE)))
+mf <- model.frame(mod0)
+weird <- which(abs(r0-r1)>0.2)  ## rows 233-236; what are these?
+weird_ind <- (seq(nrow(mf)) %in% weird)+1

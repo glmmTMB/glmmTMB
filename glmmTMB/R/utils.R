@@ -384,6 +384,8 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       names(x)[nm == oldname] <- newname
       x
     }
+
+    ## might be able to repeat *slightly* less ...
     
     ## change name of thetaf to psi
     if ("thetaf" %in% names(params)) {
@@ -399,7 +401,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       }
     }
     
-    if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
+    if ("betad" %in% names(ee$parameters)) {
       ee$parameters <- rename_fun(ee$parameters, "betad", "betadisp")
       ee2$parameters <- rename_fun(ee2$parameters, "betad", "betadisp")
       oldfit$fit$par <- rename_fun(oldfit$fit$par, "betad", "betadisp")
