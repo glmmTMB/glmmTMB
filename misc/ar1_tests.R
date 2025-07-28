@@ -14,7 +14,7 @@ ngrps <- 10
 true_cor <- 0.7
 y <- MASS::mvrnorm(n = 1, 
                    mu = rep(0, ndays * ngrps), 
-                   kronecker(diag(ngrps), ar1_cor(ndays, 0.7))) +
+                   kronecker(diag(ngrps), ar1_cor(ndays, true_cor))) +
   rnorm(ndays * ngrps)  ## residual std error 1
 
 data <- expand.grid(day = factor(1:ndays), group = LETTERS[1:ngrps]) |> 
@@ -66,7 +66,6 @@ fitfun("new_lib")
 r_older <- fitfun("older_lib")
 r_old <- fitfun("old_lib")
 r_new <- fitfun("new_lib")
->>>>>>> master
 
 ## all identical:
 
@@ -106,6 +105,6 @@ summary(fit_gls)
   ##> day:group         0.8304949 0.3117373 2.664085     P 0.6
   ##> day:group!day!cor 0.6730390 0.1691804 3.978232     U 0.4
   ##> units!R           1.0505278 0.2814746 3.732230     P 0.0`
-}
+## }
 
 sessionInfo()
