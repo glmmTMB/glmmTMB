@@ -1034,3 +1034,13 @@ test_that("vcov can return sandwich estimator based results as expected", {
     expected_full <- sandwich(m, full = TRUE)
     expect_equal(result_full, expected_full, check.attributes = FALSE)
 })
+
+test_that("summary can return sandwich estimator based results as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(summary(m, sandwich = TRUE))
+    expect_is(result, "summary.glmmTMB")
+    expected_ses <- sqrt(diag(sandwich(m))) 
+    result_ses <- result$coefficients$cond[, "Std. Error"]   
+    expect_equal(result_ses, expected_ses, check.attributes = FALSE)
+})

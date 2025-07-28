@@ -2126,7 +2126,7 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @importFrom stats pnorm
 ##' @method summary glmmTMB
 ##' @export
-summary.glmmTMB <- function(object,...)
+summary.glmmTMB <- function(object, sandwich = FALSE, cluster = nlme::getGroups(object), ...)
 {
     if (length(list(...)) > 0) {
         ## FIXME: need testing code
@@ -2155,7 +2155,7 @@ summary.glmmTMB <- function(object,...)
     }
 
     ff <- fixef(object)
-    vv <- vcov(object, include_nonest=TRUE)
+    vv <- vcov(object, include_nonest=TRUE, sandwich = sandwich, cluster = cluster)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),
@@ -2173,7 +2173,7 @@ summary.glmmTMB <- function(object,...)
                    nobs = nobs(object),
 		   coefficients = coefs,
                    sigma = sig,
-		   vcov = vcov(object),
+		   vcov = vv, # No need to potentially recompute here anything.
 		   varcor = varcor, # and use formatVC(.) for printing.
 		   AICtab = llAIC[["AICtab"]],
                    call = object$call,

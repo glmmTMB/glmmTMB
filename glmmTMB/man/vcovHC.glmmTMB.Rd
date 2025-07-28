@@ -25,7 +25,11 @@ This method for \code{\link[sandwich]{vcovHC}} computes the cluster-robust
 variance-covariance matrix for a \code{glmmTMB} model fitted with ML.
 }
 \details{
-
+The sandwich estimator is computed as \code{B * M * B} where
+  \code{B} is the bread matrix and \code{M} is the meat matrix.
+  The bread matrix is just the usual inverse Hessian obtained by
+  \code{vcov()}. The meat matrix is calculated as the sum of the cluster-wise
+  score vector cross-products.
 }
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
