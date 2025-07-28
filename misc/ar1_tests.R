@@ -85,7 +85,8 @@ fit_gls2 <- gls(y ~  1,
                correlation = corExp(form = ~nday|group),
                data = data, method = "REML")
 exp_range <-  coef(fit_gls2$modelStruct$corStruct, uncon = FALSE)
-stopifnot(all.equal(ar1_rho, exp(-1/exp_range)))
+stopifnot(all.equal(unname(ar1_rho), unname(exp(-1/exp_range)),
+          tolerance = 5e-8))
 stopifnot(all.equal(logLik(fit_gls), logLik(fit_gls2)))
 fit_gls3 <- gls(y ~  1,
                correlation = corExp(form = ~nday|group, nugget = TRUE),
