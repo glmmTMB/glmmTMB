@@ -4,12 +4,15 @@
 \alias{bread.glmmTMB}
 \title{Bread Matrix for Sandwich Estimator}
 \usage{
-\method{bread}{glmmTMB}(x, full = FALSE, ...)
+\method{bread}{glmmTMB}(x, full = FALSE, rawnames = FALSE, ...)
 }
 \arguments{
 \item{x}{a fitted \code{glmmTMB} object.}
 
 \item{full}{return a full variance-covariance matrix?}
+
+\item{rawnames}{logical; if \code{TRUE}, return the raw names of the parameters as in the \code{TMB} object.
+By default, \code{FALSE} such that the names are sanitized to user friendly names.}
 
 \item{...}{ignored additional arguments (only for methods compatibility).}
 }

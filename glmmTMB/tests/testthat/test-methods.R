@@ -826,7 +826,7 @@ test_that("getGroups throws an error for a too large level", {
     expect_error(getGroups(m, level = 3), "level cannot be greater")
 })
 
-test_that("bread works as expected with defaults and full matrix", {
+test_that("bread works as expected", {
     m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
     
     result <- bread(m)
@@ -835,7 +835,13 @@ test_that("bread works as expected with defaults and full matrix", {
 
     result_full <- bread(m, full = TRUE)
     expected_full <- vcov(m, full = TRUE)
-    expect_identical(result_full, expected_full)
+    expect_equal(result_full, expected_full, check.attributes = FALSE)
+
+    result_raw <- bread(m, rawnames = TRUE)
+    expect_identical(rownames(result_raw), c("beta", "beta"))
+
+    result_full_raw <- bread(m, full = TRUE, rawnames = TRUE)
+    expect_identical(rownames(result_full_raw), c("beta", "beta", "theta", "theta"))
 })
 
 test_that("estfun works as expected", {
@@ -851,6 +857,10 @@ test_that("estfun works as expected", {
         )
     )
     expect_equal(result, expected, tolerance = 1e-3)
+
+    result_raw <- expect_silent(estfun(m, rawnames = TRUE))
+    expect_equal(result, result_raw, check.attributes = FALSE)
+    expect_identical(colnames(result_raw), c("beta", "beta"))
 
     result_full <- expect_silent(estfun(m, full = TRUE))
     expected_extra_col <- c(-0.579, 0.065, -0.496, 1.011)
@@ -927,12 +937,20 @@ test_that("sandwich works as expected", {
     expect_identical(dim(result), c(2L, 2L))
     expect_identical(rownames(result), c("(Intercept)", "DOP"))
     expect_identical(colnames(result), c("(Intercept)", "DOP"))
+
+    result_raw <- expect_silent(sandwich(m, rawnames = TRUE))
+    expect_equal(result_raw, result, check.attributes = FALSE)
+    expect_identical(colnames(result_raw), c("beta", "beta"))
     
     result_full <- expect_silent(sandwich(m, full = TRUE))
     expect_is(result_full, "matrix")
     expect_identical(dim(result_full), c(3L, 3L))
     expect_identical(rownames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
     expect_identical(colnames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
+
+    result_full_raw <- expect_silent(sandwich(m, full = TRUE, rawnames = TRUE))
+    expect_equal(result_full_raw, result_full, check.attributes = FALSE)
+    expect_identical(colnames(result_full_raw), c("beta", "beta", "theta"))
 })
 
 test_that("vcovHC works as expected", {
@@ -1003,4 +1021,16 @@ test_that("vcovHC gives the same result as GLMMadaptive for a binomial model", {
         )
     )
     expect_equal(result, expected, tolerance = 1e-3)
+})
+
+test_that("vcov can return sandwich estimator based results as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(vcov(m, sandwich = TRUE))$cond
+    expected <- sandwich(m)
+    expect_identical(result, expected)
+
+    result_full <- expect_silent(vcov(m, full = TRUE, sandwich = TRUE))
+    expected_full <- sandwich(m, full = TRUE)
+    expect_equal(result_full, expected_full, check.attributes = FALSE)
 })

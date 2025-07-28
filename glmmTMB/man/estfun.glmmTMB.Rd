@@ -4,7 +4,7 @@
 \alias{estfun.glmmTMB}
 \title{Extract Empirical Estimating Functions}
 \usage{
-\method{estfun}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), ...)
+\method{estfun}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...)
 }
 \arguments{
 \item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}
@@ -13,6 +13,9 @@
 otherwise only the fixed effects part.}
 
 \item{cluster}{a factor indicating the cluster structure of the data.}
+
+\item{rawnames}{logical; if \code{TRUE}, return the raw names of the parameters as in the \code{TMB} object.
+By default, \code{FALSE} such that the names are sanitized to user friendly names.}
 
 \item{...}{additional arguments (ignored).}
 }

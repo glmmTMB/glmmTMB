@@ -10,7 +10,7 @@ sandwich(x, ...)
 
 \method{sandwich}{default}(x, ...)
 
-\method{sandwich}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), ...)
+\method{sandwich}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...)
 }
 \arguments{
 \item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}
@@ -21,6 +21,9 @@ sandwich(x, ...)
 otherwise only the fixed effects part (if the model was fit with ML).}
 
 \item{cluster}{a factor indicating the cluster structure of the data.}
+
+\item{rawnames}{logical; if \code{TRUE}, keep the original names of the parameters as in the 
+\code{TMB} object. By default, \code{FALSE} such that the names are sanitized to user friendly names.}
 }
 \value{
 A square matrix representing the sandwich estimator.

@@ -9,13 +9,13 @@
 \arguments{
 \item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}
 
-\item{type}{only "HC0" is supported for \code{glmmTMB} models.}
+\item{type}{only "HC0" is currently supported for \code{glmmTMB} models.}
 
 \item{sandwich}{logical; if \code{TRUE}, return the sandwich estimator,
 otherwise only the meat matrix is returned.}
 
 \item{...}{additional arguments passed to \code{\link{meatHC}} and
-\code{\link{sandwich}}, in particular `full` and `cluster` arguments.}
+\code{\link{sandwich}}, in particular the \code{full} and \code{cluster} arguments are useful.}
 }
 \value{
 A square matrix representing the cluster-robust variance-covariance matrix.
@@ -24,9 +24,24 @@ A square matrix representing the cluster-robust variance-covariance matrix.
 This method for \code{\link[sandwich]{vcovHC}} computes the cluster-robust 
 variance-covariance matrix for a \code{glmmTMB} model fitted with ML.
 }
+\details{
+
+}
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-vcov(m)
+
+# Standard variance-covariance matrix:
+vcov(m)$cond
+
+# Cluster-robust variance-covariance matrix:
 vcovHC(m)
+
+# Include the variance parameters:
 vcovHC(m, full = TRUE)
+
+# This can be compared with:
+vcov(m, full = TRUE)
+
+# Only look at the meat part:
+vcovHC(m, sandwich = FALSE)
 }

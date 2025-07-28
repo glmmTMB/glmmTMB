@@ -16,7 +16,7 @@ meatHC(x, ...)
 \item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}
 
 \item{...}{additional arguments passed to \code{\link[sandwich]{estfun}}, in particular
-`full` and `cluster` arguments.}
+\code{full}, \code{cluster} and \code{rawnames} arguments.}
 }
 \value{
 A square matrix where each element represents the cross-product of the score vectors
