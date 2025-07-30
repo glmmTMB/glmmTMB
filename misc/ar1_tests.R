@@ -17,9 +17,10 @@ y <- MASS::mvrnorm(n = 1,
                    kronecker(diag(ngrps), ar1_cor(ndays, true_cor))) +
   rnorm(ndays * ngrps)  ## residual std error 1
 
-data <- expand.grid(day = factor(1:ndays), group = LETTERS[1:ngrps]) |>
+data <- expand.grid(day = factor(1:ndays), group = LETTERS[1:ngrps]) |> 
   transform(y = y,
-            nday = as.numeric(day))
+            nday = as.numeric(day),
+            obs = ndays*ngrps)
 
 if (!dir.exists("older_lib")) {
   dir.create("older_lib")
@@ -41,7 +42,7 @@ fitfun <- function(lib) {
   on.exit(detach("package:glmmTMB", unload = TRUE))
   print(packageVersion("glmmTMB"))
   fit_glmm <- glmmTMB(y ~  1 + ar1(0 + day|group), data, REML = TRUE)
-  ## have to print here, accessor/print methods go away when we unload ....
+  ## have to print here, print method goes away when we unload ....
   vv <- VarCorr(fit_glmm)
   res <- c(ar1_sd = sqrt(vv$cond[[1]][1,1]),
            ar1_cor = cov2cor(vv$cond[[1]])[2,1],
@@ -51,6 +52,10 @@ fitfun <- function(lib) {
   res <- c(res, nll = -1*c(logLik(fit_glmm)))
   invisible(res)
 }
+
+fitfun("older_lib")
+fitfun("old_lib")
+fitfun("new_lib")
 
 
 ## ??? SOMETIMES ??? (something fragile/mutable?)
@@ -74,18 +79,21 @@ r_new <- fitfun("new_lib")
 fit_gls <- gls(y ~  1,
                correlation = corAR1(form = ~nday|group),
                data = data, method = "REML")
+
 ar1_rho <-  coef(fit_gls$modelStruct$corStruct, uncon = FALSE)
 fit_gls2 <- gls(y ~  1,
                correlation = corExp(form = ~nday|group),
                data = data, method = "REML")
 exp_range <-  coef(fit_gls2$modelStruct$corStruct, uncon = FALSE)
-stopifnot(all.equal(ar1_rho, exp(-1/exp_range)))
+stopifnot(all.equal(unname(ar1_rho), unname(exp(-1/exp_range)),
+          tolerance = 5e-8))
 stopifnot(all.equal(logLik(fit_gls), logLik(fit_gls2)))
 fit_gls3 <- gls(y ~  1,
                correlation = corExp(form = ~nday|group, nugget = TRUE),
                data = data, method = "REML")
 exp_range3 <-  coef(fit_gls3$modelStruct$corStruct, uncon = FALSE)[["range"]]
 exp(-1/exp_range3)  ## 0.7523
+
 
 ## translate range to rho?
 
@@ -98,6 +106,6 @@ summary(fit_gls)
   ##> day:group         0.8304949 0.3117373 2.664085     P 0.6
   ##> day:group!day!cor 0.6730390 0.1691804 3.978232     U 0.4
   ##> units!R           1.0505278 0.2814746 3.732230     P 0.0`
-}
+## }
 
 sessionInfo()
