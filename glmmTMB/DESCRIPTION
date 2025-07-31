@@ -59,7 +59,8 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.1)
+    reformulas (>= 0.4.1),
+    sandwich
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
@@ -95,8 +96,7 @@ Suggests:
     dplyr,
     ade4,
     ape,
-    gsl,
-    sandwich
+    gsl
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
