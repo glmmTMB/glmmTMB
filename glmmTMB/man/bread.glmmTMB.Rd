@@ -25,6 +25,6 @@ matrix (bread) for a fitted \code{glmmTMB} model.
 }
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-bread(m)
-bread(m, full = TRUE)
+sandwich::bread(m)
+sandwich::bread(m, full = TRUE)
 }

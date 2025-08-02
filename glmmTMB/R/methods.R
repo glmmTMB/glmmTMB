@@ -1823,8 +1823,8 @@ getGroups.glmmTMB <- function(object, level = 1, ...) {
 #' @export
 #' @examples 
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' bread(m)
-#' bread(m, full = TRUE)
+#' sandwich::bread(m)
+#' sandwich::bread(m, full = TRUE)
 bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 
