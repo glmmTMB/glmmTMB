@@ -1028,7 +1028,7 @@ test_that("vcov can return sandwich estimator based results as expected", {
     
     result <- expect_silent(vcov(m, sandwich = TRUE))$cond
     expected <- sandwich(m)
-    expect_identical(result, expected)
+    expect_equal(result, expected)  ## ? should be identical, but not on some platforms ...
 
     result_full <- expect_silent(vcov(m, full = TRUE, sandwich = TRUE))
     expected_full <- sandwich(m, full = TRUE)
