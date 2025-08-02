@@ -37,6 +37,6 @@ If crossed random effects are used in the model, this function will not correctl
 }
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-estfun(m)
-estfun(m, full = TRUE)
+sandwich::estfun(m)
+sandwich::estfun(m, full = TRUE)
 }

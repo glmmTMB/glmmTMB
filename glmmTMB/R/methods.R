@@ -1869,8 +1869,8 @@ bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
 #' @export
 #' @examples 
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' estfun(m)
-#' estfun(m, full = TRUE)
+#' sandwich::estfun(m)
+#' sandwich::estfun(m, full = TRUE)
 estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 
