@@ -487,13 +487,13 @@ A few notes here regarding the definition and scope of the sandwich estimator: T
 \hat{S} = \hat{B}^{-1} \hat{M} \hat{B}^{-1}
 \]
 
-where $\hat{B}$ is the "Bread" matrix (the inverse Hessian), and $\hat{M}$ is the "Meat" matrix, which is defined as
+where $\hat{B}$ is the ``Bread" matrix (the inverse Hessian), and $\hat{M}$ is the ``Meat" matrix, which is defined as
 
 \[
 \hat{M} = \sum_{k=1}^{K} \hat{u}_k \hat{u}_k^T
 \]
 
-where $\hat{u}_k$ is the score vector with regards to the log-likelihood for the $k$-th cluster (or subject) in the data, $k=1,\dotsc,K$. Note that we include here both the fixed effects as well as the variance parameters, so always first calculate the "full" sandwich estimator. By default then the variance parameter part is excluded from the output, but can be included by setting \code{full = TRUE}.
+where $\hat{u}_k$ is the score vector with regards to the log-likelihood for the $k$-th cluster (or subject) in the data, $k=1,\dots,K$. Note that we include here both the fixed effects as well as the variance parameters, so always first calculate the "full" sandwich estimator. By default then the variance parameter part is excluded from the output, but can be included by setting \code{full = TRUE}.
 Therefore, we need to have the fixed effects included in the parameter vector. Hence the sandwich estimator only works for models fit with maximum likelihood (ML), but not for models fit with restricted maximum likelihood (REML). In addition, the code checks whether the sum of the cluster-wise log-likelihood equals the overall log-likelihood, and a warning is issued otherwise: This is in particular the case if non-nested random effects are present in the model. The sandwich estimator should only be used with a single random effect term, or with nested random effects.
 
 \section{to do}
