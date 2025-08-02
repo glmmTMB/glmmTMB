@@ -460,6 +460,7 @@ if (require(reshape2)) {
 The \tcode{sandwich} package provides robust standard errors for a wide range of models. We have added the appropriate interface for \tcode{glmmTMB} models. The \tcode{vcovHC()} function computes the sandwich estimator for the variance-covariance matrix of the model coefficients:
 
 <<sandwich1>>=
+library(sandwich)
 vcovHC(owls_nb1)
 @
 
