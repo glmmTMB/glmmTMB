@@ -1975,6 +1975,7 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), rawnam
 #'  for the parameters in the model. The rows and columns are named according to the parameter names.
 #' 
 #' @note This meat matrix is not scaled by the number of clusters.
+#' @export
 meatHC <- function(x, ...) {
     UseMethod("meatHC")
 }
