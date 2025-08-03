@@ -38,14 +38,14 @@ m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
 vcov(m)$cond
 
 # Cluster-robust variance-covariance matrix:
-vcovHC(m)
+sandwich::vcovHC(m)
 
 # Include the variance parameters:
-vcovHC(m, full = TRUE)
+sandwich::vcovHC(m, full = TRUE)
 
 # This can be compared with:
 vcov(m, full = TRUE)
 
 # Only look at the meat part:
-vcovHC(m, sandwich = FALSE)
+sandwich::vcovHC(m, sandwich = FALSE)
 }

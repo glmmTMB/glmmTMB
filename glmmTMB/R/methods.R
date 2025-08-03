@@ -2080,16 +2080,16 @@ sandwich.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), rawn
 #' vcov(m)$cond
 #' 
 #' # Cluster-robust variance-covariance matrix:
-#' vcovHC(m)
+#' sandwich::vcovHC(m)
 #' 
 #' # Include the variance parameters:
-#' vcovHC(m, full = TRUE)
+#' sandwich::vcovHC(m, full = TRUE)
 #' 
 #' # This can be compared with:
 #' vcov(m, full = TRUE)
 #' 
 #' # Only look at the meat part:
-#' vcovHC(m, sandwich = FALSE)
+#' sandwich::vcovHC(m, sandwich = FALSE)
 vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
     type <- match.arg(type)
     stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
