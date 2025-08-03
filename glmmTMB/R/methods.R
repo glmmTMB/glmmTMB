@@ -1781,7 +1781,11 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
 #' for a specified level of the random effects structure in a \code{glmmTMB} object.
 #' 
 #' @param object a fitted \code{glmmTMB} object.
-#' @param level the level of the random effects structure to extract.
+#' @param form ignored (included for compatibility).
+#' @param level integer indicating the level of the random effects structure to extract, 
+#'   defaults to 1 if missing.
+#' @param data ignored (included for compatibility).
+#' @param sep ignored (included for compatibility).
 #' @param ... additional arguments (not used).
 #' @return A factor representing the grouping structure at the specified level,
 #'   with a \code{group} attribute indicating the name of the grouping factor.
@@ -1790,10 +1794,13 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
 #' @importFrom nlme getGroups
 #' @method getGroups glmmTMB
 #' 
-#' @examples 
+#' @examples
 #' model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' getGroups(model)
-getGroups.glmmTMB <- function(object, level = 1, ...) {
+#' nlme::getGroups(model)
+getGroups.glmmTMB <- function(object, form = formula(object), level, data, sep = "/", ...) {
+    if (missing(level)) {
+        level <- 1L
+    }
     flist <- object$modelInfo$reTrms$cond$flist
     n_flist <- length(flist)
     if (level > n_flist) {

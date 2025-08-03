@@ -4,12 +4,19 @@
 \alias{getGroups.glmmTMB}
 \title{Extract Grouping Factors from an Object}
 \usage{
-\method{getGroups}{glmmTMB}(object, level = 1, ...)
+\method{getGroups}{glmmTMB}(object, form = formula(object), level, data, sep = "/", ...)
 }
 \arguments{
 \item{object}{a fitted \code{glmmTMB} object.}
 
-\item{level}{the level of the random effects structure to extract.}
+\item{form}{ignored (included for compatibility).}
+
+\item{level}{integer indicating the level of the random effects structure to extract, 
+defaults to 1 if missing.}
+
+\item{data}{ignored (included for compatibility).}
+
+\item{sep}{ignored (included for compatibility).}
 
 \item{...}{additional arguments (not used).}
 }
@@ -23,5 +30,5 @@ for a specified level of the random effects structure in a \code{glmmTMB} object
 }
 \examples{
 model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-getGroups(model)
+nlme::getGroups(model)
 }
