@@ -32,6 +32,6 @@ This meat matrix is not scaled by the number of clusters.
 }
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-meat(m)
-meat(m, full = TRUE)
+meatHC(m)
+meatHC(m, full = TRUE)
 }

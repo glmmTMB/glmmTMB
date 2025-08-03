@@ -1988,8 +1988,8 @@ meatHC.default <- function(x, ...) {
 #' @export
 #' @examples
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' meat(m)
-#' meat(m, full = TRUE)
+#' meatHC(m)
+#' meatHC(m, full = TRUE)
 #' @rdname meatHC
 meatHC.glmmTMB <- function(x, ...) {
     score_vectors <- sandwich::estfun(x, ...)
