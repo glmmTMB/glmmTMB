@@ -457,17 +457,11 @@ if (require(reshape2)) {
 
 \section{Robust sandwich standard errors}
 
-The \tcode{sandwich} package provides robust standard errors for a wide range of models. We have added the appropriate interface for \tcode{glmmTMB} models. The \tcode{vcovHC()} function computes the sandwich estimator for the variance-covariance matrix of the model coefficients:
+Sandwich estimators provide robust standard errors for a wide range of models. We have added the appropriate methods for \code{glmmTMB} models, following the \code{sandwich} package's functions. 
+The \code{vcovHC()} function computes the sandwich estimator for the variance-covariance matrix of the model coefficients:
 
 <<sandwich1>>=
-library(sandwich)
 vcovHC(owls_nb1)
-@
-
-The variance parameters can optionally be included in the output:
-
-<<sandwich2>>=
-vcovHC(owls_nb1, full = TRUE)
 @
 
 This robust covariance matrix estimate can be used when calculating the standard errors and corresponding p-values for the model coefficients, too:
@@ -494,8 +488,36 @@ where $\hat{B}$ is the ``Bread" matrix (the inverse Hessian), and $\hat{M}$ is t
 \hat{M} = \sum_{k=1}^{K} \hat{u}_k \hat{u}_k^T
 \]
 
-where $\hat{u}_k$ is the score vector with regards to the log-likelihood for the $k$-th cluster (or subject) in the data, $k=1,\dots,K$. Note that we include here both the fixed effects as well as the variance parameters, so always first calculate the "full" sandwich estimator. By default then the variance parameter part is excluded from the output, but can be included by setting \code{full = TRUE}.
-Therefore, we need to have the fixed effects included in the parameter vector. Hence the sandwich estimator only works for models fit with maximum likelihood (ML), but not for models fit with restricted maximum likelihood (REML). In addition, the code checks whether the sum of the cluster-wise log-likelihood equals the overall log-likelihood, and a warning is issued otherwise: This is in particular the case if non-nested random effects are present in the model. The sandwich estimator should only be used with a single random effect term, or with nested random effects.
+where $\hat{u}_k$ is the score vector with regards to the log-likelihood for the $k$-th cluster (or subject) in the data, $k=1,\dots,K$. The clustering is defined conveniently by the \code{getGroups} function, which returns the random effect grouping:
+
+<<sandwich_groups>>=
+head(getGroups(owls_nb1))
+@
+
+and may be modified (if really needed) by the user via the \code{cluster} argument in \code{vcovHC} etc.
+
+Note that the parameter vector includes here both the fixed effects as well as the variance parameters, so always first calculate the "full" sandwich estimator. By default then the variance parameter part is excluded from the output, but can be included by setting \code{full = TRUE}:
+
+<<sandwich_full>>=
+vcovHC(owls_nb1, full = TRUE)
+@
+
+Therefore, we need to have the fixed effects included in the parameter vector. Hence the sandwich estimator only works for models fit with maximum likelihood (ML), but not for models fit with restricted maximum likelihood (REML):
+
+<<sandwich_reml_fails>>=
+try(vcovHC(update(owls_nb1, REML = TRUE)))
+@
+
+In addition, the code checks whether the sum of the cluster-wise log-likelihood equals the overall log-likelihood, and a warning is issued otherwise: 
+
+<<sandwich_warning>>=
+tryCatch(
+  vcovHC(owls_nb1, cluster = Owls$SexParent),
+  warning = function(w) print(w)
+)
+@
+
+This is in particular the case if non-nested random effects are present in the model. The sandwich estimator should only be used with a single random effect term, or with nested random effects.
 
 \section{to do}
 

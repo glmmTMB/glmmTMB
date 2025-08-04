@@ -1282,8 +1282,8 @@ sort_termlabs <- function(labs) {
 
 ## see whether mod1, mod2 are appropriate for Likelihood ratio testing
 CompareFixef <- function (mod1, mod2, component="cond") {
-     mr1 <- mod1$modelInfo$REML
-     mr2 <- mod2$modelInfo$REML
+     mr1 <- isREML(mod1)
+     mr2 <- isREML(mod2)
      if (mr1 != mr2) {
         stop("Can't compare REML and ML fits", call.=FALSE)
      }
@@ -1888,7 +1888,7 @@ bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
 estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 
-    stopifnot(!x$modelInfo$REML)
+    stopifnot(!isREML(x))
     stopifnot(is.logical(full) && length(full) == 1L)
     stopifnot(is.factor(cluster) && !any(is.na(cluster)) && length(cluster) == nobs(x))
     stopifnot(is.logical(rawnames) && length(rawnames) == 1L)
