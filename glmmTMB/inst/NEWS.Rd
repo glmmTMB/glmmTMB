@@ -21,6 +21,8 @@
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
+      \item robust sandwich covariance matrix \code{vcovHC} has bseen added for \code{glmmTMB} 
+      objects, please see the Model evaluation vignette for details (GH #443, Daniel Sabanés Bové)
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
       matrices for random effect terms (helps with GH#995)
