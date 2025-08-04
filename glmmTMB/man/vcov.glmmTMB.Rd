@@ -9,7 +9,7 @@
   full = FALSE,
   include_nonest = TRUE,
   sandwich = FALSE,
-  cluster = nlme::getGroups(object),
+  cluster = getGroups(object),
   ...
 )
 }

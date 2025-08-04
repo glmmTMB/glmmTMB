@@ -2,6 +2,7 @@
 % Please edit documentation in R/methods.R
 \name{getGroups.glmmTMB}
 \alias{getGroups.glmmTMB}
+\alias{getGroups}
 \title{Extract Grouping Factors from an Object}
 \usage{
 \method{getGroups}{glmmTMB}(object, form = formula(object), level, data, sep = "/", ...)
@@ -30,5 +31,5 @@ for a specified level of the random effects structure in a \code{glmmTMB} object
 }
 \examples{
 model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-nlme::getGroups(model)
+getGroups(model)
 }

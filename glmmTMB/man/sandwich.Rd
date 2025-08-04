@@ -10,7 +10,7 @@ sandwich(x, ...)
 
 \method{sandwich}{default}(x, ...)
 
-\method{sandwich}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...)
+\method{sandwich}{glmmTMB}(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...)
 }
 \arguments{
 \item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}

@@ -4,7 +4,7 @@
 \alias{estfun.glmmTMB}
 \title{Extract Empirical Estimating Functions}
 \usage{
-\method{estfun}{glmmTMB}(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...)
+\method{estfun}{glmmTMB}(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...)
 }
 \arguments{
 \item{x}{a \code{glmmTMB} object fitted with ML (REML is not supported).}

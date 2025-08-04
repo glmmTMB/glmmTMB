@@ -402,7 +402,7 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @importFrom utils combn
 ##' @export
 vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE, 
-                         sandwich = FALSE, cluster = nlme::getGroups(object), ...) {
+                         sandwich = FALSE, cluster = getGroups(object), ...) {
   check_dots(..., .ignore = "complete")
   REML <- isREML(object)
   stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
@@ -1790,13 +1790,14 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
 #' @return A factor representing the grouping structure at the specified level,
 #'   with a \code{group} attribute indicating the name of the grouping factor.
 #' 
-#' @export
 #' @importFrom nlme getGroups
-#' @method getGroups glmmTMB
+#' @export getGroups
+#' @aliases getGroups
+#' @export
 #' 
 #' @examples
 #' model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' nlme::getGroups(model)
+#' getGroups(model)
 getGroups.glmmTMB <- function(object, form = formula(object), level, data, sep = "/", ...) {
     if (missing(level)) {
         level <- 1L
@@ -1878,7 +1879,7 @@ bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
 #' sandwich::estfun(m)
 #' sandwich::estfun(m, full = TRUE)
-estfun.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...) {
+estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 
     stopifnot(!x$modelInfo$REML)
@@ -2031,7 +2032,7 @@ sandwich.default <- function(x, ...) {
 #' m <- glmmTMB(count ~ mined + (1 | site), data = Salamanders, family = nbinom1)
 #' sandwich(m)
 #' sandwich(m, full = TRUE)
-sandwich.glmmTMB <- function(x, full = FALSE, cluster = nlme::getGroups(x), rawnames = FALSE, ...) {
+sandwich.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 
     stopifnot(is.logical(full) && length(full) == 1L)

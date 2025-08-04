@@ -2126,7 +2126,7 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @importFrom stats pnorm
 ##' @method summary glmmTMB
 ##' @export
-summary.glmmTMB <- function(object, sandwich = FALSE, cluster = nlme::getGroups(object), ...)
+summary.glmmTMB <- function(object, sandwich = FALSE, cluster = getGroups(object), ...)
 {
     if (length(list(...)) > 0) {
         ## FIXME: need testing code
