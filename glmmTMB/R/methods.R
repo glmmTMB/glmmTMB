@@ -1828,11 +1828,14 @@ getGroups.glmmTMB <- function(object, form = formula(object), level, data, sep =
 #' @return The bread matrix, which is just the variance-covariance matrix.
 #' 
 #' @importFrom sandwich bread
+#' @export bread
+#' @aliases bread
 #' @export
+#'
 #' @examples 
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' sandwich::bread(m)
-#' sandwich::bread(m, full = TRUE)
+#' bread(m)
+#' bread(m, full = TRUE)
 bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 

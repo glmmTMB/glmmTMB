@@ -2,6 +2,7 @@
 % Please edit documentation in R/methods.R
 \name{bread.glmmTMB}
 \alias{bread.glmmTMB}
+\alias{bread}
 \title{Bread Matrix for Sandwich Estimator}
 \usage{
 \method{bread}{glmmTMB}(x, full = FALSE, rawnames = FALSE, ...)
@@ -25,6 +26,6 @@ matrix (bread) for a fitted \code{glmmTMB} model.
 }
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-sandwich::bread(m)
-sandwich::bread(m, full = TRUE)
+bread(m)
+bread(m, full = TRUE)
 }
