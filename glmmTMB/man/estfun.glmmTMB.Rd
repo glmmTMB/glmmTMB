@@ -2,6 +2,7 @@
 % Please edit documentation in R/methods.R
 \name{estfun.glmmTMB}
 \alias{estfun.glmmTMB}
+\alias{estfun}
 \title{Extract Empirical Estimating Functions}
 \usage{
 \method{estfun}{glmmTMB}(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...)
@@ -37,6 +38,6 @@ If crossed random effects are used in the model, this function will not correctl
 }
 \examples{
 m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-sandwich::estfun(m)
-sandwich::estfun(m, full = TRUE)
+estfun(m)
+estfun(m, full = TRUE)
 }

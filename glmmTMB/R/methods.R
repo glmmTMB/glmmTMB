@@ -1877,11 +1877,14 @@ bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
 #'   or nested random effects only.
 #' 
 #' @importFrom sandwich estfun
+#' @export estfun
+#' @aliases estfun
 #' @export
+#' 
 #' @examples 
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
-#' sandwich::estfun(m)
-#' sandwich::estfun(m, full = TRUE)
+#' estfun(m)
+#' estfun(m, full = TRUE)
 estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...) {
     check_dots(..., .ignore = "complete")
 
@@ -1997,7 +2000,7 @@ meatHC.default <- function(x, ...) {
 #' meatHC(m, full = TRUE)
 #' @rdname meatHC
 meatHC.glmmTMB <- function(x, ...) {
-    score_vectors <- sandwich::estfun(x, ...)
+    score_vectors <- estfun(x, ...)
     res <- crossprod(score_vectors)
     rownames(res) <- colnames(res) <- colnames(score_vectors)
     res
