@@ -2,6 +2,7 @@
 % Please edit documentation in R/methods.R
 \name{vcovHC.glmmTMB}
 \alias{vcovHC.glmmTMB}
+\alias{vcovHC}
 \title{Cluster Robust Variance-Covariance Matrix Estimator}
 \usage{
 \method{vcovHC}{glmmTMB}(x, type = "HC0", sandwich = TRUE, ...)
@@ -38,14 +39,14 @@ m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
 vcov(m)$cond
 
 # Cluster-robust variance-covariance matrix:
-sandwich::vcovHC(m)
+vcovHC(m)
 
 # Include the variance parameters:
-sandwich::vcovHC(m, full = TRUE)
+vcovHC(m, full = TRUE)
 
 # This can be compared with:
 vcov(m, full = TRUE)
 
 # Only look at the meat part:
-sandwich::vcovHC(m, sandwich = FALSE)
+vcovHC(m, sandwich = FALSE)
 }

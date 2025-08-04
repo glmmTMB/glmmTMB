@@ -109,6 +109,7 @@ export(truncated_nbinom2)
 export(truncated_poisson)
 export(tweedie)
 export(up2date)
+export(vcovHC)
 export(ziGamma)
 if(getRversion() >= "3.6.0") { S3method(car::Anova, glmmTMB) } else { export(Anova.glmmTMB) }
 if(getRversion() >= "3.6.0") { S3method(effects::Effect, glmmTMB)  } else { export(Effect.glmmTMB) }

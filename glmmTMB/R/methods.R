@@ -2079,24 +2079,27 @@ sandwich.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames =
 #' @return A square matrix representing the cluster-robust variance-covariance matrix.
 #' 
 #' @importFrom sandwich vcovHC
+#' @export vcovHC
+#' @aliases vcovHC
 #' @export
-#' @examples 
+#'
+#' @examples
 #' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
 #' 
 #' # Standard variance-covariance matrix:
 #' vcov(m)$cond
 #' 
 #' # Cluster-robust variance-covariance matrix:
-#' sandwich::vcovHC(m)
+#' vcovHC(m)
 #' 
 #' # Include the variance parameters:
-#' sandwich::vcovHC(m, full = TRUE)
+#' vcovHC(m, full = TRUE)
 #' 
 #' # This can be compared with:
 #' vcov(m, full = TRUE)
 #' 
 #' # Only look at the meat part:
-#' sandwich::vcovHC(m, sandwich = FALSE)
+#' vcovHC(m, sandwich = FALSE)
 vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
     type <- match.arg(type)
     stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
