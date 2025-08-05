@@ -698,8 +698,7 @@ test_that("weighted residuals", {
                  data = cbpp, family = poisson, weights = wts)
     tmbm5 <- glmmTMB(incidence ~ period,
                      data = cbpp, family = poisson, weights = wts)
-    resid_types <- setdiff(eval(formals(residuals.glmmTMB)$type),
-                           "dunn-smyth")
+    resid_types <- c("response", "pearson", "working", "deviance")
     for  (type in resid_types) {
         expect_equal(residuals(tmbm4, type = type),
                      residuals(tmbm5, type = type),
