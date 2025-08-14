@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.11.9000}{
+\section{CHANGES IN VERSION 1.1.12}{
   \subsection{BUG FIXES}{
     \itemize{
       \item default value for \code{allow.new.levels} in
@@ -16,7 +16,13 @@
       \item implementation of \code{hetar1} covstruct was wrong, fixed now
       (GH #1204, Daniel Sabanés Bové and Nik Krieger)
       \item prediction on rank-deficient X matrices could throw a false
-      positive error (Erin McCallum, \url{https://stackoverflow.com/q/77517125/190277})
+      positive error (Erin McCallum,
+      \url{https://stackoverflow.com/q/77517125/190277})
+      \item \code{predict} method no longer fails on subsets of data
+      involving ordered factors (resolving an issue comparing contrasts
+      associated with factors in original data and \code{newdata}) (GH
+      #1197, @fisher-j); we no longer check contrasts of factors that
+      appear only as grouping variables
     }
   } % bug fixes
   \subsection{NEW FEATURES}{
@@ -34,16 +40,7 @@
       data now throw a warning rather than an error (related to GH #1197)
     }
   } % user-visible changes
-  \subsection{BUG FIXES}{
-    \itemize{
-      \item \code{predict} method no longer fails on subsets of data
-      involving ordered factors (resolving an issue comparing contrasts
-      associated with factors in original data and \code{newdata}) (GH
-      #1197, @fisher-j); we no longer check contrasts of factors that
-      appear only as grouping variables
-    }
-  }
-} % 1.1.11.9000 (devel)
+} % 1.1.12
 
 \section{CHANGES IN VERSION 1.1.11 (2025-04-02)}{
   \subsection{NEW FEATURES}{
