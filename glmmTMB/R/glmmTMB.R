@@ -178,9 +178,14 @@ startParams <- function(parameters,
                        parameters, jitter.sd)
   }
 
+  expected_params <- paste(sprintf("'%s'", names(parameters)), collapse = ", ")
+  if (!is.null(start) && !(is.list(start) && !is.null(names(start)))) {
+    stop(sprintf("'start' should be a named list (with some subset of elements %s)", expected_params),
+         call. = FALSE)
+  }
   for (p in names(start)) {
     if (!(p %in% names(parameters))) {
-      stop(sprintf("unrecognized vector '%s' in %s",p,sQuote("start")),
+      stop(sprintf("unrecognized vector '%s' in %s (expected elements are %s)", p, sQuote("start"), expected_params),
            call. = FALSE)
     }
     if ((Lp <- length(parameters[[p]])) !=  (Ls <- length(start[[p]]))) {
@@ -298,7 +303,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
 
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
-    condList  <- getXReTrms(formula, mf, fr, type="coNditional", contrasts=contrasts, sparse=sparseX[["cond"]],
+    condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)
     ziList    <- getXReTrms(ziformula, mf, fr, type="zero-inflation", contrasts=contrasts, sparse=sparseX[["zi"]],
                             old_smooths = old_smooths$zi)
@@ -834,10 +839,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ## HACK: should duplicate 'homdiag' definition, keep it as 's' (or call it 'mgcv_smooth")
         ##  so we can recognize it.
         ## Here, we're using the fact that the ...AddArgs stuff is still in an unevaluated form
-        reXterms <- Map(function(f, a) {
-            if (identical(head(a), as.symbol('s'))) NA else termsfun(f)
-        }, ss$reTrmFormulas, ss$reTrmAddArgs)
-        
+        drop_s <- function(f, a) {
+            if (identical(a[[1]], as.symbol('s'))) NA else termsfun(f)
+        }
+        reXterms <- Map(drop_s, ss$reTrmFormulas, ss$reTrmAddArgs)
         
         for (i in seq_along(ss$reTrmAddArgs)) {
           if(ss$reTrmClasses[i] == "rr") {
@@ -1034,12 +1039,12 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                     simCode = simCode[i],
                     fullCor = as.integer(full_cor[i])
                     )
-        if(ss[i] == "ar1") {
+        if(ss[i] %in% c("ar1", "hetar1")) {
             ## FIXME: Keep this warning ?
             if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                warning("AR1 not meaningful with intercept")
+                warning(paste0(ss[i], "() not meaningful with intercept"))
             if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                stop("ar1() expects a single, factor variable as the time component")
+                stop(paste0(ss[i], "() expects a single, factor variable as the time component"))
             }
         } else if(ss[i] == "ou") {
             times <- parseNumLevels(reTrms$cnms[[i]])
@@ -1143,6 +1148,7 @@ binomialType <- function(x) {
 ##' \itemize{
 ##' \item \code{diag} (diagonal, heterogeneous variance)
 ##' \item \code{ar1} (autoregressive order-1, homogeneous variance)
+##' \item \code{hetar1} (autoregressive order-1, heterogeneous variance)
 ##' \item \code{cs} (compound symmetric, heterogeneous variance)
 ##' \item \code{ou} (* Ornstein-Uhlenbeck, homogeneous variance)
 ##' \item \code{exp} (* exponential autocorrelation)
@@ -2120,7 +2126,7 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @importFrom stats pnorm
 ##' @method summary glmmTMB
 ##' @export
-summary.glmmTMB <- function(object,...)
+summary.glmmTMB <- function(object, sandwich = FALSE, cluster = getGroups(object), ...)
 {
     if (length(list(...)) > 0) {
         ## FIXME: need testing code
@@ -2149,7 +2155,7 @@ summary.glmmTMB <- function(object,...)
     }
 
     ff <- fixef(object)
-    vv <- vcov(object, include_nonest=TRUE)
+    vv <- vcov(object, include_nonest=TRUE, sandwich = sandwich, cluster = cluster)
     coefs <- setNames(lapply(names(ff),
             function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
                              mkCoeftab(ff[[nm]],vv[[nm]])),
@@ -2167,7 +2173,7 @@ summary.glmmTMB <- function(object,...)
                    nobs = nobs(object),
 		   coefficients = coefs,
                    sigma = sig,
-		   vcov = vcov(object),
+		   vcov = vv, # No need to potentially recompute here anything.
 		   varcor = varcor, # and use formatVC(.) for printing.
 		   AICtab = llAIC[["AICtab"]],
                    call = object$call,
@@ -2226,4 +2232,3 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
     }
     invisible(x)
 }## print.summary.glmmTMB
-

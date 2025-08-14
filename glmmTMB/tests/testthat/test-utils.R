@@ -67,3 +67,10 @@ test_that("up2date for models with mapped components", {
     expect_equal(vcov(m1_map), vcov(m1_mapu))
 })
 
+test_that("up2date doesn't mangle parameter order", {
+  m <- readRDS(system.file("test_data", "old_fit.rds", package = "glmmTMB"))
+  expect_identical(m$modelInfo$packageVersion, package_version("1.1.9.9000"))
+  expect_equal(range(residuals(up2date(m))),
+                     c(-0.52792570545058, 0.2441352439504439))
+})
+

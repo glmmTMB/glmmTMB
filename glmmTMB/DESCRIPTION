@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.11.9000
+Version: 1.1.12
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -37,7 +37,11 @@ Authors@R: c(person("Mollie","Brooks",
   person("Michael", "Agronah", role = "ctb",
     comment = c(ORCID = "0009-0007-2655-4094")),
   person("Hatice Tül Kübra", "Akdur", role = "ctb",
-    comment = c(ORCID = "0000-0003-2144-0518"))
+    comment = c(ORCID = "0000-0003-2144-0518")),
+  person("Daniel", "Sabanés Bové", role = "ctb",
+    comment = c(ORCID = "0000-0002-0176-9239")),
+  person("Nikolas", "Krieger", role = "ctb",
+    comment = c(ORCID = "0000-0002-4581-3545"))
 	)
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
@@ -55,7 +59,8 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.1)
+    reformulas (>= 0.4.1),
+    sandwich
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,

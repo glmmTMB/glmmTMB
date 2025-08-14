@@ -63,7 +63,7 @@ linear mixed models and extensions.
   \item single or multiple (nested or crossed) random effects
   \item offsets
   \item fixed-effects models for dispersion
-  \item diagonal, compound-symmetric, or unstructured random effects variance-covariance matrices; first-order autoregressive (AR1) variance structures
+  \item diagonal, compound-symmetric, or unstructured random effects variance-covariance matrices; first-order autoregressive (AR1) variance structures (homogeneous and heterogeneous)
 \end{itemize}
 
 In order to use \code{glmmTMB} effectively you should already
