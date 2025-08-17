@@ -1020,6 +1020,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homdiag" = 1,  ## (homogeneous) diag
                "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
                "homcs" = 2,
+               "homtoep" = blksize,
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
