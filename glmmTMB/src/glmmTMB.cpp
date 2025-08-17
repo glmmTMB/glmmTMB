@@ -448,7 +448,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         logsd(i) = theta(0);
       }
     }
-    Type corr_transf = theta.tail(1);
+    Type corr_transf = theta.tail(1)(0);
     vector<Type> sd = exp(logsd);
     Type a = Type(1) / (Type(n) - Type(1));
     Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
