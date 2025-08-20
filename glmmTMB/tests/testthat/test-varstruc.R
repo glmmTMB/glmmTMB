@@ -34,6 +34,38 @@ test_that("cs_homog", {
 
 })
 
+test_that("toep_het", {
+    sleepstudy_bin <- sleepstudy
+    sleepstudy_bin$Reaction <- ifelse(sleepstudy_bin$Reaction > 250, 1, 0)
+    sleepstudy_bin$Days <- cut(sleepstudy_bin$Days, breaks=c(0,3,6,10), right = FALSE)
+    sleep_toep_het <- glmmTMB(Reaction ~ toep(0 + Days | Subject), sleepstudy_bin)
+
+    vv <- VarCorr(sleep_toep_het)[["cond"]][["Subject"]]
+
+    sds <- attr(vv, "stddev")
+    expected_sds <- c(0.42594, 0.29383, 0.30385)
+    expect_equal(sds, expected_sds, tolerance = 1e-4, check.attributes = FALSE)
+
+    cors <- attr(vv, "correlation")[c(2, 3), 1]
+    expected_cors <- c(0.68085, 0.37813)
+    expect_equal(cors, expected_cors, tolerance = 1e-4, check.attributes = FALSE)
+})
+
+test_that("toep_hom", {
+    sleepstudy_bin <- sleepstudy
+    sleepstudy_bin$Reaction <- ifelse(sleepstudy_bin$Reaction > 250, 1, 0)
+    sleepstudy_bin$Days <- cut(sleepstudy_bin$Days, breaks=c(0,3,6,10), right = FALSE)
+    sleep_toep_hom <- glmmTMB(Reaction ~ homtoep(0 + Days | Subject), sleepstudy_bin)
+
+    vv <- VarCorr(sleep_toep_hom)[["cond"]][["Subject"]]
+    sds <- attr(vv, "stddev")
+    expect_equal(sds, rep(0.34675, 3), tolerance = 1e-4, check.attributes = FALSE)
+
+    cors <- attr(vv, "correlation")[c(2, 3), 1]
+    expected_cors <- c(0.67499, 0.36285)
+    expect_equal(cors, expected_cors, tolerance = 1e-4, check.attributes = FALSE)
+})
+
 test_that("basic ar1", {
     ## base fm_ar1 does include corr matrix
     vv <- VarCorr(fm_ar1)[["cond"]]

@@ -1020,6 +1020,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homdiag" = 1,  ## (homogeneous) diag
                "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
                "homcs" = 2,
+               "homtoep" = blksize,
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1150,11 +1151,13 @@ binomialType <- function(x) {
 ##' \item \code{ar1} (autoregressive order-1, homogeneous variance)
 ##' \item \code{hetar1} (autoregressive order-1, heterogeneous variance)
 ##' \item \code{cs} (compound symmetric, heterogeneous variance)
+##' \item \code{homcs} (compound symmetric, homogeneous variance)
 ##' \item \code{ou} (* Ornstein-Uhlenbeck, homogeneous variance)
 ##' \item \code{exp} (* exponential autocorrelation)
 ##' \item \code{gau} (* Gaussian autocorrelation)
 ##' \item \code{mat} (* Matérn process correlation)
-##' \item \code{toep} (* Toeplitz)
+##' \item \code{toep} (* Toeplitz, heterogeneous variance)
+##' \item \code{homtoep} (* Toeplitz, homogeneous variance)
 ##' \item \code{rr} (reduced-rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
