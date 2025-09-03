@@ -50,7 +50,7 @@ test_that("zi beta and Gamma", {
     expect_error(glmmTMB(yg~1, zi=~1, data=dd, family=Gamma),
                  "non-positive values not allowed")
     expect_error(glmmTMB(yg~1, data=dd, family=ziGamma),
-                 "non-positive values not allowed")
+                 "zero values not allowed")
     m2 <- glmmTMB(yg~1, data=dd, family=ziGamma(link="log"), zi=~1)
     expect_equal(unname(plogis(fixef(m2)[["zi"]])),1/11)
     expect_equal(unname(fixef(m2)[["cond"]]), 0.3995267, tolerance=1e-5)
