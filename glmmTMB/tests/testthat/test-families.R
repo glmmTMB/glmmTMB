@@ -581,6 +581,7 @@ test_that("testing family specification", {
 
 })
 
+## GH #1213
 test_that("error message for ziGamma with zeros",
 {
   dd <- data.frame(y = c(1,0))
