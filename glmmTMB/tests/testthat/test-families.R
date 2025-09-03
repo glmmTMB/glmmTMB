@@ -581,7 +581,9 @@ test_that("testing family specification", {
 
 })
 
-test_that("error message for Gamma with zeros",
+test_that("error message for ziGamma with zeros",
 {
   dd <- data.frame(y = c(1,0))
-  glmmTMB(y ~ 1, data = dd, family = Gamma(link = "log"))
+  expect_error(glmmTMB(y ~ 1, data = dd, family = ziGamma(link = "log")),
+               "unless `ziformula`")
+})
