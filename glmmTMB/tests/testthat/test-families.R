@@ -580,3 +580,8 @@ test_that("testing family specification", {
                  "of mode.*not found")
 
 })
+
+test_that("error message for Gamma with zeros",
+{
+  dd <- data.frame(y = c(1,0))
+  glmmTMB(y ~ 1, data = dd, family = Gamma(link = "log"))
