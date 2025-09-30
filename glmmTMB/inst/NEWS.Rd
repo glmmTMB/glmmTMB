@@ -4,7 +4,31 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.12}{
+\section{CHANGES IN VERSION 1.1.13}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      Pearson residual calculation corrected for Beta models (GH
+      #1229, @amdavenport).
+    }
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new covariance structure \code{homtoep} (homogeneous Toeplitz) has been
+      added (GH #1095, Daniel Sabanés Bové)
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Log-normal and skew-normal variance models
+      (\code{family(model)$variance})
+      have been changed to return scaled Pearson residuals;
+      beta-binomial returns unscaled Pearson residuals, with
+      a message (see \code{?residuals.merMod})
+    }
+  } % user-visible changes
+} % 1.1.13
+
+\section{CHANGES IN VERSION 1.1.12 (2025-08-18)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item default value for \code{allow.new.levels} in
@@ -30,8 +54,6 @@
       \item robust sandwich covariance matrix \code{vcovHC} has been added for 
       \code{glmmTMB} objects, please see the Model evaluation vignette for details 
       (GH #443, Daniel Sabanés Bové)
-      \item new covariance structure \code{homtoep} (homogeneous Toeplitz) has been
-      added (GH #1095, Daniel Sabanés Bové)
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
       matrices for random effect terms (helps with GH#995)

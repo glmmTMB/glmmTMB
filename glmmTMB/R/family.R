@@ -346,10 +346,14 @@ beta_family <- function(link="logit") {
 ## =  n*p*(1-p)*(theta+n)/(theta+1)
 ##  *scaled* variance (dependence on mu only) is still just mu*(1-mu);
 ##  scaling is n*(theta+n)/(theta+1) (vs. simply n for the binomial)
+## FIXME:
+## we would want to scale by (theta+n)/(theta+1)
+## that means variance function would need access to n (model weights)
+## that's annoying ...
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
               variance = function(mu, phi) {
-                stop("variance for beta-binomial not yet implemented")
+                message("beta-binomial returns unscaled variance")
                 mu*(1-mu)
               },
               initialize = our_binom_initialize(binomial()$initialize))
@@ -371,9 +375,9 @@ tweedie <- function(link="log") {
 #' @export
 skewnormal <- function(link="identity") {
   r <- list(family="skewnormal",
-            variance = function(phi) {
-              stop("variance for skewnormal not yet implemented")
-              phi^2
+            variance = function(mu, phi, shape) {
+              delta <- shape/sqrt(1-shape^2)
+              phi^2*(1-2*delta^2/pi)
             })
   return(make_family(r,link))
 }
@@ -383,7 +387,7 @@ skewnormal <- function(link="identity") {
 #' @export
 lognormal <- function(link="log") {
     r <- list(family="lognormal",
-              variance=function(mu, phi) stop("variance for lognormal not yet implemented"),
+              variance=function(mu, phi) phi^2,
               initialize = expression({
                   if (exists("ziformula") && !ident(ziformula, ~0)) {
                       if (any(y < 0)) {

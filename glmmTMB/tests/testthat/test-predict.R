@@ -635,3 +635,59 @@ test_that("pearson residuals from Gamma", {
   expect_equal(r1, r2, tolerance = 2e-5)
 })
 
+test_that("compare scaled and unscaled Pearson residuals for gaussian", {
+  set.seed(101)
+  dd <- data.frame(y = rnorm(100, sd = 2), const = 1)
+  m <- glmmTMB(y ~ 1, family = gaussian, data = dd)
+  ## message about dropping rank-def columns
+  ## this is still enough to make trivialDisp() FALSE
+  m2 <- suppressMessages(update(m, dispformula = ~ const))
+  r1 <- residuals(m, type = "pearson")
+  r2 <- residuals(m2, type = "pearson")
+  expect_equal(r1/sigma(m), r2)
+})
+
+pearson_testfun <- function(family = lognormal, seed = 101, wt.args = NULL,
+                            beta = c(10, 1), n = 1000, ...) {
+  set.seed(seed)
+  dd <- data.frame(x = seq(-2, 2, length.out = n))
+  dd$y <-
+    do.call(simulate_new,
+            c(list(~x,
+                   family = family,
+                   newdata = dd,
+                   newparams = list(beta = beta,
+                                    betadisp = 1.5, ...)),
+              wt.args))[[1]]
+  if (!is.null(wt.args)) {
+    dd$y <- dd$y/wt.args$weights
+  }
+  m <- do.call(glmmTMB, c(list(y~x, family = family, data = dd), wt.args))
+  res <- data.frame(x= fitted(m), y = residuals(m, type = "pearson"))
+  invisible(res)
+}
+
+test_that("skewnormal Pearson resids", {
+  res <- pearson_testfun(skewnormal, psi = -1)
+  expect_equal(mean(res$y^2), 1)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0)
+})
+
+test_that("lognormal Pearson resids", {
+  res <- pearson_testfun(lognormal)
+  expect_equal(mean(res$y^2), 1, tolerance = 1e-4)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 1e-6)
+})
+
+test_that("betabinomial Pearson resids", {
+  size <- 10
+  theta <- exp(1.5) ## dispersion
+  wt.args <- list(weights = rep(size, 1e4))
+  res <- pearson_testfun(betabinomial, wt.args = wt.args, beta = c(-1, 1), n = 1e4)
+  ## fairly rough correspondence with theoretical values
+  ## (need larger sample size)
+  disp <- (theta+size)/(theta+1)
+  expect_equal(mean(res$y^2), disp, tolerance = 1e-2)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 2e-2)
+})
+

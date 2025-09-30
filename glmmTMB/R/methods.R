@@ -771,6 +771,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
 ##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 ##' details on the definition of the deviance for GLMMs.
+##' \item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation. (The beta-binomial currently returns unscaled residuals.)
 ##' }
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), re.form = NULL, ...) {
@@ -843,7 +844,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              # subset to only the arguments used by the variance function
              vargs <- vargs[vformals]
              vv <- do.call(v, args = vargs)
-             if (identical(vformals, "mu")) {
+             ## Bell distribution is a special case
+             scaled_var <- identical(vformals, "mu") && fam$family != "bell"
+             if (scaled_var) {
                vv <- vv * theta^2
                if (trivialDisp(object)) {
                  ## handle convention that Pearson residuals (in base-R lm()/glm())
