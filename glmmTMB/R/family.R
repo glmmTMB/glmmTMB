@@ -320,7 +320,7 @@ beta_family <- function(link="logit") {
     ## note *internal* name must still be "beta",
     ## unless/until it's changed in src/glmmTMB.cpp (and R/enum.R is rebuilt)
     r <- list(family="beta",
-              variance=function(mu) { mu*(1-mu) },
+              variance=function(mu, phi) { (mu*(1-mu))/(1+phi) },
               initialize=expression({
                   if (exists("ziformula") && !ident(ziformula, ~0)) {
                       if (any(y < 0 | y >= 1)) {
@@ -349,7 +349,8 @@ beta_family <- function(link="logit") {
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
               variance = function(mu, phi) {
-                  mu*(1-mu)
+                stop("variance for beta-binomial not yet implemented")
+                mu*(1-mu)
               },
               initialize = our_binom_initialize(binomial()$initialize))
     ## FIXME: should add needs_int = TRUE ??
@@ -371,6 +372,7 @@ tweedie <- function(link="log") {
 skewnormal <- function(link="identity") {
   r <- list(family="skewnormal",
             variance = function(phi) {
+              stop("variance for skewnormal not yet implemented")
               phi^2
             })
   return(make_family(r,link))
@@ -381,7 +383,7 @@ skewnormal <- function(link="identity") {
 #' @export
 lognormal <- function(link="log") {
     r <- list(family="lognormal",
-              variance=function(mu,phi) phi^2,
+              variance=function(mu, phi) stop("variance for lognormal not yet implemented"),
               initialize = expression({
                   if (exists("ziformula") && !ident(ziformula, ~0)) {
                       if (any(y < 0)) {

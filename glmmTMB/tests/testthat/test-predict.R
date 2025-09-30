@@ -598,3 +598,40 @@ test_that("prediction from rank-deficient X matrices", {
 })
              
 
+## GH 1229
+test_that("pearson residuals from Beta", {
+  set.seed(101)
+  dd <- data.frame(x = rnorm(100))
+  dd$y <- simulate_new(~ 1 + x,
+                       family = beta_family,
+                       newparams = list(beta = c(0, 1)),
+                       newdata = dd)[[1]]
+  m <- glmmTMB(y ~ x, family = beta_family, data = dd)
+  r1 <- residuals(m, type = "pearson")
+  ## m2 <- betareg::betareg(y ~ x, data = dd)
+  ## dput(head(r2 <- residuals(m2, type = "pearson"), 3))
+  b_res <- c(-0.758128775585217, -1.56249629034592, -1.18010016241397)
+  expect_equal(head(r2, 3),
+               b_res, check.attributes = FALSE)
+  
+})
+
+test_that("pearson residuals from Gamma", {
+  set.seed(101)
+  dd <- data.frame(x = rnorm(100))
+  dd$y <- simulate_new(~ 1 + x,
+                       family = Gamma(link = "log"),
+                       newparams = list(beta = c(0, 1), betadisp = 1),
+                       newdata = dd)[[1]]
+  m <- glmmTMB(y ~ x, family = Gamma(link = "log"), data = dd)
+  m2 <- glm(y ~ x, family = Gamma(link = "log"), data = dd)
+  r1 <- residuals(m, type = "working")
+  r2 <- residuals(m2, type = "working")
+  expect_equal(r1, r2, tolerance = 2e-5)
+  r1 <- residuals(m, type = "pearson")
+  r2 <- residuals(m2, type = "pearson")## *sigma(m2)/sigma(m)
+  ## plot(r1, r2)
+  ## abline(a=0, b=1, col = 2)
+  expect_equal(r1, r2, tolerance = 2e-5)
+})
+
