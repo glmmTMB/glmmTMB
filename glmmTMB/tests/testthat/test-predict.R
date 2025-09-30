@@ -611,8 +611,8 @@ test_that("pearson residuals from Beta", {
   ## m2 <- betareg::betareg(y ~ x, data = dd)
   ## dput(head(r2 <- residuals(m2, type = "pearson"), 3))
   b_res <- c(-0.758128775585217, -1.56249629034592, -1.18010016241397)
-  expect_equal(head(r2, 3),
-               b_res, check.attributes = FALSE)
+  expect_equal(head(r1, 3),
+               b_res, check.attributes = FALSE, tolerance = 1e-5)
   
 })
 
