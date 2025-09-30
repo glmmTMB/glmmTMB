@@ -629,7 +629,7 @@ test_that("pearson residuals from Gamma", {
   r2 <- residuals(m2, type = "working")
   expect_equal(r1, r2, tolerance = 2e-5)
   r1 <- residuals(m, type = "pearson")
-  r2 <- residuals(m2, type = "pearson")## *sigma(m2)/sigma(m)
+  r2 <- residuals(m2, type = "pearson")
   ## plot(r1, r2)
   ## abline(a=0, b=1, col = 2)
   expect_equal(r1, r2, tolerance = 2e-5)

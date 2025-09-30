@@ -353,7 +353,7 @@ beta_family <- function(link="logit") {
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
               variance = function(mu, phi) {
-                message("beta-binomial returns unscaled variance")
+                message("beta-binomial variance function returns *unscaled* variance")
                 mu*(1-mu)
               },
               initialize = our_binom_initialize(binomial()$initialize))

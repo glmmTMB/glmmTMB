@@ -7,7 +7,7 @@
 \section{CHANGES IN VERSION 1.1.13}{
   \subsection{BUG FIXES}{
     \itemize{
-      Pearson residual calculation corrected for Beta models (GH
+      \item Pearson residual calculation corrected for Beta models (GH
       #1229, @amdavenport).
     }
   } % bug fixes

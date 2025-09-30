@@ -843,8 +843,15 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              vargs$shape <- vargs$power <- shape
              # subset to only the arguments used by the variance function
              vargs <- vargs[vformals]
-             vv <- do.call(v, args = vargs)
+             ## suppress beta-binomial $variance() message, substitute
+             ##  a residuals-specific message
+             suppressMessages(vv <- do.call(v, args = vargs))
+             if (fam$family=="beta-binomial") {
+               message("beta-binomial Pearson residuals are not scaled by dispersion factor")
+             }
              ## Bell distribution is a special case
+             ## (returns complete variance, not scaled variance, even though
+             ##  variance function takes only 'mu')
              scaled_var <- identical(vformals, "mu") && fam$family != "bell"
              if (scaled_var) {
                vv <- vv * theta^2
