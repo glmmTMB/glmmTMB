@@ -1,0 +1,14 @@
+# this is the code needed by e.g. data.table to get multithreading working on macosx
+PKG_CPPFLAGS = @PKG_CPPFLAGS@
+PKG_CXXFLAGS = @PKG_CXXFLAGS@ @openmp_cxxflags@
+PKG_LIBS = @PKG_LIBS@ $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) @openmp_cxxflags@
+# See WRE $1.2.1.1. But retain user supplied PKG_* too, #4664.
+# WRE states ($1.6) that += isn't portable and that we aren't allowed to use it.
+# Otherwise we could use the much simpler PKG_LIBS += @openmp_cflags@ -lz.
+# Can't do PKG_LIBS = $(PKG_LIBS)...  either because that's a 'recursive variable reference' error in make
+# Hence the onerous @...@ substitution.
+
+all: $(SHLIB)
+	@echo PKG_CPPFLAGS = $(PKG_CPPFLAGS)
+	@echo PKG_CXXFLAGS = $(PKG_CXXFLAGS)
+	@echo PKG_LIBS = $(PKG_LIBS)
