@@ -15,6 +15,9 @@
     \itemize{
       \item new covariance structure \code{homtoep} (homogeneous Toeplitz) has been
       added (GH #1095, Daniel Sabanés Bové)
+      \item EXPERIMENTAL implementation of Kenward-Roger and
+      Satterthwaite denominator-degree-of-freedom approximations; see
+      \code{ddf} argument for \code{summary.glmmTMB}, \code{?dof_KR}
     }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
@@ -57,8 +60,6 @@
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
 matrices for random effect terms (helps with GH#995)
-      \item experimental implementation of Kenward-Roger and
-      Satterthwaite denominator-degree-of-freedom approximations
     }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{

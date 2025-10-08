@@ -2135,7 +2135,7 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param ddf denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
 ##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
-##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}};
+##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}});
 ##' \code{"satterthwaite"} uses a Satterthwaite approximation
 ##' @param ... unused, for method compatibility
 ##' @inheritParams vcov.glmmTMB
