@@ -294,16 +294,17 @@ test_that("contrasts carried over", {
                        grp=factor(c("a","b")))
     contrasts(iris2$Species) <- contr.sum
     contrasts(iris2$grp) <- contr.sum
-    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
-    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    mod1 <- glmmTMB(Sepal.Length ~ Species, iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species, iris2)
+    ## create prediction frame with a new species
     iris3 <- iris[1,]
     iris3$Species <- "extra"
     ## these are not *exactly* equal because of numeric differences
     ##  when estimating parameters differently ... (?)
-    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    expect_equal(predict(mod1), predict(mod2), tolerance=1e-6)
     ## make sure we actually imposed contrasts correctly/differently
     expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
-    expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    expect_warning(predict(mod1,newdata=iris2), "contrasts mismatch")
     expect_equal(predict(mod1,newdata=iris2,allow.new.levels=TRUE),
                  predict(mod1,newdata=iris))
     mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
@@ -317,7 +318,20 @@ test_that("contrasts carried over", {
     ## works with char rather than factor in new group vble
     expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
                  5.843333, tolerance=1e-6)
-
+    zipm3 <- glmmTMB(
+        count ~ spp * mined + (1 | site:mined),
+        Salamanders,
+        family = "poisson"
+    )
+    ss <- transform(Salamanders, site = factor(site, ordered = FALSE))
+    zz <- update(zipm3, data = ss)
+    expect_no_warning(p1 <- predict(zipm3, newdata = head(Salamanders, 22)))
+    p2 <- predict(zz, newdata = head(Salamanders, 22))
+    p3 <- predict(zz, newdata = head(ss, 22))
+    p4 <- predict(zipm3, newdata = head(Salamanders, 23))
+    expect_equal(p1, p2)
+    expect_equal(p2, p3)
+    expect_equal(p3, p4[1:22])
 })
 
 test_that("dispersion", {
@@ -536,3 +550,144 @@ test_that("pearson resids of ZI models", {
 
     }
 })
+
+## GH 1189
+test_that("allow.new.levels TRUE when re.form = NA", 
+          {
+              nd <- subset(sleepstudy, Subject=="308", select=-1)[1,]
+              nd$Subject <- "new"
+              
+              expect_warning(predict(fm2, newdata=nd),
+                           "Predicting new random effect levels")
+              expect_equal(predict(fm2, newdata = nd, re.form = NA),
+                           251.404341632295,
+                           tolerance = 1e-6)
+
+              suppressWarnings(g1 <- glmmTMB(Reaction ~ 1 + (1 | Subject/Days),
+                                             sleepstudy))
+              expect_equal(predict(g1,
+                                   newdata = data.frame(Days = NA, Subject = NA),
+                                   re.form = NA), 298.507889474305,
+                           tolerance = 1e-6)
+})
+
+## https://stackoverflow.com/q/77517125/190277
+test_that("prediction from rank-deficient X matrices", {
+  x <- c("A", "B", "C", "D"); y <- c("exposed", "ref1", "ref2")
+  set.seed(123)
+  dat <- data.frame(time = rep(x, each=20, times=3),
+                    lake = rep(y, each = 80),
+                    min = runif(n=240, min=4.5, max=5.5),
+                    count = rnbinom(n=240,mu=10,size=100))
+  dat2 <- subset(dat, time!="A" | lake !="ref1")
+  suppressMessages(
+    model <-glmmTMB(count~time*lake, family=nbinom1,
+                    control = glmmTMBControl(rank_check = "adjust"),
+                    offset=log(min), data=dat2))
+  pred_data <- data.frame(
+    lake = rep(c("exposed", "ref1", "ref2"), c(4L, 3L, 4L)),
+    min = 1,
+    time = c(x, x[-1], x)  ## drop level A for lake 2
+  )
+
+  pp <- suppressMessages(
+    predict(model, newdata = pred_data, type = 'response', se.fit=FALSE)
+  )
+  expect_equal(head(pp, 3), c(1.89088787010282, 1.83544974589453, 2.02668291828295),
+               tolerance = 1e-6)
+})
+             
+
+## GH 1229
+test_that("pearson residuals from Beta", {
+  set.seed(101)
+  dd <- data.frame(x = rnorm(100))
+  dd$y <- simulate_new(~ 1 + x,
+                       family = beta_family,
+                       newparams = list(beta = c(0, 1)),
+                       newdata = dd)[[1]]
+  m <- glmmTMB(y ~ x, family = beta_family, data = dd)
+  r1 <- residuals(m, type = "pearson")
+  ## m2 <- betareg::betareg(y ~ x, data = dd)
+  ## dput(head(r2 <- residuals(m2, type = "pearson"), 3))
+  b_res <- c(-0.758128775585217, -1.56249629034592, -1.18010016241397)
+  expect_equal(head(r1, 3),
+               b_res, check.attributes = FALSE, tolerance = 1e-5)
+  
+})
+
+test_that("pearson residuals from Gamma", {
+  set.seed(101)
+  dd <- data.frame(x = rnorm(100))
+  dd$y <- simulate_new(~ 1 + x,
+                       family = Gamma(link = "log"),
+                       newparams = list(beta = c(0, 1), betadisp = 1),
+                       newdata = dd)[[1]]
+  m <- glmmTMB(y ~ x, family = Gamma(link = "log"), data = dd)
+  m2 <- glm(y ~ x, family = Gamma(link = "log"), data = dd)
+  r1 <- residuals(m, type = "working")
+  r2 <- residuals(m2, type = "working")
+  expect_equal(r1, r2, tolerance = 2e-5)
+  r1 <- residuals(m, type = "pearson")
+  r2 <- residuals(m2, type = "pearson")
+  ## plot(r1, r2)
+  ## abline(a=0, b=1, col = 2)
+  expect_equal(r1, r2, tolerance = 2e-5)
+})
+
+test_that("compare scaled and unscaled Pearson residuals for gaussian", {
+  set.seed(101)
+  dd <- data.frame(y = rnorm(100, sd = 2), const = 1)
+  m <- glmmTMB(y ~ 1, family = gaussian, data = dd)
+  ## message about dropping rank-def columns
+  ## this is still enough to make trivialDisp() FALSE
+  m2 <- suppressMessages(update(m, dispformula = ~ const))
+  r1 <- residuals(m, type = "pearson")
+  r2 <- residuals(m2, type = "pearson")
+  expect_equal(r1/sigma(m), r2)
+})
+
+pearson_testfun <- function(family = lognormal, seed = 101, wt.args = NULL,
+                            beta = c(10, 1), n = 1000, ...) {
+  set.seed(seed)
+  dd <- data.frame(x = seq(-2, 2, length.out = n))
+  dd$y <-
+    do.call(simulate_new,
+            c(list(~x,
+                   family = family,
+                   newdata = dd,
+                   newparams = list(beta = beta,
+                                    betadisp = 1.5, ...)),
+              wt.args))[[1]]
+  if (!is.null(wt.args)) {
+    dd$y <- dd$y/wt.args$weights
+  }
+  m <- do.call(glmmTMB, c(list(y~x, family = family, data = dd), wt.args))
+  res <- data.frame(x= fitted(m), y = residuals(m, type = "pearson"))
+  invisible(res)
+}
+
+test_that("skewnormal Pearson resids", {
+  res <- pearson_testfun(skewnormal, psi = -1)
+  expect_equal(mean(res$y^2), 1)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0)
+})
+
+test_that("lognormal Pearson resids", {
+  res <- pearson_testfun(lognormal)
+  expect_equal(mean(res$y^2), 1, tolerance = 1e-4)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 1e-6)
+})
+
+test_that("betabinomial Pearson resids", {
+  size <- 10
+  theta <- exp(1.5) ## dispersion
+  wt.args <- list(weights = rep(size, 1e4))
+  res <- pearson_testfun(betabinomial, wt.args = wt.args, beta = c(-1, 1), n = 1e4)
+  ## fairly rough correspondence with theoretical values
+  ## (need larger sample size)
+  disp <- (theta+size)/(theta+1)
+  expect_equal(mean(res$y^2), disp, tolerance = 1e-2)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 2e-2)
+})
+

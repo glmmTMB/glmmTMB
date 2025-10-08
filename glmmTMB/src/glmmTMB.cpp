@@ -92,7 +92,8 @@ enum valid_covStruct {
   // should perhaps be next to homdiag but don't want to mess
   //  up interpretation of stored fits ...
   hetar1_covstruct = 12,
-  homcs_covstruct = 13
+  homcs_covstruct = 13,
+  homtoep_covstruct = 14
 };
 
 // should probably be named just 'predictCode';
@@ -437,9 +438,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd = sd;             // For report
   }
   else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
-    // case: cs_covstruct
+    // case: cs_covstruct or homcs_covstruct
     int n = term.blockSize;
-    int nsd = (term.blockCode == cs_covstruct ? n : 1);
     vector<Type> logsd(n);
     for (int i = 0; i < n; i++) {
       if (term.blockCode == cs_covstruct) {
@@ -448,7 +448,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         logsd(i) = theta(0);
       }
     }
-    Type corr_transf = theta(nsd);
+    Type corr_transf = theta.tail(1)(0);
     vector<Type> sd = exp(logsd);
     Type a = Type(1) / (Type(n) - Type(1));
     Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
@@ -470,26 +470,33 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     SET_COR;
     term.sd = sd;             // For report
   }
-  else if (term.blockCode == toep_covstruct){
-    // case: toep_covstruct
+  else if (term.blockCode == toep_covstruct || term.blockCode == homtoep_covstruct) {
+    // case: toep_covstruct or homtoep_covstruct
     int n = term.blockSize;
-    vector<Type> logsd = theta.head(n);
+    vector<Type> logsd(n);
+    for (int i = 0; i < n; i++) {
+      if (term.blockCode == toep_covstruct) {
+        logsd(i) = theta(i);
+      } else {
+        logsd(i) = theta(0);
+      }
+    }
     vector<Type> sd = exp(logsd);
-    vector<Type> parms = theta.tail(n-1);              // Corr parms
-    parms = parms / sqrt(Type(1.0) + parms * parms );  // Now in (-1,1)
+    vector<Type> corr_params = theta.tail(n-1);
+    corr_params = corr_params / sqrt(Type(1.0) + corr_params * corr_params);
     matrix<Type> corr(n,n);
-    for(int i=0; i<n; i++)
+    for (int i=0; i<n; i++)
       for(int j=0; j<n; j++)
         corr(i,j) = (i==j ? Type(1) :
-                     parms( (i > j ? i-j : j-i) - 1 ) );
+                     corr_params( (i > j ? i-j : j-i) - 1 ) );
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-	if (term.simCode != random_simcode) {
-	  Rf_error("simcode not yet implemented for toep cov struct");
-	}
+        if (term.simCode != random_simcode) {
+          Rf_error("simcode not yet implemented for toep and homtoep cov struct");
+        }
         U.col(i) = sd * nldens.simulate();
       }
     }
@@ -506,46 +513,56 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type corr_transf = theta(term.blockNumTheta-1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
     vector<Type> sd = exp(logsd);
-    Type cursd;
+    
     for(int j = 0; j < term.blockReps; j++){
-      ans -= dnorm(U(0, j), Type(0), sd(0), true);   // Initialize
+      // Initialize
+      if (term.blockCode == hetar1_covstruct) {
+        ans -= dnorm(U(0, j) / sd(0), Type(0), Type(1), true);
+        ans += logsd(0);
+      } else { // ar1_covstruct
+        ans -= dnorm(U(0, j), Type(0), sd(0), true);
+      }
       if (do_simulate) {
         switch(term.simCode) {
-        case fix_simcode:
-          break;
-        case zero_simcode:
-          U(0,j) = Type(0);
-          break;
-        case random_simcode:
-          U(0, j) = rnorm(Type(0), sd(0));
-          break;
-        }
-      }
-      for(int i=1; i<n; i++){
-        if (term.blockCode == hetar1_covstruct) {
-          cursd = sd(i-1);
-        } else {
-          cursd = sd(0);
-        }
-      ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
-        if (do_simulate) {
-	  switch(term.simCode) {
           case fix_simcode:
-          // do nothing, leave U values as is
-	    break;
+            break;
           case zero_simcode:
-            for (int i=0; i < U.rows(); i++) {
-              U(i,j) = Type(0);
-	    };
+            U(0,j) = Type(0);
             break;
           case random_simcode:
-            for(int i=1; i<n; i++){
-              U(i, j) = rnorm( phi * U(i-1, j), cursd * sqrt(1 - phi*phi) );
-              }
+            U(0, j) = rnorm(Type(0), sd(0));
             break;
-           default: error ("unknown simcode");
-	  } // term.simCode
-	} // do_simulate
+        }
+      }
+      for(int i=1; i<n; i++) {
+
+        if (term.blockCode == hetar1_covstruct) {
+          ans -= dnorm(U(i, j) / sd(i), phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi), true);
+          ans += logsd(i);
+        } else { // ar1_covstruct
+          ans -= dnorm(U(i, j), phi * U(i-1, j), sd(0) * sqrt(1 - phi*phi), true);
+        }
+      
+        if (do_simulate) {
+	        switch(term.simCode) {
+            case fix_simcode:
+              // do nothing, leave U values as is
+	            break;
+            case zero_simcode:
+              for (int i=0; i < U.rows(); i++) {
+                U(i, j) = Type(0);
+	            };
+              break;
+            case random_simcode:
+              if (term.blockCode == hetar1_covstruct) {
+                  U(i, j) = sd(i) * rnorm(phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi));
+              } else {
+                  U(i, j) = rnorm(phi * U(i-1, j), sd(0) * sqrt(1 - phi*phi));
+              }
+              break;
+            default: error ("unknown simcode");
+	        } // term.simCode
+      	} // do_simulate
       } // loop over lags
     } // loop over blocks
     DISABLE_AD { // Disable AD for this part
@@ -566,11 +583,11 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         for(int i=0; i<n; i++){
           term.sd(i) = sd(i);
         }
-      } else {
+      } else { // ar1_covstruct
         term.sd.resize(1);
         term.sd(0) = sd(0);
       }
-    } // DISABLE_AD
+    } // DISABLE_AD 
   } // [het]ar1_covstruct
   else if (term.blockCode == ou_covstruct){
     // case: ou_covstruct

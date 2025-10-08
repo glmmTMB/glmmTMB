@@ -4,12 +4,59 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.11.9000}{
+\section{CHANGES IN VERSION 1.1.13}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item Pearson residual calculation corrected for Beta models (GH
+      #1229, @amdavenport).
+    }
+  } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
+      \item new covariance structure \code{homtoep} (homogeneous Toeplitz) has been
+      added (GH #1095, Daniel Sabanés Bové)
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Log-normal and skew-normal variance models
+      (\code{family(model)$variance})
+      have been changed to return scaled Pearson residuals;
+      beta-binomial returns unscaled Pearson residuals, with
+      a message (see \code{?residuals.merMod})
+    }
+  } % user-visible changes
+} % 1.1.13
+
+\section{CHANGES IN VERSION 1.1.12 (2025-08-18)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item default value for \code{allow.new.levels} in
+      \code{predict.glmmTMB} is now NULL, meaning that
+      new levels in grouping variables are allowed when
+      predicting at the population level (i.e., \code{re.form}
+      is \code{NA} or \code{~0}) - unless \code{allow.new.levels} is explicitly set to
+      TRUE (GH#1189, @fisher-j)
+      \item implementation of \code{hetar1} covstruct was wrong, fixed now
+      (GH #1204, Daniel Sabanés Bové and Nik Krieger)
+      \item prediction on rank-deficient X matrices could throw a false
+      positive error (Erin McCallum,
+      \url{https://stackoverflow.com/q/77517125/190277})
+      \item \code{predict} method no longer fails on subsets of data
+      involving ordered factors (resolving an issue comparing contrasts
+      associated with factors in original data and \code{newdata}) (GH
+      #1197, @fisher-j); we no longer check contrasts of factors that
+      appear only as grouping variables
+    }
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item robust sandwich covariance matrix \code{vcovHC} has been added for 
+      \code{glmmTMB} objects, please see the Model evaluation vignette for details 
+      (GH #443, Daniel Sabanés Bové)
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
-      matrices for random effect terms
+matrices for random effect terms (helps with GH#995)
       \item experimental implementation of Kenward-Roger and
       Satterthwaite denominator-degree-of-freedom approximations
     }
@@ -18,9 +65,11 @@
     \itemize{
       \item improved formatting of random effects standard
       deviations/variances/correlation matrices
+      \item mismatches in contrasts between original data and prediction
+      data now throw a warning rather than an error (related to GH #1197)
     }
   } % user-visible changes
-} % 1.1.11.9000 (devel)
+} % 1.1.12
 
 \section{CHANGES IN VERSION 1.1.11 (2025-04-02)}{
   \subsection{NEW FEATURES}{

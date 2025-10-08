@@ -67,11 +67,13 @@ ctab <- read.delim(sep = "#", comment = "",
  Covariance                       # Notation      # no. parameters # Requirement  # Parameters
  Unstructured (general positive definite)      # `us`          #  $n(n+1)/2$     # # See [Mappings]
  Heterogeneous Toeplitz           # `toep`        #  $2n-1$         #     # log-standard deviations ($\\theta_1-\\theta_n$); correlations $\\rho_k = \\theta_{n+k}/\\sqrt{1+\\theta_{n+k}^2}$, $k = \\textrm{abs}(i-j+1)$
+ Homogeneous Toeplitz           # `homtoep`        #  $n$         #     # log-SD ($\\theta_1$); correlations $\\rho_k = \\theta_{k+1}/\\sqrt{1+\\theta_{k+1}^2}$, $k = \\textrm{abs}(i-j+1)$
  Het. compound symmetry  # `cs`          #  $n+1$    #      # log-SDs ($\\theta_1-\\theta_n$); correlation $\\{a=1/(n-1); \\rho = \\textrm{plogis}(\\theta_{n+1}) \\cdot (1+a) -a \\}$
  Homogeneous compound symmetry  # `homcs`          #  $2$    #      # log-SD ($\\theta_1$); correlation $\\{a=1/(n-1); \\rho = \\textrm{plogis}(\\theta_{2}) \\cdot (1+a) -a \\}$
  Homogenous diagonal     # `homdiag`     #  $1$      #  # log-SD
  Het. diagonal           # `diag`        #  $n$            #  # log-SDs
  AR(1)                            # `ar1`         #  $2$            # Unit spaced levels # log-SD; $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
+ Het. AR(1)                       # `hetar1`      #  $n + 1$        # Unit spaced levels # log-SDs ($\\theta_1-\\theta_n$); $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
  Ornstein-Uhlenbeck               # `ou`          #  $2$            # Coordinates  # log-SD; log-OU rate ($\\rho = \\exp(-\\exp(\\theta_2) d_{ij})$)
  Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
  Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
@@ -84,7 +86,7 @@ knitr::kable(ctab)
 ```
 The word 'heterogeneous' refers to the marginal variances of the model; $\textrm{plogis}(x) = (1+\exp(-x))^{-1}$
 
-Homogenous versions of some structures (e.g. Toeplitz, compound symmetric) can be implemented by using the `map` argument to set all log-SD parameters equal to each other.
+Homogenous versions of some structures (e.g. compound symmetric) can be implemented by using the `map` argument to set all log-SD parameters equal to each other.
 
 Some of the structures require temporal or spatial coordinates. We
 will show examples in a later section.
@@ -244,8 +246,7 @@ effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \tex
 
 The next natural step would be to reduce the number of parameters by
 collecting correlation parameters within the same off-diagonal. This
-amounts to `r (n-1)` correlation parameters and `r n` variance
-parameters.
+amounts to `r (n-1)` correlation parameters. For the heterogeneous version `r n` variance parameters are used, while just a single variance parameter is estimated for the homogeneous version.
 
 We use `dispformula = ~0` to suppress the residual variance (it actually
 gets set to a small value controlled by the `zerodisp_val` argument of `glmmTMBControl()`)^[Why do we do this? Consider the slightly simplified case of a *homogeneous* Toeplitz structure where all of the variance parameters are identical. The diagonal elements of the covariance matrix are equal to $\sigma_t^2$, the off-diagonals to $\sigma_t^2 \cdot \rho(|i-j|)$. If we add a residual variance to the model then the diagonal of the combined covariance matrix becomes $\sigma_t^2 + \sigma_r^2$ and the off-diagonals become $(\sigma_t^2 + \sigma_r^2) \rho(|i-j|)$. However, by reparameterizing the Toeplitz model to $\{{\sigma_t^2}' = \sigma_t^2 + \sigma_r^2, \rho'(|i-j|) = \rho(|i-j|) \cdot \frac{\sigma_t^2}{\sigma_t^2 + \sigma_r^2}\}$ --- that is, by inflating the variance and deflating the correlation parameters --- we can get back to an equivalent Toeplitz model. This implies that the residual variance and the Toeplitz covariance parameters are jointly unidentifiable, which is likely to make problems for the fitting procedure.]

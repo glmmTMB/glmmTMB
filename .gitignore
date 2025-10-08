@@ -1,6 +1,8 @@
+*.Rproj
 .Rproj.user
 .Rhistory
 .RData
+.vscode
 *.o
 *.so
 *.dll
@@ -41,3 +43,4 @@ glmmTMB/.gitsum
 *.tgz
 *.zip
 *.dll
+air.toml
