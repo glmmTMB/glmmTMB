@@ -326,8 +326,8 @@ dof_KR <- function(model) {
 #' @rdname dof_KR
 #' 
 #' @export
-#' @param L a  by default, equal to an identity matrix (i.e., ddfs are returned
-#' for each fixed-effect parameter
+#' @param L a contrast matrix: by default, equal to an identity matrix (i.e., ddfs are returned
+#' for each fixed-effect parameter)
 dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     model_vcov <- vcov(model, full = TRUE)
 

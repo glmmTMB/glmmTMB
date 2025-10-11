@@ -12,8 +12,8 @@ dof_satt(model, L = diag(length(fixef(model)$cond)))
 \arguments{
 \item{model}{a fitted \code{glmmTMB} object}
 
-\item{L}{a  by default, equal to an identity matrix (i.e., ddfs are returned
-for each fixed-effect parameter}
+\item{L}{a contrast matrix: by default, equal to an identity matrix (i.e., ddfs are returned
+for each fixed-effect parameter)}
 }
 \value{
 a named vector of ddf for each conditional fixed-effect parameter; \code{dof_KR} includes attributes 'vcov'
