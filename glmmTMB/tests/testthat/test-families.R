@@ -587,7 +587,7 @@ test_that("error message for ziGamma with zeros",
   dd <- data.frame(y = c(1,0))
   expect_error(glmmTMB(y ~ 1, data = dd, family = ziGamma(link = "log")),
                "unless `ziformula`")
-  g <- glmmTMB(y ~ 1, data = dd, family = ziGamma(link = "log"),
-          ziformula = ~1)
+  expect_warning(g <- glmmTMB(y ~ 1, data = dd, family = ziGamma(link = "log"),
+          ziformula = ~1))
   expect_is(g, "glmmTMB")
 })
