@@ -454,7 +454,7 @@ ziGamma <- function(link="inverse") {
         if (exists("ziformula") && !ident(ziformula, ~0)) {
             if (any(y < 0)) stop("negative values not allowed for the 'Gamma' family with zero-inflation")
             } else {
-                if (any(y <= 0)) stop("non-positive values not allowed for the 'Gamma' family")
+                if (any(y <= 0)) stop("zero values not allowed for the 'ziGamma' family unless `ziformula` is specified [and not ~0]")
             }
             n <- rep.int(1, nobs)
             mustart <- y
