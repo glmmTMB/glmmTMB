@@ -10,6 +10,14 @@
 ##   *  -DTMBAD_INDEX_TYPE=uint64_t
 ##   *  NO OPENMP !
 
+## NOTES: this works, more or less, but for some reason the memory requirements
+##  explode when we try it with a reduced-rank [ ... + rr(something) ...] model
+##
+## more tests on memory usage etc. can be found in misc/: see misc/memusg_master.R, misc/glmmTMB_mem.R
+## (haven't looked at these in a long time! They use the `memprof` package to evaluate scaling etc.
+## of memory requirements ...
+
+
 ######################################################################
 ## A simple standalone RTMB example
 ######################################################################
