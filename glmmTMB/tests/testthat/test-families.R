@@ -204,7 +204,7 @@ test_that("dbetabinom", {
     m2 <- glmmTMB(cbind(y, N-y) ~ x + (1|f),
                   family=betabinomial(),
                   data=dd)
-    expect_identical(m1$fit, m2$fit)
+    expect_identical(c(m1$fit), c(m2$fit)) ## drop time attribute
     ## Rolf Turner example:
     X <- readRDS(system.file("test_data","turner_bb.rds",package="glmmTMB"))
     fmla <- cbind(Dead, Alive) ~ (Trt + 0)/Dose + (Dose | Rep)

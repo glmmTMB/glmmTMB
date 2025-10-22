@@ -393,20 +393,27 @@ df.residual.glmmTMB <- function(object, ...) {
 ##' @param object a \dQuote{glmmTMB} fit
 ##' @param full return a full variance-covariance matrix?
 ##' @param include_nonest include variables that are mapped \emph{or} dropped due to rank-deficiency? (these will be given variances and covariances of NA)
+##' @param sandwich use the sandwich estimator for the variance-covariance matrix? (this only works for ML fits, but not for REML fits)
+##' @param cluster grouping factor for the sandwich estimator, only used if \code{sandwich==TRUE}.
 ##' @param \dots ignored, for method compatibility
 ##' @return By default (\code{full==FALSE}), a list of separate variance-covariance matrices for each model component (conditional, zero-inflation, dispersion).  If \code{full==TRUE}, a single square variance-covariance matrix for \emph{all} top-level model parameters (conditional, dispersion, and variance-covariance parameters)
 ##' @importFrom TMB MakeADFun sdreport
 ##' @importFrom stats vcov
 ##' @importFrom utils combn
 ##' @export
-vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
+vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE, 
+                         sandwich = FALSE, cluster = getGroups(object), ...) {
   check_dots(..., .ignore = "complete")
   REML <- isREML(object)
+  stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
   if(is.null(sdr <- object$sdr)) {
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
   }
   if (REML) {
+      if (sandwich) {
+        stop("sandwich estimator is not available for REML fits")
+      }
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
@@ -421,7 +428,11 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
                                   dimnames = dimnames(Qm))
       }
   } else {
-      cov.all.parms <- sdr$cov.fixed
+      cov.all.parms <- if (sandwich) {
+        sandwich(object, full = TRUE, cluster = cluster, rawnames = TRUE)
+      } else {
+        sdr$cov.fixed
+      }
   }
   keepTag <- if (full) { "."
              } else if (!trivialDisp(object)) { "beta*"
@@ -527,7 +538,7 @@ vcov.glmmTMB <- function(object, full=FALSE, include_nonest = TRUE,  ...) {
                                          include_dropped = FALSE, include_mapequal = TRUE)
 
               nms <- estNameList[[cnm]]
-              mm[nms, nms] <- m
+              if (length(m)>0) mm[nms, nms] <- m
               m <- mm
           }
           covList[[i]] <- m
@@ -697,8 +708,7 @@ print.glmmTMB <-
   ## Type Of Model fit --- REML? ---['class']  & Family & Call
   .prt.call.glmmTMB(x$call, long=longCall)
   ## the 'digits' argument should have an action here
-  aictab <- c(AIC = AIC(x), BIC = BIC(x), logLik = logLik(x),
-              df.resid = df.residual(x))
+  aictab <- llikAIC(x)$AICtab
   .prt.aictab(aictab, digits=digits+1)
   ## varcorr
   if (!all(sapply(vc <- VarCorr(x),is.null))) {
@@ -1130,7 +1140,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
         ## FIXME: better to have more robust ordering
-        for (component in c("cond", "zi") ) {
+        for (component in c("cond", "zi", "disp") ) {
             if (components.has(component) &&
                 length(ranef(object)[[component]])>0) {
                 ci <- rbind(ci, wald_ci_comp(component))
@@ -1272,8 +1282,8 @@ sort_termlabs <- function(labs) {
 
 ## see whether mod1, mod2 are appropriate for Likelihood ratio testing
 CompareFixef <- function (mod1, mod2, component="cond") {
-     mr1 <- mod1$modelInfo$REML
-     mr2 <- mod2$modelInfo$REML
+     mr1 <- isREML(mod1)
+     mr2 <- isREML(mod2)
      if (mr1 != mr2) {
         stop("Can't compare REML and ML fits", call.=FALSE)
      }
@@ -1763,4 +1773,339 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
     resid <- qnorm(runif(length(yobs), min = a, max = b))
     resid[is.infinite(resid) | is.nan(resid) ]  <- 0
     resid
+}
+
+#' Extract Grouping Factors from an Object
+#' 
+#' This (simplified) method for \code{\link[nlme]{getGroups}} extracts the grouping factor
+#' for a specified level of the random effects structure in a \code{glmmTMB} object.
+#' 
+#' @param object a fitted \code{glmmTMB} object.
+#' @param form ignored (included for compatibility).
+#' @param level integer indicating the level of the random effects structure to extract, 
+#'   defaults to 1 if missing.
+#' @param data ignored (included for compatibility).
+#' @param sep ignored (included for compatibility).
+#' @param ... additional arguments (not used).
+#' @return A factor representing the grouping structure at the specified level,
+#'   with a \code{group} attribute indicating the name of the grouping factor.
+#' 
+#' @importFrom nlme getGroups
+#' @export getGroups
+#' @aliases getGroups
+#' @export
+#' 
+#' @examples
+#' model <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' getGroups(model)
+getGroups.glmmTMB <- function(object, form = formula(object), level, data, sep = "/", ...) {
+    if (missing(level)) {
+        level <- 1L
+    }
+    flist <- object$modelInfo$reTrms$cond$flist
+    n_flist <- length(flist)
+    if (level > n_flist) {
+        stop("level cannot be greater than number of random effect groups (", n_flist, ")")
+    }
+    names_flist <- names(flist)
+    structure(
+        flist[[level]],
+        group = names_flist[level]
+    )
+}
+
+#' Bread Matrix for Sandwich Estimator
+#' 
+#' This method for \code{\link[sandwich]{bread}} returns the variance-covariance
+#' matrix (bread) for a fitted \code{glmmTMB} model.
+#' 
+#' @param x a fitted \code{glmmTMB} object.
+#' @inheritParams vcov.glmmTMB
+#' @param rawnames logical; if \code{TRUE}, return the raw names of the parameters as in the \code{TMB} object.
+#'   By default, \code{FALSE} such that the names are sanitized to user friendly names.
+#' @param ... ignored additional arguments (only for methods compatibility).
+#' 
+#' @return The bread matrix, which is just the variance-covariance matrix.
+#' 
+#' @importFrom sandwich bread
+#' @export bread
+#' @aliases bread
+#' @export
+#'
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' bread(m)
+#' bread(m, full = TRUE)
+bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
+    check_dots(..., .ignore = "complete")
+
+    stopifnot(is.logical(full) && length(full) == 1L)
+    stopifnot(is.logical(rawnames) && length(rawnames) == 1L)
+    
+    res <- vcov(x, full = full)
+    if (full) {
+        parnames <- if (rawnames) names(x$fit$par) else unname(rownames(res))
+        rownames(res) <- colnames(res) <- parnames
+        res
+    } else {
+        res_cond <- res$cond
+        if (rawnames) rownames(res_cond) <- colnames(res_cond) <- rep("beta", nrow(res_cond))
+        res_cond
+    }
+}
+
+#' Extract Empirical Estimating Functions
+#' 
+#' This method for \code{\link[sandwich]{estfun}} extracts the
+#' clusterwise score vectors (empirical estimating functions)
+#' from a fitted \code{glmmTMB} model.
+#' 
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
+#' @param full logical; if \code{TRUE}, return the full score vectors including random effects,
+#'   otherwise only the fixed effects part.
+#' @param cluster a factor indicating the cluster structure of the data.
+#' @param rawnames logical; if \code{TRUE}, return the raw names of the parameters as in the \code{TMB} object.
+#'   By default, \code{FALSE} such that the names are sanitized to user friendly names.
+#' @param ... additional arguments (ignored).
+#' @return A matrix where each row corresponds to a cluster and each column
+#'   corresponds to a parameter in the model. The values are the empirical estimating functions
+#'  (score vectors) for each parameter in each cluster.
+#' 
+#' @note If crossed random effects are used in the model, this function will not correctly 
+#'   calculate the score vectors in general, and warnings will be issued. In general,
+#'   this function should be used with models with a single level of random effects
+#'   or nested random effects only.
+#' 
+#' @importFrom sandwich estfun
+#' @export estfun
+#' @aliases estfun
+#' @export
+#' 
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' estfun(m)
+#' estfun(m, full = TRUE)
+estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...) {
+    check_dots(..., .ignore = "complete")
+
+    stopifnot(!isREML(x))
+    stopifnot(is.logical(full) && length(full) == 1L)
+    stopifnot(is.factor(cluster) && !any(is.na(cluster)) && length(cluster) == nobs(x))
+    stopifnot(is.logical(rawnames) && length(rawnames) == 1L)
+    
+    # Save original weights, negative log-likelihood
+    # and gradient.
+    original_weights <- x$obj$env$data$weights
+    original_neg_log_lik <- x$obj$fn(x$fit$par)
+
+    # Prepare zero weights vector for below.
+    zero_weights <- rep(0, stats::nobs(x))
+
+    # Make sure that we will restore the weights
+    # at exit of this function.
+    on.exit({
+        # Reset the weights to the original values.
+        x$obj$env$data$weights <- original_weights
+        # Retape the TMB object to apply the changes.
+        x$obj$retape(set.defaults = FALSE)
+    })
+
+    # Obtain results across all clusters.
+    cluster_results <- lapply(levels(cluster), function(this_cluster) {
+        # Which observations belong to this cluster?
+        belongs_cluster <- cluster == this_cluster
+
+        # Define new weights.
+        new_weights <- ifelse(belongs_cluster, original_weights, zero_weights)    
+
+        # Modify the weights in the TMB object.
+        x$obj$env$data$weights <- new_weights
+
+        # Retape the TMB object to apply the changes.
+        x$obj$retape(set.defaults = FALSE)
+
+        # Compute the negative log-likelihood and the gradient for this cluster.
+        neg_log_lik <- x$obj$fn(x$fit$par)
+        gradient <- x$obj$gr(x$fit$par)
+
+        list(
+            neg_log_lik = neg_log_lik, 
+            gradient = gradient
+        )
+    })
+    
+    # Check that the sum of the negative log-likelihoods is equal to the
+    # original negative log-likelihood of the whole model.
+    sum_neg_log_lik <- sum(sapply(cluster_results, `[[`, "neg_log_lik"))
+    compare_neg_log_lik <- all.equal(sum_neg_log_lik, original_neg_log_lik, check.attributes = FALSE, tolerance = 1e-6)
+    
+    if (!isTRUE(compare_neg_log_lik)) {
+        warning(
+            "The sum of the negative log-likelihoods of the clusters ", signif(sum_neg_log_lik), 
+            " does not match the joint negative log-likelihood of the whole model ", signif(original_neg_log_lik),
+            ", please check whether the random effects are indeed nested."
+        )
+    }
+
+    # Calculate score vectors.
+    gradient_matrix <- do.call(rbind, lapply(cluster_results, `[[`, "gradient"))
+    cluster_score_vectors <- - gradient_matrix
+
+    # Assign names: clusters for the rows, parameters for the columns.
+    rownames(cluster_score_vectors) <- levels(cluster)
+    par_names <- if (rawnames) {
+        names(x$fit$par)
+    } else {
+        unlist(getParnames(object = x, full = TRUE), use.names = FALSE)
+    }
+    colnames(cluster_score_vectors) <- par_names
+    
+    # If we don't want the full score vectors,
+    # only keep the fixed effects part.
+    if (!full) {
+        beta_inds <- which(names(x$fit$par) == "beta")
+        cluster_score_vectors <- cluster_score_vectors[, beta_inds, drop = FALSE]
+    }
+    cluster_score_vectors
+}
+
+#' Simple Cluster Based Meat Matrix Estimator
+#' 
+#' This (simplified) method for a new S3 generic based on \code{\link[sandwich]{meatHC}} computes 
+#' the meat matrix for a fitted \code{glmmTMB} model, which is the cross-product of the cluster-wise 
+#' score vectors (empirical estimating functions) extracted by \code{\link[sandwich]{estfun}}.
+#' 
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
+#' @param ... additional arguments passed to \code{\link[sandwich]{estfun}}, in particular
+#'   \code{full}, \code{cluster} and \code{rawnames} arguments.
+#' @return A square matrix where each element represents the cross-product of the score vectors
+#'  for the parameters in the model. The rows and columns are named according to the parameter names.
+#' 
+#' @note This meat matrix is not scaled by the number of clusters.
+#' @export
+meatHC <- function(x, ...) {
+    UseMethod("meatHC")
+}
+
+#' @export
+#' @rdname meatHC
+meatHC.default <- function(x, ...) {
+    sandwich::meatHC(x, ...)
+}
+
+#' @export
+#' @examples
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' meatHC(m)
+#' meatHC(m, full = TRUE)
+#' @rdname meatHC
+meatHC.glmmTMB <- function(x, ...) {
+    score_vectors <- estfun(x, ...)
+    res <- crossprod(score_vectors)
+    rownames(res) <- colnames(res) <- colnames(score_vectors)
+    res
+}
+
+#' Sandwich Estimator based on Bread and Meat Matrices
+#' 
+#' This (simplified) method for a new S3 generic based on \code{\link[sandwich]{sandwich}} 
+#' computes the sandwich estimator for a fitted \code{glmmTMB} model.
+#' 
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
+#' @param full logical; if \code{TRUE}, return the full sandwich matrix including variance components,
+#'  otherwise only the fixed effects part (if the model was fit with ML).
+#' @param cluster a factor indicating the cluster structure of the data.
+#' @param rawnames logical; if \code{TRUE}, keep the original names of the parameters as in the 
+#'  \code{TMB} object. By default, \code{FALSE} such that the names are sanitized to user friendly names.
+#' @param ... ignored by the \code{glmmTMB} method.
+#' @return A square matrix representing the sandwich estimator.
+#' 
+#' @export
+#' @rdname sandwich
+sandwich <- function(x, ...) {
+    UseMethod("sandwich")
+}
+
+#' @export
+#' @rdname sandwich
+sandwich.default <- function(x, ...) {
+    sandwich::sandwich(x, ...)
+}
+
+#' @export
+#' @rdname sandwich
+#' @examples 
+#' m <- glmmTMB(count ~ mined + (1 | site), data = Salamanders, family = nbinom1)
+#' sandwich(m)
+#' sandwich(m, full = TRUE)
+sandwich.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = FALSE, ...) {
+    check_dots(..., .ignore = "complete")
+
+    stopifnot(is.logical(full) && length(full) == 1L)
+    stopifnot(is.logical(rawnames) && length(rawnames) == 1L)
+
+    # Note that we always start from the full sandwich, and then subset
+    # below if we don't want the full sandwich.
+    bread_matrix <- bread(x, full = TRUE, rawnames = rawnames, ...)
+    meat_matrix <- meatHC(x, full = TRUE, cluster = cluster, rawnames = rawnames, ...)
+    res <- bread_matrix %*% meat_matrix %*% bread_matrix
+
+    if (!full) {
+        # If we don't want the full sandwich, only keep the fixed effects part.
+        beta_inds <- which(names(x$fit$par) == "beta")
+        res <- res[beta_inds, beta_inds, drop = FALSE]
+    }
+
+    res
+}
+
+#' Cluster Robust Variance-Covariance Matrix Estimator
+#' 
+#' This method for \code{\link[sandwich]{vcovHC}} computes the cluster-robust 
+#' variance-covariance matrix for a \code{glmmTMB} model fitted with ML.
+#' 
+#' @details The sandwich estimator is computed as \code{B * M * B} where
+#'   \code{B} is the bread matrix and \code{M} is the meat matrix.
+#'   The bread matrix is just the usual inverse Hessian obtained by
+#'   \code{vcov()}. The meat matrix is calculated as the sum of the cluster-wise
+#'   score vector cross-products.
+#' 
+#' @param x a \code{glmmTMB} object fitted with ML (REML is not supported).
+#' @param type only "HC0" is currently supported for \code{glmmTMB} models.
+#' @param sandwich logical; if \code{TRUE}, return the sandwich estimator,
+#'   otherwise only the meat matrix is returned.
+#' @param ... additional arguments passed to \code{\link{meatHC}} and
+#'   \code{\link{sandwich}}, in particular the \code{full} and \code{cluster} arguments are useful.
+#' @return A square matrix representing the cluster-robust variance-covariance matrix.
+#' 
+#' @importFrom sandwich vcovHC
+#' @export vcovHC
+#' @aliases vcovHC
+#' @export
+#'
+#' @examples
+#' m <- glmmTMB(count ~ mined + (1 | spp), data = Salamanders, family = nbinom1)
+#' 
+#' # Standard variance-covariance matrix:
+#' vcov(m)$cond
+#' 
+#' # Cluster-robust variance-covariance matrix:
+#' vcovHC(m)
+#' 
+#' # Include the variance parameters:
+#' vcovHC(m, full = TRUE)
+#' 
+#' # This can be compared with:
+#' vcov(m, full = TRUE)
+#' 
+#' # Only look at the meat part:
+#' vcovHC(m, sandwich = FALSE)
+vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
+    type <- match.arg(type)
+    stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
+    if (sandwich) {
+        sandwich(x, ...)
+    } else {
+        meatHC(x, ...)
+    }
 }

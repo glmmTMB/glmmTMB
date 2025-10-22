@@ -34,7 +34,7 @@ jobs:
 #      - name: textshaping dependencies for MacOS
 # for some reason we insist on installing newer version of textshaping from source, so we need these ...
 #        run: brew install harfbuzz fribidi
-      - name: textshaping dependencies for LInux
+      - name: textshaping dependencies for Linux
         run: |
           sudo apt-get update
           sudo apt-get -y install libcurl4-openssl-dev libharfbuzz-dev libfribidi-dev

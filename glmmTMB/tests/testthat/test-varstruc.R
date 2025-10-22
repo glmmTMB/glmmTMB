@@ -35,11 +35,10 @@ test_that("cs_homog", {
 })
 
 test_that("basic ar1", {
+    ## base fm_ar1 does include corr matrix
     vv <- VarCorr(fm_ar1)[["cond"]]
-    cc <- cov2cor(vv[[2]])
-    expect_equal(cc[1,],cc[,1])
-    expect_equal(unname(cc[1,]),
-                 cc[1,2]^(0:(nrow(cc)-1)))
+    expect_equal(attr(vv[[2]], "correlation")[2,1], 0.87299, tolerance = 1e-5)
+    ## also need to test 
 })
 
 ## change to something better behaved
@@ -62,14 +61,21 @@ test_that("print ar1 (>1 RE)", {
                    "Residual 8.1 2.8"))
 })
 
-test_that("ar1 requires factor time", {
+test_that("ar1 and hetar1 require factor time", {
   skip_on_cran()
     expect_error(glmmTMB(Reaction ~ 1 +
                              (1|Subject) + ar1(as.numeric(row)+0| Subject), fsleepstudy),
                  "expects a single")
+    expect_error(glmmTMB(Reaction ~ 1 +
+                             (1|Subject) + hetar1(as.numeric(row)+0| Subject), fsleepstudy),
+                 "expects a single")
     ## works even when the factor is a weird/hard-to-recognize component
     expect_is(glmmTMB(Reaction ~ 1 +
                           (1|Subject) + ar1(relevel(factor(row),"2")+0| Subject),
+                      fsleepstudy),
+              "glmmTMB")
+    expect_is(glmmTMB(Reaction ~ 1 +
+                          (1|Subject) + hetar1(relevel(fDays,"[6,10)")+0| Subject),
                       fsleepstudy),
               "glmmTMB")
 })
@@ -152,15 +158,22 @@ test_that("hom vs het diag", {
 
 })
 
-test_that("het ar1", {
+test_that("basic hetar1", {
     skip_on_cran()
-    sleepstudy$Days <- factor(sleepstudy$Days)
-    sleepstudy$y <- simulate_new(~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                      newdata=sleepstudy,
-                      newparams = list(beta=0, betadisp = 1, theta = rep(1, 12)),
-                                       family = gaussian,
-                      seed = 101)[[1]]
-    suppressWarnings(fit1  <-  glmmTMB(y ~ 1 + (1|Subject) + hetar1(Days+0| Subject),
-                                       data=sleepstudy))
-    VarCorr(fit1)
+    vv <- VarCorr(fm_hetar1)[["cond"]]
+    expect_equal(attr(vv[[1]], "correlation")[2,1], 0.8861108, tolerance = 1e-5)
+    expect_equal(
+      attr(vv[[1]], "stddev"),
+      c(
+        fDays1 = 3.41933, fDays2 = 3.26796, fDays3 = 3.46971, fDays4 = 3.51311, 
+        fDays5 = 3.64887, fDays6 = 3.6512, fDays7 = 3.80629, fDays8 = 3.74593,
+        fDays9 = 3.80094, fDays10 = 3.54704
+      ),
+      tolerance = 1e-3
+    )
+    expect_equal(
+      fixef(fm_hetar1)$cond,
+      c("(Intercept)" = -0.4591782),
+      tolerance = 1e-5
+    )
 })

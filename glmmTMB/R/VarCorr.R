@@ -77,7 +77,7 @@ getParList <- function(object) {
 ##' @param \dots (ignored; for method compatibility)
 ## Import generic and re-export
 ## note the following line is hacked in Makefile/namespace-update to ...
-## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigm
+## if(getRversion()>='3.3.0') importFrom(stats, sigma) else importFrom(lme4,sigma)
 ## also see <https://github.com/klutometis/roxygen/issues/371>
 ##' @rawNamespace if(getRversion()>='3.3.0') { importFrom(stats, sigma) } else { importFrom(lme4,sigma) }
 ##  n.b. REQUIRES roxygen2 >= 5.0
@@ -95,12 +95,18 @@ sigma.glmmTMB <- function(object, ...) {
            exp(pl$betadisp))
 }
 
-
-mkVC <- function(cor, sd, cnms, sc, useSc) {
+##' @noRd
+##' @param cor list of correlation matrices/structures
+##' @param sd list of sd vectors
+##' @param cnms vector of term names
+##' @param sc scale parameter (sigma)
+##' @param bc vector of block codes
+##' @param useSc use scale parameter?
+mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
     stopifnot(length(cnms) == (nc <- length(cor)),  nc == length(sd),
               is.list(cnms), is.list(cor), is.list(sd),
               is.character(nnms <- names(cnms)), nzchar(nnms))
-    ##
+
     ## FIXME: do we want this?  Maybe not.
     ## Potential problem: the names of the elements of the VarCorr() list
     ##  are not necessarily unique (e.g. fm2 from example("lmer") has *two*
@@ -114,16 +120,37 @@ mkVC <- function(cor, sd, cnms, sc, useSc) {
     do1cov <- function(sd, cor, n = length(sd)) {
         sd * cor * rep(sd, each = n)
     }
-    docov <- function(sd,cor,nm) {
-        ## diagonal model:
+    docov <- function(sd, cor, nm, bc) {
+        maxdim <- max(length(sd), nrow(cor))
+        ## extend sd if necessary
+        if (length(sd)==1 && maxdim > 1) {
+            sd <- rep(sd, maxdim)
+        }
+        ## truncate names if necessary
+        if (length(nm) > maxdim) {
+            nm <- nm[seq(maxdim)]
+        }
+        ## what do we do with models without fully filled in cor structures?
+        ## (diag, ar1, cs, ...)
         diagmodel <- identical(dim(cor),c(0L,0L))
         if (diagmodel) cor <- diag(length(sd))
-        cov <- do1cov(sd, cor)
-        names(sd) <- nm
-        dimnames(cov) <- dimnames(cor) <- list(nm,nm)
-        structure(cov,stddev=sd,correlation=cor)
+        cov <- matrix(numeric(0))
+        if (identical(c(cor), NaN)) {
+            cov <- NA
+        } else {
+            if (length(sd) == 1 || length(sd) == nrow(cor)) {
+                cov <- do1cov(sd, cor)
+            }
+        }
+        ## may not want full names (e.g. ou/ar1 models)
+        names(sd) <- nm[seq_along(sd)]
+        ## skip naming if null cov/cor matrix
+        if (!identical(cov, NA) && !is.null(cov) && nrow(cov) > 0) {
+            dimnames(cov) <- dimnames(cor) <- list(nm,nm)
+        }
+        structure(cov, stddev=sd, correlation=cor)
     }
-    ss <- setNames(mapply(docov,sd,cor,cnms,SIMPLIFY=FALSE),nnms)
+    ss <- setNames(mapply(docov, sd, cor, cnms, bc, SIMPLIFY=FALSE),nnms)
     ## ONLY first element -- otherwise breaks formatVC
     ## FIXME: do we want a message/warning here, or elsewhere,
     ##   when the 'Residual' var parameters are truncated?
@@ -175,37 +202,37 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
     reS <- x$modelInfo$reStruc
     familyStr <- family(x)$family
     useSc <- if (missing(sigma)) {
-        ## *only* report residual variance for Gaussian family ...
-        ## *not* usesDispersion(familyStr)
-        sigma <- sigma(x)
-        familyStr=="gaussian" && !zeroDisp(x)
-    } else TRUE
-    vc.cond <- vc.zi <- vc.disp <- NULL
-    ## FIXME: repeat less
-    if(length(cn <- reT$cond$cnms)) {
-        vc.cond <- mkVC(cor = xrep$corr,  sd = xrep$sd,   cnms = cn,
-                        sc = sigma, useSc = useSc)
-        for (i in seq_along(vc.cond)) {
-            attr(vc.cond[[i]],"blockCode") <- reS$condReStruc[[i]]$blockCode
+                 ## *only* report residual variance for Gaussian family ...
+                 ## *not* usesDispersion(familyStr)
+                 sigma <- sigma(x)
+                 familyStr=="gaussian" && !zeroDisp(x)
+             } else TRUE
+    comp_nms <- c("", "zi", "disp")
+    comp_nms2 <- c("cond", "zi", "disp")
+    corr_list <- vector(mode="list", length=length(comp_nms2))
+    names(corr_list) <- comp_nms2
+
+    for (i in seq_along(comp_nms)) {
+        restruc <- reS[[paste0(comp_nms2[i],  "ReStruc")]]
+        ## lapply() rather than [vs]apply, don't want to lose names
+        bcvec <- lapply(restruc, function(x) x[["blockCode"]])
+        if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
+            vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
+                       sd  = xrep[[paste0("sd", comp_nms[i])]],
+                       cnms = cn,
+                       sc = sigma,
+                       bc = bcvec,
+                       useSc = useSc)
+            for (j in seq_along(vc)) {
+                attr(vc[[j]],"blockCode") <- bcvec[[j]]
+                class(vc[[j]]) <- c(paste0("vcmat_", names(bcvec[[j]])), class(vc[[j]]))
+            }
+            corr_list[[comp_nms2[[i]]]] <- vc
         }
     }
-    if(length(cn <- reT$zi$cnms)) {
-        vc.zi <- mkVC(cor = xrep$corrzi, sd = xrep$sdzi, cnms = cn,
-                        sc = sigma, useSc = useSc)
-        for (i in seq_along(vc.zi)) {
-            attr(vc.zi[[i]],"blockCode") <- reS$ziReStruc[[i]]$blockCode
-        }
-    }
-    if(length(cn <- reT$disp$cnms)) {
-    	vc.disp <- mkVC(cor = xrep$corrdisp, sd = xrep$sddisp, cnms = cn,
-    								sc = sigma, useSc = useSc)
-    	for (i in seq_along(vc.disp)) {
-    		attr(vc.disp,"blockCode") <- reS$dispReStruc[[i]]$blockCode
-    	}
-    }
-    structure(list(cond = vc.cond, zi = vc.zi, disp = vc.disp),
+    structure(corr_list,
 	      sc = usesDispersion(familyStr), ## 'useScale'
-	      class = "VarCorr.glmmTMB")
+	      class = c("VarCorr.glmmTMB"))
 }
 
 ##' Printing The Variance and Correlation Parameters of a \code{glmmTMB}
@@ -230,31 +257,117 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
     invisible(x)
 }
 
-    formatCor <- function(x,maxlen=0, digits) {
-        ## x: correlation matrix
-        ## maxlen: max number of RE std devs per term;
-        ##         really a *minimum* length here! pad to (maxlen)
-        ##         columns as necessary
-        x <- as(x, "matrix")
-        dig <- max(2, digits - 2) # use 'digits' !
-        ## n.b. not using formatter() for correlations
-        cc <- format(round(x, dig), nsmall = dig)
-        cc[!lower.tri(cc)] <- ""  ## empty lower triangle
-        nr <- nrow(cc)
-        if (nr < maxlen) {
-            cc <- cbind(cc, matrix("", nr, maxlen-nr))
-        }
-        return(cc)
-    }
+##' format columns corresponding to std. dev. and/or variance
+##' @param reStdDev a vector of standard deviations
+##' @param use.c a character vector indicating which scales to include
+##' @param digits number of significant digits
+##' @param formatter formatting function
+##' @param ... additional arguments to formatter
+##' @examples
+##' invisible(gt_load("test_data/models.rda"))
+##' format_sdvar(reStdDev = 1:3, use.c = c("Variance", "Std.Dev."))
+##' format_sdvar(attr(VarCorr(fm1)$cond$Subject, "stddev"))
+##' @export
+## FIXME: avoid repeating defaults
+format_sdvar <- function(reStdDev, use.c = "Std.Dev.", formatter=format,
+                         digits = max(3, getOption("digits") - 2), ...) {
+    res <- list()
+    if("Variance" %in% use.c)
+        res <- c(res,
+                 list(Variance = formatter(unlist(reStdDev)^2, digits = digits, ...)))
+    if("Std.Dev." %in% use.c)
+        res <- c(res, list(`Std.Dev.`=formatter(unlist(reStdDev),   digits = digits, ...)))
+    mat <- do.call(cbind, res)
+    colnames(mat) <- names(res)
+    rownm <- names(res[[1]])  %||% ""
+    mat <- cbind(Name = rownm, mat)
+    rownames(mat) <- NULL
+    return(mat)
+}
 
-## original from lme4
-## had to be extended/modified to deal with glmmTMB special cases
+
+##' @rdname format_sdvar
+##' @param x a square numeric matrix
+##' @param maxdim maximum number of rows/columns to display
+##' @param digits digits for format
+##' @param maxlen maximum number of rows to display
+##' @param ... additional parameters
+## FIXME: avoid repeating defaults
+##' @export
+format_corr <- function(x, maxdim=Inf, digits=2, maxlen = 10, ...) {
+    UseMethod("format_corr")
+}
+
+##' @rdname format_sdvar
+##' @export
+get_sd <- function(x, ...) {
+    UseMethod("get_sd")
+}
+
+##' @export
+get_sd.default <- function(x, ...) {
+    attr(x, "stddev")
+}
+
+##' @export
+get_sd.vcmat_ar1 <- function(x, ...) {
+    attr(x, "stddev")[1]
+}
+
+##' @export
+format_corr.default <- function(x, maxdim = Inf, digits=2, ...) {
+    if (length(x)==0) return("")
+    x <- attr(x, "correlation")
+    x <- as(x, "matrix")
+    extra_rows <- (nrow(x) > maxdim)
+    newdim <- min(maxdim, nrow(x))
+    if (identical(c(x), NaN)) {
+        cc <- matrix("(not stored)")
+    } else {
+        cc <- format(round(x, digits), nsmall = digits)
+        cc[upper.tri(cc, diag = TRUE)] <- ""  ## empty upper triangle
+        if (extra_rows) cc <- rbind(cc, "...")
+    }
+    cc
+}
+
+#' @export
+format_corr.vcmat_diag <- function(x, maxdim = Inf, digits=2, ...) {
+    ## empty correlation
+    return(matrix(""))
+}
+
+#' @export
+format_corr.vcmat_ar1 <- function(x, maxdim = Inf, digits=2, ...) {
+    x <- attr(x, "correlation")
+    if (length(x)==1) {
+        cc <- format(round(x, digits), nsmall = digits)
+    } else {
+        cc <- format(round(x[2,1], digits), nsmall = digits)
+    }
+    return(matrix(paste(cc, "(ar1)")))
+}
+
+#' @export
+format_corr.vcmat_hetar1 <- format_corr.vcmat_ar1
+
+#' @export
+format_corr.vcmat_cs <- function(x, maxdim = Inf, digits=2, ...) {
+    x <- attr(x, "correlation")
+    cc <- format(round(x[2,1], digits), nsmall = digits)
+    return(matrix(paste(cc, "(cs)")))
+}
+
+## FIXME: get specials for ou, compsymm, spatial matrices, etc..
+
+## original from lme4, *heavily* modified
 ##' "format()" the 'VarCorr' matrix of the random effects -- for
 ##' print()ing and show()ing
 ##'
 ##' @title Format the 'VarCorr' Matrix of Random Effects
 ##' @param varcor a \code{\link{VarCorr}} (-like) matrix with attributes.
-##' @param digits the number of significant digits.
+##' @param digits the number of significant digits for standard deviations and variances
+##' @param corr_digits the number of significant digits for correlations
 ##' @param comp character vector of length one or two indicating which
 ##' columns out of "Variance" and "Std.Dev." should be shown in the
 ##' formatted output.
@@ -263,82 +376,114 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
 ##' \emph{not} the correlations which (currently) are always formatted
 ##' as "0.nnn"
 ##' @param useScale whether to report a scale parameter (e.g. residual standard deviation)
+##' @param maxdim maximum dimensions (numbers of standard deviations/variances and number of
+##' rows of correlation matrices) to report per random effects term
 ##' @param ... optional arguments for \code{formatter(*)} in addition
 ##' to the first (numeric vector) and \code{digits}.
-##' @return a character matrix of formatted VarCorr entries from \code{varc}.
+##' @return a character matrix of formatted VarCorr entries from \code{varcor}.
 ##' @importFrom methods as
 formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
-		     comp = "Std.Dev.", formatter = format,
+                     corr_digits = max(2, digits-2),
+                     maxdim = 10,
+                     comp = "Std.Dev.", formatter = format,
                      useScale = attr(varcor, "useSc"),
                      ...)
 {
-    c.nms <- c("Groups", "Name", "Variance", "Std.Dev.")
-    avail.c <- c.nms[-(1:2)]
-    if(anyNA(mcc <- pmatch(comp, avail.c)))
-	stop("Illegal 'comp': ", comp[is.na(mcc)])
-    nc <- length(colnms <- c(c.nms[1:2], (use.c <- avail.c[mcc])))
-    if(length(use.c) == 0)
-	stop("Must show either standard deviations or variances")
-    getCovstruct <- function(x) {
-        n <- names(.valid_covstruct)[match(attr(x,"blockCode"),
-                                           .valid_covstruct)]
-        if (length(n)==0) n <- "us"  ## unstructured v-cov (default)
-        return(n)
-    }
-    getCorSD <- function(x,type="stddev",maxlen=0) {
-        r <- attr(x,type) ## extract stddev *or* correlation from x
-        if (type=="correlation") {
-            ## transform to char matrix
-            r <- formatCor(r,maxlen, digits)
-            ## drop last column (will be blank since we blanked out
-            ##  the upper triangle + diagonal)
-            if (ncol(r)>maxlen)
-                r <- r[, -ncol(r), drop = FALSE]
-        }
-        covstruct <- getCovstruct(x)
-        if (covstruct %in% c("hetar1", "ar1", "cs", "homdiag")) {
-            r <- switch(type,
-                        stddev={ if (covstruct %in%  c("ar1", "homdiag")) r[1] else r },
-                        ## select lag-1 correlation
-                        ## upper tri has been erased in formatCor() ...
-                        correlation=paste(r[2,1],sprintf("(%s)",covstruct))
-                        )
-        }
-        return(r)
-    }  ## getCorSD
 
-    ## get std devs:
-    reStdDev <- lapply(varcor, getCorSD)
-    ## need correlations
-    useCor <- (!grepl("us|diag", sapply(varcor,getCovstruct)) |
-               sapply(reStdDev,length)>1)
-    cnms <- Map(function(x,n) colnames(x)[seq(n)], varcor, lengths(reStdDev))
+    comp_opts <- c("Variance", "Std.Dev.")
+    if(anyNA(mcc <- pmatch(comp, comp_opts))) {
+        stop("Illegal 'comp': ", comp[is.na(mcc)])
+    }
+    use.c <- comp_opts[mcc]
+    if (length(use.c) == 0) {
+        stop("Must report either standard deviations or variances")
+    }
+
+    termnames <- names(varcor)
+
+    ## get std devs (wait until after processing useScale to create output matrices)
+    ## ugh, want to restrict lengths of sd that get reported: do we need methods/special
+    ##   cases for this as well?
+
+    reStdDev <- lapply(varcor, get_sd)
+
+    ## get corr outputs
+    corr_out <- lapply(varcor, format_corr, digits = corr_digits, maxdim = maxdim)
 
     if(useScale) {
         reStdDev <- c(reStdDev,
                       list(Residual = unname(attr(varcor, "sc"))))
-     }
+        termnames <- c(termnames, "Residual")
+        ## dummy correlation for Residual
+        corr_out <- c(corr_out, list(matrix("")))
+    }
 
-    reLens <- lengths(reStdDev)
-    nr <- sum(reLens)
-    reMat <- array('', c(nr, nc), list(rep.int('', nr), colnms))
-    reMat[1+cumsum(reLens)-reLens, "Groups"] <- names(reLens)
+    ## in order to get everything formatted consistently we have to collapse the std devs to a single
+    ## vector, format them all at once, then split them back up (e.g. to insert extra spaces where necessary)
 
-    reMat[,"Name"] <- c(unlist(cnms), if(useScale) "")
-    if("Variance" %in% use.c)
-	reMat[,"Variance"] <- formatter(unlist(reStdDev)^2, digits = digits, ...)
-    if("Std.Dev." %in% use.c)
-	reMat[,"Std.Dev."] <- formatter(unlist(reStdDev),   digits = digits, ...)
-    if (any(useCor)) {
-        ## get corrs
-	maxlen <- max(reLens)
-	corr <-
-	    do.call(rbind,lapply(varcor, getCorSD,
-                                         type="correlation", maxlen=maxlen))
-        ## add blank values as necessary
-	if (nrow(corr) < nrow(reMat))
-	    corr <- rbind(corr, matrix("", nrow(reMat) - nrow(corr), ncol(corr)))
-	colnames(corr) <- c("Corr", rep.int("", max(0L, ncol(corr)-1L)))
-	cbind(reMat, corr)
-    } else reMat
+    trunc_rows <- function(x) {
+        if (nrow(x) > maxdim) {
+            x <- rbind(x[1:maxdim,,drop = FALSE], rep("...", ncol(x)))
+        }
+        return(x)
+    }
+    
+    formatted_sdvar <- format_sdvar(unlist(unname(reStdDev)), digits = digits, comp = comp_opts, formatter = formatter, use.c = use.c)
+    ## split back into chunks
+    sdvar_out <- split.data.frame(formatted_sdvar,
+                                  rep(seq(length(reStdDev)), lengths(reStdDev)))
+    sdvar_out <- lapply(sdvar_out, trunc_rows)
+    
+    names(sdvar_out) <- names(reStdDev)
+    
+    ## stick it all back together, properly spaced
+    assemble_sdcor(sdvar_out, corr_out, termnames)
 }
+
+pad_blank <- function(m, max_rows=0, max_cols=0) {
+    m <- as.matrix(m) ## handle scalar case
+    if ((xrows <- (max_rows - nrow(m))) > 0) {
+        m <- rbind(m, matrix("", nrow = xrows, ncol = ncol(m)))
+    }
+    if ((xcols <- (max_cols - ncol(m))) > 0) {
+        m <- cbind(m, matrix("", ncol = xcols, nrow = nrow(m)))
+    }
+    return(m)
+}
+
+## patch together sd/var info, correlation info, group names
+assemble_sdcor <- function(sdvar_out, corr_out, termnames) {
+
+    sdvar_rows <- vapply(sdvar_out, nrow, numeric(1))
+    corr_rows <- vapply(corr_out, nrow, numeric(1))
+    max_rows <- pmax(sdvar_rows, corr_rows)
+
+    nt <- length(corr_out)
+    corr_cols <- vapply(corr_out, ncol, numeric(1))
+    max_cols <- rep(max(corr_cols), nt)
+
+    termnames_out <- mapply(pad_blank, termnames, max_rows, SIMPLIFY = FALSE)
+    termnames_out <- do.call(rbind, termnames_out)
+    colnames(termnames_out) <- "Groups"
+    
+    sdvar_out <- mapply(pad_blank, sdvar_out, max_rows, max_cols, SIMPLIFY = FALSE)
+    sdvar_out <- do.call(rbind, sdvar_out)
+
+    corr_out <- mapply(pad_blank, corr_out, max_cols = max_cols, max_rows = max_rows, SIMPLIFY = FALSE)
+    corr_out <- do.call(rbind, corr_out)
+    if (all(corr_out == "")) {
+        corr_out <- NULL
+    } else {
+        colnames(corr_out) <- c("Corr", rep("", ncol(corr_out)-1))
+    }
+    ## FIXME: should we enable column names here? spacing, abbrev, etc to worry about
+    ##  (first, making sure that null correlation matrices are unnamed)
+
+    res <- cbind(termnames_out, sdvar_out, corr_out)
+    rownames(res) <- rep("", nrow(res))
+    
+    return(res)
+    
+}
+
+

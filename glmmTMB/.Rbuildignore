@@ -13,3 +13,15 @@ revdep/
 TAGS
 _pkgdown.yaml
 .gitsum/.*$
+## big PNGs
+tmbstan_pairsplot\.png
+tmbstan_traceplot\.png
+sleepstudy_traceplot\.png
+sleepstudy_traceplot_bounds\.png
+sherman.csv
+.*\.Rout$
+## not currently used
+lineno.sty
+## rmarkdown/knitr cache trash
+## would like to get rid of *_files/.*$ but need example_files, not sure how to include/exclude
+

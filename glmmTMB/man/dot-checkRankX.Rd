@@ -5,7 +5,7 @@
 \title{Check for identifiability of fixed effects matrices X, Xzi, Xdisp.
 When rank_check='adjust', drop columns in X and remove associated parameters.}
 \usage{
-.checkRankX(TMBStruc, rank_check = c("warning", "adjust", "stop", "skip"))
+.checkRankX(Xlist, rank_check = c("warning", "adjust", "stop", "skip"))
 }
 \description{
 Check for identifiability of fixed effects matrices X, Xzi, Xdisp.

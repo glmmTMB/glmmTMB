@@ -72,6 +72,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Homogenous diagonal     # `homdiag`     #  $1$      #  # log-SD
  Het. diagonal           # `diag`        #  $n$            #  # log-SDs
  AR(1)                            # `ar1`         #  $2$            # Unit spaced levels # log-SD; $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
+ Het. AR(1)                       # `hetar1`      #  $n + 1$        # Unit spaced levels # log-SDs ($\\theta_1-\\theta_n$); $\\rho = \\left(\\theta_2/\\sqrt{1+\\theta_2^2}\\right)^{d_{ij}}$
  Ornstein-Uhlenbeck               # `ou`          #  $2$            # Coordinates  # log-SD; log-OU rate ($\\rho = \\exp(-\\exp(\\theta_2) d_{ij})$)
  Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
  Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
@@ -736,7 +737,7 @@ fit_phylo <- glmmTMB(log(range) ~ log(size) +
                      data = carnidat)
 ```
 
-`dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/columns names of the matrix match the terms in the random effect (see [Construction of structured covariance matrices] for how the terms are constructed).
+`dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/column names of the matrix match the terms in the random effect (i.e. the same values, in the same order). In particular, this typically means that the *levels of the varying factor* (species, in the case of a phylogenetic model) should match the row/column names of the covariance matrix. Something like `data$species <- factor(data$species, levels = rownames(covmat))` should generally work. See [Construction of structured covariance matrices] for how the terms are constructed).
 
 ## Construction of structured covariance matrices
 

@@ -21,6 +21,7 @@ stripTMBVC <- function(x) {
     r <- VarCorr(x)[["cond"]]
     for (i in seq_along(r)) {
         attr(r[[i]],"blockCode") <- NULL
+        class(r[[i]]) <- c("matrix", "array")
     }
     return(r)
 }
@@ -34,9 +35,12 @@ test_that("basic glmer vs glmmTMB", {
 
 ## have to take only last 4 lines
 ## some white space diffs introduced in fancy-corr-printing
+## FIXME: need to match formatting better?
 pfun <- function(x) squash_white(capture.output(print(VarCorr(x),digits=2)))
-expect_equal(tail(pfun(fm1),4),
-             pfun(fm1C))
+test_that("VarCorr output equivalent to lme4", {
+    expect_equal(tail(pfun(fm1),4),
+                 pfun(fm1C))
+})
 
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
@@ -230,3 +234,11 @@ test_that("VarCorr for models with RE in dispersion", {
                  tolerance = 1e-5)
 })
 
+## need to fix diag, comp symm ...
+skip_models <- character(0)
+models <- setdiff(gt_load("test_data/models.rda"), skip_models)
+for (m in models) {
+    obj <- get(m)
+    if (!inherits(obj, "glmmTMB")) next
+    capture.output(print(VarCorr(obj)))
+}

@@ -113,7 +113,7 @@ quick-install: enum-update $(PACKAGE)/src/glmmTMB.so
 	$(R) CMD INSTALL $(PACKAGE)
 
 $(PACKAGE)/src/glmmTMB.so: $(PACKAGE)/src/glmmTMB.cpp
-	cd $(PACKAGE)/src; echo "library(TMB); compile('glmmTMB.cpp','-O0 -g',libinit=FALSE)" | $(R) --slave
+	cd $(PACKAGE)/src; echo "library(TMB); compile('glmmTMB.cpp','-O0 -g',libinit=FALSE, framework = 'TMBad')" | $(R) --slave
 
 unexport TEXINPUTS
 pdf: $(PACKAGE).pdf

@@ -184,3 +184,76 @@ test_that("simulate_new, b partially fixed (pars)", {
 ## 3 
 ## Error in MakeADFun(data.tmb, parameters, map = mapArg, random = randomArg,  : 
 ##   Only numeric matrices, vectors and arrays can be interfaced
+
+
+# hetar1
+
+pp7 <- list(beta = c(280),
+            betadisp = 1,
+            theta = c(-1, seq(from = 1.05, by = -0.01, length.out = 10), 0))
+
+s15 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
+                    seed = 101,
+                    newdata = sleepstudy,
+                    family = gaussian,
+                    newparams = pp7)[[1]]
+
+s16 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
+                    seed = 101,
+                    newdata = sleepstudy,
+                    family = gaussian,
+                    newparams = pp7,
+                    return_val = "pars")
+
+test_that("simulate_new with two RE terms", {
+  expect_equal(unname(head(s16)),
+               c(-0.119942121932298, 0.203239358640131, -0.248297964136576,
+                 0.078858438002708, 0.114325605998615, 0.431878061822679))
+})
+
+nb <- sum(names(s16) == "b")
+pp8 <- c(pp7, list(b = rep(c(-1, 0, 1), length.out = nb)))
+
+s17 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
+                     seed = 101,
+                     newdata = sleepstudy,
+                     family = gaussian,
+                     newparams = pp8)[[1]]
+
+test_that("simulate_new with two RE terms, fixed b", {
+  s18 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
+                       seed = 101,
+                       newdata = sleepstudy,
+                       family = gaussian,
+                       newparams = pp8, return_val = "pars")
+  expect_equal(unname(s18[names(s18) == "b"]), pp8$b)
+})
+
+pp9 <- c(pp7, list(b = list("0+factor(Days)|Subject" =
+                              rep(c(-1, 0, 1), length.out = nb - ns))))
+
+
+s19 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
+                     seed = 101,
+                     newdata = sleepstudy,
+                     family = gaussian,
+                     newparams = pp9)[[1]]
+
+test_that("simulate_new, b partially fixed", {
+  expect_false(isTRUE(all.equal(s17, s19)))
+})    
+
+s20 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
+                     seed = 101,
+                     newdata = sleepstudy,
+                     family = gaussian,
+                     newparams = pp9,
+                     return_val = "pars")
+
+test_that("simulate_new, b partially fixed (pars)", {
+  bvec <- unname(s20[names(s20) == "b"])
+  expect_equal(head(bvec),
+               c(-0.119942121932298, 0.203239358640131, -0.248297964136576, 
+                 0.078858438002708, 0.114325605998615, 0.431878061822679))
+  expect_identical(bvec[-(1:ns)], pp9$b[[1]])
+})

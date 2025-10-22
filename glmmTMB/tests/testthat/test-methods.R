@@ -113,9 +113,9 @@ test_that("VarCorr", {
    vv <- VarCorr(fm2)
    vv2 <- vv$cond$Subject
    expect_equal(dim(vv2),c(2,2))
-   expect_equal(outer(attr(vv2,"stddev"),
-                      attr(vv2,"stddev"))*attr(vv2,"correlation"),
-                vv2,check.attributes=FALSE)
+   expect_equal(unclass(outer(attr(vv2,"stddev"),
+                      attr(vv2,"stddev"))*attr(vv2,"correlation")),
+                unclass(vv2),check.attributes=FALSE)
    vvd <- VarCorr(fm2diag)
    expect_equal(vvd$cond$Subject[1,2],0) ## off-diagonal==0
 })
@@ -538,6 +538,12 @@ test_that("confint works for models with dispformula", {
     expect_equal(cc[grep("^disp",rownames(cc)),], ref_val, tolerance = 1e-6)
 })
 
+test_that("confint with theta_ for models with RE in dispformula", {
+    m <- glmmTMB(mpg ~ hp,
+                 dispformula = ~1 + (1|cyl), data = mtcars, family = gaussian)
+    expect_equal(rownames(confint(m, parm = "theta_")), "disp.Std.Dev.(Intercept)|cyl")
+})
+         
 simfun <- function(formula, family, data, beta=c(0,1)) {
     ss <- list(beta=beta)
     if (grepl("nbinom",family)) ss$betadisp <- 0
@@ -692,8 +698,7 @@ test_that("weighted residuals", {
                  data = cbpp, family = poisson, weights = wts)
     tmbm5 <- glmmTMB(incidence ~ period,
                      data = cbpp, family = poisson, weights = wts)
-    resid_types <- setdiff(eval(formals(residuals.glmmTMB)$type),
-                           "dunn-smyth")
+    resid_types <- c("response", "pearson", "working", "deviance")
     for  (type in resid_types) {
         expect_equal(residuals(tmbm4, type = type),
                      residuals(tmbm5, type = type),
@@ -775,3 +780,266 @@ test_that("vcov(full=TRUE) with non-NA mapped parameters", {
 #         expect_true(all(is.na(vcov(m)$cond)))
 #     }
 # })
+
+test_that("handle empty betadisp in vcov", {
+    m <- glmmTMB(count ~ DOP, dispformula = ~ DOP,
+                 data = Salamanders,
+                 family = poisson)
+    expect_equal(lengths(fixef(m)),
+                 c(cond = 2L, zi = 0L, disp = 0L))
+    expect_equal(vcov(m)$disp,
+                 matrix(NA_real_, dimnames = list("disp~", "disp~")))
+})
+
+test_that("getGroups works as expected with a single group", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    result <- getGroups(m)
+    expected <- structure(
+        factor(Salamanders$sample),
+        group = "sample"
+    )
+    expect_identical(result, expected)
+})
+
+test_that("getGroups works with multiple groups", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+
+    result1 <- getGroups(m)
+    result2 <- getGroups(m, level = 2)
+    
+    expected1 <- structure(
+        factor(Salamanders$sample),
+        group = "sample"
+    )
+    expected2 <- structure(
+        factor(Salamanders$mined),
+        group = "mined"
+    )
+
+    expect_identical(result1, expected1)
+    expect_identical(result2, expected2)
+})
+
+test_that("getGroups throws an error for a too large level", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+    expect_error(getGroups(m, level = 3), "level cannot be greater")
+})
+
+test_that("bread works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+    
+    result <- bread(m)
+    expected <- vcov(m)$cond
+    expect_identical(result, expected)
+
+    result_full <- bread(m, full = TRUE)
+    expected_full <- vcov(m, full = TRUE)
+    expect_equal(result_full, expected_full, check.attributes = FALSE)
+
+    result_raw <- bread(m, rawnames = TRUE)
+    expect_identical(rownames(result_raw), c("beta", "beta"))
+
+    result_full_raw <- bread(m, full = TRUE, rawnames = TRUE)
+    expect_identical(rownames(result_full_raw), c("beta", "beta", "theta", "theta"))
+})
+
+test_that("estfun works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+
+    result <- expect_silent(estfun(m))
+    expected <- matrix(
+        c(-1.785, -9.514, -3.778, 15.077, 22.661, 37.064, 21.783, -81.507),
+        nrow = 4, ncol = 2,
+        dimnames = list(
+            c("1", "2", "3", "4"), 
+            c("(Intercept)", "DOP")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result_raw <- expect_silent(estfun(m, rawnames = TRUE))
+    expect_equal(result, result_raw, check.attributes = FALSE)
+    expect_identical(colnames(result_raw), c("beta", "beta"))
+
+    result_full <- expect_silent(estfun(m, full = TRUE))
+    expected_extra_col <- c(-0.579, 0.065, -0.496, 1.011)
+    expected_full <- cbind(expected, expected_extra_col)
+    colnames(expected_full)[3] <- "theta_1|sample.1"
+    expect_equal(result_full, expected_full, tolerance = 1e-3)
+})
+
+test_that("estfun gives a warning for non-nested random effects", {
+    m <- glmmTMB(count ~ DOP + (1|sample) + (1|mined), data = Salamanders, family = poisson)
+    expect_warning(estfun(m), "please check whether the random effects are indeed nested")
+
+    # With supplying a custom cluster vector it still gives the warning.
+    cluster <- with(Salamanders, interaction(sample, mined))
+    expect_warning(estfun(m, cluster = cluster), "please check whether the random effects are indeed nested")
+})
+
+test_that("estfun works for nested random effects", {
+    set.seed(101)
+    spcount <- rpois(
+        n = 210, 
+        lambda = rnorm(210, mean = rep(c(1.8, 2, 2.3), each = 70), sd = 0.4)
+    )
+    spdat <- data.frame(
+        species = factor(rep(1:3, each = 70)),
+        pop = factor(rep(c(1, 2, 11, 13, 21, 24), each = 35)),
+        count = spcount
+    )
+    m <- glmmTMB(
+        count ~ (1 |species/pop), 
+        family = poisson,
+        data=spdat
+    ) 
+    result <- expect_silent(estfun(m))
+    expected <- matrix(
+        c(6.342, -10.933, -5.121, -2.235, 9.88, 2.068), 
+        nrow = 6, ncol = 1, 
+        dimnames = list(c("1:1", "2:1", "11:2", "13:2", "21:3", "24:3"), "(Intercept)")
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result_level2 <- expect_silent(estfun(m, cluster = getGroups(m, level = 2)))
+    expected_level2 <- matrix(
+        c(-4.592, -7.357, 11.948),
+        nrow = 3, ncol = 1,
+        dimnames = list(c("1", "2", "3"), "(Intercept)")
+    )
+    expect_equal(result_level2, expected_level2, tolerance = 1e-3)
+})
+
+test_that("meatHC works as expected (based on estfun)", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)  
+    result <- expect_silent(meatHC(m))
+    expected <- matrix(
+        c(335.28, -1704.23, -1704.23, 9005.2),
+        nrow = 2, ncol = 2,
+        dimnames = list(
+            c("(Intercept)", "DOP"), 
+            c("(Intercept)", "DOP")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result2 <- expect_silent(meatHC(m, full = TRUE))
+    expect_is(result2, "matrix")
+    expect_identical(dim(result2), c(3L, 3L))
+})
+
+test_that("sandwich works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|site), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(sandwich(m))
+    expect_is(result, "matrix")
+    expect_identical(dim(result), c(2L, 2L))
+    expect_identical(rownames(result), c("(Intercept)", "DOP"))
+    expect_identical(colnames(result), c("(Intercept)", "DOP"))
+
+    result_raw <- expect_silent(sandwich(m, rawnames = TRUE))
+    expect_equal(result_raw, result, check.attributes = FALSE)
+    expect_identical(colnames(result_raw), c("beta", "beta"))
+    
+    result_full <- expect_silent(sandwich(m, full = TRUE))
+    expect_is(result_full, "matrix")
+    expect_identical(dim(result_full), c(3L, 3L))
+    expect_identical(rownames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
+    expect_identical(colnames(result_full), c("(Intercept)", "DOP", "theta_1|site.1"))
+
+    result_full_raw <- expect_silent(sandwich(m, full = TRUE, rawnames = TRUE))
+    expect_equal(result_full_raw, result_full, check.attributes = FALSE)
+    expect_identical(colnames(result_full_raw), c("beta", "beta", "theta"))
+})
+
+test_that("vcovHC works as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(vcovHC(m))
+    expected <- matrix(
+        c(0.004208, -0.006926, -0.006926, 0.01176), 
+        nrow = 2, ncol = 2,
+        dimnames = list(
+            c("(Intercept)", "DOP"), 
+            c("(Intercept)", "DOP")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+
+    result_full <- expect_silent(vcovHC(m, full = TRUE))
+    expected_full <- matrix(
+        c(0.004208, -0.006926, 0.018482, -0.006926, 0.01176, 
+-0.03534, 0.018482, -0.03534, 0.153068),
+        nrow = 3, ncol = 3,
+        dimnames = list(
+            c("(Intercept)", "DOP", "theta_1|sample.1"),
+            c("(Intercept)", "DOP", "theta_1|sample.1")
+        )
+    )
+    expect_equal(result_full, expected_full, tolerance = 1e-3)
+})
+
+test_that("vcovHC gives the same result as clubSandwich::vcovCR with CR0 for Gaussian model", {
+    data(Orthodont, package = "nlme")
+    m <- glmmTMB(distance ~ age + (1 | Subject), data = Orthodont)
+    result <- expect_silent(vcovHC(m))
+    # m_nlme <- nlme::lme(distance ~ age, random = ~ 1 | Subject, data = Orthodont, method = "ML")
+    # clubSandwich::vcovCR(m_nlme, type = "CR0")
+    expected <- matrix(
+        c(0.578747142203931, -0.0451156454808717, -0.0451156454808717, 0.00488899049941574),
+        nrow = 2, ncol = 2,
+        dimnames = list(
+            c("(Intercept)", "age"), 
+            c("(Intercept)", "age")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-5)
+})
+
+test_that("vcovHC gives the same result as GLMMadaptive for a binomial model", {
+    data("cbpp", package = "lme4")
+    m <- glmmTMB(incidence/size ~ period + (1 | herd), weights = size, family=binomial, data = cbpp)
+    result <- expect_silent(vcovHC(m, full = TRUE))
+    # m_glmmadapt <- GLMMadaptive::mixed_model(
+    #     fixed = cbind(incidence, size - incidence) ~ period,
+    #     random = ~ 1 | herd,
+    #     data = cbpp,
+    #     family = binomial(link = "logit")
+    # )
+    # vcov(m_glmmadapt, sandwich = TRUE)
+    expected <- matrix(
+        c(0.0819566301253873, -0.0959871872360134, -0.0705793434980425, -0.0574313147519239, 0.00171777726409861, 
+        -0.0959871872360134, 0.206662334096555, 0.173759701425569, 0.0563436296455722, 0.0100668788284029,
+        -0.0705793434980425, 0.173759701425569, 0.263707940623115, 0.00823895476900997, 0.0169440575924404, 
+        -0.0574313147519239, 0.0563436296455722, 0.00823895476900998, 0.131068427322698, -0.0162614031219817,
+        0.00171777726409861, 0.0100668788284029, 0.0169440575924404, -0.0162614031219817, 0.028816056733942),
+        nrow = 5, ncol = 5,
+        dimnames = list(
+            c("(Intercept)", "period2", "period3", "period4", "theta_1|herd.1"),
+            c("(Intercept)", "period2", "period3", "period4", "theta_1|herd.1")
+        )
+    )
+    expect_equal(result, expected, tolerance = 1e-3)
+})
+
+test_that("vcov can return sandwich estimator based results as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(vcov(m, sandwich = TRUE))$cond
+    expected <- sandwich(m)
+    expect_equal(result, expected)  ## ? should be identical, but not on some platforms ...
+
+    result_full <- expect_silent(vcov(m, full = TRUE, sandwich = TRUE))
+    expected_full <- sandwich(m, full = TRUE)
+    expect_equal(result_full, expected_full, check.attributes = FALSE)
+})
+
+test_that("summary can return sandwich estimator based results as expected", {
+    m <- glmmTMB(count ~ DOP + (1|sample), data = Salamanders, family = poisson)
+    
+    result <- expect_silent(summary(m, sandwich = TRUE))
+    expect_is(result, "summary.glmmTMB")
+    expected_ses <- sqrt(diag(sandwich(m))) 
+    result_ses <- result$coefficients$cond[, "Std. Error"]   
+    expect_equal(result_ses, expected_ses, check.attributes = FALSE)
+})

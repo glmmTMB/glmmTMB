@@ -55,8 +55,6 @@ test_that("new levels in AR1 (OK)", {
                    "Predicting new random effect levels")
 })
 
-context("Predict two-column response case")
-
 test_that("two-column response", {
     skip_on_cran()
     fm <- glmmTMB( cbind(count,4) ~ mined, family=betabinomial,
@@ -296,16 +294,17 @@ test_that("contrasts carried over", {
                        grp=factor(c("a","b")))
     contrasts(iris2$Species) <- contr.sum
     contrasts(iris2$grp) <- contr.sum
-    mod1 <- glmmTMB(Sepal.Length ~ Species,iris)
-    mod2 <- glmmTMB(Sepal.Length ~ Species,iris2)
+    mod1 <- glmmTMB(Sepal.Length ~ Species, iris)
+    mod2 <- glmmTMB(Sepal.Length ~ Species, iris2)
+    ## create prediction frame with a new species
     iris3 <- iris[1,]
     iris3$Species <- "extra"
     ## these are not *exactly* equal because of numeric differences
     ##  when estimating parameters differently ... (?)
-    expect_equal(predict(mod1),predict(mod2),tolerance=1e-6)
+    expect_equal(predict(mod1), predict(mod2), tolerance=1e-6)
     ## make sure we actually imposed contrasts correctly/differently
     expect_false(isTRUE(all.equal(fixef(mod1)$cond,fixef(mod2)$cond)))
-    expect_error(predict(mod1,newdata=iris2), "contrasts mismatch")
+    expect_warning(predict(mod1,newdata=iris2), "contrasts mismatch")
     expect_equal(predict(mod1,newdata=iris2,allow.new.levels=TRUE),
                  predict(mod1,newdata=iris))
     mod3 <- glmmTMB(Sepal.Length ~ 1|Species, iris)
@@ -319,7 +318,20 @@ test_that("contrasts carried over", {
     ## works with char rather than factor in new group vble
     expect_equal(predict(mod3, newdata=iris3, allow.new.levels=TRUE),
                  5.843333, tolerance=1e-6)
-
+    zipm3 <- glmmTMB(
+        count ~ spp * mined + (1 | site:mined),
+        Salamanders,
+        family = "poisson"
+    )
+    ss <- transform(Salamanders, site = factor(site, ordered = FALSE))
+    zz <- update(zipm3, data = ss)
+    expect_no_warning(p1 <- predict(zipm3, newdata = head(Salamanders, 22)))
+    p2 <- predict(zz, newdata = head(Salamanders, 22))
+    p3 <- predict(zz, newdata = head(ss, 22))
+    p4 <- predict(zipm3, newdata = head(Salamanders, 23))
+    expect_equal(p1, p2)
+    expect_equal(p2, p3)
+    expect_equal(p3, p4[1:22])
 })
 
 test_that("dispersion", {
@@ -538,3 +550,51 @@ test_that("pearson resids of ZI models", {
 
     }
 })
+
+## GH 1189
+test_that("allow.new.levels TRUE when re.form = NA", 
+          {
+              nd <- subset(sleepstudy, Subject=="308", select=-1)[1,]
+              nd$Subject <- "new"
+              
+              expect_warning(predict(fm2, newdata=nd),
+                           "Predicting new random effect levels")
+              expect_equal(predict(fm2, newdata = nd, re.form = NA),
+                           251.404341632295,
+                           tolerance = 1e-6)
+
+              suppressWarnings(g1 <- glmmTMB(Reaction ~ 1 + (1 | Subject/Days),
+                                             sleepstudy))
+              expect_equal(predict(g1,
+                                   newdata = data.frame(Days = NA, Subject = NA),
+                                   re.form = NA), 298.507889474305,
+                           tolerance = 1e-6)
+})
+
+## https://stackoverflow.com/q/77517125/190277
+test_that("prediction from rank-deficient X matrices", {
+  x <- c("A", "B", "C", "D"); y <- c("exposed", "ref1", "ref2")
+  set.seed(123)
+  dat <- data.frame(time = rep(x, each=20, times=3),
+                    lake = rep(y, each = 80),
+                    min = runif(n=240, min=4.5, max=5.5),
+                    count = rnbinom(n=240,mu=10,size=100))
+  dat2 <- subset(dat, time!="A" | lake !="ref1")
+  suppressMessages(
+    model <-glmmTMB(count~time*lake, family=nbinom1,
+                    control = glmmTMBControl(rank_check = "adjust"),
+                    offset=log(min), data=dat2))
+  pred_data <- data.frame(
+    lake = rep(c("exposed", "ref1", "ref2"), c(4L, 3L, 4L)),
+    min = 1,
+    time = c(x, x[-1], x)  ## drop level A for lake 2
+  )
+
+  pp <- suppressMessages(
+    predict(model, newdata = pred_data, type = 'response', se.fit=FALSE)
+  )
+  expect_equal(head(pp, 3), c(1.89088787010282, 1.83544974589453, 2.02668291828295),
+               tolerance = 1e-6)
+})
+             
+

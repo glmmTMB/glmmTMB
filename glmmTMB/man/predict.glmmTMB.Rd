@@ -11,12 +11,15 @@
   se.fit = FALSE,
   cov.fit = FALSE,
   re.form = NULL,
-  allow.new.levels = FALSE,
+  allow.new.levels = NULL,
   type = c("link", "response", "conditional", "zprob", "zlink", "disp", "latent"),
   zitype = NULL,
   na.action = na.pass,
   fast = NULL,
   debug = FALSE,
+  aggregate = NULL,
+  do.bias.correct = FALSE,
+  bias.correct.control = list(sd = TRUE),
   ...
 )
 }
@@ -65,6 +68,12 @@ the default (\code{na.pass}) is to predict \code{NA}}
 \item{debug}{(logical) return the \code{TMBStruc} object that will be
 used internally for debugging?}
 
+\item{aggregate}{(optional factor vector) sum the elements with matching factor levels}
+
+\item{do.bias.correct}{(logical) should aggregated predictions use Taylor expanded estimate of nonlinear contribution of random effects (see details)}
+
+\item{bias.correct.control}{a list sent to TMB's function \code{sdreport()}. See documentation there.}
+
 \item{\dots}{unused - for method compatibility}
 }
 \description{
@@ -74,8 +83,9 @@ prediction
 \itemize{
 \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
 \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
-However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
+However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels} is \code{NULL} (the default) and \code{re.form} is not NA, or if \code{allow.new.levels} is explicitly set to \code{TRUE}.
 \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
+\item Bias corrected predictions are based on the method described in Thorson J.T. & Kristensen (2016). These should be checked carefully by the user and are not extensively tested.
 }
 }
 \examples{
@@ -93,4 +103,7 @@ predict(g0, newdata=nd_pop)
 ## return latent variables (BLUPs/conditional modes/etc. ) with standard errors
 ##  (actually conditional standard deviations)
 predict(g0, type = "latent", se.fit = TRUE)
+}
+\references{
+Thorson J.T. & Kristensen K. (2016) Implementing a generic method for bias correction in statistical models using random effects, with spatial and population dynamics examples. \emph{Fish. Res.} 175, 66-74.
 }

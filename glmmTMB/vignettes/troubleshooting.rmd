@@ -6,13 +6,11 @@ vignette: >
   %\VignetteIndexEntry{Troubleshooting with glmmTMB}
   %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
-params:
-  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
 ---
 
 ```{r load_lib,echo=FALSE}
 library(glmmTMB)
-knitr::opts_chunk$set(eval = if (isTRUE(exists("params"))) params$EVAL else FALSE)
+load(system.file("vignette_data", "troubleshooting.rda", package = "glmmTMB"))
 ```
 
 This vignette covers common problems that occur while using `glmmTMB`. 
@@ -26,7 +24,9 @@ If your problem is not covered below, there's a chance it has been solved in the
 
 This warning (`Model convergence problem; non-positive-definite Hessian matrix`) states that at `glmmTMB`'s maximum-likelihood estimate, the curvature of the negative log-likelihood surface is inconsistent with `glmmTMB` really having found the best fit (minimum): instead, the surface is downward-curving, or flat, in some direction(s).
 
-It will usually be accompanied by `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. When you run `summary()` on the resulting model, you'll get the warning `In sqrt(diag(vcov)) : NaNs produced`.
+It will usually be accompanied by `NaN` or `NA` values for the standard errors, log-likelihood, AIC, and BIC, and deviance. Running `summary()` on the fitted model will produce the warning `In sqrt(diag(vcovs)) : NaNs produced`.
+
+You can retrieve the log-likelihoods for such poorly fitted models (and use them to compute AIC and BIC in turn); the log-likelihood is intentionally set to `NA` in the model output to prevent users from inadvertently including poorly fitted models in a model comparison. For a fitted model `fit`, `fit$fit$objective` (if the model was fitted with the default `nlminb` optimizer) will retrieve the *negative* log-likelihood. Alternatively, `fit$obj$fn()` will call the underlying TMB objective function with the best-fitted parameters and should retrieve the same value. *Blindly using such values can be dangerous*; a non-positive-definite Hessian often indicates non-ignorable problems with the model.
 
 These problems are most likely:
 
@@ -35,6 +35,7 @@ These problems are most likely:
 - when zero-inflation is estimated to be near zero (a strongly negative zero-inflation parameter)
 - when dispersion is estimated to be near zero
 - when *complete separation* occurs in a binomial model: some categories in the model contain proportions that are either all 0 or all 1
+- when a model that tries to capture overdispersion (e.g. negative binomial, beta-binomial) is used in situations where the underlying data is equidispersed or underdispersed
 
 How do we diagnose the problem?
 
@@ -43,7 +44,7 @@ How do we diagnose the problem?
 Consider this example:
 
 ```{r non-pos-def,cache=TRUE, warning=FALSE}
-zinbm0 = glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
+zinbm0 <- glmmTMB(count~spp + (1|site), zi=~spp, Salamanders, family=nbinom2)
 ```
 
 First, see if any of the estimated coefficients are extreme. If you're using a non-identity link function (e.g. log, logit), then parameter values with $|\beta|>10$ are suspect (for a logit link, this
@@ -55,14 +56,17 @@ Inspecting the fixed-effect estimates for this model:
 fixef(zinbm0)
 ```
 
-**FIXME**: don't hard-code, use inline expressions instead (search for "zi1" below)
+```{r get_vals_zinbm0, echo = FALSE}
+fezi <- fixef(zinbm0)
+zi_int <- round(fezi$zi[["(Intercept)"]])
+```
 
-The zero-inflation intercept parameter is tiny ($\approx -17$): since the parameters
-are estimated on the logit scale, we back-transform with `plogis(-17)` to see the at the zero-inflation probability for the baseline level is about $4 \times 10^{-8}$)). Many of the other ZI parameters are very large, compensating for the intercept: the estimated zero-inflation probabilities for all species are
+The zero-inflation intercept parameter is tiny ($\approx `r zi_int`$): since the parameters
+are estimated on the logit scale, we back-transform with `plogis()` to see the at the zero-inflation probability for the baseline level is about `r sprintf("%1.2g", plogis(zi_int))`. Most of the other ZI parameters are large and positive, compensating for the intercept: the estimated zero-inflation probabilities for all species are
 
 ```{r f_zi2}
 ff <- fixef(zinbm0)$zi
-round(plogis(c(sppGP=unname(ff[1]),ff[-1]+ff[1])),3)
+signif(plogis(c(sppGP=unname(ff[1]),ff[-1]+ff[1])), 2)
 ```
 
 Since the baseline probability is already effectively zero,
@@ -75,7 +79,7 @@ for example, we could use a model that compared the first species ("GP") to the 
 
 ```{r salfit2,cache=TRUE}
 Salamanders <- transform(Salamanders, GP=as.numeric(spp=="GP"))
-zinbm0_A = update(zinbm0, ziformula=~GP)
+zinbm0_A <- update(zinbm0, ziformula=~GP)
 ```
 
 This fits without a warning, although the GP zero-inflation parameter is still extreme:
@@ -90,7 +94,7 @@ This again fits without an error, although both the average level of
 zero-inflation and the among-species variation are estimated as very small:
 
 ```{r salfit3,cache=TRUE}
-zinbm0_B = update(zinbm0, ziformula=~(1|spp))
+zinbm0_B <- update(zinbm0, ziformula=~(1|spp))
 fixef(zinbm0_B)[["zi"]]
 VarCorr(zinbm0_B)
 ```
@@ -103,14 +107,20 @@ The original analysis considered variation in zero-inflation by site status
 to estimate two parameters (mined + difference between mined and no-mining)
 rather than 7 (one per species) for the zero-inflation model.
 
-```{r zinbm1,cache=TRUE}
-zinbm1 = glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family=nbinom2)
+```{r zinbm1}
+zinbm1 <- glmmTMB(count~spp + (1|site), zi=~mined, Salamanders, family=nbinom2)
 fixef(zinbm1)[["zi"]]
 ```
 
+```{r fezi1, echo = FALSE}
+fezi1 <- fixef(zinbm1)[["zi"]]
+plstr <- sprintf("plogis(%1.2f-%1.1f)", fezi1[1], abs(fezi1[2]))
+plval <- signif(plogis(sum(fezi1)), 1)
+```
+
 This again fits without a warning, but we see that the zero-inflation is effectively
-zero in the unmined ("minedno") condition (`plogis(0.38-17.5)` is
-approximately $4 \times 10^{-8}$). We can estimate the confidence interval, but
+zero in the unmined ("minedno") condition (``r plstr``) is
+approximately $`r plval`$. We can estimate the confidence interval, but
 it takes some extra work: the default Wald standard errors and confidence intervals
 are useless in this case.
 
@@ -118,12 +128,18 @@ are useless in this case.
 ## at present we need to specify the parameter by number; for
 ##  extreme cases need to specify the parameter range
 ## (not sure why the upper bound needs to be so high ... ?)
-cc = confint(zinbm1,method="uniroot",parm=9, parm.range=c(-20,20))
+cc <- confint(zinbm1,method="uniroot",parm=9, parm.range=c(-20,20))
 print(cc)
 ```
 
-The lower CI is not defined; the upper CI is -2.08, i.e. we can state
-that the zero-inflation probability is less than `plogis(-2.08)` = 0.11.
+```{r zi1_civals, echo=FALSE}
+plstr <- sprintf("plogis(%1.2f)", cc[1,2])
+plval <- signif(plogis(cc[1,2]),2)
+
+```
+
+The lower CI is not defined; the upper CI is `r signif(cc[1,2],2)`, i.e. we can state
+that the zero-inflation probability is less than ``r plstr`` $\approx$  `r plval`
 
 More broadly, general inspection of the data (e.g., plotting the response against potential covariates)
 should help to diagnose overly complex models.
@@ -156,28 +172,32 @@ print(s_vals,digits=3)
 
 Here is another example (from Samantha Sherman):
 
-```{r load_ss_ex,eval=TRUE}
-L <- gt_load("vignette_data/sherman.rda")
-```
-
 The first model gives the warning: "non-integer counts in an nbinom1 model" (indicating that we probably should use a different response distribution, or round the values if that seems appropriate).
 
-
-```{r ss_ex_mod1}
-summary(mod1)
+```{r ss_ex_mod1, eval = FALSE}
+summary(mod_list$base)
 ```
+
+```{r fake_ss_ex_mod1, echo = FALSE}
+print(mod_sum$base)
+```
+
 We can immediately see that the dispersion is very small and that the zero-inflation parameter is strongly negative.
 
 Running diagnostics on the model, these are the only problems reported.
 
-```{r diag_1}
-d1 <- diagnose(mod1)
+```{r diag_1, eval = FALSE}
+diag_base <- diagnose(mod_list$base)
+```
+
+```{r fake_diag_1, echo = FALSE}
+cat(mod_diag$base, sep = "\n")
 ```
 
 Let's try dropping the zero-inflation term:
 
 ```{r ss_mod2_up, eval=FALSE}
-mod2 <- update(mod1, ziformula=~0)
+mod_list$nozi <- update(mod_list$base, ziformula=~0)
 ```
 
 We also get a "false convergence (8)" warning; see below.
@@ -186,14 +206,22 @@ We also get a "false convergence (8)" warning; see below.
 
 The `summary()` and `diagnose()` functions reveal only the large, negative dispersion parameter:
 
-```{r ss_mod2}
-summary(mod2)
+```{r ss_mod2, eval = FALSE}
+summary(mod_list$nozi)
+```
+
+```{r fake_ss_ex_mod2, echo = FALSE}
+print(mod_sum$nozi)
 ```
 
 Diagnose:
 
-```{r ss_diag2}
-diagnose(mod2)
+```{r ss_fake_diag2, eval = FALSE}
+diagnose(mod_list$nozi)
+```
+
+```{r ss_diag2, echo = FALSE}
+cat(mod_diag$nozi, sep = "\n")
 ```
 
 The "false convergence" warning comes from the `nlminb()` optimizer, and is [difficult to interpret and resolve](https://stackoverflow.com/questions/40039114/r-nlminb-what-does-false-convergence-actually-mean). The documentation says that the cause of this warning is that:
@@ -202,17 +230,22 @@ The "false convergence" warning comes from the `nlminb()` optimizer, and is [dif
 
 The only practical options we have for satisfying ourselves that a false convergence warning is really a false positive are the standard brute-force solutions of (1) making sure the gradients are small and the Hessian is positive definite (these are already checked internally); (2) trying different starting conditions, including re-starting at the current optimum; and (3) trying a different optimizer. We'll try option 3 and refit with the BFGS option from `optim()`:
 
-```{r ss_mod2optim,eval=TRUE}
-mod2_optim <- update(mod2,
-                control=glmmTMBControl(optimizer=optim,
-                                       optArgs=list(method="BFGS")))
+```{r ss_mod2optim ,eval=FALSE}
+mod_list$nozi_optim <- update(mod_list$nozi,
+                              control=glmmTMBControl(optimizer=optim,
+                                                     optArgs=list(method="BFGS")))
 ```
 
 BFGS doesn't give us any warnings. Comparing the parameter estimates:
 
-```{r ss_mod2optim_comp,eval=TRUE}
-(parcomp <- cbind(nlminb=unlist(fixef(mod2)),
-                  optim=unlist(fixef(mod2_optim))))
+```{r fake_ss_mod2optim_comp,eval= FALSE}
+(parcomp <- cbind(nlminb=unlist(fixef(mod_list$nozi)),
+                  optim=unlist(fixef(mod_list$nozi_optim))))
+```
+
+```{r ss_mod2optim_comp, echo = FALSE}
+(parcomp <- cbind(nlminb=mod_pars$nozi,
+                  optim=mod_pars$nozi_optim))
 ```
 
 ```{r comp, echo=FALSE,eval=TRUE}
@@ -227,21 +260,29 @@ The conditional-model parameters are practically identical. The dispersion param
 Simplify the model by switching from NB1 to Poisson:
 
 ```{r mod3_up, eval=FALSE}
-mod3 <- update(mod2, family=poisson)
+mod_list$pois <- update(mod2, family=poisson)
 ```
 
-```{r ss_mod3}
-summary(mod3)
+```{r fake_ss_mod3, eval = FALSE}
+summary(mod_list$pois)
 ```
 
-```{r ss_diag3}
-diagnose(mod3)
+```{r ss_mod3, echo = FALSE}
+print(mod_sum$pois)
+```
+
+```{r fake_ss_diag3, eval = FALSE}
+diagnose(mod_list$pois)
+```
+
+```{r ss_diag3, echo = FALSE}
+cat(mod_diag$pois, sep = "\n")
 ```
 
 You can also check directly whether the Hessian (curvature) of the model is OK by examining the `pdHess` ("positive-definite Hessian") component of the `sdr` ("standard deviation report") component of the model:
 
-```{r checkhess}
-mod3$sdr$pdHess					      
+```{r checkhess, eval = FALSE}
+mod_list$pois$sdr$pdHess					      
 ```
                                               
 In general models with non-positive definite Hessian matrices should be excluded from further consideration.

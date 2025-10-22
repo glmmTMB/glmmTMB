@@ -4,7 +4,47 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.11}{
+\section{CHANGES IN VERSION 1.1.12}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item default value for \code{allow.new.levels} in
+      \code{predict.glmmTMB} is now NULL, meaning that
+      new levels in grouping variables are allowed when
+      predicting at the population level (i.e., \code{re.form}
+      is \code{NA} or \code{~0}) - unless \code{allow.new.levels} is explicitly set to
+      TRUE (GH#1189, @fisher-j)
+      \item implementation of \code{hetar1} covstruct was wrong, fixed now
+      (GH #1204, Daniel Sabanés Bové and Nik Krieger)
+      \item prediction on rank-deficient X matrices could throw a false
+      positive error (Erin McCallum,
+      \url{https://stackoverflow.com/q/77517125/190277})
+      \item \code{predict} method no longer fails on subsets of data
+      involving ordered factors (resolving an issue comparing contrasts
+      associated with factors in original data and \code{newdata}) (GH
+      #1197, @fisher-j); we no longer check contrasts of factors that
+      appear only as grouping variables
+    }
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item robust sandwich covariance matrix \code{vcovHC} has bseen added for \code{glmmTMB} 
+      objects, please see the Model evaluation vignette for details (GH #443, Daniel Sabanés Bové)
+      \item new argument \code{full_corr} for \code{glmmTMBControl} to
+      enable/disable computation and storage of full correlation
+      matrices for random effect terms (helps with GH#995)
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item improved formatting of random effects standard
+      deviations/variances/correlation matrices
+      \item mismatches in contrasts between original data and prediction
+      data now throw a warning rather than an error (related to GH #1197)
+    }
+  } % user-visible changes
+} % 1.1.12
+
+\section{CHANGES IN VERSION 1.1.11 (2025-04-02)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{glmmTMB} gains a \code{subset} argument (GH #1128,
@@ -14,6 +54,7 @@
       \item added the Bell distribution (\code{bell()}) as in
       Castellares et al. 2018 \doi{10.1016/j.apm.2017.12.014} (Hatice
       Tül Kübra Akdur)
+      \item added aggregated predictions with bias correction as in Kindt-Larsen, Glemerec, et al. 2023 \doi{10.1098/rspb.2022.2570} and Thorson & Kristensen 2016 \doi{10.1016/j.fishres.2015.11.016}
     } % itemize
   } % new features
   \subsection{BUG FIXES}{
@@ -35,8 +76,18 @@
       (GH #1133, @strengejacke)
       \item fixed bug blocking reduced-rank models with binomial response
       (GH #1151, @toddvogel1628)
+      \item fixed minor bug with \code{confint} applied to models with
+      random effects in the dispersion model
     } % itemize
   } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item headline of \code{print} and \code{summary} output
+      now labels the minimum of the objective function
+      (correctly) as "-2*log(L)" rather than "deviance" (GH #1156, @ladin100)
+    } % itemize
+  } % user-visible changes
+
 } % 1.1.11
   
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{

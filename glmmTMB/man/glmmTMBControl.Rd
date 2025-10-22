@@ -11,12 +11,13 @@ glmmTMBControl(
   profile = FALSE,
   collect = FALSE,
   parallel = list(n = getOption("glmmTMB.cores", 1L), autopar =
-    getOption("glmmTMB.autopar", NULL)),
+    getOption("glmmTMB.autopar", get_autopar())),
   eigval_check = TRUE,
   zerodisp_val = log(.Machine$double.eps)/4,
   start_method = list(method = NULL, jitter.sd = 0),
   rank_check = c("adjust", "warning", "stop", "skip"),
-  conv_check = c("warning", "skip")
+  conv_check = c("warning", "skip"),
+  full_cor = TRUE
 )
 }
 \arguments{
@@ -54,6 +55,8 @@ To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.}
 \item{rank_check}{Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).}
 
 \item{conv_check}{Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)}
+
+\item{full_cor}{compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually}
 }
 \description{
 Control parameters for glmmTMB optimization
