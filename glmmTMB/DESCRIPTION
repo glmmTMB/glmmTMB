@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.12
+Version: 1.1.13
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -59,7 +59,8 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.1),
+    reformulas (>= 0.2.0),
+    pbkrtest,
     sandwich
 LinkingTo: TMB, RcppEigen
 Suggests:
@@ -97,7 +98,8 @@ Suggests:
     RTMB,
     ade4,
     ape,
-    gsl
+    gsl,
+    lmerTest
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
@@ -105,4 +107,4 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
-RoxygenNote: 7.3.2.9000
+RoxygenNote: 7.3.3

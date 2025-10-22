@@ -38,5 +38,6 @@ implemented for families built into base R plus \code{nbinom1}, \code{nbinom2}).
 \item Deviance is computed as the sum of squared deviance residuals, so is available only
 for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 details on the definition of the deviance for GLMMs.
+\item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation. (The beta-binomial currently returns unscaled residuals.)
 }
 }
