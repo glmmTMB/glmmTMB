@@ -45,7 +45,7 @@ expect_equal(c(sigma(fit1)^2),
 
 
 
-## ------ test with metafor and 
+## ------ test with metafor and example dataset
 
 if (suppressWarnings(require("metafor"))) {
   
@@ -67,7 +67,7 @@ if (suppressWarnings(require("metafor"))) {
   
   #overall mean est. 
   expect_equal(c(fit.rma$b[1]),
-               c(unlist(fixef(fit.tmb))[[1]]))
+               c(summary(fit.tmb)$coefficients$cond[1]))
   
   #among study variance est.
   expect_equal(c(fit.rma$sigma2[1]),
