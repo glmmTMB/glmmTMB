@@ -59,7 +59,7 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.1),
+    reformulas (>= 0.4.2.9000),
     pbkrtest,
     sandwich
 LinkingTo: TMB, RcppEigen
@@ -107,3 +107,4 @@ BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
 RoxygenNote: 7.3.3
+Remotes: github::bbolker/reformulas
