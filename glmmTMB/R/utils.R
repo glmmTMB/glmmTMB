@@ -18,6 +18,7 @@ namedList <- function (...) {
 
 ## Sparse Schur complement (Marginal of precision matrix)
 ##' @importFrom Matrix Cholesky solve
+##' @importFrom methods as
 GMRFmarginal <- function(Q, i, ...) {
     ind <- seq_len(nrow(Q))
     i1 <- (ind)[i]
