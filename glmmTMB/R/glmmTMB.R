@@ -555,6 +555,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
 ##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- extractForm reOnly no_specials splitForm addForm0 makeOp
 ##' @importFrom utils head
+##' @importFrom methods as
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
