@@ -256,6 +256,6 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
                      digits = digits, comp = comp, formatter = formatter, maxdim = maxdim),
             quote = FALSE, ...)
     }
-    invisible(x)
   }
+  invisible(x)
 }
