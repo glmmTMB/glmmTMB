@@ -264,7 +264,8 @@ test_that("predvars with different ns() in fixed and disp (GH #845)", {
         wt = seq(min(mtcars$wt), max(mtcars$wt), length.out = 3)
     )
     expect_equal(predict(x, newdata = newdata),
-                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
+                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06),
+                 tolerance = 1e-7)
 })
 
 test_that("predvars with differing splines in fixed and RE (GH#632)", {

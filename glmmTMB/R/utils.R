@@ -832,7 +832,8 @@ simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
                          family = gaussian,
-                         newdata, newparams, ...,
+                         newdata,
+                         newparams = NULL, ...,
                          return_val = c("sim", "pars", "object")) {
     return_val <- match.arg(return_val)
     family <- get_family(family, deparse(substitute(family)))
