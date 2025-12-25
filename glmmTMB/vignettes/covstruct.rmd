@@ -213,7 +213,7 @@ sim1 <- lapply(1:ngrp, simGroup)
 dat1 <- do.call("rbind", sim1)
 ```
 
-Notice that we call `simGroup` `r ngrp` times rather than drawing from a (`r ngrp`*25)-variate normal distribution because observations beloging to different groups are uncorrelated with each other.
+Notice that we call `simGroup` `r ngrp` times rather than drawing from a (`r ngrp`*25)-variate normal distribution because observations belonging to different groups are uncorrelated with each other.
 
 Fitting the model on this larger dataset gives estimates closer to
 the true values (AR standard deviation=1, residual (measurement) standard deviation=1, autocorrelation=`r phi_sim`):
