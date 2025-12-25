@@ -244,15 +244,18 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 ##' @param digits number of significant digits to use.
 ##' @param comp a string specifying the component to format and print.
 ##' @param formatter a \code{\link{function}}.
-##' @param ... optional further arguments, passed the next \code{\link{print}} method.
+##' @param maxdim maximum number of SDs/correlations to print
+##' @param ... optional further arguments, passed to \code{\link{print.default}} (for printing a character matrix)
 print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
-				  comp = "Std.Dev.", formatter = format, ...)
+				  comp = "Std.Dev.", formatter = format, maxdim = 10, ...)
 {
-    for (cc in names(x))  if(!is.null(x[[cc]])) {
-	cat(sprintf("\n%s:\n", cNames[[cc]]))
-	print(formatVC(x[[cc]],
-		       digits = digits, comp = comp, formatter = formatter),
-	      quote = FALSE, ...)
+  for (cc in names(x)) {
+    if(!is.null(x[[cc]])) {
+      cat(sprintf("\n%s:\n", cNames[[cc]]))
+      print(formatVC(x[[cc]],
+                     digits = digits, comp = comp, formatter = formatter, maxdim = maxdim),
+            quote = FALSE, ...)
     }
     invisible(x)
+  }
 }
