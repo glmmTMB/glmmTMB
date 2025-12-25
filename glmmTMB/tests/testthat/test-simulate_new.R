@@ -268,4 +268,4 @@ test_that("simulate_new (return_val = 'pars') works without newparams", {
     return_val = "pars")
   expect_identical(out,
                    c(beta = 1, beta = 1, beta = 1, betadisp = 0))
-))
+})
