@@ -257,3 +257,15 @@ test_that("simulate_new, b partially fixed (pars)", {
                  0.078858438002708, 0.114325605998615, 0.431878061822679))
   expect_identical(bvec[-(1:ns)], pp9$b[[1]])
 })
+
+
+test_that("simulate_new (return_val = 'pars') works without newparams", {
+  ## GH 1242
+  out <- simulate_new(
+    ~ wt + disp,
+    family = gaussian,
+    newdata = mtcars,
+    return_val = "pars")
+  expect_identical(out,
+                   c(beta = 1, beta = 1, beta = 1, betadisp = 0))
+))
