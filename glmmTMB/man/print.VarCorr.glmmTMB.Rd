@@ -24,7 +24,7 @@
 
 \item{maxdim}{maximum number of SDs/correlations to print}
 
-\item{...}{optional further arguments, passed to \code{\link[reformulas]{formatVC}}}
+\item{...}{optional further arguments, passed to \code{\link{print.default}} (for printing a character matrix)}
 }
 \description{
 Printing The Variance and Correlation Parameters of a \code{glmmTMB}
