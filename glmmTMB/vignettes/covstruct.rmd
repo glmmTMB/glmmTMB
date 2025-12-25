@@ -253,7 +253,7 @@ The estimated correlation is approximately constant along diagonals
 is now about half the true value (`r phi_sim`/2 = `r round(phi_sim/2, 2)`) because the dispersion is
 effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas})$).
 The standard deviations are all approximately equal to the true total standard
-devation ($\sqrt{\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}}=\sqrt{2}$).
+deviation ($\sqrt{\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}}=\sqrt{2}$).
 
 ## The Toeplitz structure
 
