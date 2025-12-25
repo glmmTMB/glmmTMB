@@ -26,11 +26,16 @@ stripTMBVC <- function(x) {
     return(r)
 }
 
+## check numerical equality, ignoring attributes *and* classes
+expect_all_equal_strip <- function(x, y, tolerance = 1e-8) {
+  expect_true(all.equal(x, y, check.attributes = FALSE, check.class = FALSE, tolerance = tolerance))
+}
+
 test_that("basic glmer vs glmmTMB", {
-    expect_equal(stripTMBVC(fm1),unclass(VarCorr(fm1C)),
-                 tol=2e-3)
-    expect_equal(stripTMBVC(gm1),unclass(VarCorr(gm1C)),
-                 tol=5e-3)
+    expect_all_equal_strip(stripTMBVC(fm1), unclass(VarCorr(fm1C)),
+                          tolerance=2e-3)
+    expect_all_equal_strip(stripTMBVC(gm1), unclass(VarCorr(gm1C)),
+                          tolerance=5e-3)
 })
 
 ## have to take only last 4 lines

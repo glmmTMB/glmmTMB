@@ -306,7 +306,7 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xdisp", "theta", "beta", "b"),
+                                   "Xdisp", "theta", "beta", "b", "Gp"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -327,7 +327,8 @@ getME.glmmTMB <- function(object,
   ##  changed args of parList() from internal/dynamically changing objects
   ##  to these stored parameters
   allpars <- oo.env$parList(object$fit$par, object$fit$parfull)
-  isSparse <- function(component) { if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
+  isSparse <- function(component) {
+      if (is.null(om <- object$modelInfo$sparseX)) FALSE else om[[component]] }
   switch(name,
          "X"     = if (!isSparse("cond")) oo.env$data$X else oo.env$data$XS,
          "Xzi"   = if (!isSparse("zi")) oo.env$data$Xzi else oo.env$data$XziS,
@@ -338,6 +339,15 @@ getME.glmmTMB <- function(object,
   			 "theta" = allpars$theta ,
          "beta"  = unlist(allpars[c("beta","betazi","betadisp")]),
          "b" = unlist(allpars[c("b", "bzi", "bdisp")]),
+         "Gp" = {
+             cc <- object$modelInfo$reStruc$condReStruc
+             if (is.null(cc)){
+                 NULL
+             } else {
+                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = integer(1))
+                 unname(cumsum(c(0,v)))
+             }
+         },
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -771,6 +781,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
 ##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 ##' details on the definition of the deviance for GLMMs.
+##' \item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation. (The beta-binomial currently returns unscaled residuals.)
 ##' }
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), re.form = NULL, ...) {
@@ -818,51 +829,60 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ifelse(mr < mu, -d.res, d.res)
            },
            pearson = {
-               mu <- predict(object, type = "conditional", re.form = re.form)
-               if (is.null(v <- fam$variance)) {
-                   stop("variance function undefined for family ",
-                        sQuote(fam$family),"; cannot compute",
-                        " Pearson residuals")
+             ## for classical GLM families, and in base R,
+             ## the family$variance() function returns the *scaled* variance (i.e., the
+             ## component of the variance that is purely a function of the mean)
+             ## this is the case if formals(v) is just "mu"
+             mu <- predict(object, type = "conditional", re.form = re.form)
+             theta <- predict(object, type = "disp", re.form = re.form)
+             if (!noZI(object)) {
+               zprob <- predict(object, type = "zprob", re.form = re.form)
+             }
+             if (is.null(v <- fam$variance)) {
+               stop("variance function undefined for family ",
+                    sQuote(fam$family),"; cannot compute",
+                    " Pearson residuals")
+             }
+             vformals <- names(formals(v))
+             ## construct argument list for variance function based on its formals
+             ## some argument names vary across families
+             shape <- family_params(object)
+             vargs <- list()
+             vargs$mu <- vargs$lambda <- mu
+             vargs$theta <- vargs$phi <- vargs$alpha <- theta
+             vargs$shape <- vargs$power <- shape
+             # subset to only the arguments used by the variance function
+             vargs <- vargs[vformals]
+             ## suppress beta-binomial $variance() message, substitute
+             ##  a residuals-specific message
+             suppressMessages(vv <- do.call(v, args = vargs))
+             if (fam$family=="beta-binomial") {
+               message("beta-binomial Pearson residuals are not scaled by dispersion factor")
+             }
+             ## Bell distribution is a special case
+             ## (returns complete variance, not scaled variance, even though
+             ##  variance function takes only 'mu')
+             scaled_var <- identical(vformals, "mu") && fam$family != "bell"
+             if (scaled_var) {
+               vv <- vv * theta^2
+               if (trivialDisp(object)) {
+                 ## handle convention that Pearson residuals (in base-R lm()/glm())
+                 ## are NOT scaled by the overall dispersion factor
+                 vv <- vv/(sigma(object)^2)
                }
-               vformals <- names(formals(v))
-               # construct argument list for variance function based on its formals
-               # some argument names vary across families
-               theta <- predict(object, type = "disp", re.form = re.form)
-               shape <- family_params(object)
-               vargs <- list()
-               vargs$mu <- vargs$lambda <- mu
-               vargs$theta <- vargs$phi <- vargs$alpha <- theta
-               vargs$shape <- vargs$power <- shape
-               # subset to only the arguments used by the variance function
-               vargs <- vargs[vformals]
-               vv <- do.call(v, args = vargs)
-               if (!noZI(object)) {
-                 if (length(vformals) == 1) {
-                   # handle families where variance() returns the scaled variance
-                   vv <- vv * theta^2
-                 }
-                 zprob <- predict(object, type = "zprob", re.form = re.form)
-                 # if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
-                 #   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
-                 #          = Var[X] * E[B] + E[X]^2 * Var[B]
-                 #          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
-                 vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
-               } else {
-                 if (length(vformals) == 1) {
-                     ## handle families where variance() returns the scaled variance
-                     ## FIXME: what is the logic here??
-                     if (trivialDisp(object)) {
-                         vv <- vv * (theta / sigma(object))^2
-                     } else {
-                         vv <- vv * theta^2
-                     }
-                 } ## length(vformals == 1)
-               } ## noZI
-               r <- r/sqrt(vv)
-               if (!is.null(wts)) {
-                   r <- r * sqrt(wts)
-               }
-               r
+             }
+             if (!noZI(object)) {
+               ## if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
+               ##   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
+               ##          = Var[X] * E[B] + E[X]^2 * Var[B]
+               ##          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
+               vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
+             } ## noZI
+             r <- r/sqrt(vv)
+             if (!is.null(wts)) {
+               r <- r * sqrt(wts)
+             }
+             r
            } ## end pearson
            ) ## end switch
     return(res)
