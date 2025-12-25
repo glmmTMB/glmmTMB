@@ -59,7 +59,7 @@ Imports:
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.2.9000),
+    reformulas (>= 0.4.3.1),
     pbkrtest,
     sandwich
 LinkingTo: TMB, RcppEigen
