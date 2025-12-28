@@ -103,11 +103,11 @@ $$Y(t) = \mu + X(t) + \varepsilon(t)$$
 where
 
 - $\mu$ is the mean value parameter.
-- $X(t)$ is a stationary AR(1) process, i.e. has covariance $cov(X(s),
+- $X(t)$ is a stationary AR(1) process, i.e. has covariance $\textrm{cov}(X(s),
   X(t)) = \sigma^2\exp(-\theta |t-s|)$.
-- $\varepsilon(t)$ is iid. $N(0,\sigma_0^2)$ measurement error.
+- $\varepsilon(t)$ is independent $N(0,\sigma_0^2)$ measurement error.
 
-A simulation experiment is set up using the parameters
+We set up a simulation experiment using the parameters
 
 | Description            | Parameter     | Value |
 |------------------------|---------------|-------|
@@ -116,49 +116,34 @@ A simulation experiment is set up using the parameters
 | Measurement variance   | $\sigma_0^2$  | 1     |
 | One-step correlation   | $\phi$        | 0.7   |
 
-The following R-code draws a simulation based on these parameter values.
-For illustration purposes we consider only 1 group observed over 25 time points.
+The following R function draws a simulation based on these parameter values.
+Initially, we consider only 1 group observed over 25 time points.
 
-```{r sim1, eval=TRUE}
-set.seed(1234)                                       ## Set seed for reproducibility
-n <- 25                                              ## Number of time points
-phi <- 0.4                                           ## AR(1) correlation parameter
-sigma <- phi ^ as.matrix(dist(1:n))                  ## var-cov matrix among observations
-x <- MASS::mvrnorm(mu = rep(0,n), Sigma = sigma)     ## Draw 1 sample (i.e., 1 group) from a n-variate normal distribution
-y <- x + rnorm(n)                                    ## Add measurement noise
+```{r simGroup, eval = TRUE}
+simGroup <- function(g, n=25, phi=0.7) {
+  ## Draw 1 sample (i.e., 1 group) from n-variate normal distribution
+  x <- MASS::mvrnorm(mu = rep(0,n),
+                     Sigma = phi ^ as.matrix(dist(1:n)) ) 
+  y <- x + rnorm(n)              ## observation error
+  times <- factor(1:n, levels = 1:n)
+  group <- factor(rep(g, n))
+  data.frame(y, times, group)
+}
+dat0 <- simGroup(g=1)
 ```
 
-In order to fit the model with `glmmTMB` we must first specify a time
+To fit an AR1 model with `glmmTMB` we must first specify a time
 variable as a *factor*. The factor *levels* correspond to unit spaced
 time points.
 It is a common mistake to forget some factor levels due to missing
-data or to order the levels incorrectly. We therefore recommend to
-construct factors with explicit levels, using the `levels` argument to
-the `factor` function:
-
-```{r simtimes}
-times <- factor(1:n, levels=1:n)
-head(levels(times))
-```
-
-We also need a grouping variable. In the current case there is only
-one time-series so the grouping is:
-
-```{r simgroup}
-group <- factor(rep(1,n))
-```
-
-We combine the data into a single data frame (not absolutely
-required, but good practice):
-
-```{r simcomb}
-dat0 <- data.frame(y, times, group)
-```
+data or to order the levels incorrectly. We therefore recommend
+constructing factors with explicit levels, using the `levels` argument to
+the `factor` function (in the function above we use `levels = 1:n`).
 
 Now fit the model using
 
-```{r fitar1, eval=FALSE}
-glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
+```{r fitar1}
+mod <- glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
 ```
 
 This formula notation follows that of the `lme4` package.
@@ -173,12 +158,16 @@ This formula notation follows that of the `lme4` package.
   vector but shares the same parameters for the covariance structure.
 
 After running the model, we find the parameter estimates $\mu$
-(intercept), $\sigma_0^2$ (dispersion), $\sigma$ (Std. Dev.) and
-$\phi$ (First off-diagonal of "Corr") in the output:
+(intercept), $\sigma_0^2$ (residual variance), $\sigma^2$ (process variance) and
+$\phi$ in the output:
 
 ```{r ar0fit,echo=FALSE}
-glmmTMB(y ~ ar1(times + 0 | group), data=dat0)
+fixef(mod)
+VarCorr(mod)
 ```
+
+By default, the print method for `VarCorr()` prints standard deviations rather than variances: `print(VarCorr(mod), comp = "Var")` 
+will print variances instead, or you can inspect the contents of the object (`VarCorr(mod)$cond$group`).
 
 For those trying to make sense of the internal parameterization, the internal
 transformation from the parameter ($\theta_2$) to the AR1 coefficient ($\phi$) is
@@ -187,47 +176,57 @@ $\theta_2 =  \phi/\sqrt(1-\phi^2)$. (The first element of the `theta` vector
 is the log-standard-deviation.)
 
 ```{r phihat, echo=FALSE}
-theta <- glmmTMB::getME(mod, "theta")
-phi_hat <- theta[2]/sqrt(1+theta[2]^2)
-abs((phi-phi_hat)/phi)                              ## Relative difference between real phi and estimated one
-                                                    ## It is large due to the low number of observations
+theta <- getME(mod, "theta")
+phi_transfun <- function(x) x/sqrt(1+x^2)
+phi_hat <- phi_transfun(theta[2])
+
+```{r phidiff, echo = FALSE}
+phi_sim <- 0.7
+n <- 25
+phi_diff <- abs((phi_sim-phi_hat)/phi_sim)
+```
+
+There is a `r round(phi_diff*100)`% difference between the estimated and true (simulated) parameter.
+
+The Wald confidence interval for the parameter is wide:
+
+```{r phi_wald_ci}
+confint(mod)["Cor.times2.times1|group",]
+```
+
+Profile confidence intervals will be more accurate:
+
+```{r phi_prof_ci}
+suppressWarnings(ar1_prof_ci <- confint(mod, method = "profile"))
+phi_transfun(ar1_prof_ci[3,])
 ```
 
 ### Increasing the sample size
 
 A single time series of 25 time points is not sufficient to identify
 the parameters. We could either increase the length of the time series
-or increase the number of groups. We'll try the latter:
-
-```{r simGroup}
-simGroup <- function(g, n=6, phi=0.7) {
-    x <- MASS::mvrnorm(mu = rep(0,n),
-             Sigma = phi ^ as.matrix(dist(1:n)) )   ## Simulate the process
-    y <- x + rnorm(n)                               ## Add measurement noise
-    times <- factor(1:n)
-    group <- factor(rep(g,n))
-    data.frame(y, times, group)
-}
-simGroup(1)
-```
-
-Generate a dataset with 1000 groups:
+or increase the number of groups. We'll try the latter, generating a data set with 200 groups:
 
 ```{r simGroup2}
-dat1 <- do.call("rbind", lapply(1:1000, simGroup) )
+ngrp <- 200
+sim1 <- lapply(1:ngrp, simGroup)
+dat1 <- do.call("rbind", sim1)
 ```
 
-Notice that we call `simGroup` 1000 times rather than drawing from a (1000*25)-variate normal distribution because observations beloging to different groups are uncorrelated with each other.
+Notice that we call `simGroup` `r ngrp` times rather than drawing from a (`r ngrp`*25)-variate normal distribution because observations belonging to different groups are uncorrelated with each other.
 
 Fitting the model on this larger dataset gives estimates closer to
-the true values (AR standard deviation=1, residual (measurement) standard deviation=1, autocorrelation=0.7):
+the true values (AR standard deviation=1, residual (measurement) standard deviation=1, autocorrelation=`r phi_sim`):
 
 ```{r fit.ar1}
 (fit.ar1 <- glmmTMB(y ~ ar1(times + 0 | group), data=dat1))
+```
 
-theta <- glmmTMB::getME(fit.ar1, "theta")
-phi_hat <- theta[2]/sqrt(1+theta[2]^2)
-abs((phi-phi_hat)/phi)                      ## Much closer!
+```{r fit.ar1.comp}
+phi_hat <- phi_transfun(getME(fit.ar1, "theta")[2])
+abs((phi_sim-phi_hat)/phi_sim)  ## Much closer!
+## narrower confidence intervals
+confint(fit.ar1)["Cor.times2.times1|group",]
 ```
 
 ## The unstructured covariance
@@ -244,17 +243,17 @@ fit.us <- glmmTMB(y ~ us(times + 0 | group), data=dat1, dispformula=~0)
 fit.us$sdr$pdHess ## Converged ?
 ```
 
-The estimated variance and correlation parameters are:
-
 ```{r fit.us.vc}
-VarCorr(fit.us)
+print(VarCorr(fit.us), maxdim = 5)
 ```
 
 \newcommand{\textsub}[2]{#1_{{\text {#2}}}}
 The estimated correlation is approximately constant along diagonals
 (apparent Toeplitz structure) and we note that the first off-diagonal
-is now ca. half the true value (0.7) because the dispersion is
+is now about half the true value (`r phi_sim`/2 = `r round(phi_sim/2, 2)`) because the dispersion is
 effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas})$).
+The standard deviations are all approximately equal to the true total standard
+deviation ($\sqrt{\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}}=\sqrt{2}$).
 
 ## The Toeplitz structure
 
@@ -274,23 +273,17 @@ fit.toep$sdr$pdHess ## Converged ?
 The estimated variance and correlation parameters are:
 
 ```{r fit.toep.vc}
-(vc.toep <- VarCorr(fit.toep))
+print(vc.toep <- VarCorr(fit.toep), maxdim = 5)
 ```
 
-The diagonal elements are all approximately equal to the true total variance ($\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}$=2), and the off-diagonal elements are approximately equal to the expected value of 0.7/2=0.35.
-```{r fit.toep.vc.diag}
-vc1 <- vc.toep$cond[[1]] ## first term of var-cov for RE of conditional model
-summary(diag(vc1))
-summary(vc1[row(vc1)!=col(vc1)])
-```
+Once again, the standard deviations are $\approx \sqrt{2}$
+and the elements in the first off-diagonal are $\approx 0.35$.
 
-We can get a *slightly* better estimate of the variance by using REML estimation (however, the estimate of the correlations seems to have gotten slightly worse):
+We can get a *slightly* better estimate of the variance by using REML estimation (however, the estimate of the correlations seems to have gotten slightly worse, and we suppress a "false convergence" warning from `nlminb`):
 
-```{r fit.toep.reml}
+```{r fit.toep.reml, warning = FALSE}
 fit.toep.reml <- update(fit.toep, REML=TRUE)
-vc1R <- VarCorr(fit.toep.reml)$cond[[1]]
-summary(diag(vc1R))
-summary(vc1R[row(vc1R)!=col(vc1R)])
+print(vc1R <- VarCorr(fit.toep.reml), maxdim = 5)
 ```
 
 ## Compound symmetry
@@ -371,11 +364,11 @@ fit.ou <- glmmTMB(y ~ ou(times + 0 | group), data=dat1)
 fit.ou$sdr$pdHess ## Converged ?
 ```
 
-It should give the exact same results as `ar1` in this case since the
-times are equidistant:
+It should give the same results as `ar1` in this case ^[we have actually found that the results from OU and AR1 models are *not* exactly the same; we're digging in to this, please post an issue if this is important to you/you want to know more] since the
+observation times are equidistant:
 
 ```{r fit.ou.vc}
-VarCorr(fit.ou)
+print(VarCorr(fit.ou), maxdim = 5)
 ```
 
 However, note the differences between `ou` and `ar1`:
@@ -392,7 +385,7 @@ the simulated time series data.
 
 An example with spatial data is presented in a later section.
 
-### Matern
+### Matérn
 
 ```{r fit.mat}
 fit.mat <- glmmTMB(y ~ mat(times + 0 | group), data=dat1, dispformula=~0)
@@ -400,7 +393,7 @@ fit.mat$sdr$pdHess ## Converged ?
 ```
 
 ```{r fit.mat.vc}
-VarCorr(fit.mat)
+print(VarCorr(fit.mat), maxdim = 5)
 ```
 
 ### Gaussian
@@ -414,7 +407,7 @@ fit.gau$sdr$pdHess ## Converged ?
 ```
 
 ```{r fit.gau.vc}
-VarCorr(fit.gau)
+print(VarCorr(fit.gau), maxdim = 5)
 ```
 
 ### Exponential
@@ -425,7 +418,7 @@ fit.exp$sdr$pdHess ## Converged ?
 ```
 
 ```{r fit.exp.vc}
-VarCorr(fit.exp)
+print(VarCorr(fit.exp), maxdim = 5)
 ```
 
 ### A spatial covariance example
@@ -579,8 +572,11 @@ cc <- diag(n)
 cc[upper.tri(cc)] <- cpars
 L <- crossprod(cc)
 D <- diag(1/sqrt(diag(L)))
-round(D %*% L %*% D,3)
-round(unname(attr(vv1,"correlation")),3)
+prt_cor <- function(x, maxdim = 5, dig = 3) {
+  print(x[1:maxdim, 1:maxdim], digits = dig)
+}
+prt_cor(D %*% L %*% D)
+prt_cor(unname(attr(vv1,"correlation")))
 ```
 
 ```{r other_check}
@@ -652,7 +648,7 @@ where $\otimes$ is the Kronecker product and $\boldsymbol{\Lambda} = (\boldsymbo
 
 For GLVMs it is important to select initial starting values for the parameters because the observed likelihood may be multimodal, and maximization algorithms can end up in local maxima. @niku2019gllvm describe methods to enable faster and more reliable fits of latent variable models by carefully choosing starting values of the parameters.
 
-A similar method has been implemented in `glmmTMB` [@mcgillycuddyParsimoniously2024]. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
+A similar method has been implemented in `glmmTMB` [@mcgillycuddyParsimoniously2025]. A generalized linear model is fitted to the data to obtain initial starting values for the fixed parameters in the model.  Residuals from the fitted GLM are calculated; Dunn-Smyth residuals are calculated for common families while residuals from the `dev.resids()` function are used otherwise. Initial starting values for the latent variables and their loadings are obtained by fitting a reduced rank model to the residuals.
 
 ### Reduced-rank
 

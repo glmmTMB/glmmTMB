@@ -9,6 +9,7 @@
   digits = max(3, getOption("digits") - 2),
   comp = "Std.Dev.",
   formatter = format,
+  maxdim = 10,
   ...
 )
 }
@@ -21,7 +22,9 @@
 
 \item{formatter}{a \code{\link{function}}.}
 
-\item{...}{optional further arguments, passed the next \code{\link{print}} method.}
+\item{maxdim}{maximum number of SDs/correlations to print}
+
+\item{...}{optional further arguments, passed to \code{\link{print.default}} (for printing a character matrix)}
 }
 \description{
 Printing The Variance and Correlation Parameters of a \code{glmmTMB}
