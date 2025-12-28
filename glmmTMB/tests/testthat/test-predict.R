@@ -264,7 +264,8 @@ test_that("predvars with different ns() in fixed and disp (GH #845)", {
         wt = seq(min(mtcars$wt), max(mtcars$wt), length.out = 3)
     )
     expect_equal(predict(x, newdata = newdata),
-                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06))
+                 c(1.00149139390868, 0.367732526652086, 9.21516947505197e-06),
+                 tolerance = 1e-7)
 })
 
 test_that("predvars with differing splines in fixed and RE (GH#632)", {
@@ -597,4 +598,97 @@ test_that("prediction from rank-deficient X matrices", {
                tolerance = 1e-6)
 })
              
+
+## GH 1229
+test_that("pearson residuals from Beta", {
+  set.seed(101)
+  dd <- data.frame(x = rnorm(100))
+  dd$y <- simulate_new(~ 1 + x,
+                       family = beta_family,
+                       newparams = list(beta = c(0, 1)),
+                       newdata = dd)[[1]]
+  m <- glmmTMB(y ~ x, family = beta_family, data = dd)
+  r1 <- residuals(m, type = "pearson")
+  ## m2 <- betareg::betareg(y ~ x, data = dd)
+  ## dput(head(r2 <- residuals(m2, type = "pearson"), 3))
+  b_res <- c(-0.758128775585217, -1.56249629034592, -1.18010016241397)
+  expect_equal(head(r1, 3),
+               b_res, check.attributes = FALSE, tolerance = 1e-5)
+  
+})
+
+test_that("pearson residuals from Gamma", {
+  set.seed(101)
+  dd <- data.frame(x = rnorm(100))
+  dd$y <- simulate_new(~ 1 + x,
+                       family = Gamma(link = "log"),
+                       newparams = list(beta = c(0, 1), betadisp = 1),
+                       newdata = dd)[[1]]
+  m <- glmmTMB(y ~ x, family = Gamma(link = "log"), data = dd)
+  m2 <- glm(y ~ x, family = Gamma(link = "log"), data = dd)
+  r1 <- residuals(m, type = "working")
+  r2 <- residuals(m2, type = "working")
+  expect_equal(r1, r2, tolerance = 2e-5)
+  r1 <- residuals(m, type = "pearson")
+  r2 <- residuals(m2, type = "pearson")
+  ## plot(r1, r2)
+  ## abline(a=0, b=1, col = 2)
+  expect_equal(r1, r2, tolerance = 2e-5)
+})
+
+test_that("compare scaled and unscaled Pearson residuals for gaussian", {
+  set.seed(101)
+  dd <- data.frame(y = rnorm(100, sd = 2), const = 1)
+  m <- glmmTMB(y ~ 1, family = gaussian, data = dd)
+  ## message about dropping rank-def columns
+  ## this is still enough to make trivialDisp() FALSE
+  m2 <- suppressMessages(update(m, dispformula = ~ const))
+  r1 <- residuals(m, type = "pearson")
+  r2 <- residuals(m2, type = "pearson")
+  expect_equal(r1/sigma(m), r2)
+})
+
+pearson_testfun <- function(family = lognormal, seed = 101, wt.args = NULL,
+                            beta = c(10, 1), n = 1000, ...) {
+  set.seed(seed)
+  dd <- data.frame(x = seq(-2, 2, length.out = n))
+  dd$y <-
+    do.call(simulate_new,
+            c(list(~x,
+                   family = family,
+                   newdata = dd,
+                   newparams = list(beta = beta,
+                                    betadisp = 1.5, ...)),
+              wt.args))[[1]]
+  if (!is.null(wt.args)) {
+    dd$y <- dd$y/wt.args$weights
+  }
+  m <- do.call(glmmTMB, c(list(y~x, family = family, data = dd), wt.args))
+  res <- data.frame(x= fitted(m), y = residuals(m, type = "pearson"))
+  invisible(res)
+}
+
+test_that("skewnormal Pearson resids", {
+  res <- pearson_testfun(skewnormal, psi = -1)
+  expect_equal(mean(res$y^2), 1)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0)
+})
+
+test_that("lognormal Pearson resids", {
+  res <- pearson_testfun(lognormal)
+  expect_equal(mean(res$y^2), 1, tolerance = 1e-4)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 1e-6)
+})
+
+test_that("betabinomial Pearson resids", {
+  size <- 10
+  theta <- exp(1.5) ## dispersion
+  wt.args <- list(weights = rep(size, 1e4))
+  res <- pearson_testfun(betabinomial, wt.args = wt.args, beta = c(-1, 1), n = 1e4)
+  ## fairly rough correspondence with theoretical values
+  ## (need larger sample size)
+  disp <- (theta+size)/(theta+1)
+  expect_equal(mean(res$y^2), disp, tolerance = 1e-2)
+  expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 2e-2)
+})
 

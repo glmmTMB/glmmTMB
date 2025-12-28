@@ -555,6 +555,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' @importFrom mgcv smoothCon smooth2random s PredictMat
 ##' @importFrom reformulas inForm findbars nobars noSpecials sub_specials addForm findbars_x anySpecial RHSForm RHSForm<- extractForm reOnly no_specials splitForm addForm0 makeOp
 ##' @importFrom utils head
+##' @importFrom methods as
 getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
                        contrasts, sparse=FALSE, old_smooths = NULL) {
 
@@ -1020,6 +1021,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homdiag" = 1,  ## (homogeneous) diag
                "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
                "homcs" = 2,
+               "homtoep" = blksize,
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1150,11 +1152,13 @@ binomialType <- function(x) {
 ##' \item \code{ar1} (autoregressive order-1, homogeneous variance)
 ##' \item \code{hetar1} (autoregressive order-1, heterogeneous variance)
 ##' \item \code{cs} (compound symmetric, heterogeneous variance)
+##' \item \code{homcs} (compound symmetric, homogeneous variance)
 ##' \item \code{ou} (* Ornstein-Uhlenbeck, homogeneous variance)
 ##' \item \code{exp} (* exponential autocorrelation)
 ##' \item \code{gau} (* Gaussian autocorrelation)
 ##' \item \code{mat} (* Matérn process correlation)
-##' \item \code{toep} (* Toeplitz)
+##' \item \code{toep} (* Toeplitz, heterogeneous variance)
+##' \item \code{homtoep} (* Toeplitz, homogeneous variance)
 ##' \item \code{rr} (reduced-rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
@@ -2122,44 +2126,84 @@ ngrps.glmmTMB <- function(object, ...) {
 #' @export
 ngrps.factor <- function(object, ...) nlevels(object)
 
+## how do emmeans, lmerTest, etc. specify ddf?
+## lmerTest: ddf = c("Satterthwaite", "Kenward-Roger", "lme4")
+## emmeans:  lmer.df = c("kenward-roger", "satterthwaite", "asymptotic")
 
-##' @importFrom stats pnorm
+##' @importFrom stats pnorm pt
 ##' @method summary glmmTMB
+##' @title summary for glmmTMB fits
+##' @param object a fitted \code{glmmTMB} object
+##' @param ddf denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
+##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
+##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}});
+##' \code{"satterthwaite"} uses a Satterthwaite approximation
+##' @param ... unused, for method compatibility
+##' @inheritParams vcov.glmmTMB
 ##' @export
-summary.glmmTMB <- function(object, sandwich = FALSE, cluster = getGroups(object), ...)
-{
-    if (length(list(...)) > 0) {
-        ## FIXME: need testing code
-        warning("additional arguments ignored")
-    }
+summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenward-roger", "satterthwaite"), cluster = getGroups(object), ...) {
+    check_dots(...)
+    ddf <- match.arg(ddf)
     ## figure out useSc
     sig <- sigma(object)
 
     famL <- family(object)
 
-    mkCoeftab <- function(coefs,vcovs) {
+    if (ddf == "KR") {
+        if (!isREML(object)) {
+            warning("ddf='KR' ignored for non-REML fits")
+        } else {
+            if (family(object)$family != "gaussian") {
+                warning("ddf='KR' is untested for GLMMs. Use at your own risk!")
+            }
+            if (!trivialDisp(object) || !noZI(object)) {
+                message("ddf='KR' ignored except for conditional-distribution parameters")
+            }
+        }
+    }
+    
+    mkCoeftab <- function(coefs, vcovs, type) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
                        "Std. Error" = sqrt(diag(vcovs)))
         if (p > 0) {
-            coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]),
-                           deparse.level = 0)
-            ## statType <- if (useSc) "t" else "z"
-            statType <- "z"
+            stat <- coefs[,1]/coefs[,2]
+            statType <- if (ddf!="asymptotic" && type == "cond") "t" else "z"
+            stat_lab <- paste(statType, "value")
+            pval_lab <- sprintf("Pr(>|%s|)", statType)
             ## ??? should we provide Wald p-values???
-            coefs <- cbind(coefs, 2*pnorm(abs(cf3), lower.tail = FALSE))
-            colnames(coefs)[3:4] <- c(paste(statType, "value"),
-                                      paste0("Pr(>|",statType,"|)"))
+            if (statType == "z") {
+                pvals <- 2*pnorm(abs(stat), lower.tail = FALSE)
+                labs <- c(stat_lab, pval_lab)
+                cc <- cbind(stat, pvals)
+            } else {
+                if (ddf == "kenward-roger") {
+                    df_val <- c(dof_KR(object))
+                } else if (ddf == "satterthwaite") {
+                    df_val <- c(dof_satt(object))
+                }
+                pvals <- 2*stats::pt(abs(stat), df = df_val, lower.tail = FALSE)
+                labs <- c(stat_lab, "ddf", pval_lab)
+                cc <-  cbind(stat, df_val, pvals)
+            }
+            coefs <- cbind(coefs, cc)
+            colnames(coefs)[2+seq_along(labs)] <- labs
         }
+        attr(coefs, "ddf") <- ddf
         coefs
     }
 
     ff <- fixef(object)
     vv <- vcov(object, include_nonest=TRUE, sandwich = sandwich, cluster = cluster)
-    coefs <- setNames(lapply(names(ff),
-            function(nm) if (trivialFixef(names(ff[[nm]]),nm)) NULL else
-                             mkCoeftab(ff[[nm]],vv[[nm]])),
-                      names(ff))
+    ## default value is NULL, so preallocate list and assign to elements rather than
+    ##  lapply()ing
+    coefs <- vector("list", length = length(ff))
+    names(coefs) <- names(ff)
+    for (nm in names(ff)) {
+        if (!trivialFixef(names(ff[[nm]]),nm)) {
+            coefs[[nm]] <- mkCoeftab(ff[[nm]], vv[[nm]], nm)
+        }
+    }
 
     llAIC <- llikAIC(object)
 

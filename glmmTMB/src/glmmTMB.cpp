@@ -92,7 +92,8 @@ enum valid_covStruct {
   // should perhaps be next to homdiag but don't want to mess
   //  up interpretation of stored fits ...
   hetar1_covstruct = 12,
-  homcs_covstruct = 13
+  homcs_covstruct = 13,
+  homtoep_covstruct = 14
 };
 
 // should probably be named just 'predictCode';
@@ -437,9 +438,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     term.sd = sd;             // For report
   }
   else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
-    // case: cs_covstruct
+    // case: cs_covstruct or homcs_covstruct
     int n = term.blockSize;
-    int nsd = (term.blockCode == cs_covstruct ? n : 1);
     vector<Type> logsd(n);
     for (int i = 0; i < n; i++) {
       if (term.blockCode == cs_covstruct) {
@@ -448,7 +448,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         logsd(i) = theta(0);
       }
     }
-    Type corr_transf = theta(nsd);
+    Type corr_transf = theta.tail(1)(0);
     vector<Type> sd = exp(logsd);
     Type a = Type(1) / (Type(n) - Type(1));
     Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
@@ -470,26 +470,33 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     SET_COR;
     term.sd = sd;             // For report
   }
-  else if (term.blockCode == toep_covstruct){
-    // case: toep_covstruct
+  else if (term.blockCode == toep_covstruct || term.blockCode == homtoep_covstruct) {
+    // case: toep_covstruct or homtoep_covstruct
     int n = term.blockSize;
-    vector<Type> logsd = theta.head(n);
+    vector<Type> logsd(n);
+    for (int i = 0; i < n; i++) {
+      if (term.blockCode == toep_covstruct) {
+        logsd(i) = theta(i);
+      } else {
+        logsd(i) = theta(0);
+      }
+    }
     vector<Type> sd = exp(logsd);
-    vector<Type> parms = theta.tail(n-1);              // Corr parms
-    parms = parms / sqrt(Type(1.0) + parms * parms );  // Now in (-1,1)
+    vector<Type> corr_params = theta.tail(n-1);
+    corr_params = corr_params / sqrt(Type(1.0) + corr_params * corr_params);
     matrix<Type> corr(n,n);
-    for(int i=0; i<n; i++)
+    for (int i=0; i<n; i++)
       for(int j=0; j<n; j++)
         corr(i,j) = (i==j ? Type(1) :
-                     parms( (i > j ? i-j : j-i) - 1 ) );
+                     corr_params( (i > j ? i-j : j-i) - 1 ) );
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-	if (term.simCode != random_simcode) {
-	  Rf_error("simcode not yet implemented for toep cov struct");
-	}
+        if (term.simCode != random_simcode) {
+          Rf_error("simcode not yet implemented for toep and homtoep cov struct");
+        }
         U.col(i) = sd * nldens.simulate();
       }
     }

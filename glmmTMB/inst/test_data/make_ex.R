@@ -99,5 +99,10 @@ fsleepstudy_big$Reaction <- simulate_new(~ 1 + (1|Subject) + hetar1(fDays+0| Sub
 
 fm_hetar1 <- glmmTMB(Reaction ~ 1 + hetar1(fDays + 0| Subject), fsleepstudy_big)
 
+data("Nile")
+ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
+fm_smooth1 <- glmmTMB(val ~ s(time), data = ndat,
+                      REML = TRUE, start = list(theta = 5))
+
 if (save_image) save.image(file="models.rda", version=2)
 

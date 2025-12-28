@@ -320,7 +320,7 @@ beta_family <- function(link="logit") {
     ## note *internal* name must still be "beta",
     ## unless/until it's changed in src/glmmTMB.cpp (and R/enum.R is rebuilt)
     r <- list(family="beta",
-              variance=function(mu) { mu*(1-mu) },
+              variance=function(mu, phi) { (mu*(1-mu))/(1+phi) },
               initialize=expression({
                   if (exists("ziformula") && !ident(ziformula, ~0)) {
                       if (any(y < 0 | y >= 1)) {
@@ -346,10 +346,15 @@ beta_family <- function(link="logit") {
 ## =  n*p*(1-p)*(theta+n)/(theta+1)
 ##  *scaled* variance (dependence on mu only) is still just mu*(1-mu);
 ##  scaling is n*(theta+n)/(theta+1) (vs. simply n for the binomial)
+## FIXME:
+## we would want to scale by (theta+n)/(theta+1)
+## that means variance function would need access to n (model weights)
+## that's annoying ...
 betabinomial <- function(link="logit") {
     r <- list(family="betabinomial",
               variance = function(mu, phi) {
-                  mu*(1-mu)
+                message("beta-binomial variance function returns *unscaled* variance")
+                mu*(1-mu)
               },
               initialize = our_binom_initialize(binomial()$initialize))
     ## FIXME: should add needs_int = TRUE ??
@@ -370,8 +375,9 @@ tweedie <- function(link="log") {
 #' @export
 skewnormal <- function(link="identity") {
   r <- list(family="skewnormal",
-            variance = function(phi) {
-              phi^2
+            variance = function(mu, phi, shape) {
+              delta <- shape/sqrt(1-shape^2)
+              phi^2*(1-2*delta^2/pi)
             })
   return(make_family(r,link))
 }
@@ -381,7 +387,7 @@ skewnormal <- function(link="identity") {
 #' @export
 lognormal <- function(link="log") {
     r <- list(family="lognormal",
-              variance=function(mu,phi) phi^2,
+              variance=function(mu, phi) phi^2,
               initialize = expression({
                   if (exists("ziformula") && !ident(ziformula, ~0)) {
                       if (any(y < 0)) {
@@ -448,7 +454,7 @@ ziGamma <- function(link="inverse") {
         if (exists("ziformula") && !ident(ziformula, ~0)) {
             if (any(y < 0)) stop("negative values not allowed for the 'Gamma' family with zero-inflation")
             } else {
-                if (any(y <= 0)) stop("non-positive values not allowed for the 'Gamma' family")
+                if (any(y <= 0)) stop("zero values not allowed for the 'ziGamma' family unless `ziformula` is specified [and not ~0]")
             }
             n <- rep.int(1, nobs)
             mustart <- y
