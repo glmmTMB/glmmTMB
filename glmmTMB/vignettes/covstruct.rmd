@@ -186,7 +186,8 @@ n <- 25
 phi_diff <- abs((phi_sim-phi_hat)/phi_sim)
 ```
 
-There is a `r round(phi_diff*100)`% difference between the estimated and true (simulated) parameter.
+<!-- r round(phi_diff*100) -->
+There is a 34% difference between the estimated and true (simulated) parameter.
 
 The Wald confidence interval for the parameter is wide:
 
@@ -213,10 +214,11 @@ sim1 <- lapply(1:ngrp, simGroup)
 dat1 <- do.call("rbind", sim1)
 ```
 
-Notice that we call `simGroup` `r ngrp` times rather than drawing from a (`r ngrp`*25)-variate normal distribution because observations belonging to different groups are uncorrelated with each other.
+<!-- hard-coded inclusions: "r ngrp", "r ngrp"*25 -->
+Notice that we call `simGroup` 200 times rather than drawing from a (`ngrp*25` = 500)-variate normal distribution because observations belonging to different groups are uncorrelated with each other.
 
 Fitting the model on this larger dataset gives estimates closer to
-the true values (AR standard deviation=1, residual (measurement) standard deviation=1, autocorrelation=`r phi_sim`):
+the true values (AR standard deviation=1, residual (measurement) standard deviation=1, autocorrelation=0.7): <!-- r phi_sim -->
 
 ```{r fit.ar1}
 (fit.ar1 <- glmmTMB(y ~ ar1(times + 0 | group), data=dat1))
@@ -232,8 +234,10 @@ confint(fit.ar1)["Cor.times2.times1|group",]
 ## The unstructured covariance
 
 We can try to fit an unstructured covariance to the previous dataset
-`dat`. For this case an unstructured covariance has `r (n*n-n)/2`
-correlation parameters and `r n` variance parameters. Adding
+`dat`. For this case an unstructured covariance has 300
+correlation parameters and 25 variance parameters. 
+<!-- r (n*n -n)/2 , r n  -->
+Adding
 $\sigma_0^2 I$ on top would cause a strict
 overparameterization, as these would be redundant with the diagonal
 elements in the covariance matrix. Hence, when fitting the model with `glmmTMB`, we have to disable the $\varepsilon$ term (the dispersion) by setting `dispformula=~0`:
@@ -250,7 +254,8 @@ print(VarCorr(fit.us), maxdim = 5)
 \newcommand{\textsub}[2]{#1_{{\text {#2}}}}
 The estimated correlation is approximately constant along diagonals
 (apparent Toeplitz structure) and we note that the first off-diagonal
-is now about half the true value (`r phi_sim`/2 = `r round(phi_sim/2, 2)`) because the dispersion is
+is now about half the true value (0.7/2 = 0.35) because the dispersion is
+<!-- phi_sim, phi_sim/2 -->
 effectively included in the estimated covariance matrix (i.e. $\rho' = \rho \textsub{\sigma^2}{AR}/(\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas})$).
 The standard deviations are all approximately equal to the true total standard
 deviation ($\sqrt{\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}}=\sqrt{2}$).
@@ -258,8 +263,10 @@ deviation ($\sqrt{\textsub{\sigma^2}{AR} + \textsub{\sigma^2}{meas}}=\sqrt{2}$).
 ## The Toeplitz structure
 
 The next natural step would be to reduce the number of parameters by
-collecting correlation parameters within the same off-diagonal. This
-amounts to `r (n-1)` correlation parameters. For the heterogeneous version `r n` variance parameters are used, while just a single variance parameter is estimated for the homogeneous version.
+collecting correlation parameters within the same off-diagonal. 
+<!-- n-1 , n -->
+This
+amounts to 24 correlation parameters. For the heterogeneous version 25 variance parameters are used, while just a single variance parameter is estimated for the homogeneous version.
 
 We use `dispformula = ~0` to suppress the residual variance (it actually
 gets set to a small value controlled by the `zerodisp_val` argument of `glmmTMBControl()`)^[Why do we do this? Consider the slightly simplified case of a *homogeneous* Toeplitz structure where all of the variance parameters are identical. The diagonal elements of the covariance matrix are equal to $\sigma_t^2$, the off-diagonals to $\sigma_t^2 \cdot \rho(|i-j|)$. If we add a residual variance to the model then the diagonal of the combined covariance matrix becomes $\sigma_t^2 + \sigma_r^2$ and the off-diagonals become $(\sigma_t^2 + \sigma_r^2) \rho(|i-j|)$. However, by reparameterizing the Toeplitz model to $\{{\sigma_t^2}' = \sigma_t^2 + \sigma_r^2, \rho'(|i-j|) = \rho(|i-j|) \cdot \frac{\sigma_t^2}{\sigma_t^2 + \sigma_r^2}\}$ --- that is, by inflating the variance and deflating the correlation parameters --- we can get back to an equivalent Toeplitz model. This implies that the residual variance and the Toeplitz covariance parameters are jointly unidentifiable, which is likely to make problems for the fitting procedure.]
