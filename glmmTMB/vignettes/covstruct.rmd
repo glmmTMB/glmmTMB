@@ -748,14 +748,13 @@ fit_phylo <- glmmTMB(log(range) ~ log(size) +
 
 ## Equal
 
-The `equalto` structure fits a multivariate random effect using a fixed variance–covariance matrix supplied by the user - no scale or correlation parameters are estimated. This is useful in meta-analysis when sampling-error variances and within-study correlations are known. For example, when there are multiple outcomes (i.e. effect sizes) per study, a block-diagonal variance-covariance matrix can encode the within-study correlations. `equalto` is equivalent to `propto` without the proportionality parameter, that is, the supplied variance-covariance matrix is used as-is.
+The `equalto` structure fits a multivariate random effect using a fixed variance–covariance matrix supplied by the user, no scale or correlation parameters are estimated. This is useful in meta-analysis when sampling-error variances and within-study correlations are known. For example, when there are multiple outcomes (i.e. effect sizes) per study, a block-diagonal variance-covariance matrix can encode the within-study correlations. `equalto` is equivalent to `propto` without the proportionality parameter, that is, the supplied variance-covariance matrix is used as-is.
 
-We use a meta-analysis dataset from the `metafor` package to demonstrate how `equalto` fits a meta-analysis with within-study dependence among effect sizes:
+We use here a meta-analysis dataset from the `metafor` package to demonstrate how `equalto` fits a meta-analysis with within-study dependence among effect sizes:
 
 
-```{r equalto}
-suppressPackageStartupMessages(library(metafor))
-
+```{r equalto, message=FALSE, warning=FALSE}
+library(metafor)
 dat <- dat.assink2016
 head(dat,9) 
 dat$g <- 1 #grouping variable
@@ -768,9 +767,6 @@ round(VCV[dat$study %in% c(1,2), dat$study %in% c(1,2)], 4)
 
 # fit meta-analysis using approximate VCV matrix
 fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, VCV), REML=TRUE, data=dat)
-
-# equivalent model in metafor
-#fit_rma <- metafor::rma.mv(yi, VCV, random = list(~1 | study, ~1 | id), control=list(REMLf=FALSE), data=dat)
 ```
 
 We can fit the same model assuming sampling errors are independent:
@@ -781,16 +777,36 @@ V <- diag(dat$vi)
 # fit meta-analysis with a diagonal matrix VCV
 fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, V), REML=TRUE, data=dat)
 
-# equivalent model in metafor
-#fit_rma <- metafor::rma.mv(yi, vi, random = list(~1 | study, ~1 | id), control=list(REMLf=FALSE), data=dat)
+```
+
+
+```{r metafor_models, echo=FALSE}
+
+# equivalent model with block-diagonal VCV in metafor
+fit_rma1 <- metafor::rma.mv(yi, VCV, 
+                           random = list(~1 | study, ~1 | id),
+                           control=list(REMLf=FALSE),
+                           data=dat)
+
+# equivalent model with diagonal VCV using map and start
+fit_ma2 <- glmmTMB(yi ~ 1 + (1|study) + (1|id),
+                   dispformula = ~ 0 + id, 
+                   map = list(betadisp = factor(rep(NA, nrow(dat)))),
+                   start = list(betadisp = log(sqrt(dat$vi))),
+                  REML=TRUE, 
+                  data=dat)
+
+# equivalent model with diagonal VCV in metafor
+fit_rma2 <- metafor::rma.mv(yi, vi,
+                           random = list(~1 | study, ~1 | id),
+                           control=list(REMLf=FALSE),
+                           data=dat)
 ```
 
 
 As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
 
 In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
-
-The `equalto` structure is experimental - please report any bugs or errors. 
 
 
 ## Construction of structured covariance matrices
