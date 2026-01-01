@@ -80,6 +80,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
+ Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # - 
 "
 )
 knitr::kable(ctab)
@@ -738,6 +739,39 @@ fit_phylo <- glmmTMB(log(range) ~ log(size) +
 ```
 
 `dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/column names of the matrix match the terms in the random effect (i.e. the same values, in the same order). In particular, this typically means that the *levels of the varying factor* (species, in the case of a phylogenetic model) should match the row/column names of the covariance matrix. Something like `data$species <- factor(data$species, levels = rownames(covmat))` should generally work. See [Construction of structured covariance matrices] for how the terms are constructed).
+
+## Equal
+
+The `equalto` structure fits a multivariate random effect using a fixed variance–covariance matrix supplied by the user - no scale or correlation parameters are estimated. This is useful in meta-analysis when sampling-error variances and within-study correlations are known. For example, when there are multiple outcomes (i.e. effect sizes) per study, a block-diagonal variance-covariance matrix can encode the within-study correlations. `equalto` is equivalent to `propto` without the proportionality parameter, that is, the supplied variance-covariance matrix is used as-is.
+
+We use a meta-analysis dataset from the `metafor` package to demonstrate how `equalto` fits a meta-analysis with within-study dependence among effect sizes:
+
+
+```{r equalto}
+suppressWarnings(require("metafor"))
+dat <- dat.assink2016
+head(dat,9) #view data of the first two studies
+
+dat$g <- 1 # dummy grouping variable
+dat$id <- as.factor(1:nrow(dat)) # observation id - this needs to be a factor
+
+# create variance-covariance matrix for sampling errors
+# assume that the effect sizes within studies are correlated with rho=0.6
+VCV <- metafor::vcalc(vi, cluster=study, obs=esid, data=dat, rho=0.6)
+round(VCV[dat$study %in% c(1,2), dat$study %in% c(1,2)], 4)
+
+# fit meta-analysis using approximate VCV matrix
+fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, VCV), REML=TRUE, data=dat)
+
+# equivalent to 
+#fit_rma <- rma.mv(yi, VCV, random = list(~1 | study, ~1 | id), control=list(REMLf=FALSE), data=dat)
+
+```
+
+
+As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column names match and are ordered as the factor levels of the `id` variable. Set a single-level `g` grouping factor if all observations belong to one cluster.
+
+
 
 ## Construction of structured covariance matrices
 
