@@ -93,7 +93,8 @@ enum valid_covStruct {
   //  up interpretation of stored fits ...
   hetar1_covstruct = 12,
   homcs_covstruct = 13,
-  homtoep_covstruct = 14
+  homtoep_covstruct = 14,
+  equalto_covstruct = 15
 };
 
 // should probably be named just 'predictCode';
@@ -776,6 +777,23 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
       }
     }
     SET_COR;
+    term.sd = sd;             // For report
+  }
+  else if (term.blockCode == equalto_covstruct){
+    // case: equalto_covstruct
+    int n = term.blockSize;
+    vector<Type> logsd = theta.head(n);
+    vector<Type> sd =  exp(logsd);
+    vector<Type> corr_transf = theta.segment(n, theta.size() - n);
+    density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
+    density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
+    }
+    term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
   }
   else error("covStruct not implemented!");
