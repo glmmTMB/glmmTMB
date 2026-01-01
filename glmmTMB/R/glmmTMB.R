@@ -925,7 +925,7 @@ map.theta.propto <- function(ReStruc, map) {
   for(i in 1:length(cov_code)){
     if(cov_code[[i]] == 11) {
       tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
-    } else if(cov_code[[i]] == 13) {
+    } else if(cov_code[[i]] == 15) { #for equalto
       tl[[i]][1:(blockTheta[i])] <- rep(NA, blockTheta[i])
     }
   }

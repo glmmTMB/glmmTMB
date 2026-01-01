@@ -78,15 +78,9 @@ ctab <- read.delim(sep = "#", comment = "",
  Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
  Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
  Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
-<<<<<<< HEAD
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
- Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # - 
-=======
- Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
- Proportional                     # `propto`      #  $1$            # Variance-covariance matrix
  Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # -
->>>>>>> bde9f6ee (input matrix checks for equalto)
 "
 )
 knitr::kable(ctab)
