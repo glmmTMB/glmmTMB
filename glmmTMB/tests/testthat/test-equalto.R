@@ -1,8 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-
-## ------ test with glmmTMB and simulated data
+## ------ test with simulated data
 
 # simulate data for a multilevel meta-analysis 
 k.studies <- 10 #number of studies
@@ -13,12 +12,10 @@ es.id <- unlist(lapply(5, seq_len)) #id of within-study effect sizes
 b0 <- 0.2 #fixed effect coeff true value
 sigma2.u <- 0.2 #study level random effect
 sigma2.m <- 0.3 #obs level random effect
-
 set.seed(123); vi <- rbeta(k, 2, 20) # simulate sampling errors variances
 set.seed(123); u <- rnorm(k.studies, 0, sqrt(sigma2.u))[study] # simulate study level variance
 set.seed(123); m <- rnorm(k, 0, sqrt(sigma2.m)) # simulate obs level variance
 set.seed(123); e <- rnorm(k, 0, sqrt(vi))[study] #simulate samplign errors - without within-study correlation (just a diag VCV)
-
 y <- b0 + u + m + e #compute y
 
 # sim dataset
@@ -43,10 +40,30 @@ expect_equal(c(VarCorr(fit1)$cond[[1]]),
 expect_equal(c(sigma(fit1)^2),
              c(VarCorr(fit2)$cond[[2]][1]))
 
+# these are equivalent 
+mod1 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, diag(vi)), data=dat, REML=TRUE)
+mod2 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, V), data=dat, REML=TRUE)
+expect_equal(mod1$fit$par, mod2$fit$par)
+expect_equal(mod1$sdr$gradient.fixed, mod1$sdr$gradient.fixed)
+
+### testing/checking error messages for input matrix 
+# #-expect an error
+# mod0 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, vi), data=dat) 
+# #-expect an error
+# vix <- vi[1:45]
+# modx <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, vix), data=dat)
+# #-expect an error: one column matrix
+# Vbad <- matrix(1:5)
+# glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vbad), data=dat)
+# #-expect an error: non-symmtric
+# Vt <- matrix(1:5, 1:2)
+# glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vt), data=dat)
+# #-expect an error: input character vector
+# a <- as.vector(c("a", "b", "c"))
+# glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, a), data=dat)
 
 
-## ------ test with metafor and example dataset
-
+## ------ test comparing output with metafor with example dataset
 if (suppressWarnings(require("metafor"))) {
   
   dat <- dat.assink2016

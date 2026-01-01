@@ -78,9 +78,15 @@ ctab <- read.delim(sep = "#", comment = "",
  Spatial exponential              # `exp`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-\\theta_2) d_{ij})$)
  Spatial Gaussian                 # `gau`         #  $2$            # Coordinates # log-SD; log-scale ($\\rho = \\exp(-\\exp(-2\\theta_2) d_{ij}^2$)
  Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
+<<<<<<< HEAD
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
  Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # - 
+=======
+ Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    
+ Proportional                     # `propto`      #  $1$            # Variance-covariance matrix
+ Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # -
+>>>>>>> bde9f6ee (input matrix checks for equalto)
 "
 )
 knitr::kable(ctab)
@@ -748,29 +754,43 @@ We use a meta-analysis dataset from the `metafor` package to demonstrate how `eq
 
 
 ```{r equalto}
-suppressWarnings(require("metafor"))
+suppressPackageStartupMessages(library(metafor))
+
 dat <- dat.assink2016
-head(dat,9) #view data of the first two studies
+head(dat,9) 
+dat$g <- 1 #grouping variable
+dat$id <- as.factor(1:nrow(dat)) #effect size id - this needs to be a factor
 
-dat$g <- 1 # dummy grouping variable
-dat$id <- as.factor(1:nrow(dat)) # observation id - this needs to be a factor
-
-# create variance-covariance matrix for sampling errors
-# assume that the effect sizes within studies are correlated with rho=0.6
+# create variance-covariance matrix for sampling errors 
+# assume that the effect sizes within studies are correlated by rho=0.6
 VCV <- metafor::vcalc(vi, cluster=study, obs=esid, data=dat, rho=0.6)
 round(VCV[dat$study %in% c(1,2), dat$study %in% c(1,2)], 4)
 
 # fit meta-analysis using approximate VCV matrix
 fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, VCV), REML=TRUE, data=dat)
 
-# equivalent to 
-#fit_rma <- rma.mv(yi, VCV, random = list(~1 | study, ~1 | id), control=list(REMLf=FALSE), data=dat)
+# equivalent model in metafor
+#fit_rma <- metafor::rma.mv(yi, VCV, random = list(~1 | study, ~1 | id), control=list(REMLf=FALSE), data=dat)
+```
 
+We can fit the same model assuming sampling errors are independent:
+
+```{r}
+# assume sampling errors are independent
+V <- diag(dat$vi) 
+# fit meta-analysis with a diagonal matrix VCV
+fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, V), REML=TRUE, data=dat)
+
+# equivalent model in metafor
+#fit_rma <- metafor::rma.mv(yi, vi, random = list(~1 | study, ~1 | id), control=list(REMLf=FALSE), data=dat)
 ```
 
 
-As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column names match and are ordered as the factor levels of the `id` variable. Set a single-level `g` grouping factor if all observations belong to one cluster.
+As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
 
+In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
+
+The `equalto` structure is experimental - please report any bugs or errors. 
 
 
 ## Construction of structured covariance matrices
