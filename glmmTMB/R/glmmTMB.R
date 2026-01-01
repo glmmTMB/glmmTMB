@@ -435,7 +435,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
   # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto")) 1 else 0
+  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto") || any(lst$ss == "equalto")) 1 else 0
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -475,6 +475,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
           a <- condList[["aa"]][[i]]
           tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
         } #end else if propto
+        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="equalto") { # if equalto then get vcov values
+          a <- condList[["aa"]][[i]]
+          tl[[i]] <- as.theta.vcov(a) 
+        } #end else if equalto
       } #end for loop
       theta <- unlist(tl, use.names = F)
     }
@@ -512,7 +516,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   ### Change mapping for propto - FIX ME:: currently only done for condReStruc
-  if(any(condList$ss == "propto")){
+  if(any(condList$ss == "propto" | condList$ss == "equalto")){
     mapArg.orig <- mapArg
     mapArg <- map.theta.propto(condReStruc, mapArg.orig)
   }
@@ -916,6 +920,8 @@ map.theta.propto <- function(ReStruc, map) {
   for(i in 1:length(cov_code)){
     if(cov_code[[i]] == 11) {
       tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
+    } else if(cov_code[[i]] == 13) {
+      tl[[i]][1:(blockTheta[i])] <- rep(NA, blockTheta[i])
     }
   }
   map.theta <- unlist(tl, use.names = FALSE)
@@ -1022,6 +1028,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
                "homcs" = 2,
                "homtoep" = blksize,
+               "equalto" = blksize * (blksize+1) / 2, #equalto
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1162,6 +1169,7 @@ binomialType <- function(x) {
 ##' \item \code{rr} (reduced-rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
+##' \item \code{equalto} (* equal to user-specified variance-covariance matrix)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
