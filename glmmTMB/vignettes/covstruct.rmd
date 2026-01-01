@@ -1,6 +1,6 @@
 ---
 title: "Covariance structures with glmmTMB"
-author: "Kasper Kristensen and Maeve McGillycuddy"
+author: "Kasper Kristensen, Maeve McGillycuddy, and Coralie Williams"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
