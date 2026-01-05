@@ -13,6 +13,7 @@ vignette: >
   \usepackage[utf8]{inputenc}
 params:
   EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+  have_metafor: !r require("metafor", quietly = TRUE)
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
@@ -746,8 +747,7 @@ The `equalto` structure fits a multivariate random effect using a fixed variance
 
 We use here a meta-analysis dataset from the `metafor` package to demonstrate how `equalto` fits a meta-analysis with within-study dependence among effect sizes:
 
-
-```{r equalto, message=FALSE, warning=FALSE}
+```{r equalto, message=FALSE, warning=FALSE, eval=params$have_metafor}
 library(metafor)
 dat <- dat.assink2016
 head(dat,9) 
@@ -765,7 +765,7 @@ fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, VCV), REML=TRUE, data=d
 
 We can fit the same model assuming sampling errors are independent:
 
-```{r}
+```{r glmmTMB_meta, eval=params$have_metafor}
 # assume sampling errors are independent
 V <- diag(dat$vi) 
 # fit meta-analysis with a diagonal matrix VCV
@@ -774,8 +774,7 @@ fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, V), REML=TRUE, data=dat
 ```
 
 
-```{r metafor_models, echo=FALSE}
-
+```{r metafor_models, echo=FALSE, eval=params$have_metafor}
 # equivalent model with block-diagonal VCV in metafor
 fit_rma1 <- metafor::rma.mv(yi, VCV, 
                            random = list(~1 | study, ~1 | id),
@@ -801,7 +800,6 @@ fit_rma2 <- metafor::rma.mv(yi, vi,
 As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
 
 In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
-
 
 ## Construction of structured covariance matrices
 
