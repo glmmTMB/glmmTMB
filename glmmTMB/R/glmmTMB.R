@@ -435,7 +435,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
   # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto")) 1 else 0
+  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto") || any(lst$ss == "equalto")) 1 else 0
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -475,6 +475,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
           a <- condList[["aa"]][[i]]
           tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
         } #end else if propto
+        
+        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="equalto") { # if equalto then get vcov values
+          a <- condList[["aa"]][[i]]
+          checkEqualto(aa = a, cnms = condList$reTrms$cnms[[i]])
+          tl[[i]] <- as.theta.vcov(a) 
+        } #end else if equalto
       } #end for loop
       theta <- unlist(tl, use.names = F)
     }
@@ -512,7 +518,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   ### Change mapping for propto - FIX ME:: currently only done for condReStruc
-  if(any(condList$ss == "propto")){
+  if(any(condList$ss == "propto" | condList$ss == "equalto")){
     mapArg.orig <- mapArg
     mapArg <- map.theta.propto(condReStruc, mapArg.orig)
   }
@@ -854,6 +860,9 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
           else if(ss$reTrmClasses[i] == "propto"){
             checkProptoNames(aa = aa[[i]], cnms = reTrms$cnms[[i]], reXtrm = reXterms[[i]])
           }
+          else if(ss$reTrmClasses[i] == "equalto"){
+            checkEqualto(aa = aa[[i]], cnms = reTrms$cnms[[i]])
+          }
         }
 
         ss <- unlist(ss$reTrmClasses)
@@ -916,6 +925,8 @@ map.theta.propto <- function(ReStruc, map) {
   for(i in 1:length(cov_code)){
     if(cov_code[[i]] == 11) {
       tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
+    } else if(cov_code[[i]] == 15) { #for equalto
+      tl[[i]][1:(blockTheta[i])] <- rep(NA, blockTheta[i])
     }
   }
   map.theta <- unlist(tl, use.names = FALSE)
@@ -1022,6 +1033,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "propto" = blksize * (blksize+1) / 2 + 1, #propto (same as us, plus one extra for proportional param)
                "homcs" = 2,
                "homtoep" = blksize,
+               "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1162,6 +1174,7 @@ binomialType <- function(x) {
 ##' \item \code{rr} (reduced-rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
+##' \item \code{equalto} (* equal to user-specified variance-covariance matrix)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1729,7 +1742,31 @@ glmmTMBControl <- function(optCtrl=NULL,
   return(Xlist)
 }
 
-##' Checks if the row or column names of the matrix in aa matches cnms
+##' Checks for the equalto matrix in aa matches cnms
+##' @param aa additional argument of a RE term (expecting equalto matrix)
+##' @param cnms column-names of Z for a random effect term
+##' @noRd
+checkEqualto <- function(aa, cnms){
+  #cases where aa is the utils::vi() function
+  if (identical(aa, utils::vi)) 
+    stop("equalto matrix argument cannot be found.", call. = FALSE)
+  #length of equalto random effect term
+  k <- length(cnms)
+  #check if numeric matrix
+  if (!is.matrix(aa) || !is.numeric(aa))
+    stop("equalto matrix must be a numeric matrix.", call. = FALSE)
+  #check if square matrix
+  if (nrow(aa) != ncol(aa))
+    stop("equalto matrix must be a square matrix.", call. = FALSE)
+  #check dimensions of aa 
+  if (nrow(aa) != k) 
+    stop(paste0("The length of the equalto random effect term (", k, ") and the length/dimensions of the equalto object (", nrow(aa), ") are not the same."), call. = FALSE)
+  ## check if aa is numeric
+  if (!is.numeric(aa)) 
+    stop("The object specified for equalto is not numeric.", call. = FALSE)
+}
+
+##' Checks if the row or column names of the propto matrix in aa matches cnms
 ##' @param aa additional argument of a RE term (expecting propto matrix)
 ##' @param cnms column-names of Z for a random effect term
 ##' @param reXtrm terms object corresponding to a RE term
@@ -1742,9 +1779,9 @@ checkProptoNames <- function(aa, cnms, reXtrm){
   cn <- colnames(aa)
   rn <- rownames(aa)
   if (is.null(cn) && is.null(rn))
-      stop("row or column names of matrix are required", call. = FALSE)
+      stop("row or column names of propto matrix are required", call. = FALSE)
   if((!is.null(rn) && !is.null(cn)) && !identical(cn, rn)) {
-      stop("row and column names of matrix do not match", call. = FALSE)
+      stop("row and column names of propto matrix do not match", call. = FALSE)
   }
   matNames <- if (is.null(cn)) rn else cn
   if(!identical(matNames, cnms)) {
@@ -1752,10 +1789,10 @@ checkProptoNames <- function(aa, cnms, reXtrm){
       aaLabs <- paste0(reTrmLabs, matNames )
       if(!identical(aaLabs, cnms)) {
           if (identical(sort(aaLabs), sort(cnms))) {
-              stop("column/row names of the matrix match the terms, but are in a different order",
+              stop("column/row names of the propto matrix match the terms, but are in a different order",
                    call. = FALSE)
           }
-          stop( "column or row names of the matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
+          stop( "column or row names of the propto matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
       }
   }
 }
