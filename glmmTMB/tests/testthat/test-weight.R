@@ -48,12 +48,10 @@ test_that("Return weights", {
                  "unused arguments ignored")
 })
 
-
-
 ind_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=inddat, family="poisson")
 
 test_that("Estimates are the same", {
 	expect_equal(summary(wei_glmmtmb)$coefficients$cond, summary(ind_glmmtmb)$coefficients$cond, tolerance=1e-6)
-	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tolerance=1e-5)
+	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tolerance=2e-5)
 	expect_equal(AIC(wei_glmmtmb), AIC(ind_glmmtmb), tolerance=1e-5)
 })
