@@ -1,6 +1,6 @@
 ---
 title: "Covariance structures with glmmTMB"
-author: "Kasper Kristensen and Maeve McGillycuddy"
+author: "Kasper Kristensen, Maeve McGillycuddy, and Coralie Williams"
 date: "`r Sys.Date()`"
 output: 
   rmarkdown::html_vignette:
@@ -13,6 +13,7 @@ vignette: >
   \usepackage[utf8]{inputenc}
 params:
   EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+  have_metafor: !r require("metafor", quietly = TRUE)
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
@@ -80,6 +81,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Spatial Matèrn                   # `mat`         #  $3$            # Coordinates # log-SD, log-range, log-shape (power)
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
+ Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # -
 "
 )
 knitr::kable(ctab)
@@ -755,6 +757,66 @@ fit_phylo <- glmmTMB(log(range) ~ log(size) +
 ```
 
 `dummy` is a dummy variable equal to one for all observations to specify that all observations belong to the same cluster. The intercept term is excluded from the proportional random effect -- this is to ensure that each random effect corresponds to the effect for its corresponding species. It is important that the row/column names of the matrix match the terms in the random effect (i.e. the same values, in the same order). In particular, this typically means that the *levels of the varying factor* (species, in the case of a phylogenetic model) should match the row/column names of the covariance matrix. Something like `data$species <- factor(data$species, levels = rownames(covmat))` should generally work. See [Construction of structured covariance matrices] for how the terms are constructed).
+
+## Equal
+
+The `equalto` structure fits a multivariate random effect using a fixed variance–covariance matrix supplied by the user, no scale or correlation parameters are estimated. This is useful in meta-analysis when sampling-error variances and within-study correlations are known. For example, when there are multiple outcomes (i.e. effect sizes) per study, a block-diagonal variance-covariance matrix can encode the within-study correlations. `equalto` is equivalent to `propto` without the proportionality parameter, that is, the supplied variance-covariance matrix is used as-is.
+
+We use here a meta-analysis dataset from the `metafor` package to demonstrate how `equalto` fits a meta-analysis with within-study dependence among effect sizes:
+
+```{r equalto, message=FALSE, warning=FALSE, eval=params$have_metafor}
+library(metafor)
+dat <- dat.assink2016
+head(dat,9) 
+dat$g <- 1 #grouping variable
+dat$id <- as.factor(1:nrow(dat)) #effect size id - this needs to be a factor
+
+# create variance-covariance matrix for sampling errors 
+# assume that the effect sizes within studies are correlated by rho=0.6
+VCV <- metafor::vcalc(vi, cluster=study, obs=esid, data=dat, rho=0.6)
+round(VCV[dat$study %in% c(1,2), dat$study %in% c(1,2)], 4)
+
+# fit meta-analysis using approximate VCV matrix
+fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, VCV), REML=TRUE, data=dat)
+```
+
+We can fit the same model assuming sampling errors are independent:
+
+```{r glmmTMB_meta, eval=params$have_metafor}
+# assume sampling errors are independent
+V <- diag(dat$vi) 
+# fit meta-analysis with a diagonal matrix VCV
+fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, V), REML=TRUE, data=dat)
+
+```
+
+
+```{r metafor_models, echo=FALSE, eval=params$have_metafor}
+# equivalent model with block-diagonal VCV in metafor
+fit_rma1 <- metafor::rma.mv(yi, VCV, 
+                           random = list(~1 | study, ~1 | id),
+                           control=list(REMLf=FALSE),
+                           data=dat)
+
+# equivalent model with diagonal VCV using map and start
+fit_ma2 <- glmmTMB(yi ~ 1 + (1|study) + (1|id),
+                   dispformula = ~ 0 + id, 
+                   map = list(betadisp = factor(rep(NA, nrow(dat)))),
+                   start = list(betadisp = log(sqrt(dat$vi))),
+                  REML=TRUE, 
+                  data=dat)
+
+# equivalent model with diagonal VCV in metafor
+fit_rma2 <- metafor::rma.mv(yi, vi,
+                           random = list(~1 | study, ~1 | id),
+                           control=list(REMLf=FALSE),
+                           data=dat)
+```
+
+
+As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
+
+In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
 
 ## Construction of structured covariance matrices
 

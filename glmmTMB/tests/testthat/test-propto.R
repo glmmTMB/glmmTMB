@@ -80,7 +80,7 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
       rownames(mattest) <- NULL
       expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
               data = liz),
-              regexp = "column or row names of the matrix do not match the terms. Expecting names:.sppSa..sppSh..sppTl..sppMc..sppMy..sppPh..sppPg..sppPa..sppPb..sppPm..sppAe..sppTt..sppTs..sppZo..sppZv..sppLa..sppLs..sppLv.",
+              regexp = "column or row names of the propto matrix do not match the terms. Expecting names:.sppSa..sppSh..sppTl..sppMc..sppMy..sppPh..sppPg..sppPa..sppPb..sppPm..sppAe..sppTt..sppTs..sppZo..sppZv..sppLa..sppLs..sppLv.",
       )
     })
 

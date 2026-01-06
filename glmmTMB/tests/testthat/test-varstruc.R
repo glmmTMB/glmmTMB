@@ -106,9 +106,9 @@ test_that("ar1 and hetar1 require factor time", {
                           (1|Subject) + ar1(relevel(factor(row),"2")+0| Subject),
                       fsleepstudy),
               "glmmTMB")
-    expect_is(glmmTMB(Reaction ~ 1 +
+    expect_is(suppressWarnings(glmmTMB(Reaction ~ 1 +
                           (1|Subject) + hetar1(relevel(fDays,"[6,10)")+0| Subject),
-                      fsleepstudy),
+                      fsleepstudy)),
               "glmmTMB")
 })
 
