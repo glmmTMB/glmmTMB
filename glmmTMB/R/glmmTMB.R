@@ -517,7 +517,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
-  ### Change mapping for propto - FIX ME:: currently only done for condReStruc
+  ### Change mapping for propto 
   for (component in c("cond", "zi", "disp")) {
     rList <- get(paste0(component, "List"))
     if(rrVal(rList)){
