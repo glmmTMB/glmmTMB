@@ -30,6 +30,40 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
                  tolerance = 1e-6)
   })
   
+  test_that("test propto zi fit - Identity", {
+    #fit using map
+    ft2zi <- glmmTMB(count ~ spp + (1|site),
+                   zi=~ diag(1 + mined | spp),
+                   map = list(thetazi = factor(c(rep(1, 2)))),
+                   family=poisson, data=Salamanders)
+    mat.ISal <-  diag(2)
+    colnames(mat.ISal) <- rownames(mat.ISal) <- ft2zi$modelInfo$reTrms$zi$cnms$spp
+    ft2zi.I <- glmmTMB(count ~ spp + (1|site),
+                       zi=~ propto(1 + mined | spp, mat.ISal),
+                       family=poisson, data=Salamanders)
+    ## check that var matrix is as the same
+    expect_equal(c(VarCorr(ft2zi.I)$zi[[1]]),
+                 c(VarCorr(ft2zi)$zi[[1]]),
+                 tolerance = 1e-4)
+  })
+  
+  test_that("test propto disp fit - Identity", {
+    #fit using map
+    ft2disp <- glmmTMB(count ~ spp + (1|site),
+                     dispformula = ~ diag(1 + mined | spp),
+                     map = list(thetadisp  = factor(c(rep(1, 2)))),
+                     family=gaussian, data=Salamanders)
+    mat.ISal <-  diag(2)
+    colnames(mat.ISal) <- rownames(mat.ISal) <- ft2disp$modelInfo$reTrms$disp$cnms$spp
+    ft2disp.I <- glmmTMB(count ~ spp + (1|site),
+                       dispformula =~ propto(1 + mined | spp, mat.ISal),
+                       family=gaussian, data=Salamanders)
+    ## check that var matrix is as the same
+    expect_equal(c(VarCorr(ft2disp.I)$disp[[1]]),
+                 c(VarCorr(ft2disp)$disp[[1]]),
+                 tolerance = 1e-4)
+  })
+  
   if (require("nlme", quietly = TRUE)) {
     # example taken from fixcorr
     data(lizards, package = "ade4")
@@ -60,6 +94,19 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
                  tolerance = 1e-6)
     
     })
+  
+  test_that("test propto matrix in disp", {
+    
+    liz_disp_propto <- glmmTMB(mean.L ~ 1,
+                               dispformula = ~ 0 + propto(0 + spp | dummy, mat),
+                               data = liz)
+    
+    ## check that the correlation matrix is the same as constructed
+    cc_disp <- attr(VarCorr(liz_disp_propto)$disp[[1]], "correlation")
+    dimnames(cc_disp) = lapply(dimnames(cc_disp), function(x) gsub("^spp","",x))
+    expect_equal(cc_disp, mat,
+                 tolerance = 1e-6)
+  })
   
     test_that("propto error about non-matrix", {
         junk <- "junk"
