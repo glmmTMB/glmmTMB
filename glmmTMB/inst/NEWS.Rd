@@ -22,7 +22,7 @@
           }
   } % user-visible changes
 } % 1.1.14
-\section{CHANGES IN VERSION 1.1.13}{
+\section{CHANGES IN VERSION 1.1.13 (2025-10-09)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item Pearson residual calculation corrected for Beta models (GH
