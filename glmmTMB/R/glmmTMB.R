@@ -472,13 +472,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") # if rr start theta at 1
           tl[[i]] <- rep(1, blockNumTheta[i])
         else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="propto") { # if propto then set theta to be transformed values
-          a <- condList[["aa"]][[i]]
+          a <- List[["aa"]][[i]]
           tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
         } #end else if propto
         
         else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="equalto") { # if equalto then get vcov values
-          a <- condList[["aa"]][[i]]
-          checkEqualto(aa = a, cnms = condList$reTrms$cnms[[i]])
+          a <- List[["aa"]][[i]]
+          checkEqualto(aa = a, cnms = List$reTrms$cnms[[i]])
           tl[[i]] <- as.theta.vcov(a) 
         } #end else if equalto
       } #end for loop
@@ -497,7 +497,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
                        theta   = t01(dorr = rrVal(condList), condReStruc, condList),
                        thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
-                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc),
+                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
 
@@ -518,9 +518,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   ### Change mapping for propto - FIX ME:: currently only done for condReStruc
-  if(any(condList$ss == "propto" | condList$ss == "equalto")){
-    mapArg.orig <- mapArg
-    mapArg <- map.theta.propto(condReStruc, mapArg.orig)
+  for (component in c("cond", "zi", "disp")) {
+    rList <- get(paste0(component, "List"))
+    if(rrVal(rList)){
+      restruc <- get(paste0(component, "ReStruc"))
+      mapArg.orig <- mapArg
+      mapArg <- map.theta.propto(restruc, mapArg.orig, component)
+    }
   }
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
@@ -905,8 +909,9 @@ as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
 ## FIXME: Will need to adjust if map is already used
 #' @param ReStruc a random effects structure
 #' @param map a list of mapped elements
+#' @param component a character string specifying the parameter component to map
 #' @return the corresponding \code{theta} parameter vector
-map.theta.propto <- function(ReStruc, map) {
+map.theta.propto <- function(ReStruc, map, component) {
   if (is.null(map))
       params <- list()
   else
@@ -930,7 +935,10 @@ map.theta.propto <- function(ReStruc, map) {
     }
   }
   map.theta <- unlist(tl, use.names = FALSE)
-  params$theta <- factor(map.theta)
+  if(component == "cond")
+    params$theta <- factor(map.theta)
+  else
+      params[[paste0("theta", component)]] <- factor(map.theta)
 
   return(params)
 }
