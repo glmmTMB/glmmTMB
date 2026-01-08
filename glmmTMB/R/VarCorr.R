@@ -251,7 +251,7 @@ print.VarCorr.glmmTMB <- function(x, digits = max(3, getOption("digits") - 2),
     for (cc in names(x))  if(!is.null(x[[cc]])) {
 	cat(sprintf("\n%s:\n", cNames[[cc]]))
 	print(formatVC(x[[cc]],
-		       digits = digits, comp = comp, formatter = formatter),
+		       digits = digits, comp = comp, formatter = formatter, ...),
 	      quote = FALSE, ...)
     }
     invisible(x)
