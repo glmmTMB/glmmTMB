@@ -182,7 +182,7 @@ theta <- getME(mod, "theta")
 phi_transfun <- function(x) x/sqrt(1+x^2)
 phi_hat <- phi_transfun(theta[2])
 
-```{r phidiff, echo = FALSE}
+```{r phidiff}
 phi_sim <- 0.7
 n <- 25
 phi_diff <- abs((phi_sim-phi_hat)/phi_sim)
