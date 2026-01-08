@@ -4,6 +4,24 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.14}{
+  \subsection{BUG FIXES}{
+    \itemize{
+    \item Fix theta initialization for propto/equalto and enable them in disp/zi components (GH #1255)
+     }
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new covariance structure \code{equalto}  has been
+      added (GH #1253, Coralie Williams), see \code{vignette("covstruct")}
+      }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item shorter printing of covariance structures, see \code{vignette("covstruct")}
+          }
+  } % user-visible changes
+} % 1.1.14
 \section{CHANGES IN VERSION 1.1.13}{
   \subsection{BUG FIXES}{
     \itemize{
