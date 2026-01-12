@@ -7,19 +7,28 @@
 \section{CHANGES IN VERSION 1.1.14}{
   \subsection{BUG FIXES}{
     \itemize{
-    \item Fix theta initialization for propto/equalto and enable them in disp/zi components (GH #1255)
-     }
+      \item Fix theta initialization for propto/equalto and enable them in
+      disp/zi components (GH #1255)
+      \item more informative error message when \code{family=ziGamma} is
+      specified, with zeros in the data, without setting \code{ziformula}
+      (GH #1213)
+      \item \code{simulate_new} with \code{return_val="pars"} works
+      without specifying \code{newparams} (GH #1242)
+    } % itemize
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
-      \item new covariance structure \code{equalto}  has been
-      added (GH #1253, Coralie Williams), see \code{vignette("covstruct")}
+      \item new covariance structure \code{equalto}
+      (GH #1253, Coralie Williams), see \code{vignette("covstruct")}
       }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item shorter printing of covariance structures, see \code{vignette("covstruct")}
-          }
+      \item shorter printing of covariance structures, see
+      \code{vignette("covstruct")}
+      \item functions and methods for printing covariance matrices have
+      moved to the \code{reformulas} package
+    } % itemize
   } % user-visible changes
 } % 1.1.14
 \section{CHANGES IN VERSION 1.1.13 (2025-10-09)}{
