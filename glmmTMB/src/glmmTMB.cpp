@@ -896,7 +896,11 @@ Type objective_function<Type>::operator() ()
   DATA_IVECTOR(prior_elend);      // ending element index
   DATA_IVECTOR(prior_npar);       // number of parameters (based on prior distrib)
   DATA_VECTOR(prior_params);      // specify parameters (concatenated)
-  
+
+  // User functions via RTMB
+  SEXP user_inv_link = getListElement(data, "user_inv_link");
+  bool have_user_inv_link = !Rf_isNull(user_inv_link);
+
   // Joint negative log-likelihood
   Type jnll=0;
 
@@ -936,8 +940,13 @@ Type objective_function<Type>::operator() ()
 
   // Apply link
   vector<Type> mu(eta.size());
-  for (int i = 0; i < mu.size(); i++)
-    mu(i) = inverse_linkfun(eta(i), link);
+  if (!have_user_inv_link) {
+    for (int i = 0; i < mu.size(); i++)
+      mu(i) = inverse_linkfun(eta(i), link);
+  } else {
+    CallRTMB<Type> foo(user_inv_link);
+    mu = foo(eta);
+  }
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etadisp);
   vector<Type> log_nzprob(eta.size());
