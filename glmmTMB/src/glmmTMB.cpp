@@ -10,7 +10,10 @@
       term.corr(0,0) = NAN; \
     }
 
+#include <Rcpp.h>
+#define TMBAD_INDEX_TYPE uint64_t
 #include <TMB.hpp>
+#include <CallRTMB.hpp>
 #include <R_ext/Error.h>
 #include "init.h"
 #include "distrib.h"

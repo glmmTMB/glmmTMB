@@ -56,6 +56,7 @@ Depends: R (>= 3.6.0)
 Imports:
     methods,
     TMB (>= 1.9.0),
+    RTMB,
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
@@ -64,7 +65,7 @@ Imports:
     reformulas (>= 0.4.3.1),
     pbkrtest,
     sandwich
-LinkingTo: TMB, RcppEigen
+LinkingTo: TMB, RcppEigen, RTMB, Rcpp
 Suggests:
     knitr,
     rmarkdown,
