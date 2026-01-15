@@ -1280,20 +1280,24 @@ Type objective_function<Type>::operator() ()
   }
   vector<matrix<Type> > corrzi(termszi.size());
   vector<vector<Type> > sdzi(termszi.size());
+  vector<matrix<Type> > fact_loadzi(termszi.size());
   for(int i=0; i<termszi.size(); i++){
     // NOTE: Dummy terms reported as empty
     if(termszi(i).blockNumTheta > 0){
       corrzi(i) = termszi(i).corr;
       sdzi(i) = termszi(i).sd;
+      fact_loadzi(i) = termszi(i).fact_load;
     }
   }
   vector<matrix<Type> > corrdisp(termsdisp.size());
   vector<vector<Type> > sddisp(termsdisp.size());
+  vector<matrix<Type> > fact_loaddisp(termsdisp.size());
   for(int i=0; i<termsdisp.size(); i++){
   	// NOTE: Dummy terms reported as empty
   	if(termsdisp(i).blockNumTheta > 0){
   		corrdisp(i) = termsdisp(i).corr;
   		sddisp(i) = termsdisp(i).sd;
+  		fact_loaddisp(i) = termsdisp(i).fact_load;
   	}
   }
   vector<matrix<Type> > fact_load(terms.size());
@@ -1311,6 +1315,8 @@ Type objective_function<Type>::operator() ()
   REPORT(corrdisp);
   REPORT(sddisp);
   REPORT(fact_load);
+  REPORT(fact_loadzi);
+  REPORT(fact_loaddisp);
   REPORT(b);
   REPORT(bzi);
   SIMULATE {
