@@ -437,6 +437,23 @@ extern "C" {
     UNPROTECT(1);
     return ans;
   }
+
+  SEXP dgenpois(SEXP y, SEXP theta, SEXP lambda, SEXP give_log) {
+    if (LENGTH(theta) != LENGTH(lambda))
+        error("'theta' and 'lambda' must be vectors of same length.");
+    // add check for y, theta (do recycling on R side?)
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, LENGTH(theta)));
+    for(int i=0; i<LENGTH(theta); i++)
+      REAL(ans)[i] = glmmtmb::dgenpois(REAL(y)[i], REAL(theta)[i],
+                                       REAL(lambda)[i], *INTEGER(give_log));
+    UNPROTECT(1);
+    return ans;
+  }
 }
 
+// R example (hangs)
+// gendat <<- data.frame(y=c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
+// .Call("dgenpois", 11, 2.251, 0.235, 1L, PACKAGE = "glmmTMB")
+// should be log(theta) + (y - 1) * log(theta + lambda * y) -
+//       theta - lambda * y - lgamma(y + Type(1));
 

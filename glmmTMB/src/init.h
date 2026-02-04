@@ -6,11 +6,13 @@
 extern "C" {
 
   SEXP compois_calc_var(SEXP mean, SEXP nu);
+  SEXP dgenpois(SEXP y, SEXP theta, SEXP lambda, SEXP give_log);
   SEXP omp_check();
 
   const static R_CallMethodDef R_CallDef[] = {
     TMB_CALLDEFS,
     CALLDEF(compois_calc_var, 2),
+    CALLDEF(dgenpois, 4),
     CALLDEF(omp_check, 0),
     {NULL, NULL, 0}
   };
