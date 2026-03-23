@@ -179,6 +179,20 @@ ggplot(gres, aes(x = estimate, y = model)) +
 
 `blme` defaults: Wishart(dim + 2.5), or gamma(2.5). For dim = 1 (scalar), Wishart(n) corresponds to chi-squared(n), or gamma(shape = n/2, scale = n/2).  Chung et al propose `gamma(2, Inf)`; not sure why `blme` uses `gamma(2.5)` instead? or if specified via Wishart, shape = 3.5 → gamma shape of 1.75?
 
+## Zero-inflation
+
+```{r}
+if (requireNamespace("pscl")) {
+   data("prussian", package = "pscl")
+   zi_fit <- glmmTMB(y ~ year + (1|corp),
+      ziformula = ~factor(year), family = poisson, data = prussian)
+   cprior <- data.frame(prior = rep(c("normal(0,3)"), 2),
+                 class = rep("fixef_zi", 2),
+                 coef = c("(Intercept)", ""))
+   zi_fit_prior <- update(fit, priors = cprior)
+}
+```
+
 ## TO DO/FIX ME
 
 - try to get internal structure of priors fixed before release, otherwise `up2date` might get annoying ...
