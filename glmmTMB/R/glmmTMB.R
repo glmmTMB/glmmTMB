@@ -517,13 +517,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
+  
   ### Change mapping for propto 
   for (component in c("cond", "zi", "disp")) {
     rList <- get(paste0(component, "List"))
-    if(rrVal(rList)){
-      restruc <- get(paste0(component, "ReStruc"))
+    if(length(rList$ss) > 0 && any(rList$ss %in% c("propto", "equalto") )){
+      restruccomp <- get(paste0(component, "ReStruc"))
       mapArg.orig <- mapArg
-      mapArg <- map.theta.propto(restruc, mapArg.orig, component)
+      mapArg <- map.theta.propto(restruccomp, mapArg.orig, component)
     }
   }
 
