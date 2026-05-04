@@ -1,3 +1,15 @@
+## TMB/RTMB switch
+useRTMB <- local({
+  useRTMB <- FALSE
+  function(flag = NULL) { useRTMB <<- flag %||% useRTMB ; useRTMB }
+})
+MakeADFun <- function(data, ..., DLL) {
+  if (!useRTMB())
+    TMB::MakeADFun(data=data, ..., DLL=DLL)
+  else
+    RTMB::MakeADFun(cmb(rtmb_tpl, data), ...)
+}
+
 ## backward compat (copied from lme4)
 if((Rv <- getRversion()) < "3.2.1") {
     lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
@@ -456,7 +468,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     }
 
     oldfit$obj <- with(ee,
-                       TMB::MakeADFun(data,
+                            MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
