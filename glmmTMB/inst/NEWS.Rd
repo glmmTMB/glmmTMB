@@ -4,6 +4,24 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+
+\section{CHANGES IN VERSION 1.1.15 (2026-)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item Fix mapping for models with rr structures (GH #1276)
+    } % itemize
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+    } % itemize
+  } % user-visible changes
+} % 1.1.14
+
+
 \section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
   \subsection{BUG FIXES}{
     \itemize{
