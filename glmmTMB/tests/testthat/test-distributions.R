@@ -2,7 +2,7 @@
 ## and bellreg::dbell / bellreg::pbell + LambertW::W
 
 test_that("dgenpois matches HMMpa", {
-    skip_if_not_installed("HMMpa")
+
     xs <- c(0, 1, 5, 10, 20)
     expect_equal(
         glmmTMB:::dgenpois(xs, lambda1 = 3, lambda2 = 0.4),
@@ -13,7 +13,7 @@ test_that("dgenpois matches HMMpa", {
 })
 
 test_that("pgenpois matches HMMpa", {
-    skip_if_not_installed("HMMpa")
+
     qs <- c(0, 2, 5, 10)
     expect_equal(
         sapply(qs, function(q) glmmTMB:::pgenpois(q, lambda1 = 3, lambda2 = 0.4)),
@@ -24,7 +24,6 @@ test_that("pgenpois matches HMMpa", {
 })
 
 test_that("dbell_R matches bellreg", {
-    skip_if_not_installed("bellreg")
     xs    <- c(0, 1, 2, 5, 10)
     theta <- 1.5
     expect_equal(
@@ -37,8 +36,6 @@ test_that("dbell_R matches bellreg", {
 })
 
 test_that("pbell matches bellreg", {
-    skip_if_not_installed("bellreg")
-    skip_if_not_installed("LambertW")
     qs <- c(0, 2, 5, 10)
     mu <- 3.0
     expect_equal(
