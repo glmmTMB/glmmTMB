@@ -36,13 +36,15 @@
 #' @keywords distribution
 #'
 #' @return
-#'  \code{\link{dgenpois}} gives the density of the generalized Poisson distribution.
+#' \code{dgenpois} gives the density, \code{pgenpois} gives the cumulative
+#' distribution function, and \code{rgenpois} generates random deviates.
+#'
 #' @export
 #'
 #' @examples
-#' dgenpois(x = seq(0,20), lambda1 = 10, lambda2 = 0.5)
+#' dgenpois(x = seq(0, 20), lambda1 = 10, lambda2 = 0.5)
 #' pgenpois(q = 5, lambda1 = 10, lambda2 = 0.5)
-#' hist(rgenpois(n = 1000, lambda1 = 10, lambda2 = 0.5) )
+#' hist(rgenpois(n = 1000, lambda1 = 10, lambda2 = 0.5))
 dgenpois <- function(x, lambda1, lambda2)
 {
     n       <- max(length(x), length(lambda1), length(lambda2))
@@ -67,6 +69,7 @@ dgenpois <- function(x, lambda1, lambda2)
 }
 
 #' @rdname dgenpois
+#' @export
 pgenpois <- function(q, lambda1, lambda2)
   {
     foo <- 0
@@ -79,6 +82,7 @@ pgenpois <- function(q, lambda1, lambda2)
 
 
 #' @rdname dgenpois
+#' @export
 rgenpois <-function(n, lambda1, lambda2)
 {
   random_genpois <- numeric(n)
@@ -166,8 +170,60 @@ pgenpois_mu <- function(q, mu, phi) {
     pgenpois_custom(q, lambda1, lambda2)
 }
 
-## Bell CDF using C-level dbell_R and lambertW_R (no external package dependencies).
-## theta = LambertW(mu); P(X <= q) is accumulated from the PMF over 0:floor(q).
+#' The Bell Distribution
+#'
+#' Density and cumulative distribution function for the Bell distribution.
+#'
+#' @param x vector of non-negative integer quantiles.
+#' @param q vector of quantiles.
+#' @param theta vector of positive Bell parameters. Related to the mean by
+#'   \eqn{\mu = \theta e^{\theta}}.
+#' @param mu vector of positive means. Related to the Bell parameter by
+#'   \eqn{\theta = W(\mu)}, where \eqn{W} is the Lambert W function.
+#' @param log logical; if \code{TRUE} the log-density is returned.
+#' @param lower.tail logical; if \code{TRUE} (default), probabilities are
+#'   \eqn{P(X \le q)}.
+#' @param log.p logical; if \code{TRUE} probabilities are returned on the
+#'   log scale.
+#'
+#' @details
+#' The Bell distribution (Castellares et al. 2018) has probability mass function
+#' \deqn{P(X = x) = \frac{e^{1 - e^{\theta}} \theta^{x} B_{x}}{x!}}
+#' for \eqn{x = 0, 1, 2, \ldots} and \eqn{\theta > 0}, where \eqn{B_x} is the
+#' \eqn{x}-th Bell number. The mean is \eqn{\mu = \theta e^{\theta}}.
+#'
+#' \code{dbell} is parameterized by \code{theta}; \code{pbell} is
+#' parameterized by the mean \code{mu} (as used in \code{\link{bell}} models).
+#' Both use internal C-level implementations with no external package
+#' dependencies.
+#'
+#' @references Castellares, F., Ferrari, S. L. P., Lemonte, A. J. (2018).
+#' On the Bell distribution and its associated regression model for count data.
+#' \emph{Applied Mathematical Modelling} \bold{56}:172--185.
+#' \doi{10.1016/j.apm.2017.12.014}
+#'
+#' @seealso \code{\link{bell}} for the Bell family in \pkg{glmmTMB};
+#'   \link{Distributions} for other standard distributions.
+#'
+#' @keywords distribution
+#'
+#' @return
+#' \code{dbell} gives the density; \code{pbell} gives the cumulative
+#' distribution function.
+#'
+#' @examples
+#' dbell(0:5, theta = 1)
+#' pbell(0:5, mu = exp(1))  ## theta = 1 implies mu = e
+#'
+#' @export
+dbell <- function(x, theta, log = FALSE) {
+    .Call("dbell_R", as.double(x), rep_len(as.double(theta), length(x)),
+          as.integer(log), PACKAGE = "glmmTMB")
+}
+
+#' @rdname dbell
+#' @export
+## theta = LambertW(mu); P(X <= q) accumulated from the PMF over 0:floor(q).
 pbell <- function(q, mu, lower.tail = TRUE, log.p = FALSE) {
     n     <- max(length(q), length(mu))
     q     <- floor(rep_len(q,  n))
