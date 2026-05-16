@@ -729,10 +729,55 @@ test_that("dunn-smyth residuals", {
     set.seed(101)
     expect_equal(head(residuals(fm2NB, type = "dunn-smyth")),
                  c(-0.359359541418763, -0.650271471641143,
-                   -1.65874788276259, 
+                   -1.65874788276259,
                    0.534218575163113,
                    1.13173385534682, 2.37431279792035),
                  tolerance = 1e-6)
+})
+
+test_that("dunn-smyth residuals: genpois", {
+    skip_on_cran()
+    gendat <- data.frame(y = c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
+    gen1 <- glmmTMB(y ~ 1, family = genpois(), data = gendat)
+    set.seed(101)
+    expect_equal(residuals(gen1, type = "dunn-smyth"),
+                 c(0.846483519668342, -0.0013575904562073, -0.202384597940571,
+                   0.39170608977513, -0.493186235811685, -1.06081256559006,
+                   0.985351036304671, -1.62668245322099, -0.255804063138394,
+                   -0.302818430581645, -0.100224217846464, -0.817543318992496,
+                   1.09373081781185, 0.584616800302956, 0.898563661016827,
+                   -0.275287425534332, 0.50408621816545, -1.7030152672953,
+                   2.25786919674431, -0.640490916668856),
+                 tolerance = 1e-6)
+    ## approximate normality check on a larger simulated dataset
+    set.seed(42)
+    n <- 1000
+    gp_dat <- data.frame(x = rnorm(n))
+    gp_dat$y <- simulate_new(~ x, newdata = gp_dat,
+                             newparams = list(beta = c(1, 1), betadisp = 1),
+                             family = "genpois")[[1]]
+    gp_mod <- glmmTMB(y ~ x, data = gp_dat, family = genpois())
+    set.seed(7)
+    r <- residuals(gp_mod, type = "dunn-smyth")
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
+})
+
+test_that("dunn-smyth residuals: bell", {
+    skip_on_cran()
+    skip_if_not_installed("bellreg")
+    skip_if_not_installed("LambertW")
+    set.seed(42)
+    n <- 1000
+    bell_dat <- data.frame(x = rnorm(n))
+    bell_dat$y <- simulate_new(~ x, newdata = bell_dat,
+                               newparams = list(beta = c(1, 1)),
+                               family = "bell")[[1]]
+    bell_mod <- glmmTMB(y ~ x, data = bell_dat, family = bell())
+    set.seed(7)
+    r <- residuals(bell_mod, type = "dunn-smyth")
+    expect_true(abs(mean(r, na.rm = TRUE)) < 0.1)
+    expect_true(abs(sd(r, na.rm = TRUE) - 1) < 0.1)
 })
 
 test_that("profiling with mapped parameters", {

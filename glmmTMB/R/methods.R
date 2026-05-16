@@ -1767,31 +1767,29 @@ deviance.glmmTMB <- function(object, ...) {
 }
 
 dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
-    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial")
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell")
     if (family == "gaussian") return(yobs-mu)
     if (!family %in% res.families) {
         stop("can't compute Dunn-Smyth residuals for family ",
              sQuote(family))
     }
     args <- switch(family,
-                   nbinom2 = list(size = phi),
-                   nbinom1 = list(size = mu/(phi+ 1e-5)),
-                   binomial = list(size=1),
-                   NULL
-                   )
-    ## deal with base-R's default size/prob parameterization for nbinom ...
-    pnbinom0 <- function(x, mu, ...) {
-        pnbinom(x, mu=mu, ...)
-    }
+                   nbinom2  = list(size = phi),
+                   nbinom1  = list(size = mu/(phi + 1e-5)),
+                   binomial = list(size = 1),
+                   genpois  = list(phi = phi),
+                   NULL)
     pfun <- switch(family,
-                   nbinom2 = pnbinom0,
-                   nbinom1 = pnbinom0,
-                   poisson = ppois,
-                   binomial = pbinom)
+                   nbinom2  = pnbinom0,
+                   nbinom1  = pnbinom0,
+                   poisson  = ppois,
+                   binomial = pbinom,
+                   genpois  = pgenpois_mu,
+                   bell     = pbell_mu)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
     resid <- qnorm(runif(length(yobs), min = a, max = b))
-    resid[is.infinite(resid) | is.nan(resid) ]  <- 0
+    resid[is.infinite(resid) | is.nan(resid)] <- 0
     resid
 }
 
