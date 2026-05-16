@@ -4,6 +4,26 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.14.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
+      \code{residuals()}) are now available for the \code{bell} and
+      \code{genpois} families; the Bell distribution uses internal C-level
+      implementations of the PMF and Lambert W function, with no additional
+      package dependencies.
+    }
+  } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+    } % itemize
+  } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+    } % itemize
+  } % user-visible changes
+} % 1.1.14.9000
+
 \section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
   \subsection{BUG FIXES}{
     \itemize{
