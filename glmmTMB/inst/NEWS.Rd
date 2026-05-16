@@ -10,8 +10,10 @@
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level
-      implementations of the PMF and Lambert W function, with no additional
-      package dependencies.
+      implementations of the PMF and Lambert W function
+      \item density and cumulative distribution functions for the Bell
+      (\code{dbell}, \code{pbell}) and generalized Poisson
+      (\code{dgenpois}, \code{pgenpois}) distributions are now exported
     }
   } % new features
   \subsection{BUG FIXES}{
