@@ -439,4 +439,28 @@ extern "C" {
   }
 }
 
+/* Interface to Bell PMF and Lambert W */
+extern "C" {
+  SEXP dbell_R(SEXP x_, SEXP theta_, SEXP give_log_) {
+    int n = LENGTH(x_);
+    if (LENGTH(theta_) != n)
+      error("'x' and 'theta' must have the same length");
+    int give_log = asLogical(give_log_);
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::dbell(REAL(x_)[i], REAL(theta_)[i], give_log);
+    UNPROTECT(1);
+    return ans;
+  }
+
+  SEXP lambertW_R(SEXP x_) {
+    int n = LENGTH(x_);
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::LambertW(REAL(x_)[i]);
+    UNPROTECT(1);
+    return ans;
+  }
+}
+
 

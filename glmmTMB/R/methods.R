@@ -1785,7 +1785,7 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
                    poisson  = ppois,
                    binomial = pbinom,
                    genpois  = pgenpois_mu,
-                   bell     = pbell_mu)
+                   bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
     resid <- qnorm(runif(length(yobs), min = a, max = b))

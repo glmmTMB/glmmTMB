@@ -101,9 +101,7 @@ Suggests:
     ape,
     gsl,
     lmerTest,
-    metafor,
-    bellreg,
-    LambertW
+    metafor
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB

@@ -765,8 +765,6 @@ test_that("dunn-smyth residuals: genpois", {
 
 test_that("dunn-smyth residuals: bell", {
     skip_on_cran()
-    skip_if_not_installed("bellreg")
-    skip_if_not_installed("LambertW")
     set.seed(42)
     n <- 1000
     bell_dat <- data.frame(x = rnorm(n))

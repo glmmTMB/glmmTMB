@@ -193,17 +193,23 @@ pgenpois_mu <- function(q, mu, phi) {
     pgenpois_custom(q, lambda1, lambda2)
 }
 
-## Bell CDF: converts mu to the Bell theta parameter via the Lambert W function.
-## Requires the 'bellreg' and 'LambertW' packages (listed in Suggests).
-pbell_mu <- function(q, mu) {
-    if (!requireNamespace("bellreg",  quietly = TRUE) ||
-        !requireNamespace("LambertW", quietly = TRUE)) {
-        stop("packages 'bellreg' and 'LambertW' are required for Bell family residuals")
+## Bell CDF using C-level dbell_R and lambertW_R (no external package dependencies).
+## theta = LambertW(mu); P(X <= q) is accumulated from the PMF over 0:floor(q).
+pbell <- function(q, mu, lower.tail = TRUE, log.p = FALSE) {
+    n     <- max(length(q), length(mu))
+    q     <- floor(rep_len(q,  n))
+    mu    <- rep_len(mu, n)
+    theta <- .Call("lambertW_R", as.double(mu), PACKAGE = "glmmTMB")
+    out   <- numeric(n)
+    for (j in seq_len(n)) {
+        qq <- q[j]
+        if (!is.finite(qq) || qq < 0) { out[j] <- 0; next }
+        xs     <- as.double(0:qq)
+        probs  <- .Call("dbell_R", xs, rep(theta[j], length(xs)), 0L,
+                        PACKAGE = "glmmTMB")
+        out[j] <- min(max(sum(probs, na.rm = TRUE), 0), 1)
     }
-    theta <- LambertW::W(mu)
-    mapply(function(qq, th) {
-        if (qq < 0) return(0)
-        val <- suppressWarnings(bellreg::pbell(qq, th))
-        if (!is.finite(val)) NA_real_ else val
-    }, q, theta)
+    if (!lower.tail) out <- 1 - out
+    if (log.p)       out <- log(out)
+    out
 }
