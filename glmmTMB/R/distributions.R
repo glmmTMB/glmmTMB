@@ -9,7 +9,7 @@
 #' @param q a numeric vector of quantiles
 #' @param n number of random deviates to draw
 #' @param lambda1 a single numeric value for parameter \code{lambda1} with \eqn{lambda1 > 0}
-#' @param lambda2 a single numeric value for parameter \code{lambda2} with \eqn{0 \le lamdba2 < 1}.
+#' @param lambda2 a single numeric value for parameter \code{lambda2} with \eqn{0 \le lambda2 < 1}.
 #'                When \code{lambda2=0}, the generalized Poisson distribution
 #'                reduces to the Poisson distribution
 #' @param log logical; if \code{TRUE}, the log-density is returned
@@ -24,15 +24,14 @@
 #'   \frac{\lambda_1}{1-\lambda_2}}{E(x)=lambda1/(1-lambda2)} and variance
 #'   \eqn{\mbox{var}(X)=\frac{\lambda_1}{(1-\lambda_2)^3}}{var(x)=lambda1/(1-lambda2)^3}.
 #'
-#' @references Joe, H., Zhu, R. (2005). Generalized poisson distribution: the property of
-#' mixture of poisson and comparison with negative binomial distribution.
+#' @references Joe, H., Zhu, R. (2005). Generalized Poisson distribution: the property of
+#' mixture of Poisson and comparison with negative binomial distribution.
 #' Biometrical Journal \bold{47}(2):219--229.
 #'
-#' @author Based on Joe and Zhu (2005). Implementation by  Vitali Witowski (2013).
+#' @author Based on Joe and Zhu (2005). Original implementation by  Vitali Witowski (2013).
 #'
-#' @seealso \code{\link{pgenpois}}, \code{\link{rgenpois}};
-#'  \link{Distributions} for other standard distributions,
-#'  including \code{\link{dpois}} for the Poisson distribution.
+#' @seealso \link{Distributions} for other standard distributions,
+#' including \code{\link{dpois}} for the Poisson distribution.
 #'
 #' @keywords distribution
 #'
@@ -45,6 +44,7 @@
 #' @examples
 #' dgenpois(x = seq(0, 20), lambda1 = 10, lambda2 = 0.5)
 #' pgenpois(q = 5, lambda1 = 10, lambda2 = 0.5)
+#' set.seed(101)
 #' hist(rgenpois(n = 1000, lambda1 = 10, lambda2 = 0.5))
 dgenpois <- function(x, lambda1, lambda2, log = FALSE)
 {
@@ -104,16 +104,19 @@ pgenpois <- function(q, lambda1, lambda2) {
 #' @export
 rgenpois <-function(n, lambda1, lambda2)
 {
+  lambda1 <- rep_len(lambda1, n)
+  lambda2 <- rep_len(lambda2, n)
+
   random_genpois <- numeric(n)
+  random_unif <- runif(n)
   for (i in 1:n)
   {
     temp_random_genpois <- 0
-    random_number <- runif(1)
-    kum <- dgenpois(0, lambda1 = lambda1, lambda2 = lambda2)
-    while(random_number > kum)
+    kum <- dgenpois(0, lambda1 = lambda1[i], lambda2 = lambda2[i])
+    while(random_unif[i] > kum)
     {
       temp_random_genpois <- temp_random_genpois + 1
-      kum <- kum + dgenpois(temp_random_genpois, lambda1 = lambda1, lambda2 = lambda2)
+      kum <- kum + dgenpois(temp_random_genpois, lambda1 = lambda1[i], lambda2 = lambda2[i])
     }
     random_genpois[i] <- temp_random_genpois
   }
@@ -129,7 +132,7 @@ pnbinom0 <- function(q, mu, ...) pnbinom(q, mu = mu, ...)
 ## phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
 pgenpois_mu <- function(q, mu, phi, eps = 0.001) {
     phi_val <- sqrt(phi)
-    alpha   <- pmin(pmax(1 - 1/phi_val, -(1-eps)), 1-eps)
+    alpha   <- pmin(pmax(1 - 1/phi_val, eps), 1-eps)
     lambda1 <- pmax(mu * (1 - alpha), 1e-10)
     lambda2 <- alpha
     pgenpois(q, lambda1, lambda2)

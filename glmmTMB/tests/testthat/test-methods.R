@@ -774,8 +774,8 @@ test_that("dunn-smyth residuals: bell", {
     bell_mod <- glmmTMB(y ~ x, data = bell_dat, family = bell())
     set.seed(7)
     r <- residuals(bell_mod, type = "dunn-smyth")
-    expect_true(abs(mean(r, na.rm = TRUE)) < 0.1)
-    expect_true(abs(sd(r, na.rm = TRUE) - 1) < 0.1)
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
 })
 
 test_that("profiling with mapped parameters", {

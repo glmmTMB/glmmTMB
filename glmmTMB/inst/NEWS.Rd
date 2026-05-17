@@ -16,14 +16,14 @@
       (\code{dgenpois}, \code{pgenpois}) distributions are now exported
     }
   } % new features
-  \subsection{BUG FIXES}{
-    \itemize{
-    } % itemize
-  } % bug fixes
-  \subsection{USER-VISIBLE CHANGES}{
-    \itemize{
-    } % itemize
-  } % user-visible changes
+  %\subsection{BUG FIXES}{
+  %  \itemize{
+  %  } % itemize
+  % } % bug fixes
+  %\subsection{USER-VISIBLE CHANGES}{
+  %  \itemize{
+  %  } % itemize
+  % } % user-visible changes
 } % 1.1.14.9000
 
 \section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
