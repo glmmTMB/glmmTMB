@@ -23,6 +23,15 @@ test_that("pgenpois matches HMMpa", {
     )
 })
 
+test_that("pgenpois lower.tail/log.p options work", {
+    q <- c(0, 2, 5, 10)
+    p <- pgenpois(q, lambda1 = 3, lambda2 = 0.4)
+    expect_equal(pgenpois(q, lambda1 = 3, lambda2 = 0.4, lower.tail = FALSE),
+                 1 - p)
+    expect_equal(pgenpois(q, lambda1 = 3, lambda2 = 0.4, log.p = TRUE),
+                 log(p))
+})
+
 test_that("dbell matches bellreg", {
     xs    <- c(0, 1, 2, 5, 10)
     theta <- 1.5

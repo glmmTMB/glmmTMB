@@ -6,9 +6,9 @@
 \alias{rgenpois}
 \title{The Generalized Poisson Distribution}
 \usage{
-dgenpois(x, lambda1, lambda2)
+dgenpois(x, lambda1, lambda2, log = FALSE)
 
-pgenpois(q, lambda1, lambda2)
+pgenpois(q, lambda1, lambda2, lower.tail = TRUE, log.p = FALSE)
 
 rgenpois(n, lambda1, lambda2)
 }
@@ -17,13 +17,21 @@ rgenpois(n, lambda1, lambda2)
 
 \item{lambda1}{a single numeric value for parameter \code{lambda1} with \eqn{lambda1 > 0}}
 
-\item{lambda2}{a single numeric value for parameter \code{lambda2} with \eqn{0 \le lamdba2 < 1}.
+\item{lambda2}{a single numeric value for parameter \code{lambda2} with \eqn{0 \le lambda2 < 1}.
 When \code{lambda2=0}, the generalized Poisson distribution
 reduces to the Poisson distribution}
 
 \item{q}{a numeric vector of quantiles}
 
 \item{n}{number of random deviates to draw}
+
+\item{log}{logical; if \code{TRUE}, the log-density is returned}
+
+\item{lower.tail}{logical; if \code{TRUE} (default), probabilities are
+\eqn{P(X \le q)}.}
+
+\item{log.p}{logical; if \code{TRUE}, probabilities are returned on the
+log scale.}
 }
 \value{
 \code{dgenpois} gives the density, \code{pgenpois} gives the cumulative

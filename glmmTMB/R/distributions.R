@@ -13,6 +13,10 @@
 #'                When \code{lambda2=0}, the generalized Poisson distribution
 #'                reduces to the Poisson distribution
 #' @param log logical; if \code{TRUE}, the log-density is returned
+#' @param lower.tail logical; if \code{TRUE} (default), probabilities are
+#'   \eqn{P(X \le q)}.
+#' @param log.p logical; if \code{TRUE}, probabilities are returned on the
+#'   log scale.
 #'
 #' @details
 #' The generalized Poisson distribution has the density
@@ -83,7 +87,7 @@ dgenpois <- function(x, lambda1, lambda2, log = FALSE)
 
 #' @rdname dgenpois
 #' @export
-pgenpois <- function(q, lambda1, lambda2) {
+pgenpois <- function(q, lambda1, lambda2, lower.tail = TRUE, log.p = FALSE) {
     n <- max(length(q), length(lambda1), length(lambda2))
     q       <- rep_len(q,       n)
     lambda1 <- rep_len(lambda1, n)
@@ -109,6 +113,8 @@ pgenpois <- function(q, lambda1, lambda2) {
             out[idx] <- cdf[qq + 1]
         }
     }
+    if (!lower.tail) out <- 1 - out
+    if (log.p)       out <- log(out)
     out
 }
 
