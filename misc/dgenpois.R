@@ -30,11 +30,15 @@ x <- sort(unique(gendat$y))
 pgenpois_mu(x-1, 9.5, phi = rep(phi[1], length(x)))
 pgenpois_mu(x-1, 9.5, phi = rep(phi[1], length(x)), clamp = FALSE)
 
-simfun <- function(n = 100) simulate_new(~1, family = genpois, newdata = data.frame(x = rep(0, n)),
-                                  newparams = list(beta = 2.25, betadisp = log(0.25)))[[1]]
-var(simfun())
-## R-based rgenpois is very slow -- should wrap C version
-var(rgenpois(100, lambda1 = 2.25*(1/0.25), lambda2 = 1-1/0.25))
 
 
-microbenchmark::microbenchmark(simfun2(n=1))
+
+set.seed(123)
+dat_gp <- data.frame( y = rpois(300, lambda = 3), x =  rnorm(300), id = factor(rep(1:30, each = 10)) )
+m_gp <- glmmTMB( y ~ x +  (1 | id), family = genpois, data = dat_gp )
+summary(m_gp)
+ 
+r_gp <- residuals(m_gp, type = "dunn-smyth")
+plot(fitted(m_gp), r_gp)
+
+## 1- 1/sqrt(phi) > -1 -> 1/sqrt(phi) < 2 -> sqrt(phi) < 1/2 -> phi 
