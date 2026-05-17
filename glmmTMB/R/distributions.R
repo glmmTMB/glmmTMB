@@ -12,6 +12,7 @@
 #' @param lambda2 a single numeric value for parameter \code{lambda2} with \eqn{0 \le lamdba2 < 1}.
 #'                When \code{lambda2=0}, the generalized Poisson distribution
 #'                reduces to the Poisson distribution
+#' @param log logical; if \code{TRUE}, the log-density is returned
 #'
 #' @details
 #' The generalized Poisson distribution has the density
@@ -45,25 +46,33 @@
 #' dgenpois(x = seq(0, 20), lambda1 = 10, lambda2 = 0.5)
 #' pgenpois(q = 5, lambda1 = 10, lambda2 = 0.5)
 #' hist(rgenpois(n = 1000, lambda1 = 10, lambda2 = 0.5))
-dgenpois <- function(x, lambda1, lambda2)
+dgenpois <- function(x, lambda1, lambda2, log = FALSE)
 {
     n       <- max(length(x), length(lambda1), length(lambda2))
     x       <- rep_len(x,       n)
     lambda1 <- rep_len(lambda1, n)
     lambda2 <- rep_len(lambda2, n)
-    out <- numeric(n)
+
+    out <- rep(NA_real_, n)
+
     for (j in seq_len(n)) {
-        if (x[j] < 2) {
-            out[j] <- (lambda1[j] * (lambda1[j] + x[j] * lambda2[j])^(x[j] - 1) *
-                       exp(-(lambda1[j] + x[j] * lambda2[j]))) / factorial(x[j])
-        } else {
-            f1 <- lambda1[j] + x[j] * lambda2[j]
-            g1 <- exp(-lambda2[j])
-            e  <- 1
-            for (i in 2:x[j]) e <- e * (f1 * g1 / i)
-            b  <- lambda1[j] * exp(-lambda1[j]) * g1 * e
-            out[j] <- if (!is.finite(b) || is.na(b)) .Machine$double.xmin else b
+        xx <- x[j]; l1 <- lambda1[j]; l2 <- lambda2[j]
+
+        if (!is.finite(xx) || xx < 0 || xx != floor(xx)) {
+            out[j] <- if (log) -Inf else 0
+            next
         }
+        if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) {
+            out[j] <- NA_real_
+            next
+        }
+        term <- l1 + xx * l2
+        if (!is.finite(term) || term <= 0) {
+            out[j] <- if (log) -Inf else 0
+            next
+        }
+        logpmf <- log(l1) + (xx - 1) * log(term) - term - lgamma(xx + 1)
+        out[j] <- if (log) logpmf else { val <- exp(logpmf); if (is.finite(val)) val else 0 }
     }
     out
 }
@@ -101,40 +110,6 @@ rgenpois <-function(n, lambda1, lambda2)
   return(random_genpois)
 }
 
-## Internal generalized Poisson PMF/CDF for Dunn-Smyth residuals.
-## Uses log-scale arithmetic for numerical robustness; supports vectorized inputs.
-##
-## Parameterization: P(Y=y) = lambda1*(lambda1 + lambda2*y)^(y-1)*exp(-(lambda1+lambda2*y))/y!
-dgenpois_custom <- function(x, lambda1, lambda2, log = FALSE) {
-    n <- max(length(x), length(lambda1), length(lambda2))
-    x       <- rep_len(x,       n)
-    lambda1 <- rep_len(lambda1, n)
-    lambda2 <- rep_len(lambda2, n)
-
-    out <- rep(NA_real_, n)
-
-    for (j in seq_len(n)) {
-        xx <- x[j]; l1 <- lambda1[j]; l2 <- lambda2[j]
-
-        if (!is.finite(xx) || xx < 0 || xx != floor(xx)) {
-            out[j] <- if (log) -Inf else 0
-            next
-        }
-        if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) {
-            out[j] <- NA_real_
-            next
-        }
-        term <- l1 + xx * l2
-        if (!is.finite(term) || term <= 0) {
-            out[j] <- if (log) -Inf else 0
-            next
-        }
-        logpmf <- log(l1) + (xx - 1) * log(term) - term - lgamma(xx + 1)
-        out[j] <- if (log) logpmf else { val <- exp(logpmf); if (is.finite(val)) val else 0 }
-    }
-    out
-}
-
 pgenpois_custom <- function(q, lambda1, lambda2) {
     n <- max(length(q), length(lambda1), length(lambda2))
     q       <- rep_len(q,       n)
@@ -149,7 +124,7 @@ pgenpois_custom <- function(q, lambda1, lambda2) {
         if (!is.finite(qq) || qq < 0) { out[j] <- 0; next }
         if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) { out[j] <- NA_real_; next }
 
-        probs <- dgenpois_custom(0:qq, l1, l2, log = FALSE)
+        probs <- dgenpois(0:qq, l1, l2, log = FALSE)
         out[j] <- min(max(sum(probs, na.rm = TRUE), 0), 1)
     }
     out
