@@ -130,12 +130,27 @@ pnbinom0 <- function(q, mu, ...) pnbinom(q, mu = mu, ...)
 
 ## Generalized Poisson CDF: converts glmmTMB's (mu, phi) to (lambda1, lambda2).
 ## phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
-pgenpois_mu <- function(q, mu, phi, eps = 0.001) {
+pgenpois_mu <- function(q, mu, phi) {
     phi_val <- sqrt(phi)
-    alpha   <- pmin(pmax(1 - 1/phi_val, eps), 1-eps)
-    lambda1 <- pmax(mu * (1 - alpha), 1e-10)
+    alpha   <- 1 - 1/phi_val
+    lambda1 <- mu * (1 - alpha)
     lambda2 <- alpha
-    pgenpois(q, lambda1, lambda2)
+
+    invalid <- !is.finite(mu) | !is.finite(phi) | !is.finite(alpha) |
+        !is.finite(lambda1) | lambda1 <= 0 | lambda2 < 0 | lambda2 >= 1
+
+    if (any(invalid, na.rm = TRUE)) {
+        warning(
+            "genpois residual CDF parameters are outside the supported range; ",
+            "returning NA for those entries"
+        )
+    }
+
+    out <- rep(NA_real_, max(length(q), length(lambda1), length(lambda2)))
+    if (any(!invalid, na.rm = TRUE)) {
+        out[!invalid] <- pgenpois(q[!invalid], lambda1[!invalid], lambda2[!invalid])
+    }
+    out
 }
 
 #' The Bell Distribution
