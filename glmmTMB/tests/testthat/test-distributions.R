@@ -16,7 +16,7 @@ test_that("pgenpois matches HMMpa", {
 
     qs <- c(0, 2, 5, 10)
     expect_equal(
-        sapply(qs, function(q) pgenpois(q, lambda1 = 3, lambda2 = 0.4)),
+        pgenpois(qs, lambda1 = 3, lambda2 = 0.4),
         c(0.0497870683678639, 0.277420277828986,
           0.637262372751267, 0.916366482952780),
         tolerance = 1e-7

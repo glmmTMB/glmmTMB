@@ -54,25 +54,29 @@ dgenpois <- function(x, lambda1, lambda2, log = FALSE)
     lambda2 <- rep_len(lambda2, n)
 
     out <- rep(NA_real_, n)
+    valid_x <- is.finite(x) & x >= 0 & x == floor(x)
+    bad_x <- !valid_x
+    out[bad_x] <- if (log) -Inf else 0
 
-    for (j in seq_len(n)) {
-        xx <- x[j]; l1 <- lambda1[j]; l2 <- lambda2[j]
+    valid_par <- is.finite(lambda1) & lambda1 > 0 & is.finite(lambda2)
+    bad_par <- valid_x & !valid_par
+    out[bad_par] <- NA_real_
 
-        if (!is.finite(xx) || xx < 0 || xx != floor(xx)) {
-            out[j] <- if (log) -Inf else 0
-            next
+    term <- lambda1 + x * lambda2
+    valid_term <- is.finite(term) & term > 0
+    bad_term <- valid_x & valid_par & !valid_term
+    out[bad_term] <- if (log) -Inf else 0
+
+    ok <- valid_x & valid_par & valid_term
+    if (any(ok)) {
+        logpmf <- log(lambda1[ok]) + (x[ok] - 1) * log(term[ok]) - term[ok] - lgamma(x[ok] + 1)
+        if (log) {
+            out[ok] <- logpmf
+        } else {
+            vals <- exp(logpmf)
+            vals[!is.finite(vals)] <- 0
+            out[ok] <- vals
         }
-        if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) {
-            out[j] <- NA_real_
-            next
-        }
-        term <- l1 + xx * l2
-        if (!is.finite(term) || term <= 0) {
-            out[j] <- if (log) -Inf else 0
-            next
-        }
-        logpmf <- log(l1) + (xx - 1) * log(term) - term - lgamma(xx + 1)
-        out[j] <- if (log) logpmf else { val <- exp(logpmf); if (is.finite(val)) val else 0 }
     }
     out
 }
@@ -85,16 +89,25 @@ pgenpois <- function(q, lambda1, lambda2) {
     lambda1 <- rep_len(lambda1, n)
     lambda2 <- rep_len(lambda2, n)
 
-    out <- numeric(n)
+    out <- rep(NA_real_, n)
+    q <- floor(q)
+    bad_q <- !is.finite(q) | q < 0
+    out[bad_q] <- 0
 
-    for (j in seq_len(n)) {
-        qq <- floor(q[j]); l1 <- lambda1[j]; l2 <- lambda2[j]
+    valid_par <- is.finite(lambda1) & lambda1 > 0 & is.finite(lambda2)
+    valid <- !bad_q & valid_par
+    out[!bad_q & !valid_par] <- NA_real_
 
-        if (!is.finite(qq) || qq < 0) { out[j] <- 0; next }
-        if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) { out[j] <- NA_real_; next }
-
-        probs <- dgenpois(0:qq, l1, l2, log = FALSE)
-        out[j] <- min(max(sum(probs, na.rm = TRUE), 0), 1)
+    if (any(valid)) {
+        key <- paste(lambda1[valid], lambda2[valid], sep = "\r")
+        split_idx <- split(which(valid), key)
+        for (idx in split_idx) {
+            qq <- q[idx]
+            max_q <- max(qq)
+            probs <- dgenpois(0:max_q, lambda1[idx[1]], lambda2[idx[1]], log = FALSE)
+            cdf <- pmin(pmax(cumsum(probs), 0), 1)
+            out[idx] <- cdf[qq + 1]
+        }
     }
     out
 }
