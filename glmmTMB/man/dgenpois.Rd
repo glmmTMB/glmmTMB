@@ -17,7 +17,7 @@ rgenpois(n, lambda1, lambda2)
 
 \item{lambda1}{a single numeric value for parameter \code{lambda1} with \eqn{lambda1 > 0}}
 
-\item{lambda2}{a single numeric value for parameter \code{lambda2} with \eqn{0 \le lambda2 < 1}.
+\item{lambda2}{a single numeric value for parameter \code{lambda2} with \eqn{-1 \le lambda2 < 1}.
 When \code{lambda2=0}, the generalized Poisson distribution
 reduces to the Poisson distribution}
 

@@ -9,7 +9,7 @@
 #' @param q a numeric vector of quantiles
 #' @param n number of random deviates to draw
 #' @param lambda1 a single numeric value for parameter \code{lambda1} with \eqn{lambda1 > 0}
-#' @param lambda2 a single numeric value for parameter \code{lambda2} with \eqn{0 \le lambda2 < 1}.
+#' @param lambda2 a single numeric value for parameter \code{lambda2} with \eqn{-1 \le lambda2 < 1}.
 #'                When \code{lambda2=0}, the generalized Poisson distribution
 #'                reduces to the Poisson distribution
 #' @param log logical; if \code{TRUE}, the log-density is returned
@@ -103,6 +103,7 @@ pgenpois <- function(q, lambda1, lambda2, lower.tail = TRUE, log.p = FALSE) {
     out[!bad_q & !valid_par] <- NA_real_
 
     if (any(valid)) {
+      ## hash, find unique values
         key <- paste(lambda1[valid], lambda2[valid], sep = "\t")
         split_idx <- split(which(valid), key)
         for (idx in split_idx) {
@@ -121,25 +122,12 @@ pgenpois <- function(q, lambda1, lambda2, lower.tail = TRUE, log.p = FALSE) {
 
 #' @rdname dgenpois
 #' @export
-rgenpois <-function(n, lambda1, lambda2)
-{
-  lambda1 <- rep_len(lambda1, n)
-  lambda2 <- rep_len(lambda2, n)
-
-  random_genpois <- numeric(n)
-  random_unif <- runif(n)
-  for (i in 1:n)
-  {
-    temp_random_genpois <- 0
-    kum <- dgenpois(0, lambda1 = lambda1[i], lambda2 = lambda2[i])
-    while(random_unif[i] > kum)
-    {
-      temp_random_genpois <- temp_random_genpois + 1
-      kum <- kum + dgenpois(temp_random_genpois, lambda1 = lambda1[i], lambda2 = lambda2[i])
-    }
-    random_genpois[i] <- temp_random_genpois
-  }
-  return(random_genpois)
+rgenpois <- function(n, lambda1, lambda2) {
+    .Call("rgenpois_R",
+          as.integer(n),
+          as.double(rep_len(lambda1, n)),
+          as.double(rep_len(lambda2, n)),
+          PACKAGE = "glmmTMB")
 }
 
 ## CDF wrappers with (q, mu, ...) signature for use in dunnsmyth_resids switch() blocks.
@@ -149,20 +137,27 @@ pnbinom0 <- function(q, mu, ...) pnbinom(q, mu = mu, ...)
 
 ## Generalized Poisson CDF: converts glmmTMB's (mu, phi) to (lambda1, lambda2).
 ## phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
-pgenpois_mu <- function(q, mu, phi) {
+pgenpois_mu <- function(q, mu, phi, clamp = TRUE, warn_clamp = TRUE) {
     phi_val <- sqrt(phi)
     alpha   <- 1 - 1/phi_val
     lambda1 <- mu * (1 - alpha)
     lambda2 <- alpha
 
     invalid <- !is.finite(mu) | !is.finite(phi) | !is.finite(alpha) |
-        !is.finite(lambda1) | lambda1 <= 0 | lambda2 < 0 | lambda2 >= 1
+      !is.finite(lambda1)
 
     if (any(invalid, na.rm = TRUE)) {
         warning(
-            "genpois residual CDF parameters are outside the supported range; ",
-            "returning NA for those entries"
+          "genpois residual CDF parameters are non-finite; ",
+          "returning NA for those entries"
         )
+    }
+
+    out_of_range <- lambda1 <= 0 | abs(lambda2) >= 1
+    if (clamp && any(out_of_range, na.rm = TRUE)) {
+      if (warn_clamp) warning("genpois residual CDF parameters out of range: clamping")
+      lambda1 <- pmax(0, lambda1)
+      lambda2 <- pmin(1, pmax(lambda2, -1))
     }
 
     out <- rep(NA_real_, max(length(q), length(lambda1), length(lambda2)))

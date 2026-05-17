@@ -814,7 +814,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            "dunn-smyth" = {
-               phi <- na.omit(predict(object, type = "disp"))
+               phi <- predict(object, type = "disp")
                dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
            },
            deviance = {
