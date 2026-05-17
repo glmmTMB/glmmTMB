@@ -99,7 +99,7 @@ pgenpois <- function(q, lambda1, lambda2) {
     out[!bad_q & !valid_par] <- NA_real_
 
     if (any(valid)) {
-        key <- paste(lambda1[valid], lambda2[valid], sep = "\r")
+        key <- paste(lambda1[valid], lambda2[valid], sep = "\t")
         split_idx <- split(which(valid), key)
         for (idx in split_idx) {
             qq <- q[idx]
