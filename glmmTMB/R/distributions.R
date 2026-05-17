@@ -79,15 +79,25 @@ dgenpois <- function(x, lambda1, lambda2, log = FALSE)
 
 #' @rdname dgenpois
 #' @export
-pgenpois <- function(q, lambda1, lambda2)
-  {
-    foo <- 0
-    for (i in 0:q)
-    {
-      foo <- foo + dgenpois(i, lambda1 = lambda1, lambda2 = lambda2)
+pgenpois <- function(q, lambda1, lambda2) {
+    n <- max(length(q), length(lambda1), length(lambda2))
+    q       <- rep_len(q,       n)
+    lambda1 <- rep_len(lambda1, n)
+    lambda2 <- rep_len(lambda2, n)
+
+    out <- numeric(n)
+
+    for (j in seq_len(n)) {
+        qq <- floor(q[j]); l1 <- lambda1[j]; l2 <- lambda2[j]
+
+        if (!is.finite(qq) || qq < 0) { out[j] <- 0; next }
+        if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) { out[j] <- NA_real_; next }
+
+        probs <- dgenpois(0:qq, l1, l2, log = FALSE)
+        out[j] <- min(max(sum(probs, na.rm = TRUE), 0), 1)
     }
-    return(foo)
-  }
+    out
+}
 
 
 #' @rdname dgenpois
@@ -110,26 +120,6 @@ rgenpois <-function(n, lambda1, lambda2)
   return(random_genpois)
 }
 
-pgenpois_custom <- function(q, lambda1, lambda2) {
-    n <- max(length(q), length(lambda1), length(lambda2))
-    q       <- rep_len(q,       n)
-    lambda1 <- rep_len(lambda1, n)
-    lambda2 <- rep_len(lambda2, n)
-
-    out <- numeric(n)
-
-    for (j in seq_len(n)) {
-        qq <- floor(q[j]); l1 <- lambda1[j]; l2 <- lambda2[j]
-
-        if (!is.finite(qq) || qq < 0) { out[j] <- 0; next }
-        if (!is.finite(l1) || l1 <= 0 || !is.finite(l2)) { out[j] <- NA_real_; next }
-
-        probs <- dgenpois(0:qq, l1, l2, log = FALSE)
-        out[j] <- min(max(sum(probs, na.rm = TRUE), 0), 1)
-    }
-    out
-}
-
 ## CDF wrappers with (q, mu, ...) signature for use in dunnsmyth_resids switch() blocks.
 
 ## pnbinom using the mu parameterization (base R defaults to size/prob).
@@ -137,12 +127,12 @@ pnbinom0 <- function(q, mu, ...) pnbinom(q, mu = mu, ...)
 
 ## Generalized Poisson CDF: converts glmmTMB's (mu, phi) to (lambda1, lambda2).
 ## phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
-pgenpois_mu <- function(q, mu, phi) {
+pgenpois_mu <- function(q, mu, phi, eps = 0.001) {
     phi_val <- sqrt(phi)
-    alpha   <- pmin(pmax(1 - 1/phi_val, -0.99), 0.999)
+    alpha   <- pmin(pmax(1 - 1/phi_val, -(1-eps)), 1-eps)
     lambda1 <- pmax(mu * (1 - alpha), 1e-10)
     lambda2 <- alpha
-    pgenpois_custom(q, lambda1, lambda2)
+    pgenpois(q, lambda1, lambda2)
 }
 
 #' The Bell Distribution
