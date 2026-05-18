@@ -137,7 +137,7 @@ pnbinom0 <- function(q, mu, ...) pnbinom(q, mu = mu, ...)
 
 ## Generalized Poisson CDF: converts glmmTMB's (mu, phi) to (lambda1, lambda2).
 ## phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
-pgenpois_mu <- function(q, mu, phi, clamp = TRUE, warn_clamp = TRUE) {
+pgenpois_mu <- function(q, mu, phi, clamp = FALSE, warn_clamp = TRUE) {
     phi_val <- sqrt(phi)
     alpha   <- 1 - 1/phi_val
     lambda1 <- mu * (1 - alpha)
