@@ -925,6 +925,14 @@ map.theta.propto <- function(ReStruc, map, component) {
 
   blockTheta <- getVal(ReStruc,"blockNumTheta")
   cov_code <- getVal(ReStruc, "blockCode")
+  # Validate indisting block sizes before TMB initialization.
+  # This fires in pure R so expect_error() can catch it cleanly.
+  for (i in seq_along(cov_code)) {
+    if (cov_code[[i]] == .valid_covstruct[["indisting"]] &&
+        getVal(ReStruc, "blockSize")[[i]] %% 2 != 0) {
+      stop("indisting() requires an even number of random effect terms")
+    }
+  }
   thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
   tl <- split(map.theta, thetaseq)
   for(i in 1:length(cov_code)){
@@ -1042,6 +1050,11 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "indisting" = {
+                 if (blksize %% 2 != 0)
+                   stop("indisting() requires an even number of random effect terms")
+                 blksize/2 + (blksize/2)^2
+               },
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }

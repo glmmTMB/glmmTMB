@@ -94,7 +94,8 @@ enum valid_covStruct {
   hetar1_covstruct = 12,
   homcs_covstruct = 13,
   homtoep_covstruct = 14,
-  equalto_covstruct = 15
+  equalto_covstruct = 15,
+  indisting_covstruct = 16
 };
 
 // should probably be named just 'predictCode';
@@ -795,6 +796,86 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
+  }
+  else if (term.blockCode == indisting_covstruct){
+    {  // inner scope: isolate all variable declarations from adjacent blocks
+    if (term.blockSize % 2 != 0) {
+      Rf_error("indisting() requires an even number of random effect terms");
+    }
+    int n_id   = term.blockSize;
+    int k_id   = n_id / 2;
+    int ck2_id = k_id * (k_id - 1) / 2;
+    vector<Type> logsd_id(n_id);
+    for (int i = 0; i < k_id; i++) {
+      logsd_id(2*i)     = theta(i);
+      logsd_id(2*i + 1) = theta(i);
+    }
+    vector<Type> sd_id = exp(logsd_id);
+    int off_partner_id = k_id;
+    int off_wp_id      = k_id + k_id;
+    int off_cp_id      = k_id + k_id + ck2_id;
+#define SR(x) ((x) / sqrt(Type(1) + (x)*(x)))
+    matrix<Type> R_id(n_id, n_id);
+    R_id.setZero();
+    for (int i = 0; i < n_id; i++) R_id(i, i) = Type(1);
+    for (int i = 0; i < k_id; i++) {
+      Type r = SR(theta(off_partner_id + i));
+      R_id(2*i,     2*i + 1) = r;
+      R_id(2*i + 1, 2*i)     = r;
+    }
+    {
+      int pair_id = 0;
+      for (int i = 0; i < k_id; i++) {
+        for (int j = i + 1; j < k_id; j++, pair_id++) {
+          Type rw = SR(theta(off_wp_id + pair_id));
+          Type rc = SR(theta(off_cp_id + pair_id));
+          R_id(2*i,     2*j)     = rw;  R_id(2*j,     2*i)     = rw;
+          R_id(2*i + 1, 2*j + 1) = rw;  R_id(2*j + 1, 2*i + 1) = rw;
+          R_id(2*i,     2*j + 1) = rc;  R_id(2*j + 1, 2*i)     = rc;
+          R_id(2*i + 1, 2*j)     = rc;  R_id(2*j,     2*i + 1) = rc;
+        }
+      }
+    }
+#undef SR
+    matrix<Type> L_id(n_id, n_id);
+    L_id.setZero();
+    bool pd_id = true;
+    for (int col = 0; col < n_id && pd_id; col++) {
+      Type s_id = R_id(col, col);
+      for (int p = 0; p < col; p++) s_id -= L_id(p, col) * L_id(p, col);
+      if (s_id <= Type(1e-12)) { pd_id = false; break; }
+      L_id(col, col) = sqrt(s_id);
+      for (int row = col + 1; row < n_id; row++) {
+        Type t_id = R_id(col, row);
+        for (int p = 0; p < col; p++) t_id -= L_id(p, col) * L_id(p, row);
+        L_id(col, row) = t_id / L_id(col, col);
+      }
+    }
+    if (pd_id) {
+      for (int col = 0; col < n_id; col++)
+        for (int row = 0; row <= col; row++)
+          L_id(row, col) /= L_id(col, col);
+      int n_corr_id = n_id * (n_id - 1) / 2;
+      vector<Type> corr_transf_id(n_corr_id);
+      {
+        int idx_id = 0;
+        for (int col = 1; col < n_id; col++)
+          for (int row = 0; row < col; row++)
+            corr_transf_id(idx_id++) = L_id(row, col);
+      }
+      density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf_id);
+      density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens =
+        density::VECSCALE(nldens, sd_id);
+      for (int i = 0; i < term.blockReps; i++) {
+        ans += scnldens(U.col(i));
+        if (do_simulate) {
+          U.col(i) = sd_id * nldens.simulate();
+        }
+      }
+      if (term.fullCor == 1) term.corr = R_id;
+      term.sd = sd_id;
+    }
+    }  // end inner scope
   }
   else error("covStruct not implemented!");
   return ans;

@@ -45,3 +45,4 @@ glmmTMB/.gitsum
 *.zip
 *.dll
 air.toml
+.positai
