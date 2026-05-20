@@ -1788,7 +1788,9 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
                    bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
-    resid <- qnorm(runif(length(yobs), min = a, max = b))
+    resid <- rep(NA_real_, length(yobs))
+    ok <- !is.na(a) & !is.na(b)
+    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
     resid[is.infinite(resid) | is.nan(resid)] <- 0
     resid
 }

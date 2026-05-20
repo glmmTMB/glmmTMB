@@ -737,18 +737,28 @@ test_that("dunn-smyth residuals", {
 
 test_that("dunn-smyth residuals: genpois", {
     skip_on_cran()
+    gendat <- data.frame(y = c(3, 4, 4, 4, 4, 3, 8, 3, 6, 6, 3, 4, 3, 5, 3, 5, 3, 4, 6, 4))
+    ## suppress 'NA/NaN function evaluation' warning
+    gen1 <- suppressWarnings(glmmTMB(y ~ 1, family = genpois(), data = gendat))
+    set.seed(101)
+    r <- residuals(gen1, type = "dunn-smyth")
+    expval <- c(-0.906009006108806, -0.479848399593528, -0.0154146235395489, 
+                -0.0503110241900817, -0.329732058354796, -0.960084498585361, 
+                2.5598194451992, -0.9347004041502, 1.23329493149144, 1.18038569638241, 
+                -0.580817982814981, -0.0172992567679372, -0.667961846344346, 
+                0.813012253777083, -0.846954189255436, 0.556790605728778, -0.615246557122922, 
+                -0.348016330406253, 1.09449326715913, -0.483776438180655)
+    expect_equal(r, expval, tolerance = 1e-6)
+})
+
+test_that("dunn-smyth residuals: genpois for out-of-range dispersion", {
+
     gendat <- data.frame(y = c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
     gen1 <- glmmTMB(y ~ 1, family = genpois(), data = gendat)
-    r <- residuals(gen1, type = "dunn-smyth")
-    skip()  ## reference values were Claude-generated, no longer matching ...
-    expval <- c(0.846483519668342, -0.0013575904562073, -0.202384597940571,
-                0.39170608977513, -0.493186235811685, -1.06081256559006,
-                0.985351036304671, -1.62668245322099, -0.255804063138394,
-                -0.302818430581645, -0.100224217846464, -0.817543318992496,
-                1.09373081781185, 0.584616800302956, 0.898563661016827,
-                -0.275287425534332, 0.50408621816545, -1.7030152672953,
-                2.25786919674431, -0.640490916668856)
-    expect_equal(r, expval, tolerance = 1e-6)
+    set.seed(101)
+    expect_warning(r <- residuals(gen1, type = "dunn-smyth"),
+                   "some genpois parameters out of range")
+    expect_true(all(is.na(r)))
 })
 
 test_that("dunn-smyth residuals: genpois approximate normality", {

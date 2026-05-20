@@ -135,9 +135,21 @@ rgenpois <- function(n, lambda1, lambda2) {
 ## pnbinom using the mu parameterization (base R defaults to size/prob).
 pnbinom0 <- function(q, mu, ...) pnbinom(q, mu = mu, ...)
 
-## Generalized Poisson CDF: converts glmmTMB's (mu, phi) to (lambda1, lambda2).
-## phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
-pgenpois_mu <- function(q, mu, phi, clamp = FALSE, warn_clamp = TRUE) {
+#' Generalized Poisson CDF: converts glmmTMB's (mu, phi) to (lambda1, lambda2).
+#' phi here is sigma()^2 as returned by predict(type="disp") for a genpois model.
+#' lambda2 is less than -1 for phi < 0.25. 
+#' @param q vector of quantiles
+#' @param mu vector of mean values
+#' @param phi vector of dispersion parameters
+#' @param oor_na return NA values for 'out of range' lambda values (< 0.25)
+#' @param oor_clamp clamp out of range values to the appropriate bounds?
+#' @param oor_warn_clamp warn when clamping out-of-range values?
+#' @param eps epsilon value for clamping
+#' @return vector of CDF values
+#' @noRd
+pgenpois_mu <- function(q, mu, phi, oor_na = TRUE,
+                        oor_clamp = FALSE, oor_warn_clamp = TRUE,
+                        eps = 1e-6) {
     phi_val <- sqrt(phi)
     alpha   <- 1 - 1/phi_val
     lambda1 <- mu * (1 - alpha)
@@ -154,15 +166,21 @@ pgenpois_mu <- function(q, mu, phi, clamp = FALSE, warn_clamp = TRUE) {
     }
 
     out_of_range <- lambda1 <= 0 | abs(lambda2) >= 1
-    if (clamp && any(out_of_range, na.rm = TRUE)) {
-      if (warn_clamp) warning("genpois residual CDF parameters out of range: clamping")
-      lambda1 <- pmax(0, lambda1)
-      lambda2 <- pmin(1, pmax(lambda2, -1))
+    if (oor_clamp && any(out_of_range, na.rm = TRUE)) {
+      if (oor_warn_clamp) warning("genpois residual CDF parameters out of range: clamping")
+      lambda1 <- pmax(eps, lambda1)
+      lambda2 <- pmin(1-eps, pmax(lambda2, -(1-eps)))
     }
 
+    if (oor_na && any(out_of_range, na.rm = TRUE)) {
+        warning("some genpois parameters out of range: returning NAs")
+    }
     out <- rep(NA_real_, max(length(q), length(lambda1), length(lambda2)))
     if (any(!invalid, na.rm = TRUE)) {
-        out[!invalid] <- pgenpois(q[!invalid], lambda1[!invalid], lambda2[!invalid])
+        skip <- invalid | (oor_na & out_of_range)
+        if (any(!skip)) {
+            out[!skip] <- pgenpois(q[!skip], lambda1[!skip], lambda2[!skip])
+        }
     }
     out
 }
