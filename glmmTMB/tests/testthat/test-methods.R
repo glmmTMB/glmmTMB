@@ -1046,7 +1046,10 @@ test_that("summary can return sandwich estimator based results as expected", {
 
 test_that("cl gets passed to confint/profile", {
   skip_on_cran()
-  cl <- parallel::makeCluster(4)
+  ## limit to 2 cores even though we're 'skipping on CRAN'
+  ## could do more cores with chk <- Sys.getenv("_R_CHECK_LIMIT_CORES_", "")
+  ##  https://stackoverflow.com/a/50571533/190277
+  cl <- parallel::makeCluster(2)
   tt <- system.time(cc <- confint(fm_nest, method="profile", parallel="snow", cl=cl))
   expect_is(cc, "matrix")
   ## will fail if cluster was already closed
