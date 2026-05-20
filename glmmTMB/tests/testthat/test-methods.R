@@ -1043,3 +1043,12 @@ test_that("summary can return sandwich estimator based results as expected", {
     result_ses <- result$coefficients$cond[, "Std. Error"]   
     expect_equal(result_ses, expected_ses, check.attributes = FALSE)
 })
+
+test_that("cl gets passed to confint/profile", {
+  skip_on_cran()
+  cl <- parallel::makeCluster(4)
+  tt <- system.time(cc <- confint(fm_nest, method="profile", parallel="snow", cl=cl))
+  expect_is(cc, "matrix")
+  ## will fail if cluster was already closed
+  expect_no_error(stopCluster(cl))
+})
