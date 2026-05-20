@@ -1236,7 +1236,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     else {  ## profile CIs
         parm <- getParms(parm0, object, full, include_nonest = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
-                      parallel=parallel,ncpus=ncpus, cl = cl,
+                      parallel=parallel,ncpus=ncpus, cl=cl,
                       ...)
         ci <- confint(pp)
         if (include_nonest) {
