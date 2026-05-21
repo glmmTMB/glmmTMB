@@ -1053,5 +1053,5 @@ test_that("cl gets passed to confint/profile", {
   tt <- system.time(cc <- confint(fm_nest, method="profile", parallel="snow", cl=cl))
   expect_is(cc, "matrix")
   ## will fail if cluster was already closed
-  expect_no_error(stopCluster(cl))
+  expect_no_error(parallel::stopCluster(cl))
 })
