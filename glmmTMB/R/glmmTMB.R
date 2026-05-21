@@ -434,8 +434,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## add X matrices, prior info
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
-  # check for any covariance structures which have non-default theta values
-  ndThetaStruc <- function(lst) if (any(lst$ss %in% c("rr", "propto", "equalto"))) 1 else 0
+  ## identify covariance structures that have non-default theta values
+  ndThetaStruc <- function(lst) any(lst$ss %in% c("rr", "propto", "equalto"))
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
