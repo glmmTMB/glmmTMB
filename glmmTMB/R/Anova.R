@@ -116,37 +116,27 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
 Anova.II.glmmTMB <- function(mod, vcov., singular.ok=TRUE, test="Chisq",
                              component="cond", include.rankdef.cols = FALSE, ...){
 
-    dfun <- function(obj) { cat(obj, "\n"); print(get(obj, parent.frame()), digits = 3) }
     ## would feel cleaner to have this external, but it uses
     ##  lots of variable from the function environment ...
     hyp.term <- function(term) {
-      which.term <- which(term==names)
-      dfun("which.term")
-      subs.term <- which(assign==which.term)
-      dfun("subs.term")
-      relatives <- relatives(term, names, fac)
-      dfun("relatives")
+        which.term <- which(term==names)
+        subs.term <- which(assign==which.term)
+        relatives <- relatives(term, names, fac)
         subs.relatives <- NULL
         for (relative in relatives) 
             subs.relatives <- c(subs.relatives, which(assign==relative))
         hyp.matrix.1 <- I.p[subs.relatives,,drop=FALSE]
-      hyp.matrix.1 <- hyp.matrix.1[, not.aliased, drop=FALSE]
-      dfun("hyp.matrix.1")
+        hyp.matrix.1 <- hyp.matrix.1[, not.aliased, drop=FALSE]
         hyp.matrix.2 <- I.p[c(subs.relatives,subs.term),,drop=FALSE]
-      hyp.matrix.2 <- hyp.matrix.2[, not.aliased, drop=FALSE]
-      dfun("hyp.matrix.2")
-      browser()
+        hyp.matrix.2 <- hyp.matrix.2[, not.aliased, drop=FALSE]       
         hyp.matrix.term <- if (nrow(hyp.matrix.1) == 0) {
                                hyp.matrix.2
                            } else {
                                t(ConjComp(t(hyp.matrix.1),
                                           t(hyp.matrix.2), vcov.))
                            }
-      dfun("hyp.matrix.term")
-      cat("zero_rows ", sum(!apply(hyp.matrix.term, 1, function(x) all(x == 0))), "\n")
-      hyp.matrix.term <- hyp.matrix.term[!apply(hyp.matrix.term, 1, 
+        hyp.matrix.term <- hyp.matrix.term[!apply(hyp.matrix.term, 1, 
                                                   function(x) all(x == 0)), , drop=FALSE]
-        cat("HYPOTHESIS MATRIX ", nrow(hyp.matrix.term), "\n")
         if (nrow(hyp.matrix.term) == 0)
             return(c(statistic=NA, df=0))            
         hyp <- linearHypothesis_glmmTMB(mod, hyp.matrix.term, 
