@@ -4,7 +4,16 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.14}{
+\section{CHANGES IN VERSION 1.1.15}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{profile.glmmTMB} with a custom parallel cluster produced
+      error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
+    }
+  } % bug fixes
+} % 1.1.15
+
+\section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item Fix theta initialization for propto/equalto and enable them in
@@ -12,25 +21,26 @@
       \item more informative error message when \code{family=ziGamma} is
       specified, with zeros in the data, without setting \code{ziformula}
       (GH #1213)
-      \item \code{simulate_new} with \code{return_val="pars"} works
-      without specifying \code{newparams} (GH #1242)
+      \item \code{simulate_new} with \code{return_val="pars"} no longer
+      requires \code{newparams} to be specified (GH #1242)
     } % itemize
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
       \item new covariance structure \code{equalto}
       (GH #1253, Coralie Williams), see \code{vignette("covstruct")}
-      }
+    }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item shorter printing of covariance structures, see
+      \item more compact printing of covariance structures, see
       \code{vignette("covstruct")}
-      \item functions and methods for printing covariance matrices have
+      \item functions and methods for formatting/printing covariance matrices have
       moved to the \code{reformulas} package
     } % itemize
   } % user-visible changes
 } % 1.1.14
+
 \section{CHANGES IN VERSION 1.1.13 (2025-10-09)}{
   \subsection{BUG FIXES}{
     \itemize{
