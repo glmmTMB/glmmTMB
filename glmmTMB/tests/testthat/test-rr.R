@@ -101,5 +101,29 @@ test_that("rr binomial", {
                  tolerance = 1e-5)
 })
 
+test_that("rr start and map", {
+  spider_par <<- glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+                        family = poisson, doFit = F,
+                        data=spiderDat_common)
+  partheta <- spider_par$parameters$theta
+  theta_map <- factor(rep(NA, length(which(partheta==1))))
+  spider_map <-  glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+                        family = poisson, doFit = F,
+                        map=list(theta=theta_map),
+                        start=list(theta=partheta),
+                        data=spiderDat_common)
+  
+  expect_equal(theta_map,
+               spider_map$mapArg$theta)
+  
+  spider_mapFit <-  glmmTMB(abund ~ Species + rr(Species + 0|id, d = 1),
+                         family = poisson, 
+                         map=list(theta=theta_map),
+                         start=list(theta=partheta),
+                         data=spiderDat_common)
+  expect_equal(spider_mapFit$obj$env$parList(spider_mapFit$fit$par, spider_mapFit$obj$env$last.par.best)$theta,
+               partheta)
+})
+
 ## FIXME: test, remove if unnecessary
 options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?

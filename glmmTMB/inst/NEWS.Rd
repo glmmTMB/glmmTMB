@@ -20,6 +20,7 @@
     \itemize{
       \item \code{profile.glmmTMB} with a custom parallel cluster produced
       error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
+      \item Fix mapping for models with rr structures (GH #1276)
     }
   } % bug fixes
   %\subsection{USER-VISIBLE CHANGES}{

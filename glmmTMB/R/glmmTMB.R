@@ -434,8 +434,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## add X matrices, prior info
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
-  # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto") || any(lst$ss == "equalto")) 1 else 0
+  ## identify covariance structures that have non-default theta values
+  ndThetaStruc <- function(lst) any(lst$ss %in% c("rr", "propto", "equalto"))
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -458,12 +458,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   # theta is 0, 1 for rr_covstruct
   # theta is parameterised to corr matrix for propto
-  t01 <- function(dorr, ReStruc, List = NULL){
+  t01 <- function(ndTheta, ReStruc, List = NULL){
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
     theta <- rr0(nt)
     
-    if (dorr) {
+    if (ndTheta) {
       blockNumTheta <- getVal(ReStruc,"blockNumTheta")
       blockCode  <- getVal(ReStruc, "blockCode")
       thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
@@ -495,9 +495,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),                       
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
-                       theta   = t01(dorr = rrVal(condList), condReStruc, condList),
-                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
-                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc, dispList),
+                       theta   = t01(ndTheta = ndThetaStruc(condList), condReStruc, condList),
+                       thetazi = t01(ndTheta = ndThetaStruc(ziList), ziReStruc, ziList),                       
+                       thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
 
@@ -517,13 +517,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
+  
   ### Change mapping for propto 
   for (component in c("cond", "zi", "disp")) {
     rList <- get(paste0(component, "List"))
-    if(rrVal(rList)){
-      restruc <- get(paste0(component, "ReStruc"))
+    if(length(rList$ss) > 0 && any(rList$ss %in% c("propto", "equalto") )){
+      restruccomp <- get(paste0(component, "ReStruc"))
       mapArg.orig <- mapArg
-      mapArg <- map.theta.propto(restruc, mapArg.orig, component)
+      mapArg <- map.theta.propto(restruccomp, mapArg.orig, component)
     }
   }
 
