@@ -4,7 +4,7 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.14.9000}{
+\section{CHANGES IN VERSION 1.1.15}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
@@ -16,15 +16,17 @@
       (\code{dgenpois}, \code{pgenpois}) distributions are now exported
     }
   } % new features
-  %\subsection{BUG FIXES}{
-  %  \itemize{
-  %  } % itemize
-  % } % bug fixes
+ \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{profile.glmmTMB} with a custom parallel cluster produced
+      error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
+    }
+  } % bug fixes
   %\subsection{USER-VISIBLE CHANGES}{
   %  \itemize{
   %  } % itemize
   % } % user-visible changes
-} % 1.1.14.9000
+ } % 1.1.15
 
 \section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
   \subsection{BUG FIXES}{

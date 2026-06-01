@@ -1209,16 +1209,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 L <- parallel::mclapply(parm, FUN, mc.cores = ncpus)
             } else if (parallel=="snow") {
                 if (is.null(cl)) {
-                    ## start cluster
-                    new_cl <- TRUE
-                    cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
+                    cl <- parallel::makeCluster(ncpus)
+                    on.exit(parallel::stopCluster(cl))
                 }
                 ## run
                 L <- parallel::clusterApply(cl, parm, FUN)
-                if (new_cl) {
-                    ## stop cluster
-                    parallel::stopCluster(cl)
-                }
             }
         } else { ## non-parallel
             L <- lapply(as.list(parm), FUN)
@@ -1241,7 +1236,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     else {  ## profile CIs
         parm <- getParms(parm0, object, full, include_nonest = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
-                      parallel=parallel,ncpus=ncpus,
+                      parallel=parallel,ncpus=ncpus, cl=cl,
                       ...)
         ci <- confint(pp)
         if (include_nonest) {
