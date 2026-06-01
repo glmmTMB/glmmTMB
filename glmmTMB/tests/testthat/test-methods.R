@@ -729,10 +729,66 @@ test_that("dunn-smyth residuals", {
     set.seed(101)
     expect_equal(head(residuals(fm2NB, type = "dunn-smyth")),
                  c(-0.359359541418763, -0.650271471641143,
-                   -1.65874788276259, 
+                   -1.65874788276259,
                    0.534218575163113,
                    1.13173385534682, 2.37431279792035),
                  tolerance = 1e-6)
+})
+
+test_that("dunn-smyth residuals: genpois", {
+    skip_on_cran()
+    gendat <- data.frame(y = c(3, 4, 4, 4, 4, 3, 8, 3, 6, 6, 3, 4, 3, 5, 3, 5, 3, 4, 6, 4))
+    ## suppress 'NA/NaN function evaluation' warning
+    gen1 <- suppressWarnings(glmmTMB(y ~ 1, family = genpois(), data = gendat))
+    set.seed(101)
+    r <- residuals(gen1, type = "dunn-smyth")
+    expval <- c(-0.906009006108806, -0.479848399593528, -0.0154146235395489, 
+                -0.0503110241900817, -0.329732058354796, -0.960084498585361, 
+                2.5598194451992, -0.9347004041502, 1.23329493149144, 1.18038569638241, 
+                -0.580817982814981, -0.0172992567679372, -0.667961846344346, 
+                0.813012253777083, -0.846954189255436, 0.556790605728778, -0.615246557122922, 
+                -0.348016330406253, 1.09449326715913, -0.483776438180655)
+    expect_equal(r, expval, tolerance = 1e-6)
+})
+
+test_that("dunn-smyth residuals: genpois for out-of-range dispersion", {
+
+    gendat <- data.frame(y = c(11,10,9,10,9,8,11,7,9,9,9,8,11,10,11,9,10,7,13,9))
+    gen1 <- glmmTMB(y ~ 1, family = genpois(), data = gendat)
+    set.seed(101)
+    expect_warning(r <- residuals(gen1, type = "dunn-smyth"),
+                   "some genpois parameters out of range")
+    expect_true(all(is.na(r)))
+})
+
+test_that("dunn-smyth residuals: genpois approximate normality", {
+    ## approximate normality check on a larger simulated dataset
+    set.seed(101)
+    n <- 1000
+    gp_dat <- data.frame(x = rnorm(n))
+    gp_dat$y <- simulate_new(~ x, newdata = gp_dat,
+                             newparams = list(beta = c(1, 1), betadisp = 1),
+                             family = "genpois")[[1]]
+    gp_mod <- glmmTMB(y ~ x, data = gp_dat, family = genpois())
+    set.seed(7)
+    r <- residuals(gp_mod, type = "dunn-smyth")
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
+})
+
+test_that("dunn-smyth residuals: bell", {
+    skip_on_cran()
+    set.seed(42)
+    n <- 1000
+    bell_dat <- data.frame(x = rnorm(n))
+    bell_dat$y <- simulate_new(~ x, newdata = bell_dat,
+                               newparams = list(beta = c(1, 1)),
+                               family = "bell")[[1]]
+    bell_mod <- glmmTMB(y ~ x, data = bell_dat, family = bell())
+    set.seed(7)
+    r <- residuals(bell_mod, type = "dunn-smyth")
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
 })
 
 test_that("profiling with mapped parameters", {

@@ -5,13 +5,28 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.15}{
-  \subsection{BUG FIXES}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
+      \code{residuals()}) are now available for the \code{bell} and
+      \code{genpois} families; the Bell distribution uses internal C-level
+      implementations of the PMF and Lambert W function
+      \item density and cumulative distribution functions for the Bell
+      (\code{dbell}, \code{pbell}) and generalized Poisson
+      (\code{dgenpois}, \code{pgenpois}) distributions are now exported
+    }
+  } % new features
+ \subsection{BUG FIXES}{
     \itemize{
       \item \code{profile.glmmTMB} with a custom parallel cluster produced
       error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
     }
   } % bug fixes
-} % 1.1.15
+  %\subsection{USER-VISIBLE CHANGES}{
+  %  \itemize{
+  %  } % itemize
+  % } % user-visible changes
+ } % 1.1.15
 
 \section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
   \subsection{BUG FIXES}{
