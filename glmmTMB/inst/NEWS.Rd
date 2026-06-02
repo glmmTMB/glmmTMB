@@ -39,6 +39,8 @@
       (GH #1213)
       \item \code{simulate_new} with \code{return_val="pars"} no longer
       requires \code{newparams} to be specified (GH #1242)
+      \item Non-estimated parameters (via \code{map}) no longer cause an error
+      message in \code{vcov.glmmTMB} with the default arguments (GH #1269)
     } % itemize
   } % bug fixes
   \subsection{NEW FEATURES}{
@@ -107,8 +109,8 @@
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
-      \item robust sandwich covariance matrix \code{vcovHC} has been added for 
-      \code{glmmTMB} objects, please see the Model evaluation vignette for details 
+      \item robust sandwich covariance matrix \code{vcovHC} has been added for
+      \code{glmmTMB} objects, please see the Model evaluation vignette for details
       (GH #443, Daniel Sabanés Bové)
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
@@ -170,7 +172,7 @@ matrices for random effect terms (helps with GH#995)
   } % user-visible changes
 
 } % 1.1.11
-  
+
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{
   \subsection{NEW FEATURES}{
     \itemize{
@@ -231,7 +233,7 @@ matrices for random effect terms (helps with GH#995)
     } % itemize
   } % other changes
 } % 1.1.10
-  
+
 \section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
@@ -288,8 +290,8 @@ matrices for random effect terms (helps with GH#995)
       \item "lognormal" family available (log-Normal, parameterized
       by the mean and standard deviation on the \emph{data scale})
       \item an experimental implementation of penalized splines
-      (and related smooth terms) is available, 
-      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.  
+      (and related smooth terms) is available,
+      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.
       Constructive feedback welcome at
       \url{https://github.com/glmmTMB/glmmTMB/issues/928}
       \item population-level prediction with new data no longer requires
@@ -329,7 +331,7 @@ matrices for random effect terms (helps with GH#995)
     } % itemize
   } % user-visible changes
 } % version 1.1.7.9000
-  
+
 \section{CHANGES IN VERSION 1.1.7 (2023-04-05)}{
   \itemize{
     \item \code{up2date()} adds a dispersion component to family
@@ -354,11 +356,11 @@ matrices for random effect terms (helps with GH#995)
       than from a fitted object)
       \item \code{emmeans.glmmTMB} method adds two options
       for the \code{component} argument: "response" and "cmean",
-      corresponding  to \code{type = "response"} and \code{type = "conditional"} 
+      corresponding  to \code{type = "response"} and \code{type = "conditional"}
       in \code{predict.glmmTMB} (Russ Lenth)
       \item new covariance structure \code{homdiag} (homogeneous diagonal;
       the existing diagonal covariance structure, \code{diag}, assumes heterogeneous
-      variances)					    
+      variances)
     }
   } % new features
  \subsection{USER-VISIBLE CHANGES}{

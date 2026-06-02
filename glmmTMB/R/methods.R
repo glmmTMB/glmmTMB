@@ -514,6 +514,8 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
               any_mapped <- !is.null(cur_map <- map[[parnms[[i]]]])
               ## some parameters mapped *to each other* (not fixed)
               if (any_mapped && length(unique(cur_map)) < length(cur_map)) {
+                  ## filter out NAs from cur_map as we want to only subset the vcov to estimated parameters...
+                  cur_map <- na.omit(cur_map)
                   ## replicate cov rows/cols appropriately
                   m <- m[as.numeric(cur_map), as.numeric(cur_map)]
                   map_split <- split(seq_along(cur_map), cur_map)
