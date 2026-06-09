@@ -439,4 +439,40 @@ extern "C" {
   }
 }
 
+/* Interface to generalized Poisson sampler, Bell PMF, and Lambert W */
+extern "C" {
+  /* lambda1_ and lambda2_ must already be recycled to length n in R */
+  SEXP rgenpois_R(SEXP n_, SEXP lambda1_, SEXP lambda2_) {
+    int n = asInteger(n_);
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    GetRNGstate();
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::rgenpois(REAL(lambda1_)[i], REAL(lambda2_)[i]);
+    PutRNGstate();
+    UNPROTECT(1);
+    return ans;
+  }
+
+  SEXP dbell_R(SEXP x_, SEXP theta_, SEXP give_log_) {
+    int n = LENGTH(x_);
+    if (LENGTH(theta_) != n)
+      error("'x' and 'theta' must have the same length");
+    int give_log = asLogical(give_log_);
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::dbell(REAL(x_)[i], REAL(theta_)[i], give_log);
+    UNPROTECT(1);
+    return ans;
+  }
+
+  SEXP lambertW_R(SEXP x_) {
+    int n = LENGTH(x_);
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::LambertW(REAL(x_)[i]);
+    UNPROTECT(1);
+    return ans;
+  }
+}
+
 

@@ -514,6 +514,8 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
               any_mapped <- !is.null(cur_map <- map[[parnms[[i]]]])
               ## some parameters mapped *to each other* (not fixed)
               if (any_mapped && length(unique(cur_map)) < length(cur_map)) {
+                  ## filter out NAs from cur_map as we want to only subset the vcov to estimated parameters...
+                  cur_map <- na.omit(cur_map)
                   ## replicate cov rows/cols appropriately
                   m <- m[as.numeric(cur_map), as.numeric(cur_map)]
                   map_split <- split(seq_along(cur_map), cur_map)
@@ -814,7 +816,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            "dunn-smyth" = {
-               phi <- na.omit(predict(object, type = "disp"))
+               phi <- predict(object, type = "disp")
                dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
            },
            deviance = {
@@ -1209,16 +1211,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 L <- parallel::mclapply(parm, FUN, mc.cores = ncpus)
             } else if (parallel=="snow") {
                 if (is.null(cl)) {
-                    ## start cluster
-                    new_cl <- TRUE
-                    cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
+                    cl <- parallel::makeCluster(ncpus)
+                    on.exit(parallel::stopCluster(cl))
                 }
                 ## run
                 L <- parallel::clusterApply(cl, parm, FUN)
-                if (new_cl) {
-                    ## stop cluster
-                    parallel::stopCluster(cl)
-                }
             }
         } else { ## non-parallel
             L <- lapply(as.list(parm), FUN)
@@ -1241,7 +1238,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     else {  ## profile CIs
         parm <- getParms(parm0, object, full, include_nonest = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
-                      parallel=parallel,ncpus=ncpus,
+                      parallel=parallel,ncpus=ncpus, cl=cl,
                       ...)
         ci <- confint(pp)
         if (include_nonest) {
@@ -1767,31 +1764,31 @@ deviance.glmmTMB <- function(object, ...) {
 }
 
 dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
-    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial")
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell")
     if (family == "gaussian") return(yobs-mu)
     if (!family %in% res.families) {
         stop("can't compute Dunn-Smyth residuals for family ",
              sQuote(family))
     }
     args <- switch(family,
-                   nbinom2 = list(size = phi),
-                   nbinom1 = list(size = mu/(phi+ 1e-5)),
-                   binomial = list(size=1),
-                   NULL
-                   )
-    ## deal with base-R's default size/prob parameterization for nbinom ...
-    pnbinom0 <- function(x, mu, ...) {
-        pnbinom(x, mu=mu, ...)
-    }
+                   nbinom2  = list(size = phi),
+                   nbinom1  = list(size = mu/(phi + 1e-5)),
+                   binomial = list(size = 1),
+                   genpois  = list(phi = phi),
+                   NULL)
     pfun <- switch(family,
-                   nbinom2 = pnbinom0,
-                   nbinom1 = pnbinom0,
-                   poisson = ppois,
-                   binomial = pbinom)
+                   nbinom2  = pnbinom0,
+                   nbinom1  = pnbinom0,
+                   poisson  = ppois,
+                   binomial = pbinom,
+                   genpois  = pgenpois_mu,
+                   bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
-    resid <- qnorm(runif(length(yobs), min = a, max = b))
-    resid[is.infinite(resid) | is.nan(resid) ]  <- 0
+    resid <- rep(NA_real_, length(yobs))
+    ok <- !is.na(a) & !is.na(b)
+    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
+    resid[is.infinite(resid) | is.nan(resid)] <- 0
     resid
 }
 
