@@ -434,8 +434,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## add X matrices, prior info
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
-  ## identify covariance structures that have non-default theta values
-  ndThetaStruc <- function(lst) any(lst$ss %in% c("rr", "propto", "equalto"))
+  # function to set value for dorr
+  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto") || any(lst$ss == "equalto")) 1 else 0
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -458,12 +458,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   # theta is 0, 1 for rr_covstruct
   # theta is parameterised to corr matrix for propto
-  t01 <- function(ndTheta, ReStruc, List = NULL){
+  t01 <- function(dorr, ReStruc, List = NULL){
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
     theta <- rr0(nt)
     
-    if (ndTheta) {
+    if (dorr) {
       blockNumTheta <- getVal(ReStruc,"blockNumTheta")
       blockCode  <- getVal(ReStruc, "blockCode")
       thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
@@ -495,9 +495,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),                       
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
-                       theta   = t01(ndTheta = ndThetaStruc(condList), condReStruc, condList),
-                       thetazi = t01(ndTheta = ndThetaStruc(ziList), ziReStruc, ziList),                       
-                       thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
+                       theta   = t01(dorr = rrVal(condList), condReStruc, condList),
+                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
+                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
 
@@ -517,14 +517,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
-  
   ### Change mapping for propto 
   for (component in c("cond", "zi", "disp")) {
     rList <- get(paste0(component, "List"))
-    if(length(rList$ss) > 0 && any(rList$ss %in% c("propto", "equalto") )){
-      restruccomp <- get(paste0(component, "ReStruc"))
+    if(rrVal(rList)){
+      restruc <- get(paste0(component, "ReStruc"))
       mapArg.orig <- mapArg
-      mapArg <- map.theta.propto(restruccomp, mapArg.orig, component)
+      mapArg <- map.theta.propto(restruc, mapArg.orig, component)
     }
   }
 
@@ -1043,10 +1042,89 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "indisting" = {
+                 if (blksize %% 2 != 0)
+                   stop("indisting() requires an even number of random effect terms")
+                 blksize/2 + (blksize/2)^2
+               },
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
     blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+    # --- Validate indisting column ordering ---
+    check_indisting_order <- function(cnms, group = "group") {
+      is_bare   <- !grepl(":", cnms)
+      persons   <- cnms[is_bare]
+      n_persons <- length(persons)
+      if (n_persons < 2)
+        stop("indisting() requires at least 2 person indicator terms (e.g. P1 and P2)")
+      get_vartype <- function(nm) {
+        if (nm %in% persons) return("")
+        for (p in persons) {
+          nm <- gsub(paste0("^", p, ":"), "", nm)
+          nm <- gsub(paste0(":", p, "$"), "", nm)
+        }
+        nm
+      }
+      get_person <- function(nm) {
+        if (nm %in% persons) return(nm)
+        for (p in persons) {
+          if (grepl(paste0("^", p, ":"), nm) || grepl(paste0(":", p, "$"), nm))
+            return(p)
+        }
+        return(NA)
+      }
+      vartypes     <- sapply(cnms, get_vartype)
+      person_ids   <- sapply(cnms, get_person)
+      unique_types <- unique(vartypes)
+      for (vt in unique_types) {
+        idx <- which(vartypes == vt)
+        if (length(idx) != n_persons)
+          stop(sprintf(
+            "indisting(): variable type '%s' appears %d time(s) but should appear %d time(s) -- once for each person indicator (%s).",
+            vt, length(idx), n_persons, paste(persons, collapse = ", ")))
+        if (!all(diff(idx) == 1)) {
+          correct_terms <- c(persons)
+          for (other_vt in unique_types[unique_types != ""])
+            for (p in persons)
+              correct_terms <- c(correct_terms, paste(p, other_vt, sep = ":"))
+          correct_formula <- paste("indisting(0 +",
+                                   paste(correct_terms, collapse = " + "),
+                                   "|", group, ")")
+          stop(paste0(
+            "indisting() requires like-variable terms to be adjacent in the formula.\n",
+            "  Variable type '", vt, "' is not grouped consecutively.\n",
+            "  The correct ordering for your terms would be:\n",
+            "  ", correct_formula))
+        }
+        if (vt != "") {
+          person_order_in_group <- unname(person_ids[idx])
+          if (!identical(person_order_in_group, persons)) {
+            correct_terms <- c(persons)
+            for (other_vt in unique_types[unique_types != ""])
+              for (p in persons)
+                correct_terms <- c(correct_terms, paste(p, other_vt, sep = ":"))
+            correct_formula <- paste("indisting(0 +",
+                                     paste(correct_terms, collapse = " + "),
+                                     "|", group, ")")
+            stop(paste0(
+              "indisting() requires consistent person ordering across all variable types.\n",
+              "  For variable type '", vt, "', persons appear in order: ",
+              paste(person_order_in_group, collapse = ", "), "\n",
+              "  but the expected order is: ",
+              paste(persons, collapse = ", "), "\n",
+              "  The correct ordering for your terms would be:\n",
+              "  ", correct_formula))
+          }
+        }
+      }
+      invisible(TRUE)
+    }
+    for (i in seq_along(ss)) {
+      if (ss[[i]] == "indisting") {
+        check_indisting_order(reTrms$cnms[[i]], names(reTrms$cnms)[i])
+      }
+    }
 
     covCode <- .valid_covstruct[ss]
 
@@ -1355,7 +1433,7 @@ glmmTMB <- function(
                names(mf), 0L)
     ## FIXME: could break if formula is not specified first ???
     mf <- mf[c(1L, m)]
-    mf$drop.unused.levels <- control$drop_unused_levels
+    mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
     mf$data <- data ## propagate ..offset modification?
 
@@ -1516,7 +1594,6 @@ glmmTMB <- function(
 ##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).
 ##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @param full_cor compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually
-##' @param drop_unused_levels drop unused levels in grouping variables?
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1567,8 +1644,7 @@ glmmTMBControl <- function(optCtrl=NULL,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip"),
-                           full_cor = TRUE,
-                           drop_unused_levels = TRUE) {
+                           full_cor = TRUE) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1607,7 +1683,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
               eigval_check, zerodisp_val, start_method, rank_check, conv_check,
-              full_cor, drop_unused_levels)
+              full_cor)
 }
 
 ##' collapse duplicated observations
