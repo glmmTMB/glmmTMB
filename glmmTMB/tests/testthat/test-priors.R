@@ -164,6 +164,19 @@ rankdeficientdata$y <- simulate_new(~group*year,
                   newparams = list(beta=c(10,2,4,1), betadisp = log(3)))[[1]]
 
 test_that("dropping priors for rank-def X matrix", {
-    glmmTMB(y ~ group * year, data = rankdeficientdata,
-            priors = data.frame(prior = c('normal(0, 10)'), class = c('fixef')))
+  expect_message(m <- glmmTMB(y ~ group * year, data = rankdeficientdata,
+                              priors = data.frame(prior = c('normal(0, 0.01)'), class = c('fixef'))),
+                 "dropping columns")
+  expect_true(all(fixef(m)$cond[2:4] < 0.01))
+})
+
+test_that("prior on ranef for multiple components works (GH #1263)", {
+  prior <- data.frame(prior = "gamma(1, 2.5)", class = "ranef")
+  m1 <- glmmTMB(count ~ mined + (1|site),
+                zi=~(1|site),
+                family=poisson, data=Salamanders,
+                prior = prior)
+  sprior <- data.frame(prior = "gamma(1, 2.5)", class = "ranef")
+  class(sprior) <- c("glmmTMB_prior", "data.frame")
+  expect_equal(summary(m1)$prior, sprior)
 })
