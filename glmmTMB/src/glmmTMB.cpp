@@ -799,82 +799,91 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   }
   else if (term.blockCode == indisting_covstruct){
     {  // inner scope: isolate all variable declarations from adjacent blocks
+    // Indistinguishable dyads covariance structure.
+    // For indistinguishable dyads where the two members are exchangeable.
+    // n = blockSize (must be even), k = n/2 variable types per person.
+    //
+    // Variables must be ordered in the formula as:
+    //   P1_v1, P2_v1, P1_v2, P2_v2, ..., P1_vk, P2_vk
+    //
+    // theta layout (total = k*(k+1) parameters):
+    //   theta(0)...theta(k-1)              : k unique log-SDs
+    //                                        (P1_vi and P2_vi share the same SD)
+    //   theta(k)...theta(2k-1)             : k partner correlations
+    //                                        Cor(P1_vi, P2_vi) for i=0..k-1
+    //   theta(2k)...theta(2k+C(k,2)-1)    : C(k,2) within-person cross-type correlations
+    //                                        Cor(P1_vi, P1_vj) = Cor(P2_vi, P2_vj), j>i
+    //   theta(2k+C(k,2))...theta(k^2+k-1) : C(k,2) cross-person cross-type correlations
+    //                                        Cor(P1_vi, P2_vj) = Cor(P2_vi, P1_vj), j>i
+    //
+    // Correlations are encoded via the signed-ratio transform r = x/sqrt(1+x^2),
+    // matching glmmTMB's internal convention for correlation parameters.
+    //
+    // The constrained covariance matrix Sigma = D*R*D (where D = diag(sd_id))
+    // is passed directly to MVNORM_t, following the cs structure approach.
+    // Matrix inversion happens internally inside MVNORM_t, only once.
+    // Backstop check: odd blockSize should already be caught at the R level.
     if (term.blockSize % 2 != 0) {
       Rf_error("indisting() requires an even number of random effect terms");
     }
     int n_id   = term.blockSize;
     int k_id   = n_id / 2;
-    int ck2_id = k_id * (k_id - 1) / 2;
-    vector<Type> logsd_id(n_id);
+    int ck2_id = k_id * (k_id - 1) / 2;  // C(k,2)
+    // --- Expand k unique log-SDs to n (each variable pair shares one SD) ---
+    vector<Type> sd_id(n_id);
     for (int i = 0; i < k_id; i++) {
-      logsd_id(2*i)     = theta(i);
-      logsd_id(2*i + 1) = theta(i);
+      sd_id(2*i)     = exp(theta(i));
+      sd_id(2*i + 1) = exp(theta(i));
     }
-    vector<Type> sd_id = exp(logsd_id);
+    // --- Offsets into theta for each correlation block ---
     int off_partner_id = k_id;
     int off_wp_id      = k_id + k_id;
     int off_cp_id      = k_id + k_id + ck2_id;
+    // Signed-ratio encoding: r = x / sqrt(1 + x^2)
 #define SR(x) ((x) / sqrt(Type(1) + (x)*(x)))
+    // --- Build constrained correlation matrix R_id ---
     matrix<Type> R_id(n_id, n_id);
     R_id.setZero();
     for (int i = 0; i < n_id; i++) R_id(i, i) = Type(1);
+    // Partner correlations: Cor(P1_vi, P2_vi)
     for (int i = 0; i < k_id; i++) {
       Type r = SR(theta(off_partner_id + i));
       R_id(2*i,     2*i + 1) = r;
       R_id(2*i + 1, 2*i)     = r;
     }
+    // Cross-type correlations for each pair of variable types i < j
     {
       int pair_id = 0;
       for (int i = 0; i < k_id; i++) {
         for (int j = i + 1; j < k_id; j++, pair_id++) {
-          Type rw = SR(theta(off_wp_id + pair_id));
-          Type rc = SR(theta(off_cp_id + pair_id));
+          Type rw = SR(theta(off_wp_id + pair_id));  // within-person
+          Type rc = SR(theta(off_cp_id + pair_id));  // cross-person
+          // Within: Cor(P1_vi, P1_vj) = Cor(P2_vi, P2_vj) = rw
           R_id(2*i,     2*j)     = rw;  R_id(2*j,     2*i)     = rw;
           R_id(2*i + 1, 2*j + 1) = rw;  R_id(2*j + 1, 2*i + 1) = rw;
+          // Cross: Cor(P1_vi, P2_vj) = Cor(P2_vi, P1_vj) = rc
           R_id(2*i,     2*j + 1) = rc;  R_id(2*j + 1, 2*i)     = rc;
           R_id(2*i + 1, 2*j)     = rc;  R_id(2*j,     2*i + 1) = rc;
         }
       }
     }
 #undef SR
-    matrix<Type> L_id(n_id, n_id);
-    L_id.setZero();
-    bool pd_id = true;
-    for (int col = 0; col < n_id && pd_id; col++) {
-      Type s_id = R_id(col, col);
-      for (int p = 0; p < col; p++) s_id -= L_id(p, col) * L_id(p, col);
-      if (s_id <= Type(1e-12)) { pd_id = false; break; }
-      L_id(col, col) = sqrt(s_id);
-      for (int row = col + 1; row < n_id; row++) {
-        Type t_id = R_id(col, row);
-        for (int p = 0; p < col; p++) t_id -= L_id(p, col) * L_id(p, row);
-        L_id(col, row) = t_id / L_id(col, col);
+    // --- Build covariance matrix Sigma = D * R * D where D = diag(sd_id) ---
+    matrix<Type> Sigma_id(n_id, n_id);
+    for (int i = 0; i < n_id; i++)
+      for (int j = 0; j < n_id; j++)
+        Sigma_id(i, j) = sd_id(i) * R_id(i, j) * sd_id(j);
+    // --- Pass directly to MVNORM_t, following the cs structure approach ---
+    // Matrix inversion happens internally inside MVNORM_t, only once.
+    density::MVNORM_t<Type> nldens(Sigma_id);
+    for (int i = 0; i < term.blockReps; i++) {
+      ans += nldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = nldens.simulate();
       }
     }
-    if (pd_id) {
-      for (int col = 0; col < n_id; col++)
-        for (int row = 0; row <= col; row++)
-          L_id(row, col) /= L_id(col, col);
-      int n_corr_id = n_id * (n_id - 1) / 2;
-      vector<Type> corr_transf_id(n_corr_id);
-      {
-        int idx_id = 0;
-        for (int col = 1; col < n_id; col++)
-          for (int row = 0; row < col; row++)
-            corr_transf_id(idx_id++) = L_id(row, col);
-      }
-      density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf_id);
-      density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens =
-        density::VECSCALE(nldens, sd_id);
-      for (int i = 0; i < term.blockReps; i++) {
-        ans += scnldens(U.col(i));
-        if (do_simulate) {
-          U.col(i) = sd_id * nldens.simulate();
-        }
-      }
-      if (term.fullCor == 1) term.corr = R_id;
-      term.sd = sd_id;
-    }
+    if (term.fullCor == 1) term.corr = R_id;
+    term.sd = sd_id;
     }  // end inner scope
   }
   else error("covStruct not implemented!");
