@@ -178,5 +178,6 @@ test_that("prior on ranef for multiple components works (GH #1263)", {
                 prior = prior)
   sprior <- data.frame(prior = "gamma(1, 2.5)", class = "ranef")
   class(sprior) <- c("glmmTMB_prior", "data.frame")
-  expect_equal(summary(m1)$prior, sprior)
+  expect_equal(summary(m1)$priors, sprior)
+})
 })
