@@ -99,6 +99,9 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{homdiag} (diagonal, homogeneous variance)
 \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 \item \code{equalto} (* equal to user-specified variance-covariance matrix)
+\item \code{separable} (* separable/direct-product covariance; currently
+supports \code{homcs} or \code{us} crossed with \code{ar1} via
+\code{separable(sepgrid(x1, x2) + 0 | group, margin1(x1), margin2(x2))})
 }
 Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
