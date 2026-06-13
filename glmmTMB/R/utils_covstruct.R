@@ -157,7 +157,7 @@ parseNumLevels <- function(levels) {
 ## argument.  This keeps the workaround local to glmmTMB, uses the existing
 ## `reTrmAddArgs` path, and avoids both encoded strings and formula-level
 ## sidecar metadata.
-.sep_deparse <- function(x) paste(deparse(x, width.cutoff = 500L), collapse = "")
+.sep_deparse <- function(x) deparse1(x, collapse = "", width.cutoff = 500L)
 
 .sep_call_name <- function(x) {
     if (!is.call(x)) return(NULL)

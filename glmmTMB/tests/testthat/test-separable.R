@@ -26,6 +26,90 @@ joint_nll_at <- function(form, dd, theta, b, sigma = 2) {
     fit$obj$env$f(p)
 }
 
+fit_fixed_theta <- function(form, dd, theta) {
+    glmmTMB(form, data = dd,
+            start = list(theta = theta),
+            map = list(theta = factor(rep(NA, length(theta)))))
+}
+
+make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
+                          n_time = 3) {
+    struc <- match.arg(struc)
+    rho <- if (struc == "homcs") 0.3 else -0.25
+    phi <- if (struc == "homcs") 0.4 else 0.5
+    sd <- if (struc == "homcs") 2 else c(1.2, 0.8)
+
+    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
+    R_time <- outer(seq_len(n_time), seq_len(n_time),
+                    function(i, j) phi^abs(i - j))
+    member_theta <- switch(struc,
+        homcs = c(log(sd), qlogis((rho + 1) / 2)),
+        us = c(log(sd), put_cor(rho, input_val = "vec"))
+    )
+
+    if (reversed) {
+        form <- switch(struc,
+            homcs = y ~ 1 + separable(sepgrid(time, member) + 0 | group,
+                                      ar1(time), homcs(member)),
+            us = y ~ 1 + separable(sepgrid(time, member) + 0 | group,
+                                   ar1(time), us(member))
+        )
+        dense_form <- y ~ 1 + us(sepgrid(time, member) + 0 | group)
+        theta <- c(ar1_to_theta(phi), member_theta)
+        R_full <- kronecker(R_member, R_time)
+        sd_full <- if (length(sd) == 1) rep(sd, 2 * n_time) else rep(sd, each = n_time)
+        codes <- unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[[struc]]))
+        kinds <- c(2L, 1L)
+        scale_spec <- 1L
+    } else {
+        form <- switch(struc,
+            homcs = y ~ 1 + separable(sepgrid(member, time) + 0 | group,
+                                      homcs(member), ar1(time)),
+            us = y ~ 1 + separable(sepgrid(member, time) + 0 | group,
+                                   us(member), ar1(time))
+        )
+        dense_form <- y ~ 1 + us(sepgrid(member, time) + 0 | group)
+        theta <- c(member_theta, ar1_to_theta(phi))
+        R_full <- kronecker(R_time, R_member)
+        sd_full <- if (length(sd) == 1) rep(sd, 2 * n_time) else rep(sd, n_time)
+        codes <- unname(c(.valid_covstruct[[struc]], .valid_covstruct[["ar1"]]))
+        kinds <- c(1L, 2L)
+        scale_spec <- 0L
+    }
+
+    list(form = form, dense_form = dense_form, theta = theta,
+         theta_dense = c(log(sd_full), put_cor(R_full)),
+         R_full = R_full, sd_full = sd_full,
+         codes = codes, kinds = kinds, scale_spec = scale_spec,
+         n_time = n_time)
+}
+
+expect_separable_vc <- function(case) {
+    dd <- make_sep_dat(n_time = case$n_time, reps = TRUE)
+    fit <- fit_fixed_theta(case$form, dd, case$theta)
+    restruc <- fit$modelInfo$reStruc$condReStruc[[1]]
+    vc <- VarCorr(fit)$cond[[1]]
+
+    expect_equal(restruc$sepCodes, case$codes)
+    expect_equal(restruc$sepDensityKinds, case$kinds)
+    expect_equal(restruc$sepDispatch, 1L)
+    expect_equal(restruc$sepScaleMode, 1L)
+    expect_equal(restruc$sepScaleSpec, case$scale_spec)
+    expect_equal(unname(attr(vc, "stddev")), case$sd_full, tolerance = 1e-6)
+    expect_equal(unname(attr(vc, "correlation")), case$R_full, tolerance = 1e-6)
+}
+
+expect_separable_dense_nll <- function(case) {
+    dd <- make_sep_dat(n_time = case$n_time, n_group = 1)
+    dd$y <- 0
+    b <- seq(-0.4, 0.5, length.out = length(case$sd_full))
+
+    sep_nll <- joint_nll_at(case$form, dd, case$theta, b)
+    dense_nll <- joint_nll_at(case$dense_form, dd, case$theta_dense, b)
+
+    expect_equal(unname(sep_nll), unname(dense_nll), tolerance = 1e-6)
+}
+
 test_that("sepgrid builds complete two-dimensional levels", {
     member <- factor(c("A", "B"), levels = c("A", "B"))
     time <- factor(c(1, 3), levels = 1:3)
@@ -234,222 +318,24 @@ test_that("separable rejects unsupported margins", {
     )
 })
 
-test_that("separable homcs x ar1 reports kronecker covariance", {
-    dd <- make_sep_dat(n_time = 4, reps = TRUE)
-
-    rho <- 0.3
-    phi <- 0.4
-    sd <- 2
-    theta <- c(log(sd), qlogis((rho + 1) / 2), ar1_to_theta(phi))
-
-    fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(member, time) + 0 | group,
-                                 homcs(member), ar1(time)),
-                   data = dd,
-                   start = list(theta = theta),
-                   map = list(theta = factor(rep(NA, length(theta)))))
-
-    vc <- VarCorr(fit)$cond[[1]]
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-    R_time <- outer(1:4, 1:4, function(i, j) phi^abs(i - j))
-
-    expect_equal(unname(attr(vc, "stddev")), rep(sd, 8), tolerance = 1e-6)
-    expect_equal(unname(attr(vc, "correlation")),
-                 kronecker(R_time, R_member), tolerance = 1e-6)
+test_that("separable reports kronecker covariance for supported dense x ar1 pairs", {
+    cases <- list(
+        make_sep_case("homcs", n_time = 4),
+        make_sep_case("homcs", reversed = TRUE, n_time = 4),
+        make_sep_case("us"),
+        make_sep_case("us", reversed = TRUE)
+    )
+    invisible(lapply(cases, expect_separable_vc))
 })
 
-test_that("separable homcs x ar1 likelihood matches dense MVN", {
-    dd <- make_sep_dat(n_time = 3, n_group = 1)
-    dd$y <- 0
-
-    rho <- 0.3
-    phi <- 0.4
-    sd <- 1.7
-    b <- seq(-0.4, 0.5, length.out = 6)
-    theta <- c(log(sd), qlogis((rho + 1) / 2), ar1_to_theta(phi))
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-    R_time <- outer(1:3, 1:3, function(i, j) phi^abs(i - j))
-    R_full <- kronecker(R_time, R_member)
-    theta_dense <- c(rep(log(sd), length(b)), put_cor(R_full))
-
-    sep_nll <- joint_nll_at(
-        y ~ 1 + separable(sepgrid(member, time) + 0 | group,
-                          homcs(member), ar1(time)),
-        dd, theta, b)
-    dense_nll <- joint_nll_at(
-        y ~ 1 + us(sepgrid(member, time) + 0 | group),
-        dd, theta_dense, b)
-
-    expect_equal(unname(sep_nll), unname(dense_nll), tolerance = 1e-6)
-})
-
-test_that("separable homcs x ar1 can use reversed sepgrid order", {
-    dd <- make_sep_dat(n_time = 4, reps = TRUE)
-
-    rho <- 0.3
-    phi <- 0.4
-    sd <- 2
-    theta <- c(ar1_to_theta(phi),
-               log(sd),
-               qlogis((rho + 1) / 2))
-
-    fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(time, member) + 0 | group,
-                                 ar1(time), homcs(member)),
-                   data = dd,
-                   start = list(theta = theta),
-                   map = list(theta = factor(rep(NA, length(theta)))))
-
-    vc <- VarCorr(fit)$cond[[1]]
-    R_time <- outer(1:4, 1:4, function(i, j) phi^abs(i - j))
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepCodes,
-                 unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["homcs"]])))
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDensityKinds, c(2L, 1L))
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleMode, 1L)
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleSpec, 1L)
-    expect_equal(unname(attr(vc, "stddev")), rep(sd, 8), tolerance = 1e-6)
-    expect_equal(unname(attr(vc, "correlation")),
-                 kronecker(R_member, R_time), tolerance = 1e-6)
-})
-
-test_that("reversed separable homcs x ar1 likelihood matches dense MVN", {
-    dd <- make_sep_dat(n_time = 3, n_group = 1)
-    dd$y <- 0
-
-    rho <- 0.3
-    phi <- 0.4
-    sd <- 1.7
-    b <- seq(-0.4, 0.5, length.out = 6)
-    theta <- c(ar1_to_theta(phi), log(sd), qlogis((rho + 1) / 2))
-    R_time <- outer(1:3, 1:3, function(i, j) phi^abs(i - j))
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-    R_full <- kronecker(R_member, R_time)
-    theta_dense <- c(rep(log(sd), length(b)), put_cor(R_full))
-
-    sep_nll <- joint_nll_at(
-        y ~ 1 + separable(sepgrid(time, member) + 0 | group,
-                          ar1(time), homcs(member)),
-        dd, theta, b)
-    dense_nll <- joint_nll_at(
-        y ~ 1 + us(sepgrid(time, member) + 0 | group),
-        dd, theta_dense, b)
-
-    expect_equal(unname(sep_nll), unname(dense_nll), tolerance = 1e-6)
-})
-
-test_that("separable us x ar1 reports kronecker covariance", {
-    dd <- make_sep_dat(reps = TRUE)
-
-    rho <- -0.25
-    phi <- 0.5
-    sd <- c(1.2, 0.8)
-    theta <- c(log(sd), put_cor(rho, input_val = "vec"),
-               ar1_to_theta(phi))
-
-    fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(member, time) + 0 | group,
-                                 us(member), ar1(time)),
-                   data = dd,
-                   start = list(theta = theta),
-                   map = list(theta = factor(rep(NA, length(theta)))))
-
-    vc <- VarCorr(fit)$cond[[1]]
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-    R_time <- outer(1:3, 1:3, function(i, j) phi^abs(i - j))
-
-    expect_equal(unname(attr(vc, "stddev")), rep(sd, 3), tolerance = 1e-6)
-    expect_equal(unname(attr(vc, "correlation")),
-                 kronecker(R_time, R_member), tolerance = 1e-6)
-})
-
-test_that("separable us x ar1 likelihood matches dense MVN", {
-    dd <- make_sep_dat(n_group = 1)
-    dd$y <- 0
-
-    rho <- -0.25
-    phi <- 0.5
-    sd <- c(1.2, 0.8)
-    b <- seq(-0.4, 0.5, length.out = 6)
-    theta <- c(log(sd), put_cor(rho, input_val = "vec"),
-               ar1_to_theta(phi))
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-    R_time <- outer(1:3, 1:3, function(i, j) phi^abs(i - j))
-    R_full <- kronecker(R_time, R_member)
-    sd_full <- rep(sd, 3)
-    theta_dense <- c(log(sd_full), put_cor(R_full))
-
-    sep_nll <- joint_nll_at(
-        y ~ 1 + separable(sepgrid(member, time) + 0 | group,
-                          us(member), ar1(time)),
-        dd, theta, b)
-    dense_nll <- joint_nll_at(
-        y ~ 1 + us(sepgrid(member, time) + 0 | group),
-        dd, theta_dense, b)
-
-    expect_equal(unname(sep_nll), unname(dense_nll), tolerance = 1e-6)
-})
-
-test_that("separable us x ar1 can use reversed sepgrid order", {
-    dd <- make_sep_dat(reps = TRUE)
-
-    rho <- -0.25
-    phi <- 0.5
-    sd <- c(1.2, 0.8)
-    theta <- c(ar1_to_theta(phi),
-               log(sd),
-               put_cor(rho, input_val = "vec"))
-
-    fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(time, member) + 0 | group,
-                                 ar1(time), us(member)),
-                   data = dd,
-                   start = list(theta = theta),
-                   map = list(theta = factor(rep(NA, length(theta)))))
-
-    vc <- VarCorr(fit)$cond[[1]]
-    R_time <- outer(1:3, 1:3, function(i, j) phi^abs(i - j))
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepCodes,
-                 unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["us"]])))
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDensityKinds, c(2L, 1L))
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleMode, 1L)
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleSpec, 1L)
-    expect_equal(unname(attr(vc, "stddev")), rep(sd, each = 3), tolerance = 1e-6)
-    expect_equal(unname(attr(vc, "correlation")),
-                 kronecker(R_member, R_time), tolerance = 1e-6)
-})
-
-test_that("reversed separable us x ar1 likelihood matches dense MVN", {
-    dd <- make_sep_dat(n_group = 1)
-    dd$y <- 0
-
-    rho <- -0.25
-    phi <- 0.5
-    sd <- c(1.2, 0.8)
-    b <- seq(-0.4, 0.5, length.out = 6)
-    theta <- c(ar1_to_theta(phi),
-               log(sd),
-               put_cor(rho, input_val = "vec"))
-    R_time <- outer(1:3, 1:3, function(i, j) phi^abs(i - j))
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
-    R_full <- kronecker(R_member, R_time)
-    sd_full <- rep(sd, each = 3)
-    theta_dense <- c(log(sd_full), put_cor(R_full))
-
-    sep_nll <- joint_nll_at(
-        y ~ 1 + separable(sepgrid(time, member) + 0 | group,
-                          ar1(time), us(member)),
-        dd, theta, b)
-    dense_nll <- joint_nll_at(
-        y ~ 1 + us(sepgrid(time, member) + 0 | group),
-        dd, theta_dense, b)
-
-    expect_equal(unname(sep_nll), unname(dense_nll), tolerance = 1e-6)
+test_that("separable likelihood matches dense MVN for supported dense x ar1 pairs", {
+    cases <- list(
+        make_sep_case("homcs"),
+        make_sep_case("homcs", reversed = TRUE),
+        make_sep_case("us"),
+        make_sep_case("us", reversed = TRUE)
+    )
+    invisible(lapply(cases, expect_separable_dense_nll))
 })
 
 test_that("separable prediction with newdata reports current limitation", {
