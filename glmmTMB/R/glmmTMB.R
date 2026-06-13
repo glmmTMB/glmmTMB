@@ -1106,14 +1106,21 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
             ## for this pair of margin density kinds.  The current prototype has
             ## one dispatch path: dense correlation x AR(1).
             ##
-            ## `sepScaleMargin` is zero-based because it is consumed directly by
-            ## C++.  For the current prototype this is the dense-correlation
-            ## margin (`homcs`/`us`); the AR(1) margin is correlation-only.
+            ## `sepScaleMode` and `sepScaleSpec` describe how absolute standard
+            ## deviations enter the separable product.  The current prototype
+            ## supports only margin scale:
+            ##
+            ##   sepScaleMode = margin
+            ##   sepScaleSpec = zero-based index of the scale-carrying margin
+            ##
+            ## Keeping mode and spec separate leaves a clean path for future
+            ## global/product/cell scale modes without changing this interface.
             tmp$sepDims <- sepInfo[[i]]$dims
             tmp$sepCodes <- sepInfo[[i]]$codes
             tmp$sepDensityKinds <- sepInfo[[i]]$density_kinds
             tmp$sepDispatch <- sepInfo[[i]]$dispatch
-            tmp$sepScaleMargin <- sepInfo[[i]]$scale_margin
+            tmp$sepScaleMode <- sepInfo[[i]]$scale_mode
+            tmp$sepScaleSpec <- sepInfo[[i]]$scale_spec
         }
         ans[[i]] <- tmp
     }

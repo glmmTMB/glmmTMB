@@ -114,6 +114,19 @@ enum separable_dispatch {
   dense_ar1_dispatch = 1
 };
 
+enum separable_scale_mode {
+  // These values must match `.sep_scale_mode_code` in R/utils_covstruct.R.
+  //
+  // Current implementation:
+  //   margin: one separable margin carries absolute SD parameters and all other
+  //           margins are correlation-only.
+  //
+  // Future scale modes such as global/product/cell should get new enum values
+  // here and new scale builders.  The dense x AR(1) evaluator below only
+  // accepts margin scale for now.
+  margin_sep_scale = 1
+};
+
 // should probably be named just 'predictCode';
 // originally for enabling z-i prediction
 // 'corrected' = mean prediction incorporates z-i effects
@@ -346,15 +359,22 @@ struct per_term_info {
   //   2 = AR(1) correlation margin
   //
   // `sepDispatch` is order-insensitive and selects a C++ evaluator for the
-  // pair of margin density kinds.  `sepScaleMargin` is zero-based and gives the
-  // coordinate whose levels carry cell standard deviations.  In the current
-  // prototype this is the dense correlation margin; AR(1) is correlation-only
-  // inside separable().
+  // pair of margin density kinds.
+  //
+  // `sepScaleMode` and `sepScaleSpec` describe cell standard deviations.  The
+  // current evaluator supports only:
+  //
+  //   sepScaleMode = margin_sep_scale
+  //   sepScaleSpec = zero-based coordinate whose margin carries SD parameters
+  //
+  // Keeping mode and spec separate makes the R/C++ contract extensible without
+  // changing the likelihood code that only needs the selected margin today.
   vector<int> sepDims;
   vector<int> sepCodes;
   vector<int> sepDensityKinds;
   vector<int> sepDispatch;
-  vector<int> sepScaleMargin;
+  vector<int> sepScaleMode;
+  vector<int> sepScaleSpec;
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
@@ -416,10 +436,15 @@ struct terms_t : vector<per_term_info<Type> > {
 	RObjectTestExpectedType(sdispatch, &Rf_isNumeric, "sepDispatch");
 	(*this)(i).sepDispatch = asVector<int>(sdispatch);
       }
-      SEXP sscale = getListElement(y, "sepScaleMargin");
-      if(!Rf_isNull(sscale)){
-	RObjectTestExpectedType(sscale, &Rf_isNumeric, "sepScaleMargin");
-	(*this)(i).sepScaleMargin = asVector<int>(sscale);
+      SEXP sscalemode = getListElement(y, "sepScaleMode");
+      if(!Rf_isNull(sscalemode)){
+	RObjectTestExpectedType(sscalemode, &Rf_isNumeric, "sepScaleMode");
+	(*this)(i).sepScaleMode = asVector<int>(sscalemode);
+      }
+      SEXP sscalespec = getListElement(y, "sepScaleSpec");
+      if(!Rf_isNull(sscalespec)){
+	RObjectTestExpectedType(sscalespec, &Rf_isNumeric, "sepScaleSpec");
+	(*this)(i).sepScaleSpec = asVector<int>(sscalespec);
       }
     }
   }
@@ -469,7 +494,7 @@ Type separable_dense_ar1_nll(array<Type> &U, vector<Type> sd, Type phi,
   vector<int> dim(2);
   dim << n0, n1;
   Type ans = 0;
-  int scale_margin = term.sepScaleMargin(0);
+  int scale_margin = term.sepScaleSpec(0);
 
   for (int g = 0; g < term.blockReps; g++) {
     array<Type> z(dim);
@@ -525,10 +550,14 @@ template <class Type>
 void check_separable_metadata(per_term_info<Type>& term) {
   if (term.sepDims.size() != 2 || term.sepCodes.size() != 2 ||
       term.sepDensityKinds.size() != 2 || term.sepDispatch.size() != 1 ||
-      term.sepScaleMargin.size() != 1)
+      term.sepScaleMode.size() != 1 || term.sepScaleSpec.size() != 1)
     error("separable covariance structure is missing margin metadata");
   if (term.sepDims(0) * term.sepDims(1) != term.blockSize)
     error("separable dimensions do not match block size");
+  if (term.sepScaleMode(0) != margin_sep_scale)
+    error("separable covariance currently supports only margin scale");
+  if (term.sepScaleSpec(0) < 0 || term.sepScaleSpec(0) > 1)
+    error("separable margin scale index is out of range");
 }
 
 template <class Type>
@@ -554,7 +583,7 @@ sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
   if (out.dense_margin < 0 || out.ar1_margin < 0 ||
       out.dense_margin == out.ar1_margin)
     error("separable covariance currently requires one dense margin and one AR1 margin");
-  if (term.sepScaleMargin(0) != out.dense_margin)
+  if (term.sepScaleSpec(0) != out.dense_margin)
     error("separable covariance currently requires scale on the dense margin");
 
   int n_dense = term.sepDims(out.dense_margin);
@@ -568,7 +597,7 @@ sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
   for (int m = 0; m < 2; m++) {
     int code = term.sepCodes(m);
     int n = term.sepDims(m);
-    bool scale_here = (term.sepScaleMargin(0) == m);
+    bool scale_here = (term.sepScaleSpec(0) == m);
 
     if (term.sepDensityKinds(m) == ar1_sep) {
       Type corr_transf = theta(theta_pos++);
@@ -620,7 +649,7 @@ void report_separable_dense_ar1(vector<Type> sd, matrix<Type> dense_corr,
   int n0 = term.sepDims(0);
   int n1 = term.sepDims(1);
   int n = n0 * n1;
-  int scale_margin = term.sepScaleMargin(0);
+  int scale_margin = term.sepScaleSpec(0);
   term.sd.resize(n);
   // Repeat each margin SD across the other coordinate.  Which coordinate this
   // is depends on the user's sepgrid() order.
@@ -1110,7 +1139,8 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
   else if (term.blockCode == separable_covstruct) {
     // R validates the separable margins and supplies an order-insensitive
     // evaluator code (`sepDispatch`) plus coordinate-order metadata
-    // (`sepDensityKinds`, `sepScaleMargin`).  C++ only dispatches and evaluates.
+    // (`sepDensityKinds`, `sepScaleMode`, `sepScaleSpec`).  C++ only dispatches
+    // and evaluates.
     if (do_simulate)
       Rf_error("simulation is not yet implemented for separable covariance structures");
 

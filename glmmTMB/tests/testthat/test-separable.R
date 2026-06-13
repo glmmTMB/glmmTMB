@@ -77,14 +77,16 @@ test_that("separable metadata handles margin order and un alias", {
                  unname(c(.valid_covstruct[["homcs"]], .valid_covstruct[["ar1"]])))
     expect_equal(h$condReStruc[[1]]$sepDensityKinds, c(1L, 2L))
     expect_equal(h$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(h$condReStruc[[1]]$sepScaleMargin, 0L)
+    expect_equal(h$condReStruc[[1]]$sepScaleMode, 1L)
+    expect_equal(h$condReStruc[[1]]$sepScaleSpec, 0L)
 
     expect_equal(u$condReStruc[[1]]$blockNumTheta, 4)
     expect_equal(u$condReStruc[[1]]$sepCodes,
                  unname(c(.valid_covstruct[["us"]], .valid_covstruct[["ar1"]])))
     expect_equal(u$condReStruc[[1]]$sepDensityKinds, c(1L, 2L))
     expect_equal(u$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(u$condReStruc[[1]]$sepScaleMargin, 0L)
+    expect_equal(u$condReStruc[[1]]$sepScaleMode, 1L)
+    expect_equal(u$condReStruc[[1]]$sepScaleSpec, 0L)
 })
 
 test_that("separable parser keeps structured metadata in splitForm payload", {
@@ -118,7 +120,8 @@ test_that("separable supports explicit scale margin selection", {
     expect_equal(fit$condReStruc[[1]]$sepCodes,
                  unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["us"]])))
     expect_equal(fit$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(fit$condReStruc[[1]]$sepScaleMargin, 1L)
+    expect_equal(fit$condReStruc[[1]]$sepScaleMode, 1L)
+    expect_equal(fit$condReStruc[[1]]$sepScaleSpec, 1L)
     expect_equal(fit$condReStruc[[1]]$blockNumTheta, 4)
 })
 
@@ -305,7 +308,8 @@ test_that("separable homcs x ar1 can use reversed sepgrid order", {
                  unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["homcs"]])))
     expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDensityKinds, c(2L, 1L))
     expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleMargin, 1L)
+    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleMode, 1L)
+    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleSpec, 1L)
     expect_equal(unname(attr(vc, "stddev")), rep(sd, 8), tolerance = 1e-6)
     expect_equal(unname(attr(vc, "correlation")),
                  kronecker(R_member, R_time), tolerance = 1e-6)
@@ -413,7 +417,8 @@ test_that("separable us x ar1 can use reversed sepgrid order", {
                  unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["us"]])))
     expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDensityKinds, c(2L, 1L))
     expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleMargin, 1L)
+    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleMode, 1L)
+    expect_equal(fit$modelInfo$reStruc$condReStruc[[1]]$sepScaleSpec, 1L)
     expect_equal(unname(attr(vc, "stddev")), rep(sd, each = 3), tolerance = 1e-6)
     expect_equal(unname(attr(vc, "correlation")),
                  kronecker(R_member, R_time), tolerance = 1e-6)

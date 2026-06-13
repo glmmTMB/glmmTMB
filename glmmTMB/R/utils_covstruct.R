@@ -271,6 +271,14 @@ parseNumLevels <- function(levels) {
 
 .sep_dispatch_code <- c(dense_ar1 = 1L)
 
+.sep_scale_mode_code <- c(
+    ## Current implemented scale mode.  "margin" means that one separable
+    ## margin supplies absolute standard deviations; all other margins are
+    ## correlation-only.  Future global/product/cell modes should get new
+    ## entries here instead of overloading the selected-margin integer.
+    margin = 1L
+)
+
 .sep_supported_pairs <- list(
     list(
         dispatch = "dense_ar1",
@@ -317,6 +325,61 @@ parseNumLevels <- function(levels) {
 .sep_margin_label <- function(x) {
     x <- as.data.frame(x, stringsAsFactors = FALSE)
     paste0(x$struc, "(", x$var, ")", collapse = " x ")
+}
+
+.sep_scale_info <- function(margins, regs, scale = NULL) {
+    ## Resolve the scale layer independently of the supported covariance-pair
+    ## lookup.  This is the small R-side contract that future scale modes should
+    ## extend:
+    ##
+    ##   mode = "margin": one margin supplies absolute SD parameters
+    ##   spec = zero-based selected margin index
+    ##
+    ## The current implementation deliberately infers margin scale only when
+    ## exactly one margin is scale-capable.  If no margin can carry scale, the
+    ## model needs a future `scale = global()` mode.  If multiple margins can
+    ## carry scale, the user must choose explicitly.
+    can_scale <- vapply(regs, `[[`, logical(1), "can_scale")
+    scale_candidates <- which(can_scale)
+
+    if (is.null(scale)) {
+        scale_margin <- scale_candidates
+    } else {
+        scale_spec <- .sep_spec_df(scale, "scale margin")
+        if (nrow(scale_spec) != 1L) {
+            stop("separable() scale must be a single margin call such as ",
+                 "scale = us(member).")
+        }
+        scale_margin <- which(margins$struc == scale_spec$struc &
+                              margins$var == scale_spec$var)
+        if (length(scale_margin) != 1L) {
+            stop("separable() scale must match one of the specified margins, ",
+                 "for example scale = us(member) when us(member) is a margin.")
+        }
+        if (!regs[[scale_margin]]$can_scale) {
+            stop("separable() scale = ", scale_spec$struc, "(",
+                 scale_spec$var, ") selects a correlation-only margin. ",
+                 "Use a scale-capable margin such as homcs() or us().")
+        }
+    }
+
+    if (length(scale_margin) == 0L) {
+        stop("separable() margins ", .sep_margin_label(margins),
+             " define only a correlation product. This needs an explicit ",
+             "overall scale, but scale = global() is not implemented yet.")
+    }
+    if (length(scale_margin) > 1L) {
+        stop("separable() requires exactly one scale-carrying margin. ",
+             "Specify it explicitly with scale = us(member) or use one ",
+             "scale-capable margin with one correlation-only margin.")
+    }
+
+    list(
+        mode = "margin",
+        mode_code = as.integer(.sep_scale_mode_code[["margin"]]),
+        spec = as.integer(scale_margin - 1L),
+        margin = scale_margin
+    )
 }
 
 .sep_stop_unsupported_pair <- function(margins, regs, scale = NULL) {
@@ -393,40 +456,10 @@ parseNumLevels <- function(levels) {
              "homcs(member), ar1(time)).")
     }
 
-    scale_candidates <- which(vapply(regs, `[[`, logical(1), "can_scale"))
-    if (is.null(spec$scale)) {
-        ## Default only when it is unambiguous.  This is not conceptually
-        ## `scale = "first"`; it means "use the only margin whose registry entry
-        ## says it can carry absolute SD parameters".  With the current support
-        ## table this is always homcs()/us(), while ar1() remains
-        ## correlation-only.
-        scale_margin <- scale_candidates
-    } else {
-        scale_spec <- .sep_spec_df(spec$scale, "scale margin")
-        if (nrow(scale_spec) != 1L) {
-            stop("separable() scale must be a single margin call such as ",
-                 "scale = us(member).")
-        }
-        scale_margin <- which(margins$struc == scale_spec$struc &
-                              margins$var == scale_spec$var)
-        if (length(scale_margin) != 1L) {
-            stop("separable() scale must match one of the specified margins, ",
-                 "for example scale = us(member) when us(member) is a margin.")
-        }
-        if (!regs[[scale_margin]]$can_scale) {
-            stop("separable() scale = ", scale_spec$struc, "(",
-                 scale_spec$var, ") selects a correlation-only margin. ",
-                 "Use a scale-capable margin such as homcs() or us().")
-        }
-    }
-    if (length(scale_margin) != 1L) {
-        stop("separable() requires exactly one scale-carrying margin. ",
-             "Specify it explicitly with scale = us(member) or use one ",
-             "scale-capable margin with one correlation-only margin.")
-    }
+    scale_info <- .sep_scale_info(margins, regs, spec$scale)
 
     ntheta <- sum(vapply(seq_along(regs), function(i) {
-        nscale <- if (i == scale_margin) regs[[i]]$n_scale(dims[[i]]) else 0L
+        nscale <- if (i == scale_info$margin) regs[[i]]$n_scale(dims[[i]]) else 0L
         nscale + regs[[i]]$n_corr(dims[[i]])
     }, integer(1)))
     density_kind <- vapply(regs, `[[`, character(1), "density_kind")
@@ -436,11 +469,12 @@ parseNumLevels <- function(levels) {
         codes = as.integer(vapply(pair, function(z) .valid_covstruct[[z]], numeric(1))),
         density_kinds = as.integer(.sep_density_kind_code[density_kind]),
         dispatch = as.integer(.sep_dispatch_code[dispatch]),
-        scale_margin = as.integer(scale_margin - 1L),
+        scale_mode = scale_info$mode_code,
+        scale_spec = scale_info$spec,
         ntheta = as.integer(ntheta),
         density_kind = density_kind,
         margins = margins,
-        scale = if (is.null(spec$scale)) NULL else scale_spec
+        scale = spec$scale
     )
 }
 
