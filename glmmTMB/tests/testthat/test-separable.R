@@ -1,8 +1,8 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-make_sep_dat <- function(n_time = 3, n_group = 2, reps = FALSE) {
-    args <- list(member = factor(c("A", "B")),
+make_sep_dat <- function(n_member = 2, n_time = 3, n_group = 2, reps = FALSE) {
+    args <- list(member = factor(paste0("m", seq_len(n_member))),
                  time = factor(seq_len(n_time)),
                  group = factor(seq_len(n_group)))
     if (reps) args$rep <- 1:2
@@ -12,6 +12,11 @@ make_sep_dat <- function(n_time = 3, n_group = 2, reps = FALSE) {
 }
 
 ar1_to_theta <- function(phi) phi / sqrt(1 - phi^2)
+
+homcs_to_theta <- function(rho, n_member) {
+    lower <- -1 / (n_member - 1)
+    qlogis((rho - lower) / (1 - lower))
+}
 
 joint_nll_at <- function(form, dd, theta, b, sigma = 2) {
     fit <- glmmTMB(form, data = dd,
@@ -33,18 +38,25 @@ fit_fixed_theta <- function(form, dd, theta) {
 }
 
 make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
-                          n_time = 3) {
+                          n_member = 2, n_time = 3) {
     struc <- match.arg(struc)
     rho <- if (struc == "homcs") 0.3 else -0.25
     phi <- if (struc == "homcs") 0.4 else 0.5
-    sd <- if (struc == "homcs") 2 else c(1.2, 0.8)
+    sd <- if (struc == "homcs") 2 else seq(0.8, 1.2, length.out = n_member)
 
-    R_member <- matrix(c(1, rho, rho, 1), 2, 2)
+    R_member <- if (struc == "homcs") {
+        M <- matrix(rho, n_member, n_member)
+        diag(M) <- 1
+        M
+    } else {
+        outer(seq_len(n_member), seq_len(n_member),
+              function(i, j) ifelse(i == j, 1, 0.35^abs(i - j)))
+    }
     R_time <- outer(seq_len(n_time), seq_len(n_time),
                     function(i, j) phi^abs(i - j))
     member_theta <- switch(struc,
-        homcs = c(log(sd), qlogis((rho + 1) / 2)),
-        us = c(log(sd), put_cor(rho, input_val = "vec"))
+        homcs = c(log(sd), homcs_to_theta(rho, n_member)),
+        us = c(log(sd), put_cor(R_member))
     )
 
     if (reversed) {
@@ -57,7 +69,7 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
         dense_form <- y ~ 1 + us(sepgrid(time, member) + 0 | group)
         theta <- c(ar1_to_theta(phi), member_theta)
         R_full <- kronecker(R_member, R_time)
-        sd_full <- if (length(sd) == 1) rep(sd, 2 * n_time) else rep(sd, each = n_time)
+        sd_full <- if (length(sd) == 1) rep(sd, n_member * n_time) else rep(sd, each = n_time)
         codes <- unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[[struc]]))
         kinds <- c(2L, 1L)
         scale_spec <- 1L
@@ -71,7 +83,7 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
         dense_form <- y ~ 1 + us(sepgrid(member, time) + 0 | group)
         theta <- c(member_theta, ar1_to_theta(phi))
         R_full <- kronecker(R_time, R_member)
-        sd_full <- if (length(sd) == 1) rep(sd, 2 * n_time) else rep(sd, n_time)
+        sd_full <- if (length(sd) == 1) rep(sd, n_member * n_time) else rep(sd, n_time)
         codes <- unname(c(.valid_covstruct[[struc]], .valid_covstruct[["ar1"]]))
         kinds <- c(1L, 2L)
         scale_spec <- 0L
@@ -81,11 +93,11 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
          theta_dense = c(log(sd_full), put_cor(R_full)),
          R_full = R_full, sd_full = sd_full,
          codes = codes, kinds = kinds, scale_spec = scale_spec,
-         n_time = n_time)
+         n_member = n_member, n_time = n_time)
 }
 
 expect_separable_vc <- function(case) {
-    dd <- make_sep_dat(n_time = case$n_time, reps = TRUE)
+    dd <- make_sep_dat(n_member = case$n_member, n_time = case$n_time, reps = TRUE)
     fit <- fit_fixed_theta(case$form, dd, case$theta)
     restruc <- fit$modelInfo$reStruc$condReStruc[[1]]
     vc <- VarCorr(fit)$cond[[1]]
@@ -100,7 +112,7 @@ expect_separable_vc <- function(case) {
 }
 
 expect_separable_dense_nll <- function(case) {
-    dd <- make_sep_dat(n_time = case$n_time, n_group = 1)
+    dd <- make_sep_dat(n_member = case$n_member, n_time = case$n_time, n_group = 1)
     dd$y <- 0
     b <- seq(-0.4, 0.5, length.out = length(case$sd_full))
 
@@ -322,6 +334,8 @@ test_that("separable reports kronecker covariance for supported dense x ar1 pair
     cases <- list(
         make_sep_case("homcs", n_time = 4),
         make_sep_case("homcs", reversed = TRUE, n_time = 4),
+        make_sep_case("homcs", n_member = 5, n_time = 4),
+        make_sep_case("homcs", reversed = TRUE, n_member = 5, n_time = 4),
         make_sep_case("us"),
         make_sep_case("us", reversed = TRUE)
     )
@@ -332,6 +346,8 @@ test_that("separable likelihood matches dense MVN for supported dense x ar1 pair
     cases <- list(
         make_sep_case("homcs"),
         make_sep_case("homcs", reversed = TRUE),
+        make_sep_case("homcs", n_member = 4),
+        make_sep_case("us", n_member = 3),
         make_sep_case("us"),
         make_sep_case("us", reversed = TRUE)
     )
