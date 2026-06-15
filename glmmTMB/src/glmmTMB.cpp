@@ -590,7 +590,6 @@ sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
   out.dense_code = term.sepCodes(out.dense_margin);
   out.phi = Type(0);
   out.sd.resize(n_dense);
-  out.dense_corr.resize(n_dense, n_dense);
   out.us_corr_params.resize(0);
 
   int theta_pos = 0;
@@ -608,6 +607,7 @@ sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
       if (scale_here) {
 	out.sd.fill(exp(theta(theta_pos++)));
       }
+      out.dense_corr.resize(n, n);
       Type a = Type(1) / (Type(n) - Type(1));
       Type rho = invlogit(theta(theta_pos++)) * (Type(1) + a) - a;
       for (int i = 0; i < n; i++)
@@ -1142,7 +1142,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // (`sepDensityKinds`, `sepScaleMode`, `sepScaleSpec`).  C++ only dispatches
     // and evaluates.
     if (do_simulate)
-      Rf_error("simulation is not yet implemented for separable covariance structures");
+      error("simulation is not yet implemented for separable covariance structures");
 
     check_separable_metadata(term);
     switch (term.sepDispatch(0)) {

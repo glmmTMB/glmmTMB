@@ -331,6 +331,7 @@ test_that("separable reports kronecker covariance for supported dense x ar1 pair
         make_sep_case("homcs", n_member = 5, n_time = 4),
         make_sep_case("homcs", reversed = TRUE, n_member = 5, n_time = 4),
         make_sep_case("us"),
+        make_sep_case("us", n_member = 4, n_time = 4),
         make_sep_case("us", reversed = TRUE)
     )
     invisible(lapply(cases, expect_separable_vc))
@@ -346,6 +347,35 @@ test_that("separable likelihood matches dense MVN for supported dense x ar1 pair
         make_sep_case("us", reversed = TRUE)
     )
     invisible(lapply(cases, expect_separable_dense_nll))
+})
+
+test_that("separable dense x ar1 models fit successfully", {
+    set.seed(1)
+    n_member <- 2
+    n_time <- 4
+    n_group <- 50
+    dd <- make_sep_dat(n_member = n_member, n_time = n_time, n_group = n_group)
+    sd <- c(0.8, 1.2)
+    rho <- 0.25
+    phi <- 0.4
+    sigma <- 0.5
+    R_member <- matrix(rho, n_member, n_member)
+    diag(R_member) <- 1
+    R_time <- outer(seq_len(n_time), seq_len(n_time),
+                    function(i, j) phi^abs(i - j))
+    R_full <- kronecker(R_time, R_member)
+    sd_full <- rep(sd, n_time)
+    Sigma <- diag(sd_full) %*% R_full %*% diag(sd_full)
+    B <- t(matrix(rnorm(n_group * n_member * n_time), nrow = n_group) %*%
+               chol(Sigma))
+    dd$y <- as.vector(B) + rnorm(nrow(dd), sd = sigma)
+
+    fit <- glmmTMB(y ~ 1 +
+                       separable(us(0 + member) %x% ar1(0 + time) | group),
+                   data = dd)
+
+    expect_true(fit$sdr$pdHess)
+    expect_equal(fit$fit$convergence, 0)
 })
 
 test_that("separable prediction with newdata reports current limitation", {
