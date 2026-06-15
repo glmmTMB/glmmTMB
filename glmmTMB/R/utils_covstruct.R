@@ -140,23 +140,20 @@ parseNumLevels <- function(levels) {
 }
 
 ## The helpers below are intentionally small and explicit.  They are a local
-## parser layer for the prototype syntax
+## parser layer for the public product syntax
 ##
-##   separable(sepgrid(member, time) + 0 | group,
-##             homcs(member),
-##             ar1(time))
+##   separable(us(0 + member) %x% ar1(0 + time) | group,
+##             scale = us(0 + member))
 ##
 ## `reformulas::splitForm()` can understand `separable(grid + 0 | group)` as a
 ## special random-effect term, but it does not currently return a structured
-## object for the extra margin calls.  To avoid a larger formula-parser change,
-## we rewrite the rich call above into
+## object for the product metadata.  To avoid a larger formula-parser change,
+## we rewrite the public call above into
 ##
-##   separable(sepgrid(member, time) + 0 | group)
+##   separable(sepgrid(member, time) + 0 | group, list(...metadata...))
 ##
-## and attach the margin information as a generated `list(...)` additional
-## argument.  This keeps the workaround local to glmmTMB, uses the existing
-## `reTrmAddArgs` path, and avoids both encoded strings and formula-level
-## sidecar metadata.
+## This keeps the workaround local to glmmTMB, uses the existing `reTrmAddArgs`
+## path, and avoids both encoded strings and formula-level sidecar metadata.
 .sep_deparse <- function(x) deparse1(x, collapse = "", width.cutoff = 500L)
 
 .sep_call_name <- function(x) {
@@ -198,28 +195,39 @@ parseNumLevels <- function(levels) {
     unique(vapply(calls, .sep_deparse, character(1)))
 }
 
-.sep_grid_vars <- function(x) {
-    ## Pull the coordinate variable names out of `sepgrid(member, time)`.
-    ## We currently require exactly two coordinates because the C++ backend
-    ## implements a two-margin dense-correlation x AR(1) separable density.
-    grid_call <- .sep_find_call(x, "sepgrid")
-    if (is.null(grid_call) || length(grid_call) != 3L)
-        stop("separable() currently requires sepgrid(member, time) as the random-effect term.")
-    vapply(as.list(grid_call[-1]), .sep_deparse, character(1))
+.sep_is_zero <- function(x) {
+    is.numeric(x) && length(x) == 1L && isTRUE(unname(x) == 0)
 }
 
-.sep_margin_spec <- function(x) {
-    ## Convert an unevaluated margin like `homcs(member)` into a small named
-    ## character vector: c(homcs = "member").  The backend only needs the margin
-    ## covariance code and the coordinate variable it applies to.
+.sep_product_margin_var <- function(x) {
+    ## Phase-1 product syntax deliberately accepts only no-intercept one-variable
+    ## margins, e.g. `us(0 + role)`.  The returned variable is compiled to the
+    ## current complete-grid representation; richer margin formulas will need a
+    ## future marginal-design compiler rather than `sepgrid()`.
+    if (is.call(x) && identical(.sep_call_name(x), "+") && length(x) == 3L) {
+        if (.sep_is_zero(x[[2]]) && is.name(x[[3]])) return(.sep_deparse(x[[3]]))
+        if (.sep_is_zero(x[[3]]) && is.name(x[[2]])) return(.sep_deparse(x[[2]]))
+    }
+    stop("separable() product margins currently require exactly one ",
+         "no-intercept variable, e.g. us(0 + role) %x% ar1(0 + day).")
+}
+
+.sep_product_margin_spec <- function(x) {
     if (!is.call(x) || length(x) != 2L)
-        stop("separable() margins must look like homcs(member), us(member), or ar1(time).")
-    structure(.sep_deparse(x[[2]]), names = .sep_deparse(x[[1]]))
+        stop("separable() product margins must look like us(0 + role) ",
+             "or ar1(0 + day).")
+    structure(.sep_product_margin_var(x[[2]]), names = .sep_deparse(x[[1]]))
+}
+
+.sepgrid_bar_call <- function(vars, group) {
+    grid_call <- as.call(c(list(as.name("sepgrid")), lapply(vars, as.name)))
+    as.call(list(as.name("|"),
+                 as.call(list(as.name("+"), grid_call, 0)),
+                 group))
 }
 
 .sep_spec_df <- function(x, what = "margin") {
     if (is.null(x)) return(NULL)
-    if (is.call(x)) x <- .sep_margin_spec(x)
     if (is.matrix(x) || is.data.frame(x)) {
         ans <- as.data.frame(x, stringsAsFactors = FALSE)
     } else {
@@ -299,9 +307,9 @@ parseNumLevels <- function(levels) {
     ##   one dense-correlation margin, currently restricted to homcs/us
     ##   one AR(1) margin
     ##
-    ## Because the lookup sorts density kinds, it accepts both
-    ## `sepgrid(member, time), us(member), ar1(time)` and
-    ## `sepgrid(time, member), ar1(time), us(member)`.
+    ## Because the lookup sorts density kinds, it accepts both product orders:
+    ## `us(0 + member) %x% ar1(0 + time)` and
+    ## `ar1(0 + time) %x% us(0 + member)`.
     kinds <- vapply(regs, `[[`, character(1), "density_kind")
     codes <- vapply(regs, `[[`, character(1), "code")
     for (pair in .sep_supported_pairs) {
@@ -348,13 +356,14 @@ parseNumLevels <- function(levels) {
         scale_spec <- .sep_spec_df(scale, "scale margin")
         if (nrow(scale_spec) != 1L) {
             stop("separable() scale must be a single margin call such as ",
-                 "scale = us(member).")
+                 "scale = us(0 + member).")
         }
         scale_margin <- which(margins$struc == scale_spec$struc &
                               margins$var == scale_spec$var)
         if (length(scale_margin) != 1L) {
             stop("separable() scale must match one of the specified margins, ",
-                 "for example scale = us(member) when us(member) is a margin.")
+                 "for example scale = us(0 + member) when us(0 + member) ",
+                 "is a margin.")
         }
         if (!regs[[scale_margin]]$can_scale) {
             stop("separable() scale = ", scale_spec$struc, "(",
@@ -370,7 +379,7 @@ parseNumLevels <- function(levels) {
     }
     if (length(scale_margin) > 1L) {
         stop("separable() requires exactly one scale-carrying margin. ",
-             "Specify it explicitly with scale = us(member) or use one ",
+             "Specify it explicitly with scale = us(0 + member) or use one ",
              "scale-capable margin with one correlation-only margin.")
     }
 
@@ -421,8 +430,8 @@ parseNumLevels <- function(levels) {
         }
     }
 
-    stop("separable() currently supports homcs(member) x ar1(time) ",
-         "and us(member) x ar1(time).")
+    stop("separable() currently supports homcs(0 + member) %x% ar1(0 + time) ",
+         "and us(0 + member) %x% ar1(0 + time).")
 }
 
 .sep_restruc_info <- function(spec, cnms, blksize) {
@@ -452,8 +461,7 @@ parseNumLevels <- function(levels) {
     if (!identical(margins$var, spec$grid)) {
         stop("The separable() margin variables must match sepgrid() variables. ",
              "Use, for example, ",
-             "separable(sepgrid(member, time) + 0 | group, ",
-             "homcs(member), ar1(time)).")
+             "separable(homcs(0 + member) %x% ar1(0 + time) | group).")
     }
 
     scale_info <- .sep_scale_info(margins, regs, spec$scale)
@@ -478,52 +486,52 @@ parseNumLevels <- function(levels) {
     )
 }
 
-.sep_make_spec <- function(grid_expr, margin1, margin2, scale = NULL) {
-    ## Build structured separable metadata from the rich user syntax.  Margin
-    ## order is allowed to vary, so both of these are equivalent:
-    ##   separable(grid, homcs(member), ar1(time))
-    ##   separable(grid, ar1(time), homcs(member))
+.sep_make_product_spec <- function(bar_expr, scale = NULL) {
+    ## Compile the public product syntax
     ##
-    ## `un(member)` is accepted as a prototype alias for `us(member)`, but the
-    ## internal code uses `us` because that is glmmTMB's existing name.
-    grid <- .sep_grid_vars(grid_expr)
-    margins <- c(.sep_margin_spec(margin1), .sep_margin_spec(margin2))
+    ##   separable(us(0 + role) %x% ar1(0 + day) | group, scale = us(0 + role))
+    ##
+    ## into the same complete-grid representation used by the current backend.
+    ## Only simple no-intercept one-variable margins are accepted for now; this
+    ## keeps the door open for a later marginal-design compiler without implying
+    ## that random-slope margins are already supported.
+    if (!is.call(bar_expr) || !identical(.sep_call_name(bar_expr), "|") ||
+        length(bar_expr) != 3L) {
+        stop("separable() product syntax must look like ",
+             "separable(us(0 + role) %x% ar1(0 + day) | group, ...).")
+    }
+    prod_expr <- bar_expr[[2]]
+    if (!is.call(prod_expr) || !identical(.sep_call_name(prod_expr), "%x%") ||
+        length(prod_expr) != 3L) {
+        stop("separable() product syntax requires exactly two margins joined ",
+             "by %x%, e.g. us(0 + role) %x% ar1(0 + day).")
+    }
+
+    margin_calls <- list(prod_expr[[2]], prod_expr[[3]])
+    margins <- c(.sep_product_margin_spec(margin_calls[[1]]),
+                 .sep_product_margin_spec(margin_calls[[2]]))
     names(margins)[names(margins) == "un"] <- "us"
+    if (anyDuplicated(unname(margins))) {
+        stop("separable() product margins must use distinct variables.")
+    }
     if (!all(names(margins) %in% names(.sep_margin_registry))) {
         bad <- unique(names(margins)[!names(margins) %in% names(.sep_margin_registry)])
         stop("Unsupported separable() margin: ", paste(bad, collapse = ", "))
     }
-    ## Reorder the margin metadata to the `sepgrid()` coordinate order.  This is
-    ## not a statistical restriction; it is how we attach each margin to the
-    ## correct array dimension before `splitForm()` strips the rich user call.
-    ## With this rule, both of these are valid and unambiguous:
-    ##
-    ##   separable(sepgrid(member, time) + 0 | g, ar1(time), homcs(member))
-    ##   separable(sepgrid(time, member) + 0 | g, ar1(time), homcs(member))
-    ##
-    ## The first has dense-correlation margin on dimension 1; the second has it
-    ## on dimension 2.  C++ receives that information explicitly.
-    idx <- match(grid, unname(margins))
-    if (anyNA(idx) || !identical(unname(margins[idx]), unname(grid))) {
-        stop("The separable() margin variables must match sepgrid() variables.")
+
+    scale_spec <- NULL
+    if (!is.null(scale)) {
+        scale_vec <- .sep_product_margin_spec(scale)
+        names(scale_vec)[names(scale_vec) == "un"] <- "us"
+        scale_spec <- .sep_spec_df(scale_vec, "scale margin")
     }
-    margins <- margins[idx]
-    regs <- .sep_margin_registry[unname(names(margins))]
-    if (is.na(.sep_pair_dispatch(regs))) {
-        ## Fail early with the same scale-aware diagnostics used by
-        ## `.sep_restruc_info()`.  This catches unsupported combinations before
-        ## reformulas tries to process the rewritten term.
-        .sep_stop_unsupported_pair(
-            as.data.frame(cbind(struc = unname(names(margins)),
-                                var = unname(margins)),
-                          stringsAsFactors = FALSE),
-            regs,
-            .sep_spec_df(scale, "scale margin")
-        )
-    }
+
     m <- .sep_spec_df(margins)
-    scale_spec <- .sep_spec_df(scale, "scale margin")
-    list(grid = unname(grid), margins = m, scale = scale_spec)
+
+    list(grid = unname(margins),
+         margins = m,
+         scale = scale_spec,
+         grid_expr = .sepgrid_bar_call(unname(margins), bar_expr[[3]]))
 }
 
 .sep_spec_call <- function(spec) {
@@ -551,16 +559,23 @@ parseNumLevels <- function(levels) {
             stringsAsFactors = FALSE
         ))
     }
-    call_args$user_call <- spec$user_call
     as.call(call_args)
 }
 
 .rewrite_separable_expr <- function(x) {
-    ## Walk the formula call tree and rewrite only the rich four-argument
-    ## separable calls.  If a formula already contains the lower-level
-    ## form, `length(x) < 4L` and this leaves it alone.
+    ## Walk the formula call tree and rewrite rich separable calls into the
+    ## lower-level form that `reformulas::splitForm()` already understands:
+    ##
+    ##   separable(grid + 0 | group, list(...metadata...))
+    ##
+    ## The public syntax handled here is the product form:
+    ##
+    ##   separable(us(0 + member) %x% ar1(0 + time) | group,
+    ##             scale = us(0 + member))
+    ##
+    ## If a formula already contains the lower-level list form, leave it alone.
     if (!is.call(x)) return(x)
-    if (identical(.sep_call_name(x), "separable") && length(x) >= 4L) {
+    if (identical(.sep_call_name(x), "separable")) {
         args <- as.list(x[-1])
         nms <- names(args)
         if (is.null(nms)) nms <- rep("", length(args))
@@ -568,15 +583,28 @@ parseNumLevels <- function(levels) {
         if (length(scale_i) > 1L)
             stop("separable() accepts at most one scale argument.")
         scale_arg <- if (length(scale_i)) args[[scale_i]] else NULL
-        margin_args <- args[-c(1L, scale_i)]
-        if (length(margin_args) != 2L) {
-            stop("separable() requires exactly two margin calls and optional ",
-                 "scale = margin(variable).")
+        named_i <- which(nzchar(nms) & nms != "scale")
+        if (length(named_i) > 0L) {
+            stop("separable() only accepts named argument scale.")
         }
-        spec <- .sep_make_spec(args[[1]], margin_args[[1]], margin_args[[2]],
-                               scale = scale_arg)
-        spec$user_call <- .sep_deparse(x)
-        return(as.call(list(as.name("separable"), x[[2]], .sep_spec_call(spec))))
+
+        unnamed_args <- args[!nzchar(nms)]
+        if (length(unnamed_args) == 1L) {
+            spec <- .sep_make_product_spec(unnamed_args[[1]], scale = scale_arg)
+            return(as.call(list(as.name("separable"),
+                                spec$grid_expr,
+                                .sep_spec_call(spec))))
+        }
+
+        ## Leave the internal low-level form `separable(grid, list(...))` alone.
+        if (length(unnamed_args) == 2L && is.call(unnamed_args[[2]]) &&
+            identical(.sep_call_name(unnamed_args[[2]]), "list") &&
+            is.null(scale_arg)) {
+            return(x)
+        }
+
+        stop("separable() requires separable(",
+             "margin1(0 + variable) %x% margin2(0 + variable) | group).")
     }
     for (i in seq_along(x)[-1]) x[[i]] <- .rewrite_separable_expr(x[[i]])
     x

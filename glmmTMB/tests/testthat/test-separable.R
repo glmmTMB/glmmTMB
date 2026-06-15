@@ -61,10 +61,8 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
 
     if (reversed) {
         form <- switch(struc,
-            homcs = y ~ 1 + separable(sepgrid(time, member) + 0 | group,
-                                      ar1(time), homcs(member)),
-            us = y ~ 1 + separable(sepgrid(time, member) + 0 | group,
-                                   ar1(time), us(member))
+            homcs = y ~ 1 + separable(ar1(0 + time) %x% homcs(0 + member) | group),
+            us = y ~ 1 + separable(ar1(0 + time) %x% us(0 + member) | group)
         )
         dense_form <- y ~ 1 + us(sepgrid(time, member) + 0 | group)
         theta <- c(ar1_to_theta(phi), member_theta)
@@ -75,10 +73,8 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
         scale_spec <- 1L
     } else {
         form <- switch(struc,
-            homcs = y ~ 1 + separable(sepgrid(member, time) + 0 | group,
-                                      homcs(member), ar1(time)),
-            us = y ~ 1 + separable(sepgrid(member, time) + 0 | group,
-                                   us(member), ar1(time))
+            homcs = y ~ 1 + separable(homcs(0 + member) %x% ar1(0 + time) | group),
+            us = y ~ 1 + separable(us(0 + member) %x% ar1(0 + time) | group)
         )
         dense_form <- y ~ 1 + us(sepgrid(member, time) + 0 | group)
         theta <- c(member_theta, ar1_to_theta(phi))
@@ -143,8 +139,7 @@ test_that("glmmTMB preserves unused sepgrid levels by default", {
     dd$y <- 0
 
     fit <- glmmTMB(y ~ fixed_factor +
-                       separable(sepgrid(member, time) + 0 | group,
-                                 homcs(member), ar1(time)),
+                       separable(homcs(0 + member) %x% ar1(0 + time) | group),
                    data = dd, doFit = FALSE)
 
     expect_equal(fit$condReStruc[[1]]$sepDims, c(2L, 3L))
@@ -153,28 +148,26 @@ test_that("glmmTMB preserves unused sepgrid levels by default", {
     expect_equal(levels(fit$fr$fixed_factor), c("a", "b"))
 })
 
-test_that("separable metadata handles margin order and un alias", {
+test_that("separable metadata handles product order and un alias", {
     dd <- make_sep_dat()
 
     h <- glmmTMB(y ~ 1 +
-                     separable(sepgrid(member, time) + 0 | group,
-                               ar1(time), homcs(member)),
+                     separable(ar1(0 + time) %x% homcs(0 + member) | group),
                  data = dd, doFit = FALSE)
     u <- glmmTMB(y ~ 1 +
-                     separable(sepgrid(member, time) + 0 | group,
-                               ar1(time), un(member)),
+                     separable(un(0 + member) %x% ar1(0 + time) | group),
                  data = dd, doFit = FALSE)
 
     expect_equal(unname(h$condReStruc[[1]]$blockCode),
                  unname(.valid_covstruct[["separable"]]))
     expect_equal(h$condReStruc[[1]]$blockNumTheta, 3)
-    expect_equal(h$condReStruc[[1]]$sepDims, c(2L, 3L))
+    expect_equal(h$condReStruc[[1]]$sepDims, c(3L, 2L))
     expect_equal(h$condReStruc[[1]]$sepCodes,
-                 unname(c(.valid_covstruct[["homcs"]], .valid_covstruct[["ar1"]])))
-    expect_equal(h$condReStruc[[1]]$sepDensityKinds, c(1L, 2L))
+                 unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["homcs"]])))
+    expect_equal(h$condReStruc[[1]]$sepDensityKinds, c(2L, 1L))
     expect_equal(h$condReStruc[[1]]$sepDispatch, 1L)
     expect_equal(h$condReStruc[[1]]$sepScaleMode, 1L)
-    expect_equal(h$condReStruc[[1]]$sepScaleSpec, 0L)
+    expect_equal(h$condReStruc[[1]]$sepScaleSpec, 1L)
 
     expect_equal(u$condReStruc[[1]]$blockNumTheta, 4)
     expect_equal(u$condReStruc[[1]]$sepCodes,
@@ -187,9 +180,8 @@ test_that("separable metadata handles margin order and un alias", {
 
 test_that("separable parser keeps structured metadata in splitForm payload", {
     f <- y ~ 1 +
-        separable(sepgrid(member, time) + 0 | group,
-                  homcs(member), ar1(time),
-                  scale = homcs(member))
+        separable(homcs(0 + member) %x% ar1(0 + time) | group,
+                  scale = homcs(0 + member))
     g <- glmmTMB:::rewrite_separable_formula(f)
     ss <- reformulas::splitForm(g, specials = c(names(.valid_covstruct), "s"))
     spec <- eval(ss$reTrmAddArgs[[1]][[2]])
@@ -199,18 +191,31 @@ test_that("separable parser keeps structured metadata in splitForm payload", {
     expect_equal(unname(spec$margins[, "struc"]), c("homcs", "ar1"))
     expect_equal(unname(spec$scale[, "struc"]), "homcs")
     expect_equal(unname(spec$scale[, "var"]), "member")
-    expect_match(spec$user_call, "separable")
     expect_equal(ss$reTrmClasses, "separable")
+    expect_equal(deparse(ss$reTrmFormulas[[1]]),
+                 "sepgrid(member, time) + 0 | group")
     expect_equal(length(ss$reTrmAddArgs[[1]]), 2)
+})
+
+test_that("separable product syntax rejects slope-like margins for now", {
+    dd <- make_sep_dat()
+    dd$x <- seq_len(nrow(dd))
+
+    expect_error(
+        glmmTMB(y ~ 1 +
+                    separable(us(0 + member + x) %x% ar1(0 + time) | group,
+                              scale = us(0 + member + x)),
+                data = dd, doFit = FALSE),
+        "exactly one no-intercept variable"
+    )
 })
 
 test_that("separable supports explicit scale margin selection", {
     dd <- make_sep_dat()
 
     fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(time, member) + 0 | group,
-                                 ar1(time), un(member),
-                                 scale = un(member)),
+                       separable(ar1(0 + time) %x% un(0 + member) | group,
+                                 scale = un(0 + member)),
                    data = dd, doFit = FALSE)
 
     expect_equal(fit$condReStruc[[1]]$sepCodes,
@@ -230,10 +235,8 @@ test_that("multiple separable terms keep their metadata order", {
 
     fit <- glmmTMB(y ~ 1 +
                        (1 | group1) +
-                       separable(sepgrid(member, time) + 0 | group1,
-                                 ar1(time), un(member)) +
-                       separable(sepgrid(member, time) + 0 | group2,
-                                 homcs(member), ar1(time)),
+                       separable(un(0 + member) %x% ar1(0 + time) | group1) +
+                       separable(homcs(0 + member) %x% ar1(0 + time) | group2),
                    data = dd, doFit = FALSE)
 
     sep_terms <- vapply(fit$condReStruc, function(x) {
@@ -253,12 +256,11 @@ test_that("separable preserves the user-facing formula in the stored call", {
     dd <- make_sep_dat()
 
     fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(member, time) + 0 | group,
-                                 homcs(member), ar1(time)),
+                       separable(homcs(0 + member) %x% ar1(0 + time) | group),
                    data = dd, doFit = FALSE)
 
     ftxt <- paste(deparse(fit$call$formula), collapse = " ")
-    expect_match(ftxt, "homcs\\(member\\)")
+    expect_match(ftxt, "homcs\\(0 \\+ member\\)")
     expect_false(grepl("data.frame", ftxt, fixed = TRUE))
 })
 
@@ -266,16 +268,14 @@ test_that("separable preserves user-facing zi and dispersion formulas", {
     dd <- make_sep_dat()
 
     fit <- glmmTMB(y ~ 1,
-                   ziformula = ~ separable(sepgrid(member, time) + 0 | group,
-                                           homcs(member), ar1(time)),
-                   dispformula = ~ separable(sepgrid(member, time) + 0 | group,
-                                             homcs(member), ar1(time)),
+                   ziformula = ~ separable(homcs(0 + member) %x% ar1(0 + time) | group),
+                   dispformula = ~ separable(homcs(0 + member) %x% ar1(0 + time) | group),
                    data = dd, doFit = FALSE)
 
     ztxt <- paste(deparse(fit$call$ziformula), collapse = " ")
     dtxt <- paste(deparse(fit$call$dispformula), collapse = " ")
-    expect_match(ztxt, "homcs\\(member\\)")
-    expect_match(dtxt, "homcs\\(member\\)")
+    expect_match(ztxt, "homcs\\(0 \\+ member\\)")
+    expect_match(dtxt, "homcs\\(0 \\+ member\\)")
     expect_false(grepl("data.frame", ztxt, fixed = TRUE))
     expect_false(grepl("data.frame", dtxt, fixed = TRUE))
 })
@@ -285,46 +285,40 @@ test_that("separable rejects unsupported margins", {
 
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(sepgrid(member, time) + 0 | group,
-                              us(member), homcs(time)),
+                    separable(us(0 + member) %x% homcs(0 + time) | group),
                 data = dd, doFit = FALSE),
         "specify the scale margin"
     )
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(sepgrid(member, time) + 0 | group,
-                              us(member), ar1(time),
-                              scale = ar1(time)),
+                    separable(us(0 + member) %x% ar1(0 + time) | group,
+                              scale = ar1(0 + time)),
                 data = dd, doFit = FALSE),
         "correlation-only"
     )
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(sepgrid(member, time) + 0 | group,
-                              us(member), ar1(time),
-                              scale = homcs(member)),
+                    separable(us(0 + member) %x% ar1(0 + time) | group,
+                              scale = homcs(0 + member)),
                 data = dd, doFit = FALSE),
         "scale must match"
     )
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(sepgrid(member, time) + 0 | group,
-                              ar1(member), ar1(time)),
+                    separable(ar1(0 + member) %x% ar1(0 + time) | group),
                 data = dd, doFit = FALSE),
         "global scale"
     )
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(sepgrid(member, time) + 0 | group,
-                              us(member), homcs(time),
-                              scale = us(member)),
+                    separable(us(0 + member) %x% homcs(0 + time) | group,
+                              scale = us(0 + member)),
                 data = dd, doFit = FALSE),
         "does not yet implement"
     )
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(sepgrid(member, time) + 0 | group,
-                              foo(member), ar1(time)),
+                    separable(foo(0 + member) %x% ar1(0 + time) | group),
                 data = dd, doFit = FALSE),
         "Unsupported separable\\(\\) margin: foo"
     )
@@ -358,8 +352,7 @@ test_that("separable prediction with newdata reports current limitation", {
     dd <- make_sep_dat()
     theta <- c(log(1), qlogis((0.2 + 1) / 2), ar1_to_theta(0.3))
     fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(member, time) + 0 | group,
-                                 homcs(member), ar1(time)),
+                       separable(homcs(0 + member) %x% ar1(0 + time) | group),
                    data = dd,
                    start = list(theta = theta),
                    map = list(theta = factor(rep(NA, length(theta)))))
@@ -373,8 +366,7 @@ test_that("separable simulation reports current limitation", {
 
     theta <- c(log(1), qlogis((0.2 + 1) / 2), ar1_to_theta(0.3))
     fit <- glmmTMB(y ~ 1 +
-                       separable(sepgrid(member, time) + 0 | group,
-                                 homcs(member), ar1(time)),
+                       separable(homcs(0 + member) %x% ar1(0 + time) | group),
                    data = dd,
                    start = list(theta = theta),
                    map = list(theta = factor(rep(NA, length(theta)))))
