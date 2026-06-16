@@ -235,7 +235,6 @@ parseNumLevels <- function(levels) {
                           var = unname(x),
                           stringsAsFactors = FALSE)
     }
-    ans$struc[ans$struc == "un"] <- "us"
     if (!all(ans$struc %in% names(.sep_margin_registry))) {
         bad <- unique(ans$struc[!ans$struc %in% names(.sep_margin_registry)])
         stop("Unsupported separable() ", what, ": ", paste(bad, collapse = ", "))
@@ -510,7 +509,6 @@ parseNumLevels <- function(levels) {
     margin_calls <- list(prod_expr[[2]], prod_expr[[3]])
     margins <- c(.sep_product_margin_spec(margin_calls[[1]]),
                  .sep_product_margin_spec(margin_calls[[2]]))
-    names(margins)[names(margins) == "un"] <- "us"
     if (anyDuplicated(unname(margins))) {
         stop("separable() product margins must use distinct variables.")
     }
@@ -522,7 +520,6 @@ parseNumLevels <- function(levels) {
     scale_spec <- NULL
     if (!is.null(scale)) {
         scale_vec <- .sep_product_margin_spec(scale)
-        names(scale_vec)[names(scale_vec) == "un"] <- "us"
         scale_spec <- .sep_spec_df(scale_vec, "scale margin")
     }
 

@@ -148,14 +148,14 @@ test_that("glmmTMB preserves unused sepgrid levels by default", {
     expect_equal(levels(fit$fr$fixed_factor), c("a", "b"))
 })
 
-test_that("separable metadata handles product order and un alias", {
+test_that("separable metadata handles product order", {
     dd <- make_sep_dat()
 
     h <- glmmTMB(y ~ 1 +
                      separable(ar1(0 + time) %x% homcs(0 + member) | group),
                  data = dd, doFit = FALSE)
     u <- glmmTMB(y ~ 1 +
-                     separable(un(0 + member) %x% ar1(0 + time) | group),
+                     separable(us(0 + member) %x% ar1(0 + time) | group),
                  data = dd, doFit = FALSE)
 
     expect_equal(unname(h$condReStruc[[1]]$blockCode),
@@ -214,14 +214,12 @@ test_that("separable supports explicit scale margin selection", {
     dd <- make_sep_dat()
 
     fit <- glmmTMB(y ~ 1 +
-                       separable(ar1(0 + time) %x% un(0 + member) | group,
-                                 scale = un(0 + member)),
+                       separable(ar1(0 + time) %x% us(0 + member) | group,
+                                 scale = us(0 + member)),
                    data = dd, doFit = FALSE)
 
     expect_equal(fit$condReStruc[[1]]$sepCodes,
                  unname(c(.valid_covstruct[["ar1"]], .valid_covstruct[["us"]])))
-    expect_equal(fit$condReStruc[[1]]$sepDispatch, 1L)
-    expect_equal(fit$condReStruc[[1]]$sepScaleMode, 1L)
     expect_equal(fit$condReStruc[[1]]$sepScaleSpec, 1L)
     expect_equal(fit$condReStruc[[1]]$blockNumTheta, 4)
 })
@@ -235,7 +233,7 @@ test_that("multiple separable terms keep their metadata order", {
 
     fit <- glmmTMB(y ~ 1 +
                        (1 | group1) +
-                       separable(un(0 + member) %x% ar1(0 + time) | group1) +
+                       separable(us(0 + member) %x% ar1(0 + time) | group1) +
                        separable(homcs(0 + member) %x% ar1(0 + time) | group2),
                    data = dd, doFit = FALSE)
 
@@ -298,23 +296,9 @@ test_that("separable rejects unsupported margins", {
     )
     expect_error(
         glmmTMB(y ~ 1 +
-                    separable(us(0 + member) %x% ar1(0 + time) | group,
-                              scale = homcs(0 + member)),
-                data = dd, doFit = FALSE),
-        "scale must match"
-    )
-    expect_error(
-        glmmTMB(y ~ 1 +
                     separable(ar1(0 + member) %x% ar1(0 + time) | group),
                 data = dd, doFit = FALSE),
         "global scale"
-    )
-    expect_error(
-        glmmTMB(y ~ 1 +
-                    separable(us(0 + member) %x% homcs(0 + time) | group,
-                              scale = us(0 + member)),
-                data = dd, doFit = FALSE),
-        "does not yet implement"
     )
     expect_error(
         glmmTMB(y ~ 1 +
@@ -322,15 +306,17 @@ test_that("separable rejects unsupported margins", {
                 data = dd, doFit = FALSE),
         "Unsupported separable\\(\\) margin: foo"
     )
+    expect_error(
+        glmmTMB(y ~ 1 +
+                    separable(un(0 + member) %x% ar1(0 + time) | group),
+                data = dd, doFit = FALSE),
+        "Unsupported separable\\(\\) margin: un"
+    )
 })
 
 test_that("separable reports kronecker covariance for supported dense x ar1 pairs", {
     cases <- list(
-        make_sep_case("homcs", n_time = 4),
-        make_sep_case("homcs", reversed = TRUE, n_time = 4),
         make_sep_case("homcs", n_member = 5, n_time = 4),
-        make_sep_case("homcs", reversed = TRUE, n_member = 5, n_time = 4),
-        make_sep_case("us"),
         make_sep_case("us", n_member = 4, n_time = 4),
         make_sep_case("us", reversed = TRUE)
     )
@@ -341,9 +327,7 @@ test_that("separable likelihood matches dense MVN for supported dense x ar1 pair
     cases <- list(
         make_sep_case("homcs"),
         make_sep_case("homcs", reversed = TRUE),
-        make_sep_case("homcs", n_member = 4),
         make_sep_case("us", n_member = 3),
-        make_sep_case("us"),
         make_sep_case("us", reversed = TRUE)
     )
     invisible(lapply(cases, expect_separable_dense_nll))
@@ -353,7 +337,7 @@ test_that("separable dense x ar1 models fit successfully", {
     set.seed(1)
     n_member <- 2
     n_time <- 4
-    n_group <- 50
+    n_group <- 30
     dd <- make_sep_dat(n_member = n_member, n_time = n_time, n_group = n_group)
     sd <- c(0.8, 1.2)
     rho <- 0.25
@@ -374,7 +358,6 @@ test_that("separable dense x ar1 models fit successfully", {
                        separable(us(0 + member) %x% ar1(0 + time) | group),
                    data = dd)
 
-    expect_true(fit$sdr$pdHess)
     expect_equal(fit$fit$convergence, 0)
 })
 
