@@ -108,9 +108,9 @@ expect_separable_vc <- function(case) {
 }
 
 expect_separable_dense_nll <- function(case) {
-    dd <- make_sep_dat(n_member = case$n_member, n_time = case$n_time, n_group = 1)
+    dd <- make_sep_dat(n_member = case$n_member, n_time = case$n_time, n_group = 2)
     dd$y <- 0
-    b <- seq(-0.4, 0.5, length.out = length(case$sd_full))
+    b <- seq(-0.4, 0.5, length.out = length(case$sd_full) * nlevels(dd$group))
 
     sep_nll <- joint_nll_at(case$form, dd, case$theta, b)
     dense_nll <- joint_nll_at(case$dense_form, dd, case$theta_dense, b)

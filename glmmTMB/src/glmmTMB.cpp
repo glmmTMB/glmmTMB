@@ -452,43 +452,12 @@ struct terms_t : vector<per_term_info<Type> > {
 
 template <class Type, class DenseDensity>
 Type separable_dense_ar1_nll(array<Type> &U, vector<Type> sd, Type phi,
-			     DenseDensity dense_density,
-			     per_term_info<Type>& term,
-			     int dense_margin, int ar1_margin) {
-  // Evaluate one separable dense-correlation x AR(1) random-effect block.
-  //
-  // Inputs:
-  //   U:
-  //     matrix with rows = block entries and columns = grouping levels.
-  //     This is exactly how `allterms_nll()` passes every random-effect term.
-  //
-  //   sd:
-  //     standard deviations along the scale-carrying margin.  For homcs this
-  //     vector has one common value repeated for every level; for us it has one
-  //     value per level.  The AR(1) margin deliberately has no scale inside
-  //     separable(); otherwise the product scale would be non-identifiable.
-  //
-  //   phi:
-  //     AR(1) correlation on the AR(1) margin.
-  //
-  //   dense_density:
-  //     a standardized zero-mean Gaussian density for the dense correlation
-  //     margin.  The AR(1) margin is standardized too, so cell scales are
-  //     applied manually below.
-  //
-  // The density being evaluated is:
-  //
-  //   u_g ~ N(0, D_cell (R_margin2 %x% R_margin1) D_cell)
-  //
-  // for every grouping level g.  We avoid constructing the full Kronecker matrix
-  // by reshaping the flat vector to an array and using TMB's `SEPARABLE`.
-  //
-  // The two supported orderings are both evaluated here:
-  //
-  //   sepgrid(dense, ar1):  SEPARABLE(AR1(phi), dense_density)(z)
-  //   sepgrid(ar1, dense):  SEPARABLE(dense_density, AR1(phi))(z)
-  //
-  // TMB's SEPARABLE arguments are supplied in reverse array-dimension order.
+				     DenseDensity dense_density,
+				     per_term_info<Type>& term,
+				     int dense_margin, int ar1_margin) {
+  // Evaluate one dense-correlation x AR(1) separable block without forming the
+  // full Kronecker covariance matrix. TMB's SEPARABLE arguments are supplied in
+  // reverse array-dimension order.
   int n0 = term.sepDims(0);
   int n1 = term.sepDims(1);
   vector<int> dim(2);
@@ -499,17 +468,9 @@ Type separable_dense_ar1_nll(array<Type> &U, vector<Type> sd, Type phi,
   for (int g = 0; g < term.blockReps; g++) {
     array<Type> z(dim);
     Type logscale = 0;
-    // Convert the flat block for group g into an array in sepgrid() order.
-    //
-    // `sepgrid()` and the R metadata use first-coordinate-fastest order:
+    // Convert the flat block for group g into an array in sepgrid() order:
     //   k = i0 + n0 * i1
-    //
-    // We divide by the scale-margin SD here so that `z` is on the standardized
-    // correlation scale expected by `dense_density` and `AR1(phi)`.
-    //
-    // The log-Jacobian is the sum of log SDs for all cells.  This is the same
-    // adjustment performed by TMB's VECSCALE/SCALE helpers, but manual scaling
-    // keeps the multidimensional separable case explicit and easy to inspect.
+    // Manual scaling keeps the separable margin-scale convention explicit.
     for (int i1 = 0; i1 < n1; i1++) {
       for (int i0 = 0; i0 < n0; i0++) {
         int k = i0 + n0 * i1;
@@ -531,12 +492,8 @@ Type separable_dense_ar1_nll(array<Type> &U, vector<Type> sd, Type phi,
 
 template <class Type>
 struct sep_dense_ar1_pars {
-  // Parsed parameters for the currently supported separable family:
-  // one dense-correlation margin (homcs/us) crossed with one AR(1) margin.
-  //
-  // Keeping these fields in a small struct makes the termwise_nll branch mostly
-  // dispatch code.  Future margin families can add their own parser/evaluator
-  // next to this one without reworking the formula or getReStruc layers.
+  // Parsed parameters for one dense-correlation margin crossed with one AR(1)
+  // margin.
   int dense_margin;
   int ar1_margin;
   int dense_code;
@@ -563,15 +520,8 @@ void check_separable_metadata(per_term_info<Type>& term) {
 template <class Type>
 sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
 						   per_term_info<Type>& term) {
-  // Convert the flat theta vector for a separable dense x AR(1) term into
-  // margin-specific objects.  Theta is consumed in sepgrid/margin order, which
-  // mirrors the R-side parameter counter:
-  //
-  //   homcs + ar1:  log_sd, homcs_corr, ar1_phi
-  //   ar1 + homcs:  ar1_phi, log_sd, homcs_corr
-  //   us    + ar1:  us_log_sd..., us_corr..., ar1_phi
-  //   ar1  + us:    ar1_phi, us_log_sd..., us_corr...
-  //
+  // Theta is consumed in the same margin order used by the R-side parameter
+  // counter.
   sep_dense_ar1_pars<Type> out;
   out.dense_margin = -1;
   out.ar1_margin = -1;
@@ -600,8 +550,7 @@ sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
 
     if (term.sepDensityKinds(m) == ar1_sep) {
       Type corr_transf = theta(theta_pos++);
-      // Same unconstrained-to-correlation transform used by existing glmmTMB
-      // AR1 and by `get_cor()` for the single-correlation case.
+      // Same transform used by existing glmmTMB AR1.
       out.phi = corr_transf / sqrt(Type(1) + pow(corr_transf, 2));
     } else if (code == homcs_covstruct) {
       if (scale_here) {
@@ -637,22 +586,12 @@ void report_separable_dense_ar1(vector<Type> sd, matrix<Type> dense_corr,
 				Type phi, per_term_info<Type>& term,
 				int dense_margin, int ar1_margin) {
   // Build report objects for VarCorr().
-  //
-  // This is not the final desired user-facing display.  For the prototype we
-  // report the full standard deviation vector and, when requested, the full
-  // Kronecker correlation matrix.  That makes correctness tests straightforward:
-  //
-  //   reported corr == kronecker(R_slowest_margin, R_fastest_margin)
-  //
-  // A later cleanup should replace the default printed output with a compact
-  // component display to avoid printing very large separable matrices.
   int n0 = term.sepDims(0);
   int n1 = term.sepDims(1);
   int n = n0 * n1;
   int scale_margin = term.sepScaleSpec(0);
   term.sd.resize(n);
-  // Repeat each margin SD across the other coordinate.  Which coordinate this
-  // is depends on the user's sepgrid() order.
+  // Repeat each margin SD across the other coordinate.
   for (int i1 = 0; i1 < n1; i1++) {
     for (int i0 = 0; i0 < n0; i0++) {
       int k = i0 + n0 * i1;
@@ -661,8 +600,7 @@ void report_separable_dense_ar1(vector<Type> sd, matrix<Type> dense_corr,
     }
   }
   if (term.fullCor == 1) {
-    // Construct the full correlation only for reporting/testing.  This should
-    // not be used in the likelihood path for long time series.
+    // Construct the full correlation only for reporting/testing.
     term.corr.resize(n, n);
     for (int b1 = 0; b1 < n1; b1++) {
       for (int a1 = 0; a1 < n0; a1++) {

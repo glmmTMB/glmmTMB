@@ -59,38 +59,17 @@ numFactor <- function(x, ...) {
 ##' @rdname numFactor
 ##' @export
 sepgrid <- function(x, ...) {
-    ## `sepgrid()` is deliberately close to `numFactor()`: it returns an
-    ## ordinary factor whose levels encode coordinate pairs.  The important
-    ## difference is that `sepgrid()` always creates the *complete Cartesian
-    ## product* of the coordinate levels, even if some cells are not observed in
-    ## the data.  That is essential for AR(1) margins: if day 2 is globally
-    ## missing but still part of the study design, days 1 and 3 must be two time
-    ## steps apart, not adjacent.
-    ##
-    ## The current prototype uses only two coordinates:
-    ##   sepgrid(member, time)
-    ## but the helper is written for a general number of coordinates because the
-    ## representation is naturally extensible.  The separable covariance parser
-    ## currently rejects anything other than two dimensions.
+    ## Like numFactor(), but with levels for the complete Cartesian product.
+    ## Factor inputs preserve unused levels; non-factors use sorted observed
+    ## values.
     y <- data.frame(x, ...)
 
-    ## We accept character/integer variables as a convenience and convert them to
-    ## stable integer coordinates below.  Factors preserve their full level set,
-    ## including levels that are absent from the observed data.  Non-factors use
-    ## sorted observed values, so users should use factors when globally absent
-    ## levels are meaningful.
     ok <- vapply(y, function(z) is.numeric(z) || is.factor(z) ||
                    is.character(z) || is.integer(z), logical(1))
     if (!all(ok))
         stop("All arguments to 'sepgrid' must be numeric, factor, integer, or character.")
 
-    ## `parseNumLevels()` expects numeric coordinates in the level labels.  We
-    ## therefore store the coordinate *indices* rather than the raw labels:
-    ##   member A/B -> 1/2
-    ##   time levels 1:30 -> 1:30
-    ## This makes downstream C++ code independent of whether member was coded as
-    ## "A"/"B", "male"/"female", 0/1, or 1/2.  Human-readable labels can be
-    ## added later for polished VarCorr output.
+    ## Store coordinate indices so parseNumLevels() can recover dimensions.
     levs <- lapply(y, function(z) {
         if (is.factor(z)) levels(z) else sort(unique(z[!is.na(z)]))
     })
@@ -107,11 +86,7 @@ sepgrid <- function(x, ...) {
         ans
     }
 
-    ## `expand.grid()` varies its first argument fastest.  This is exactly the
-    ## array convention we use in C++:
-    ##   linear index = member_index + n_member * time_index
-    ## so the random-effect block is ordered as:
-    ##   member1_time1, member2_time1, member1_time2, member2_time2, ...
+    ## expand.grid() varies its first argument fastest; C++ uses the same order.
     grid <- do.call(expand.grid, c(lapply(levs, seq_along),
                                    list(KEEP.OUT.ATTRS = FALSE)))
     factor(asChar(vals), levels = asChar(grid))
@@ -279,10 +254,7 @@ parseNumLevels <- function(levels) {
 .sep_dispatch_code <- c(dense_ar1 = 1L)
 
 .sep_scale_mode_code <- c(
-    ## Current implemented scale mode.  "margin" means that one separable
-    ## margin supplies absolute standard deviations; all other margins are
-    ## correlation-only.  Future global/product/cell modes should get new
-    ## entries here instead of overloading the selected-margin integer.
+    ## One margin supplies absolute SDs; other margins are correlation-only.
     margin = 1L
 )
 
@@ -295,20 +267,7 @@ parseNumLevels <- function(levels) {
 )
 
 .sep_pair_dispatch <- function(regs) {
-    ## Look up the order-insensitive C++ evaluator for a pair of separable
-    ## margins.  This table is intentionally small for the prototype, but it is
-    ## the place future combinations should be enabled.  For example, adding
-    ## dense_corr x dense_corr or ar1 x ar1 should mean adding a table entry plus
-    ## the corresponding C++ dispatch branch, not changing the formula parser.
-    ##
-    ## The current entry means:
-    ##
-    ##   one dense-correlation margin, currently restricted to homcs/us
-    ##   one AR(1) margin
-    ##
-    ## Because the lookup sorts density kinds, it accepts both product orders:
-    ## `us(0 + member) %x% ar1(0 + time)` and
-    ## `ar1(0 + time) %x% us(0 + member)`.
+    ## Order-insensitive lookup for the C++ evaluator for a margin pair.
     kinds <- vapply(regs, `[[`, character(1), "density_kind")
     codes <- vapply(regs, `[[`, character(1), "code")
     for (pair in .sep_supported_pairs) {
@@ -335,17 +294,7 @@ parseNumLevels <- function(levels) {
 }
 
 .sep_scale_info <- function(margins, regs, scale = NULL) {
-    ## Resolve the scale layer independently of the supported covariance-pair
-    ## lookup.  This is the small R-side contract that future scale modes should
-    ## extend:
-    ##
-    ##   mode = "margin": one margin supplies absolute SD parameters
-    ##   spec = zero-based selected margin index
-    ##
-    ## The current implementation deliberately infers margin scale only when
-    ## exactly one margin is scale-capable.  If no margin can carry scale, the
-    ## model needs a future `scale = global()` mode.  If multiple margins can
-    ## carry scale, the user must choose explicitly.
+    ## Resolve which margin supplies absolute SD parameters.
     can_scale <- vapply(regs, `[[`, logical(1), "can_scale")
     scale_candidates <- which(can_scale)
 
@@ -434,10 +383,7 @@ parseNumLevels <- function(levels) {
 }
 
 .sep_restruc_info <- function(spec, cnms, blksize) {
-    ## Centralize the R-side contract for currently supported separable terms.
-    ## This keeps `getReStruc()` from knowing how many parameters each margin
-    ## contributes, and gives future margins one obvious place to declare their
-    ## parameter counts and density kind.
+    ## R-side contract for currently supported separable terms.
     spec <- .sep_parse_spec(spec)
 
     coords <- parseNumLevels(cnms)

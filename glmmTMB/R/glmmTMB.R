@@ -1088,33 +1088,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
             coords <- parseNumLevels(reTrms$cnms[[i]])
             tmp$dist <- as.matrix( dist(coords) )
         } else if(ss[i] == "separable") {
-            ## Store the small amount of metadata the C++ template needs to
-            ## evaluate the separable density.  The random effects themselves
-            ## are still passed exactly like every other glmmTMB random-effect
-            ## block: a flat vector per grouping level.  C++ reshapes each flat
-            ## vector into an array using these dimensions.
-            ## `sepDims` tells C++ how to reshape one group-specific flat block:
-            ##   block length = sepDims[1] * sepDims[2]
-            ##   index        = coord1 + sepDims[1] * coord2
-            ##
-            ## `sepCodes` and `sepDensityKinds` tell C++ which marginal density
-            ## builders to use for each array dimension.  The order follows the
-            ## user's `sepgrid()` order, so `sepgrid(time, member)` is valid and
-            ## different from `sepgrid(member, time)` only in storage order.
-            ##
-            ## `sepDispatch` is order-insensitive and selects the C++ evaluator
-            ## for this pair of margin density kinds.  The current prototype has
-            ## one dispatch path: dense correlation x AR(1).
-            ##
-            ## `sepScaleMode` and `sepScaleSpec` describe how absolute standard
-            ## deviations enter the separable product.  The current prototype
-            ## supports only margin scale:
-            ##
-            ##   sepScaleMode = margin
-            ##   sepScaleSpec = zero-based index of the scale-carrying margin
-            ##
-            ## Keeping mode and spec separate leaves a clean path for future
-            ## global/product/cell scale modes without changing this interface.
+            ## Metadata needed to reshape flat random-effect blocks and dispatch
+            ## to the separable marginal densities in C++.
             tmp$sepDims <- sepInfo[[i]]$dims
             tmp$sepCodes <- sepInfo[[i]]$codes
             tmp$sepDensityKinds <- sepInfo[[i]]$density_kinds
