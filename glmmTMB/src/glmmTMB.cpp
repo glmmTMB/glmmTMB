@@ -94,7 +94,37 @@ enum valid_covStruct {
   hetar1_covstruct = 12,
   homcs_covstruct = 13,
   homtoep_covstruct = 14,
-  equalto_covstruct = 15
+  equalto_covstruct = 15,
+  separable_covstruct = 16
+};
+
+enum separable_density_kind {
+  // These values must match `.sep_density_kind_code` in R/utils_covstruct.R.
+  // They are deliberately separate from valid_covStruct: many covariance
+  // structures can share the same separable density kind.  For example, homcs
+  // and us are both "dense correlation" margins in the current prototype.
+  dense_corr_sep = 1,
+  ar1_sep = 2
+};
+
+enum separable_dispatch {
+  // Order-insensitive evaluator codes for separable covariance structures.
+  // The coordinate order is still carried by sepDensityKinds/sepCodes; dispatch
+  // only says which likelihood evaluator is appropriate for the margin pair.
+  dense_ar1_dispatch = 1
+};
+
+enum separable_scale_mode {
+  // These values must match `.sep_scale_mode_code` in R/utils_covstruct.R.
+  //
+  // Current implementation:
+  //   margin: one separable margin carries absolute SD parameters and all other
+  //           margins are correlation-only.
+  //
+  // Future scale modes such as global/product/cell should get new enum values
+  // here and new scale builders.  The dense x AR(1) evaluator below only
+  // accepts margin scale for now.
+  margin_sep_scale = 1
 };
 
 // should probably be named just 'predictCode';
@@ -309,6 +339,42 @@ struct per_term_info {
   int fullCor;       // Compute/store full correlation matrix?
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
+  // Metadata for separable covariance structures.
+  //
+  // The random effects still arrive in the usual glmmTMB representation:
+  // one flat vector per grouping level.  For a two-dimensional separable term,
+  // the flat vector is conceptually an array with dimensions:
+  //
+  //   sepDims(0) = number of levels in the first sepgrid() coordinate
+  //   sepDims(1) = number of levels in the second sepgrid() coordinate
+  //
+  // The storage order follows sepgrid()/numFactor() convention:
+  //
+  //   flat index = coord1 + sepDims(0) * coord2
+  //
+  // `sepCodes` stores the covariance-structure code for each margin in this
+  // same order.  `sepDensityKinds` is a smaller C++ dispatch code:
+  //
+  //   1 = dense correlation margin (currently cs, homcs, or us)
+  //   2 = AR(1) correlation margin
+  //
+  // `sepDispatch` is order-insensitive and selects a C++ evaluator for the
+  // pair of margin density kinds.
+  //
+  // `sepScaleMode` and `sepScaleSpec` describe cell standard deviations.  The
+  // current evaluator supports only:
+  //
+  //   sepScaleMode = margin_sep_scale
+  //   sepScaleSpec = zero-based coordinate whose margin carries SD parameters
+  //
+  // Keeping mode and spec separate makes the R/C++ contract extensible without
+  // changing the likelihood code that only needs the selected margin today.
+  vector<int> sepDims;
+  vector<int> sepCodes;
+  vector<int> sepDensityKinds;
+  vector<int> sepDispatch;
+  vector<int> sepScaleMode;
+  vector<int> sepScaleSpec;
   // Report output
   matrix<Type> corr;
   vector<Type> sd;
@@ -345,9 +411,248 @@ struct terms_t : vector<per_term_info<Type> > {
 	RObjectTestExpectedType(d, &Rf_isMatrix, "dist");
 	(*this)(i).dist = asMatrix<Type>(d);
       }
+      // Optionally, pass separable margin metadata:
+      //
+      // These fields are absent for all existing covariance structures.  Keeping
+      // them optional means the rest of the template keeps using the same
+      // `per_term_info` object without special wrappers.
+      SEXP sdims = getListElement(y, "sepDims");
+      if(!Rf_isNull(sdims)){
+	RObjectTestExpectedType(sdims, &Rf_isNumeric, "sepDims");
+	(*this)(i).sepDims = asVector<int>(sdims);
+      }
+      SEXP scodes = getListElement(y, "sepCodes");
+      if(!Rf_isNull(scodes)){
+	RObjectTestExpectedType(scodes, &Rf_isNumeric, "sepCodes");
+	(*this)(i).sepCodes = asVector<int>(scodes);
+      }
+      SEXP skinds = getListElement(y, "sepDensityKinds");
+      if(!Rf_isNull(skinds)){
+	RObjectTestExpectedType(skinds, &Rf_isNumeric, "sepDensityKinds");
+	(*this)(i).sepDensityKinds = asVector<int>(skinds);
+      }
+      SEXP sdispatch = getListElement(y, "sepDispatch");
+      if(!Rf_isNull(sdispatch)){
+	RObjectTestExpectedType(sdispatch, &Rf_isNumeric, "sepDispatch");
+	(*this)(i).sepDispatch = asVector<int>(sdispatch);
+      }
+      SEXP sscalemode = getListElement(y, "sepScaleMode");
+      if(!Rf_isNull(sscalemode)){
+	RObjectTestExpectedType(sscalemode, &Rf_isNumeric, "sepScaleMode");
+	(*this)(i).sepScaleMode = asVector<int>(sscalemode);
+      }
+      SEXP sscalespec = getListElement(y, "sepScaleSpec");
+      if(!Rf_isNull(sscalespec)){
+	RObjectTestExpectedType(sscalespec, &Rf_isNumeric, "sepScaleSpec");
+	(*this)(i).sepScaleSpec = asVector<int>(sscalespec);
+      }
     }
   }
 };
+
+template <class Type, class DenseDensity>
+Type separable_dense_ar1_nll(array<Type> &U, vector<Type> sd, Type phi,
+				     DenseDensity dense_density,
+				     per_term_info<Type>& term,
+				     int dense_margin, int ar1_margin) {
+  // Evaluate one dense-correlation x AR(1) separable block without forming the
+  // full Kronecker covariance matrix. TMB's SEPARABLE arguments are supplied in
+  // reverse array-dimension order.
+  int n0 = term.sepDims(0);
+  int n1 = term.sepDims(1);
+  vector<int> dim(2);
+  dim << n0, n1;
+  Type ans = 0;
+  int scale_margin = term.sepScaleSpec(0);
+
+  for (int g = 0; g < term.blockReps; g++) {
+    array<Type> z(dim);
+    Type logscale = 0;
+    // Convert the flat block for group g into an array in sepgrid() order:
+    //   k = i0 + n0 * i1
+    // Manual scaling keeps the separable margin-scale convention explicit.
+    for (int i1 = 0; i1 < n1; i1++) {
+      for (int i0 = 0; i0 < n0; i0++) {
+        int k = i0 + n0 * i1;
+        int si = (scale_margin == 0 ? i0 : i1);
+        z(i0, i1) = U(k, g) / sd(si);
+        logscale += log(sd(si));
+      }
+    }
+    if (dense_margin == 0 && ar1_margin == 1) {
+      ans += density::SEPARABLE(density::AR1(phi), dense_density)(z) + logscale;
+    } else if (dense_margin == 1 && ar1_margin == 0) {
+      ans += density::SEPARABLE(dense_density, density::AR1(phi))(z) + logscale;
+    } else {
+      error("invalid separable dense/AR1 margin order");
+    }
+  }
+  return ans;
+}
+
+template <class Type>
+struct sep_dense_ar1_pars {
+  // Parsed parameters for one dense-correlation margin crossed with one AR(1)
+  // margin.
+  int dense_margin;
+  int ar1_margin;
+  int dense_code;
+  Type phi;
+  vector<Type> sd;
+  matrix<Type> dense_corr;
+  vector<Type> us_corr_params;
+};
+
+bool is_dense_corr_margin(int code) {
+  return code == cs_covstruct || code == homcs_covstruct || code == us_covstruct;
+}
+
+template <class Type>
+matrix<Type> compound_symmetry_corr(int n, Type corr_transf) {
+  Type a = Type(1) / (Type(n) - Type(1));
+  Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
+  matrix<Type> corr(n, n);
+  for (int i = 0; i < n; i++)
+    for (int j = 0; j < n; j++)
+      corr(i, j) = (i == j ? Type(1) : rho);
+  return corr;
+}
+
+template <class Type>
+void parse_separable_dense_margin(int code, int n, vector<Type> theta,
+				  int& theta_pos, bool scale_here,
+				  vector<Type>& sd, matrix<Type>& corr,
+				  vector<Type>& us_corr_params) {
+  if (!is_dense_corr_margin(code))
+    error("unsupported dense margin for separable covariance structure");
+
+  if (scale_here) {
+    if (code == homcs_covstruct) {
+      sd.resize(n);
+      sd.fill(exp(theta(theta_pos++)));
+    } else {
+      vector<Type> logsd = theta.segment(theta_pos, n);
+      theta_pos += n;
+      sd = exp(logsd);
+    }
+  }
+
+  if (code == cs_covstruct || code == homcs_covstruct) {
+    corr = compound_symmetry_corr(n, theta(theta_pos++));
+  } else {
+    int n_corr = n * (n - 1) / 2;
+    us_corr_params = theta.segment(theta_pos, n_corr);
+    theta_pos += n_corr;
+  }
+}
+
+template <class Type>
+void check_separable_metadata(per_term_info<Type>& term) {
+  if (term.sepDims.size() != 2 || term.sepCodes.size() != 2 ||
+      term.sepDensityKinds.size() != 2 || term.sepDispatch.size() != 1 ||
+      term.sepScaleMode.size() != 1 || term.sepScaleSpec.size() != 1)
+    error("separable covariance structure is missing margin metadata");
+  if (term.sepDims(0) * term.sepDims(1) != term.blockSize)
+    error("separable dimensions do not match block size");
+  if (term.sepScaleMode(0) != margin_sep_scale)
+    error("separable covariance currently supports only margin scale");
+  if (term.sepScaleSpec(0) < 0 || term.sepScaleSpec(0) > 1)
+    error("separable margin scale index is out of range");
+}
+
+template <class Type>
+sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
+						   per_term_info<Type>& term) {
+  // Theta is consumed in the same margin order used by the R-side parameter
+  // counter.
+  sep_dense_ar1_pars<Type> out;
+  out.dense_margin = -1;
+  out.ar1_margin = -1;
+
+  for (int m = 0; m < 2; m++) {
+    if (term.sepDensityKinds(m) == dense_corr_sep) out.dense_margin = m;
+    if (term.sepDensityKinds(m) == ar1_sep) out.ar1_margin = m;
+  }
+  if (out.dense_margin < 0 || out.ar1_margin < 0 ||
+      out.dense_margin == out.ar1_margin)
+    error("separable covariance currently requires one dense margin and one AR1 margin");
+  if (term.sepScaleSpec(0) != out.dense_margin)
+    error("separable covariance currently requires scale on the dense margin");
+
+  int n_dense = term.sepDims(out.dense_margin);
+  out.dense_code = term.sepCodes(out.dense_margin);
+  out.phi = Type(0);
+  out.sd.resize(n_dense);
+  out.us_corr_params.resize(0);
+
+  int theta_pos = 0;
+  for (int m = 0; m < 2; m++) {
+    int code = term.sepCodes(m);
+    int n = term.sepDims(m);
+    bool scale_here = (term.sepScaleSpec(0) == m);
+
+    if (term.sepDensityKinds(m) == ar1_sep) {
+      Type corr_transf = theta(theta_pos++);
+      // Same transform used by existing glmmTMB AR1.
+      out.phi = corr_transf / sqrt(Type(1) + pow(corr_transf, 2));
+    } else if (term.sepDensityKinds(m) == dense_corr_sep) {
+      parse_separable_dense_margin(code, n, theta, theta_pos, scale_here,
+				   out.sd, out.dense_corr, out.us_corr_params);
+    } else {
+      error("unsupported dense margin for separable covariance structure");
+    }
+  }
+  if (theta_pos != theta.size())
+    error("separable covariance theta parsing mismatch");
+
+  return out;
+}
+
+template <class Type>
+void report_separable_dense_ar1(vector<Type> sd, matrix<Type> dense_corr,
+				Type phi, per_term_info<Type>& term,
+				int dense_margin, int ar1_margin) {
+  // Build report objects for VarCorr().
+  int n0 = term.sepDims(0);
+  int n1 = term.sepDims(1);
+  int n = n0 * n1;
+  int scale_margin = term.sepScaleSpec(0);
+  term.sd.resize(n);
+  // Repeat each margin SD across the other coordinate.
+  for (int i1 = 0; i1 < n1; i1++) {
+    for (int i0 = 0; i0 < n0; i0++) {
+      int k = i0 + n0 * i1;
+      int si = (scale_margin == 0 ? i0 : i1);
+      term.sd(k) = sd(si);
+    }
+  }
+  if (term.fullCor == 1) {
+    // Construct the full correlation only for reporting/testing.
+    term.corr.resize(n, n);
+    for (int b1 = 0; b1 < n1; b1++) {
+      for (int a1 = 0; a1 < n0; a1++) {
+        int k1 = a1 + n0 * b1;
+        for (int b2 = 0; b2 < n1; b2++) {
+          for (int a2 = 0; a2 < n0; a2++) {
+            int k2 = a2 + n0 * b2;
+            Type c0 = (dense_margin == 0 ?
+                       dense_corr(a1, a2) :
+                       pow(phi, abs(a1 - a2)));
+            Type c1 = (dense_margin == 1 ?
+                       dense_corr(b1, b2) :
+                       pow(phi, abs(b1 - b2)));
+            term.corr(k1, k2) = c0 * c1;
+          }
+        }
+      }
+    }
+  } else {
+    // Follow the existing compact-report convention for structured covariance
+    // terms that do not store the whole correlation matrix.
+    term.corr.resize(1,1);
+    term.corr(0,0) = NAN;
+  }
+}
 
 
 // compute log-likelihood of b (conditional modes) conditional on theta (var/cov)
@@ -795,6 +1100,43 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
+  }
+  else if (term.blockCode == separable_covstruct) {
+    // R validates the separable margins and supplies an order-insensitive
+    // evaluator code (`sepDispatch`) plus coordinate-order metadata
+    // (`sepDensityKinds`, `sepScaleMode`, `sepScaleSpec`).  C++ only dispatches
+    // and evaluates.
+    if (do_simulate)
+      error("simulation is not yet implemented for separable covariance structures");
+
+    check_separable_metadata(term);
+    switch (term.sepDispatch(0)) {
+    case dense_ar1_dispatch: {
+      sep_dense_ar1_pars<Type> sep = parse_separable_dense_ar1(theta, term);
+      if (sep.dense_code == cs_covstruct || sep.dense_code == homcs_covstruct) {
+	density::MVNORM_t<Type> dense_density(sep.dense_corr);
+	ans += separable_dense_ar1_nll(U, sep.sd, sep.phi, dense_density, term,
+				       sep.dense_margin, sep.ar1_margin);
+	DISABLE_AD {
+	  report_separable_dense_ar1(sep.sd, sep.dense_corr, sep.phi, term,
+				     sep.dense_margin, sep.ar1_margin);
+	}
+      } else if (sep.dense_code == us_covstruct) {
+	density::UNSTRUCTURED_CORR_t<Type> dense_density(sep.us_corr_params);
+	ans += separable_dense_ar1_nll(U, sep.sd, sep.phi, dense_density, term,
+				       sep.dense_margin, sep.ar1_margin);
+	DISABLE_AD {
+	  report_separable_dense_ar1(sep.sd, dense_density.cov(), sep.phi, term,
+				     sep.dense_margin, sep.ar1_margin);
+	}
+      } else {
+	error("unsupported dense margin for separable covariance structure");
+      }
+      break;
+    }
+    default:
+      error("unsupported separable covariance dispatch");
+    }
   }
   else error("covStruct not implemented!");
   return ans;

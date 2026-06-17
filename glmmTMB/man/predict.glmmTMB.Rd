@@ -85,6 +85,9 @@ prediction
 \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
 However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels} is \code{NULL} (the default) and \code{re.form} is not NA, or if \code{allow.new.levels} is explicitly set to \code{TRUE}.
 \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
+\item Prediction with \code{newdata} is not yet implemented for models
+containing \code{separable()} covariance terms, because separable margin
+coordinates must be encoded against the fitted latent grid.
 \item Bias corrected predictions are based on the method described in Thorson J.T. & Kristensen (2016). These should be checked carefully by the user and are not extensively tested.
 }
 }

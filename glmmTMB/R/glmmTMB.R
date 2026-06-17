@@ -1024,8 +1024,15 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
     }
 
     blkrank <- mapply(getRank, ss, aa)
+    sepInfo <- vector("list", length(ss))
+    for (i in which(ss == "separable")) {
+        sepInfo[[i]] <- .sep_restruc_info(aa[[i]], reTrms$cnms[[i]], blksize[i])
+    }
     
-    parFun <- function(struc, blksize, blkrank) {
+    parFun <- function(struc, blksize, blkrank, sep_info) {
+        if (struc == "separable") {
+            return(sep_info$ntheta)
+        }
         switch(as.character(struc),
                "diag" = blksize, # (heterogenous) diag
                "us" = blksize * (blksize+1) / 2,
@@ -1046,7 +1053,8 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
-    blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+    blockNumTheta <- mapply(parFun, ss, blksize, blkrank, sepInfo,
+                            SIMPLIFY=FALSE)
 
     covCode <- .valid_covstruct[ss]
 
@@ -1079,6 +1087,15 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
         } else if(ss[i] %in% c("exp", "gau", "mat")){
             coords <- parseNumLevels(reTrms$cnms[[i]])
             tmp$dist <- as.matrix( dist(coords) )
+        } else if(ss[i] == "separable") {
+            ## Metadata needed to reshape flat random-effect blocks and dispatch
+            ## to the separable marginal densities in C++.
+            tmp$sepDims <- sepInfo[[i]]$dims
+            tmp$sepCodes <- sepInfo[[i]]$codes
+            tmp$sepDensityKinds <- sepInfo[[i]]$density_kinds
+            tmp$sepDispatch <- sepInfo[[i]]$dispatch
+            tmp$sepScaleMode <- sepInfo[[i]]$scale_mode
+            tmp$sepScaleSpec <- sepInfo[[i]]$scale_spec
         }
         ans[[i]] <- tmp
     }
@@ -1184,6 +1201,10 @@ binomialType <- function(x) {
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 ##' \item \code{equalto} (* equal to user-specified variance-covariance matrix)
+##' \item \code{separable} (* separable/direct-product covariance; currently
+##' supports \code{cs}, \code{homcs}, or \code{us} crossed with \code{ar1} via
+##' \code{separable(margin1(0 + x1) \%x\% margin2(0 + x2) | group,
+##' scale = margin1(0 + x1))})
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1327,7 +1348,9 @@ glmmTMB <- function(
     ## FIXME: denv leftover from lme4, not defined yet
 
     environment(formula) <- parent.frame()
-    call$formula <- mc$formula <- formula
+    user_formula <- formula
+    formula <- rewrite_separable_formula(formula)
+    call$formula <- mc$formula <- user_formula
     ## add offset-specified-as-argument to formula as + offset(...)
     ## need to evaluate offset within environment
     ## how do we figure out where offset exists/whether it has
@@ -1345,10 +1368,14 @@ glmmTMB <- function(
     }
 
     environment(ziformula) <- environment(formula)
-    call$ziformula <- ziformula
+    user_ziformula <- ziformula
+    ziformula <- rewrite_separable_formula(ziformula)
+    call$ziformula <- user_ziformula
 
     environment(dispformula) <- environment(formula)
-    call$dispformula <- dispformula
+    user_dispformula <- dispformula
+    dispformula <- rewrite_separable_formula(dispformula)
+    call$dispformula <- user_dispformula
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -1371,6 +1398,7 @@ glmmTMB <- function(
     ## used in any of the terms
     ## combine all formulas
     formList <- list(formula, ziformula, dispformula)
+    sepgrid_cols <- .sepgrid_colnames(formula, ziformula, dispformula)
     for (i in seq_along(formList)) {
         f <- formList[[i]] ## abbreviate
         ## substitute "|" by "+"; drop specials
@@ -1388,7 +1416,23 @@ glmmTMB <- function(
     }
 
     mf$formula <- combForm
+    ## `sepgrid()` factors encode the full latent separable grid.  If
+    ## model.frame() drops their unused levels, globally missing cells disappear
+    ## and AR(1) spacing is wrong (e.g. days 1 and 3 become adjacent when day 2
+    ## is unobserved).  Evaluate with unused levels preserved whenever a
+    ## sepgrid() expression is present, then restore the usual
+    ## drop_unused_levels behavior for every other factor column below.
+    if (length(sepgrid_cols) > 0L && control$drop_unused_levels) {
+        mf$drop.unused.levels <- FALSE
+    }
     fr <- eval(mf,envir=environment(formula),enclos=parent.frame())
+    if (length(sepgrid_cols) > 0L && control$drop_unused_levels) {
+        for (nm in names(fr)) {
+            if (is.factor(fr[[nm]]) && !(nm %in% sepgrid_cols)) {
+                fr[[nm]] <- droplevels(fr[[nm]])
+            }
+        }
+    }
 
     ## FIXME: throw an error *or* convert character to factor
     ## convert character vectors to factor (defensive)
