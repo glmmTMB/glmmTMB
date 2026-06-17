@@ -355,7 +355,7 @@ struct per_term_info {
   // `sepCodes` stores the covariance-structure code for each margin in this
   // same order.  `sepDensityKinds` is a smaller C++ dispatch code:
   //
-  //   1 = dense correlation margin (currently homcs or us)
+  //   1 = dense correlation margin (currently cs, homcs, or us)
   //   2 = AR(1) correlation margin
   //
   // `sepDispatch` is order-insensitive and selects a C++ evaluator for the
@@ -503,6 +503,49 @@ struct sep_dense_ar1_pars {
   vector<Type> us_corr_params;
 };
 
+bool is_dense_corr_margin(int code) {
+  return code == cs_covstruct || code == homcs_covstruct || code == us_covstruct;
+}
+
+template <class Type>
+matrix<Type> compound_symmetry_corr(int n, Type corr_transf) {
+  Type a = Type(1) / (Type(n) - Type(1));
+  Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
+  matrix<Type> corr(n, n);
+  for (int i = 0; i < n; i++)
+    for (int j = 0; j < n; j++)
+      corr(i, j) = (i == j ? Type(1) : rho);
+  return corr;
+}
+
+template <class Type>
+void parse_separable_dense_margin(int code, int n, vector<Type> theta,
+				  int& theta_pos, bool scale_here,
+				  vector<Type>& sd, matrix<Type>& corr,
+				  vector<Type>& us_corr_params) {
+  if (!is_dense_corr_margin(code))
+    error("unsupported dense margin for separable covariance structure");
+
+  if (scale_here) {
+    if (code == homcs_covstruct) {
+      sd.resize(n);
+      sd.fill(exp(theta(theta_pos++)));
+    } else {
+      vector<Type> logsd = theta.segment(theta_pos, n);
+      theta_pos += n;
+      sd = exp(logsd);
+    }
+  }
+
+  if (code == cs_covstruct || code == homcs_covstruct) {
+    corr = compound_symmetry_corr(n, theta(theta_pos++));
+  } else {
+    int n_corr = n * (n - 1) / 2;
+    us_corr_params = theta.segment(theta_pos, n_corr);
+    theta_pos += n_corr;
+  }
+}
+
 template <class Type>
 void check_separable_metadata(per_term_info<Type>& term) {
   if (term.sepDims.size() != 2 || term.sepCodes.size() != 2 ||
@@ -552,25 +595,9 @@ sep_dense_ar1_pars<Type> parse_separable_dense_ar1(vector<Type> theta,
       Type corr_transf = theta(theta_pos++);
       // Same transform used by existing glmmTMB AR1.
       out.phi = corr_transf / sqrt(Type(1) + pow(corr_transf, 2));
-    } else if (code == homcs_covstruct) {
-      if (scale_here) {
-	out.sd.fill(exp(theta(theta_pos++)));
-      }
-      out.dense_corr.resize(n, n);
-      Type a = Type(1) / (Type(n) - Type(1));
-      Type rho = invlogit(theta(theta_pos++)) * (Type(1) + a) - a;
-      for (int i = 0; i < n; i++)
-	for (int j = 0; j < n; j++)
-	  out.dense_corr(i, j) = (i == j ? Type(1) : rho);
-    } else if (code == us_covstruct) {
-      if (scale_here) {
-	vector<Type> logsd = theta.segment(theta_pos, n);
-	theta_pos += n;
-	out.sd = exp(logsd);
-      }
-      int n_corr = n * (n - 1) / 2;
-      out.us_corr_params = theta.segment(theta_pos, n_corr);
-      theta_pos += n_corr;
+    } else if (term.sepDensityKinds(m) == dense_corr_sep) {
+      parse_separable_dense_margin(code, n, theta, theta_pos, scale_here,
+				   out.sd, out.dense_corr, out.us_corr_params);
     } else {
       error("unsupported dense margin for separable covariance structure");
     }
@@ -1086,7 +1113,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     switch (term.sepDispatch(0)) {
     case dense_ar1_dispatch: {
       sep_dense_ar1_pars<Type> sep = parse_separable_dense_ar1(theta, term);
-      if (sep.dense_code == homcs_covstruct) {
+      if (sep.dense_code == cs_covstruct || sep.dense_code == homcs_covstruct) {
 	density::MVNORM_t<Type> dense_density(sep.dense_corr);
 	ans += separable_dense_ar1_nll(U, sep.sd, sep.phi, dense_density, term,
 				       sep.dense_margin, sep.ar1_margin);

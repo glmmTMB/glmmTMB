@@ -226,6 +226,13 @@ parseNumLevels <- function(levels) {
 }
 
 .sep_margin_registry <- list(
+    cs = list(
+        code = "cs",
+        density_kind = "dense_corr",
+        can_scale = TRUE,
+        n_scale = function(n) as.integer(n),
+        n_corr = function(n) 1L
+    ),
     homcs = list(
         code = "homcs",
         density_kind = "dense_corr",
@@ -262,7 +269,7 @@ parseNumLevels <- function(levels) {
     list(
         dispatch = "dense_ar1",
         density_kinds = c("dense_corr", "ar1"),
-        allowed_codes = list(dense_corr = c("homcs", "us"))
+        allowed_codes = list(dense_corr = c("cs", "homcs", "us"))
     )
 )
 
@@ -316,7 +323,7 @@ parseNumLevels <- function(levels) {
         if (!regs[[scale_margin]]$can_scale) {
             stop("separable() scale = ", scale_spec$struc, "(",
                  scale_spec$var, ") selects a correlation-only margin. ",
-                 "Use a scale-capable margin such as homcs() or us().")
+                 "Use a scale-capable margin such as cs(), homcs(), or us().")
         }
     }
 
@@ -357,7 +364,7 @@ parseNumLevels <- function(levels) {
              .sep_margin_label(margins), ". Please specify the scale margin ",
              "explicitly, for example scale = ", margins$struc[which(can_scale)[1]],
              "(", margins$var[which(can_scale)[1]], "). This covariance pair ",
-             "is also outside the current homcs/us x ar1 prototype.")
+             "is also outside the current dense x ar1 prototype.")
     }
 
     if (!is.null(scale)) {
@@ -367,7 +374,7 @@ parseNumLevels <- function(levels) {
         if (length(scale_match) == 1L && !regs[[scale_match]]$can_scale) {
             stop("separable() scale = ", scale$struc, "(",
                  scale$var, ") selects a correlation-only margin. ",
-                 "Use a scale-capable margin such as homcs() or us(), ",
+                 "Use a scale-capable margin such as cs(), homcs(), or us(), ",
                  "or wait for a future global scale mode.")
         }
         if (length(scale_match) == 1L) {
@@ -378,8 +385,8 @@ parseNumLevels <- function(levels) {
         }
     }
 
-    stop("separable() currently supports homcs(0 + member) %x% ar1(0 + time) ",
-         "and us(0 + member) %x% ar1(0 + time).")
+    stop("separable() currently supports cs(0 + member), homcs(0 + member), ",
+         "or us(0 + member) crossed with ar1(0 + time).")
 }
 
 .sep_restruc_info <- function(spec, cnms, blksize) {

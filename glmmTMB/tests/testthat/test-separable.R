@@ -37,14 +37,18 @@ fit_fixed_theta <- function(form, dd, theta) {
             map = list(theta = factor(rep(NA, length(theta)))))
 }
 
-make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
+make_sep_case <- function(struc = c("cs", "homcs", "us"), reversed = FALSE,
                           n_member = 2, n_time = 3) {
     struc <- match.arg(struc)
-    rho <- if (struc == "homcs") 0.3 else -0.25
-    phi <- if (struc == "homcs") 0.4 else 0.5
-    sd <- if (struc == "homcs") 2 else seq(0.8, 1.2, length.out = n_member)
+    rho <- switch(struc, cs = 0.2, homcs = 0.3, us = -0.25)
+    phi <- switch(struc, cs = 0.45, homcs = 0.4, us = 0.5)
+    sd <- switch(struc,
+        cs = seq(0.8, 1.2, length.out = n_member),
+        homcs = 2,
+        us = seq(0.8, 1.2, length.out = n_member)
+    )
 
-    R_member <- if (struc == "homcs") {
+    R_member <- if (struc %in% c("cs", "homcs")) {
         M <- matrix(rho, n_member, n_member)
         diag(M) <- 1
         M
@@ -55,12 +59,14 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
     R_time <- outer(seq_len(n_time), seq_len(n_time),
                     function(i, j) phi^abs(i - j))
     member_theta <- switch(struc,
+        cs = c(log(sd), homcs_to_theta(rho, n_member)),
         homcs = c(log(sd), homcs_to_theta(rho, n_member)),
         us = c(log(sd), put_cor(R_member))
     )
 
     if (reversed) {
         form <- switch(struc,
+            cs = y ~ 1 + separable(ar1(0 + time) %x% cs(0 + member) | group),
             homcs = y ~ 1 + separable(ar1(0 + time) %x% homcs(0 + member) | group),
             us = y ~ 1 + separable(ar1(0 + time) %x% us(0 + member) | group)
         )
@@ -73,6 +79,7 @@ make_sep_case <- function(struc = c("homcs", "us"), reversed = FALSE,
         scale_spec <- 1L
     } else {
         form <- switch(struc,
+            cs = y ~ 1 + separable(cs(0 + member) %x% ar1(0 + time) | group),
             homcs = y ~ 1 + separable(homcs(0 + member) %x% ar1(0 + time) | group),
             us = y ~ 1 + separable(us(0 + member) %x% ar1(0 + time) | group)
         )
@@ -316,6 +323,7 @@ test_that("separable rejects unsupported margins", {
 
 test_that("separable reports kronecker covariance for supported dense x ar1 pairs", {
     cases <- list(
+        make_sep_case("cs", n_member = 5, n_time = 4),
         make_sep_case("homcs", n_member = 5, n_time = 4),
         make_sep_case("us", n_member = 4, n_time = 4),
         make_sep_case("us", reversed = TRUE)
@@ -325,6 +333,8 @@ test_that("separable reports kronecker covariance for supported dense x ar1 pair
 
 test_that("separable likelihood matches dense MVN for supported dense x ar1 pairs", {
     cases <- list(
+        make_sep_case("cs"),
+        make_sep_case("cs", reversed = TRUE),
         make_sep_case("homcs"),
         make_sep_case("homcs", reversed = TRUE),
         make_sep_case("us", n_member = 3),

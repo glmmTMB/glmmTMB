@@ -100,7 +100,7 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 \item \code{equalto} (* equal to user-specified variance-covariance matrix)
 \item \code{separable} (* separable/direct-product covariance; currently
-supports \code{homcs} or \code{us} crossed with \code{ar1} via
+supports \code{cs}, \code{homcs}, or \code{us} crossed with \code{ar1} via
 \code{separable(margin1(0 + x1) \%x\% margin2(0 + x2) | group,
 scale = margin1(0 + x1))})
 }
