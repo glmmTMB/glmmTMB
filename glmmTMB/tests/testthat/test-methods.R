@@ -1114,7 +1114,7 @@ test_that("cl gets passed to confint/profile", {
 
 test_that("estfun doesn't change internal values inappropriately", {
     p1 <- head(predict(fm1))
-    e <- estfun(fm1)
-    v <- vcovHC(fm1)
+    expect_no_error(estfun(fm1))
+    expect_no_error(vcovHC(fm1))
     expect_identical(head(predict(fm1)), p1)
 })
