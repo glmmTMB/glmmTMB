@@ -1043,10 +1043,89 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "indisting" = {
+                 if (blksize %% 2 != 0)
+                   stop("indisting() requires an even number of random effect terms")
+                 blksize/2 + (blksize/2)^2
+               },
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
     blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+    # --- Validate indisting column ordering ---
+    check_indisting_order <- function(cnms, group = "group") {
+      is_bare   <- !grepl(":", cnms)
+      persons   <- cnms[is_bare]
+      n_persons <- length(persons)
+      if (n_persons < 2)
+        stop("indisting() requires at least 2 person indicator terms (e.g. P1 and P2)")
+      get_vartype <- function(nm) {
+        if (nm %in% persons) return("")
+        for (p in persons) {
+          nm <- gsub(paste0("^", p, ":"), "", nm)
+          nm <- gsub(paste0(":", p, "$"), "", nm)
+        }
+        nm
+      }
+      get_person <- function(nm) {
+        if (nm %in% persons) return(nm)
+        for (p in persons) {
+          if (grepl(paste0("^", p, ":"), nm) || grepl(paste0(":", p, "$"), nm))
+            return(p)
+        }
+        return(NA)
+      }
+      vartypes     <- sapply(cnms, get_vartype)
+      person_ids   <- sapply(cnms, get_person)
+      unique_types <- unique(vartypes)
+      for (vt in unique_types) {
+        idx <- which(vartypes == vt)
+        if (length(idx) != n_persons)
+          stop(sprintf(
+            "indisting(): variable type '%s' appears %d time(s) but should appear %d time(s) -- once for each person indicator (%s).",
+            vt, length(idx), n_persons, paste(persons, collapse = ", ")))
+        if (!all(diff(idx) == 1)) {
+          correct_terms <- c(persons)
+          for (other_vt in unique_types[unique_types != ""])
+            for (p in persons)
+              correct_terms <- c(correct_terms, paste(p, other_vt, sep = ":"))
+          correct_formula <- paste("indisting(0 +",
+                                   paste(correct_terms, collapse = " + "),
+                                   "|", group, ")")
+          stop(paste0(
+            "indisting() requires like-variable terms to be adjacent in the formula.\n",
+            "  Variable type '", vt, "' is not grouped consecutively.\n",
+            "  The correct ordering for your terms would be:\n",
+            "  ", correct_formula))
+        }
+        if (vt != "") {
+          person_order_in_group <- unname(person_ids[idx])
+          if (!identical(person_order_in_group, persons)) {
+            correct_terms <- c(persons)
+            for (other_vt in unique_types[unique_types != ""])
+              for (p in persons)
+                correct_terms <- c(correct_terms, paste(p, other_vt, sep = ":"))
+            correct_formula <- paste("indisting(0 +",
+                                     paste(correct_terms, collapse = " + "),
+                                     "|", group, ")")
+            stop(paste0(
+              "indisting() requires consistent person ordering across all variable types.\n",
+              "  For variable type '", vt, "', persons appear in order: ",
+              paste(person_order_in_group, collapse = ", "), "\n",
+              "  but the expected order is: ",
+              paste(persons, collapse = ", "), "\n",
+              "  The correct ordering for your terms would be:\n",
+              "  ", correct_formula))
+          }
+        }
+      }
+      invisible(TRUE)
+    }
+    for (i in seq_along(ss)) {
+      if (ss[[i]] == "indisting") {
+        check_indisting_order(reTrms$cnms[[i]], names(reTrms$cnms)[i])
+      }
+    }
 
     covCode <- .valid_covstruct[ss]
 
