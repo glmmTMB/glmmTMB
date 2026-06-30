@@ -1914,6 +1914,12 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     # and gradient.
     original_weights <- x$obj$env$data$weights
     original_neg_log_lik <- x$obj$fn(x$fit$par)
+    env_vars <- c("par", "last.par", "last.par.best", "last.par.ok",
+                  "parameters")
+    env_vars <- intersect(env_vars, ls(x$obj$env)) ## drop nonexistent values
+    orig_env_vars <- lapply(env_vars,
+                            function(n) x$obj$env[[n]])
+    names(orig_env_vars) <- env_vars
 
     # Prepare zero weights vector for below.
     zero_weights <- rep(0, stats::nobs(x))
@@ -1923,7 +1929,11 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     on.exit({
         # Reset the weights to the original values.
         x$obj$env$data$weights <- original_weights
-        # Retape the TMB object to apply the changes.
+        for (n in env_vars) {
+            assign(n, orig_env_vars[[n]],
+                   envir = x$obj$env)
+        }
+        ## Retape the TMB object to apply the changes.
         x$obj$retape(set.defaults = FALSE)
     })
 
