@@ -684,6 +684,12 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           ordinal = {
+               theta <- cumsum(c(tf[1], exp(tf[-1])))
+               lv <- object$modelInfo$ord_levels %||%
+                   as.character(seq_len(length(theta) + 1L))
+               setNames(theta, paste(lv[-length(lv)], lv[-1], sep = "|"))
+           },
            numeric(0)
            )
 }
@@ -800,11 +806,18 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         wts <- mr[,1]+mr[,2]
         mr <- mr[,1]/wts
     } else if (is.factor(mr)) {
-        ## ?binomial:
-        ## "‘success’ is interpreted as the factor not having the first level"
-        nn <- names(mr)
-        mr <- as.numeric(as.numeric(mr)>1)
-        names(mr) <- nn  ## restore stripped names
+        if (family(object)$family == "ordinal") {
+            ## ordinal: residuals are computed on the category-index scale
+            nn <- names(mr)
+            mr <- as.numeric(mr)
+            names(mr) <- nn
+        } else {
+            ## ?binomial:
+            ## "‘success’ is interpreted as the factor not having the first level"
+            nn <- names(mr)
+            mr <- as.numeric(as.numeric(mr)>1)
+            names(mr) <- nn  ## restore stripped names
+        }
     }
     r <- mr - mu
     fam <- family(object)
@@ -816,8 +829,29 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            "dunn-smyth" = {
-               phi <- predict(object, type = "disp")
-               dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
+               if (fam$family == "ordinal") {
+                   ## discrete PIT residuals from the cumulative-link CDF:
+                   ## P(Y <= j) = linkinv(theta_j - eta)
+                   eta <- predict(object, re.form = re.form,
+                                  fast = !pop_pred, type = "link")
+                   theta <- unname(family_params(object))
+                   K <- length(theta) + 1L
+                   cump <- function(j) {
+                       ifelse(j <= 0, 0,
+                       ifelse(j >= K, 1,
+                              fam$linkinv(theta[pmin(pmax(j, 1), K - 1L)] - eta)))
+                   }
+                   a <- cump(mr - 1)
+                   b <- cump(mr)
+                   resid <- rep(NA_real_, length(mr))
+                   ok <- !is.na(a) & !is.na(b)
+                   resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
+                   resid[is.infinite(resid) | is.nan(resid)] <- 0
+                   resid
+               } else {
+                   phi <- predict(object, type = "disp")
+                   dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
+               }
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -1438,6 +1472,11 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
         class(ret) <- "data.frame"
         rownames(ret) <- as.character(seq_len(nrow(ret[[1]])))
+    } else if (family == "ordinal" &&
+               !is.null(lv <- object$modelInfo$ord_levels)) {
+        ## map simulated category codes back to (ordered) factor levels
+        ret <- lapply(ret, function(x) ordered(lv[x], levels = lv))
+        ret <- as.data.frame(ret, col.names = paste0("sim_", seq_len(nsim)))
     } else {
         ret <- as.data.frame(ret)
     }

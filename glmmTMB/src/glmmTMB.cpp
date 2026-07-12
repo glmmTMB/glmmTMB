@@ -52,7 +52,8 @@ enum valid_family {
   tweedie_family = 700,
   lognormal_family = 800,
   skewnormal_family = 900,
-  bell_family = 1000
+  bell_family = 1000,
+  ordinal_family = 1100
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -948,6 +949,29 @@ Type objective_function<Type>::operator() ()
   }
 
 
+  // Ordinal (cumulative link) family: thresholds are stored in psi,
+  // parameterized for monotonicity as
+  //   theta(0) = psi(0), theta(j) = theta(j-1) + exp(psi(j));
+  // the number of response levels is psi.size() + 1.
+  // 'mu' is redefined as the expected category index,
+  //   E[Y] = K - sum_j P(Y <= j),
+  // so that mu_predict/fitted values are usable downstream.
+  int n_ord_levels = 0;
+  vector<Type> theta_ord;
+  if (family == ordinal_family) {
+    n_ord_levels = psi.size() + 1;
+    theta_ord.resize(psi.size());
+    theta_ord(0) = psi(0);
+    for (int j = 1; j < psi.size(); j++)
+      theta_ord(j) = theta_ord(j - 1) + exp(psi(j));
+    for (int i = 0; i < mu.size(); i++) {
+      Type m = Type(n_ord_levels);
+      for (int j = 0; j < theta_ord.size(); j++)
+	m -= inverse_linkfun(theta_ord(j) - eta(i), link);
+      mu(i) = m;
+    }
+  }
+
 // "zero-truncated" likelihood: ignore zeros in positive distributions
 // exact zero: use for positive distributions (Gamma, beta)
 #define zt_lik_zero(x,loglik_exp) (zi_flag && (x == Type(0)) ? -INFINITY : loglik_exp)
@@ -1173,6 +1197,28 @@ Type objective_function<Type>::operator() ()
 	  SIMULATE{yobs(i) = glmmtmb::rbell(btheta);}
 	  break;
 	}
+      case ordinal_family:
+	{
+	  // cumulative link model (proportional odds): yobs in 1..K;
+	  // theta_ord (monotone thresholds) computed above from psi
+	  int yi = CppAD::Integer(yobs(i));
+	  if (yi <= 1) {
+	    tmp_loglik = log_inverse_linkfun(theta_ord(0) - eta(i), link);
+	  } else if (yi >= n_ord_levels) {
+	    tmp_loglik = log1m_inverse_linkfun(theta_ord(n_ord_levels - 2) - eta(i), link);
+	  } else {
+	    tmp_loglik = logspace_sub(log_inverse_linkfun(theta_ord(yi - 1) - eta(i), link),
+				      log_inverse_linkfun(theta_ord(yi - 2) - eta(i), link));
+	  }
+	  SIMULATE{
+	    s1 = runif(Type(0), Type(1));
+	    yobs(i) = Type(1);
+	    for (int j = 0; j < theta_ord.size(); j++) {
+	      if (s1 > inverse_linkfun(theta_ord(j) - eta(i), link)) yobs(i) += Type(1);
+	    }
+	  }
+	  break;
+	}
       default:
         error("Family not implemented!");
       } // End switch
@@ -1352,6 +1398,22 @@ Type objective_function<Type>::operator() ()
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
+
+  // per-category probabilities for ordinal predictions
+  if (family == ordinal_family) {
+    matrix<Type> ordinal_probs(whichPredict.size(), n_ord_levels);
+    for (int i = 0; i < whichPredict.size(); i++) {
+      Type prev = Type(0);
+      for (int j = 0; j < n_ord_levels - 1; j++) {
+	Type cum = inverse_linkfun(theta_ord(j) - eta(whichPredict(i)), link);
+	ordinal_probs(i, j) = cum - prev;
+	prev = cum;
+      }
+      ordinal_probs(i, n_ord_levels - 1) = Type(1) - prev;
+    }
+    REPORT(ordinal_probs);
+    if (doPredict == 1) ADREPORT(ordinal_probs);
+  }
 
   DATA_FACTOR(aggregate);
   if (aggregate.size() > 0) {

@@ -82,6 +82,12 @@ assertIdenticalModels <- function(data.tmb1, data.tmb0, allow.new.levels=FALSE) 
 ##' the logit link function (returns \code{-Inf} for non-zero-inflated models)}
 ##' \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB}})}
 ##' \item{"latent"}{return latent variables}
+##' \item{"probs"}{(ordinal family only) matrix of per-category
+##' probabilities, with one column per response level; for this family
+##' \code{"response"} returns the expected category index
+##' \eqn{E[Y] = \sum_j j P(Y=j)}{E[Y] = sum_j j P(Y=j)} and
+##' \code{"link"} returns the latent-scale linear predictor \eqn{\eta}{eta}
+##' (thresholds not included)}
 ##' }
 ##' @param na.action how to handle missing values in \code{newdata} (see \code{\link{na.action}});
 ##' the default (\code{na.pass}) is to predict \code{NA}
@@ -133,7 +139,7 @@ predict.glmmTMB <- function(object,
                             allow.new.levels=NULL,
                             type = c("link", "response",
                                      "conditional", "zprob", "zlink",
-                                     "disp", "latent"),
+                                     "disp", "latent", "probs"),
                             zitype = NULL,
                             na.action = na.pass,
                             fast=NULL,
@@ -177,7 +183,19 @@ predict.glmmTMB <- function(object,
     type <- zitype
   }
   type <- match.arg(type)
-  
+
+  if (type == "probs") {
+      if (family(object)$family != "ordinal") {
+          stop('type="probs" is only available for the ordinal family')
+      }
+      if (length(aggregate) > 0) {
+          stop('type="probs" is not compatible with aggregate')
+      }
+      if (cov.fit || do.bias.correct) {
+          stop('type="probs" does not support cov.fit or bias correction')
+      }
+  }
+
   ## match type arg with internal name
   ## FIXME: warn if "link"
   ziPredNm <- switch(type,
@@ -187,7 +205,8 @@ predict.glmmTMB <- function(object,
                      zlink      = ,
                      zprob      = "prob",
                      disp       = "disp", #zi irrelevant; just reusing variable
-                     latent     = "uncorrected",  ## ignored, but needs to have a legal value
+                     latent     = ,       ## ignored, but needs to have a legal value
+                     probs      = "uncorrected",
                      stop("unknown type ",type))
   ziPredCode <- .valid_zipredictcode[ziPredNm]
 
@@ -508,7 +527,7 @@ predict.glmmTMB <- function(object,
   if (openmp_debug()) {
     cat("TMB threads currently set to ", openmp(NULL), "\n")
   }
-  return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else "mu_predict"
+  return_par <- if (type %in% c("zlink", "link")) "eta_predict" else if (type=="latent") "b" else if (type=="probs") "ordinal_probs" else "mu_predict"
 
   if (!se.fit) {
     rr <- newObj$report(lp)
@@ -534,6 +553,19 @@ predict.glmmTMB <- function(object,
     if (do.bias.correct) {
       return (sdrsum[w,])
     }
+  }
+  if (type == "probs") {
+      ## per-category probability matrix (n x K), possibly flattened
+      ## (column-major) when returned via sdreport
+      lv <- object$modelInfo$ord_levels
+      K <- if (!is.null(lv)) length(lv) else
+               sum(names(object$fit$parfull) == "psi") + 1L
+      if (!is.matrix(pred)) pred <- matrix(pred, ncol = K)
+      colnames(pred) <- lv
+      if (se.fit) {
+          se <- matrix(se, ncol = K)
+          colnames(se) <- lv
+      }
   }
   if (do.napred) {
     pred <- napredict(na.act,pred)

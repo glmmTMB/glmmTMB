@@ -359,6 +359,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
   }
 
+  ## ordinal family: response is an ordered factor (or 1-based integer
+  ## codes); convert to numeric category codes 1..K for the TMB side and
+  ## keep the level labels for prediction/simulation
+  ord_levels <- NULL
+  if (family$family == "ordinal") {
+    if (is.factor(yobs)) {
+      ord_levels <- levels(yobs)
+      yobs <- as.numeric(yobs)
+    } else {
+      ord_levels <- as.character(seq_len(max(yobs, na.rm = TRUE)))
+    }
+    if (length(ord_levels) < 2) {
+      stop("ordinal response must have at least two levels")
+    }
+  }
+
 
   denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
   ## need a 'dgTMatrix' (double, general, Triplet representation)
@@ -452,9 +468,18 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## Extra family specific parameters
 
-  psiLength <- find_psi(family$family)
-           
-  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
+  if (family$family == "ordinal") {
+      ## K-1 increasing thresholds, stored as
+      ## psi = c(theta[1], log(diff(theta))) to enforce monotonicity;
+      ## start from thresholds that make all categories equiprobable
+      ## (cf. ordinal::clm)
+      nthres <- length(ord_levels) - 1L
+      theta_start <- family$linkfun(seq_len(nthres)/(nthres + 1L))
+      psi_init <- c(theta_start[1], log(diff(theta_start)))
+  } else {
+      psiLength <- find_psi(family$family)
+      psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
+  }
 
   # theta is 0, 1 for rr_covstruct
   # theta is parameterised to corr matrix for propto
@@ -501,6 +526,19 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        psi  = psi_init
                      ))
 
+  ## ordinal family: a fixed-effect intercept is redundant with the
+  ## thresholds; fix it to zero (it is absorbed into the thresholds)
+  if (family$family == "ordinal") {
+      Xnames <- colnames(if (sparseX[["cond"]]) data.tmb$XS else data.tmb$X)
+      icpt <- which(Xnames == "(Intercept)")
+      if (length(icpt) == 1L && is.null(mapArg$beta)) {
+          betamap <- seq_along(parameters$beta)
+          betamap[icpt] <- NA
+          mapArg <- c(mapArg, list(beta = factor(betamap)))
+          parameters$beta[icpt] <- 0
+      }
+  }
+
   if(!is.null(start) || !is.null(control$start_method$method)){
     parameters <- startParams(parameters,
                               formula, ziformula, dispformula,
@@ -535,9 +573,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (REML) randomArg <- c(randomArg, "beta")
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
-            condList, ziList, dispList, 
+            condList, ziList, dispList,
   					condReStruc, ziReStruc, dispReStruc,
-            family, contrasts, respCol,
+            family, contrasts, respCol, ord_levels,
             allForm=namedList(combForm,formula,ziformula,dispformula),
             fr, se, call, verbose, REML, map, sparseX, priors))
 }
@@ -1087,7 +1125,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
     return(ans)
 }
 
-.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell")
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell", "ordinal")
 
 ## number of additional/shape parameters (default = 0)
 .extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
@@ -1304,6 +1342,10 @@ glmmTMB <- function(
     }
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmTMB')
+
+    if (family$family == "ordinal" && ziformula != ~0) {
+        stop("zero-inflation is not implemented for the ordinal family")
+    }
 
     if (inForm(formula, quote(`$`))) {
         warning("use of the ", sQuote("$"), " operator in formulas is not recommended")
@@ -2103,6 +2145,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                                     disp=dispList),
                                                "[[", "terms"),
                                 reStruc = namedList(condReStruc, ziReStruc, dispReStruc),
+                                ord_levels,
                                 allForm,
                                 REML,
                                 map,
