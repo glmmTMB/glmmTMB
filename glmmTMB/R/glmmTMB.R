@@ -367,8 +367,17 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     if (is.factor(yobs)) {
       ord_levels <- levels(yobs)
       yobs <- as.numeric(yobs)
+      attr(ord_levels, "factor_response") <- TRUE
     } else {
       ord_levels <- as.character(seq_len(max(yobs, na.rm = TRUE)))
+      attr(ord_levels, "factor_response") <- FALSE
+      if (length(whichPredict) == 0) {
+        warning("ordinal response given as integer codes: the number of ",
+                "categories is inferred as max(response) = ",
+                length(ord_levels), "; use an ordered factor to declare ",
+                "the levels explicitly (e.g. if the top category is ",
+                "unobserved in these data)")
+      }
     }
     if (length(ord_levels) < 2) {
       stop("ordinal response must have at least two levels")
@@ -1126,6 +1135,9 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
 .noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell", "ordinal")
 
 ## number of additional/shape parameters (default = 0)
+## NOTE: the ordinal family is not registered here because its psi length
+## is data-dependent (n. of response levels - 1); it is handled separately
+## in mkTMBStruc()
 .extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
                             '2' = 'ordbeta')
 find_psi <- function(f) {

@@ -132,6 +132,55 @@ test_that("ordinal downstream: emmeans and car::Anova handle mapped intercept", 
     expect_equal(aa["Cont", "Chisq"], z_cont^2, tolerance = 1e-6)
 })
 
+test_that("ordinal numerical robustness at extreme parameters", {
+    ## probit/cloglog cumulative log-probs must stay finite at extreme
+    ## eta (logspace_sub(-Inf, -Inf) = NaN would poison the gradient)
+    set.seed(1)
+    dd <- data.frame(x = c(rnorm(299), 12))
+    u <- runif(300)
+    cum <- plogis(outer(qlogis(c(.25, .5, .75)), 1.5 * dd$x, "-"))
+    dd$y <- ordered(1 + colSums(sweep(cum, 2, u, "<")), levels = 1:4)
+    for (lnk in c("probit", "cloglog")) {
+        obj <- glmmTMB(y ~ x, data = dd, family = ordinal(link = lnk),
+                       doFit = FALSE)
+        ff <- fitTMB(obj, doOptim = FALSE)
+        p0 <- ff$par
+        p0[names(p0) == "beta"] <- 8
+        expect_true(is.finite(ff$fn(p0)))
+        expect_false(anyNA(ff$gr(p0)))
+    }
+    ## threshold transform exact under dominating category weights
+    f4 <- glmmTMB(y ~ x, data = dd, family = ordinal(),
+                  start = list(psi = c(45, 0, 0)), doFit = FALSE)
+    ff4 <- fitTMB(f4, doOptim = FALSE)
+    expect_true(is.finite(ff4$fn(ff4$par)))
+})
+
+test_that("ordinal Anova type III and confint thresholds", {
+    skip_if_not_installed("car")
+    a3 <- car::Anova(fit_ord, type = 3)
+    ## fixed-to-zero intercept is untestable -> NA row, others finite
+    expect_true(is.na(a3["(Intercept)", "Chisq"]))
+    expect_false(anyNA(a3[c("Infl", "Type", "Cont"), "Chisq"]))
+    ## confint includes delta-method threshold CIs
+    ci <- confint(fit_ord, component = "all")
+    expect_true(all(c("Low|Medium", "Medium|High") %in% rownames(ci)))
+    thr <- family_params(fit_ord)
+    expect_true(all(ci[names(thr), 1] < thr & thr < ci[names(thr), 2]))
+})
+
+test_that("ordinal integer-coded responses: warning and numeric simulate", {
+    dd <- data.frame(x = rnorm(300))
+    set.seed(3)
+    dd$y <- 1 + rbinom(300, 3, plogis(dd$x))
+    expect_warning(fit_i <- glmmTMB(y ~ x, data = dd, family = ordinal()),
+                   "integer codes")
+    ## simulate preserves the numeric response type
+    si <- simulate(fit_i, nsim = 1, seed = 1)[[1]]
+    expect_true(is.numeric(si))
+    expect_true(all(si %in% 1:4))
+})
+
 test_that("ordinal error handling", {
     expect_error(glmmTMB(Sat ~ Infl, weights = Freq, data = housing,
                          ziformula = ~1, family = ordinal()),

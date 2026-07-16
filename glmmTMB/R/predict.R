@@ -226,6 +226,8 @@ predict.glmmTMB <- function(object,
   do_pred_val <- if (!se.fit) {  0
   } else if (type == "latent") {
     3
+  } else if (type == "probs") {
+    4  ## ADREPORT the ordinal probability matrix only
   } else if (!grepl("link",type)) {
     1
   } else 2
@@ -557,9 +559,8 @@ predict.glmmTMB <- function(object,
   if (type == "probs") {
       ## per-category probability matrix (n x K), possibly flattened
       ## (column-major) when returned via sdreport
-      lv <- object$modelInfo$ord_levels
-      K <- if (!is.null(lv)) length(lv) else
-               sum(names(object$fit$parfull) == "psi") + 1L
+      lv <- as.character(object$modelInfo$ord_levels)
+      K <- length(lv)
       if (!is.matrix(pred)) pred <- matrix(pred, ncol = K)
       colnames(pred) <- lv
       if (se.fit) {
