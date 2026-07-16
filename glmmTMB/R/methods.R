@@ -738,7 +738,7 @@ family_params <- function(object) {
 
 ## Print family specific parameters
 ## @param object glmmTMB output
-#' @importFrom stats plogis
+#' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
     if (length(val) > 0) {
