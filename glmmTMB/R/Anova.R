@@ -71,8 +71,9 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
     if (test.statistic=="F") {
         stop("F tests currently unavailable")
     }
-    if (is.function(vcov.)) 
+    if (is.function(vcov.))
         vcov. <- vcov.(mod)
+    vcov. <- pad_mapped_vcov(mod, vcov., component)
     type <- as.character(type)
     type <- match.arg(type)
     if (missing(singular.ok)) 

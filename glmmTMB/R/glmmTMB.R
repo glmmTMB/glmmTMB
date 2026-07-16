@@ -469,13 +469,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## Extra family specific parameters
 
   if (family$family == "ordinal") {
-      ## K-1 increasing thresholds, stored as
-      ## psi = c(theta[1], log(diff(theta))) to enforce monotonicity;
-      ## start from thresholds that make all categories equiprobable
-      ## (cf. ordinal::clm)
-      nthres <- length(ord_levels) - 1L
-      theta_start <- family$linkfun(seq_len(nthres)/(nthres + 1L))
-      psi_init <- c(theta_start[1], log(diff(theta_start)))
+      ## K-1 increasing thresholds via a softmax parameterization:
+      ## psi are log-weights of the K baseline category probabilities
+      ## (last fixed to 0) and theta = qlogis(cumsum(softmax(c(psi, 0)))).
+      ## psi = 0 starts from equiprobable categories (cf. ordinal::clm)
+      psi_init <- rr0(length(ord_levels) - 1L)
   } else {
       psiLength <- find_psi(family$family)
       psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
@@ -2293,6 +2291,18 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
     for (nm in names(ff)) {
         if (!trivialFixef(names(ff[[nm]]),nm)) {
             coefs[[nm]] <- mkCoeftab(ff[[nm]], vv[[nm]], nm)
+        }
+    }
+
+    ## ordinal family: drop the internally-mapped intercept (fixed to 0,
+    ## absorbed into the thresholds) from the coefficient table; keep it
+    ## if the user supplied their own beta map
+    if (famL$family == "ordinal" && is.null(object$modelInfo$map$beta) &&
+        !is.null(coefs$cond)) {
+        bmap <- object$obj$env$map$beta
+        icpt <- which(rownames(coefs$cond) == "(Intercept)")
+        if (length(icpt) == 1 && !is.null(bmap) && is.na(bmap[icpt])) {
+            coefs$cond <- coefs$cond[-icpt, , drop = FALSE]
         }
     }
 

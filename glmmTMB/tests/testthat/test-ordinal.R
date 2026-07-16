@@ -24,6 +24,11 @@ test_that("ordinal fixed effects match MASS::polr", {
                      c("Low|Medium", "Medium|High"))
     ## intercept fixed to zero (absorbed into thresholds)
     expect_equal(unname(fixef(fit_ord)$cond["(Intercept)"]), 0)
+    ## ... and suppressed from the summary coefficient table
+    expect_false("(Intercept)" %in%
+                 rownames(summary(fit_ord)$coefficients$cond))
+    ## internal map does not leak into user-facing modelInfo$map
+    expect_null(fit_ord$modelInfo$map)
 })
 
 test_that("ordinal probit link matches MASS::polr", {
@@ -106,6 +111,25 @@ test_that("ordinal simulate/residuals/refit", {
     rr <- residuals(fit, type = "response")
     expect_equal(unname(rr),
                  as.numeric(dd$y) - predict(fit, type = "response"))
+})
+
+test_that("ordinal downstream: emmeans and car::Anova handle mapped intercept", {
+    skip_if_not_installed("emmeans")
+    em <- emmeans::emmeans(fit_ord, ~ Infl)
+    es <- summary(em)
+    expect_false(anyNA(es$SE))
+    ## contrasts reproduce the fixed-effect coefficients
+    ec <- summary(emmeans::contrast(em, "trt.vs.ctrl"))
+    expect_equal(ec$estimate,
+                 unname(fixef(fit_ord)$cond[c("InflMedium", "InflHigh")]),
+                 tolerance = 1e-6)
+
+    skip_if_not_installed("car")
+    aa <- car::Anova(fit_ord)
+    expect_false(anyNA(aa[["Chisq"]]))
+    ## Wald chisq consistent with squared z for the 1-df term
+    z_cont <- summary(fit_ord)$coefficients$cond["ContHigh", "z value"]
+    expect_equal(aa["Cont", "Chisq"], z_cont^2, tolerance = 1e-6)
 })
 
 test_that("ordinal error handling", {

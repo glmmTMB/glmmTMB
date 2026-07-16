@@ -667,6 +667,39 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+## Pad a fixed-effect covariance matrix with zero rows/columns for
+## coefficients that were fixed via 'map' (internally, e.g. the ordinal
+## family intercept, or by the user): these are known constants, so their
+## sampling variance is exactly zero. Restores the convention that
+## dim(vcov) matches length(fixef) for downstream consumers
+## (emmeans, car::Anova, ...). No-op when dimensions already match.
+pad_mapped_vcov <- function(object, V, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi",
+                     disp = "betadisp")
+    bmap <- object$obj$env$map[[map_nm]]
+    if (is.null(bmap) || !any(is.na(bmap)) || is.null(dim(V))) return(V)
+    bhat <- fixef(object)[[component]]
+    nb <- length(bhat)
+    fixed <- which(is.na(bmap))
+    if (nrow(V) == nb - length(fixed)) {
+        ## reduced vcov (include_nonest = FALSE): pad to full size
+        est <- which(!is.na(bmap))
+        Vfull <- matrix(0, nb, nb,
+                        dimnames = list(names(bhat), names(bhat)))
+        Vfull[est, est] <- as.matrix(V)
+        return(Vfull)
+    }
+    if (nrow(V) == nb) {
+        ## full-size vcov stores NA rows/columns for mapped coefficients;
+        ## replace with zeros so they do not propagate through
+        ## linear-hypothesis algebra
+        V[fixed, ] <- 0
+        V[, fixed] <- 0
+        return(V)
+    }
+    V
+}
+
 #' Retrieve family-specific parameters
 #'
 #' Most conditional distributions have only parameters governing their location
@@ -685,7 +718,10 @@ family_params <- function(object) {
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
            ordinal = {
-               theta <- cumsum(c(tf[1], exp(tf[-1])))
+               ## thresholds from softmax-parameterized psi:
+               ## theta = qlogis(cumsum(softmax(c(psi, 0))))
+               p <- exp(c(tf, 0) - max(tf, 0))
+               theta <- qlogis(cumsum(p / sum(p))[seq_along(tf)])
                lv <- object$modelInfo$ord_levels %||%
                    as.character(seq_len(length(theta) + 1L))
                setNames(theta, paste(lv[-length(lv)], lv[-1], sep = "|"))

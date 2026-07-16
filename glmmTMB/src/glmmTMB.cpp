@@ -949,10 +949,13 @@ Type objective_function<Type>::operator() ()
   }
 
 
-  // Ordinal (cumulative link) family: thresholds are stored in psi,
-  // parameterized for monotonicity as
-  //   theta(0) = psi(0), theta(j) = theta(j-1) + exp(psi(j));
-  // the number of response levels is psi.size() + 1.
+  // Ordinal (cumulative link) family: thresholds are stored in psi via a
+  // softmax parameterization (cf. Koslik et al 2025, arXiv:2511.17071, and
+  // GH #514): psi are log-weights of K baseline category probabilities
+  // (last weight fixed to 0 for identifiability) and
+  //   theta(j) = logit(cumsum(softmax(c(psi, 0)))(j)),
+  // which is automatically increasing. The number of response levels is
+  // psi.size() + 1.
   // 'mu' is redefined as the expected category index,
   //   E[Y] = K - sum_j P(Y <= j),
   // so that mu_predict/fitted values are usable downstream.
@@ -961,9 +964,13 @@ Type objective_function<Type>::operator() ()
   if (family == ordinal_family) {
     n_ord_levels = psi.size() + 1;
     theta_ord.resize(psi.size());
-    theta_ord(0) = psi(0);
-    for (int j = 1; j < psi.size(); j++)
-      theta_ord(j) = theta_ord(j - 1) + exp(psi(j));
+    Type lse = Type(0);  // logsumexp of c(psi, 0)
+    for (int j = 0; j < psi.size(); j++) lse = logspace_add(lse, psi(j));
+    Type cum = Type(0);
+    for (int j = 0; j < psi.size(); j++) {
+      cum += exp(psi(j) - lse);
+      theta_ord(j) = logit(cum);
+    }
     for (int i = 0; i < mu.size(); i++) {
       Type m = Type(n_ord_levels);
       for (int j = 0; j < theta_ord.size(); j++)
