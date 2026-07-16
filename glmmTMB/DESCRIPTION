@@ -70,6 +70,7 @@ Suggests:
     rmarkdown,
     testthat,
     MASS,
+    ordinal,
     lattice,
     ggplot2 (>= 2.2.1),
     mlmRev,
