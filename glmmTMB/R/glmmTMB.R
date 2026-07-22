@@ -2197,19 +2197,8 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
 
     famL <- family(object)
 
-    if (ddf == "KR") {
-        if (!isREML(object)) {
-            warning("ddf='KR' ignored for non-REML fits")
-        } else {
-            if (family(object)$family != "gaussian") {
-                warning("ddf='KR' is untested for GLMMs. Use at your own risk!")
-            }
-            if (!trivialDisp(object) || !noZI(object)) {
-                message("ddf='KR' ignored except for conditional-distribution parameters")
-            }
-        }
-    }
-    
+    check_ddf(object, ddf)
+
     mkCoeftab <- function(coefs, vcovs, type) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
@@ -2225,7 +2214,9 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
                 labs <- c(stat_lab, pval_lab)
                 cc <- cbind(stat, pvals)
             } else {
-                if (ddf == "kenward-roger") {
+                if (!hasRandom(object)) {
+                    df_val <- rep(stats::df.residual(object), p)
+                } else if (ddf == "kenward-roger") {
                     df_val <- c(dof_KR(object))
                 } else if (ddf == "satterthwaite") {
                     df_val <- c(dof_satt(object))

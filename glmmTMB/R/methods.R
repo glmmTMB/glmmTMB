@@ -1298,13 +1298,16 @@ sort_termlabs <- function(labs) {
 }
 
 ## see whether mod1, mod2 are appropriate for Likelihood ratio testing
-CompareFixef <- function (mod1, mod2, component="cond") {
+## (for F-ratio tests, i.e. ddf != "asymptotic", REML fits with different
+## fixed-effect components are fine -- that's the standard use case for
+## Kenward-Roger/Satterthwaite F-tests)
+CompareFixef <- function (mod1, mod2, component="cond", ddf = "asymptotic") {
      mr1 <- isREML(mod1)
      mr2 <- isREML(mod2)
      if (mr1 != mr2) {
         stop("Can't compare REML and ML fits", call.=FALSE)
      }
-     if (mr1 && mr2) {
+     if (mr1 && mr2 && ddf == "asymptotic") {
            tmpf <- function(obj) {   sort_termlabs(attr(terms(obj, component=component),"term.labels")) }
            if (!identical(tmpf(mod1), tmpf(mod2))) {
                 stop("Can't compare REML fits with different fixed-effect components", call.=FALSE)
@@ -1313,23 +1316,37 @@ CompareFixef <- function (mod1, mod2, component="cond") {
      return(TRUE) ## OK
 }
 
+##' anova method for glmmTMB fits, comparing two or more nested models
+##' @param object a fitted \code{glmmTMB} model
+##' @param ... additional \code{glmmTMB} model(s) to compare against \code{object}
+##' @param model.names optional vector of names for the models being compared
+##' @param ddf denominator degrees-of-freedom calculation, as in \code{\link{summary.glmmTMB}}.
+##' The default \code{"asymptotic"} gives a likelihood ratio test; any other value
+##' gives an F-ratio test, with the numerator df equal to the difference in the
+##' number of fixed-effect parameters between each pair of nested models and the
+##' denominator df computed via the Kenward-Roger or Satterthwaite approximation
+##' (see \code{\link{dof_KR}}, \code{\link{dof_satt}})
 ##' @importFrom methods is
 ##' @importFrom stats var getCall pchisq anova
+##' @method anova glmmTMB
 ##' @export
-anova.glmmTMB <- function (object, ..., model.names = NULL)
+anova.glmmTMB <- function (object, ..., model.names = NULL,
+                            ddf = c("asymptotic", "kenward-roger", "satterthwaite"))
 {
     mCall <- match.call(expand.dots = TRUE)
     dots <- list(...)
+    ddf <- match.arg(ddf)
     ## 'consistent' sapply, i.e. always unlist
     .sapply <- function(L, FUN, ...) unlist(lapply(L, FUN, ...))
     ## detect multiple models, i.e. models in ...
     modp <- as.logical(vapply(dots, FUN=is, "glmmTMB", FUN.VALUE=NA))
     if (any(modp)) {
         mods <- c(list(object), dots[modp])
+        lapply(mods, check_ddf, ddf = ddf)
         nobs.vec <- vapply(mods, nobs, 1L)
         ## compare all models against first for being fitted consistently;
         ## if all REML, fixed effects must be identical
-        vapply(mods[-1], CompareFixef, mod1=mods[[1]], FUN.VALUE=TRUE)
+        vapply(mods[-1], CompareFixef, mod1=mods[[1]], ddf=ddf, FUN.VALUE=TRUE)
         if (var(nobs.vec) > 0)
             stop("models were not all fitted to the same size of dataset")
         if (is.null(mNms <- model.names))
@@ -1359,13 +1376,38 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
         if (!is.null(subset[[1]]))
             header <- c(header, paste("Subset:", abbrDeparse(subset[[1]])))
         llk <- unlist(llks)
-        chisq <- 2 * pmax(0, c(NA, diff(llk)))
-        dfChisq <- c(NA, diff(Df))
-        val <- data.frame(Df = Df, AIC = .sapply(llks, AIC),
-            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 *
-                llk, Chisq = chisq, `Chi Df` = dfChisq, `Pr(>Chisq)` = pchisq(chisq,
-                dfChisq, lower.tail = FALSE), row.names = names(mods),
-            check.names = FALSE)
+        commonCols <- data.frame(Df = Df, AIC = .sapply(llks, AIC),
+            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 * llk,
+            row.names = names(mods), check.names = FALSE)
+        if (ddf == "asymptotic") {
+            chisq <- 2 * pmax(0, c(NA, diff(llk)))
+            dfChisq <- c(NA, diff(Df))
+            val <- cbind(commonCols,
+                         data.frame(Chisq = chisq, `Chi Df` = dfChisq,
+                                    `Pr(>Chisq)` = pchisq(chisq, dfChisq, lower.tail = FALSE),
+                                    check.names = FALSE))
+        } else {
+            ddfFun <- switch(ddf, "kenward-roger" = .joint_ddf_KR, "satterthwaite" = .joint_ddf_satt)
+            n <- length(mods)
+            Fstat <- numDf <- denDf <- pval <- rep(NA_real_, n)
+            for (i in seq_len(n)[-1]) {
+                ## with no random effects there is no variance-component
+                ## uncertainty for KR/Satterthwaite to correct for; fall back
+                ## to a classical Wald F-test with residual df
+                res <- if (hasRandom(mods[[i]])) {
+                    ddfFun(mods[[i]], mods[[i - 1]])
+                } else {
+                    .joint_ddf_none(mods[[i]], mods[[i - 1]])
+                }
+                Fstat[i] <- res$Fstat
+                numDf[i] <- res$ndf
+                denDf[i] <- res$ddf
+                pval[i] <- res$p.value
+            }
+            val <- cbind(commonCols,
+                         data.frame(F = Fstat, `Num Df` = numDf, `Den Df` = denDf,
+                                    `Pr(>F)` = pval, check.names = FALSE))
+        }
         class(val) <- c("anova", class(val))
         forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
         ziforms <- lapply(lapply(calls, `[[`, "ziformula"), deparse)
