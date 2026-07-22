@@ -1379,6 +1379,13 @@ anova.glmmTMB <- function (object, ..., model.names = NULL,
         commonCols <- data.frame(Df = Df, AIC = .sapply(llks, AIC),
             BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 * llk,
             row.names = names(mods), check.names = FALSE)
+        if (ddf != "asymptotic" && isREML(mods[[1]])) {
+            ## F-ratio-test mode allows comparing REML fits with *different*
+            ## fixed-effect components (see CompareFixef); REML (log-)likelihoods
+            ## are not comparable across such models, so AIC/BIC/logLik/deviance
+            ## are not meaningful here and would be misleading if shown
+            commonCols[c("AIC", "BIC", "logLik", "deviance")] <- NA_real_
+        }
         if (ddf == "asymptotic") {
             chisq <- 2 * pmax(0, c(NA, diff(llk)))
             dfChisq <- c(NA, diff(Df))

@@ -552,7 +552,11 @@ check_ddf <- function(object, ddf) {
     }
     if (ddf != "kenward-roger") return(invisible(NULL))
     if (!isREML(object)) {
-        warning("ddf='kenward-roger' ignored for non-REML fits")
+        ## the Kenward-Roger correction is derived from REML variance-component
+        ## estimates; there is no valid correction to compute for an ML fit, so
+        ## (unlike the softer warnings below) this is a hard error rather than
+        ## a warning that leaves downstream code to silently proceed anyway
+        stop("ddf='kenward-roger' requires a REML fit (fit with REML=TRUE)", call. = FALSE)
     } else {
         if (family(object)$family != "gaussian") {
             warning("ddf='kenward-roger' is untested for GLMMs. Use at your own risk!")

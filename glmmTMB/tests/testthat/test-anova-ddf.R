@@ -6,10 +6,12 @@ library(glmmTMB)
 ##
 ## NB: pbkrtest::SATmodcomp/KRmodcomp re-evaluate the lmer call internally
 ## (e.g. via get_devfun()/update()), so all such calls are made here at
-## top level (where `dd` is visible for that re-evaluation) rather than
-## inside test_that() blocks
-if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
-
+## top level of `run_anova_ddf_tests()` (where `dd` is visible for that
+## re-evaluation) rather than inside test_that() blocks. The whole thing is
+## wrapped in a function (rather than left at file scope) so that on.exit()
+## reliably restores the global environment even if an expectation below
+## fails partway through -- on.exit() is a no-op at top level.
+run_anova_ddf_tests <- function() {
     set.seed(101)
     dd <- data.frame(x = rnorm(100), y = rnorm(100), f = factor(rep(1:10, each = 10)))
     dd$z <- simulate_new(~ x + y + (1|f), newdata = dd,
@@ -17,7 +19,18 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
                           family = gaussian)[[1]]
     ## pbkrtest::SATmodcomp/KRmodcomp re-fit internally via calls that get
     ## eval'd several frames up the call stack; putting `dd` in the global
-    ## environment ensures it's found regardless of how this file is sourced
+    ## environment ensures it's found regardless of how this file is sourced.
+    ## Save/restore any pre-existing global `dd` so this is undone even if an
+    ## expectation below fails partway through.
+    had_dd <- exists("dd", envir = globalenv(), inherits = FALSE)
+    if (had_dd) old_dd <- get("dd", envir = globalenv())
+    on.exit({
+        if (had_dd) {
+            assign("dd", old_dd, envir = globalenv())
+        } else if (exists("dd", envir = globalenv(), inherits = FALSE)) {
+            rm("dd", envir = globalenv())
+        }
+    })
     assign("dd", dd, envir = globalenv())
 
     mnull <- glmmTMB(z ~ 1 + (1|f), data = dd, REML = TRUE)
@@ -79,6 +92,8 @@ if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
         expect_equal(a_sat_chain$`Den Df`[3], sat_chain_2$ddf, tolerance = ftol)
         expect_equal(a_sat_chain$`Pr(>F)`[3], sat_chain_2$p.value, tolerance = ftol)
     })
+}
 
-    rm(dd, envir = globalenv())
+if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
+    run_anova_ddf_tests()
 }
