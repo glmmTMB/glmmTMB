@@ -45,3 +45,34 @@ test_that("Satt in summary", {
 
 ## add lmerTest comparisons?
 ## emmeans
+
+if (requireNamespace("emmeans")) {
+    salamander1 <- up2date(readRDS(system.file("example_files", "salamander1.rds",
+                                                package = "glmmTMB")))
+
+    test_that("emmeans works with ddf='satterthwaite' (GH #1304)", {
+        emm <- expect_no_error(
+            suppressMessages(emmeans::emmeans(salamander1, ~ mined, ddf = "satterthwaite"))
+        )
+        expect_true(all(is.finite(summary(emm)$df)))
+    })
+
+    test_that("satterthwaite dffun survives environment-stripping and per-contrast vector calls (GH #1304)", {
+        rg <- suppressMessages(emmeans::ref_grid(salamander1, ddf = "satterthwaite"))
+
+        ## emmeans::ref_grid() replaces dffun's enclosing environment with
+        ## baseenv(), so dffun must not rely on any free variables (e.g. a
+        ## captured copy of dof_satt) -- everything it needs must be reachable
+        ## via the 'dfargs' argument instead of lexical scoping
+        expect_identical(environment(rg@dffun), baseenv())
+
+        ## dffun is called once per contrast with a bare vector (not a
+        ## contrast matrix), so the wrapper must turn 'k' into a 1-row
+        ## matrix before passing it on to dof_satt()
+        k <- rg@linfct[1, ]
+        expect_false(is.matrix(k))
+        df_val <- suppressMessages(rg@dffun(k, rg@dfargs))
+        expect_true(is.finite(df_val))
+        expect_length(df_val, 1L)
+    })
+}

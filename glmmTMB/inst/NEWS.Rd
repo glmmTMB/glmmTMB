@@ -31,6 +31,16 @@
       (e.g.) subsequent calls to \code{predict} are not modified by
       \code{estfun} (or upstream functions such as \code{vcovHC})
       (GH #1294; Vincent Arel-Bundock)
+      \item \code{emmeans()} with \code{ddf = "satterthwaite"} failed with
+      "could not find function \"dof_satt\"" because \pkg{emmeans} strips
+      the enclosing environment of the degrees-of-freedom function before
+      calling it (GH #1304, Ariel Muldoon)
+      \item relatedly, \code{emmeans()} with \code{ddf = "satterthwaite"}
+      would have failed for any request involving more than one contrast
+      (e.g. pairwise comparisons) once the issue above was fixed, because
+      the Satterthwaite degrees-of-freedom function was being called with
+      a single contrast vector rather than the one-row matrix it expected
+      (GH #1304)
     }
   } % bug fixes
   %\subsection{USER-VISIBLE CHANGES}{

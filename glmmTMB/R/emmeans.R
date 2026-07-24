@@ -142,8 +142,15 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         V <- V_kr
         dffun <- function(k, dfargs) pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
     } else if (ddf == "satterthwaite") {
-        dfargs <- list(object=object)
-        dffun <- function(k,dfargs) suppressMessages(dof_satt(dfargs$object, k))
+        ## emmeans::ref_grid() strips dffun's enclosing environment
+        ## (sets it to baseenv()), so dffun can't rely on free variables
+        ## such as a captured dof_satt (glmmTMB#1304) -- stash it in
+        ## dfargs instead, where it's reached via the 'dfargs' argument
+        dfargs <- list(object = object, dof_satt = dof_satt)
+        ## emmeans calls dffun() once per contrast, passing a bare
+        ## vector k rather than a full contrast matrix; dof_satt()
+        ## expects a matrix (one row per contrast), so wrap k accordingly
+        dffun <- function(k, dfargs) suppressMessages(dfargs$dof_satt(dfargs$object, L = matrix(k, nrow = 1)))
     } else if (ddf == "df.residual") {
         dfargs <- list(object = object)
         dffun <- function(k, dfargs) stats::df.residual(dfargs$object)
