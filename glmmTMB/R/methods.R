@@ -672,7 +672,7 @@ printDispersion <- function(ff,s) {
 ## family intercept, or by the user): these are known constants, so their
 ## sampling variance is exactly zero. Restores the convention that
 ## dim(vcov) matches length(fixef) for downstream consumers
-## (emmeans, car::Anova, ...). No-op when dimensions already match.
+## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
 pad_mapped_vcov <- function(object, V, component = "cond") {
     map_nm <- switch(component, cond = "beta", zi = "betazi",
                      disp = "betadisp")
