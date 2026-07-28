@@ -323,22 +323,61 @@ dof_KR <- function(model) {
     lengths(lapply(glmmTMB::ranef(model)$cond, colnames))
 }
 
+## Precompute (and cache) the pieces needed for Satterthwaite denominator-df
+## calculations that depend only on the fitted model, not on the specific
+## contrast(s) being tested: the (inverse) Hessian of the negative
+## log-likelihood with respect to the variance/dispersion parameters
+## ("kappa"), and the Jacobian of cov(beta) with respect to those same
+## parameters.
+##
+## Both require repeated evaluation of expensive functions (`model$obj$gr()`,
+## and -- via `.covbeta_kappa()` -- `TMB::sdreport()`) at perturbed parameter
+## values, so:
+##  (1) the result is cached on `model$obj$env`, a genuine R environment
+##      (unlike the rest of `model`, which is an ordinary list and so is
+##      copied rather than shared when passed around) that is shared by
+##      reference across every copy of `model`; this means repeated calls to
+##      `dof_satt()` on the same fitted model (e.g. from more than one
+##      `summary(fit, ddf = "satterthwaite")` call, or from any future code
+##      path -- such as a joint/multi-model Satterthwaite test -- that needs
+##      the same per-model quantities) reuse this cache instead of redoing
+##      the work; and
+##  (2) `numDeriv::jacobian()` is called with `method = "simple"` (one-sided
+##      differences, ~p+1 evaluations) rather than the default
+##      `"Richardson"` (which redoes each finite difference at several step
+##      sizes for extrapolated accuracy, at roughly 4-8x the function
+##      evaluations); the resulting ddf are an approximation in any case, and
+##      `method.args` tuning of the default Richardson method previously
+##      found no detectable precision benefit (see the removed
+##      `method.args = list(r = 6)` experiment below `.get_jac_list()`), so
+##      there is little accuracy to lose by using cheaper differencing.
+.satt_precompute <- function(model) {
+    cache_env <- model$obj$env
+    if (!is.null(cache_env$.satt_cache)) {
+        return(cache_env$.satt_cache)
+    }
+    kappa_opt <- model$fit$par
+    h_kappa <- numDeriv::jacobian(func = model$obj$gr, x = kappa_opt, method = "simple")
+    eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
+    cov_varpar_kappa <- with(eig_h_kappa,
+                             vectors %*% diag(1/values) %*% t(vectors))
+    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model, method = "simple")
+    res <- list(cov_varpar_kappa = cov_varpar_kappa, jac_kappa = jac_kappa)
+    cache_env$.satt_cache <- res
+    res
+}
+
 #' @rdname dof_KR
-#' 
+#'
 #' @export
 #' @param L a contrast matrix: by default, equal to an identity matrix (i.e., ddfs are returned
 #' for each fixed-effect parameter)
 dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     model_vcov <- vcov(model, full = TRUE)
 
-    ## FIXME: do we have the Hessian somewhere already?
-    kappa_opt <- model$fit$par
-    h_kappa <- numDeriv::jacobian(func = model$obj$gr, x = kappa_opt)
-    eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
-    cov_varpar_kappa <- with(eig_h_kappa,
-                             vectors %*% diag(1/values) %*% t(vectors))
-
-    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
+    pre <- .satt_precompute(model)
+    cov_varpar_kappa <- pre$cov_varpar_kappa
+    jac_kappa <- pre$jac_kappa
 
     res <- numeric(nrow(L))
     for (i in seq_along(res)) {
