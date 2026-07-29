@@ -26,6 +26,16 @@
       \item \code{profile.glmmTMB} with a custom parallel cluster produced
       error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
       \item Fix mapping for models with rr structures (GH #1276)
+      \item \code{diagnose} now prints the intended threshold value (rather
+      than the flagged standard deviations themselves) in its "unusually
+      large or small standard deviations" report; the \code{check_zstats}
+      argument documentation was corrected to describe the Z-statistic as
+      estimate/std.error (GH #1292; Paul Schmidt)
+      \item the \code{estfun.glmmTMB} correctly restores the parameter
+      values in the environment of a \code{glmmTMB} object, so that
+      (e.g.) subsequent calls to \code{predict} are not modified by
+      \code{estfun} (or upstream functions such as \code{vcovHC})
+      (GH #1294; Vincent Arel-Bundock)
     }
   } % bug fixes
   %\subsection{USER-VISIBLE CHANGES}{
