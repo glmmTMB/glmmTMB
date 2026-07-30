@@ -61,10 +61,13 @@ if (requireNamespace("emmeans")) {
         rg <- suppressMessages(emmeans::ref_grid(salamander1, ddf = "satterthwaite"))
 
         ## emmeans::ref_grid() replaces dffun's enclosing environment with
-        ## baseenv(), so dffun must not rely on any free variables (e.g. a
-        ## captured copy of dof_satt) -- everything it needs must be reachable
-        ## via the 'dfargs' argument instead of lexical scoping
-        expect_identical(environment(rg@dffun), baseenv())
+        ## baseenv() (glmmTMB#1304); rather than relying on that emmeans
+        ## implementation detail, strip it here ourselves so the test keeps
+        ## working even if emmeans stops doing so. dffun must not rely on
+        ## any free variables (e.g. a captured copy of dof_satt) -- everything
+        ## it needs must be reachable via the 'dfargs' argument instead of
+        ## lexical scoping
+        environment(rg@dffun) <- baseenv()
 
         ## dffun is called once per contrast with a bare vector (not a
         ## contrast matrix), so the wrapper must turn 'k' into a 1-row
