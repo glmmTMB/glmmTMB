@@ -107,7 +107,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
 
     ddf_set <- function(used, requested = ddf) {
         if (requested != used) {
-            warning("ddf '%s' specified, using ddf '%s' instead", requested, used)
+            warning(gettextf("ddf '%s' specified, using ddf '%s' instead", requested, used))
         }
         return(used)
     }
