@@ -41,6 +41,11 @@
       the Satterthwaite degrees-of-freedom function was being called with
       a single contrast vector rather than the one-row matrix it expected
       (GH #1304)
+      \item \code{emmeans} and \code{car::Anova} now work for models with
+      fixed-effect coefficients fixed via \code{map} (previously a
+      dimension mismatch in \code{emmeans}, and a singular-matrix error or
+      \code{NA} test statistic in \code{Anova}); such coefficients are
+      treated as known constants with zero variance
     }
   } % bug fixes
   %\subsection{USER-VISIBLE CHANGES}{

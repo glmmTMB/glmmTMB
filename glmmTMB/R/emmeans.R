@@ -196,6 +196,10 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         misc <- emmeans::.std.link.labels(fam, misc)
         if (missing(vcov.)) {
             V <- as.matrix(vcov(object, include_nonest = FALSE)[[component]])
+            ## coefficients fixed via 'map' are known constants: pad the
+            ## covariance matrix with zero rows/columns so its dimension
+            ## matches the full coefficient vector used for the grid
+            V <- pad_mapped_vcov(object, V, component)
         }
         else {
             V <- vcov.

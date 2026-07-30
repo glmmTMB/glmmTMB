@@ -667,6 +667,38 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+## Pad a fixed-effect covariance matrix with zero rows/columns for
+## coefficients that were fixed via 'map': these are known constants, so
+## their sampling variance is exactly zero. Restores the convention that
+## dim(vcov) matches length(fixef) for downstream consumers
+## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
+pad_mapped_vcov <- function(object, V, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi",
+                     disp = "betadisp")
+    bmap <- object$obj$env$map[[map_nm]]
+    if (is.null(bmap) || !any(is.na(bmap)) || is.null(dim(V))) return(V)
+    bhat <- fixef(object)[[component]]
+    nb <- length(bhat)
+    fixed <- which(is.na(bmap))
+    if (nrow(V) == nb - length(fixed)) {
+        ## reduced vcov (include_nonest = FALSE): pad to full size
+        est <- which(!is.na(bmap))
+        Vfull <- matrix(0, nb, nb,
+                        dimnames = list(names(bhat), names(bhat)))
+        Vfull[est, est] <- as.matrix(V)
+        return(Vfull)
+    }
+    if (nrow(V) == nb) {
+        ## full-size vcov stores NA rows/columns for mapped coefficients;
+        ## replace with zeros so they do not propagate through
+        ## linear-hypothesis algebra
+        V[fixed, ] <- 0
+        V[, fixed] <- 0
+        return(V)
+    }
+    V
+}
+
 #' Retrieve family-specific parameters
 #'
 #' Most conditional distributions have only parameters governing their location
