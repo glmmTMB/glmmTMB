@@ -392,3 +392,178 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
         FUN.VALUE = numeric(1L)
     )
 }
+
+## ---- joint (multi-parameter) ddf calculations ----
+## used by anova.glmmTMB (ddf != "asymptotic") to compare two nested models
+## via an F-ratio test rather than a likelihood ratio test.
+##
+## `.KR_adjust_joint` generalizes `.adjusted_ddf` (above) from a single contrast
+## vector to a q-row contrast matrix L, and additionally returns the F-statistic
+## and p-value for the joint test; adapted from the (unexported) `.KR_adjust`
+## function in pbkrtest (which is itself model-class-agnostic, unlike the rest
+## of pbkrtest's Kenward-Roger machinery)
+.KR_adjust_joint <- function(adjusted_vcov, unadjusted_vcov, L, beta, betaH = 0) {
+    Theta <- t(L) %*% solve(L %*% unadjusted_vcov %*% t(L), L)
+    P <- attr(adjusted_vcov, "P")
+    W <- attr(adjusted_vcov, "W")
+    A1 <- A2 <- 0
+    ThetaPhi <- Theta %*% unadjusted_vcov
+    n.ggamma <- length(P)
+    for (ii in 1:n.ggamma) {
+        for (jj in ii:n.ggamma) {
+            e <- if (ii == jj) 1 else 2
+            ui <- ThetaPhi %*% P[[ii]] %*% unadjusted_vcov
+            uj <- ThetaPhi %*% P[[jj]] %*% unadjusted_vcov
+            A1 <- A1 + e * W[ii, jj] * (sum(diag(ui)) * sum(diag(uj)))
+            A2 <- A2 + e * W[ii, jj] * sum(ui * t(uj))
+        }
+    }
+    q <- as.numeric(Matrix::rankMatrix(L))
+    B <- (A1 + 6 * A2) / (2 * q)
+    g <- ((q + 1) * A1 - (q + 4) * A2) / ((q + 2) * A2)
+    c1 <- g / (3 * q + 2 * (1 - g))
+    c2 <- (q - g) / (3 * q + 2 * (1 - g))
+    c3 <- (q + 2 - g) / (3 * q + 2 * (1 - g))
+    V0 <- 1 + c1 * B
+    V1 <- 1 - c2 * B
+    V2 <- 1 - c3 * B
+    V0 <- ifelse(abs(V0) < 1e-10, 0, V0)
+    rho <- (.divZero(1 - A2 / q, V1))^2 * V0 / (q * V2)
+    df2 <- 4 + (q + 2) / (q * rho - 1)
+    F.scaling <- if (abs(df2 - 2) < 0.01) 1 else df2 * (1 - A2 / q) / (df2 - 2)
+
+    betaDiff <- cbind(beta - betaH)
+    Lb2 <- L %*% betaDiff
+    Wald <- as.numeric(t(Lb2) %*% solve(L %*% adjusted_vcov %*% t(L), Lb2))
+    Fstat <- F.scaling * (Wald / q)
+    list(Fstat = Fstat, ndf = q, ddf = df2,
+         p.value = stats::pf(Fstat, df1 = q, df2 = df2, lower.tail = FALSE))
+}
+
+##' Kenward-Roger F-ratio test comparing two nested \code{glmmTMB} models
+##'
+##' @param largeModel the model with more (conditional) fixed-effect parameters
+##' @param smallModel the model with fewer fixed-effect parameters, nested in \code{largeModel}
+##' @param betaH null-hypothesis value(s) for the restricted parameters (default 0)
+##' @return a list with elements \code{Fstat}, \code{ndf}, \code{ddf}, \code{p.value}
+##' @noRd
+.joint_ddf_KR <- function(largeModel, smallModel, betaH = 0) {
+    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
+                                                      getME(smallModel, "X")))
+    adjusted_vcov <- .vcov_kenward_adjusted(largeModel)
+    unadjusted_vcov <- stats::vcov(largeModel)$cond
+    beta <- fixef(largeModel)$cond
+    .KR_adjust_joint(adjusted_vcov, unadjusted_vcov, L, beta, betaH)
+}
+
+## combine per-eigenvalue Satterthwaite dfs into a single ddf for a joint
+## (multi-parameter) test; adapted from the (unexported) `get_Fstat_ddf`
+## function in pbkrtest
+.combine_ddf_satt <- function(nu, tol = 1e-8) {
+    if (length(nu) == 1) return(nu)
+    if (all(abs(diff(nu)) < tol)) return(mean(nu))
+    if (any(nu <= 2)) return(2)
+    E <- sum(nu / (nu - 2))
+    2 * E / (E - length(nu))
+}
+
+##' Satterthwaite F-ratio test comparing two nested \code{glmmTMB} models
+##' @inheritParams .joint_ddf_KR
+##' @param eps eigenvalue tolerance (relative to the largest eigenvalue), below which
+##' a contrast direction is dropped from the test
+##' @noRd
+.joint_ddf_satt <- function(largeModel, smallModel, betaH = 0, eps = sqrt(.Machine$double.eps)) {
+    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
+                                                      getME(smallModel, "X")))
+    beta <- fixef(largeModel)$cond
+    vcov_beta <- stats::vcov(largeModel)$cond
+
+    kappa_opt <- largeModel$fit$par
+    h_kappa <- numDeriv::jacobian(func = largeModel$obj$gr, x = kappa_opt)
+    eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
+    cov_varpar_kappa <- with(eig_h_kappa, vectors %*% diag(1 / values) %*% t(vectors))
+    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, largeModel)
+
+    vcov_Lbeta <- L %*% vcov_beta %*% t(L)
+    eig <- eigen(vcov_Lbeta)
+    d <- eig$values
+    tol <- max(eps * d[1], 0)
+    qq <- sum(d > tol)
+    PtL <- crossprod(eig$vectors, L)[seq_len(qq), , drop = FALSE]
+
+    betaDiff <- beta - betaH
+    t2 <- drop(PtL %*% betaDiff)^2 / d[seq_len(qq)]
+    Fstat <- sum(t2) / qq
+
+    nu_m <- vapply(seq_len(qq), function(m) {
+        grad_kappa <- .get_gradient(jac_kappa, PtL[m, ])
+        2 * d[m]^2 / sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
+    }, numeric(1))
+    ddf <- .combine_ddf_satt(nu_m)
+
+    list(Fstat = Fstat, ndf = qq, ddf = ddf,
+         p.value = stats::pf(Fstat, df1 = qq, df2 = ddf, lower.tail = FALSE))
+}
+
+## classical (exact, for Gaussian fixed-effect-only fits) multi-parameter Wald
+## F-test, used in place of `.joint_ddf_KR`/`.joint_ddf_satt` when neither model
+## has random effects: there is then no variance-component uncertainty for
+## Kenward-Roger/Satterthwaite to correct for, and the denominator df is simply
+## the residual df (nobs - npar) of the fuller model
+##' @inheritParams .joint_ddf_KR
+##' @noRd
+.joint_ddf_none <- function(largeModel, smallModel, betaH = 0) {
+    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
+                                                      getME(smallModel, "X")))
+    beta <- fixef(largeModel)$cond
+    unadjusted_vcov <- stats::vcov(largeModel)$cond
+    q <- as.numeric(Matrix::rankMatrix(L))
+    Lb2 <- L %*% cbind(beta - betaH)
+    Wald <- as.numeric(t(Lb2) %*% solve(L %*% unadjusted_vcov %*% t(L), Lb2))
+    Fstat <- Wald / q
+    ddf <- stats::df.residual(largeModel)
+    list(Fstat = Fstat, ndf = q, ddf = ddf,
+         p.value = stats::pf(Fstat, df1 = q, df2 = ddf, lower.tail = FALSE))
+}
+
+##' check whether a requested ddf choice is valid/sensible for a given model,
+##' issuing warnings/messages (or an error, if the choice is unsupported for
+##' this model's family) as needed; shared by \code{summary.glmmTMB} and
+##' \code{anova.glmmTMB}
+##' @param object a fitted glmmTMB model
+##' @param ddf ddf choice, as in \code{summary.glmmTMB}
+##' @noRd
+check_ddf <- function(object, ddf) {
+    if (ddf == "asymptotic") return(invisible(NULL))
+    ## t/F reference distributions (as opposed to z/chi-squared) are only
+    ## meaningful when the model has an estimated scale/dispersion parameter;
+    ## for families with a fixed, known scale (binomial, Poisson, ...) there is
+    ## no extra uncertainty for Kenward-Roger/Satterthwaite to correct for
+    if (!usesDispersion(family(object)$family)) {
+        stop(sprintf(
+            "ddf='%s' requires an estimated scale/dispersion parameter; family '%s' has a fixed/known scale, so t/F tests are not meaningful here. Use ddf='asymptotic' instead.",
+            ddf, family(object)$family), call. = FALSE)
+    }
+    if (!hasRandom(object)) {
+        message(sprintf(
+            "no random effects in model: kenward-roger/satterthwaite corrections are not meaningful; using residual df (nobs - npar) for ddf='%s' instead",
+            ddf))
+        return(invisible(NULL))
+    }
+    if (ddf != "kenward-roger") return(invisible(NULL))
+    if (!isREML(object)) {
+        ## the Kenward-Roger correction is derived from REML variance-component
+        ## estimates; there is no valid correction to compute for an ML fit, so
+        ## (unlike the softer warnings below) this is a hard error rather than
+        ## a warning that leaves downstream code to silently proceed anyway
+        stop("ddf='kenward-roger' requires a REML fit (fit with REML=TRUE)", call. = FALSE)
+    } else {
+        if (family(object)$family != "gaussian") {
+            warning("ddf='kenward-roger' is untested for GLMMs. Use at your own risk!")
+        }
+        if (!trivialDisp(object) || !noZI(object)) {
+            message("ddf='kenward-roger' ignored except for conditional-distribution parameters")
+        }
+    }
+    invisible(NULL)
+}

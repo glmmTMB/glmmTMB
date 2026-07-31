@@ -18,8 +18,8 @@
 \item{sandwich}{use the sandwich estimator for the variance-covariance matrix? (this only works for ML fits, but not for REML fits)}
 
 \item{ddf}{denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
-(i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
-be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}});
+(i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which
+requires a REML fit (an error is thrown otherwise) and is entirely untested for GLMMs (see \code{\link{dof_KR}});
 \code{"satterthwaite"} uses a Satterthwaite approximation}
 
 \item{cluster}{grouping factor for the sandwich estimator, only used if \code{sandwich==TRUE}.}

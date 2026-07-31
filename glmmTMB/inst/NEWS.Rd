@@ -14,6 +14,11 @@
       \item density and cumulative distribution functions for the Bell
       (\code{dbell}, \code{pbell}) and generalized Poisson
       (\code{dgenpois}, \code{pgenpois}) distributions are now exported
+      \item \code{anova.glmmTMB} gains a \code{ddf} argument, matching
+      \code{summary.glmmTMB}: the default \code{"asymptotic"} gives the
+      usual likelihood ratio test, while \code{"kenward-roger"} or
+      \code{"satterthwaite"} instead give an F-ratio test between each pair
+      of nested models
     }
   } % new features
  \subsection{BUG FIXES}{
