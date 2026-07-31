@@ -34,12 +34,16 @@
 ##' (only for the fixed effects of the conditional component)
 ##' }
 ##' @section Denominator degrees of freedom in \code{emmeans}:
-##' For Gaussian models with random effects, the \code{ddf} argument to \code{emmeans()}
+##' For models with random effects, the \code{ddf} argument to \code{emmeans()}
 ##' (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
 ##' \code{"satterthwaite"} and \code{"kenward-roger"} (see \code{\link{dof_KR}} and
-##' \code{\link{dof_satt}} for the underlying calculations). \code{ddf = "kenward-roger"}
-##' is only computed for models fitted with \code{REML = TRUE}; for an ML fit (\pkg{glmmTMB}'s
-##' default), it is silently replaced by \code{"satterthwaite"}, with a warning.
+##' \code{\link{dof_satt}} for the underlying calculations), matching the same argument
+##' to \code{\link{summary.glmmTMB}} and \code{\link{anova.glmmTMB}}. \code{ddf = "kenward-roger"}
+##' requires a model fitted with \code{REML = TRUE}: for an ML fit (\pkg{glmmTMB}'s default),
+##' it throws an error rather than silently substituting another method. For families other
+##' than \code{gaussian}, \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but
+##' emit a warning, because their performance (and theoretical justification) for
+##' GLMMs is poorly understood.
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.
@@ -129,13 +133,11 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
             return(ddf)
         }
 
-        if (!isREML(object)) {
-            if (ddf == "kenward-roger") return(ddf_set("satterthwaite"))
-        }
+        ## hard error (not a silent downgrade) for KR + non-REML, matching
+        ## summary.glmmTMB()/anova.glmmTMB() via check_ddf()
+        if (ddf == "kenward-roger") .check_KR_reml(object)
 
-        if (fam != "gaussian" && ddf != "asymptotic") {
-            message("performance of Kenward-Roger and Satterthwaite approx for GLMMs is poorly understood")
-        }
+        if (fam != "gaussian" && ddf != "asymptotic") .warn_ddf_glmm(ddf)
         return(ddf)
     }
 

@@ -92,8 +92,110 @@ run_anova_ddf_tests <- function() {
         expect_equal(a_sat_chain$`Den Df`[3], sat_chain_2$ddf, tolerance = ftol)
         expect_equal(a_sat_chain$`Pr(>F)`[3], sat_chain_2$p.value, tolerance = ftol)
     })
+
+    ## Anova() (car Type II/III) reuses the same joint K-R/Satterthwaite
+    ## machinery via a hypothesis matrix rather than a pair of models; for an
+    ## additive-only (no-interaction) model, Type II's per-term F-test for
+    ## "x" is exactly the same hypothesis as dropping "x" while keeping "y",
+    ## so it should agree with dropping x from m1 above via pbkrtest directly
+    if (requireNamespace("car", quietly = TRUE)) {
+        m_no_x <- glmmTMB(z ~ y + (1|f), data = dd, REML = TRUE)
+        m_no_x_lmer <- lme4::lmer(z ~ y + (1|f), data = dd, REML = TRUE)
+
+        kr_x <- pbkrtest::KRmodcomp(m1_lmer, m_no_x_lmer)$test["Ftest", ]
+        sat_x <- pbkrtest::SATmodcomp(m1_lmer, m_no_x_lmer)$test
+
+        Anova_kr <- car::Anova(m1, ddf = "kenward-roger")
+        Anova_sat <- car::Anova(m1, ddf = "satterthwaite")
+        Anova_sat_III <- car::Anova(m1, type = "III", ddf = "satterthwaite")
+
+        test_that("Anova() Type II KR F-test matches pbkrtest::KRmodcomp (single-term drop)", {
+            expect_equal(Anova_kr["x", "F"], kr_x[["stat"]], tolerance = ftol)
+            expect_equal(Anova_kr["x", "Num Df"], kr_x[["ndf"]], tolerance = ftol)
+            expect_equal(Anova_kr["x", "Den Df"], kr_x[["ddf"]], tolerance = ftol)
+            expect_equal(Anova_kr["x", "Pr(>F)"], kr_x[["p.value"]], tolerance = ftol)
+        })
+
+        test_that("Anova() Type II Satterthwaite F-test matches pbkrtest::SATmodcomp (single-term drop)", {
+            expect_equal(Anova_sat["x", "F"], sat_x$statistic, tolerance = ftol)
+            expect_equal(Anova_sat["x", "Den Df"], sat_x$ddf, tolerance = ftol)
+            expect_equal(Anova_sat["x", "Pr(>F)"], sat_x$p.value, tolerance = ftol)
+        })
+
+        test_that("Anova() Type II and Type III agree for an additive (no-interaction) model", {
+            ## with no interactions and no other terms sharing marginality
+            ## with "x", Type II and Type III should give the same test for "x"
+            expect_equal(Anova_sat["x", "F"], Anova_sat_III["x", "F"], tolerance = 1e-8)
+            expect_equal(Anova_sat["x", "Den Df"], Anova_sat_III["x", "Den Df"], tolerance = 1e-8)
+        })
+    }
 }
 
 if (requireNamespace("pbkrtest") && requireNamespace("lme4")) {
     run_anova_ddf_tests()
+}
+
+## behavioral checks that don't need pbkrtest/lme4 cross-validation: the
+## "same checks" (REML requirement, GLMM warning, no-random-effects
+## fallback, unsupported combinations) shared with summary()/anova()/emmeans()
+if (requireNamespace("car", quietly = TRUE)) {
+    set.seed(303)
+    n_g <- 12
+    g_sizes <- sample(5:25, n_g, replace = TRUE)
+    dd_anova <- do.call(rbind, lapply(seq_len(n_g), function(gi) {
+        n <- g_sizes[gi]
+        data.frame(g = factor(gi), f = factor(sample(LETTERS[1:4], n, replace = TRUE)))
+    }))
+    dd_anova$y_gauss <- rnorm(nrow(dd_anova))
+    dd_anova$y_nb <- rnbinom(nrow(dd_anova), mu = 5, size = 2)
+
+    m_ml <- glmmTMB(y_gauss ~ f + (1|g), data = dd_anova, family = gaussian, REML = FALSE)
+    m_reml <- update(m_ml, REML = TRUE)
+    m_nb <- glmmTMB(y_nb ~ f + (1|g), data = dd_anova, family = nbinom2, REML = TRUE)
+    m_norandom <- glmmTMB(y_gauss ~ f, data = dd_anova, family = gaussian)
+
+    test_that("Anova() ddf='kenward-roger' hard-errors (does not silently downgrade) on an ML fit", {
+        expect_error(car::Anova(m_ml, ddf = "kenward-roger"), "requires a REML fit")
+    })
+
+    test_that("Anova() ddf='satterthwaite' works on an ML fit (no REML requirement)", {
+        expect_no_error(expect_no_warning(car::Anova(m_ml, ddf = "satterthwaite")))
+    })
+
+    test_that("Anova() warns (does not error) for ddf on a non-Gaussian family", {
+        expect_warning(car::Anova(m_nb, ddf = "satterthwaite"), "poorly understood")
+        expect_warning(car::Anova(m_nb, ddf = "kenward-roger"), "poorly understood")
+    })
+
+    test_that("Anova() falls back to residual df (no error/warning about REML) when there are no random effects", {
+        res <- expect_no_warning(suppressMessages(car::Anova(m_norandom, ddf = "kenward-roger")))
+        expect_equal(unname(res["f", "Den Df"]), unname(df.residual(m_norandom)))
+    })
+
+    test_that("Anova() rejects ddf combined with a user-supplied vcov.", {
+        expect_error(
+            car::Anova(m_reml, ddf = "kenward-roger", vcov. = vcov(m_reml)$cond),
+            "user-supplied 'vcov.'"
+        )
+    })
+
+    test_that("Anova() rejects ddf for component != 'cond'", {
+        ## convergence quality is irrelevant here -- the ddf/component guard
+        ## fires before any numerical work that depends on it
+        m_zi <- suppressWarnings(
+            glmmTMB(y_nb ~ f + (1|g), ziformula = ~ f, data = dd_anova, family = nbinom2)
+        )
+        expect_error(car::Anova(m_zi, component = "zi", ddf = "satterthwaite"),
+                    "only supported for component")
+    })
+
+    test_that("Anova() rejects ddf for models with map-fixed conditional coefficients", {
+        m_map <- glmmTMB(y_gauss ~ f + (1|g), data = dd_anova, REML = TRUE,
+                         map = list(beta = factor(c(1, NA, 2, 3))))
+        expect_error(car::Anova(m_map, ddf = "kenward-roger"), "map-fixed")
+    })
+
+    test_that("Anova() test.statistic='F' without ddf is a clear error", {
+        expect_error(car::Anova(m_reml, test.statistic = "F"), "ddf=")
+    })
 }

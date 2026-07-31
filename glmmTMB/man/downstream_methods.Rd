@@ -15,6 +15,7 @@ Anova.glmmTMB(
   vcov. = vcov(mod)[[component]],
   singular.ok,
   include.rankdef.cols = FALSE,
+  ddf = c("asymptotic", "kenward-roger", "satterthwaite"),
   ...
 )
 
@@ -25,16 +26,26 @@ Effect.glmmTMB(focal.predictors, mod, ...)
 
 \item{type}{type of test, \code{"II"}, \code{"III"}, \code{2}, or \code{3}.  Roman numerals are equivalent to the corresponding Arabic numerals. See \code{\link[car]{Anova}} for details.}
 
-\item{test.statistic}{unused: only valid choice is "Chisq" (i.e., Wald chi-squared test)}
+\item{test.statistic}{\code{"Chisq"} (default; a Wald chi-squared test) or \code{"F"}
+(only available together with \code{ddf != "asymptotic"}, see \code{ddf} below)}
 
 \item{component}{which component of the model to test/analyze ("cond", "zi", or "disp")
 or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.}
 
-\item{vcov.}{variance-covariance matrix (usually extracted automatically)}
+\item{vcov.}{variance-covariance matrix (usually extracted automatically); not
+currently supported together with \code{ddf != "asymptotic"}}
 
 \item{singular.ok}{OK to do ANOVA with singular models (unused) ?}
 
 \item{include.rankdef.cols}{include all columns of a rank-deficient model matrix?}
+
+\item{ddf}{denominator degrees-of-freedom calculation, as in \code{\link{summary.glmmTMB}}
+and \code{\link{anova.glmmTMB}}. The default \code{"asymptotic"} gives the classical Wald
+chi-squared table; \code{"kenward-roger"} or \code{"satterthwaite"} instead give an F-ratio
+table, with each term's denominator df computed via the Kenward-Roger or Satterthwaite
+approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). Not currently supported
+together with a user-supplied \code{vcov.}, \code{component != "cond"}, or models with
+aliased/rank-deficient or \code{map}-fixed conditional coefficients.}
 
 \item{\dots}{Additional parameters that may be supported by the method.}
 
@@ -75,12 +86,16 @@ versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }
 \section{Denominator degrees of freedom in \code{emmeans}}{
 
-For Gaussian models with random effects, the \code{ddf} argument to \code{emmeans()}
+For models with random effects, the \code{ddf} argument to \code{emmeans()}
 (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
 \code{"satterthwaite"} and \code{"kenward-roger"} (see \code{\link{dof_KR}} and
-\code{\link{dof_satt}} for the underlying calculations). \code{ddf = "kenward-roger"}
-is only computed for models fitted with \code{REML = TRUE}; for an ML fit (\pkg{glmmTMB}'s
-default), it is silently replaced by \code{"satterthwaite"}, with a warning.
+\code{\link{dof_satt}} for the underlying calculations), matching the same argument
+to \code{\link{summary.glmmTMB}} and \code{\link{anova.glmmTMB}}. \code{ddf = "kenward-roger"}
+requires a model fitted with \code{REML = TRUE}: for an ML fit (\pkg{glmmTMB}'s default),
+it throws an error rather than silently substituting another method. For families other
+than \code{gaussian}, \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but
+emit a warning, because their performance (and theoretical justification) for
+GLMMs is poorly understood.
 }
 
 \examples{

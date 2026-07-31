@@ -19,6 +19,11 @@
       usual likelihood ratio test, while \code{"kenward-roger"} or
       \code{"satterthwaite"} instead give an F-ratio test between each pair
       of nested models
+      \item \code{car::Anova} (Type II/III) also gains a \code{ddf}
+      argument: \code{"kenward-roger"} or \code{"satterthwaite"} give an
+      F-ratio table instead of the default Wald chi-squared table, with
+      each term's denominator df computed via the same machinery as
+      \code{anova.glmmTMB}/\code{summary.glmmTMB}
       \item new family \code{combinomial} implementing the
       (mean-parameterized) Conway-Maxwell-Binomial distribution for
       under- and over-dispersed binomial-type responses;
@@ -74,6 +79,12 @@
       \item Satterthwaite ddf approximation now uses a faster, slightly
       less accurate approximation method; results may change slightly
       \item fixed garbled warning from Kenward-Roger correction
+      \item \code{ddf = "kenward-roger"} on a non-REML fit now throws an
+      error consistently across \code{summary}, \code{anova}, \code{Anova},
+      and \code{emmeans} (previously \code{emmeans} silently substituted
+      \code{"satterthwaite"} with a warning instead); \code{"kenward-roger"}
+      and \code{"satterthwaite"} on a non-Gaussian family now consistently
+      emit a warning (rather than a message, or nothing) across all four
     } % itemize
   } % user-visible changes
  } % 1.1.15

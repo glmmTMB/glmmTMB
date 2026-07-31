@@ -74,13 +74,13 @@ if (requireNamespace("emmeans")) {
 
     test_that("emmeans works with ddf='satterthwaite' (GH #1304)", {
         emm <- expect_no_error(
-            suppressMessages(emmeans::emmeans(salamander1, ~ mined, ddf = "satterthwaite"))
+            suppressWarnings(emmeans::emmeans(salamander1, ~ mined, ddf = "satterthwaite"))
         )
         expect_true(all(is.finite(summary(emm)$df)))
     })
 
     test_that("satterthwaite dffun survives environment-stripping and per-contrast vector calls (GH #1304)", {
-        rg <- suppressMessages(emmeans::ref_grid(salamander1, ddf = "satterthwaite"))
+        rg <- suppressWarnings(emmeans::ref_grid(salamander1, ddf = "satterthwaite"))
 
         ## emmeans::ref_grid() replaces dffun's enclosing environment with
         ## baseenv() (glmmTMB#1304); rather than relying on that emmeans
@@ -99,5 +99,31 @@ if (requireNamespace("emmeans")) {
         df_val <- suppressMessages(rg@dffun(k, rg@dfargs))
         expect_true(is.finite(df_val))
         expect_length(df_val, 1L)
+    })
+
+    ## constructed explicitly via update() (rather than relying on fm1's
+    ## REML status, which is mutated earlier in this file if pbkrtest/lme4
+    ## are available); update() reuses fm1's existing formula/data, so this
+    ## doesn't need direct access to sleepstudy or the lme4 namespace
+    fm1_ml_explicit <- update(fm1, REML = FALSE)
+    fm1_reml_explicit <- update(fm1_ml_explicit, REML = TRUE)
+
+    test_that("emmeans errors (rather than silently downgrading) for ddf='kenward-roger' on an ML fit", {
+        expect_error(
+            emmeans::emmeans(fm1_ml_explicit, "Days", ddf = "kenward-roger"),
+            "requires a REML fit"
+        )
+    })
+
+    test_that("emmeans allows ddf='kenward-roger' for a REML fit, with no warning", {
+        emm <- expect_no_warning(emmeans::emmeans(fm1_reml_explicit, "Days", ddf = "kenward-roger"))
+        expect_true(is.finite(summary(emm)$df[1]))
+    })
+
+    test_that("emmeans warns (does not error) for K-R/Satterthwaite on a non-Gaussian family", {
+        expect_warning(
+            emmeans::emmeans(salamander1, ~ mined, ddf = "satterthwaite"),
+            "poorly understood"
+        )
     })
 }

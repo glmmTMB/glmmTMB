@@ -506,22 +506,26 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     2 * E / (E - length(nu))
 }
 
-##' Satterthwaite F-ratio test comparing two nested \code{glmmTMB} models
-##' @inheritParams .joint_ddf_KR
+## Satterthwaite F-ratio test for an arbitrary hypothesis L %*% beta = betaH;
+## split out from .joint_ddf_satt() so callers that already have a hypothesis
+## matrix in hand (car::Anova()'s Type II/III per-term tests) don't need to
+## construct it via a pair of nested models -- mirrors .KR_adjust_joint(),
+## which already takes L directly rather than two models
+##' @param model a fitted glmmTMB model
+##' @param L a hypothesis matrix (ncol == number of conditional fixed-effect parameters)
+##' @param betaH null-hypothesis value(s) for \code{L \%*\% beta} (default 0)
 ##' @param eps eigenvalue tolerance (relative to the largest eigenvalue), below which
 ##' a contrast direction is dropped from the test
 ##' @noRd
-.joint_ddf_satt <- function(largeModel, smallModel, betaH = 0, eps = sqrt(.Machine$double.eps)) {
-    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
-                                                      getME(smallModel, "X")))
-    beta <- fixef(largeModel)$cond
-    vcov_beta <- stats::vcov(largeModel)$cond
+.satt_adjust_joint <- function(model, L, betaH = 0, eps = sqrt(.Machine$double.eps)) {
+    beta <- fixef(model)$cond
+    vcov_beta <- stats::vcov(model)$cond
 
-    kappa_opt <- largeModel$fit$par
-    h_kappa <- numDeriv::jacobian(func = largeModel$obj$gr, x = kappa_opt)
+    kappa_opt <- model$fit$par
+    h_kappa <- numDeriv::jacobian(func = model$obj$gr, x = kappa_opt)
     eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
     cov_varpar_kappa <- with(eig_h_kappa, vectors %*% diag(1 / values) %*% t(vectors))
-    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, largeModel)
+    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
 
     vcov_Lbeta <- L %*% vcov_beta %*% t(L)
     eig <- eigen(vcov_Lbeta)
@@ -544,6 +548,17 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
          p.value = stats::pf(Fstat, df1 = qq, df2 = ddf, lower.tail = FALSE))
 }
 
+##' Satterthwaite F-ratio test comparing two nested \code{glmmTMB} models
+##' @inheritParams .joint_ddf_KR
+##' @param eps eigenvalue tolerance (relative to the largest eigenvalue), below which
+##' a contrast direction is dropped from the test
+##' @noRd
+.joint_ddf_satt <- function(largeModel, smallModel, betaH = 0, eps = sqrt(.Machine$double.eps)) {
+    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
+                                                      getME(smallModel, "X")))
+    .satt_adjust_joint(largeModel, L, betaH = betaH, eps = eps)
+}
+
 ## classical (exact, for Gaussian fixed-effect-only fits) multi-parameter Wald
 ## F-test, used in place of `.joint_ddf_KR`/`.joint_ddf_satt` when neither model
 ## has random effects: there is then no variance-component uncertainty for
@@ -551,18 +566,50 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
 ## the residual df (nobs - npar) of the fuller model
 ##' @inheritParams .joint_ddf_KR
 ##' @noRd
-.joint_ddf_none <- function(largeModel, smallModel, betaH = 0) {
-    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
-                                                      getME(smallModel, "X")))
-    beta <- fixef(largeModel)$cond
-    unadjusted_vcov <- stats::vcov(largeModel)$cond
+## classical Wald F-test for L %*% beta = betaH at a caller-supplied ddf
+## (no Kenward-Roger/Satterthwaite correction); factored out so both
+## .joint_ddf_none() (model-comparison form) and car::Anova()'s per-term
+## no-random-effects fallback can share it
+##' @noRd
+.wald_joint_test <- function(unadjusted_vcov, L, beta, ddf, betaH = 0) {
     q <- as.numeric(Matrix::rankMatrix(L))
     Lb2 <- L %*% cbind(beta - betaH)
     Wald <- as.numeric(t(Lb2) %*% solve(L %*% unadjusted_vcov %*% t(L), Lb2))
     Fstat <- Wald / q
-    ddf <- stats::df.residual(largeModel)
     list(Fstat = Fstat, ndf = q, ddf = ddf,
          p.value = stats::pf(Fstat, df1 = q, df2 = ddf, lower.tail = FALSE))
+}
+
+.joint_ddf_none <- function(largeModel, smallModel, betaH = 0) {
+    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
+                                                      getME(smallModel, "X")))
+    .wald_joint_test(stats::vcov(largeModel)$cond, L, fixef(largeModel)$cond,
+                      ddf = stats::df.residual(largeModel), betaH = betaH)
+}
+
+## the Kenward-Roger correction is derived from REML variance-component
+## estimates; there is no valid correction to compute for an ML fit, so
+## (unlike the softer warnings elsewhere) this is a hard error rather than
+## a warning that leaves downstream code to silently proceed anyway.
+## Kept in one place (rather than inlined separately in check_ddf() and
+## emm_basis.glmmTMB()) so the error text can't drift out of sync between
+## summary()/anova() and emmeans().
+##' @noRd
+.check_KR_reml <- function(object) {
+    if (!isREML(object)) {
+        stop("ddf='kenward-roger' requires a REML fit (fit with REML=TRUE)", call. = FALSE)
+    }
+    invisible(NULL)
+}
+
+## shared wording (used by check_ddf() and emm_basis.glmmTMB()) for the
+## soft warning issued when Kenward-Roger/Satterthwaite are used on a
+## non-Gaussian family, where their behavior is not well studied
+##' @noRd
+.warn_ddf_glmm <- function(ddf) {
+    warning(sprintf(
+        "performance (and theoretical justification) of ddf='%s' for GLMMs is poorly understood",
+        ddf))
 }
 
 ##' check whether a requested ddf choice is valid/sensible for a given model,
@@ -589,20 +636,16 @@ check_ddf <- function(object, ddf) {
             ddf))
         return(invisible(NULL))
     }
-    if (ddf != "kenward-roger") return(invisible(NULL))
-    if (!isREML(object)) {
-        ## the Kenward-Roger correction is derived from REML variance-component
-        ## estimates; there is no valid correction to compute for an ML fit, so
-        ## (unlike the softer warnings below) this is a hard error rather than
-        ## a warning that leaves downstream code to silently proceed anyway
-        stop("ddf='kenward-roger' requires a REML fit (fit with REML=TRUE)", call. = FALSE)
-    } else {
-        if (family(object)$family != "gaussian") {
-            warning("ddf='kenward-roger' is untested for GLMMs. Use at your own risk!")
-        }
-        if (!trivialDisp(object) || !noZI(object)) {
-            message("ddf='kenward-roger' ignored except for conditional-distribution parameters")
-        }
+    if (ddf == "kenward-roger") .check_KR_reml(object)
+    ## applies to both kenward-roger and satterthwaite: fires after (not
+    ## instead of) the REML check above, so an ML fit + non-Gaussian family
+    ## gets only the REML error, not a spurious extra warning for a test
+    ## that's about to fail anyway
+    if (family(object)$family != "gaussian") {
+        .warn_ddf_glmm(ddf)
+    }
+    if (ddf == "kenward-roger" && (!trivialDisp(object) || !noZI(object))) {
+        message("ddf='kenward-roger' ignored except for conditional-distribution parameters")
     }
     invisible(NULL)
 }
