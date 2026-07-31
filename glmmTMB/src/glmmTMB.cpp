@@ -34,6 +34,7 @@ enum valid_family {
   gaussian_family = 0,
   binomial_family = 100,
   betabinomial_family =101,
+  combinomial_family   = 102,
   beta_family =200,
   ordbeta_family = 201,
   Gamma_family =300,
@@ -874,6 +875,8 @@ Type objective_function<Type>::operator() ()
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
+  DATA_INTEGER(combinom_disp_link);  // 0 = log link on disp (default, nu > 0)
+                                       // 1 = identity link  (nu in R)
 
   // Flags
   DATA_INTEGER(ziPredictCode);
@@ -937,6 +940,10 @@ Type objective_function<Type>::operator() ()
     mu(i) = inverse_linkfun(eta(i), link);
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etadisp);
+  // combinomial with allow_negative_nu=TRUE uses an identity link on the
+  // dispersion (nu may be negative), so undo the exp() applied above;
+  // combinom_disp_link is only ever nonzero for the combinomial family
+  if (combinom_disp_link == 1) phi = etadisp;
   vector<Type> log_nzprob(eta.size());
   if (!trunc_Family(family)) {
     log_nzprob.setZero();
@@ -1037,6 +1044,25 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = glmmtmb::dbetabinom_robust(yobs(i), s1, s2, size(i), true);
         SIMULATE {
           yobs(i) = rbinom(size(i), rbeta(exp(s1), exp(s2)) );
+        }
+        break;
+      case combinomial_family:
+        // Conway-Maxwell-Binomial, mean-parameterized.
+        // glmmTMB's mu(i) for binomial-type families is the probability
+        // p in (0,1); the TMB density expects the expected count mean in (0,n),
+        // so we pass size(i) * mu(i). etadisp(i) is log(nu) (dispformula
+        // uses log link), so we exponentiate.
+        {
+          s1 = mu(i) * size(i);     // mean = n * p
+          if (combinom_disp_link == 0) {
+            s2 = exp(etadisp(i));    // log link
+          } else {
+            s2 = etadisp(i);         // identity link
+          }
+          tmp_loglik = dcombinom2(yobs(i), size(i), s1, s2, true);
+          SIMULATE {
+            yobs(i) = glmmtmb::rcombinom2(s1, s2, size(i));
+          }
         }
         break;
       case nbinom1_family:

@@ -791,6 +791,83 @@ test_that("dunn-smyth residuals: bell", {
     expect_true(abs(sd(r) - 1) < 0.1)
 })
 
+test_that("dunn-smyth residuals: combinomial", {
+    skip_on_cran()
+    set.seed(42)
+    n <- 1000; size <- 15
+    cmb_dat <- data.frame(x = rnorm(n))
+    p <- plogis(-0.2 + 0.4 * cmb_dat$x)
+    ## sample from the CMB kernel (nu = 0.5, over-dispersed)
+    cmb_dat$k <- vapply(p, function(pp) {
+        logw <- 0.5 * lchoose(size, 0:size) + (0:size) * log(pp) +
+            (size - 0:size) * log1p(-pp)
+        sample(0:size, 1, prob = exp(logw - max(logw)))
+    }, numeric(1))
+    cmb_dat$nfail <- size - cmb_dat$k
+    cmb_mod <- glmmTMB(cbind(k, nfail) ~ x, family = combinomial(),
+                       data = cmb_dat)
+    set.seed(7)
+    r <- residuals(cmb_mod, type = "dunn-smyth")
+    expect_true(all(is.finite(r)))
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
+    ## identity-link dispersion (allow_negative_nu) gives the same residuals,
+    ## and predict(type = "disp") agrees with sigma() under both links
+    cmb_mod2 <- glmmTMB(cbind(k, nfail) ~ x,
+                        family = combinomial(allow_negative_nu = TRUE),
+                        data = cmb_dat)
+    expect_equal(predict(cmb_mod, type = "disp")[1], sigma(cmb_mod),
+                 tolerance = 1e-8)
+    expect_equal(predict(cmb_mod2, type = "disp")[1], sigma(cmb_mod2),
+                 tolerance = 1e-8)
+    set.seed(7)
+    r2 <- residuals(cmb_mod2, type = "dunn-smyth")
+    expect_equal(r, r2, tolerance = 1e-3)
+})
+
+test_that("pearson residuals: combinomial", {
+    skip_on_cran()
+    set.seed(101)
+    n <- 500; size <- 12
+    pdat <- data.frame(x = rnorm(n))
+    pdat$k <- rbinom(n, size = size, prob = plogis(0.3 * pdat$x))
+    pdat$nfail <- size - pdat$k
+    cmb <- glmmTMB(cbind(k, nfail) ~ x, family = combinomial(), data = pdat)
+    r_cmb <- unname(residuals(cmb, type = "pearson"))
+    expect_true(all(is.finite(r_cmb)))
+    expect_true(abs(sd(r_cmb) - 1) < 0.1)
+    ## exact check against the PMF-derived variance at the fitted parameters
+    mu_hat <- predict(cmb, type = "response")
+    nu_hat <- sigma(cmb)
+    v_pmf <- vapply(seq_len(n), function(i) {
+        d <- dcombinom(0:size, size = size, mu = size * mu_hat[i], nu = nu_hat)
+        sum((0:size)^2 * d) - sum((0:size) * d)^2
+    }, numeric(1))
+    r_manual <- (pdat$k/size - mu_hat)/sqrt(v_pmf/size) * sqrt(size)
+    expect_equal(r_cmb, unname(r_manual), tolerance = 1e-6)
+    ## data are binomial (nu-hat ~ 1), so combinomial and binomial Pearson
+    ## residuals should agree closely
+    bin <- glmmTMB(cbind(k, nfail) ~ x, family = binomial, data = pdat)
+    r_bin <- unname(residuals(bin, type = "pearson"))
+    expect_true(max(abs(r_cmb - r_bin)) < 0.2)
+})
+
+test_that("dunn-smyth residuals: binomial with n > 1 trials", {
+    skip_on_cran()
+    ## regression test: the number of trials from a two-column response
+    ## must reach the binomial CDF (GH: size was fixed at 1)
+    set.seed(42)
+    n <- 1000
+    bin_dat <- data.frame(x = rnorm(n))
+    bin_dat$k <- rbinom(n, size = 15, prob = plogis(-0.2 + 0.4 * bin_dat$x))
+    bin_dat$nfail <- 15 - bin_dat$k
+    bin_mod <- glmmTMB(cbind(k, nfail) ~ x, family = binomial, data = bin_dat)
+    set.seed(7)
+    r <- residuals(bin_mod, type = "dunn-smyth")
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
+})
+
 test_that("profiling with mapped parameters", {
     data("sleepstudy", package = "lme4")
     m1 <- glmmTMB(Reaction ~ Days,

@@ -136,10 +136,12 @@ startParams <- function(parameters,
 
     sparseXdisp <- ifelse(dim(Xdisp)[1] == 0 && dim(Xdisp)[2] == 0, 1, 0)
     if(length(fixed.pars$betadisp) != 0){
+      ## combinomial with allow_negative_nu uses identity link on disp; otherwise log
+      disp_transform <- if (isTRUE(family$allow_negative_nu)) identity else exp
       if(!sparseXdisp)
-        phi <- as.matrix(Xdisp) %*% exp(fixed.pars$betadisp)
+        phi <- as.matrix(Xdisp) %*% disp_transform(fixed.pars$betadisp)
       else
-        phi <- as.vector(XdispS %*% exp(fixed.pars$betadisp))
+        phi <- as.vector(XdispS %*% disp_transform(fixed.pars$betadisp))
     }
     # obtain residuals and get starting values for rr
     rrStart <- rrValues(yobs, weights, fr, mu,
@@ -425,6 +427,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     termsdisp = dispReStruc,
     family = .valid_family[family$family],
     link = .valid_link[family$link],
+    ## combinomial: 0 = log link on dispersion (default, nu > 0),
+    ##               1 = identity link (allows nu in R, U-shape regime)
+    combinom_disp_link = if (family$family == "combinomial" &&
+                              isTRUE(family$allow_negative_nu)) 1L else 0L,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict,
@@ -1122,7 +1128,7 @@ okWeights <- function(x) {
 }
 
 ## Families for which binomial()$initialize is used
-.binomialFamilies <- c("binomial", "betabinomial")
+.binomialFamilies <- c("binomial", "betabinomial", "combinomial")
 binomialType <- function(x) {
   !is.na(match(x, .binomialFamilies))
 }
@@ -2135,7 +2141,12 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                  length(formals(fv))>1)
     nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
     if (nbfam || xvarpars) {
-        theta <- exp(fit$parfull["betadisp"]) ## log link
+        ## combinomial with allow_negative_nu uses identity link; others use log
+        theta <- if (isTRUE(ff$allow_negative_nu)) {
+                     fit$parfull["betadisp"]              ## identity link
+                 } else {
+                     exp(fit$parfull["betadisp"])         ## log link
+                 }
         ## variance() and dev.resids() share an environment
         dnm <- if (ff$family=="nbinom1") ".Phi" else ".Theta"
         assign(dnm,

@@ -275,6 +275,23 @@ namespace glmmtmb{
     return ans.getDeriv()[0];
   }
 
+  /* Calculate variance in combinom family using
+
+     V(X) = (logZ)''(Psi)
+
+  */
+  double combinom_calc_var(double mean, double nu, int n){
+    using atomic::combinom_utils::calc_logitp;
+    using atomic::combinom_utils::calc_logZ;
+    // NB calc_logitp takes the mean itself, not log(mean)
+    // (unlike compois_utils::calc_loglambda above)
+    double logitp = calc_logitp(mean, nu, n);
+    typedef atomic::tiny_ad::variable<2, 1, double> ADdouble;
+    ADdouble logitp_ (logitp, 0);
+    ADdouble ans = calc_logZ<ADdouble>(logitp_, nu, n);
+    return ans.getDeriv()[0];
+  }
+
   /* Simulate from zero-truncated Conway-Maxwell-Poisson distribution */
   template<class Type>
   Type rtruncated_compois2(Type mean, Type nu) {
@@ -287,6 +304,85 @@ namespace glmmtmb{
     }
     if(ans < 1.) Rf_warning("Zeros in simulation of zero-truncated data. Possibly due to low estimated mean.");
     return ans;
+  }
+
+  /* Simulate from Conway-Maxwell-Binomial distribution.
+     CMB has finite support {0,...,n}. We build the unnormalized log-PMF
+     once using the adjacent-ratio recurrence
+       log w_k = log w_{k-1} + theta + nu * log((n-k+1)/k)
+     then sample via inverse CDF. This avoids repeated dcombinom2 calls
+     (each of which would recompute Z internally) and reduces simulation
+     from O(n^2) to O(n) per draw. */
+  template<class Type>
+  Type rcombinom2(Type mean, Type nu, Type size) {
+    int n = (int) asDouble(size);
+    if (n <= 0) return Type(0);
+
+    double theta = asDouble(combinom_calc_logitp(mean, nu, size));
+    double nu_d  = asDouble(nu);
+
+    // Unnormalized log-weights via adjacent-ratio recurrence
+    std::vector<double> logw(n + 1);
+    logw[0] = 0.0;
+    double max_logw = 0.0;
+    for (int k = 1; k <= n; k++) {
+      logw[k] = logw[k - 1] + theta +
+                nu_d * std::log((double)(n - k + 1) / (double)k);
+      if (logw[k] > max_logw) max_logw = logw[k];
+    }
+
+    // Stabilized unnormalized total
+    double total = 0.0;
+    for (int k = 0; k <= n; k++) total += std::exp(logw[k] - max_logw);
+
+    // Inverse-CDF draw, no PMF normalization needed
+    double u = asDouble(runif(Type(0), Type(1))) * total;
+    double cum = 0.0;
+    for (int k = 0; k <= n; k++) {
+      cum += std::exp(logw[k] - max_logw);
+      if (cum >= u) return Type(k);
+    }
+    return Type(n);
+  }
+
+  /* Conway-Maxwell-Binomial PMF and CDF (plain double, mean-parameterized)
+     backing the R-level dcombinom()/pcombinom(). Builds the unnormalized
+     log-PMF over the finite support {0,...,n} with the same adjacent-ratio
+     recurrence as rcombinom2, then normalizes. Returns NaN outside the
+     valid parameter range (0 < mean < n). */
+  double combinom_pmf_cdf(double x, double mean, double nu, int n,
+                          bool cumulative, bool give_log) {
+    if (n <= 0 || !R_FINITE(mean) || !R_FINITE(nu) ||
+        mean <= 0. || mean >= (double) n) return R_NaN;
+    double xf = std::floor(x);
+    if (cumulative) {
+      if (!(xf >= 0.)) return give_log ? R_NegInf : 0.;  // includes NaN x
+      if (xf >= (double) n) return give_log ? 0. : 1.;
+    } else {
+      if (!(x >= 0.) || x > (double) n || x != xf)
+        return give_log ? R_NegInf : 0.;
+    }
+    using atomic::combinom_utils::calc_logitp;
+    double theta = calc_logitp(mean, nu, n);
+    std::vector<double> logw(n + 1);
+    logw[0] = 0.0;
+    double max_logw = 0.0;
+    for (int k = 1; k <= n; k++) {
+      logw[k] = logw[k - 1] + theta +
+                nu * std::log((double)(n - k + 1) / (double)k);
+      if (logw[k] > max_logw) max_logw = logw[k];
+    }
+    double total = 0.0;
+    for (int k = 0; k <= n; k++) total += std::exp(logw[k] - max_logw);
+    double logtotal = max_logw + std::log(total);
+    if (!cumulative) {
+      double ans = logw[(int) xf] - logtotal;
+      return give_log ? ans : std::exp(ans);
+    }
+    double cum = 0.0;
+    for (int k = 0; k <= (int) xf; k++) cum += std::exp(logw[k] - logtotal);
+    double p = std::min(std::max(cum, 0.), 1.);
+    return give_log ? std::log(p) : p;
   }
 
   /* Simulate from tweedie distribution */
@@ -424,6 +520,7 @@ Type LambertW(Type x){
 // Vectorized version
 VECTORIZE1_t(LambertW)
 
+
 } // namespace glmmtmb
 
 /* Interface to compois variance */
@@ -434,6 +531,45 @@ extern "C" {
     SEXP ans = PROTECT(Rf_allocVector(REALSXP, LENGTH(mean)));
     for(int i=0; i<LENGTH(mean); i++)
       REAL(ans)[i] = glmmtmb::compois_calc_var(REAL(mean)[i], REAL(nu)[i]);
+    UNPROTECT(1);
+    return ans;
+  }
+
+  SEXP combinom_calc_var(SEXP mean, SEXP nu, SEXP size) {
+    if (LENGTH(mean) != LENGTH(nu) || LENGTH(mean) != LENGTH(size))
+      error("'mean', 'nu', and 'size' must be vectors of same length.");
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, LENGTH(mean)));
+    for(int i=0; i<LENGTH(mean); i++)
+      REAL(ans)[i] = glmmtmb::combinom_calc_var(
+        REAL(mean)[i], REAL(nu)[i], INTEGER(size)[i]);
+    UNPROTECT(1);
+    return ans;
+  }
+
+  /* all arguments must already be recycled to a common length in R */
+  SEXP dcombinom_R(SEXP x_, SEXP mean_, SEXP nu_, SEXP size_, SEXP give_log_) {
+    int n = LENGTH(x_);
+    if (LENGTH(mean_) != n || LENGTH(nu_) != n || LENGTH(size_) != n)
+      error("'x', 'mean', 'nu', and 'size' must be vectors of same length.");
+    int give_log = asLogical(give_log_);
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::combinom_pmf_cdf(
+        REAL(x_)[i], REAL(mean_)[i], REAL(nu_)[i], INTEGER(size_)[i],
+        false, give_log);
+    UNPROTECT(1);
+    return ans;
+  }
+
+  SEXP pcombinom_R(SEXP q_, SEXP mean_, SEXP nu_, SEXP size_) {
+    int n = LENGTH(q_);
+    if (LENGTH(mean_) != n || LENGTH(nu_) != n || LENGTH(size_) != n)
+      error("'q', 'mean', 'nu', and 'size' must be vectors of same length.");
+    SEXP ans = PROTECT(Rf_allocVector(REALSXP, n));
+    for (int i = 0; i < n; i++)
+      REAL(ans)[i] = glmmtmb::combinom_pmf_cdf(
+        REAL(q_)[i], REAL(mean_)[i], REAL(nu_)[i], INTEGER(size_)[i],
+        true, false);
     UNPROTECT(1);
     return ans;
   }
