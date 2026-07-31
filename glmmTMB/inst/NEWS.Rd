@@ -69,10 +69,13 @@
       treated as known constants with zero variance
     }
   } % bug fixes
-  %\subsection{USER-VISIBLE CHANGES}{
-  %  \itemize{
-  %  } % itemize
-  % } % user-visible changes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Satterthwaite ddf approximation now uses a faster, slightly
+      less accurate approximation method; results may change slightly
+      \item fixed garbled warning from Kenward-Roger correction
+    } % itemize
+  } % user-visible changes
  } % 1.1.15
 
 \section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
