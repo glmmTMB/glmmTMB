@@ -33,6 +33,13 @@
 ##' \item the \code{effects} package computes graphical tabular effect displays
 ##' (only for the fixed effects of the conditional component)
 ##' }
+##' @section Denominator degrees of freedom in \code{emmeans}:
+##' For Gaussian models with random effects, the \code{ddf} argument to \code{emmeans()}
+##' (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
+##' \code{"satterthwaite"} and \code{"kenward-roger"} (see \code{\link{dof_KR}} and
+##' \code{\link{dof_satt}} for the underlying calculations). \code{ddf = "kenward-roger"}
+##' is only computed for models fitted with \code{REML = TRUE}; for an ML fit (\pkg{glmmTMB}'s
+##' default), it is silently replaced by \code{"satterthwaite"}, with a warning.
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.

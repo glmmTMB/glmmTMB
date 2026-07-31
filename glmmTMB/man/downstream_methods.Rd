@@ -73,6 +73,16 @@ While the examples below are disabled for earlier versions of
 R, they may still work; it may be necessary to refer to private
 versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }
+\section{Denominator degrees of freedom in \code{emmeans}}{
+
+For Gaussian models with random effects, the \code{ddf} argument to \code{emmeans()}
+(default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
+\code{"satterthwaite"} and \code{"kenward-roger"} (see \code{\link{dof_KR}} and
+\code{\link{dof_satt}} for the underlying calculations). \code{ddf = "kenward-roger"}
+is only computed for models fitted with \code{REML = TRUE}; for an ML fit (\pkg{glmmTMB}'s
+default), it is silently replaced by \code{"satterthwaite"}, with a warning.
+}
+
 \examples{
 warp.lm <- glmmTMB(breaks ~ wool * tension, data = warpbreaks)
 salamander1 <- up2date(readRDS(system.file("example_files","salamander1.rds",package="glmmTMB")))
