@@ -78,7 +78,7 @@
     \itemize{
       \item Satterthwaite ddf approximation now uses a faster, slightly
       less accurate approximation method; results may change slightly
-      \item fixed garbled warning from Kenward-Roger correction
+      \item fixed garbled warning from Kenward-Roger correction (GH #1310)
       \item \code{ddf = "kenward-roger"} on a non-REML fit now throws an
       error consistently across \code{summary}, \code{anova}, \code{Anova},
       and \code{emmeans} (previously \code{emmeans} silently substituted
