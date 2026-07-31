@@ -43,7 +43,29 @@ test_that("Satt in summary", {
         )
     })               
 
-## add lmerTest comparisons?
+test_that("Satterthwaite ddf match lmerTest (hard-coded reference values)", {
+    ## reference values computed once via lmerTest 3.x (not at test time, to
+    ## avoid adding a test dependency on lmerTest):
+    ##   library(lmerTest)
+    ##   fm1 <- lmerTest::lmer(Reaction ~ Days + (1 | Subject), sleepstudy, REML = TRUE)
+    ##   fm2 <- lmerTest::lmer(Reaction ~ Days + (Days | Subject), sleepstudy, REML = TRUE)
+    ##   coef(summary(fm1))[, "df"]; coef(summary(fm2))[, "df"]
+    lmerTest_ddf_fm1 <- c(`(Intercept)` = 22.8102, Days = 161.0000)
+    lmerTest_ddf_fm2 <- c(`(Intercept)` = 16.99973, Days = 16.99998)
+
+    ## refit with REML = TRUE explicitly rather than relying on the
+    ## conditional pbkrtest/lme4 block above (which only reassigns fm1/fm2 to
+    ## REML fits if pbkrtest happens to be installed)
+    fm1_reml <- update(fm1, REML = TRUE)
+    fm2_reml <- update(fm2, REML = TRUE)
+
+    ## tolerance of 1% comfortably covers the small, expected numerical
+    ## difference between glmmTMB's finite-difference Satterthwaite
+    ## implementation and lmerTest's (differences were ~0.03% in testing)
+    expect_equal(unname(dof_satt(fm1_reml)), unname(lmerTest_ddf_fm1), tolerance = 1e-2)
+    expect_equal(unname(dof_satt(fm2_reml)), unname(lmerTest_ddf_fm2), tolerance = 1e-2)
+})
+
 ## emmeans
 
 if (requireNamespace("emmeans")) {
