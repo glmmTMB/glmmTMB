@@ -2194,9 +2194,12 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @title summary for glmmTMB fits
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param ddf denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
-##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which
-##' requires a REML fit (an error is thrown otherwise) and is entirely untested for GLMMs (see \code{\link{dof_KR}});
-##' \code{"satterthwaite"} uses a Satterthwaite approximation
+##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation
+##' (see \code{\link{dof_KR}}), which requires a REML fit (an error is thrown otherwise) and a family
+##' with an estimated dispersion parameter (an error is thrown for families such as \code{binomial} or
+##' \code{poisson} that lack one); \code{"satterthwaite"} uses a Satterthwaite approximation, with no such
+##' restrictions. For families other than \code{gaussian}, both approximations are allowed but emit a
+##' warning, because their performance (and theoretical justification) for GLMMs is poorly understood
 ##' @param ... unused, for method compatibility
 ##' @inheritParams vcov.glmmTMB
 ##' @export

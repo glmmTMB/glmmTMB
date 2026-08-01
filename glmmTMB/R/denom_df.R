@@ -358,9 +358,19 @@ dof_KR <- function(model) {
     }
     kappa_opt <- model$fit$par
     h_kappa <- numDeriv::jacobian(func = model$obj$gr, x = kappa_opt, method = "simple")
+    ## one-sided ("simple") finite differences are not guaranteed to give a
+    ## numerically symmetric matrix; eigen(symmetric=TRUE) would silently use
+    ## only the lower triangle in that case, distorting the result, so
+    ## symmetrize explicitly first
+    h_kappa <- (h_kappa + t(h_kappa)) / 2
     eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
+    ## diag(x) for a length-1 numeric x builds an x-by-x identity matrix
+    ## rather than a 1x1 matrix containing x -- an easy footgun when there's
+    ## only one outer/kappa parameter (e.g. a single random-intercept
+    ## variance with no dispersion parameter to estimate, as for a poisson
+    ## GLMM); nrow= makes this robust regardless of length(values)
     cov_varpar_kappa <- with(eig_h_kappa,
-                             vectors %*% diag(1/values) %*% t(vectors))
+                             vectors %*% diag(1/values, nrow = length(values)) %*% t(vectors))
     jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model, method = "simple")
     res <- list(cov_varpar_kappa = cov_varpar_kappa, jac_kappa = jac_kappa)
     cache_env$.satt_cache <- res
@@ -521,11 +531,15 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     beta <- fixef(model)$cond
     vcov_beta <- stats::vcov(model)$cond
 
-    kappa_opt <- model$fit$par
-    h_kappa <- numDeriv::jacobian(func = model$obj$gr, x = kappa_opt)
-    eig_h_kappa <- eigen(h_kappa, symmetric = TRUE)
-    cov_varpar_kappa <- with(eig_h_kappa, vectors %*% diag(1 / values) %*% t(vectors))
-    jac_kappa <- .get_jac_list(.covbeta_kappa, kappa_opt, model)
+    ## reuse the per-model cache from .satt_precompute() (shared with
+    ## dof_satt()) instead of redoing the expensive kappa Hessian/Jacobian
+    ## computation from scratch on every call -- car::Anova(..., ddf =
+    ## "satterthwaite") calls this once per term, so without the cache
+    ## (and its cheaper "simple"-differencing settings) this would be much
+    ## slower than necessary for models with several terms
+    pre <- .satt_precompute(model)
+    cov_varpar_kappa <- pre$cov_varpar_kappa
+    jac_kappa <- pre$jac_kappa
 
     vcov_Lbeta <- L %*% vcov_beta %*% t(L)
     eig <- eigen(vcov_Lbeta)
@@ -621,26 +635,38 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
 ##' @noRd
 check_ddf <- function(object, ddf) {
     if (ddf == "asymptotic") return(invisible(NULL))
-    ## t/F reference distributions (as opposed to z/chi-squared) are only
-    ## meaningful when the model has an estimated scale/dispersion parameter;
-    ## for families with a fixed, known scale (binomial, Poisson, ...) there is
-    ## no extra uncertainty for Kenward-Roger/Satterthwaite to correct for
-    if (!usesDispersion(family(object)$family)) {
-        stop(sprintf(
-            "ddf='%s' requires an estimated scale/dispersion parameter; family '%s' has a fixed/known scale, so t/F tests are not meaningful here. Use ddf='asymptotic' instead.",
-            ddf, family(object)$family), call. = FALSE)
-    }
     if (!hasRandom(object)) {
+        ## the residual-df Wald F-test fallback used here (see
+        ## .joint_ddf_none()/.wald_joint_test(), and the "!hasRandom"
+        ## branches of summary.glmmTMB()/Anova.glmmTMB()) doesn't touch any
+        ## family-specific machinery, so it works the same regardless of
+        ## family; no need for the checks below
         message(sprintf(
             "no random effects in model: kenward-roger/satterthwaite corrections are not meaningful; using residual df (nobs - npar) for ddf='%s' instead",
             ddf))
         return(invisible(NULL))
     }
-    if (ddf == "kenward-roger") .check_KR_reml(object)
+    if (ddf == "kenward-roger") {
+        .check_KR_reml(object)
+        ## the Kenward-Roger variance-component machinery (.get_SigmaG(),
+        ## via .family_var_func()) only has cases for a handful of families
+        ## with an estimated dispersion parameter (gaussian, nbinom1/2/12,
+        ## Gamma); families with no dispersion parameter at all (binomial,
+        ## poisson, ...) are never supported and fail with an opaque error
+        ## deep inside that machinery, so reject them here with a clear
+        ## message instead. Satterthwaite has no such restriction: it works
+        ## directly from the TMB joint precision matrix and is family-agnostic
+        ## (confirmed to work for e.g. a poisson GLMM)
+        if (!usesDispersion(family(object)$family)) {
+            stop(sprintf(
+                "ddf='kenward-roger' is not supported for family '%s' (no estimated dispersion parameter); use ddf='satterthwaite' or ddf='asymptotic' instead",
+                family(object)$family), call. = FALSE)
+        }
+    }
     ## applies to both kenward-roger and satterthwaite: fires after (not
-    ## instead of) the REML check above, so an ML fit + non-Gaussian family
-    ## gets only the REML error, not a spurious extra warning for a test
-    ## that's about to fail anyway
+    ## instead of) the checks above, so an ML fit or an unsupported family
+    ## gets only that more specific error, not a spurious extra warning for
+    ## a test that's about to fail anyway
     if (family(object)$family != "gaussian") {
         .warn_ddf_glmm(ddf)
     }

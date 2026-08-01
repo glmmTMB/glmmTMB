@@ -126,4 +126,25 @@ if (requireNamespace("emmeans")) {
             "poorly understood"
         )
     })
+
+    ## salamander1's family (poisson) has no estimated dispersion parameter
+    ## (usesDispersion() == FALSE); check_ddf() used to hard-error for this
+    ## unconditionally (contradicting the "warn, don't error" GLMM policy
+    ## documented above and enforced by emmeans), so summary()/anova()/Anova()
+    ## and emmeans() disagreed for exactly this case. satterthwaite's
+    ## implementation doesn't need a dispersion parameter and should now warn
+    ## (not error) consistently everywhere; kenward-roger's variance-component
+    ## machinery genuinely doesn't support such families and should still
+    ## error, but with a specific message rather than a crash
+    test_that("summary() and emmeans() agree: ddf='satterthwaite' warns (does not error) for a family with no dispersion parameter", {
+        expect_warning(summary(salamander1, ddf = "satterthwaite"), "poorly understood")
+        expect_warning(emmeans::emmeans(salamander1, ~ mined, ddf = "satterthwaite"), "poorly understood")
+    })
+
+    salamander1_reml <- update(salamander1, REML = TRUE)
+
+    test_that("summary() and emmeans() agree: ddf='kenward-roger' errors clearly (not an opaque eigen()/forceSymmetric crash) for a family with no dispersion parameter", {
+        expect_error(summary(salamander1_reml, ddf = "kenward-roger"), "no estimated dispersion parameter")
+        expect_error(emmeans::emmeans(salamander1_reml, ~ mined, ddf = "kenward-roger"), "no estimated dispersion parameter")
+    })
 }

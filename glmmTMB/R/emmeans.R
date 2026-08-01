@@ -40,10 +40,11 @@
 ##' \code{\link{dof_satt}} for the underlying calculations), matching the same argument
 ##' to \code{\link{summary.glmmTMB}} and \code{\link{anova.glmmTMB}}. \code{ddf = "kenward-roger"}
 ##' requires a model fitted with \code{REML = TRUE}: for an ML fit (\pkg{glmmTMB}'s default),
-##' it throws an error rather than silently substituting another method. For families other
-##' than \code{gaussian}, \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but
-##' emit a warning, because their performance (and theoretical justification) for
-##' GLMMs is poorly understood.
+##' it throws an error rather than silently substituting another method; it also requires a
+##' family with an estimated dispersion parameter, and throws an error for families such as
+##' \code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
+##' \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
+##' their performance (and theoretical justification) for GLMMs is poorly understood.
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.
@@ -135,7 +136,18 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
 
         ## hard error (not a silent downgrade) for KR + non-REML, matching
         ## summary.glmmTMB()/anova.glmmTMB() via check_ddf()
-        if (ddf == "kenward-roger") .check_KR_reml(object)
+        if (ddf == "kenward-roger") {
+            .check_KR_reml(object)
+            ## Kenward-Roger's variance-component machinery only supports
+            ## families with an estimated dispersion parameter (see the
+            ## matching check in check_ddf()); without this, families such
+            ## as binomial/poisson fail with an opaque error instead
+            if (!usesDispersion(fam)) {
+                stop(sprintf(
+                    "ddf='kenward-roger' is not supported for family '%s' (no estimated dispersion parameter); use ddf='satterthwaite' or ddf='asymptotic' instead",
+                    fam), call. = FALSE)
+            }
+        }
 
         if (fam != "gaussian" && ddf != "asymptotic") .warn_ddf_glmm(ddf)
         return(ddf)

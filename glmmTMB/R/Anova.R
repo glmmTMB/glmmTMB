@@ -52,7 +52,9 @@ has.intercept.glmmTMB <- function (model, component="cond", ...) {
 ##' @param vcov. variance-covariance matrix (usually extracted automatically); not
 ##' currently supported together with \code{ddf != "asymptotic"}
 ##' @param test.statistic \code{"Chisq"} (default; a Wald chi-squared test) or \code{"F"}
-##' (only available together with \code{ddf != "asymptotic"}, see \code{ddf} below)
+##' (only available together with \code{ddf != "asymptotic"}, see \code{ddf} below). An explicit
+##' \code{test.statistic = "Chisq"} combined with \code{ddf != "asymptotic"} is an error, since
+##' Kenward-Roger/Satterthwaite always produce an F table
 ##' @param singular.ok OK to do ANOVA with singular models (unused) ?
 ##' @param type  type of test, \code{"II"}, \code{"III"}, \code{2}, or \code{3}.  Roman numerals are equivalent to the corresponding Arabic numerals. See \code{\link[car]{Anova}} for details.
 ##' @param include.rankdef.cols include all columns of a rank-deficient model matrix?
@@ -60,9 +62,12 @@ has.intercept.glmmTMB <- function (model, component="cond", ...) {
 ##' and \code{\link{anova.glmmTMB}}. The default \code{"asymptotic"} gives the classical Wald
 ##' chi-squared table; \code{"kenward-roger"} or \code{"satterthwaite"} instead give an F-ratio
 ##' table, with each term's denominator df computed via the Kenward-Roger or Satterthwaite
-##' approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). Not currently supported
-##' together with a user-supplied \code{vcov.}, \code{component != "cond"}, or models with
-##' aliased/rank-deficient or \code{map}-fixed conditional coefficients.
+##' approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). \code{"kenward-roger"}
+##' additionally requires a family with an estimated dispersion parameter, and throws an error
+##' for families such as \code{binomial} or \code{poisson} that lack one (\code{"satterthwaite"}
+##' has no such restriction). Not currently supported together with a user-supplied \code{vcov.},
+##' \code{component != "cond"}, or models with aliased/rank-deficient or \code{map}-fixed
+##' conditional coefficients.
 
 Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                            test.statistic = c("Chisq","F"),
@@ -78,6 +83,7 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
         stop(sprintf("trivial fixed effect for component %s: can't compute Anova table", sQuote(component)))
     }
     ddf <- match.arg(ddf)
+    user_test_statistic <- !missing(test.statistic)
     test.statistic <- match.arg(test.statistic)
     if (test.statistic == "F" && ddf == "asymptotic") {
         stop("F tests require ddf='kenward-roger' or ddf='satterthwaite' ",
@@ -93,6 +99,17 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                  "Kenward-Roger/Satterthwaite need the model's own REML/ML ",
                  "variance-parameter uncertainty, not an arbitrary covariance matrix")
         }
+        ## ddf != "asymptotic" always produces an F table (see
+        ## Anova.II/III.glmmTMB's ddf branch, which ignores 'test'
+        ## entirely); an explicit test.statistic="Chisq" would silently
+        ## be overridden, so reject that combination instead, and quietly
+        ## default to "F" otherwise
+        if (user_test_statistic && test.statistic == "Chisq") {
+            stop("test.statistic='Chisq' cannot be combined with ddf != 'asymptotic': ",
+                 "Kenward-Roger/Satterthwaite always produce F tests; ",
+                 "omit test.statistic or set it to 'F'")
+        }
+        test.statistic <- "F"
         check_ddf(mod, ddf)
     }
     if (is.function(vcov.))

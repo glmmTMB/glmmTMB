@@ -27,7 +27,9 @@ Effect.glmmTMB(focal.predictors, mod, ...)
 \item{type}{type of test, \code{"II"}, \code{"III"}, \code{2}, or \code{3}.  Roman numerals are equivalent to the corresponding Arabic numerals. See \code{\link[car]{Anova}} for details.}
 
 \item{test.statistic}{\code{"Chisq"} (default; a Wald chi-squared test) or \code{"F"}
-(only available together with \code{ddf != "asymptotic"}, see \code{ddf} below)}
+(only available together with \code{ddf != "asymptotic"}, see \code{ddf} below). An explicit
+\code{test.statistic = "Chisq"} combined with \code{ddf != "asymptotic"} is an error, since
+Kenward-Roger/Satterthwaite always produce an F table}
 
 \item{component}{which component of the model to test/analyze ("cond", "zi", or "disp")
 or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.}
@@ -43,9 +45,12 @@ currently supported together with \code{ddf != "asymptotic"}}
 and \code{\link{anova.glmmTMB}}. The default \code{"asymptotic"} gives the classical Wald
 chi-squared table; \code{"kenward-roger"} or \code{"satterthwaite"} instead give an F-ratio
 table, with each term's denominator df computed via the Kenward-Roger or Satterthwaite
-approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). Not currently supported
-together with a user-supplied \code{vcov.}, \code{component != "cond"}, or models with
-aliased/rank-deficient or \code{map}-fixed conditional coefficients.}
+approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). \code{"kenward-roger"}
+additionally requires a family with an estimated dispersion parameter, and throws an error
+for families such as \code{binomial} or \code{poisson} that lack one (\code{"satterthwaite"}
+has no such restriction). Not currently supported together with a user-supplied \code{vcov.},
+\code{component != "cond"}, or models with aliased/rank-deficient or \code{map}-fixed
+conditional coefficients.}
 
 \item{\dots}{Additional parameters that may be supported by the method.}
 
@@ -92,10 +97,11 @@ For models with random effects, the \code{ddf} argument to \code{emmeans()}
 \code{\link{dof_satt}} for the underlying calculations), matching the same argument
 to \code{\link{summary.glmmTMB}} and \code{\link{anova.glmmTMB}}. \code{ddf = "kenward-roger"}
 requires a model fitted with \code{REML = TRUE}: for an ML fit (\pkg{glmmTMB}'s default),
-it throws an error rather than silently substituting another method. For families other
-than \code{gaussian}, \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but
-emit a warning, because their performance (and theoretical justification) for
-GLMMs is poorly understood.
+it throws an error rather than silently substituting another method; it also requires a
+family with an estimated dispersion parameter, and throws an error for families such as
+\code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
+\code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
+their performance (and theoretical justification) for GLMMs is poorly understood.
 }
 
 \examples{

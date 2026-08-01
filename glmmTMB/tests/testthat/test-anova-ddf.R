@@ -109,6 +109,19 @@ run_anova_ddf_tests <- function() {
         Anova_sat <- car::Anova(m1, ddf = "satterthwaite")
         Anova_sat_III <- car::Anova(m1, type = "III", ddf = "satterthwaite")
 
+        test_that(".satt_adjust_joint() reuses the .satt_precompute() cache without changing results", {
+            ## a fresh copy of m1 so this doesn't depend on cache state left
+            ## behind by other tests -- the cache lives on model$obj$env, a
+            ## genuine (shared-by-reference) environment, not a per-copy list
+            m1_fresh <- glmmTMB(z ~ x + y + (1|f), data = dd, REML = TRUE)
+            expect_null(m1_fresh$obj$env$.satt_cache)
+            res_cold <- car::Anova(m1_fresh, ddf = "satterthwaite")
+            expect_false(is.null(m1_fresh$obj$env$.satt_cache))
+            res_warm <- car::Anova(m1_fresh, ddf = "satterthwaite")
+            expect_identical(res_cold[["F"]], res_warm[["F"]])
+            expect_identical(res_cold[["Den Df"]], res_warm[["Den Df"]])
+        })
+
         test_that("Anova() Type II KR F-test matches pbkrtest::KRmodcomp (single-term drop)", {
             expect_equal(Anova_kr["x", "F"], kr_x[["stat"]], tolerance = ftol)
             expect_equal(Anova_kr["x", "Num Df"], kr_x[["ndf"]], tolerance = ftol)
@@ -148,11 +161,15 @@ if (requireNamespace("car", quietly = TRUE)) {
     }))
     dd_anova$y_gauss <- rnorm(nrow(dd_anova))
     dd_anova$y_nb <- rnbinom(nrow(dd_anova), mu = 5, size = 2)
+    dd_anova$y_pois <- rpois(nrow(dd_anova), lambda = 5)
 
     m_ml <- glmmTMB(y_gauss ~ f + (1|g), data = dd_anova, family = gaussian, REML = FALSE)
     m_reml <- update(m_ml, REML = TRUE)
     m_nb <- glmmTMB(y_nb ~ f + (1|g), data = dd_anova, family = nbinom2, REML = TRUE)
     m_norandom <- glmmTMB(y_gauss ~ f, data = dd_anova, family = gaussian)
+    ## poisson has no estimated dispersion parameter (usesDispersion() ==
+    ## FALSE), unlike m_nb (nbinom2) above
+    m_pois <- glmmTMB(y_pois ~ f + (1|g), data = dd_anova, family = poisson, REML = TRUE)
 
     test_that("Anova() ddf='kenward-roger' hard-errors (does not silently downgrade) on an ML fit", {
         expect_error(car::Anova(m_ml, ddf = "kenward-roger"), "requires a REML fit")
@@ -197,5 +214,30 @@ if (requireNamespace("car", quietly = TRUE)) {
 
     test_that("Anova() test.statistic='F' without ddf is a clear error", {
         expect_error(car::Anova(m_reml, test.statistic = "F"), "ddf=")
+    })
+
+    test_that("Anova() rejects an explicit test.statistic='Chisq' combined with ddf != 'asymptotic'", {
+        expect_error(
+            car::Anova(m_reml, ddf = "kenward-roger", test.statistic = "Chisq"),
+            "test.statistic='Chisq' cannot be combined with ddf"
+        )
+    })
+
+    test_that("Anova() silently gives an F table when ddf is set without specifying test.statistic", {
+        res <- expect_no_warning(expect_no_error(car::Anova(m_reml, ddf = "kenward-roger")))
+        expect_true("F" %in% names(res))
+        expect_match(attr(res, "heading")[1], "F tests")
+    })
+
+    test_that("Anova() ddf='kenward-roger' errors clearly (not an opaque eigen()/forceSymmetric crash) for a family with no dispersion parameter", {
+        expect_error(
+            car::Anova(m_pois, ddf = "kenward-roger"),
+            "no estimated dispersion parameter"
+        )
+    })
+
+    test_that("Anova() ddf='satterthwaite' works (warning, not error) for a family with no dispersion parameter", {
+        res <- expect_warning(car::Anova(m_pois, ddf = "satterthwaite"), "poorly understood")
+        expect_true(all(is.finite(res[["Den Df"]])))
     })
 }
