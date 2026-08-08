@@ -236,6 +236,103 @@ dbell <- function(x, theta, log = FALSE) {
           as.integer(log), PACKAGE = "glmmTMB")
 }
 
+#' The Conway-Maxwell-Binomial Distribution
+#'
+#' Density and cumulative distribution function for the
+#' Conway-Maxwell-Binomial (CMB) distribution, parameterized by the mean.
+#'
+#' @param x vector of quantiles (non-negative integers \eqn{\le} \code{size}).
+#' @param q vector of quantiles.
+#' @param size vector of numbers of trials.
+#' @param mu vector of means (of the \emph{count}, i.e. \eqn{0 < \mu <}
+#'   \code{size}).
+#' @param nu vector of dispersion parameters; \eqn{\nu = 1} recovers the
+#'   binomial distribution, \eqn{\nu > 1} gives under-dispersion,
+#'   \eqn{0 < \nu < 1} over-dispersion, and \eqn{\nu < 0} super-dispersion
+#'   (see \code{allow_negative_nu} in \code{\link{combinomial}}).
+#' @param log logical; if \code{TRUE} the log-density is returned.
+#' @param lower.tail logical; if \code{TRUE} (default), probabilities are
+#'   \eqn{P(X \le q)}.
+#' @param log.p logical; if \code{TRUE} probabilities are returned on the
+#'   log scale.
+#'
+#' @details
+#' The CMB distribution (Shmueli et al. 2005; Kadane 2016) has probability
+#' mass function
+#' \deqn{P(X = x) = \binom{n}{x}^{\nu} p^{x} (1-p)^{n-x} / Z(p, \nu, n)}
+#' for \eqn{x = 0, 1, \ldots, n}, where \eqn{Z} normalizes over the support.
+#' Following the mean parameterization used by the \code{\link{combinomial}}
+#' family (cf. Huang 2017), \code{mu} is the mean count; the natural
+#' parameter \eqn{p} is recovered internally by solving
+#' \eqn{E[X \mid n, p, \nu] = \mu}.
+#'
+#' @references
+#' Shmueli, G., Minka, T. P., Kadane, J. B., Borle, S., Boatwright, P. (2005).
+#' A useful distribution for fitting discrete data: revival of the
+#' Conway-Maxwell-Poisson distribution.
+#' \emph{Journal of the Royal Statistical Society C} \bold{54}(1):127--142.
+#'
+#' Kadane, J. B. (2016). Sums of possibly associated Bernoulli variables:
+#' the Conway-Maxwell-Binomial distribution.
+#' \emph{Bayesian Analysis} \bold{11}(2):403--420.
+#'
+#' @seealso \code{\link{combinomial}} for the CMB family in \pkg{glmmTMB};
+#'   \link{Distributions} for other standard distributions, including
+#'   \code{\link{dbinom}} for the binomial distribution.
+#'
+#' @keywords distribution
+#'
+#' @return
+#' \code{dcombinom} gives the density; \code{pcombinom} gives the cumulative
+#' distribution function.
+#'
+#' @examples
+#' ## nu = 1 recovers the binomial
+#' all.equal(dcombinom(0:6, size = 6, mu = 3, nu = 1),
+#'           dbinom(0:6, size = 6, prob = 0.5))
+#' pcombinom(0:6, size = 6, mu = 3, nu = 0.5)
+#'
+#' @export
+dcombinom <- function(x, size, mu, nu, log = FALSE) {
+    n <- max(length(x), length(size), length(mu), length(nu))
+    .Call("dcombinom_R",
+          as.double(rep_len(x, n)),
+          as.double(rep_len(mu, n)),
+          as.double(rep_len(nu, n)),
+          as.integer(rep_len(size, n)),
+          as.logical(log),
+          PACKAGE = "glmmTMB")
+}
+
+#' @rdname dcombinom
+#' @export
+pcombinom <- function(q, size, mu, nu, lower.tail = TRUE, log.p = FALSE) {
+    n <- max(length(q), length(size), length(mu), length(nu))
+    out <- .Call("pcombinom_R",
+                 as.double(rep_len(q, n)),
+                 as.double(rep_len(mu, n)),
+                 as.double(rep_len(nu, n)),
+                 as.integer(rep_len(size, n)),
+                 PACKAGE = "glmmTMB")
+    if (!lower.tail) out <- 1 - out
+    if (log.p)       out <- log(out)
+    out
+}
+
+#' CMB CDF wrapper for dunnsmyth_resids: converts the proportion-scale
+#' (mu, phi) that residuals.glmmTMB works with to the count-scale
+#' (mu, nu, size) parameterization of pcombinom. phi is nu as returned
+#' by predict(type = "disp") (under either dispersion link).
+#' @param q vector of quantiles (count scale)
+#' @param mu vector of mean proportions
+#' @param phi vector of dispersion (nu) values
+#' @param size vector of numbers of trials
+#' @return vector of CDF values
+#' @noRd
+pcombinom_mu <- function(q, mu, phi, size) {
+    pcombinom(q, size = size, mu = mu * size, nu = phi)
+}
+
 #' @rdname dbell
 #' @export
 ## theta = LambertW(mu); P(X <= q) accumulated from the PMF over 0:floor(q).

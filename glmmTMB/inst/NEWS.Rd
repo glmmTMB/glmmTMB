@@ -23,6 +23,17 @@
       \item density and cumulative distribution functions for the Bell
       (\code{dbell}, \code{pbell}) and generalized Poisson
       (\code{dgenpois}, \code{pgenpois}) distributions are now exported
+      \item new family \code{combinomial} implementing the
+      (mean-parameterized) Conway-Maxwell-Binomial distribution for
+      under- and over-dispersed binomial-type responses;
+      \code{combinomial(allow_negative_nu = TRUE)} uses an identity link
+      for the dispersion model, allowing the dispersion parameter to go
+      negative (super-dispersion). Dunn-Smyth and Pearson residuals,
+      simulation (hence \pkg{DHARMa} and
+      \code{performance::check_model()}) and \pkg{emmeans} (conditional
+      and dispersion components) are supported. \strong{Requires TMB
+      newer than 1.9.21.} The density and cumulative distribution
+      functions (\code{dcombinom}, \code{pcombinom}) are exported
     }
   } % new features
  \subsection{BUG FIXES}{
@@ -40,6 +51,11 @@
       (e.g.) subsequent calls to \code{predict} are not modified by
       \code{estfun} (or upstream functions such as \code{vcovHC})
       (GH #1294; Vincent Arel-Bundock)
+      \item Dunn-Smyth residuals for binomial models with two-column
+      (\code{cbind(successes, failures)}) responses and more than one
+      trial per observation were computed with the number of trials
+      fixed at 1; the number of trials is now passed through to the
+      binomial CDF
       \item \code{emmeans} and \code{car::Anova} now work for models with
       fixed-effect coefficients fixed via \code{map} (previously a
       dimension mismatch in \code{emmeans}, and a singular-matrix error or

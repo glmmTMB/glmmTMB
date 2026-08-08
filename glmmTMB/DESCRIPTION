@@ -43,7 +43,9 @@ Authors@R: c(person("Mollie","Brooks",
   person("Nikolas", "Krieger", role = "ctb",
     comment = c(ORCID = "0000-0002-4581-3545")),
   person("Coralie", "Williams", role = "ctb",
-    comment = c(ORCID = "0000-0003-1312-4953"))
+    comment = c(ORCID = "0000-0003-1312-4953")),
+  person("Julius", "Bogomolovas", role = "ctb",
+    comment = c(ORCID = "0000-0001-8344-1909"))
 	)
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
@@ -55,7 +57,7 @@ License: AGPL-3
 Depends: R (>= 3.6.0)
 Imports:
     methods,
-    TMB (>= 1.9.0),
+    TMB (>= 1.9.23),
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,

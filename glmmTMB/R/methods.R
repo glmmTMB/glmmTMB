@@ -883,7 +883,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                    pit_norm_resids(cump(mr - 1), cump(mr))
                } else {
                    phi <- predict(object, type = "disp")
-                   dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
+                   ## wts holds the number of trials for binomial-type responses
+                   ## (cbind two-column or proportion-plus-weights specifications)
+                   dunnsmyth_resids(mr, mu, fam$fam, phi = phi, size = wts)
                }
            },
            deviance = {
@@ -920,6 +922,8 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              vargs$mu <- vargs$lambda <- mu
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
+             ## number of trials for binomial-type responses (combinomial)
+             vargs$size <- wts
              # subset to only the arguments used by the variance function
              vargs <- vargs[vformals]
              ## suppress beta-binomial $variance() message, substitute
@@ -1871,17 +1875,27 @@ pit_norm_resids <- function(a, b) {
     resid
 }
 
-dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
-    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell")
+dunnsmyth_resids <- function(yobs, mu, family, phi=NULL, size=NULL) {
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell",
+                      "combinomial")
     if (family == "gaussian") return(yobs-mu)
     if (!family %in% res.families) {
         stop("can't compute Dunn-Smyth residuals for family ",
              sQuote(family))
     }
+    if (family == "combinomial" && is.null(size)) {
+        stop("'size' (number of trials) is required for combinomial Dunn-Smyth residuals")
+    }
+    ## binomial-type families arrive with yobs and mu on the proportion scale
+    ## (see residuals.glmmTMB); rescale the observations to counts
+    if (family %in% c("binomial", "combinomial") && !is.null(size)) {
+        yobs <- round(yobs * size)
+    }
     args <- switch(family,
                    nbinom2  = list(size = phi),
                    nbinom1  = list(size = mu/(phi + 1e-5)),
-                   binomial = list(size = 1),
+                   binomial = list(size = if (is.null(size)) 1 else size),
+                   combinomial = list(phi = phi, size = size),
                    genpois  = list(phi = phi),
                    NULL)
     pfun <- switch(family,
@@ -1889,6 +1903,7 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
                    nbinom1  = pnbinom0,
                    poisson  = ppois,
                    binomial = pbinom,
+                   combinomial = pcombinom_mu,
                    genpois  = pgenpois_mu,
                    bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))

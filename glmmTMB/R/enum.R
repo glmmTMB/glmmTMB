@@ -13,6 +13,7 @@
   gaussian = 0,
   binomial = 100,
   betabinomial =101,
+  combinomial   = 102,
   beta =200,
   ordbeta = 201,
   Gamma =300,

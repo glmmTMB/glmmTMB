@@ -169,7 +169,7 @@ test_that("terms", {
     ## if predvars is not properly attached to term, this will
     ## fail as it tries to construct a 3-knot spline from a single point
     expect_equal(model.matrix(delete.response(terms(m)),data=data.frame(x=1)),
-      structure(c(1, 0, 0, 0), .Dim = c(1L, 4L), .Dimnames = list("1",
+      structure(c(1, 0, 0, 0), dim = c(1L, 4L), dimnames = list("1",
     c("(Intercept)", "ns(x, 3)1", "ns(x, 3)2", "ns(x, 3)3")),
     assign = c(0L, 1L, 1L, 1L)))
 })
@@ -210,8 +210,8 @@ test_that("confint", {
     expect_equal(ci,
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),
-                  .Dim = c(2L, 2L),
-                  .Dimnames = list(c("(Intercept)", "Days"),
+                  dim = c(2L, 2L),
+                  dimnames = list(c("(Intercept)", "Days"),
                                    c("2.5 %", "97.5 %"))),
         ## answers changed with var -> SD shift, increased tolerance
         ##  rather than substituting new values
@@ -246,22 +246,22 @@ structure(c(5.48098713179567, 0.0248163864044954, 183.810584890723,
     expect_equal(ci.prof0,
                  structure(c(238.216039176535, 7.99674863649355, 3.758897,
                              264.368471102549, 12.8955469713508, 3.966739),
-                           .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "disp~(Intercept)"),
+                           dim = 3:2, dimnames = list(c("(Intercept)", "Days", "disp~(Intercept)"),
                                                         c("2.5 %", "97.5 %"))),
                  tolerance=1e-4)
 
     ci.prof <- confint(fm2,parm=1,method="profile", npts=3)
     expect_equal(ci.prof,
                  structure(c(237.27249, 265.13383),
-                           .Dim = 1:2, .Dimnames = list(
+                           dim = 1:2, dimnames = list(
                                 "(Intercept)", c("2.5 %", "97.5 %"))),
                  tolerance=1e-6)
     ## uniroot CI
     ci.uni <- confint(fm2,parm=1,method="uniroot")
     expect_equal(ci.uni,
                  structure(c(237.68071,265.12949,251.4050979),
-                        .Dim = c(1L, 3L),
-                        .Dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
+                        dim = c(1L, 3L),
+                        dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
                  ## values changed slightly with var -> SD param shift for Gaussian; loosened tolerance
                  tolerance=1e-3)
     ## check against 'raw' tmbroot
@@ -399,7 +399,7 @@ test_that("vcov", {
            structure(c("(Intercept)", "Days", "disp~(Intercept)",
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
-          .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
+          names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
     ## vcov doesn't include dispersion for non-dispersion families ...
     expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
     ## oops, dot_check() disabled in vcov.glmmTMB ...
@@ -787,6 +787,83 @@ test_that("dunn-smyth residuals: bell", {
     bell_mod <- glmmTMB(y ~ x, data = bell_dat, family = bell())
     set.seed(7)
     r <- residuals(bell_mod, type = "dunn-smyth")
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
+})
+
+test_that("dunn-smyth residuals: combinomial", {
+    skip_on_cran()
+    set.seed(42)
+    n <- 1000; size <- 15
+    cmb_dat <- data.frame(x = rnorm(n))
+    p <- plogis(-0.2 + 0.4 * cmb_dat$x)
+    ## sample from the CMB kernel (nu = 0.5, over-dispersed)
+    cmb_dat$k <- vapply(p, function(pp) {
+        logw <- 0.5 * lchoose(size, 0:size) + (0:size) * log(pp) +
+            (size - 0:size) * log1p(-pp)
+        sample(0:size, 1, prob = exp(logw - max(logw)))
+    }, numeric(1))
+    cmb_dat$nfail <- size - cmb_dat$k
+    cmb_mod <- glmmTMB(cbind(k, nfail) ~ x, family = combinomial(),
+                       data = cmb_dat)
+    set.seed(7)
+    r <- residuals(cmb_mod, type = "dunn-smyth")
+    expect_true(all(is.finite(r)))
+    expect_true(abs(mean(r)) < 0.1)
+    expect_true(abs(sd(r) - 1) < 0.1)
+    ## identity-link dispersion (allow_negative_nu) gives the same residuals,
+    ## and predict(type = "disp") agrees with sigma() under both links
+    cmb_mod2 <- glmmTMB(cbind(k, nfail) ~ x,
+                        family = combinomial(allow_negative_nu = TRUE),
+                        data = cmb_dat)
+    expect_equal(predict(cmb_mod, type = "disp")[1], sigma(cmb_mod),
+                 tolerance = 1e-8)
+    expect_equal(predict(cmb_mod2, type = "disp")[1], sigma(cmb_mod2),
+                 tolerance = 1e-8)
+    set.seed(7)
+    r2 <- residuals(cmb_mod2, type = "dunn-smyth")
+    expect_equal(r, r2, tolerance = 1e-3)
+})
+
+test_that("pearson residuals: combinomial", {
+    skip_on_cran()
+    set.seed(101)
+    n <- 500; size <- 12
+    pdat <- data.frame(x = rnorm(n))
+    pdat$k <- rbinom(n, size = size, prob = plogis(0.3 * pdat$x))
+    pdat$nfail <- size - pdat$k
+    cmb <- glmmTMB(cbind(k, nfail) ~ x, family = combinomial(), data = pdat)
+    r_cmb <- unname(residuals(cmb, type = "pearson"))
+    expect_true(all(is.finite(r_cmb)))
+    expect_true(abs(sd(r_cmb) - 1) < 0.1)
+    ## exact check against the PMF-derived variance at the fitted parameters
+    mu_hat <- predict(cmb, type = "response")
+    nu_hat <- sigma(cmb)
+    v_pmf <- vapply(seq_len(n), function(i) {
+        d <- dcombinom(0:size, size = size, mu = size * mu_hat[i], nu = nu_hat)
+        sum((0:size)^2 * d) - sum((0:size) * d)^2
+    }, numeric(1))
+    r_manual <- (pdat$k/size - mu_hat)/sqrt(v_pmf/size) * sqrt(size)
+    expect_equal(r_cmb, unname(r_manual), tolerance = 1e-6)
+    ## data are binomial (nu-hat ~ 1), so combinomial and binomial Pearson
+    ## residuals should agree closely
+    bin <- glmmTMB(cbind(k, nfail) ~ x, family = binomial, data = pdat)
+    r_bin <- unname(residuals(bin, type = "pearson"))
+    expect_true(max(abs(r_cmb - r_bin)) < 0.2)
+})
+
+test_that("dunn-smyth residuals: binomial with n > 1 trials", {
+    skip_on_cran()
+    ## regression test: the number of trials from a two-column response
+    ## must reach the binomial CDF (GH: size was fixed at 1)
+    set.seed(42)
+    n <- 1000
+    bin_dat <- data.frame(x = rnorm(n))
+    bin_dat$k <- rbinom(n, size = 15, prob = plogis(-0.2 + 0.4 * bin_dat$x))
+    bin_dat$nfail <- 15 - bin_dat$k
+    bin_mod <- glmmTMB(cbind(k, nfail) ~ x, family = binomial, data = bin_dat)
+    set.seed(7)
+    r <- residuals(bin_mod, type = "dunn-smyth")
     expect_true(abs(mean(r)) < 0.1)
     expect_true(abs(sd(r) - 1) < 0.1)
 })

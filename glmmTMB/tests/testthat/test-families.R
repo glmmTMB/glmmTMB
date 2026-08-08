@@ -110,7 +110,7 @@ test_that("beta", {
                   data=dd)
     expect_equal(fixef(m1)[[1]],
                  structure(c(1.98250567574413, 0.843382531038295),
-                           .Names = c("(Intercept)", "x")),
+                           names = c("(Intercept)", "x")),
                  tol=1e-5)
     expect_equal(c(VarCorr(m1)[[1]][[1]]),
                  0.433230926800709, tol=1e-5)
@@ -132,7 +132,7 @@ test_that("nbinom", {
                   data=dd)
     expect_equal(fixef(m1)[[1]],
                  structure(c(2.09866748794435, 1.12703589660625),
-                           .Names = c("(Intercept)", "x")),
+                           names = c("(Intercept)", "x")),
                  tolerance = 1e-5)
     expect_equal(c(VarCorr(m1)[[1]][[1]]),
                   9.54680210862774, tolerance = 1e-5)
@@ -171,9 +171,9 @@ test_that("nbinom", {
     ## coef(mod1 <- MASS::glm.nb(obs~x,link="identity",dat))
     expect_equal(fixef(glmmTMB(obs~x, family=nbinom2(link="identity"), dat)),
        structure(list(cond = structure(c(115.092240041138, 1.74390840106971),
-       .Names = c("(Intercept)", "x")), zi = numeric(0),
-       disp = structure(1.71242627201796, .Names = "(Intercept)")),
-       .Names = c("cond", "zi", "disp"), class = "fixef.glmmTMB"))
+       names = c("(Intercept)", "x")), zi = numeric(0),
+       disp = structure(1.71242627201796, names = "(Intercept)")),
+       names = c("cond", "zi", "disp"), class = "fixef.glmmTMB"))
 
 
     ## segfault (GH #248)
