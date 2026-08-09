@@ -420,7 +420,12 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
   }
-  if (REML) {
+  ## a REML fit with no free fixed effects to integrate out (e.g. y ~ 0, or
+  ## any model whose whole 'beta' vector is map-fixed) leaves sdreport()
+  ## without a joint precision matrix; such a fit is numerically identical
+  ## to the ML fit, so fall through to the ordinary path rather than
+  ## setting dimnames on a NULL Q
+  if (REML && !is.null(sdr$jointPrecision)) {
       if (sandwich) {
         stop("sandwich estimator is not available for REML fits")
       }

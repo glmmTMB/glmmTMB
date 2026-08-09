@@ -203,6 +203,27 @@ test_that("ordinal REML warns that thresholds are not integrated out", {
     expect_s3_class(fit, "glmmTMB")
     expect_true(fit$modelInfo$REML)
     ## ML is unaffected
-    expect_silent(glmmTMB(Sat ~ Infl, weights = Freq, data = housing,
-                          family = ordinal()))
+    expect_no_warning(glmmTMB(Sat ~ Infl, weights = Freq, data = housing,
+                              family = ordinal()))
+    ## a real REML fit still integrates out the fixed effects
+    expect_equal(unique(names(fit$sdr$par.random)), "beta")
+})
+
+test_that("ordinal REML null model stays usable", {
+    ## the ordinal intercept is always mapped, so y ~ 1 leaves no free
+    ## fixed effect to integrate out and sdreport() returns no joint
+    ## precision matrix; vcov() must fall back rather than error
+    fit0 <- suppressWarnings(
+        glmmTMB(Sat ~ 1, weights = Freq, data = housing,
+                family = ordinal(), REML = TRUE))
+    expect_length(fit0$sdr$par.random, 0)
+    expect_null(fit0$sdr$jointPrecision)
+    expect_s3_class(summary(fit0), "summary.glmmTMB")
+    expect_true(is.matrix(vcov(fit0)$cond))
+    expect_true(all(is.finite(confint(fit0)[, "Estimate"])))
+    ## same for any family with no fixed effects at all (no 'cond' block to
+    ## report there, but it must not error)
+    dd <- data.frame(y = rnorm(50))
+    expect_s3_class(vcov(glmmTMB(y ~ 0, data = dd, REML = TRUE)),
+                    "vcov.glmmTMB")
 })
