@@ -39,6 +39,12 @@
   } % new features
  \subsection{BUG FIXES}{
     \itemize{
+      \item \code{vcov} (and hence \code{summary}, \code{confint},
+      \code{car::Anova}) no longer fails with "attempt to set an attribute
+      on NULL" for a \code{REML=TRUE} fit that has no free fixed effects to
+      integrate out (e.g. \code{y ~ 0}, or a model whose entire \code{beta}
+      vector is fixed via \code{map}); such fits are numerically identical
+      to the corresponding ML fit
       \item \code{profile.glmmTMB} with a custom parallel cluster produced
       error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
       \item Fix mapping for models with rr structures (GH #1276)

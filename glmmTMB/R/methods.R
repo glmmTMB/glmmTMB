@@ -425,10 +425,10 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
   ## without a joint precision matrix; such a fit is numerically identical
   ## to the ML fit, so fall through to the ordinary path rather than
   ## setting dimnames on a NULL Q
+  if (REML && sandwich) {
+    stop("sandwich estimator is not available for REML fits")
+  }
   if (REML && !is.null(sdr$jointPrecision)) {
-      if (sandwich) {
-        stop("sandwich estimator is not available for REML fits")
-      }
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
