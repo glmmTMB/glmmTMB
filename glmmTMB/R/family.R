@@ -148,10 +148,13 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 ##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
 ##' \item{bell}{Bell distribution (see Castellares et al 2018).
-##' } 
+##' }
+##'      \item{ordinal}{Cumulative-link (proportional odds) model for an ordinal response (Agresti 2010; e.g. \code{MASS::polr}, \code{ordinal::clm}). The response should be an ordered factor (or 1-based integer category codes). The K-1 ordered thresholds (cutpoints) are stored internally in the \code{psi} parameter vector via a softmax parameterization (cf. Koslik et al 2025): \code{psi} contains the log-weights of the K baseline (linear predictor = 0) category probabilities relative to the last category, and \code{theta = qlogis(cumsum(softmax(c(psi, 0))))}, which is increasing by construction; use \code{family_params()} to extract the thresholds on the threshold scale. As in other cumulative-link software, the linear predictor enters the model as \eqn{\theta_j - \eta}{theta_j - eta} (so positive coefficients shift the response toward higher categories) and the fixed-effect intercept is fixed to zero (absorbed into the thresholds). Fitted/predicted mean values are reported as the expected category index \eqn{E[Y] = \sum_j j P(Y=j)}{E[Y] = sum_j j P(Y=j)}. \code{REML=TRUE} integrates out the fixed effects but not the thresholds, so the appropriate REML correction for this family is unsettled; it is allowed but warns.}
 ##' }
 ##' @references
 ##' \itemize{
+##' \item Agresti A (2010). "Analysis of Ordinal Categorical Data." 2nd ed. Hoboken, NJ: Wiley.
+##' \item Koslik J-O, Dupont F, Auger-Méthé M, Marcoux M, Hussey N, & Heckman N (2025). "Flexible Unimodal Density Estimation in Hidden Markov Models." arXiv:2511.17071. \doi{10.48550/arXiv.2511.17071}
 ##' \item Azzalini A & Capitanio A (2014). "The skew-normal and related families." Cambridge: Cambridge University Press.
 ##' \item Castellares F, Ferrari SLP, & Lemonte AJ (2018) "On the Bell Distribution and Its Associated Regression Model for Count Data" Applied Mathematical Modelling 56: 172–85. \doi{10.1016/j.apm.2017.12.014}
 ##' \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
@@ -514,6 +517,34 @@ ordbeta <- function(link="logit") {
                             }),
               ## from beta: not sure this is right ... ??
               variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
+              )
+    return(make_family(r,link))
+}
+
+#' @export
+#' @rdname nbinom2
+ordinal <- function(link="logit") {
+    r <- list(family="ordinal",
+              initialize=expression({
+                  if (is.factor(y)) {
+                      if (nlevels(y) < 2)
+                          stop("ordinal response must have at least two levels")
+                      if (!is.ordered(y))
+                          warning("ordinal response is an unordered factor; ",
+                                  "levels will be treated as ordered in their current order")
+                  } else {
+                      if (any(y != round(y) | y < 1, na.rm = TRUE))
+                          stop("ordinal response must be an ordered factor ",
+                               "or positive (1-based) integer category codes")
+                  }
+                  mustart <- rep(0, length(y))
+              }),
+              ## mean/variance of the category index are not generally
+              ## meaningful; defined here for compatibility only
+              variance=function(mu) {
+                  warning("variance is not well-defined for the ordinal family")
+                  rep(NA_real_, length(mu))
+              }
               )
     return(make_family(r,link))
 }

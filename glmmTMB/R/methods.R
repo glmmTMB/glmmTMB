@@ -673,8 +673,9 @@ printDispersion <- function(ff,s) {
 }
 
 ## Pad a fixed-effect covariance matrix with zero rows/columns for
-## coefficients that were fixed via 'map': these are known constants, so
-## their sampling variance is exactly zero. Restores the convention that
+## coefficients that were fixed via 'map' (internally, e.g. the ordinal
+## family intercept, or by the user): these are known constants, so their
+## sampling variance is exactly zero. Restores the convention that
 ## dim(vcov) matches length(fixef) for downstream consumers
 ## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
 pad_mapped_vcov <- function(object, V, component = "cond") {
@@ -721,6 +722,18 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           ordinal = {
+               ## thresholds from softmax-parameterized psi:
+               ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
+               ##         = logsumexp(psi[1..j]) - logsumexp(c(psi[-(1..j)], 0))
+               ## (prefix/suffix form is exact even when one weight dominates)
+               lse <- function(x) { m <- max(x); m + log(sum(exp(x - m))) }
+               theta <- vapply(seq_along(tf), function(j)
+                   lse(tf[seq_len(j)]) - lse(c(tf[-seq_len(j)], 0)),
+                   numeric(1))
+               lv <- object$modelInfo$ord_levels
+               setNames(theta, paste(lv[-length(lv)], lv[-1], sep = "|"))
+           },
            numeric(0)
            )
 }
@@ -733,7 +746,7 @@ family_params <- function(object) {
 
 ## Print family specific parameters
 ## @param object glmmTMB output
-#' @importFrom stats plogis
+#' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
     if (length(val) > 0) {
@@ -837,11 +850,18 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         wts <- mr[,1]+mr[,2]
         mr <- mr[,1]/wts
     } else if (is.factor(mr)) {
-        ## ?binomial:
-        ## "‘success’ is interpreted as the factor not having the first level"
-        nn <- names(mr)
-        mr <- as.numeric(as.numeric(mr)>1)
-        names(mr) <- nn  ## restore stripped names
+        if (family(object)$family == "ordinal") {
+            ## ordinal: residuals are computed on the category-index scale
+            nn <- names(mr)
+            mr <- as.numeric(mr)
+            names(mr) <- nn
+        } else {
+            ## ?binomial:
+            ## "‘success’ is interpreted as the factor not having the first level"
+            nn <- names(mr)
+            mr <- as.numeric(as.numeric(mr)>1)
+            names(mr) <- nn  ## restore stripped names
+        }
     }
     r <- mr - mu
     fam <- family(object)
@@ -853,10 +873,25 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            "dunn-smyth" = {
-               phi <- predict(object, type = "disp")
-               ## wts holds the number of trials for binomial-type responses
-               ## (cbind two-column or proportion-plus-weights specifications)
-               dunnsmyth_resids(mr, mu, fam$fam, phi = phi, size = wts)
+               if (fam$family == "ordinal") {
+                   ## discrete PIT residuals from the cumulative-link CDF:
+                   ## P(Y <= j) = linkinv(theta_j - eta)
+                   eta <- predict(object, re.form = re.form,
+                                  fast = !pop_pred, type = "link")
+                   theta <- unname(family_params(object))
+                   K <- length(theta) + 1L
+                   cump <- function(j) {
+                       ifelse(j <= 0, 0,
+                       ifelse(j >= K, 1,
+                              fam$linkinv(theta[pmin(pmax(j, 1), K - 1L)] - eta)))
+                   }
+                   pit_norm_resids(cump(mr - 1), cump(mr))
+               } else {
+                   phi <- predict(object, type = "disp")
+                   ## wts holds the number of trials for binomial-type responses
+                   ## (cbind two-column or proportion-plus-weights specifications)
+                   dunnsmyth_resids(mr, mu, fam$fam, phi = phi, size = wts)
+               }
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -1192,14 +1227,37 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             ## shape parameters
             fp <- family_params(object)
             if (length(fp)>0) {
-                ci.shape <- .CI_univariate_monotone(object,
+                if (ff == "ordinal") {
+                    ## thresholds are a joint function of *all* psi
+                    ## elements (softmax), so the univariate-monotone CI
+                    ## machinery does not apply; use the delta method with
+                    ## the analytic Jacobian of
+                    ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
+                    pars <- get_pars(object)
+                    tf <- unname(pars[names(pars) == "psi"])
+                    w <- exp(c(tf, 0) - max(tf, 0))
+                    s <- w / sum(w)
+                    Cj <- cumsum(s)[seq_along(tf)]
+                    J <- outer(seq_along(tf), seq_along(tf),
+                               function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                                              (Cj[j] * (1 - Cj[j])))
+                    Vfull <- vcov(object, full = TRUE)
+                    vi <- match(names(fp), rownames(Vfull))
+                    se_th <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+                    qn <- qnorm((1 + level) / 2)
+                    ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
+                    if (estimate) ci.shape <- cbind(ci.shape, fp)
+                    ci <- rbind(ci, ci.shape)
+                } else {
+                    ci.shape <- .CI_univariate_monotone(object,
                                                     family_params,
                                                     reduce = NULL,
                                                     level=level,
                                                     name.prepend="Tweedie.power", ## FIXME
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.shape)
-            } ## tweedie
+                    ci <- rbind(ci, ci.shape)
+                }
+            } ## family (shape) parameters
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
         ## FIXME: better to have more robust ordering
@@ -1479,6 +1537,13 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
         class(ret) <- "data.frame"
         rownames(ret) <- as.character(seq_len(nrow(ret[[1]])))
+    } else if (family == "ordinal" &&
+               isTRUE(attr(lv <- object$modelInfo$ord_levels,
+                           "factor_response"))) {
+        ## response was an (ordered) factor: map simulated category codes
+        ## back to its levels; integer-coded responses stay numeric
+        ret <- lapply(ret, function(x) ordered(lv[x], levels = lv))
+        ret <- as.data.frame(ret, col.names = paste0("sim_", seq_len(nsim)))
     } else {
         ret <- as.data.frame(ret)
     }
@@ -1804,6 +1869,17 @@ deviance.glmmTMB <- function(object, ...) {
     sum(residuals(object, type = "deviance")^2)
 }
 
+## randomized-quantile (discrete PIT) step: given lower/upper CDF values
+## draw u ~ U(a, b) and transform to the normal scale; shared by
+## dunnsmyth_resids() and the ordinal branch of residuals.glmmTMB()
+pit_norm_resids <- function(a, b) {
+    resid <- rep(NA_real_, length(a))
+    ok <- !is.na(a) & !is.na(b)
+    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
+    resid[is.infinite(resid) | is.nan(resid)] <- 0
+    resid
+}
+
 dunnsmyth_resids <- function(yobs, mu, family, phi=NULL, size=NULL) {
     res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell",
                       "combinomial")
@@ -1837,11 +1913,7 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL, size=NULL) {
                    bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
-    resid <- rep(NA_real_, length(yobs))
-    ok <- !is.na(a) & !is.na(b)
-    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
-    resid[is.infinite(resid) | is.nan(resid)] <- 0
-    resid
+    pit_norm_resids(a, b)
 }
 
 #' Extract Grouping Factors from an Object

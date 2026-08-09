@@ -223,10 +223,11 @@ Anova.III.glmmTMB <- function(mod, vcov., singular.ok=FALSE, test="Chisq",
         hyp.matrix <- hyp.matrix[, not.aliased, drop=FALSE]
         hyp.matrix <- hyp.matrix[!apply(hyp.matrix, 1, function(x) all(x == 0)), , drop=FALSE]
         ## hypothesis rows involving only map-fixed coefficients (known
-        ## constants, zero variance) are untestable; drop them so the
-        ## term gets an NA row instead of a singular-matrix error
-        ## (guard against NA variances from user-supplied vcov, e.g.
-        ## include_nonest=TRUE, which would make any(zv) return NA)
+        ## constants, zero variance -- e.g. the ordinal family's intercept)
+        ## are untestable; drop them so the term gets an NA row instead of a
+        ## singular-matrix error (guard against NA variances from
+        ## user-supplied vcov, e.g. include_nonest=TRUE, which would make
+        ## any(zv) return NA)
         zv <- !is.na(diag(vcov.)) & diag(vcov.) == 0
         if (any(zv) && nrow(hyp.matrix) > 0) {
             hyp.matrix <- hyp.matrix[!apply(hyp.matrix, 1,
