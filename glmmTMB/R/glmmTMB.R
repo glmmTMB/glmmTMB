@@ -1363,6 +1363,14 @@ glmmTMB <- function(
         stop("zero-inflation is not implemented for the ordinal family")
     }
 
+    if (family$family == "ordinal" && REML) {
+        ## REML integrates out 'beta' only; the thresholds (psi) are treated
+        ## as fixed even though they play a role analogous to an intercept,
+        ## so the correct REML definition for this family is unsettled
+        warning("REML for the ordinal family integrates out the fixed effects ",
+                "but not the thresholds; treat the result with caution")
+    }
+
     if (inForm(formula, quote(`$`))) {
         warning("use of the ", sQuote("$"), " operator in formulas is not recommended")
     }

@@ -194,3 +194,15 @@ test_that("ordinal error handling", {
                            family = ordinal()),
                    "unordered factor")
 })
+
+test_that("ordinal REML warns that thresholds are not integrated out", {
+    expect_warning(fit <- glmmTMB(Sat ~ Infl, weights = Freq, data = housing,
+                                  family = ordinal(), REML = TRUE),
+                   "not the thresholds")
+    ## the fit still succeeds: this is a caveat, not a prohibition
+    expect_s3_class(fit, "glmmTMB")
+    expect_true(fit$modelInfo$REML)
+    ## ML is unaffected
+    expect_silent(glmmTMB(Sat ~ Infl, weights = Freq, data = housing,
+                          family = ordinal()))
+})

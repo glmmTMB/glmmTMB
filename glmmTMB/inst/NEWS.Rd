@@ -15,7 +15,8 @@
       \code{family_params()}, per-category probabilities by
       \code{predict(., type = "probs")}, and Dunn-Smyth residuals and
       \code{simulate()} are supported. Nominal (category-specific) and
-      scale effects are not (yet) implemented
+      scale effects are not (yet) implemented; \code{REML=TRUE} warns,
+      since it integrates out the fixed effects but not the thresholds
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level
