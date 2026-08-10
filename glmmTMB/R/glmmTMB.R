@@ -2255,9 +2255,12 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @title summary for glmmTMB fits
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param ddf denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
-##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
-##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}});
-##' \code{"satterthwaite"} uses a Satterthwaite approximation
+##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation
+##' (see \code{\link{dof_KR}}), which requires a REML fit (an error is thrown otherwise) and a family
+##' with an estimated dispersion parameter (an error is thrown for families such as \code{binomial} or
+##' \code{poisson} that lack one); \code{"satterthwaite"} uses a Satterthwaite approximation, with no such
+##' restrictions. For families other than \code{gaussian}, both approximations are allowed but emit a
+##' warning, because their performance (and theoretical justification) for GLMMs is poorly understood
 ##' @param ... unused, for method compatibility
 ##' @inheritParams vcov.glmmTMB
 ##' @export
@@ -2269,19 +2272,8 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
 
     famL <- family(object)
 
-    if (ddf == "KR") {
-        if (!isREML(object)) {
-            warning("ddf='KR' ignored for non-REML fits")
-        } else {
-            if (family(object)$family != "gaussian") {
-                warning("ddf='KR' is untested for GLMMs. Use at your own risk!")
-            }
-            if (!trivialDisp(object) || !noZI(object)) {
-                message("ddf='KR' ignored except for conditional-distribution parameters")
-            }
-        }
-    }
-    
+    check_ddf(object, ddf)
+
     mkCoeftab <- function(coefs, vcovs, type) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
@@ -2297,7 +2289,9 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
                 labs <- c(stat_lab, pval_lab)
                 cc <- cbind(stat, pvals)
             } else {
-                if (ddf == "kenward-roger") {
+                if (!hasRandom(object)) {
+                    df_val <- rep(stats::df.residual(object), p)
+                } else if (ddf == "kenward-roger") {
                     df_val <- c(dof_KR(object))
                 } else if (ddf == "satterthwaite") {
                     df_val <- c(dof_satt(object))
