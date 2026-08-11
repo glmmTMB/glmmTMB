@@ -68,6 +68,10 @@
       dimension mismatch in \code{emmeans}, and a singular-matrix error or
       \code{NA} test statistic in \code{Anova}); such coefficients are
       treated as known constants with zero variance
+      \item \code{weights()} now returns the total number of trials for
+      binomial-type models fitted with a two-column matrix
+      (\code{cbind(successes, failures)}) response, matching \code{glm} and
+      \code{glmer} (GH #1319)
     }
   } % bug fixes
   %\subsection{USER-VISIBLE CHANGES}{

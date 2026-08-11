@@ -1809,18 +1809,15 @@ coef.glmmTMB <- function(object,
 ##' Extract weights from a glmmTMB object
 ##'
 ##' @details
-##' At present only explicitly specified
-##' \emph{prior weights} (i.e., weights specified
-##' in the \code{weights} argument) can be extracted from a fitted model.
-##' \itemize{
-##' \item Unlike other GLM-type models such as \code{\link{glm}} or
-##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
-##' the total number of trials when binomial responses are specified
-##' as a two-column matrix.
-##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' Returns the \emph{prior weights} used in fitting, i.e. weights
+##' specified in the \code{weights} argument. For binomial-type families
+##' fit with a two-column matrix response (\code{cbind(successes, failures)}),
+##' the total number of trials is included as well (multiplied by the
+##' \code{weights} argument, if specified), matching the behaviour of
+##' \code{\link{glm}} and \code{\link[lme4]{glmer}}.
+##' Since \code{glmmTMB} does not fit models via iteratively
 ##' weighted least squares, \code{working weights} (see \code{\link[stats:glm]{weights.glm}}) are unavailable.
-##' }
-##' @importFrom stats model.frame
+##' @importFrom stats model.frame model.response
 ##' @importFrom stats weights
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param type weights type
@@ -1832,7 +1829,16 @@ weights.glmmTMB <- function(object, type="prior", ...) {
         warning("unused arguments ignored: ",
              paste(shQuote(names(list(...))),collapse=","))
     }
-    stats::model.frame(object)[["(weights)"]]
+    fr <- stats::model.frame(object)
+    w <- fr[["(weights)"]]
+    mr <- model.response(fr)
+    if (!is.null(dim(mr))) {
+        ## binomial-type response given as cbind(successes, failures):
+        ## total trials are an implicit weight, as in glm/glmer
+        n <- unname(mr[, 1] + mr[, 2])
+        w <- if (is.null(w)) n else w * n
+    }
+    w
 }
 
 # would like to export this only as a method, but not sure how ...

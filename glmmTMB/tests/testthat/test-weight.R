@@ -55,3 +55,16 @@ test_that("Estimates are the same", {
 	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tolerance=2e-5)
 	expect_equal(AIC(wei_glmmtmb), AIC(ind_glmmtmb), tolerance=1e-5)
 })
+
+test_that("weights() returns total trials for cbind() binomial response (GH #1319)", {
+    cbpp <- lme4::cbpp
+    form <- cbind(incidence, size - incidence) ~ period + (1|herd)
+    m <- glmmTMB(form, data = cbpp, family = binomial)
+    ## matches weights(lme4::glmer(form, data = cbpp, family = binomial))
+    expect_equal(weights(m), cbpp$size)
+
+    ## proportion response + explicit weights should be unaffected
+    form2 <- incidence/size ~ period + (1|herd)
+    mP <- glmmTMB(form2, data = cbpp, family = binomial, weights = size)
+    expect_equal(weights(mP), cbpp$size)
+})
