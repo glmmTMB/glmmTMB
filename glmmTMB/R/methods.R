@@ -1750,9 +1750,7 @@ refit.glmmTMB <- function(object, newresp, ...) {
 ## ------  should work with fixef() + ranef()  alone
 coefMer <- function(object, component=NULL, ...)
 {
-    if (length(list(...)))
-        warning('arguments named "', paste(names(list(...)), collapse = ", "),
-                '" ignored')
+    check_dots(..., .action = "warning")
     fef <- fixef(object)
     if (!is.null(component)) fef <- fef[[component]]
     fef <- data.frame(rbind(fef), check.names = FALSE)
@@ -1825,10 +1823,8 @@ coef.glmmTMB <- function(object,
 ##' @export
 weights.glmmTMB <- function(object, type="prior", ...) {
     type <- match.arg(type)  ## other types are *not* OK
-    if (length(list(...)>0)) {
-        warning("unused arguments ignored: ",
-             paste(shQuote(names(list(...))),collapse=","))
-    }
+  
+    check_dots(..., .action = "warning")
     fr <- stats::model.frame(object)
     w <- fr[["(weights)"]]
     mr <- model.response(fr)

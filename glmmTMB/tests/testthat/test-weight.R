@@ -45,7 +45,7 @@ test_that("Return weights", {
   expect_equal(weights(wei_glmmtmb, type="prior"), aggdat$Freq)
   expect_error(weights(wei_glmmtmb, type = "working"), "should be")
   expect_warning(weights(wei_glmmtmb, junk = "abc"),
-                 "unused arguments ignored")
+                 "unknown arguments ignored")
 })
 
 ind_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=inddat, family="poisson")

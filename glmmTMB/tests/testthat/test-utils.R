@@ -74,3 +74,13 @@ test_that("up2date doesn't mangle parameter order", {
                      c(-0.52792570545058, 0.2441352439504439))
 })
 
+test_that("check_dots", {
+    expect_null(check_dots())
+    expect_null(check_dots(foo = 1, .ignore = "foo"))
+    expect_error(check_dots(foo = 1, bar = 2), "'foo','bar'")
+    expect_warning(check_dots(foo = 1, .action = "warning"),
+                   "unknown arguments ignored: 'foo'")
+    expect_message(check_dots(foo = 1, .action = "message"),
+                    "unknown arguments ignored: 'foo'")
+})
+
