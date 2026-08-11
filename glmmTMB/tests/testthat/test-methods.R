@@ -1195,3 +1195,10 @@ test_that("estfun doesn't change internal values inappropriately", {
     expect_no_error(vcovHC(fm1))
     expect_identical(head(predict(fm1)), p1)
 })
+
+test_that("isGLMM", {
+  expect_true(isGLMM(gm1))
+  expect_false(isGLMM(fm1))
+  fm0 <- update(fm_noRE, family = gaussian(link = "log"))
+  expect_true(isGLMM(fm0))
+})

@@ -2262,3 +2262,14 @@ vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
         meatHC(x, ...)
     }
 }
+
+#' @importFrom lme4 isGLMM
+#' @export
+lme4::isGLMM
+
+#' @export
+isGLMM.glmmTMB <- function(x,...) {
+  check_dots(...)
+  f <- family(x)
+  !(f$family == "gaussian" && f$link == "identity")
+}

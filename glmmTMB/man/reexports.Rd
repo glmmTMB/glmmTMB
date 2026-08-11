@@ -4,6 +4,7 @@
 \name{reexports}
 \alias{reexports}
 \alias{refit}
+\alias{isGLMM}
 \title{Objects exported from other packages}
 \keyword{internal}
 \description{
@@ -11,6 +12,6 @@ These objects are imported from other packages. Follow the links
 below to see their documentation.
 
 \describe{
-  \item{lme4}{\code{\link[lme4]{refit}}}
+  \item{lme4}{\code{\link[lme4:isGLMM]{isGLMM()}}, \code{\link[lme4:refit]{refit()}}}
 }}
 
