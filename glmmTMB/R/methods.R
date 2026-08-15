@@ -420,10 +420,15 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
     warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
     sdr <- sdreport(object$obj, getJointPrecision=REML)
   }
-  if (REML) {
-      if (sandwich) {
-        stop("sandwich estimator is not available for REML fits")
-      }
+  ## a REML fit with no free fixed effects to integrate out (e.g. y ~ 0, or
+  ## any model whose whole 'beta' vector is map-fixed) leaves sdreport()
+  ## without a joint precision matrix; such a fit is numerically identical
+  ## to the ML fit, so fall through to the ordinary path rather than
+  ## setting dimnames on a NULL Q
+  if (REML && sandwich) {
+    stop("sandwich estimator is not available for REML fits")
+  }
+  if (REML && !is.null(sdr$jointPrecision)) {
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
@@ -514,6 +519,8 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
               any_mapped <- !is.null(cur_map <- map[[parnms[[i]]]])
               ## some parameters mapped *to each other* (not fixed)
               if (any_mapped && length(unique(cur_map)) < length(cur_map)) {
+                  ## filter out NAs from cur_map as we want to only subset the vcov to estimated parameters...
+                  cur_map <- na.omit(cur_map)
                   ## replicate cov rows/cols appropriately
                   m <- m[as.numeric(cur_map), as.numeric(cur_map)]
                   map_split <- split(seq_along(cur_map), cur_map)
@@ -665,6 +672,39 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+## Pad a fixed-effect covariance matrix with zero rows/columns for
+## coefficients that were fixed via 'map' (internally, e.g. the ordinal
+## family intercept, or by the user): these are known constants, so their
+## sampling variance is exactly zero. Restores the convention that
+## dim(vcov) matches length(fixef) for downstream consumers
+## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
+pad_mapped_vcov <- function(object, V, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi",
+                     disp = "betadisp")
+    bmap <- object$obj$env$map[[map_nm]]
+    if (is.null(bmap) || !any(is.na(bmap)) || is.null(dim(V))) return(V)
+    bhat <- fixef(object)[[component]]
+    nb <- length(bhat)
+    fixed <- which(is.na(bmap))
+    if (nrow(V) == nb - length(fixed)) {
+        ## reduced vcov (include_nonest = FALSE): pad to full size
+        est <- which(!is.na(bmap))
+        Vfull <- matrix(0, nb, nb,
+                        dimnames = list(names(bhat), names(bhat)))
+        Vfull[est, est] <- as.matrix(V)
+        return(Vfull)
+    }
+    if (nrow(V) == nb) {
+        ## full-size vcov stores NA rows/columns for mapped coefficients;
+        ## replace with zeros so they do not propagate through
+        ## linear-hypothesis algebra
+        V[fixed, ] <- 0
+        V[, fixed] <- 0
+        return(V)
+    }
+    V
+}
+
 #' Retrieve family-specific parameters
 #'
 #' Most conditional distributions have only parameters governing their location
@@ -682,6 +722,18 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           ordinal = {
+               ## thresholds from softmax-parameterized psi:
+               ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
+               ##         = logsumexp(psi[1..j]) - logsumexp(c(psi[-(1..j)], 0))
+               ## (prefix/suffix form is exact even when one weight dominates)
+               lse <- function(x) { m <- max(x); m + log(sum(exp(x - m))) }
+               theta <- vapply(seq_along(tf), function(j)
+                   lse(tf[seq_len(j)]) - lse(c(tf[-seq_len(j)], 0)),
+                   numeric(1))
+               lv <- object$modelInfo$ord_levels
+               setNames(theta, paste(lv[-length(lv)], lv[-1], sep = "|"))
+           },
            numeric(0)
            )
 }
@@ -694,7 +746,7 @@ family_params <- function(object) {
 
 ## Print family specific parameters
 ## @param object glmmTMB output
-#' @importFrom stats plogis
+#' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
     if (length(val) > 0) {
@@ -798,11 +850,18 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         wts <- mr[,1]+mr[,2]
         mr <- mr[,1]/wts
     } else if (is.factor(mr)) {
-        ## ?binomial:
-        ## "‘success’ is interpreted as the factor not having the first level"
-        nn <- names(mr)
-        mr <- as.numeric(as.numeric(mr)>1)
-        names(mr) <- nn  ## restore stripped names
+        if (family(object)$family == "ordinal") {
+            ## ordinal: residuals are computed on the category-index scale
+            nn <- names(mr)
+            mr <- as.numeric(mr)
+            names(mr) <- nn
+        } else {
+            ## ?binomial:
+            ## "‘success’ is interpreted as the factor not having the first level"
+            nn <- names(mr)
+            mr <- as.numeric(as.numeric(mr)>1)
+            names(mr) <- nn  ## restore stripped names
+        }
     }
     r <- mr - mu
     fam <- family(object)
@@ -814,8 +873,25 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            "dunn-smyth" = {
-               phi <- na.omit(predict(object, type = "disp"))
-               dunnsmyth_resids(mr, mu, fam$fam, phi = phi)
+               if (fam$family == "ordinal") {
+                   ## discrete PIT residuals from the cumulative-link CDF:
+                   ## P(Y <= j) = linkinv(theta_j - eta)
+                   eta <- predict(object, re.form = re.form,
+                                  fast = !pop_pred, type = "link")
+                   theta <- unname(family_params(object))
+                   K <- length(theta) + 1L
+                   cump <- function(j) {
+                       ifelse(j <= 0, 0,
+                       ifelse(j >= K, 1,
+                              fam$linkinv(theta[pmin(pmax(j, 1), K - 1L)] - eta)))
+                   }
+                   pit_norm_resids(cump(mr - 1), cump(mr))
+               } else {
+                   phi <- predict(object, type = "disp")
+                   ## wts holds the number of trials for binomial-type responses
+                   ## (cbind two-column or proportion-plus-weights specifications)
+                   dunnsmyth_resids(mr, mu, fam$fam, phi = phi, size = wts)
+               }
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -851,6 +927,8 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              vargs$mu <- vargs$lambda <- mu
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
+             ## number of trials for binomial-type responses (combinomial)
+             vargs$size <- wts
              # subset to only the arguments used by the variance function
              vargs <- vargs[vformals]
              ## suppress beta-binomial $variance() message, substitute
@@ -1149,14 +1227,37 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             ## shape parameters
             fp <- family_params(object)
             if (length(fp)>0) {
-                ci.shape <- .CI_univariate_monotone(object,
+                if (ff == "ordinal") {
+                    ## thresholds are a joint function of *all* psi
+                    ## elements (softmax), so the univariate-monotone CI
+                    ## machinery does not apply; use the delta method with
+                    ## the analytic Jacobian of
+                    ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
+                    pars <- get_pars(object)
+                    tf <- unname(pars[names(pars) == "psi"])
+                    w <- exp(c(tf, 0) - max(tf, 0))
+                    s <- w / sum(w)
+                    Cj <- cumsum(s)[seq_along(tf)]
+                    J <- outer(seq_along(tf), seq_along(tf),
+                               function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                                              (Cj[j] * (1 - Cj[j])))
+                    Vfull <- vcov(object, full = TRUE)
+                    vi <- match(names(fp), rownames(Vfull))
+                    se_th <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+                    qn <- qnorm((1 + level) / 2)
+                    ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
+                    if (estimate) ci.shape <- cbind(ci.shape, fp)
+                    ci <- rbind(ci, ci.shape)
+                } else {
+                    ci.shape <- .CI_univariate_monotone(object,
                                                     family_params,
                                                     reduce = NULL,
                                                     level=level,
                                                     name.prepend="Tweedie.power", ## FIXME
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.shape)
-            } ## tweedie
+                    ci <- rbind(ci, ci.shape)
+                }
+            } ## family (shape) parameters
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
         ## FIXME: better to have more robust ordering
@@ -1209,16 +1310,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 L <- parallel::mclapply(parm, FUN, mc.cores = ncpus)
             } else if (parallel=="snow") {
                 if (is.null(cl)) {
-                    ## start cluster
-                    new_cl <- TRUE
-                    cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
+                    cl <- parallel::makeCluster(ncpus)
+                    on.exit(parallel::stopCluster(cl))
                 }
                 ## run
                 L <- parallel::clusterApply(cl, parm, FUN)
-                if (new_cl) {
-                    ## stop cluster
-                    parallel::stopCluster(cl)
-                }
             }
         } else { ## non-parallel
             L <- lapply(as.list(parm), FUN)
@@ -1241,7 +1337,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
     else {  ## profile CIs
         parm <- getParms(parm0, object, full, include_nonest = FALSE)
         pp <- profile(object, parm=parm, level_max=level,
-                      parallel=parallel,ncpus=ncpus,
+                      parallel=parallel,ncpus=ncpus, cl=cl,
                       ...)
         ci <- confint(pp)
         if (include_nonest) {
@@ -1301,13 +1397,16 @@ sort_termlabs <- function(labs) {
 }
 
 ## see whether mod1, mod2 are appropriate for Likelihood ratio testing
-CompareFixef <- function (mod1, mod2, component="cond") {
+## (for F-ratio tests, i.e. ddf != "asymptotic", REML fits with different
+## fixed-effect components are fine -- that's the standard use case for
+## Kenward-Roger/Satterthwaite F-tests)
+CompareFixef <- function (mod1, mod2, component="cond", ddf = "asymptotic") {
      mr1 <- isREML(mod1)
      mr2 <- isREML(mod2)
      if (mr1 != mr2) {
         stop("Can't compare REML and ML fits", call.=FALSE)
      }
-     if (mr1 && mr2) {
+     if (mr1 && mr2 && ddf == "asymptotic") {
            tmpf <- function(obj) {   sort_termlabs(attr(terms(obj, component=component),"term.labels")) }
            if (!identical(tmpf(mod1), tmpf(mod2))) {
                 stop("Can't compare REML fits with different fixed-effect components", call.=FALSE)
@@ -1316,23 +1415,37 @@ CompareFixef <- function (mod1, mod2, component="cond") {
      return(TRUE) ## OK
 }
 
+##' anova method for glmmTMB fits, comparing two or more nested models
+##' @param object a fitted \code{glmmTMB} model
+##' @param ... additional \code{glmmTMB} model(s) to compare against \code{object}
+##' @param model.names optional vector of names for the models being compared
+##' @param ddf denominator degrees-of-freedom calculation, as in \code{\link{summary.glmmTMB}}.
+##' The default \code{"asymptotic"} gives a likelihood ratio test; any other value
+##' gives an F-ratio test, with the numerator df equal to the difference in the
+##' number of fixed-effect parameters between each pair of nested models and the
+##' denominator df computed via the Kenward-Roger or Satterthwaite approximation
+##' (see \code{\link{dof_KR}}, \code{\link{dof_satt}})
 ##' @importFrom methods is
 ##' @importFrom stats var getCall pchisq anova
+##' @method anova glmmTMB
 ##' @export
-anova.glmmTMB <- function (object, ..., model.names = NULL)
+anova.glmmTMB <- function (object, ..., model.names = NULL,
+                            ddf = c("asymptotic", "kenward-roger", "satterthwaite"))
 {
     mCall <- match.call(expand.dots = TRUE)
     dots <- list(...)
+    ddf <- match.arg(ddf)
     ## 'consistent' sapply, i.e. always unlist
     .sapply <- function(L, FUN, ...) unlist(lapply(L, FUN, ...))
     ## detect multiple models, i.e. models in ...
     modp <- as.logical(vapply(dots, FUN=is, "glmmTMB", FUN.VALUE=NA))
     if (any(modp)) {
         mods <- c(list(object), dots[modp])
+        lapply(mods, check_ddf, ddf = ddf)
         nobs.vec <- vapply(mods, nobs, 1L)
         ## compare all models against first for being fitted consistently;
         ## if all REML, fixed effects must be identical
-        vapply(mods[-1], CompareFixef, mod1=mods[[1]], FUN.VALUE=TRUE)
+        vapply(mods[-1], CompareFixef, mod1=mods[[1]], ddf=ddf, FUN.VALUE=TRUE)
         if (var(nobs.vec) > 0)
             stop("models were not all fitted to the same size of dataset")
         if (is.null(mNms <- model.names))
@@ -1362,13 +1475,45 @@ anova.glmmTMB <- function (object, ..., model.names = NULL)
         if (!is.null(subset[[1]]))
             header <- c(header, paste("Subset:", abbrDeparse(subset[[1]])))
         llk <- unlist(llks)
-        chisq <- 2 * pmax(0, c(NA, diff(llk)))
-        dfChisq <- c(NA, diff(Df))
-        val <- data.frame(Df = Df, AIC = .sapply(llks, AIC),
-            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 *
-                llk, Chisq = chisq, `Chi Df` = dfChisq, `Pr(>Chisq)` = pchisq(chisq,
-                dfChisq, lower.tail = FALSE), row.names = names(mods),
-            check.names = FALSE)
+        commonCols <- data.frame(Df = Df, AIC = .sapply(llks, AIC),
+            BIC = .sapply(llks, BIC), logLik = llk, deviance = -2 * llk,
+            row.names = names(mods), check.names = FALSE)
+        if (ddf != "asymptotic" && isREML(mods[[1]])) {
+            ## F-ratio-test mode allows comparing REML fits with *different*
+            ## fixed-effect components (see CompareFixef); REML (log-)likelihoods
+            ## are not comparable across such models, so AIC/BIC/logLik/deviance
+            ## are not meaningful here and would be misleading if shown
+            commonCols[c("AIC", "BIC", "logLik", "deviance")] <- NA_real_
+        }
+        if (ddf == "asymptotic") {
+            chisq <- 2 * pmax(0, c(NA, diff(llk)))
+            dfChisq <- c(NA, diff(Df))
+            val <- cbind(commonCols,
+                         data.frame(Chisq = chisq, `Chi Df` = dfChisq,
+                                    `Pr(>Chisq)` = pchisq(chisq, dfChisq, lower.tail = FALSE),
+                                    check.names = FALSE))
+        } else {
+            ddfFun <- switch(ddf, "kenward-roger" = .joint_ddf_KR, "satterthwaite" = .joint_ddf_satt)
+            n <- length(mods)
+            Fstat <- numDf <- denDf <- pval <- rep(NA_real_, n)
+            for (i in seq_len(n)[-1]) {
+                ## with no random effects there is no variance-component
+                ## uncertainty for KR/Satterthwaite to correct for; fall back
+                ## to a classical Wald F-test with residual df
+                res <- if (hasRandom(mods[[i]])) {
+                    ddfFun(mods[[i]], mods[[i - 1]])
+                } else {
+                    .joint_ddf_none(mods[[i]], mods[[i - 1]])
+                }
+                Fstat[i] <- res$Fstat
+                numDf[i] <- res$ndf
+                denDf[i] <- res$ddf
+                pval[i] <- res$p.value
+            }
+            val <- cbind(commonCols,
+                         data.frame(F = Fstat, `Num Df` = numDf, `Den Df` = denDf,
+                                    `Pr(>F)` = pval, check.names = FALSE))
+        }
         class(val) <- c("anova", class(val))
         forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
         ziforms <- lapply(lapply(calls, `[[`, "ziformula"), deparse)
@@ -1441,6 +1586,13 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
         class(ret) <- "data.frame"
         rownames(ret) <- as.character(seq_len(nrow(ret[[1]])))
+    } else if (family == "ordinal" &&
+               isTRUE(attr(lv <- object$modelInfo$ord_levels,
+                           "factor_response"))) {
+        ## response was an (ordered) factor: map simulated category codes
+        ## back to its levels; integer-coded responses stay numeric
+        ret <- lapply(ret, function(x) ordered(lv[x], levels = lv))
+        ret <- as.data.frame(ret, col.names = paste0("sim_", seq_len(nsim)))
     } else {
         ret <- as.data.frame(ret)
     }
@@ -1766,33 +1918,51 @@ deviance.glmmTMB <- function(object, ...) {
     sum(residuals(object, type = "deviance")^2)
 }
 
-dunnsmyth_resids <- function(yobs, mu, family, phi=NULL) {
-    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial")
+## randomized-quantile (discrete PIT) step: given lower/upper CDF values
+## draw u ~ U(a, b) and transform to the normal scale; shared by
+## dunnsmyth_resids() and the ordinal branch of residuals.glmmTMB()
+pit_norm_resids <- function(a, b) {
+    resid <- rep(NA_real_, length(a))
+    ok <- !is.na(a) & !is.na(b)
+    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
+    resid[is.infinite(resid) | is.nan(resid)] <- 0
+    resid
+}
+
+dunnsmyth_resids <- function(yobs, mu, family, phi=NULL, size=NULL) {
+    res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell",
+                      "combinomial")
     if (family == "gaussian") return(yobs-mu)
     if (!family %in% res.families) {
         stop("can't compute Dunn-Smyth residuals for family ",
              sQuote(family))
     }
-    args <- switch(family,
-                   nbinom2 = list(size = phi),
-                   nbinom1 = list(size = mu/(phi+ 1e-5)),
-                   binomial = list(size=1),
-                   NULL
-                   )
-    ## deal with base-R's default size/prob parameterization for nbinom ...
-    pnbinom0 <- function(x, mu, ...) {
-        pnbinom(x, mu=mu, ...)
+    if (family == "combinomial" && is.null(size)) {
+        stop("'size' (number of trials) is required for combinomial Dunn-Smyth residuals")
     }
+    ## binomial-type families arrive with yobs and mu on the proportion scale
+    ## (see residuals.glmmTMB); rescale the observations to counts
+    if (family %in% c("binomial", "combinomial") && !is.null(size)) {
+        yobs <- round(yobs * size)
+    }
+    args <- switch(family,
+                   nbinom2  = list(size = phi),
+                   nbinom1  = list(size = mu/(phi + 1e-5)),
+                   binomial = list(size = if (is.null(size)) 1 else size),
+                   combinomial = list(phi = phi, size = size),
+                   genpois  = list(phi = phi),
+                   NULL)
     pfun <- switch(family,
-                   nbinom2 = pnbinom0,
-                   nbinom1 = pnbinom0,
-                   poisson = ppois,
-                   binomial = pbinom)
+                   nbinom2  = pnbinom0,
+                   nbinom1  = pnbinom0,
+                   poisson  = ppois,
+                   binomial = pbinom,
+                   combinomial = pcombinom_mu,
+                   genpois  = pgenpois_mu,
+                   bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
-    resid <- qnorm(runif(length(yobs), min = a, max = b))
-    resid[is.infinite(resid) | is.nan(resid) ]  <- 0
-    resid
+    pit_norm_resids(a, b)
 }
 
 #' Extract Grouping Factors from an Object
@@ -1917,6 +2087,12 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     # and gradient.
     original_weights <- x$obj$env$data$weights
     original_neg_log_lik <- x$obj$fn(x$fit$par)
+    env_vars <- c("par", "last.par", "last.par.best", "last.par.ok",
+                  "parameters")
+    env_vars <- intersect(env_vars, ls(x$obj$env)) ## drop nonexistent values
+    orig_env_vars <- lapply(env_vars,
+                            function(n) x$obj$env[[n]])
+    names(orig_env_vars) <- env_vars
 
     # Prepare zero weights vector for below.
     zero_weights <- rep(0, stats::nobs(x))
@@ -1926,7 +2102,11 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     on.exit({
         # Reset the weights to the original values.
         x$obj$env$data$weights <- original_weights
-        # Retape the TMB object to apply the changes.
+        for (n in env_vars) {
+            assign(n, orig_env_vars[[n]],
+                   envir = x$obj$env)
+        }
+        ## Retape the TMB object to apply the changes.
         x$obj$retape(set.defaults = FALSE)
     })
 

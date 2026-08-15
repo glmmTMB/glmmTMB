@@ -134,23 +134,27 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
 ##'      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
 ##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}. \emph{Note} that the \eqn{phi} parameter has opposite meanings in the \code{nbinom1} and \code{nbinom2} families. In \code{nbinom1} overdispersion increases with increasing \code{phi} (the Poisson limit is \code{phi=0}); in \code{nbinom2} overdispersion decreases with increasing \code{phi} (the Poisson limit is reached as \code{phi} goes to infinity).}
-##'      \item{nbinom12}{Negative binomial distribution: mixed linear/quadratic, as in the \code{DESeq2} package or as described by Lindén and Mäntyniemi (2011). \eqn{V=\mu(1+\phi+\mu/psi)}{V=mu*(1+phi+mu/psi)}. (In Lindén and Mäntyniemi's parameterization, \eqn{\omega = \phi}{omega=phi} and \eqn{\theta=1/\psi}{theta=1/psi}.) If a dispersion model is specified, it applies only to the linear (\code{phi}) term.}
+##'      \item{nbinom12}{Negative binomial distribution: mixed linear/quadratic, as in the \code{DESeq2} package or as described by Lindén and Mäntyniemi (2011). \eqn{V=\mu(1+\phi+\mu/\psi)}{V=mu*(1+phi+mu/\psi)}. (In Lindén and Mäntyniemi's parameterization, \eqn{\omega = \phi}{omega=phi} and \eqn{\theta=1/\psi}{theta=1/\psi}.) If a dispersion model is specified, it applies only to the linear (\code{phi}) term.}
 ##'      \item{truncated_nbinom2}{Zero-truncated version of nbinom2: variance expression from Shonkwiler 2016. Simulation code (for this and the other truncated count distributions) is taken from C. Geyer's functions in the \code{aster} package; the algorithms are described in \href{https://cran.r-project.org/package=aster/vignettes/trunc.pdf}{this vignette}.}
 ##'      \item{compois}{Conway-Maxwell Poisson distribution: parameterized with the exact mean (Huang 2017), which differs from the parameterization used in the \pkg{COMPoissonReg} package (Sellers & Shmueli 2010, Sellers & Lotze 2015). \eqn{V=\mu\phi}{V=mu*phi}.}
 ##'      \item{genpois}{Generalized Poisson distribution (Consul & Famoye 1992). \eqn{V=\mu\exp(\eta)}{V=mu*exp(eta)}. (Note that Consul & Famoye (1992) define \eqn{\phi}{phi} differently.) Our implementation is taken from the \code{HMMpa} package, based on Joe and Zhu (2005) and implemented by Vitali Witowski.}
 ##'      \item{beta}{Beta distribution: parameterization of Ferrari and Cribari-Neto (2004)
 ##' and the \pkg{betareg} package (Cribari-Neto and Zeileis 2010); \eqn{V=\mu(1-\mu)/(\phi+1)}{V=mu*(1-mu)/(phi+1)}}
 ##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
+##'      \item{combinomial}{Conway-Maxwell-Binomial distribution: mean-parameterized as in Huang (2017) but for the binomial. The dispersion parameter \eqn{\nu}{nu} controls under- (\eqn{\nu>1}) and over- (\eqn{\nu<1}) dispersion relative to the binomial; \eqn{\nu=1} recovers the binomial. \eqn{V} has no closed form and is computed numerically.}
 ##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^{power}}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}, i.e. the compound Poisson-gamma distribution. Code taken from the \code{tweedie} package, written by Peter Dunn. The power parameter (designated \code{psi} in the list of parameters) uses the link function \code{qlogis(psi-1.0)}; thus one can fix the power parameter to a specified value using \code{start = list(psi = qlogis(fixed_power-1.0)), map = list(psi = factor(NA))}.}
 ##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 ##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
 ##' \item{bell}{Bell distribution (see Castellares et al 2018).
-##' } 
+##' }
+##'      \item{ordinal}{Cumulative-link (proportional odds) model for an ordinal response (Agresti 2010; e.g. \code{MASS::polr}, \code{ordinal::clm}). The response should be an ordered factor (or 1-based integer category codes). The K-1 ordered thresholds (cutpoints) are stored internally in the \code{psi} parameter vector via a softmax parameterization (cf. Koslik et al 2025): \code{psi} contains the log-weights of the K baseline (linear predictor = 0) category probabilities relative to the last category, and \code{theta = qlogis(cumsum(softmax(c(psi, 0))))}, which is increasing by construction; use \code{family_params()} to extract the thresholds on the threshold scale. As in other cumulative-link software, the linear predictor enters the model as \eqn{\theta_j - \eta}{theta_j - eta} (so positive coefficients shift the response toward higher categories) and the fixed-effect intercept is fixed to zero (absorbed into the thresholds). Fitted/predicted mean values are reported as the expected category index \eqn{E[Y] = \sum_j j P(Y=j)}{E[Y] = sum_j j P(Y=j)}. \code{REML=TRUE} integrates out the fixed effects but not the thresholds, so the appropriate REML correction for this family is unsettled; it is allowed but warns.}
 ##' }
 ##' @references
 ##' \itemize{
+##' \item Agresti A (2010). "Analysis of Ordinal Categorical Data." 2nd ed. Hoboken, NJ: Wiley.
+##' \item Koslik J-O, Dupont F, Auger-Méthé M, Marcoux M, Hussey N, & Heckman N (2025). "Flexible Unimodal Density Estimation in Hidden Markov Models." arXiv:2511.17071. \doi{10.48550/arXiv.2511.17071}
 ##' \item Azzalini A & Capitanio A (2014). "The skew-normal and related families." Cambridge: Cambridge University Press.
 ##' \item Castellares F, Ferrari SLP, & Lemonte AJ (2018) "On the Bell Distribution and Its Associated Regression Model for Count Data" Applied Mathematical Modelling 56: 172–85. \doi{10.1016/j.apm.2017.12.014}
 ##' \item Consul PC & Famoye F (1992). "Generalized Poisson regression model." Communications in Statistics: Theory and Methods 21:89–109.
@@ -362,6 +366,34 @@ betabinomial <- function(link="logit") {
 }
 
 #' @rdname nbinom2
+#' @param allow_negative_nu (\code{combinomial} only) if \code{TRUE}, use an
+#'   identity link (rather than the default log link) for the dispersion
+#'   model, allowing the dispersion parameter \eqn{\nu}{nu} to go negative
+#'   (super-dispersion, i.e. over-dispersion beyond \eqn{\nu \to 0}{nu -> 0})
+#' @export
+combinomial <- function(link="logit", allow_negative_nu=FALSE) {
+    r <- list(family="combinomial",
+              allow_negative_nu = isTRUE(allow_negative_nu),
+              variance = function(mu, phi, size) {
+                  ## mu: probability (in (0,1))
+                  ## phi: dispersion parameter nu, as returned by
+                  ##  sigma()/predict(type = "disp") (under either link)
+                  ## size: number of trials per observation
+                  ## returns the per-trial variance Var(Y)/size, following
+                  ##  the proportion-scale convention of binomial()$variance
+                  if (length(phi) == 1) phi <- rep(phi, length = length(mu))
+                  if (length(size) == 1) size <- rep(size, length = length(mu))
+                  .Call("combinom_calc_var",
+                        mu * size,            # mean = n * p
+                        phi,                  # nu
+                        as.integer(size),     # n
+                        PACKAGE = "glmmTMB") / size
+              },
+              initialize = our_binom_initialize(binomial()$initialize))
+    return(make_family(r, link))
+}
+
+#' @rdname nbinom2
 #' @export
 tweedie <- function(link="log") {
     r <- list(family="tweedie",
@@ -485,6 +517,34 @@ ordbeta <- function(link="logit") {
                             }),
               ## from beta: not sure this is right ... ??
               variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
+              )
+    return(make_family(r,link))
+}
+
+#' @export
+#' @rdname nbinom2
+ordinal <- function(link="logit") {
+    r <- list(family="ordinal",
+              initialize=expression({
+                  if (is.factor(y)) {
+                      if (nlevels(y) < 2)
+                          stop("ordinal response must have at least two levels")
+                      if (!is.ordered(y))
+                          warning("ordinal response is an unordered factor; ",
+                                  "levels will be treated as ordered in their current order")
+                  } else {
+                      if (any(y != round(y) | y < 1, na.rm = TRUE))
+                          stop("ordinal response must be an ordered factor ",
+                               "or positive (1-based) integer category codes")
+                  }
+                  mustart <- rep(0, length(y))
+              }),
+              ## mean/variance of the category index are not generally
+              ## meaningful; defined here for compatibility only
+              variance=function(mu) {
+                  warning("variance is not well-defined for the ordinal family")
+                  rep(NA_real_, length(mu))
+              }
               )
     return(make_family(r,link))
 }

@@ -33,7 +33,7 @@ diagnose(
 
 \item{check_coefs}{identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)}
 
-\item{check_zstats}{identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.}
+\item{check_zstats}{identify parameters with unusually large Z-statistics (ratio of estimate to standard error)? Identifies likely failures of Wald confidence intervals/p-values.}
 
 \item{check_hessian}{identify non-positive-definite Hessian components?}
 

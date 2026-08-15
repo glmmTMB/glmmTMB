@@ -13,6 +13,7 @@
   gaussian = 0,
   binomial = 100,
   betabinomial =101,
+  combinomial   = 102,
   beta =200,
   ordbeta = 201,
   Gamma =300,
@@ -31,7 +32,8 @@
   tweedie = 700,
   lognormal = 800,
   skewnormal = 900,
-  bell = 1000
+  bell = 1000,
+  ordinal = 1100
 )
 .valid_covstruct <- c(
   diag = 0,

@@ -92,6 +92,9 @@ sigma.glmmTMB <- function(object, ...) {
     if (length(pl$betadisp)>1) return(NA)
     switch(family(object)$family,
            Gamma=exp(-0.5*pl$betadisp),
+           combinomial = if (isTRUE(object$modelInfo$family$allow_negative_nu))
+                              pl$betadisp                # identity link: betadisp IS nu
+                          else exp(pl$betadisp),         # log link: nu = exp(betadisp)
            exp(pl$betadisp))
 }
 

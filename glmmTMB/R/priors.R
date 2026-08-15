@@ -82,20 +82,21 @@ proc_priors <- function(priors, info = NULL) {
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
         ## process 'coef' (particular element)
 
-        nthetavec <- sapply(info$re,
-                            function(x) {
-                                ntheta <- vapply(x, "[[",
-                                                 "blockNumTheta",
-                                                 FUN.VALUE = numeric(1))
-                                cc <- cumsum(ntheta)
-                                ## want *starting* value of each theta term
-                                ## keep names, shift back one
-                                nm <- names(cc)
-                                if (length(cc) == 0) return(integer(0))
-                                cc <- c(1, cc)
-                                names(cc) <- c(nm, "..total")
-                                return(cc)
-                            })
+        nthfun <- function(x) {
+          ntheta <- vapply(x, "[[",
+                           "blockNumTheta",
+                           FUN.VALUE = numeric(1))
+          cc <- cumsum(ntheta)
+          ## want *starting* value of each theta term
+          ## keep names, shift back one
+          nm <- names(cc)
+          if (length(cc) == 0) return(integer(0))
+          cc <- c(1, cc)
+          names(cc) <- c(nm, "..total")
+          return(cc)
+        }
+        nthetavec <- lapply(info$re, nthfun)
+
 
         nospace <- function(x) gsub(" +", "", x)
         thetanames <- lapply(info$re,
@@ -240,6 +241,7 @@ NULL
 
 #' @importFrom stats reformulate
 #' @importFrom utils capture.output
+#' @export
 print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
     if (is.null(x)) return(invisible(x))
     pstr <- character(nrow(x))

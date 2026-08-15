@@ -33,6 +33,18 @@
 ##' \item the \code{effects} package computes graphical tabular effect displays
 ##' (only for the fixed effects of the conditional component)
 ##' }
+##' @section Denominator degrees of freedom in \code{emmeans}:
+##' For models with random effects, the \code{ddf} argument to \code{emmeans()}
+##' (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
+##' \code{"satterthwaite"} and \code{"kenward-roger"} (see \code{\link{dof_KR}} and
+##' \code{\link{dof_satt}} for the underlying calculations), matching the same argument
+##' to \code{\link{summary.glmmTMB}} and \code{\link{anova.glmmTMB}}. \code{ddf = "kenward-roger"}
+##' requires a model fitted with \code{REML = TRUE}: for an ML fit (\pkg{glmmTMB}'s default),
+##' it throws an error rather than silently substituting another method; it also requires a
+##' family with an estimated dispersion parameter, and throws an error for families such as
+##' \code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
+##' \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
+##' their performance (and theoretical justification) for GLMMs is poorly understood.
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.
@@ -107,7 +119,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
 
     ddf_set <- function(used, requested = ddf) {
         if (requested != used) {
-            warning("ddf '%s' specified, using ddf '%s' instead", requested, used)
+            warning(gettextf("ddf '%s' specified, using ddf '%s' instead", requested, used))
         }
         return(used)
     }
@@ -122,13 +134,22 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
             return(ddf)
         }
 
-        if (!isREML(object)) {
-            if (ddf == "kenward-roger") return(ddf_set("satterthwaite"))
+        ## hard error (not a silent downgrade) for KR + non-REML, matching
+        ## summary.glmmTMB()/anova.glmmTMB() via check_ddf()
+        if (ddf == "kenward-roger") {
+            .check_KR_reml(object)
+            ## Kenward-Roger's variance-component machinery only supports
+            ## families with an estimated dispersion parameter (see the
+            ## matching check in check_ddf()); without this, families such
+            ## as binomial/poisson fail with an opaque error instead
+            if (!usesDispersion(fam)) {
+                stop(sprintf(
+                    "ddf='kenward-roger' is not supported for family '%s' (no estimated dispersion parameter); use ddf='satterthwaite' or ddf='asymptotic' instead",
+                    fam), call. = FALSE)
+            }
         }
 
-        if (fam != "gaussian" && ddf != "asymptotic") {
-            message("performance of Kenward-Roger and Satterthwaite approx for GLMMs is poorly understood")
-        }
+        if (fam != "gaussian" && ddf != "asymptotic") .warn_ddf_glmm(ddf)
         return(ddf)
     }
 
@@ -142,8 +163,15 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         V <- V_kr
         dffun <- function(k, dfargs) pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
     } else if (ddf == "satterthwaite") {
-        dfargs <- list(object=object)
-        dffun <- function(k,dfargs) suppressMessages(dof_satt(dfargs$object, k))
+        ## emmeans::ref_grid() strips dffun's enclosing environment
+        ## (sets it to baseenv()), so dffun can't rely on free variables
+        ## such as a captured dof_satt (glmmTMB#1304) -- stash it in
+        ## dfargs instead, where it's reached via the 'dfargs' argument
+        dfargs <- list(object = object, dof_satt = dof_satt)
+        ## emmeans calls dffun() once per contrast, passing a bare
+        ## vector k rather than a full contrast matrix; dof_satt()
+        ## expects a matrix (one row per contrast), so wrap k accordingly
+        dffun <- function(k, dfargs) suppressMessages(dfargs$dof_satt(dfargs$object, L = matrix(k, nrow = 1)))
     } else if (ddf == "df.residual") {
         dfargs <- list(object = object)
         dffun <- function(k, dfargs) stats::df.residual(dfargs$object)
@@ -184,11 +212,18 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         }
     }
     else {
+	## combinomial with allow_negative_nu uses identity link on dispersion;
+        ## other families always use log link on dispformula
+        disp_link <- if (isTRUE(object$modelInfo$family$allow_negative_nu)) "identity" else "log"
         fam <- switch(component, cond = family(object), zi = list(link = "logit"), 
-                      disp = list(link = "log"))
+                      disp = list(link = disp_link))
         misc <- emmeans::.std.link.labels(fam, misc)
         if (missing(vcov.)) {
             V <- as.matrix(vcov(object, include_nonest = FALSE)[[component]])
+            ## coefficients fixed via 'map' are known constants: pad the
+            ## covariance matrix with zero rows/columns so its dimension
+            ## matches the full coefficient vector used for the grid
+            V <- pad_mapped_vcov(object, V, component)
         }
         else {
             V <- vcov.

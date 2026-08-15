@@ -136,10 +136,12 @@ startParams <- function(parameters,
 
     sparseXdisp <- ifelse(dim(Xdisp)[1] == 0 && dim(Xdisp)[2] == 0, 1, 0)
     if(length(fixed.pars$betadisp) != 0){
+      ## combinomial with allow_negative_nu uses identity link on disp; otherwise log
+      disp_transform <- if (isTRUE(family$allow_negative_nu)) identity else exp
       if(!sparseXdisp)
-        phi <- as.matrix(Xdisp) %*% exp(fixed.pars$betadisp)
+        phi <- as.matrix(Xdisp) %*% disp_transform(fixed.pars$betadisp)
       else
-        phi <- as.vector(XdispS %*% exp(fixed.pars$betadisp))
+        phi <- as.vector(XdispS %*% disp_transform(fixed.pars$betadisp))
     }
     # obtain residuals and get starting values for rr
     rrStart <- rrValues(yobs, weights, fr, mu,
@@ -359,6 +361,31 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     }
   }
 
+  ## ordinal family: response is an ordered factor (or 1-based integer
+  ## codes); convert to numeric category codes 1..K for the TMB side and
+  ## keep the level labels for prediction/simulation
+  ord_levels <- NULL
+  if (family$family == "ordinal") {
+    if (is.factor(yobs)) {
+      ord_levels <- levels(yobs)
+      yobs <- as.numeric(yobs)
+      attr(ord_levels, "factor_response") <- TRUE
+    } else {
+      ord_levels <- as.character(seq_len(max(yobs, na.rm = TRUE)))
+      attr(ord_levels, "factor_response") <- FALSE
+      if (length(whichPredict) == 0) {
+        warning("ordinal response given as integer codes: the number of ",
+                "categories is inferred as max(response) = ",
+                length(ord_levels), "; use an ordered factor to declare ",
+                "the levels explicitly (e.g. if the top category is ",
+                "unobserved in these data)")
+      }
+    }
+    if (length(ord_levels) < 2) {
+      stop("ordinal response must have at least two levels")
+    }
+  }
+
 
   denseXval <- function(component,lst) if (sparseX[[component]]) matrix(nrow=0,ncol=0) else lst$X
   ## need a 'dgTMatrix' (double, general, Triplet representation)
@@ -425,6 +452,10 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     termsdisp = dispReStruc,
     family = .valid_family[family$family],
     link = .valid_link[family$link],
+    ## combinomial: 0 = log link on dispersion (default, nu > 0),
+    ##               1 = identity link (allows nu in R, U-shape regime)
+    combinom_disp_link = if (family$family == "combinomial" &&
+                              isTRUE(family$allow_negative_nu)) 1L else 0L,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
     whichPredict = whichPredict,
@@ -434,8 +465,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## add X matrices, prior info
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
-  # function to set value for dorr
-  rrVal <- function(lst) if(any(lst$ss == "rr") || any(lst$ss == "propto") || any(lst$ss == "equalto")) 1 else 0
+  ## identify covariance structures that have non-default theta values
+  ndThetaStruc <- function(lst) any(lst$ss %in% c("rr", "propto", "equalto"))
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -452,18 +483,25 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   ## Extra family specific parameters
 
-  psiLength <- find_psi(family$family)
-           
-  psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
+  if (family$family == "ordinal") {
+      ## K-1 increasing thresholds via a softmax parameterization:
+      ## psi are log-weights of the K baseline category probabilities
+      ## (last fixed to 0) and theta = qlogis(cumsum(softmax(c(psi, 0)))).
+      ## psi = 0 starts from equiprobable categories (cf. ordinal::clm)
+      psi_init <- rr0(length(ord_levels) - 1L)
+  } else {
+      psiLength <- find_psi(family$family)
+      psi_init <- if (family$family == "ordbeta") c(-1, 1) else rr0(psiLength)
+  }
 
   # theta is 0, 1 for rr_covstruct
   # theta is parameterised to corr matrix for propto
-  t01 <- function(dorr, ReStruc, List = NULL){
+  t01 <- function(ndTheta, ReStruc, List = NULL){
 
     nt <- sum(getVal(ReStruc, "blockNumTheta"))
     theta <- rr0(nt)
     
-    if (dorr) {
+    if (ndTheta) {
       blockNumTheta <- getVal(ReStruc,"blockNumTheta")
       blockCode  <- getVal(ReStruc, "blockCode")
       thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
@@ -495,11 +533,24 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        b       = rep(beta_init, ncol(Z)),
                        bzi     = rr0(ncol(Zzi)),                       
                        bdisp   = rep(betadisp_init, ncol(Zdisp)),
-                       theta   = t01(dorr = rrVal(condList), condReStruc, condList),
-                       thetazi = t01(dorr = rrVal(ziList), ziReStruc, ziList),                       
-                       thetadisp = t01(dorr = rrVal(dispList), dispReStruc, dispList),
+                       theta   = t01(ndTheta = ndThetaStruc(condList), condReStruc, condList),
+                       thetazi = t01(ndTheta = ndThetaStruc(ziList), ziReStruc, ziList),                       
+                       thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
+
+  ## ordinal family: a fixed-effect intercept is redundant with the
+  ## thresholds; fix it to zero (it is absorbed into the thresholds)
+  if (family$family == "ordinal") {
+      Xnames <- colnames(if (sparseX[["cond"]]) data.tmb$XS else data.tmb$X)
+      icpt <- which(Xnames == "(Intercept)")
+      if (length(icpt) == 1L && is.null(mapArg$beta)) {
+          betamap <- seq_along(parameters$beta)
+          betamap[icpt] <- NA
+          mapArg <- c(mapArg, list(beta = factor(betamap)))
+          parameters$beta[icpt] <- 0
+      }
+  }
 
   if(!is.null(start) || !is.null(control$start_method$method)){
     parameters <- startParams(parameters,
@@ -517,13 +568,14 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                               start_method = control$start_method)
   }
 
+  
   ### Change mapping for propto 
   for (component in c("cond", "zi", "disp")) {
     rList <- get(paste0(component, "List"))
-    if(rrVal(rList)){
-      restruc <- get(paste0(component, "ReStruc"))
+    if(length(rList$ss) > 0 && any(rList$ss %in% c("propto", "equalto") )){
+      restruccomp <- get(paste0(component, "ReStruc"))
       mapArg.orig <- mapArg
-      mapArg <- map.theta.propto(restruc, mapArg.orig, component)
+      mapArg <- map.theta.propto(restruccomp, mapArg.orig, component)
     }
   }
 
@@ -534,9 +586,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (REML) randomArg <- c(randomArg, "beta")
   dispformula <- dispformula.orig ## May have changed - restore
   return(namedList(data.tmb, parameters, mapArg, randomArg, grpVar,
-            condList, ziList, dispList, 
+            condList, ziList, dispList,
   					condReStruc, ziReStruc, dispReStruc,
-            family, contrasts, respCol,
+            family, contrasts, respCol, ord_levels,
             allForm=namedList(combForm,formula,ziformula,dispformula),
             fr, se, call, verbose, REML, map, sparseX, priors))
 }
@@ -1086,9 +1138,12 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
     return(ans)
 }
 
-.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell")
+.noDispersionFamilies <- c("binomial", "poisson", "truncated_poisson", "bell", "ordinal")
 
 ## number of additional/shape parameters (default = 0)
+## NOTE: the ordinal family is not registered here because its psi length
+## is data-dependent (n. of response levels - 1); it is handled separately
+## in mkTMBStruc()
 .extraParamFamilies <- list('1' = c('t', 'tweedie', 'nbinom12', 'skewnormal'),
                             '2' = 'ordbeta')
 find_psi <- function(f) {
@@ -1121,7 +1176,7 @@ okWeights <- function(x) {
 }
 
 ## Families for which binomial()$initialize is used
-.binomialFamilies <- c("binomial", "betabinomial")
+.binomialFamilies <- c("binomial", "betabinomial", "combinomial")
 binomialType <- function(x) {
   !is.na(match(x, .binomialFamilies))
 }
@@ -1304,6 +1359,18 @@ glmmTMB <- function(
     if (grepl("^quasi", family$family))
         stop('"quasi" families cannot be used in glmmTMB')
 
+    if (family$family == "ordinal" && ziformula != ~0) {
+        stop("zero-inflation is not implemented for the ordinal family")
+    }
+
+    if (family$family == "ordinal" && REML) {
+        ## REML integrates out 'beta' only; the thresholds (psi) are treated
+        ## as fixed even though they play a role analogous to an intercept,
+        ## so the correct REML definition for this family is unsettled
+        warning("REML for the ordinal family integrates out the fixed effects ",
+                "but not the thresholds; treat the result with caution")
+    }
+
     if (inForm(formula, quote(`$`))) {
         warning("use of the ", sQuote("$"), " operator in formulas is not recommended")
     }
@@ -1354,7 +1421,7 @@ glmmTMB <- function(
                names(mf), 0L)
     ## FIXME: could break if formula is not specified first ???
     mf <- mf[c(1L, m)]
-    mf$drop.unused.levels <- TRUE
+    mf$drop.unused.levels <- control$drop_unused_levels
     mf[[1]] <- as.name("model.frame")
     mf$data <- data ## propagate ..offset modification?
 
@@ -1515,6 +1582,7 @@ glmmTMB <- function(
 ##' @param rank_check Check whether all parameters in fixed-effects models are identifiable? This test may be slow for models with large numbers of fixed-effect parameters, therefore default value is 'warning'. Alternatives include 'skip' (no check), 'stop' (throw an error), and 'adjust' (drop redundant columns from the fixed-effect model matrix).
 ##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @param full_cor compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually
+##' @param drop_unused_levels drop unused levels in grouping variables?
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1565,7 +1633,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            start_method = list(method = NULL, jitter.sd = 0),
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip"),
-                           full_cor = TRUE) {
+                           full_cor = TRUE,
+                           drop_unused_levels = TRUE) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1604,7 +1673,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
               eigval_check, zerodisp_val, start_method, rank_check, conv_check,
-              full_cor)
+              full_cor, drop_unused_levels)
 }
 
 ##' collapse duplicated observations
@@ -2100,6 +2169,7 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                                                     disp=dispList),
                                                "[[", "terms"),
                                 reStruc = namedList(condReStruc, ziReStruc, dispReStruc),
+                                ord_levels,
                                 allForm,
                                 REML,
                                 map,
@@ -2132,7 +2202,12 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
                  length(formals(fv))>1)
     nbfam <- ff$family=="negative.binomial" ||  grepl("nbinom",ff$family)
     if (nbfam || xvarpars) {
-        theta <- exp(fit$parfull["betadisp"]) ## log link
+        ## combinomial with allow_negative_nu uses identity link; others use log
+        theta <- if (isTRUE(ff$allow_negative_nu)) {
+                     fit$parfull["betadisp"]              ## identity link
+                 } else {
+                     exp(fit$parfull["betadisp"])         ## log link
+                 }
         ## variance() and dev.resids() share an environment
         dnm <- if (ff$family=="nbinom1") ".Phi" else ".Theta"
         assign(dnm,
@@ -2180,9 +2255,12 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' @title summary for glmmTMB fits
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param ddf denominator degrees-of-freedom calculation. Default "asymptotic" gives standard Z-statistics
-##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation, which will
-##' be ignored for non-REML fits and is entirely untested for GLMMs (see \code{\link{dof_KR}});
-##' \code{"satterthwaite"} uses a Satterthwaite approximation
+##' (i.e., 'infinite' denominator df); \code{"kenward-roger"} uses the Kenward-Roger approximation
+##' (see \code{\link{dof_KR}}), which requires a REML fit (an error is thrown otherwise) and a family
+##' with an estimated dispersion parameter (an error is thrown for families such as \code{binomial} or
+##' \code{poisson} that lack one); \code{"satterthwaite"} uses a Satterthwaite approximation, with no such
+##' restrictions. For families other than \code{gaussian}, both approximations are allowed but emit a
+##' warning, because their performance (and theoretical justification) for GLMMs is poorly understood
 ##' @param ... unused, for method compatibility
 ##' @inheritParams vcov.glmmTMB
 ##' @export
@@ -2194,19 +2272,8 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
 
     famL <- family(object)
 
-    if (ddf == "KR") {
-        if (!isREML(object)) {
-            warning("ddf='KR' ignored for non-REML fits")
-        } else {
-            if (family(object)$family != "gaussian") {
-                warning("ddf='KR' is untested for GLMMs. Use at your own risk!")
-            }
-            if (!trivialDisp(object) || !noZI(object)) {
-                message("ddf='KR' ignored except for conditional-distribution parameters")
-            }
-        }
-    }
-    
+    check_ddf(object, ddf)
+
     mkCoeftab <- function(coefs, vcovs, type) {
         p <- length(coefs)
         coefs <- cbind("Estimate" = coefs,
@@ -2222,7 +2289,9 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
                 labs <- c(stat_lab, pval_lab)
                 cc <- cbind(stat, pvals)
             } else {
-                if (ddf == "kenward-roger") {
+                if (!hasRandom(object)) {
+                    df_val <- rep(stats::df.residual(object), p)
+                } else if (ddf == "kenward-roger") {
                     df_val <- c(dof_KR(object))
                 } else if (ddf == "satterthwaite") {
                     df_val <- c(dof_satt(object))
@@ -2247,6 +2316,18 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
     for (nm in names(ff)) {
         if (!trivialFixef(names(ff[[nm]]),nm)) {
             coefs[[nm]] <- mkCoeftab(ff[[nm]], vv[[nm]], nm)
+        }
+    }
+
+    ## ordinal family: drop the internally-mapped intercept (fixed to 0,
+    ## absorbed into the thresholds) from the coefficient table; keep it
+    ## if the user supplied their own beta map
+    if (famL$family == "ordinal" && is.null(object$modelInfo$map$beta) &&
+        !is.null(coefs$cond)) {
+        bmap <- object$obj$env$map$beta
+        icpt <- which(rownames(coefs$cond) == "(Intercept)")
+        if (length(icpt) == 1 && !is.null(bmap) && is.na(bmap[icpt])) {
+            coefs$cond <- coefs$cond[-icpt, , drop = FALSE]
         }
     }
 

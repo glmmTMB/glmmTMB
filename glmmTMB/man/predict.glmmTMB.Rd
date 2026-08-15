@@ -12,7 +12,8 @@
   cov.fit = FALSE,
   re.form = NULL,
   allow.new.levels = NULL,
-  type = c("link", "response", "conditional", "zprob", "zlink", "disp", "latent"),
+  type = c("link", "response", "conditional", "zprob", "zlink", "disp", "latent",
+    "probs"),
   zitype = NULL,
   na.action = na.pass,
   fast = NULL,
@@ -56,6 +57,12 @@ and \code{mu} otherwise}
 the logit link function (returns \code{-Inf} for non-zero-inflated models)}
 \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB}})}
 \item{"latent"}{return latent variables}
+\item{"probs"}{(ordinal family only) matrix of per-category
+probabilities, with one column per response level; for this family
+\code{"response"} returns the expected category index
+\eqn{E[Y] = \sum_j j P(Y=j)}{E[Y] = sum_j j P(Y=j)} and
+\code{"link"} returns the latent-scale linear predictor \eqn{\eta}{eta}
+(thresholds not included)}
 }}
 
 \item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}

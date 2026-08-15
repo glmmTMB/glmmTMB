@@ -132,17 +132,12 @@ profile.glmmTMB <- function(fitted,
             L <- parallel::mcmapply(FUN, parm, sds, mc.cores = ncpus,
                                     SIMPLIFY=FALSE)
         } else if (parallel=="snow") {
-            if (is.null(cl)) {
-                ## start cluster
-                new_cl <- TRUE
-                cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
-            }
+                if (is.null(cl)) {
+                    cl <- parallel::makeCluster(ncpus)
+                    on.exit(parallel::stopCluster(cl))
+                }
             ## run
             L <- parallel::clusterMap(cl, FUN, parm, sds)
-            if (new_cl) {
-                ## stop cluster
-                parallel::stopCluster(cl)
-            }
         }
     } else { ## non-parallel
         L <- Map(FUN, parm, sds)

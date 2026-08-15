@@ -79,7 +79,7 @@ In order to fit a model in \code{glmmTMB} you need to:
 \begin{itemize}
 \item specify a model for the conditional effects, in the standard
   R (Wilkinson-Rogers) formula notation (see \code{?formula}
-  or Section 11.1 of the \href{http://cran.r-project.org/doc/manuals/R-intro.pdf}{Introduction to R}.
+  or Section 11.1 of the \href{https://cran.r-project.org/doc/manuals/R-intro.pdf}{Introduction to R}.
   Formulae can also include \emph{offsets}.
 \item specify a model for the random effects, in the notation
   that is common to the \code{nlme} and \code{lme4} packages.
@@ -348,7 +348,7 @@ be (1) greater flexibility (zero-inflation etc.); (2) greater speed for
 GLMMs, especially those with large number of ``top-level'' parameters
 (fixed effects plus random-effects variance-covariance parameters).
 In contrast, \code{lme4} should be faster for LMMs (for maximum
-speed, you may want to check the \href{https://github.com/dmbates/MixedModels.jl}{MixedModels.jl} package for Julia); \code{lme4} is more mature and at present has a wider variety of diagnostic checks and methods for using model results, including downstream packages.
+speed, you may want to check the \href{https://github.com/JuliaStats/MixedModels.jl}{MixedModels.jl} package for Julia); \code{lme4} is more mature and at present has a wider variety of diagnostic checks and methods for using model results, including downstream packages.
 
 \bibliography{glmmTMB}
 \end{document}

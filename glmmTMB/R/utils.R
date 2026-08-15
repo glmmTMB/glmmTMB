@@ -275,7 +275,18 @@ check_dep_version <- function(this_pkg = "glmmTMB",  dep_pkg = "TMB", dep_type =
 #' require that you re-install a \emph{binary-compatible} version of \code{glmmTMB},
 #' i.e. a version that has been compiled with the updated version of the upstream
 #' package.
+#'
+#' While you'll always get a warning when there is a mismatch between
+#' the version(s) of the upstream package(s) used to build \code{glmmTMB} and
+#' the version(s) you have installed, these are only warnings. Such mismatches
+#' may cause problems, but the problems are likely to be obvious (crashes); if
+#' \code{glmmTMB} seems to be working OK anyway, you can ignore the warning.
+#'
+#' If not:
 #' \itemize{
+#' \item You may be able to install a freshly built binary (of the development version) from \code{glmmTMB}'s
+#' \href{https://glmmtmb.r-universe.dev/glmmTMB}{R-universe page} via
+#' \code{install.packages('glmmTMB', repos = c('https://glmmtmb.r-universe.dev', 'https://cloud.r-project.org'))}
 #' \item If you have development tools (compilers etc.) installed, you
 #' should be able to re-install a binary-compatible version of the package by running
 #' \code{install.packages("glmmTMB", type="source")}. If you want to install
@@ -284,34 +295,15 @@ check_dep_version <- function(this_pkg = "glmmTMB",  dep_pkg = "TMB", dep_type =
 #' (On Windows, you can install development tools following the instructions at
 #' \url{https://cran.r-project.org/bin/windows/Rtools/}; on MacOS, see
 #' \url{https://mac.r-project.org/tools/}.)
+#' }
 #'
-#' \item If you do \emph{not} have development tools and can't/don't want to
-#' install them (and so can't install packages with compiled code from source),
-#' you have two choices:
-#' \itemize{
-#' \item revert the upstream package(s) to their previous binary version. For example, using the
-#' \code{checkpoint} package:
-#' \preformatted{
-#' ## load (installing if necessary) the checkpoint package
-#' while (!require("checkpoint")) install.packages("checkpoint")
-#' ## retrieve build date of installed version of glmmTMB
-#' bd <- as.character(asDateBuilt(
-#'       packageDescription("glmmTMB",fields="Built")))
-#' oldrepo <- getOption("repos")
-#' use_mran_snapshot(bd) ## was setSnapshot() pre-checkpoint v1.0.0
-#' install.packages("TMB")
-#' options(repos=oldrepo) ## restore original repo
-#' }
-#' A similar recipe (substituting \code{Matrix} for \code{TMB} and \code{TMB} for \code{glmmTMB})
-#' can be used if you get warnings about an incompatibility between \code{TMB} and \code{Matrix}.
-#' \item hope that the glmmTMB maintainers have posted a binary
-#' version of the package that works with your system; try installing it via
-#' \code{install.packages("glmmTMB",repos="https://glmmTMB.github.io/glmmTMB/repos",type="binary")}
-#' If this doesn't work, please file an issue (with full details about your
+#' If R-universe isn't working for you,
+#' you don't have development tools installed, and you can't
+#' install them for some reason(and so can't install packages with compiled code from source),
+#' please file an issue (with full details about your
 #' operating system and R version) asking the maintainers to build and
-#' post an appropriate binary version of the package.
-#' }
-#' }
+#' post an appropriate binary version of the package (we may or may not
+#' be able to help, depending on your system and how much time we have).
 NULL
 
 #' Check OpenMP status
@@ -422,6 +414,13 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     }
     if (!"aggregate" %in% names(ee$data)) {
       ee$data[["aggregate"]] <- numeric(0)
+    }
+    if (!"combinom_disp_link" %in% names(ee$data)) {
+      ## log link on dispersion (the default; only ever nonzero for
+      ## combinomial fits with allow_negative_nu = TRUE)
+      ## stored as double: TMB requires storage mode 'double' for data
+      ## objects carrying the 'check.passed' attribute
+      ee$data[["combinom_disp_link"]] <- 0
     }
 
     for (comp in c("terms", "termszi", "termsdisp")) {
