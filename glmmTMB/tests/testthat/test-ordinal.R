@@ -79,6 +79,28 @@ test_that("ordinal mixed model matches ordinal::clmm", {
     expect_equal(unname(attr(VarCorr(fit_tmb)$cond$judge, "stddev")),
                  unname(sqrt(ordinal::VarCorr(fit_clmm)$judge[1, 1])),
                  tolerance = 1e-3)
+    ## threshold SEs on the theta scale match clmm (issue #1323)
+    expect_equal(unname(glmmTMB:::ordinal_thresholds(fit_tmb)[, "Std. Error"]),
+                 unname(sqrt(diag(vcov(fit_clmm)))[seq_along(fit_clmm$alpha)]),
+                 tolerance = 1e-3)
+})
+
+test_that("ordinal threshold standard errors (delta method)", {
+    fit_polr <- MASS::polr(Sat ~ Infl + Type + Cont, weights = Freq,
+                           data = housing, Hess = TRUE)
+    thr <- glmmTMB:::ordinal_thresholds(fit_ord)
+    expect_identical(rownames(thr), c("Low|Medium", "Medium|High"))
+    expect_equal(thr[, "Estimate"], family_params(fit_ord))
+    expect_equal(unname(thr[, "Std. Error"]),
+                 unname(summary(fit_polr)$coefficients[rownames(thr),
+                                                       "Std. Error"]),
+                 tolerance = 1e-4)
+    ## consistent with the Wald CIs from confint()
+    ci <- confint(fit_ord, component = "all")
+    expect_equal(unname(thr[, "Std. Error"]),
+                 unname((ci[rownames(thr), 2] - ci[rownames(thr), 1]) /
+                        (2 * qnorm(0.975))),
+                 tolerance = 1e-8)
 })
 
 test_that("ordinal simulate/residuals/refit", {
