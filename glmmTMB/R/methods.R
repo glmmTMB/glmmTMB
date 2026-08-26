@@ -297,8 +297,14 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @param name of the component to be retrieved
 ##' @param \dots ignored, for method compatibility
 ##'
+##' @note The \code{"cnms"} and \code{"flist"} values are specific to the
+##' conditional component of the model (i.e., they do not include
+##' zero-inflation or dispersion terms). Users can extract the analogous
+##' values for those components via \code{object$modelInfo$reTrms[[component]]$cnms}
+##' (or \code{...$flist}), where \code{component} is \code{"zi"} or \code{"disp"}.
+##' See \code{\link[lme4]{getME}} for definitions of individual components.
+##'
 ##' @seealso \code{\link[lme4]{getME}}
-##' Get generic and re-export:
 ##' @importFrom lme4 getME
 ##' @export getME
 ##'
@@ -306,7 +312,8 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xdisp", "theta", "beta", "b", "Gp"),
+                                   "Xdisp", "theta", "beta", "b", "Gp",
+                                   "cnms", "flist"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -344,10 +351,12 @@ getME.glmmTMB <- function(object,
              if (is.null(cc)){
                  NULL
              } else {
-                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = integer(1))
+                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = numeric(1))
                  unname(cumsum(c(0,v)))
              }
          },
+         "cnms" = object$modelInfo$reTrms$cond$cnms,
+         "flist" = object$modelInfo$reTrms$cond$flist,
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),

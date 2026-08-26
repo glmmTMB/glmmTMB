@@ -119,6 +119,21 @@ test_that("Basic Binomial CBPP examples", {
 
 })
 
+test_that("getME Gp works with non-integer blockReps*blockSize (GH #1318)", {
+    expect_equal(getME(gm0, "Gp"), c(0, 15))
+})
+
+test_that("getME cnms/flist mirror lme4", {
+    fm2_lme4 <- lme4::lmer(Reaction ~ Days + (Days|Subject), sleepstudy)
+    expect_equal(getME(fm2, "cnms"), getME(fm2_lme4, "cnms"))
+    expect_equal(getME(fm2, "flist"), getME(fm2_lme4, "flist"),
+                 ignore_attr = "class")
+    ## no random effects: components should be NULL rather than erroring
+    fm_norand <- glmmTMB(Reaction ~ Days, sleepstudy)
+    expect_null(getME(fm_norand, "cnms"))
+    expect_null(getME(fm_norand, "flist"))
+})
+
 test_that("Multiple RE, reordering", {
     ### Multiple RE,  reordering
      skip_on_cran()

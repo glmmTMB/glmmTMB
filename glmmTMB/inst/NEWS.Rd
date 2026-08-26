@@ -45,10 +45,15 @@
       and dispersion components) are supported. \strong{Requires TMB
       newer than 1.9.21.} The density and cumulative distribution
       functions (\code{dcombinom}, \code{pcombinom}) are exported
+      \item \code{getME()} now works to extract \code{"cnms"} (effect
+      names) and \code{"flist"} (factor list) for random effects
+      (conditional model components only)
     }
   } % new features
  \subsection{BUG FIXES}{
     \itemize{
+      \item \code{getME(., "Gp")} now works to return a vector of group
+      pointers for random effects
       \item \code{vcov} (and hence \code{summary}, \code{confint},
       \code{car::Anova}) no longer fails with "attempt to set an attribute
       on NULL" for a \code{REML=TRUE} fit that has no free fixed effects to
