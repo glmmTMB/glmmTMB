@@ -188,9 +188,13 @@ check_dots <- function(..., .ignore = NULL, .action="stop") {
         L <- L[!names(L) %in% .ignore]
     }
     if (length(L)>0) {
+        args <- paste(shQuote(names(L)), collapse=",")
+        msg <- switch(.action,
+                      stop = sprintf("unknown arguments: %s", args),
+                      warning = ,
+                      message = sprintf("unknown arguments ignored: %s", args))
         FUN <- get(.action)
-        FUN("unknown arguments: ",
-            paste(names(L), collapse=","))
+        FUN(msg)
     }
     return(NULL)
 }

@@ -1808,9 +1808,7 @@ refit.glmmTMB <- function(object, newresp, ...) {
 ## ------  should work with fixef() + ranef()  alone
 coefMer <- function(object, component=NULL, ...)
 {
-    if (length(list(...)))
-        warning('arguments named "', paste(names(list(...)), collapse = ", "),
-                '" ignored')
+    check_dots(..., .action = "warning")
     fef <- fixef(object)
     if (!is.null(component)) fef <- fef[[component]]
     fef <- data.frame(rbind(fef), check.names = FALSE)
@@ -1867,18 +1865,15 @@ coef.glmmTMB <- function(object,
 ##' Extract weights from a glmmTMB object
 ##'
 ##' @details
-##' At present only explicitly specified
-##' \emph{prior weights} (i.e., weights specified
-##' in the \code{weights} argument) can be extracted from a fitted model.
-##' \itemize{
-##' \item Unlike other GLM-type models such as \code{\link{glm}} or
-##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
-##' the total number of trials when binomial responses are specified
-##' as a two-column matrix.
-##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' Returns the \emph{prior weights} used in fitting, i.e. weights
+##' specified in the \code{weights} argument. For binomial-type families
+##' fit with a two-column matrix response (\code{cbind(successes, failures)}),
+##' the total number of trials is included as well (multiplied by the
+##' \code{weights} argument, if specified), matching the behaviour of
+##' \code{\link{glm}} and \code{\link[lme4]{glmer}}.
+##' Since \code{glmmTMB} does not fit models via iteratively
 ##' weighted least squares, \code{working weights} (see \code{\link[stats:glm]{weights.glm}}) are unavailable.
-##' }
-##' @importFrom stats model.frame
+##' @importFrom stats model.frame model.response
 ##' @importFrom stats weights
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param type weights type
@@ -1886,11 +1881,18 @@ coef.glmmTMB <- function(object,
 ##' @export
 weights.glmmTMB <- function(object, type="prior", ...) {
     type <- match.arg(type)  ## other types are *not* OK
-    if (length(list(...)>0)) {
-        warning("unused arguments ignored: ",
-             paste(shQuote(names(list(...))),collapse=","))
+  
+    check_dots(..., .action = "warning")
+    fr <- stats::model.frame(object)
+    w <- fr[["(weights)"]]
+    mr <- model.response(fr)
+    if (!is.null(dim(mr))) {
+        ## binomial-type response given as cbind(successes, failures):
+        ## total trials are an implicit weight, as in glm/glmer
+        n <- unname(mr[, 1] + mr[, 2])
+        w <- if (is.null(w)) n else w * n
     }
-    stats::model.frame(object)[["(weights)"]]
+    w
 }
 
 # would like to export this only as a method, but not sure how ...
@@ -2317,4 +2319,15 @@ vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
     } else {
         meatHC(x, ...)
     }
+}
+
+#' @importFrom lme4 isGLMM
+#' @export
+lme4::isGLMM
+
+#' @export
+isGLMM.glmmTMB <- function(x,...) {
+  check_dots(...)
+  f <- family(x)
+  !(f$family == "gaussian" && f$link == "identity")
 }
