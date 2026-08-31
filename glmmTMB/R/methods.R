@@ -82,6 +82,19 @@ zeroDisp <- function(object) {
     formComp(object, "dispformula", ~0)
 }
 
+## TRUE if a dispersion parameter is actually estimated: 'betadisp' survives
+## into the fitted (post-'map') parameter vector. This is about the parameters,
+## whereas trivialDisp()/zeroDisp() are about the structure of dispformula;
+## 'map' pinning to a shared level still estimates one parameter, so it's TRUE
+estDisp <- function(object) {
+    pnames <- names(object$obj$env$par)
+    ## unusable or pre-'betadisp' parameter vector (see up2date()): assume it
+    ## was estimated, the historical assumption, rather than guessing otherwise
+    if (length(pnames) == 0 ||
+        !"betadisp" %in% names(object$obj$env$parameters)) return(TRUE)
+    "betadisp" %in% pnames
+}
+
 noZI <- function(object) {
   formComp(object, "ziformula", ~0)
 }
