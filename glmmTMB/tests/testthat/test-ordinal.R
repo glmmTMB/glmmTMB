@@ -101,6 +101,16 @@ test_that("ordinal threshold standard errors (delta method)", {
                  unname((ci[rownames(thr), 2] - ci[rownames(thr), 1]) /
                         (2 * qnorm(0.975))),
                  tolerance = 1e-8)
+    ## exposed in summary() as a separate 'thresholds' table
+    ss <- summary(fit_ord)
+    expect_identical(colnames(ss$thresholds),
+                     c("Estimate", "Std. Error", "z value"))
+    expect_equal(ss$thresholds[, c("Estimate", "Std. Error")], thr)
+    expect_false("thresholds" %in% names(ss$coefficients))
+    expect_output(print(ss), "Threshold coefficients:")
+    expect_output(print(fit_ord), "Low\\|Medium = .*Medium\\|High = ")
+    fit_pois <- glmmTMB(count ~ mined, family = poisson, data = Salamanders)
+    expect_null(summary(fit_pois)$thresholds)
 })
 
 test_that("ordinal simulate/residuals/refit", {

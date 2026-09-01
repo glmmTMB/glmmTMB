@@ -17,6 +17,12 @@
       \code{simulate()} are supported. Nominal (category-specific) and
       scale effects are not (yet) implemented; \code{REML=TRUE} warns,
       since it integrates out the fixed effects but not the thresholds
+      \item \code{summary()} for the \code{ordinal} family reports the
+      thresholds with delta-method standard errors in a
+      \dQuote{Threshold coefficients} block (also available as the
+      \code{thresholds} element of the summary object); the threshold
+      rows of \code{vcov(., full = TRUE)} remain on the internal
+      (softmax) scale (GH #1323)
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level

@@ -772,7 +772,11 @@ ordinal_thresholds <- function(object) {
 #' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
-    if (length(val) > 0) {
+    if (object$modelInfo$family$family == "ordinal") {
+        cat("\nThreshold coefficients:",
+            paste(names(val), formatC(val, digits = 3), sep = " = ",
+                  collapse = ", "), "\n")
+    } else if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
                     names(val)[1],
                     paste(formatC(val, digits=3),

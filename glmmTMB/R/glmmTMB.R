@@ -2263,6 +2263,12 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' warning, because their performance (and theoretical justification) for GLMMs is poorly understood
 ##' @param ... unused, for method compatibility
 ##' @inheritParams vcov.glmmTMB
+##' @details For the \code{ordinal} family, the returned object has a
+##' \code{thresholds} element (a matrix of threshold estimates, delta-method
+##' standard errors, and z values), printed as \dQuote{Threshold coefficients};
+##' the thresholds are estimated internally via a softmax parameterization, so
+##' the corresponding rows of \code{vcov(., full = TRUE)} are not on the
+##' threshold scale
 ##' @export
 summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenward-roger", "satterthwaite"), cluster = getGroups(object), ...) {
     check_dots(...)
@@ -2331,6 +2337,17 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
         }
     }
 
+    ## ordinal family: thresholds with delta-method SEs (GH #1323). Kept
+    ## separate from 'coefficients' so downstream code iterating over
+    ## cond/zi/disp tables is unaffected. Sandwich vcov is not used here
+    thresholds <- NULL
+    if (famL$family == "ordinal") {
+        thresholds <- ordinal_thresholds(object)
+        thresholds <- cbind(thresholds,
+                            "z value" = thresholds[, "Estimate"] /
+                                thresholds[, "Std. Error"])
+    }
+
     llAIC <- llikAIC(object)
 
     ## FIXME: You can't count on object@re@flist,
@@ -2342,6 +2359,7 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
 		   coefficients = coefs,
+                   thresholds = thresholds,
                    sigma = sig,
 		   vcov = vv, # No need to potentially recompute here anything.
 		   varcor = varcor, # and use formatVC(.) for printing.
@@ -2395,6 +2413,11 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
             printCoefmat(cc, zap.ind = 3, #, tst.ind = 4
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
+    }
+    if (!is.null(x$thresholds)) {
+        cat("\nThreshold coefficients:\n")
+        printCoefmat(x$thresholds, digits = digits, has.Pvalue = FALSE,
+                     signif.stars = FALSE)
     }
     if (!is.null(x$priors)) {
         cat("\nPriors:\n")
