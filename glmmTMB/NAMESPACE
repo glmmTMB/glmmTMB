@@ -18,6 +18,7 @@ S3method(formula,glmmTMB)
 S3method(getGroups,glmmTMB)
 S3method(getME,glmmTMB)
 S3method(has.intercept,glmmTMB)
+S3method(isGLMM,glmmTMB)
 S3method(isLMM,glmmTMB)
 S3method(logLik,glmmTMB)
 S3method(meatHC,default)
@@ -81,6 +82,7 @@ export(get_cor)
 export(glmmTMB)
 export(glmmTMBControl)
 export(gt_load)
+export(isGLMM)
 export(lognormal)
 export(meatHC)
 export(nbinom1)
@@ -89,6 +91,7 @@ export(nbinom2)
 export(numFactor)
 export(omp_check)
 export(ordbeta)
+export(ordinal)
 export(parseNumLevels)
 export(pbell)
 export(pcombinom)
@@ -116,128 +119,154 @@ if(getRversion() >= "3.6.0") { S3method(car::Anova, glmmTMB) } else { export(Ano
 if(getRversion() >= "3.6.0") { S3method(effects::Effect, glmmTMB)  } else { export(Effect.glmmTMB) }
 if(getRversion() >= "3.6.0") { S3method(multcomp::modelparm, glmmTMB) } else {  export(modelparm.glmmTMB) }
 if(getRversion()>='3.3.0') { importFrom(stats, sigma) } else { importFrom(lme4,sigma) }
-importFrom(Matrix,Cholesky)
-importFrom(Matrix,crossprod)
-importFrom(Matrix,diag)
-importFrom(Matrix,qr)
-importFrom(Matrix,qr2rankMatrix)
-importFrom(Matrix,rankMatrix)
-importFrom(Matrix,solve)
-importFrom(Matrix,t)
-importFrom(TMB,MakeADFun)
-importFrom(TMB,sdreport)
-importFrom(TMB,tmbprofile)
-importFrom(lme4,.prt.VC)
-importFrom(lme4,.prt.aictab)
-importFrom(lme4,.prt.call)
-importFrom(lme4,.prt.family)
-importFrom(lme4,.prt.grps)
-importFrom(lme4,.prt.resids)
-importFrom(lme4,getME)
-importFrom(lme4,isLMM)
-importFrom(lme4,refit)
-importFrom(methods,as)
-importFrom(methods,is)
-importFrom(methods,new)
-importFrom(mgcv,PredictMat)
-importFrom(mgcv,s)
-importFrom(mgcv,smooth2random)
-importFrom(mgcv,smoothCon)
-importFrom(nlme,VarCorr)
-importFrom(nlme,fixef)
-importFrom(nlme,getGroups)
-importFrom(nlme,ranef)
-importFrom(numDeriv,hessian)
-importFrom(numDeriv,jacobian)
-importFrom(reformulas,"RHSForm<-")
-importFrom(reformulas,RHSForm)
-importFrom(reformulas,addForm)
-importFrom(reformulas,addForm0)
-importFrom(reformulas,anySpecial)
-importFrom(reformulas,extractForm)
-importFrom(reformulas,findbars)
-importFrom(reformulas,findbars_x)
-importFrom(reformulas,formatVC)
-importFrom(reformulas,inForm)
-importFrom(reformulas,makeOp)
-importFrom(reformulas,mkReTrms)
-importFrom(reformulas,noSpecials)
-importFrom(reformulas,no_specials)
-importFrom(reformulas,nobars)
-importFrom(reformulas,reOnly)
-importFrom(reformulas,splitForm)
-importFrom(reformulas,sub_specials)
-importFrom(reformulas,subbars)
-importFrom(sandwich,bread)
-importFrom(sandwich,estfun)
-importFrom(sandwich,vcovHC)
-importFrom(splines,backSpline)
-importFrom(splines,interpSpline)
-importFrom(stats,"contrasts<-")
-importFrom(stats,.getXlevels)
-importFrom(stats,AIC)
-importFrom(stats,BIC)
-importFrom(stats,anova)
-importFrom(stats,approx)
-importFrom(stats,as.formula)
-importFrom(stats,binomial)
-importFrom(stats,complete.cases)
-importFrom(stats,confint)
-importFrom(stats,contrasts)
-importFrom(stats,cov2cor)
-importFrom(stats,delete.response)
-importFrom(stats,df.residual)
-importFrom(stats,dist)
-importFrom(stats,dnbinom)
-importFrom(stats,dpois)
-importFrom(stats,family)
-importFrom(stats,fitted)
-importFrom(stats,formula)
-importFrom(stats,gaussian)
-importFrom(stats,getCall)
-importFrom(stats,logLik)
-importFrom(stats,make.link)
-importFrom(stats,model.frame)
-importFrom(stats,model.matrix)
-importFrom(stats,model.response)
-importFrom(stats,model.weights)
-importFrom(stats,na.fail)
-importFrom(stats,na.omit)
-importFrom(stats,na.pass)
-importFrom(stats,napredict)
-importFrom(stats,nlminb)
-importFrom(stats,nobs)
-importFrom(stats,optimHess)
-importFrom(stats,pbinom)
-importFrom(stats,pchisq)
-importFrom(stats,plogis)
-importFrom(stats,pnbinom)
-importFrom(stats,pnorm)
-importFrom(stats,poisson)
-importFrom(stats,ppois)
-importFrom(stats,predict)
-importFrom(stats,printCoefmat)
-importFrom(stats,profile)
-importFrom(stats,pt)
-importFrom(stats,qchisq)
-importFrom(stats,qnbinom)
-importFrom(stats,qnorm)
-importFrom(stats,reformulate)
-importFrom(stats,residuals)
-importFrom(stats,rnbinom)
-importFrom(stats,rnorm)
-importFrom(stats,runif)
-importFrom(stats,sd)
-importFrom(stats,setNames)
-importFrom(stats,simulate)
-importFrom(stats,terms)
-importFrom(stats,update)
-importFrom(stats,var)
-importFrom(stats,vcov)
-importFrom(stats,weights)
-importFrom(stats,xtabs)
-importFrom(utils,capture.output)
-importFrom(utils,combn)
-importFrom(utils,head)
-importFrom(utils,packageVersion)
+importFrom(Matrix,
+  Cholesky,
+  crossprod,
+  diag,
+  qr,
+  qr2rankMatrix,
+  rankMatrix,
+  solve,
+  t
+)
+importFrom(TMB,
+  MakeADFun,
+  sdreport,
+  tmbprofile
+)
+importFrom(lme4,
+  .prt.VC,
+  .prt.aictab,
+  .prt.call,
+  .prt.family,
+  .prt.grps,
+  .prt.resids,
+  getME,
+  isGLMM,
+  isLMM,
+  refit
+)
+importFrom(methods,
+  as,
+  is,
+  new
+)
+importFrom(mgcv,
+  PredictMat,
+  s,
+  smooth2random,
+  smoothCon
+)
+importFrom(nlme,
+  VarCorr,
+  fixef,
+  getGroups,
+  ranef
+)
+importFrom(numDeriv,
+  hessian,
+  jacobian
+)
+importFrom(reformulas,
+  "RHSForm<-",
+  RHSForm,
+  addForm,
+  addForm0,
+  anySpecial,
+  extractForm,
+  findbars,
+  findbars_x,
+  formatVC,
+  inForm,
+  makeOp,
+  mkReTrms,
+  noSpecials,
+  no_specials,
+  nobars,
+  reOnly,
+  splitForm,
+  sub_specials,
+  subbars
+)
+importFrom(sandwich,
+  bread,
+  estfun,
+  vcovHC
+)
+importFrom(splines,
+  backSpline,
+  interpSpline
+)
+importFrom(stats,
+  "contrasts<-",
+  .getXlevels,
+  AIC,
+  BIC,
+  anova,
+  approx,
+  as.formula,
+  binomial,
+  complete.cases,
+  confint,
+  contrasts,
+  cov2cor,
+  delete.response,
+  df.residual,
+  dist,
+  dnbinom,
+  dpois,
+  family,
+  fitted,
+  formula,
+  gaussian,
+  getCall,
+  logLik,
+  make.link,
+  model.frame,
+  model.matrix,
+  model.response,
+  model.weights,
+  na.fail,
+  na.omit,
+  na.pass,
+  napredict,
+  nlminb,
+  nobs,
+  optimHess,
+  pbinom,
+  pchisq,
+  plogis,
+  pnbinom,
+  pnorm,
+  poisson,
+  ppois,
+  predict,
+  printCoefmat,
+  profile,
+  pt,
+  qchisq,
+  qlogis,
+  qnbinom,
+  qnorm,
+  reformulate,
+  residuals,
+  rnbinom,
+  rnorm,
+  runif,
+  sd,
+  setNames,
+  simulate,
+  terms,
+  update,
+  var,
+  vcov,
+  weights,
+  xtabs
+)
+importFrom(utils,
+  capture.output,
+  combn,
+  head,
+  packageVersion
+)
 useDynLib(glmmTMB)

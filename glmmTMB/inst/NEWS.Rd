@@ -7,6 +7,16 @@
 \section{CHANGES IN VERSION 1.1.15}{
   \subsection{NEW FEATURES}{
     \itemize{
+      \item new \code{ordinal} family implementing cumulative-link
+      (proportional odds) models for ordered categorical responses with
+      logit, probit, or cloglog links, supporting the full range of
+      \code{glmmTMB} random-effects structures (GH #514). The response
+      should be an ordered factor; thresholds are reported by
+      \code{family_params()}, per-category probabilities by
+      \code{predict(., type = "probs")}, and Dunn-Smyth residuals and
+      \code{simulate()} are supported. Nominal (category-specific) and
+      scale effects are not (yet) implemented; \code{REML=TRUE} warns,
+      since it integrates out the fixed effects but not the thresholds
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level
@@ -35,10 +45,21 @@
       and dispersion components) are supported. \strong{Requires TMB
       newer than 1.9.21.} The density and cumulative distribution
       functions (\code{dcombinom}, \code{pcombinom}) are exported
+      \item \code{getME()} now works to extract \code{"cnms"} (effect
+      names) and \code{"flist"} (factor list) for random effects
+      (conditional model components only)
     }
   } % new features
  \subsection{BUG FIXES}{
     \itemize{
+      \item \code{getME(., "Gp")} now works to return a vector of group
+      pointers for random effects
+      \item \code{vcov} (and hence \code{summary}, \code{confint},
+      \code{car::Anova}) no longer fails with "attempt to set an attribute
+      on NULL" for a \code{REML=TRUE} fit that has no free fixed effects to
+      integrate out (e.g. \code{y ~ 0}, or a model whose entire \code{beta}
+      vector is fixed via \code{map}); such fits are numerically identical
+      to the corresponding ML fit
       \item \code{profile.glmmTMB} with a custom parallel cluster produced
       error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
       \item Fix mapping for models with rr structures (GH #1276)
@@ -72,12 +93,16 @@
       dimension mismatch in \code{emmeans}, and a singular-matrix error or
       \code{NA} test statistic in \code{Anova}); such coefficients are
       treated as known constants with zero variance
+      \item \code{weights()} now returns the total number of trials for
+      binomial-type models fitted with a two-column matrix
+      (\code{cbind(successes, failures)}) response, matching \code{glm} and
+      \code{glmer} (GH #1319)
       \item a model with no free parameters (no fixed effects, no random
       effects, and a family with no dispersion parameter, whether from an
       empty formula such as \code{y ~ 0} or from fixing every parameter via
       \code{map}), crashed the R process instead of fitting trivially (GH
       #1325, @tgbrooks)
-    }
+    } % itemize
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{

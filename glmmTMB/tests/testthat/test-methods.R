@@ -169,7 +169,7 @@ test_that("terms", {
     ## if predvars is not properly attached to term, this will
     ## fail as it tries to construct a 3-knot spline from a single point
     expect_equal(model.matrix(delete.response(terms(m)),data=data.frame(x=1)),
-      structure(c(1, 0, 0, 0), .Dim = c(1L, 4L), .Dimnames = list("1",
+      structure(c(1, 0, 0, 0), dim = c(1L, 4L), dimnames = list("1",
     c("(Intercept)", "ns(x, 3)1", "ns(x, 3)2", "ns(x, 3)3")),
     assign = c(0L, 1L, 1L, 1L)))
 })
@@ -210,8 +210,8 @@ test_that("confint", {
     expect_equal(ci,
         structure(c(238.406083254105, 7.52295734348693,
                     264.404107485727, 13.4116167530013),
-                  .Dim = c(2L, 2L),
-                  .Dimnames = list(c("(Intercept)", "Days"),
+                  dim = c(2L, 2L),
+                  dimnames = list(c("(Intercept)", "Days"),
                                    c("2.5 %", "97.5 %"))),
         ## answers changed with var -> SD shift, increased tolerance
         ##  rather than substituting new values
@@ -246,22 +246,22 @@ structure(c(5.48098713179567, 0.0248163864044954, 183.810584890723,
     expect_equal(ci.prof0,
                  structure(c(238.216039176535, 7.99674863649355, 3.758897,
                              264.368471102549, 12.8955469713508, 3.966739),
-                           .Dim = 3:2, .Dimnames = list(c("(Intercept)", "Days", "disp~(Intercept)"),
+                           dim = 3:2, dimnames = list(c("(Intercept)", "Days", "disp~(Intercept)"),
                                                         c("2.5 %", "97.5 %"))),
                  tolerance=1e-4)
 
     ci.prof <- confint(fm2,parm=1,method="profile", npts=3)
     expect_equal(ci.prof,
                  structure(c(237.27249, 265.13383),
-                           .Dim = 1:2, .Dimnames = list(
+                           dim = 1:2, dimnames = list(
                                 "(Intercept)", c("2.5 %", "97.5 %"))),
                  tolerance=1e-6)
     ## uniroot CI
     ci.uni <- confint(fm2,parm=1,method="uniroot")
     expect_equal(ci.uni,
                  structure(c(237.68071,265.12949,251.4050979),
-                        .Dim = c(1L, 3L),
-                        .Dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
+                        dim = c(1L, 3L),
+                        dimnames = list("(Intercept)", c("2.5 %", "97.5 %", "Estimate"))),
                  ## values changed slightly with var -> SD param shift for Gaussian; loosened tolerance
                  tolerance=1e-3)
     ## check against 'raw' tmbroot
@@ -399,7 +399,7 @@ test_that("vcov", {
            structure(c("(Intercept)", "Days", "disp~(Intercept)",
                        "theta_Days|Subject.1", "theta_Days|Subject.2",
                        "theta_Days|Subject.3"),
-          .Names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
+          names = c("cond1", "cond2", "disp", "theta1", "theta2", "theta3")))
     ## vcov doesn't include dispersion for non-dispersion families ...
     expect_equal(dim(vcov(fm2P,full=TRUE)),c(5,5))
     ## oops, dot_check() disabled in vcov.glmmTMB ...
@@ -1194,4 +1194,11 @@ test_that("estfun doesn't change internal values inappropriately", {
     expect_no_error(estfun(fm1))
     expect_no_error(vcovHC(fm1))
     expect_identical(head(predict(fm1)), p1)
+})
+
+test_that("isGLMM", {
+  expect_true(isGLMM(gm1))
+  expect_false(isGLMM(fm1))
+  fm0 <- update(fm_noRE, family = gaussian(link = "log"))
+  expect_true(isGLMM(fm0))
 })

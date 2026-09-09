@@ -297,8 +297,14 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @param name of the component to be retrieved
 ##' @param \dots ignored, for method compatibility
 ##'
+##' @note The \code{"cnms"} and \code{"flist"} values are specific to the
+##' conditional component of the model (i.e., they do not include
+##' zero-inflation or dispersion terms). Users can extract the analogous
+##' values for those components via \code{object$modelInfo$reTrms[[component]]$cnms}
+##' (or \code{...$flist}), where \code{component} is \code{"zi"} or \code{"disp"}.
+##' See \code{\link[lme4]{getME}} for definitions of individual components.
+##'
 ##' @seealso \code{\link[lme4]{getME}}
-##' Get generic and re-export:
 ##' @importFrom lme4 getME
 ##' @export getME
 ##'
@@ -306,7 +312,8 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xdisp", "theta", "beta", "b", "Gp"),
+                                   "Xdisp", "theta", "beta", "b", "Gp",
+                                   "cnms", "flist"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -344,10 +351,12 @@ getME.glmmTMB <- function(object,
              if (is.null(cc)){
                  NULL
              } else {
-                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = integer(1))
+                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = numeric(1))
                  unname(cumsum(c(0,v)))
              }
          },
+         "cnms" = object$modelInfo$reTrms$cond$cnms,
+         "flist" = object$modelInfo$reTrms$cond$flist,
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -429,10 +438,15 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       sdr <- sdreport(object$obj, getJointPrecision=REML)
     }
   }
-  if (REML) {
-      if (sandwich) {
-        stop("sandwich estimator is not available for REML fits")
-      }
+  ## a REML fit with no free fixed effects to integrate out (e.g. y ~ 0, or
+  ## any model whose whole 'beta' vector is map-fixed) leaves sdreport()
+  ## without a joint precision matrix; such a fit is numerically identical
+  ## to the ML fit, so fall through to the ordinary path rather than
+  ## setting dimnames on a NULL Q
+  if (REML && sandwich) {
+    stop("sandwich estimator is not available for REML fits")
+  }
+  if (REML && !is.null(sdr$jointPrecision)) {
       ## NOTE: This code would also work in non-REML case provided
       ## that jointPrecision is present in the object.
       Q <- sdr$jointPrecision
@@ -677,8 +691,9 @@ printDispersion <- function(ff,s) {
 }
 
 ## Pad a fixed-effect covariance matrix with zero rows/columns for
-## coefficients that were fixed via 'map': these are known constants, so
-## their sampling variance is exactly zero. Restores the convention that
+## coefficients that were fixed via 'map' (internally, e.g. the ordinal
+## family intercept, or by the user): these are known constants, so their
+## sampling variance is exactly zero. Restores the convention that
 ## dim(vcov) matches length(fixef) for downstream consumers
 ## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
 pad_mapped_vcov <- function(object, V, component = "cond") {
@@ -725,6 +740,18 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           ordinal = {
+               ## thresholds from softmax-parameterized psi:
+               ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
+               ##         = logsumexp(psi[1..j]) - logsumexp(c(psi[-(1..j)], 0))
+               ## (prefix/suffix form is exact even when one weight dominates)
+               lse <- function(x) { m <- max(x); m + log(sum(exp(x - m))) }
+               theta <- vapply(seq_along(tf), function(j)
+                   lse(tf[seq_len(j)]) - lse(c(tf[-seq_len(j)], 0)),
+                   numeric(1))
+               lv <- object$modelInfo$ord_levels
+               setNames(theta, paste(lv[-length(lv)], lv[-1], sep = "|"))
+           },
            numeric(0)
            )
 }
@@ -737,7 +764,7 @@ family_params <- function(object) {
 
 ## Print family specific parameters
 ## @param object glmmTMB output
-#' @importFrom stats plogis
+#' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
     if (length(val) > 0) {
@@ -841,11 +868,18 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
         wts <- mr[,1]+mr[,2]
         mr <- mr[,1]/wts
     } else if (is.factor(mr)) {
-        ## ?binomial:
-        ## "‘success’ is interpreted as the factor not having the first level"
-        nn <- names(mr)
-        mr <- as.numeric(as.numeric(mr)>1)
-        names(mr) <- nn  ## restore stripped names
+        if (family(object)$family == "ordinal") {
+            ## ordinal: residuals are computed on the category-index scale
+            nn <- names(mr)
+            mr <- as.numeric(mr)
+            names(mr) <- nn
+        } else {
+            ## ?binomial:
+            ## "‘success’ is interpreted as the factor not having the first level"
+            nn <- names(mr)
+            mr <- as.numeric(as.numeric(mr)>1)
+            names(mr) <- nn  ## restore stripped names
+        }
     }
     r <- mr - mu
     fam <- family(object)
@@ -857,10 +891,25 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                r/mu.eta(p)
            },
            "dunn-smyth" = {
-               phi <- predict(object, type = "disp")
-               ## wts holds the number of trials for binomial-type responses
-               ## (cbind two-column or proportion-plus-weights specifications)
-               dunnsmyth_resids(mr, mu, fam$fam, phi = phi, size = wts)
+               if (fam$family == "ordinal") {
+                   ## discrete PIT residuals from the cumulative-link CDF:
+                   ## P(Y <= j) = linkinv(theta_j - eta)
+                   eta <- predict(object, re.form = re.form,
+                                  fast = !pop_pred, type = "link")
+                   theta <- unname(family_params(object))
+                   K <- length(theta) + 1L
+                   cump <- function(j) {
+                       ifelse(j <= 0, 0,
+                       ifelse(j >= K, 1,
+                              fam$linkinv(theta[pmin(pmax(j, 1), K - 1L)] - eta)))
+                   }
+                   pit_norm_resids(cump(mr - 1), cump(mr))
+               } else {
+                   phi <- predict(object, type = "disp")
+                   ## wts holds the number of trials for binomial-type responses
+                   ## (cbind two-column or proportion-plus-weights specifications)
+                   dunnsmyth_resids(mr, mu, fam$fam, phi = phi, size = wts)
+               }
            },
            deviance = {
                if (is.null(dr <- fam$dev.resids)) {
@@ -1196,14 +1245,37 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             ## shape parameters
             fp <- family_params(object)
             if (length(fp)>0) {
-                ci.shape <- .CI_univariate_monotone(object,
+                if (ff == "ordinal") {
+                    ## thresholds are a joint function of *all* psi
+                    ## elements (softmax), so the univariate-monotone CI
+                    ## machinery does not apply; use the delta method with
+                    ## the analytic Jacobian of
+                    ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
+                    pars <- get_pars(object)
+                    tf <- unname(pars[names(pars) == "psi"])
+                    w <- exp(c(tf, 0) - max(tf, 0))
+                    s <- w / sum(w)
+                    Cj <- cumsum(s)[seq_along(tf)]
+                    J <- outer(seq_along(tf), seq_along(tf),
+                               function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                                              (Cj[j] * (1 - Cj[j])))
+                    Vfull <- vcov(object, full = TRUE)
+                    vi <- match(names(fp), rownames(Vfull))
+                    se_th <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+                    qn <- qnorm((1 + level) / 2)
+                    ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
+                    if (estimate) ci.shape <- cbind(ci.shape, fp)
+                    ci <- rbind(ci, ci.shape)
+                } else {
+                    ci.shape <- .CI_univariate_monotone(object,
                                                     family_params,
                                                     reduce = NULL,
                                                     level=level,
                                                     name.prepend="Tweedie.power", ## FIXME
                                                     estimate = estimate)
-                ci <- rbind(ci, ci.shape)
-            } ## tweedie
+                    ci <- rbind(ci, ci.shape)
+                }
+            } ## family (shape) parameters
         }  ## model has 'other' component
         ## NOW add 'theta' components (match order of params in vcov-full)
         ## FIXME: better to have more robust ordering
@@ -1532,6 +1604,13 @@ simulate.glmmTMB<-function(object, nsim=1, seed=NULL, re.form = NULL, ...) {
         ret <- lapply(ret, function(x) cbind(x, size - x, deparse.level=0) )
         class(ret) <- "data.frame"
         rownames(ret) <- as.character(seq_len(nrow(ret[[1]])))
+    } else if (family == "ordinal" &&
+               isTRUE(attr(lv <- object$modelInfo$ord_levels,
+                           "factor_response"))) {
+        ## response was an (ordered) factor: map simulated category codes
+        ## back to its levels; integer-coded responses stay numeric
+        ret <- lapply(ret, function(x) ordered(lv[x], levels = lv))
+        ret <- as.data.frame(ret, col.names = paste0("sim_", seq_len(nsim)))
     } else {
         ret <- as.data.frame(ret)
     }
@@ -1738,9 +1817,7 @@ refit.glmmTMB <- function(object, newresp, ...) {
 ## ------  should work with fixef() + ranef()  alone
 coefMer <- function(object, component=NULL, ...)
 {
-    if (length(list(...)))
-        warning('arguments named "', paste(names(list(...)), collapse = ", "),
-                '" ignored')
+    check_dots(..., .action = "warning")
     fef <- fixef(object)
     if (!is.null(component)) fef <- fef[[component]]
     fef <- data.frame(rbind(fef), check.names = FALSE)
@@ -1797,18 +1874,15 @@ coef.glmmTMB <- function(object,
 ##' Extract weights from a glmmTMB object
 ##'
 ##' @details
-##' At present only explicitly specified
-##' \emph{prior weights} (i.e., weights specified
-##' in the \code{weights} argument) can be extracted from a fitted model.
-##' \itemize{
-##' \item Unlike other GLM-type models such as \code{\link{glm}} or
-##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
-##' the total number of trials when binomial responses are specified
-##' as a two-column matrix.
-##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' Returns the \emph{prior weights} used in fitting, i.e. weights
+##' specified in the \code{weights} argument. For binomial-type families
+##' fit with a two-column matrix response (\code{cbind(successes, failures)}),
+##' the total number of trials is included as well (multiplied by the
+##' \code{weights} argument, if specified), matching the behaviour of
+##' \code{\link{glm}} and \code{\link[lme4]{glmer}}.
+##' Since \code{glmmTMB} does not fit models via iteratively
 ##' weighted least squares, \code{working weights} (see \code{\link[stats:glm]{weights.glm}}) are unavailable.
-##' }
-##' @importFrom stats model.frame
+##' @importFrom stats model.frame model.response
 ##' @importFrom stats weights
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param type weights type
@@ -1816,11 +1890,18 @@ coef.glmmTMB <- function(object,
 ##' @export
 weights.glmmTMB <- function(object, type="prior", ...) {
     type <- match.arg(type)  ## other types are *not* OK
-    if (length(list(...)>0)) {
-        warning("unused arguments ignored: ",
-             paste(shQuote(names(list(...))),collapse=","))
+  
+    check_dots(..., .action = "warning")
+    fr <- stats::model.frame(object)
+    w <- fr[["(weights)"]]
+    mr <- model.response(fr)
+    if (!is.null(dim(mr))) {
+        ## binomial-type response given as cbind(successes, failures):
+        ## total trials are an implicit weight, as in glm/glmer
+        n <- unname(mr[, 1] + mr[, 2])
+        w <- if (is.null(w)) n else w * n
     }
-    stats::model.frame(object)[["(weights)"]]
+    w
 }
 
 # would like to export this only as a method, but not sure how ...
@@ -1857,6 +1938,17 @@ deviance.glmmTMB <- function(object, ...) {
     sum(residuals(object, type = "deviance")^2)
 }
 
+## randomized-quantile (discrete PIT) step: given lower/upper CDF values
+## draw u ~ U(a, b) and transform to the normal scale; shared by
+## dunnsmyth_resids() and the ordinal branch of residuals.glmmTMB()
+pit_norm_resids <- function(a, b) {
+    resid <- rep(NA_real_, length(a))
+    ok <- !is.na(a) & !is.na(b)
+    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
+    resid[is.infinite(resid) | is.nan(resid)] <- 0
+    resid
+}
+
 dunnsmyth_resids <- function(yobs, mu, family, phi=NULL, size=NULL) {
     res.families <- c("poisson", "nbinom2", "nbinom1", "binomial", "genpois", "bell",
                       "combinomial")
@@ -1890,11 +1982,7 @@ dunnsmyth_resids <- function(yobs, mu, family, phi=NULL, size=NULL) {
                    bell     = pbell)
     a <- do.call(pfun, c(list(yobs - 1, mu), args))
     b <- do.call(pfun, c(list(yobs, mu), args))
-    resid <- rep(NA_real_, length(yobs))
-    ok <- !is.na(a) & !is.na(b)
-    resid[ok] <- qnorm(runif(sum(ok), min = a[ok], max = b[ok]))
-    resid[is.infinite(resid) | is.nan(resid)] <- 0
-    resid
+    pit_norm_resids(a, b)
 }
 
 #' Extract Grouping Factors from an Object
@@ -2240,4 +2328,15 @@ vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
     } else {
         meatHC(x, ...)
     }
+}
+
+#' @importFrom lme4 isGLMM
+#' @export
+lme4::isGLMM
+
+#' @export
+isGLMM.glmmTMB <- function(x,...) {
+  check_dots(...)
+  f <- family(x)
+  !(f$family == "gaussian" && f$link == "identity")
 }

@@ -32,7 +32,8 @@
   tweedie = 700,
   lognormal = 800,
   skewnormal = 900,
-  bell = 1000
+  bell = 1000,
+  ordinal = 1100
 )
 .valid_covstruct <- c(
   diag = 0,

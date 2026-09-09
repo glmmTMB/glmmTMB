@@ -149,7 +149,7 @@ getVCText <- function(obj,...) {
 expect_equal(getVCText(vc),
              structure(list(V3 = c(2.19412, 0.21493, 1.31004),
                             V4 = c(NA, -0.581, NA)),
-                       .Names = c("V3", "V4"),
+                       names = c("V3", "V4"),
                        class = "data.frame", row.names = c(NA, -3L)),
              tolerance=2e-5)
 
@@ -164,7 +164,7 @@ c2 <- getVCText(vc,comp=c("Variance","Std.Dev."),digits=2)
 ##                " Residual             1.716    1.31          "))
 expect_equal(c2,
              structure(list(V3 = c(4.814, 0.046, 1.716), V4 = c(2.19, 0.21,
-1.31)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA,
+1.31)), names = c("V3", "V4"), class = "data.frame", row.names = c(NA,
 -3L)))
 ## variance only
 c3 <- getVCText(vc,comp=c("Variance"))
@@ -176,7 +176,7 @@ c3 <- getVCText(vc,comp=c("Variance"))
 ##               "          age         0.046192 -0.581",
 ##               " Residual             1.716203       "))
 expect_equal(c3,structure(list(V3 = c(4.814071, 0.046192, 1.716208), V4 = c(NA,
--0.581, NA)), .Names = c("V3", "V4"), class = "data.frame", row.names = c(NA,
+-0.581, NA)), names = c("V3", "V4"), class = "data.frame", row.names = c(NA,
 -3L)),
 tolerance=5e-5)
 
