@@ -72,6 +72,11 @@
       dimension mismatch in \code{emmeans}, and a singular-matrix error or
       \code{NA} test statistic in \code{Anova}); such coefficients are
       treated as known constants with zero variance
+      \item a model with no free parameters (no fixed effects, no random
+      effects, and a family with no dispersion parameter, whether from an
+      empty formula such as \code{y ~ 0} or from fixing every parameter via
+      \code{map}), crashed the R process instead of fitting trivially (GH
+      #1325, @tgbrooks)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{

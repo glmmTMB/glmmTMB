@@ -1988,10 +1988,26 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         if (is.na(obj$fn(obj$par))) {
             stop("negative log-likelihood is NaN at starting parameter values")
         }
-        if (any(is.na(obj$gr(obj$par)))) {
-            stop("some elements of gradient are NaN at starting parameter values")
+        if (length(obj$par) == 0) {
+            ## No parameters to estimate (no fixed effects, no random
+            ## effects, and a family with no dispersion parameter).
+            ## obj$gr() (and TMB/CppAD more generally) can't handle a
+            ## zero-length parameter vector: calling it crashes the R
+            ## process rather than returning NA or throwing a catchable
+            ## error (GH #1325). There is nothing to optimize, so skip
+            ## straight to a dummy 'fit' object holding the (fixed)
+            ## objective value.
+            optTime <- system.time(
+                fit <- list(par = obj$par, objective = obj$fn(obj$par),
+                            convergence = 0,
+                            message = "no parameters to estimate"),
+                gcFirst = FALSE)
+        } else {
+            if (any(is.na(obj$gr(obj$par)))) {
+                stop("some elements of gradient are NaN at starting parameter values")
+            }
+            optTime <- system.time(fit <- optfun(), gcFirst = FALSE)
         }
-        optTime <- system.time(fit <- optfun(), gcFirst = FALSE)
     }
 
     attr(fit, "optTime") <- optTime
@@ -2020,7 +2036,11 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
     
     fitted <- NULL
 
-    if (TMBStruc$se) {
+    ## sdreport() needs a gradient/Hessian internally, which (like
+    ## obj$gr() in fitTMB()) cannot be computed for a zero-length
+    ## parameter vector (GH #1325); with no parameters there is
+    ## nothing to compute standard errors for anyway.
+    if (TMBStruc$se && length(obj$par) > 0) {
         if(control$profile)
             sdr <- sdreport(obj, hessian.fixed = h)
         else

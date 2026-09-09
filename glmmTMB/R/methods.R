@@ -417,8 +417,17 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
   REML <- isREML(object)
   stopifnot(is.logical(sandwich) && length(sandwich) == 1L)
   if(is.null(sdr <- object$sdr)) {
-    warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
-    sdr <- sdreport(object$obj, getJointPrecision=REML)
+    if (length(object$obj$par) == 0) {
+      ## no parameters to estimate (GH #1325): sdreport() cannot handle
+      ## a zero-length parameter vector (it would crash the R process),
+      ## and there is nothing to compute a covariance matrix for anyway
+      sdr <- list(cov.fixed = matrix(numeric(0), 0, 0),
+                  jointPrecision = matrix(numeric(0), 0, 0),
+                  par.random = numeric(0))
+    } else {
+      warning("Calculating sdreport. Use se=TRUE in glmmTMB to avoid repetitive calculation of sdreport")
+      sdr <- sdreport(object$obj, getJointPrecision=REML)
+    }
   }
   if (REML) {
       if (sandwich) {
