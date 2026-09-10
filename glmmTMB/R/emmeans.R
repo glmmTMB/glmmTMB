@@ -45,6 +45,26 @@
 ##' \code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
 ##' \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
 ##' their performance (and theoretical justification) for GLMMs is poorly understood.
+##'
+##' For Gaussian models \emph{without} random effects, \code{emmeans()} defaults
+##' to the residual degrees of freedom for a plain fit, i.e. one with
+##' \code{dispformula = ~1} and an estimated dispersion parameter. Any other such
+##' fit defaults to \code{"asymptotic"} (infinite df): a non-trivial
+##' \code{dispformula}, \code{dispformula = ~0}, or a dispersion parameter held
+##' fixed via the \code{map} argument to \code{\link{glmmTMB}}. In the last case
+##' there is no variance parameter left to estimate, so the residual variance is
+##' known and the Wald statistics are exactly standard normal. (As elsewhere in
+##' \pkg{glmmTMB}, the residual degrees of freedom count the dispersion
+##' parameter, so they are one lower than \code{lm()} reports for the same
+##' fixed-effect model.) Those are defaults, as is a value taken from
+##' \code{getOption("glmmTMB.df")}; a \code{ddf} passed in the call itself is
+##' respected where possible. \code{"kenward-roger"} and \code{"satterthwaite"}
+##' need random effects, so for models without them they fall back to the
+##' residual degrees of freedom with a message, exactly as in
+##' \code{\link{summary.glmmTMB}}. That fallback also applies to a model whose
+##' dispersion parameter is fixed, where it overrides the infinite-df default
+##' described above, so that \code{emmeans()} and \code{summary()} give the same
+##' answer to the same request.
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.
@@ -117,6 +137,23 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     ## 1. no random effects
     fam <- family(object)$family
 
+    ## did the caller actually ask for a particular ddf in this call, or are we
+    ## falling back on the default? only the latter may be silently overridden
+    ## below. A ddf coming from getOption("glmmTMB.df") is a default, not a
+    ## request: summary()/anova()/Anova() don't read that option at all, so
+    ## treating it as a request here would make emmeans() disagree with them
+    ## whenever it is set. NB has to be evaluated before the match.arg() below,
+    ## which would make missing(ddf) FALSE
+    ddf_explicit <- !missing(ddf)
+    ## same choices as summary()/anova()/Anova(); without this an unrecognized
+    ## string silently ended up as residual df. "df.residual" is what get_ddf()
+    ## returns internally and has always been accepted here too, so keep it
+    ## working, but don't offer it as a choice: the other entry points don't
+    ## take it
+    if (!identical(ddf, "df.residual")) {
+        ddf <- match.arg(ddf, c("asymptotic", "kenward-roger", "satterthwaite"))
+    }
+
     ddf_set <- function(used, requested = ddf) {
         if (requested != used) {
             warning(gettextf("ddf '%s' specified, using ddf '%s' instead", requested, used))
@@ -129,9 +166,30 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
 
         if (!hasRandom(object)) {
             if (fam != "gaussian") return(ddf_set("asymptotic"))
-            if (trivialDisp(object)) return("df.residual")  ## don't want to warn here
-            if (ddf == "kenward-roger") return(ddf_set("satterthwaite"))
-            return(ddf)
+            if (!ddf_explicit) {
+                ## default: residual df for a plain LM-like fit (nobs - npar,
+                ## which counts the dispersion parameter, so one fewer than
+                ## lm() would report) -- but *not* when no dispersion
+                ## parameter is estimated at all (e.g. pinned via 'map'). The
+                ## residual variance is known then, the Wald statistics are
+                ## exactly normal, and residual df would only make the
+                ## intervals spuriously wide
+                if (trivialDisp(object) && estDisp(object)) {
+                    return("df.residual")  ## don't want to warn here
+                }
+                return("asymptotic")
+            }
+            ## an explicit request is honoured where it can be, and otherwise
+            ## downgraded through the same check_ddf() that
+            ## summary()/anova()/Anova() use, so emmeans gives the same
+            ## message and the same df instead of silently ignoring the
+            ## request (trivial dispformula) or erroring inside
+            ## GMRFmarginal() on its way through dof_satt() (non-trivial
+            ## one), which needs the joint precision matrix of a model with
+            ## random effects
+            if (ddf %in% c("asymptotic", "df.residual")) return(ddf)
+            check_ddf(object, ddf)
+            return("df.residual")
         }
 
         ## hard error (not a silent downgrade) for KR + non-REML, matching

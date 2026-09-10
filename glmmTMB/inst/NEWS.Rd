@@ -97,6 +97,12 @@
       binomial-type models fitted with a two-column matrix
       (\code{cbind(successes, failures)}) response, matching \code{glm} and
       \code{glmer} (GH #1319)
+      \item \code{emmeans} now respects an explicitly specified \code{ddf}
+      for Gaussian models without random effects; the request was previously
+      replaced by residual df without warning, and
+      \code{"kenward-roger"}/\code{"satterthwaite"} errored for a model with
+      a non-trivial \code{dispformula} on their way into \code{dof_satt},
+      which requires random effects (Paul Schmidt)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
@@ -110,6 +116,18 @@
       \code{"satterthwaite"} with a warning instead); \code{"kenward-roger"}
       and \code{"satterthwaite"} on a non-Gaussian family now consistently
       emit a warning (rather than a message, or nothing) across all four
+      \item \code{emmeans} no longer reports residual degrees of freedom for
+      a Gaussian model without random effects whose dispersion parameter is
+      held fixed via \code{map}: with no variance parameter estimated the
+      residual variance is known, so \code{"asymptotic"} (infinite df) is
+      used instead (Paul Schmidt)
+      \item an unrecognized \code{ddf} string passed to \code{emmeans} is now
+      an error, as it already was in \code{summary}/\code{anova}/\code{Anova};
+      for a Gaussian model without random effects it was previously treated as
+      residual df without warning, and for the \code{zi}/\code{disp}
+      components it gave a warning and asymptotic df. Partial matches such as
+      \code{ddf = "satt"} are now accepted, as they already were in
+      \code{summary} (Paul Schmidt)
     } % itemize
   } % user-visible changes
  } % 1.1.15

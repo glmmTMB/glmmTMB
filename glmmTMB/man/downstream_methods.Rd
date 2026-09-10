@@ -102,6 +102,26 @@ family with an estimated dispersion parameter, and throws an error for families 
 \code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
 \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
 their performance (and theoretical justification) for GLMMs is poorly understood.
+
+For Gaussian models \emph{without} random effects, \code{emmeans()} defaults
+to the residual degrees of freedom for a plain fit, i.e. one with
+\code{dispformula = ~1} and an estimated dispersion parameter. Any other such
+fit defaults to \code{"asymptotic"} (infinite df): a non-trivial
+\code{dispformula}, \code{dispformula = ~0}, or a dispersion parameter held
+fixed via the \code{map} argument to \code{\link{glmmTMB}}. In the last case
+there is no variance parameter left to estimate, so the residual variance is
+known and the Wald statistics are exactly standard normal. (As elsewhere in
+\pkg{glmmTMB}, the residual degrees of freedom count the dispersion
+parameter, so they are one lower than \code{lm()} reports for the same
+fixed-effect model.) Those are defaults, as is a value taken from
+\code{getOption("glmmTMB.df")}; a \code{ddf} passed in the call itself is
+respected where possible. \code{"kenward-roger"} and \code{"satterthwaite"}
+need random effects, so for models without them they fall back to the
+residual degrees of freedom with a message, exactly as in
+\code{\link{summary.glmmTMB}}. That fallback also applies to a model whose
+dispersion parameter is fixed, where it overrides the infinite-df default
+described above, so that \code{emmeans()} and \code{summary()} give the same
+answer to the same request.
 }
 
 \examples{
