@@ -99,7 +99,8 @@ test_that("ordinal simulate/residuals/refit", {
     ## refit to simulated data works, integer codes accepted as response
     dd2 <- dd
     dd2$y <- as.numeric(ss[[1]])
-    fit2 <- update(fit, data = dd2)
+    ## silence warning about integer codes
+    fit2 <- suppressWarnings(update(fit, data = dd2))
     expect_true(fit2$fit$convergence == 0)
 
     ## Dunn-Smyth residuals approximately standard normal
