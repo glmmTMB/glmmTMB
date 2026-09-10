@@ -747,6 +747,29 @@ family_params <- function(object) {
            )
 }
 
+## ordinal family: thresholds and their delta-method standard errors.
+## The thresholds are a joint function of *all* psi elements,
+## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j), so univariate
+## transformation of the psi-scale variances does not apply; use the
+## analytic Jacobian
+## J[j, m] = s[m] * ((m <= j) - C_j) / (C_j * (1 - C_j)),
+## where s = softmax(c(psi, 0)) and C_j = cumsum(s)[j]
+ordinal_thresholds <- function(object) {
+    fp <- family_params(object)
+    pars <- get_pars(object)
+    tf <- unname(pars[names(pars) == "psi"])
+    w <- exp(c(tf, 0) - max(tf, 0))
+    s <- w / sum(w)
+    Cj <- cumsum(s)[seq_along(tf)]
+    J <- outer(seq_along(tf), seq_along(tf),
+               function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                              (Cj[j] * (1 - Cj[j])))
+    Vfull <- vcov(object, full = TRUE)
+    vi <- match(names(fp), rownames(Vfull))
+    se <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+    cbind("Estimate" = fp, "Std. Error" = se)
+}
+
 ## obsolete
 .tweedie_power <- function(object) {
     warning(".tweedie_power is deprecated in favor of family_params()")
@@ -758,7 +781,11 @@ family_params <- function(object) {
 #' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
-    if (length(val) > 0) {
+    if (object$modelInfo$family$family == "ordinal") {
+        cat("\nThreshold coefficients:",
+            paste(names(val), formatC(val, digits = 3), sep = " = ",
+                  collapse = ", "), "\n")
+    } else if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
                     names(val)[1],
                     paste(formatC(val, digits=3),
@@ -1237,22 +1264,8 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             fp <- family_params(object)
             if (length(fp)>0) {
                 if (ff == "ordinal") {
-                    ## thresholds are a joint function of *all* psi
-                    ## elements (softmax), so the univariate-monotone CI
-                    ## machinery does not apply; use the delta method with
-                    ## the analytic Jacobian of
-                    ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
-                    pars <- get_pars(object)
-                    tf <- unname(pars[names(pars) == "psi"])
-                    w <- exp(c(tf, 0) - max(tf, 0))
-                    s <- w / sum(w)
-                    Cj <- cumsum(s)[seq_along(tf)]
-                    J <- outer(seq_along(tf), seq_along(tf),
-                               function(j, m) s[m] * ((m <= j) - Cj[j]) /
-                                              (Cj[j] * (1 - Cj[j])))
-                    Vfull <- vcov(object, full = TRUE)
-                    vi <- match(names(fp), rownames(Vfull))
-                    se_th <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+                    ## delta-method threshold SEs (see ordinal_thresholds)
+                    se_th <- ordinal_thresholds(object)[, "Std. Error"]
                     qn <- qnorm((1 + level) / 2)
                     ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
                     if (estimate) ci.shape <- cbind(ci.shape, fp)
