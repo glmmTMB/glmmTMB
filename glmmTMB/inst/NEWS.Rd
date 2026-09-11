@@ -97,6 +97,9 @@
       binomial-type models fitted with a two-column matrix
       (\code{cbind(successes, failures)}) response, matching \code{glm} and
       \code{glmer} (GH #1319)
+      \item \code{glmmTMB} no longer leaks a copy of \code{stats::weights}
+      (or, in principle, the fitted \code{weights}/\code{offset} values) into
+      the calling environment (GH #1296)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
