@@ -1094,6 +1094,10 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "indisting" = {
+                 k_ind <- blksize / 2
+                 k_ind + k_ind^2
+               },
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1392,6 +1396,65 @@ glmmTMB <- function(
     # substitute evaluated versions
     ## FIXME: denv leftover from lme4, not defined yet
 
+  validate_indisting <- function(formula, data) {
+    parsed <- reformulas::splitForm(formula, allowFixedOnly = FALSE,
+                                    specials = names(.valid_covstruct))
+    for (i in seq_along(parsed$reTrmClasses)) {
+      if (parsed$reTrmClasses[i] != "indisting") next
+      re_formula <- parsed$reTrmFormulas[[i]]
+      group_var  <- deparse(re_formula[[3]])
+      re_lhs     <- re_formula[[2]]
+      lhs_str    <- gsub("\\s+", " ",
+                         paste(deparse(re_lhs), collapse = ""))
+      lhs_terms  <- terms(as.formula(paste("~", lhs_str)))
+      if (attr(lhs_terms, "intercept") == 1)
+        stop(paste0(
+          "indisting(): formula must not include an intercept.\n",
+          "Use: indisting(0 + memberVar + memberVar:x | ", group_var, ")",
+          "\nwhere memberVar is a factor variable with exactly 2 levels."
+        ))
+      re_terms <- attr(lhs_terms, "term.labels")
+      if (length(re_terms) == 0)
+        stop(paste0(
+          "indisting(): formula has no terms.\n",
+          "Use: indisting(0 + memberVar + memberVar:x | ", group_var, ")",
+          "\nwhere memberVar is a factor variable with exactly 2 levels."
+        ))
+      member_var <- re_terms[1]
+      if (!member_var %in% names(data))
+        stop(paste0(
+          "indisting(): first term \"", member_var, "\" not found in data.\n",
+          "Use: indisting(0 + memberVar + memberVar:x | ", group_var, ")",
+          "\nwhere memberVar is a factor variable with exactly 2 levels."
+        ))
+      if (!is.factor(data[[member_var]]))
+        stop(paste0(
+          "indisting(): \"", member_var, "\" must be a factor variable.\n",
+          "Use: indisting(0 + memberVar + memberVar:x | ", group_var, ")",
+          "\nwhere memberVar is a factor variable with exactly 2 levels."
+        ))
+      if (nlevels(data[[member_var]]) != 2L)
+        stop(paste0(
+          "indisting(): \"", member_var, "\" must have exactly 2 levels.\n",
+          "Use: indisting(0 + memberVar + memberVar:x | ", group_var, ")",
+          "\nwhere memberVar is a factor variable with exactly 2 levels."
+        ))
+      if (length(re_terms) > 1) {
+        slope_terms <- re_terms[-1]
+        bad <- slope_terms[!grepl(paste0("^", member_var, ":"), slope_terms)]
+        if (length(bad) > 0)
+          stop(paste0(
+            "indisting(): all slope terms must interact with \"",
+            member_var, "\".\n",
+            "Unexpected terms: ", paste(bad, collapse = ", "), ".\n",
+            "Use: indisting(0 + ", member_var, " + ",
+            member_var, ":x | ", group_var, ")"
+          ))
+      }
+    }
+    invisible(NULL)
+  }
+  if (!is.null(data)) validate_indisting(formula, data)
     environment(formula) <- parent.frame()
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)

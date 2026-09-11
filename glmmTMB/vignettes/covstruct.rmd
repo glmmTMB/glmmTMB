@@ -83,6 +83,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
  Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # -
+Indistinguishable  # `indisting`  #  $n(n+2)/4$  # ordering must be `0 + member + member:x`  # log-SDs ($\theta_1-\theta_{n/2}$); partner correlations $\{2\,\textrm{plogis}(\theta)-1\}$; off-diagonal parameters for sum and difference blocks
 "
 )
 knitr::kable(ctab)
@@ -818,6 +819,66 @@ fit_rma2 <- metafor::rma.mv(yi, vi,
 As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
 
 In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
+
+
+## Indistinguishable
+
+The `indisting()` covariance structure is designed for longitudinal dyadic
+data with indistinguishable or exchangeable members wherein no meaningful
+variable exists on which to tell the two members apart (e.g., same-sex
+couples). Indistinguishability requires that both members have the same
+variance for each random effect and the same within-person covariance(s)
+and between-person covariance(s) between random effects.
+
+Here we use a modified version of the `sleepstudy` data from the `lme4`
+package to provide example usage. With only nine dyads, this example is
+too small for reliable estimation, and is used here for illustration only.
+
+```{r indisting-data, eval=if (exists("params")) params$EVAL else FALSE}
+data(sleepstudy, package = "lme4")
+sleepstudy2        <- sleepstudy
+sleepstudy2$Dyad   <- factor(rep(1:9, each = 20))
+sleepstudy2$member <- factor(as.integer(as.integer(sleepstudy2$Subject) %% 2) + 1L)
+## Add actor and partner lags for stability-and-influence model
+sleepstudy2 <- sleepstudy2[order(sleepstudy2$Dyad, sleepstudy2$member, sleepstudy2$Days), ]
+sleepstudy2$lag_A <- ave(sleepstudy2$Reaction, sleepstudy2$Dyad, sleepstudy2$member,
+                         FUN = function(x) c(NA, x[-length(x)]))
+sleepstudy2$lag_P <- ave(sleepstudy2$lag_A, sleepstudy2$Dyad, sleepstudy2$Days,
+                         FUN = rev)
+sleepstudy2$c_lag_A <- sleepstudy2$lag_A - mean(sleepstudy2$lag_A, na.rm = TRUE)
+sleepstudy2$c_lag_P <- sleepstudy2$lag_P - mean(sleepstudy2$lag_P, na.rm = TRUE)
+```
+
+```{r fit.indisting, eval=if (exists("params")) params$EVAL else FALSE}
+## Dyadic growth-curve model (k = 2)
+fit_dgc <- glmmTMB(Reaction ~ Days +
+                     indisting(0 + member + member:Days | Dyad) +
+                     homcs(0 + member | Dyad:Days),
+                   data = sleepstudy2, dispformula = ~0, REML = TRUE)
+## Stability-and-influence model (k = 3)
+fit_sim <- glmmTMB(Reaction ~ c_lag_A + c_lag_P +
+                     indisting(0 + member + member:c_lag_A +
+                               member:c_lag_P | Dyad) +
+                     homcs(0 + member | Dyad:Days),
+                   data = sleepstudy2, dispformula = ~0, REML = TRUE)
+```
+
+To use the `indisting()` structure, the member identification variable on
+the left-hand side of the bar must be a factor, wherein the two levels
+correspond to the two dyad members. We omit the random intercept with
+`0 +` because the factor expansion of `member` already produces two
+columns, providing intercepts for members 1 and 2. We then include random
+slopes for members 1 and 2 by specifying interactions between the random
+term (e.g., `Days` for the dyadic growth-curve model example) and the
+member factor variable using `:`. Importantly, the terms on the
+left-hand side of the bar must be ordered so that the member factor
+variable by itself appears first (e.g., `member` before `member:Days`);
+this ensures that the correct pattern of equality constraints is imposed.
+The right-hand side of the bar provides the dyad identification variable.
+
+With longitudinal dyadic data, `indisting()` may be combined with
+`dispformula = ~0` and `homcs(0 + member | dyadID:time)` to model
+time-specific similarity in dyad members' residuals.
 
 ## Construction of structured covariance matrices
 

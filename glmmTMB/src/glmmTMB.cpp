@@ -96,7 +96,8 @@ enum valid_covStruct {
   hetar1_covstruct = 12,
   homcs_covstruct = 13,
   homtoep_covstruct = 14,
-  equalto_covstruct = 15
+  equalto_covstruct = 15,
+  indisting_covstruct = 16
 };
 
 // should probably be named just 'predictCode';
@@ -797,6 +798,94 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     }
     term.corr = nldens.cov(); // For report
     term.sd = sd;             // For report
+  }
+  else if (term.blockCode == indisting_covstruct) {
+    // Indistinguishable dyads: sum-and-difference block decomposition.
+    // R (2k x 2k) is PD iff S (k x k) and D (k x k) are both PD.
+    // S = diag(sqrt(a)) * R_S * diag(sqrt(a)),  a_i = 1 + rho_p_i
+    // D = diag(sqrt(b)) * R_D * diag(sqrt(b)),  b_i = 1 - rho_p_i
+    // R_S, R_D parameterized via UNSTRUCTURED_CORR_t (PD by construction).
+    // Partner correlations: rho_p_i = 2 * invlogit(theta_i) - 1.
+    int n_id   = term.blockSize;
+    int k_id   = n_id / 2;
+    int ck2_id = k_id * (k_id - 1) / 2;
+    // log-SDs: k unique SDs shared within each variable type
+    vector<Type> sd_id(n_id);
+    for (int i = 0; i < k_id; i++) {
+      sd_id(2*i)     = exp(theta(i));
+      sd_id(2*i + 1) = exp(theta(i));
+    }
+    // Partner correlations via invlogit: rho_p_i in (-1, 1)
+    vector<Type> rho_p(k_id);
+    for (int i = 0; i < k_id; i++)
+      rho_p(i) = Type(2) * invlogit(theta(k_id + i)) - Type(1);
+    // Diagonal entries of S and D
+    vector<Type> a_id(k_id), b_id(k_id);
+    for (int i = 0; i < k_id; i++) {
+      a_id(i) = Type(1) + rho_p(i);
+      b_id(i) = Type(1) - rho_p(i);
+    }
+    // R_S: k x k correlation matrix via UNSTRUCTURED_CORR_t
+    vector<Type> theta_S(ck2_id);
+    for (int i = 0; i < ck2_id; i++)
+      theta_S(i) = theta(2 * k_id + i);
+    matrix<Type> R_S(k_id, k_id);
+    if (ck2_id > 0) {
+      density::UNSTRUCTURED_CORR_t<Type> R_S_dens(theta_S);
+      R_S = R_S_dens.cov();
+    } else {
+      R_S.setZero(); R_S(0,0) = Type(1);
+    }
+    // R_D: k x k correlation matrix via UNSTRUCTURED_CORR_t
+    vector<Type> theta_D(ck2_id);
+    for (int i = 0; i < ck2_id; i++)
+      theta_D(i) = theta(2 * k_id + ck2_id + i);
+    matrix<Type> R_D(k_id, k_id);
+    if (ck2_id > 0) {
+      density::UNSTRUCTURED_CORR_t<Type> R_D_dens(theta_D);
+      R_D = R_D_dens.cov();
+    } else {
+      R_D.setZero(); R_D(0,0) = Type(1);
+    }
+    // S and D blocks
+    matrix<Type> S_id(k_id, k_id);
+    matrix<Type> D_id(k_id, k_id);
+    for (int i = 0; i < k_id; i++)
+      for (int j = 0; j < k_id; j++) {
+        S_id(i,j) = sqrt(a_id(i)) * R_S(i,j) * sqrt(a_id(j));
+        D_id(i,j) = sqrt(b_id(i)) * R_D(i,j) * sqrt(b_id(j));
+      }
+    // Full 2k x 2k correlation matrix
+    // rho_w = (S_ij + D_ij) / 2,  rho_c = (S_ij - D_ij) / 2
+    matrix<Type> R_id(n_id, n_id);
+    R_id.setZero();
+    for (int i = 0; i < n_id; i++) R_id(i,i) = Type(1);
+    for (int i = 0; i < k_id; i++) {
+      R_id(2*i, 2*i+1) = rho_p(i);
+      R_id(2*i+1, 2*i) = rho_p(i);
+    }
+    for (int i = 0; i < k_id; i++) {
+      for (int j = i+1; j < k_id; j++) {
+        Type rw = (S_id(i,j) + D_id(i,j)) / Type(2);
+        Type rc = (S_id(i,j) - D_id(i,j)) / Type(2);
+        R_id(2*i,   2*j)   = rw;  R_id(2*j,   2*i)   = rw;
+        R_id(2*i+1, 2*j+1) = rw;  R_id(2*j+1, 2*i+1) = rw;
+        R_id(2*i,   2*j+1) = rc;  R_id(2*j+1, 2*i)   = rc;
+        R_id(2*i+1, 2*j)   = rc;  R_id(2*j,   2*i+1) = rc;
+      }
+    }
+    // Covariance matrix and likelihood
+    matrix<Type> Sigma_id(n_id, n_id);
+    for (int i = 0; i < n_id; i++)
+      for (int j = 0; j < n_id; j++)
+        Sigma_id(i,j) = sd_id(i) * R_id(i,j) * sd_id(j);
+    density::MVNORM_t<Type> nldens(Sigma_id);
+    for (int i = 0; i < term.blockReps; i++) {
+      ans += nldens(U.col(i));
+      if (do_simulate) U.col(i) = nldens.simulate();
+    }
+    if (term.fullCor == 1) term.corr = R_id;
+    term.sd = sd_id;
   }
   else error("covStruct not implemented!");
   return ans;
