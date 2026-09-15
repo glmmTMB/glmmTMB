@@ -1986,6 +1986,18 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     }
 
     if (control $ profile) {
+        ## profiling needs at least one free fixed-effect parameter;
+        ## with none, sdreport() below returns no jointPrecision (GH #1317)
+        n_free_beta <- with(TMBStruc,
+                            if (is.null(mapArg$beta)) length(parameters$beta)
+                            else length(unique(na.omit(mapArg$beta))))
+        if (n_free_beta == 0) {
+            stop("profile = TRUE requires at least one free fixed-effect ",
+                 "parameter, but this model has no free fixed-effect ",
+                 "parameters (the formula has no fixed effects, e.g. ",
+                 "'~ 0', or every element of 'beta' is fixed via 'map'); ",
+                 "use glmmTMBControl(profile = FALSE)")
+        }
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
                               parameters,
