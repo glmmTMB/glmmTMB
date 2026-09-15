@@ -1390,9 +1390,13 @@ glmmTMB <- function(
     ## do.call(checkArgs, c(list("glmer"), l...))
 
     # substitute evaluated versions
-    ## FIXME: denv leftover from lme4, not defined yet
 
-    environment(formula) <- parent.frame()
+    ## Use a private child environment (rather than parent.frame() itself)
+    ## so that later code can stash objects (e.g. weights/offset, below) where
+    ## model.frame() will find them without leaking them into the caller's
+    ## actual environment (GH #1296). Variables not found here still resolve
+    ## via the parent.frame() enclosure, so lookup behaviour is unaffected.
+    environment(formula) <- new.env(parent = parent.frame())
     call$formula <- mc$formula <- formula
     ## add offset-specified-as-argument to formula as + offset(...)
     ## need to evaluate offset within environment
@@ -1445,13 +1449,16 @@ glmmTMB <- function(
     }
     combForm <- do.call(addForm,formList)
     environment(combForm) <- environment(formula)
-    ## model.frame.default looks for these objects in the environment
-    ## of the *formula* (see 'extras', which is anything passed in ...),
-    ## so they have to be put there ...
-    for (i in c("weights", "offset")) {
-        if (!eval(bquote(missing(x=.(i)))))
-            assign(i, get(i, parent.frame()), environment(combForm))
-    }
+    ## NB: model.frame.default() resolves 'weights'/'offset' expressions
+    ## against 'data' first and environment(combForm) (== environment(formula),
+    ## whose enclosure is the caller's frame) second, so no extra setup is
+    ## needed here for the ordinary case where those expressions refer to
+    ## columns of 'data' or objects visible to the caller. (A previous version
+    ## of this code tried to pre-populate environment(combForm) with objects
+    ## literally named "weights"/"offset", but that only ever matched calls of
+    ## the form 'weights = weights' -- itself already resolvable through the
+    ## caller's frame -- while its buggy lookup leaked stats::weights into the
+    ## caller's environment when it fell through; see GH #1296.)
 
     mf$formula <- combForm
     fr <- eval(mf,envir=environment(formula),enclos=parent.frame())

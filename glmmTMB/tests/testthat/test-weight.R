@@ -68,3 +68,18 @@ test_that("weights() returns total trials for cbind() binomial response (GH #131
     mP <- glmmTMB(form2, data = cbpp, family = binomial, weights = size)
     expect_equal(weights(mP), cbpp$size)
 })
+
+test_that("weights argument does not leak into calling environment (GH #1296)", {
+    cbpp <- lme4::cbpp
+    e <- new.env()
+    e$cbpp <- cbpp
+    ## a formula/weights combination whose 'weights=' expression matches a
+    ## column of 'data', evaluated in a fresh environment so any leak is
+    ## easy to detect and doesn't pollute the test environment
+    evalq({
+        m <- glmmTMB(incidence/size ~ period, family = binomial,
+                     weights = size, data = cbpp)
+    }, envir = e)
+    expect_false(exists("weights", envir = e, inherits = FALSE))
+    expect_false(exists("size", envir = e, inherits = FALSE))
+})
