@@ -42,6 +42,31 @@ test_that("profile method", {
     expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ) )
 })
 
+## data from GH #1317
+set.seed(101)
+d_1317 <- data.frame(y = rnorm(50))
+d2_1317 <- data.frame(y = rnorm(50), x = rnorm(50))
+
+test_that("profile=TRUE errors early with no free fixed effects (GH #1317)", {
+    skip_on_cran()
+    ctrl <- glmmTMBControl(profile = TRUE)
+    fits <- list(
+        no_fixef      = quote(glmmTMB(y ~ 0, data = d_1317, control = ctrl)),
+        no_fixef_REML = quote(glmmTMB(y ~ 0, data = d_1317, control = ctrl,
+                                      REML = TRUE)),
+        all_mapped    = quote(glmmTMB(y ~ x, data = d2_1317, control = ctrl,
+                                      start = list(beta = c(0, 0)),
+                                      map = list(beta = factor(c(NA, NA))))),
+        all_mapped_REML = quote(glmmTMB(y ~ x, data = d2_1317, control = ctrl,
+                                        start = list(beta = c(0, 0)),
+                                        map = list(beta = factor(c(NA, NA))),
+                                        REML = TRUE)))
+    for (f in fits) {
+        expect_error(eval(f), regexp = "profile")
+        expect_error(eval(f), regexp = "free fixed-effect")
+    }
+})
+
 
 
 
