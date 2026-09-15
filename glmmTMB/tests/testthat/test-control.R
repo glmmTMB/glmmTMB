@@ -78,6 +78,20 @@ test_that("profile=TRUE works with a partially mapped beta (ML)", {
     expect_equal(fixef(m)$cond[["(Intercept)"]], 0)
 })
 
+test_that("profile=TRUE guard ignores a fully mapped betazi", {
+    skip_on_cran()
+    ## conditional beta is free; only the zi coefficients are mapped
+    ## ('$' partial matching of map$beta -> map$betazi would trip the guard)
+    d3 <- d2_1317
+    d3$y <- rpois(50, exp(0.5 * d3$x))
+    expect_no_error(
+        glmmTMB(y ~ x, zi = ~ x, family = poisson, data = d3,
+                control = glmmTMBControl(profile = TRUE),
+                start = list(betazi = c(-3, 0)),
+                map = list(betazi = factor(c(NA, NA))))
+    )
+})
+
 test_that("profile=TRUE works with REML=TRUE", {
     skip_on_cran()
     cmp_reml <- function(...) {

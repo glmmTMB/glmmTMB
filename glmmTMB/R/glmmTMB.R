@@ -1562,7 +1562,7 @@ glmmTMB <- function(
 ##' @param profile   (logical) Experimental option to improve speed and
 ##'                  robustness when a model has many fixed effects. The
 ##'                  model must have at least one free fixed-effect
-##'                  parameter (i.e., not \code{~ 0}, and not with the
+##'                  parameter (e.g., not \code{~ 0}, and not with the
 ##'                  entire \code{beta} vector fixed via \code{map});
 ##'                  otherwise \code{glmmTMB} stops with an error
 ##' @param collect   (logical) Experimental option to improve speed by
@@ -1992,9 +1992,10 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     if (control $ profile) {
         ## profiling needs at least one free fixed-effect parameter;
         ## with none, sdreport() below returns no jointPrecision (GH #1317)
+        ## ([["beta"]], not $beta: '$' would partially match 'betazi')
         n_free_beta <- with(TMBStruc,
-                            if (is.null(mapArg$beta)) length(parameters$beta)
-                            else length(unique(na.omit(mapArg$beta))))
+                            if (is.null(mapArg[["beta"]])) length(parameters$beta)
+                            else length(unique(na.omit(mapArg[["beta"]]))))
         if (n_free_beta == 0) {
             stop("profile = TRUE requires at least one free fixed-effect ",
                  "parameter, but this model has no free fixed-effect ",

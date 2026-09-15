@@ -31,7 +31,7 @@ glmmTMBControl(
 \item{profile}{(logical) Experimental option to improve speed and
 robustness when a model has many fixed effects. The
 model must have at least one free fixed-effect
-parameter (i.e., not \code{~ 0}, and not with the
+parameter (e.g., not \code{~ 0}, and not with the
 entire \code{beta} vector fixed via \code{map});
 otherwise \code{glmmTMB} stops with an error}
 
