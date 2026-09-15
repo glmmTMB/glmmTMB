@@ -67,6 +67,33 @@ test_that("profile=TRUE errors early with no free fixed effects (GH #1317)", {
     }
 })
 
+test_that("profile=TRUE works with a partially mapped beta (ML)", {
+    skip_on_cran()
+    expect_no_warning(
+        m <- glmmTMB(y ~ x, data = d2_1317,
+                     control = glmmTMBControl(profile = TRUE),
+                     start = list(beta = c(0, 0)),
+                     map = list(beta = factor(c(NA, 1))))
+    )
+    expect_equal(fixef(m)$cond[["(Intercept)"]], 0)
+})
+
+test_that("profile=TRUE works with REML=TRUE", {
+    skip_on_cran()
+    cmp_reml <- function(...) {
+        m1 <- glmmTMB(..., REML = TRUE,
+                      control = glmmTMBControl(profile = FALSE))
+        m2 <- glmmTMB(..., REML = TRUE,
+                      control = glmmTMBControl(profile = TRUE))
+        expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ) )
+        expect_false( anyNA(vcov(m2, full = TRUE)) )
+    }
+    cmp_reml(y ~ x, data = d2_1317)
+    cmp_reml(count ~ mined + (1|site), family = poisson, data = Salamanders)
+    cmp_reml(count ~ mined * spp + (1|site), zi = ~ (1|spp),
+             family = poisson, data = Salamanders)
+})
+
 
 
 
