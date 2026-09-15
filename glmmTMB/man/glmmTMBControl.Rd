@@ -29,7 +29,11 @@ glmmTMBControl(
 \item{optimizer}{Function to use in model fitting. See \code{Details} for required properties of this function.}
 
 \item{profile}{(logical) Experimental option to improve speed and
-robustness when a model has many fixed effects}
+robustness when a model has many fixed effects. The
+model must have at least one free fixed-effect
+parameter (i.e., not \code{~ 0}, and not with the
+entire \code{beta} vector fixed via \code{map});
+otherwise \code{glmmTMB} stops with an error}
 
 \item{collect}{(logical) Experimental option to improve speed by
 recognizing duplicated observations.}
