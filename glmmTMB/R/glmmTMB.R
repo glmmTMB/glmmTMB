@@ -1998,11 +1998,14 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
                  "'~ 0', or every element of 'beta' is fixed via 'map'); ",
                  "use glmmTMBControl(profile = FALSE)")
         }
+        ## MakeADFun() adds the profiled parameters to 'random' itself,
+        ## so drop "beta" (present under REML) to avoid its
+        ## "Duplicates in 'random'" message
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
                               parameters,
                               map = mapArg,
-                              random = randomArg,
+                              random = setdiff(randomArg, "beta"),
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
@@ -2011,7 +2014,8 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
-        whichNotRandom <- which( ! parnames %in% c("b", "bzi", "bdisp") )
+        ## under REML, randomArg also contains "beta"
+        whichNotRandom <- which( ! parnames %in% TMBStruc$randomArg )
         Qm <- GMRFmarginal(Q, whichNotRandom)
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
         TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
@@ -2094,7 +2098,8 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
 
     if (TMBStruc$se) {
         if(control$profile)
-            sdr <- sdreport(obj, hessian.fixed = h)
+            sdr <- sdreport(obj, hessian.fixed = h,
+                            getJointPrecision = TMBStruc$REML)
         else
             sdr <- sdreport(obj, getJointPrecision = TMBStruc$REML)
         ## FIXME: assign original rownames to fitted?
