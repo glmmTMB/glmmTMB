@@ -881,7 +881,7 @@ Type objective_function<Type>::operator() ()
 
   // Flags
   DATA_INTEGER(ziPredictCode);
-  bool zi_flag = (betazi.size() > 0);
+  bool zi_flag = (betazi.size() > 0 || bzi.size() > 0);
   // 0 = no prediction; 1 = predictions on link scale; 2 = predictions on
   // data scale; 3 = predictions of latent variables (b)
   DATA_INTEGER(doPredict);

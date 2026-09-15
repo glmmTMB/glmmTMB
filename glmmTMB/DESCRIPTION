@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.15
+Version: 1.1.15.9001
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -57,6 +57,7 @@ License: AGPL-3
 Depends: R (>= 3.6.0)
 Imports:
     methods,
+    RTMB,
     TMB (>= 1.9.23),
     lme4 (>= 1.1-18.9000),
     Matrix,
@@ -71,6 +72,7 @@ Suggests:
     knitr,
     rmarkdown,
     testthat,
+    withr,
     MASS,
     ordinal,
     lattice,

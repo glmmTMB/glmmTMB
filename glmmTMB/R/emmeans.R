@@ -80,6 +80,7 @@ NULL  ## don't document the files here!
 ## recover_data method -- DO NOT export -- see zzz.R
 ## do not document either
 
+##' @exportS3Method NULL
 recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "response", "cmean"), ...) {
     if (!requireNamespace("emmeans")) 
         stop("please install (if necessary) and load the emmeans package")
@@ -105,6 +106,7 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 }
 
 
+##' @exportS3Method NULL
 emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi", 
                                                                        "disp", "response", "cmean"), vcov.,
                                ddf = getOption("glmmTMB.df", "asymptotic"),  ...) {
@@ -241,4 +243,3 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     }
     namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
 }
-

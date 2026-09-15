@@ -1,3 +1,35 @@
+## TMB/RTMB switch
+
+#' switch to using RTMB
+#' @param flag FALSE (default) to use TMB backend; TRUE to use RTMB backend
+#' @export
+useRTMB <- local({
+  useRTMB <- FALSE
+  function(flag = NULL) { useRTMB <<- flag %||% useRTMB ; useRTMB }
+})
+MakeADFun <- function(data, ..., DLL) {
+  if (!useRTMB()) {
+    TMB::MakeADFun(data=data, ..., DLL=DLL)
+  }else {
+    rtmb_fun <- cmb(rtmb_tpl, data)
+    obj <- RTMB::MakeADFun(rtmb_fun, ...)
+    attr(data, "func") <- rtmb_fun
+    obj$env$data <- data
+    obj$env$rtmb_data_env <- environment(rtmb_fun)
+    obj$env$report <- obj$report
+    obj
+    #RTMB::MakeADFun(cmb(rtmb_tpl, data), ...)
+  }
+}
+
+.setObjData <- function(obj, data) {
+  obj$env$data <- data
+  if (!is.null(obj$env$rtmb_data_env)) {
+    obj$env$rtmb_data_env$d <- data
+  }
+  invisible(obj)
+}
+
 ## backward compat (copied from lme4)
 if((Rv <- getRversion()) < "3.2.1") {
     lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
@@ -440,6 +472,10 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## these are DATA_IVECTOR but apparently after processing
       ##  TMB turns these into numeric ... ??
       for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+      ee$data$rtmb_prior_distrib_name <- factor(character(0),
+                                                levels = names(.valid_prior))
+      ee$data$rtmb_prior_whichpar_name <- factor(character(0),
+                                                 levels = names(.valid_vprior))
       for (v in prior_fvars) ee$data[[v]] <- numeric(0)
       
     }
@@ -459,7 +495,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     }
 
     oldfit$obj <- with(ee,
-                       TMB::MakeADFun(data,
+                            MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
@@ -761,6 +797,9 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
         for (i in seq_along(ee$data$terms)) {
             ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
         }
+    }
+    if (!is.null(ee$rtmb_data_env)) {
+        ee$rtmb_data_env$d <- ee$data
     }
 
 }
