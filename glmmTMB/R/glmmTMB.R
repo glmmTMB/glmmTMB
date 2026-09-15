@@ -1563,8 +1563,10 @@ glmmTMB <- function(
 ##'                  robustness when a model has many fixed effects. The
 ##'                  model must have at least one free fixed-effect
 ##'                  parameter (e.g., not \code{~ 0}, and not with the
-##'                  entire \code{beta} vector fixed via \code{map});
-##'                  otherwise \code{glmmTMB} stops with an error
+##'                  entire \code{beta} vector fixed via \code{map}, and
+##'                  not an intercept-only \code{ordinal} model, whose
+##'                  intercept is fixed internally); otherwise
+##'                  \code{glmmTMB} stops with an error
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
 ##' @param parallel  (named list with an integer value \code{n} and a logical value \code{autopar},
@@ -1994,13 +1996,15 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         ## with none, sdreport() below returns no jointPrecision (GH #1317)
         ## ([["beta"]], not $beta: '$' would partially match 'betazi')
         n_free_beta <- with(TMBStruc,
-                            if (is.null(mapArg[["beta"]])) length(parameters$beta)
+                            if (is.null(mapArg[["beta"]])) length(parameters[["beta"]])
                             else length(unique(na.omit(mapArg[["beta"]]))))
         if (n_free_beta == 0) {
             stop("profile = TRUE requires at least one free fixed-effect ",
                  "parameter, but this model has no free fixed-effect ",
                  "parameters (the formula has no fixed effects, e.g. ",
-                 "'~ 0', or every element of 'beta' is fixed via 'map'); ",
+                 "'~ 0'; every element of 'beta' is fixed via 'map'; or ",
+                 "the family fixes the only fixed effect internally, as ",
+                 "'ordinal' does for an intercept-only model); ",
                  "use glmmTMBControl(profile = FALSE)")
         }
         ## MakeADFun() adds the profiled parameters to 'random' itself,
@@ -2038,7 +2042,9 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         ## FIXME: Make configurable ?
         max.newton.steps <- 5
         newton.tol <- 1e-10
-        if (sdr$pdHess) {
+        ## (under REML with no other non-random parameters, e.g. a Poisson
+        ##  model with no random effects, 'par' is empty: nothing to refine)
+        if (sdr$pdHess && length(par) > 0) {
             ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
           ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
           ##    * Option 1: Fall back to old method
