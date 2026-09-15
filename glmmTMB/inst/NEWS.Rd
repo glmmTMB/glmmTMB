@@ -103,6 +103,14 @@
       binomial-type models fitted with a two-column matrix
       (\code{cbind(successes, failures)}) response, matching \code{glm} and
       \code{glmer} (GH #1319)
+      \item \code{glmmTMBControl(profile = TRUE)} now stops early with an
+      informative error for a model with no free fixed-effect parameters
+      (e.g. \code{y ~ 0}, or a model whose entire \code{beta} vector is
+      fixed via \code{map}), instead of failing with "attempt to set an
+      attribute on NULL" (GH #1317)
+      \item \code{glmmTMBControl(profile = TRUE)} now works with
+      \code{REML = TRUE} (previously every such fit failed with a
+      dimension mismatch in \code{solve()})
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
