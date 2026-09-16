@@ -24,7 +24,7 @@
       rows of \code{vcov(., full = TRUE)} remain on the internal
       (softmax) scale (GH #1323)
       \item \code{emmeans()} on \code{ordinal} fits gains the \code{mode}
-      argument of its \code{MASS::polr} method
+      and \code{rescale} arguments of its \code{MASS::polr} method
       (\code{"latent"} [the default], \code{"linear.predictor"},
       \code{"cum.prob"}, \code{"exc.prob"}, \code{"prob"},
       \code{"mean.class"}), with standard errors that include the

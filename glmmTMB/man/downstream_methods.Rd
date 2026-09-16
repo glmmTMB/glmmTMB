@@ -92,7 +92,7 @@ versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 \section{Cumulative-link (ordinal) fits in \code{emmeans}}{
 
 For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
-the same \code{mode} argument as for \code{MASS::polr} fits
+the same \code{mode} and \code{rescale} arguments as for \code{MASS::polr} fits
 (\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
 does not apply here; see the \code{clm}/\code{polr} entries in
 \code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
@@ -108,7 +108,13 @@ fixed-effect covariance with the delta-method covariance of the
 thresholds (as in \code{summary()}), and denominator degrees of freedom
 are always asymptotic (a \code{ddf} request for
 \code{"satterthwaite"} or \code{"kenward-roger"} warns and is
-ignored).
+ignored). In \code{"latent"} mode, \code{rescale = c(a, b)} reports
+\eqn{a + b \mu} in place of the latent mean \eqn{\mu}, as for
+\code{MASS::polr}. A user-supplied \code{vcov.} must be the joint
+covariance matrix of the conditional fixed effects (in the order of
+\code{fixef(.)$cond}, omitting coefficients dropped for rank
+deficiency) followed by the \eqn{K-1} thresholds on the threshold
+scale, as in the \code{thresholds} element of \code{summary(.)}.
 }
 
 \section{Denominator degrees of freedom in \code{emmeans}}{

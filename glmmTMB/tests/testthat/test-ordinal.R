@@ -398,6 +398,45 @@ test_that("ordinal emmeans handles a rank-deficient fit", {
     }
 })
 
+test_that("ordinal emmeans carries a free intercept from a user map", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    ## a user map that leaves the intercept free (the default map fixes
+    ## it to zero); the basis must include its estimate
+    m_free <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine,
+                      map = list(beta = factor(c(1, 2, 3))))
+    expect_false(fixef(m_free)$cond[["(Intercept)"]] == 0)
+    s <- summary(emmeans::emmeans(m_free, ~ rating | temp + contact,
+                                  mode = "prob"))
+    cells <- expand.grid(temp = levels(wine$temp),
+                         contact = levels(wine$contact))
+    for (i in seq_len(nrow(cells))) {
+        cell <- cells[i, ]
+        p <- drop(predict(m_free, newdata = cell, type = "probs"))
+        expect_equal(s$prob[s$temp == cell$temp & s$contact == cell$contact],
+                     unname(p), tolerance = 1e-8)
+    }
+})
+
+test_that("ordinal emmeans latent mode honours rescale as MASS::polr", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    skip_if_not_installed("MASS")
+    data("wine", package = "ordinal")
+    m_tmb <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine)
+    m_polr <- MASS::polr(rating ~ temp + contact, data = wine, Hess = TRUE)
+    s <- summary(emmeans::emmeans(m_tmb, ~ temp, mode = "latent",
+                                  rescale = c(1, 10)))
+    s_polr <- summary(emmeans::emmeans(m_polr, ~ temp, mode = "latent",
+                                       rescale = c(1, 10)))
+    expect_equal(s$emmean, s_polr$emmean, tolerance = 1e-4)
+    expect_equal(s$SE, s_polr$SE, tolerance = 1e-4)
+    s1 <- summary(emmeans::emmeans(m_tmb, ~ temp, mode = "latent"))
+    expect_equal(s$emmean, 1 + 10 * s1$emmean, tolerance = 1e-8)
+    expect_equal(s$SE, 10 * s1$SE, tolerance = 1e-8)
+})
+
 test_that("emmeans mode argument is rejected off the ordinal branch", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")

@@ -35,7 +35,7 @@
 ##' }
 ##' @section Cumulative-link (ordinal) fits in \code{emmeans}:
 ##' For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
-##' the same \code{mode} argument as for \code{MASS::polr} fits
+##' the same \code{mode} and \code{rescale} arguments as for \code{MASS::polr} fits
 ##' (\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
 ##' does not apply here; see the \code{clm}/\code{polr} entries in
 ##' \code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
@@ -51,7 +51,13 @@
 ##' thresholds (as in \code{summary()}), and denominator degrees of freedom
 ##' are always asymptotic (a \code{ddf} request for
 ##' \code{"satterthwaite"} or \code{"kenward-roger"} warns and is
-##' ignored).
+##' ignored). In \code{"latent"} mode, \code{rescale = c(a, b)} reports
+##' \eqn{a + b \mu} in place of the latent mean \eqn{\mu}, as for
+##' \code{MASS::polr}. A user-supplied \code{vcov.} must be the joint
+##' covariance matrix of the conditional fixed effects (in the order of
+##' \code{fixef(.)$cond}, omitting coefficients dropped for rank
+##' deficiency) followed by the \eqn{K-1} thresholds on the threshold
+##' scale, as in the \code{thresholds} element of \code{summary(.)}.
 ##' @section Denominator degrees of freedom in \code{emmeans}:
 ##' For models with random effects, the \code{ddf} argument to \code{emmeans()}
 ##' (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
@@ -129,6 +135,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
                                ddf = getOption("glmmTMB.df", "asymptotic"),
                                mode = c("latent", "linear.predictor", "cum.prob",
                                         "exc.prob", "prob", "mean.class"),
+                               rescale = c(0, 1),
                                ...) {
 
     ## FIXME: implement a 'KR limit' argument/option that determines whether to use KR for large problems ... ??
@@ -144,8 +151,8 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     ordinal_basis <- (fam == "ordinal" && component == "cond")
     if (ordinal_basis) {
         mode <- match.arg(mode)
-    } else if (!missing(mode)) {
-        stop("'mode' is only available for ordinal fits with component = \"cond\"")
+    } else if (!missing(mode) || !missing(rescale)) {
+        stop("'mode' and 'rescale' are only available for ordinal fits with component = \"cond\"")
     }
 
     ddf_set <- function(used, requested = ddf) {
@@ -226,19 +233,16 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     if (ordinal_basis) {
         ## modeled on emmeans:::emm_basis.polr: the linear predictor for
         ## P(Y <= j) is theta_j - x'beta, so the basis carries the
-        ## fixed effects (without the intercept, which is fixed to zero
-        ## for ordinal fits and absorbed into the thresholds) and the
-        ## K-1 thresholds, with the thresholds' covariance obtained by
-        ## the delta method from the internal (softmax) parameters
+        ## fixed effects and the K-1 thresholds, with the thresholds'
+        ## covariance obtained by the delta method from the internal
+        ## (softmax) parameters. The intercept is kept: by default it is
+        ## fixed to zero via 'map' (its vcov rows are then zeroed below),
+        ## but a user-supplied map may leave it free
         contrasts <- attr(model.matrix(object, component = "cond"),
                           "contrasts")
         m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
         X <- model.matrix(trms, m, contrasts.arg = contrasts)
-        xint <- match("(Intercept)", colnames(X), nomatch = 0L)
-        if (xint > 0L) X <- X[, -xint, drop = FALSE]
         beta <- fixef(object)[["cond"]]
-        bint <- match("(Intercept)", names(beta), nomatch = 0L)
-        if (bint > 0L) beta <- beta[-bint]
         theta <- family_params(object)
         k <- length(theta)
         if (missing(vcov.)) {
@@ -269,8 +273,6 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         if (any(is.na(beta))) {
             modmat <- model.matrix(trms, model.frame(object),
                                    contrasts.arg = contrasts)
-            mint <- match("(Intercept)", colnames(modmat), nomatch = 0L)
-            if (mint > 0L) modmat <- modmat[, -mint, drop = FALSE]
             nb <- estimability::nonest.basis(modmat)
             nbasis <- rbind(nb, matrix(0, nrow = k, ncol = ncol(nb)))
             ## emmeans expects V over the estimable coefficients only
@@ -282,8 +284,11 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         }
         bhat <- c(beta, theta)
         if (mode == "latent") {
-            ## latent-scale mean: x'beta - mean(theta)
-            X <- cbind(X, matrix(-1/k, nrow = nrow(X), ncol = k))
+            ## latent-scale mean: x'beta - mean(theta), reported as
+            ## rescale[1] + rescale[2] * (.) as in emm_basis.polr
+            X <- rescale[2] * cbind(X, matrix(-1/k, nrow = nrow(X), ncol = k))
+            bhat <- c(beta, theta - rescale[1] / rescale[2])
+            misc <- list(offset.mult = rescale[2])
         } else {
             ## one row per (grid point, threshold): theta_j - x'beta
             j <- matrix(1, nrow = k, ncol = 1)
