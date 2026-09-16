@@ -35,9 +35,10 @@
 ##' }
 ##' @section Cumulative-link (ordinal) fits in \code{emmeans}:
 ##' For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
-##' the same \code{mode} argument as for \code{ordinal::clm} and
-##' \code{MASS::polr} fits (see \code{emmeans::emm_basis} documentation for
-##' those classes): \code{"latent"} (the default; means on the latent scale,
+##' the same \code{mode} argument as for \code{MASS::polr} fits
+##' (\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
+##' does not apply here; see the \code{clm}/\code{polr} entries in
+##' \code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
 ##' centered on the average threshold, with no back-transformation, so
 ##' \code{type = "response"} has no effect), \code{"linear.predictor"}
 ##' (\eqn{\theta_j - x'\beta} for each threshold \eqn{j}, with a grid
@@ -221,7 +222,8 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     if (ordinal_basis) {
         ## modeled on emmeans:::emm_basis.polr: the linear predictor for
         ## P(Y <= j) is theta_j - x'beta, so the basis carries the
-        ## fixed effects (without the always-mapped intercept) and the
+        ## fixed effects (without the intercept, which is fixed to zero
+        ## for ordinal fits and absorbed into the thresholds) and the
         ## K-1 thresholds, with the thresholds' covariance obtained by
         ## the delta method from the internal (softmax) parameters
         contrasts <- attr(model.matrix(object, component = "cond"),

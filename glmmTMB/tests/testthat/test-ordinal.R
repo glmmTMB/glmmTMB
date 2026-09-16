@@ -272,9 +272,10 @@ test_that("ordinal REML null model stays usable", {
 ##   ORD-EMM-3: invariant; same block (b) and "ordinal emmeans with a
 ##     mapped coefficient"; predict(., type = "probs") (an independent
 ##     route through the TMB template) must agree with the emmeans grid
-##   ORD-EMM-4: closed-form; same block (c) P(Y <= j) = plogis(theta_j - eta)
-##     and (d) E[class] = sum_j j * P(Y = j), written out in the test;
-##     Agresti (2010) Analysis of Ordinal Categorical Data, ch. 3
+##   ORD-EMM-4: closed-form; same block (c) P(Y <= j) = plogis(theta_j - eta),
+##     written out in the test; Agresti (2010) Analysis of Ordinal
+##     Categorical Data, ch. 3. (d) E[class] = sum_j j * P(Y = j) is the
+##     definition of mean.class in vignette("models", package = "emmeans")
 test_that("ordinal emmeans modes match ordinal::clm", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")

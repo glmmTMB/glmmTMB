@@ -92,9 +92,10 @@ versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 \section{Cumulative-link (ordinal) fits in \code{emmeans}}{
 
 For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
-the same \code{mode} argument as for \code{ordinal::clm} and
-\code{MASS::polr} fits (see \code{emmeans::emm_basis} documentation for
-those classes): \code{"latent"} (the default; means on the latent scale,
+the same \code{mode} argument as for \code{MASS::polr} fits
+(\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
+does not apply here; see the \code{clm}/\code{polr} entries in
+\code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
 centered on the average threshold, with no back-transformation, so
 \code{type = "response"} has no effect), \code{"linear.predictor"}
 (\eqn{\theta_j - x'\beta} for each threshold \eqn{j}, with a grid
