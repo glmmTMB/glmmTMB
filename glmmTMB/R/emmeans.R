@@ -105,17 +105,25 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 }
 
 
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi", 
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi",
                                                                        "disp", "response", "cmean"), vcov.,
-                               ddf = getOption("glmmTMB.df", "asymptotic"),  ...) {
+                               ddf = getOption("glmmTMB.df", "asymptotic"),
+                               mode = c("latent", "linear.predictor", "cum.prob",
+                                        "exc.prob", "prob", "mean.class"),
+                               ...) {
 
     ## FIXME: implement a 'KR limit' argument/option that determines whether to use KR for large problems ... ??
     component <- match.arg(component)
+    mode <- match.arg(mode)
     check_dots(.ignore = c("misc", "options"))
     misc <- list()
     ## ddf-processing
     ## 1. no random effects
     fam <- family(object)$family
+    ## cumulative-link (ordinal) fits get their own basis below, built
+    ## from the fixed effects *and* the thresholds; only asymptotic
+    ## (Wald z) inference is available for it
+    ordinal_basis <- (fam == "ordinal" && component == "cond")
 
     ddf_set <- function(used, requested = ddf) {
         if (requested != used) {
@@ -126,6 +134,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     get_ddf <- function() {
 
         if (component != "cond") return(ddf_set("asymptotic"))
+        if (ordinal_basis) return(ddf_set("asymptotic"))
 
         if (!hasRandom(object)) {
             if (fam != "gaussian") return(ddf_set("asymptotic"))
@@ -191,8 +200,77 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     }
     
     nbasis <- estimability::all.estble
-    if (component %in% c("response", "cmean")) {
-        ptype <- ifelse(component == "cmean", "conditional", 
+    if (ordinal_basis) {
+        ## modeled on emmeans:::emm_basis.polr: the linear predictor for
+        ## P(Y <= j) is theta_j - x'beta, so the basis carries the
+        ## fixed effects (without the always-mapped intercept) and the
+        ## K-1 thresholds, with the thresholds' covariance obtained by
+        ## the delta method from the internal (softmax) parameters
+        contrasts <- attr(model.matrix(object, component = "cond"),
+                          "contrasts")
+        m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
+        X <- model.matrix(trms, m, contrasts.arg = contrasts)
+        xint <- match("(Intercept)", colnames(X), nomatch = 0L)
+        if (xint > 0L) X <- X[, -xint, drop = FALSE]
+        beta <- fixef(object)[["cond"]]
+        bint <- match("(Intercept)", names(beta), nomatch = 0L)
+        if (bint > 0L) beta <- beta[-bint]
+        theta <- family_params(object)
+        k <- length(theta)
+        if (missing(vcov.)) {
+            Vfull <- as.matrix(vcov(object, full = TRUE))
+            vi <- match(c(names(beta), names(theta)), rownames(Vfull))
+            V <- Vfull[vi, vi, drop = FALSE]
+            ## coefficients fixed via 'map' are known constants (NA
+            ## rows/columns in the full vcov): zero them, as
+            ## pad_mapped_vcov() does for the single-component case
+            bmap <- object$obj$env$map[["beta"]]
+            if (!is.null(bmap)) {
+                fixed <- names(fixef(object)[["cond"]])[is.na(bmap)]
+                fi <- match(fixed, rownames(V), nomatch = 0L)
+                V[fi, ] <- 0
+                V[, fi] <- 0
+            }
+            ## delta method: bdiag(I, J) V bdiag(I, J)'
+            J <- ordinal_threshold_jacobian(object)
+            B <- diag(1, length(beta) + k)
+            ti <- length(beta) + seq_len(k)
+            B[ti, ti] <- J
+            V <- B %*% V %*% t(B)
+            dimnames(V) <- list(c(names(beta), names(theta)),
+                                c(names(beta), names(theta)))
+        } else {
+            V <- vcov.
+        }
+        if (any(is.na(beta))) {
+            modmat <- model.matrix(trms, model.frame(object),
+                                   contrasts.arg = contrasts)
+            mint <- match("(Intercept)", colnames(modmat), nomatch = 0L)
+            if (mint > 0L) modmat <- modmat[, -mint, drop = FALSE]
+            nb <- estimability::nonest.basis(modmat)
+            nbasis <- rbind(nb, matrix(0, nrow = k, ncol = ncol(nb)))
+        }
+        bhat <- c(beta, theta)
+        if (mode == "latent") {
+            ## latent-scale mean: x'beta - mean(theta)
+            X <- cbind(X, matrix(-1/k, nrow = nrow(X), ncol = k))
+        } else {
+            ## one row per (grid point, threshold): theta_j - x'beta
+            j <- matrix(1, nrow = k, ncol = 1)
+            J1 <- matrix(1, nrow = nrow(X), ncol = 1)
+            X <- cbind(kronecker(-j, X), kronecker(diag(1, k), J1))
+            misc <- list(ylevs = list(cut = names(theta)),
+                         tran = family(object)$link,
+                         inv.lbl = "cum.prob", offset.mult = -1)
+            if (mode != "linear.predictor") {
+                misc$mode <- mode
+                misc$postGridHook <- ".clm.postGrid"
+            }
+        }
+        misc$respName <- as.character.default(terms(object))[2]
+    }
+    else if (component %in% c("response", "cmean")) {
+        ptype <- ifelse(component == "cmean", "conditional",
                         "response")
         for (nm in object$modelInfo$grpVar) grid[[nm]] <- NA
         tmp <- predict(object, newdata = grid, type = ptype, 
