@@ -33,6 +33,24 @@
 ##' \item the \code{effects} package computes graphical tabular effect displays
 ##' (only for the fixed effects of the conditional component)
 ##' }
+##' @section Cumulative-link (ordinal) fits in \code{emmeans}:
+##' For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
+##' the same \code{mode} argument as for \code{ordinal::clm} and
+##' \code{MASS::polr} fits (see \code{emmeans::emm_basis} documentation for
+##' those classes): \code{"latent"} (the default; means on the latent scale,
+##' centered on the average threshold, with no back-transformation, so
+##' \code{type = "response"} has no effect), \code{"linear.predictor"}
+##' (\eqn{\theta_j - x'\beta} for each threshold \eqn{j}, with a grid
+##' variable \code{cut}), \code{"cum.prob"} (cumulative probabilities
+##' \eqn{P(Y \le j)}), \code{"exc.prob"} (exceedance probabilities
+##' \eqn{P(Y > j)}), \code{"prob"} (probabilities of each response
+##' category, indexed by the response variable) and \code{"mean.class"}
+##' (the expected category index). Standard errors combine the
+##' fixed-effect covariance with the delta-method covariance of the
+##' thresholds (as in \code{summary()}), and denominator degrees of freedom
+##' are always asymptotic (a \code{ddf} request for
+##' \code{"satterthwaite"} or \code{"kenward-roger"} warns and is
+##' ignored).
 ##' @section Denominator degrees of freedom in \code{emmeans}:
 ##' For models with random effects, the \code{ddf} argument to \code{emmeans()}
 ##' (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts

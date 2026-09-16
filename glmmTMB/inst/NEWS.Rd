@@ -23,6 +23,13 @@
       \code{thresholds} element of the summary object); the threshold
       rows of \code{vcov(., full = TRUE)} remain on the internal
       (softmax) scale (GH #1323)
+      \item \code{emmeans()} on \code{ordinal} fits gains the \code{mode}
+      argument of its \code{ordinal::clm}/\code{MASS::polr} methods
+      (\code{"latent"} [the default], \code{"linear.predictor"},
+      \code{"cum.prob"}, \code{"exc.prob"}, \code{"prob"},
+      \code{"mean.class"}), with standard errors that include the
+      delta-method covariance of the thresholds; the default no longer
+      back-transforms the latent-scale mean under \code{type = "response"}
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level
