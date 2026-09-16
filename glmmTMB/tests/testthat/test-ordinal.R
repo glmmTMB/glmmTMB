@@ -375,6 +375,41 @@ test_that("ordinal emmeans with a mapped coefficient", {
     }
 })
 
+test_that("ordinal emmeans handles a rank-deficient fit", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    wine$dup <- wine$temp
+    m_rd <- suppressWarnings(glmmTMB(rating ~ temp + contact + dup,
+                                     family = ordinal, data = wine))
+    expect_true(is.na(fixef(m_rd)$cond[["dupwarm"]]))
+    em <- expect_no_error(
+        emmeans::emmeans(m_rd, ~ rating | temp + contact, mode = "prob"))
+    s <- summary(em)
+    expect_false(anyNA(s$SE))
+    cells <- expand.grid(temp = levels(wine$temp),
+                         contact = levels(wine$contact))
+    for (i in seq_len(nrow(cells))) {
+        cell <- cells[i, ]
+        cell$dup <- cell$temp
+        p <- drop(predict(m_rd, newdata = cell, type = "probs"))
+        expect_equal(s$prob[s$temp == cell$temp & s$contact == cell$contact],
+                     unname(p), tolerance = 1e-8)
+    }
+})
+
+test_that("emmeans mode argument is rejected off the ordinal branch", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m_num <- glmmTMB(as.numeric(rating) ~ temp + contact, data = wine)
+    expect_error(emmeans::emmeans(m_num, ~ temp, mode = "prob"),
+                 "only available for ordinal fits")
+    m_ord <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine)
+    expect_error(emmeans::emmeans(m_ord, ~ temp, mode = "nonsense"),
+                 "'arg' should be one of")
+})
+
 test_that("ordinal emmeans forces asymptotic ddf", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")

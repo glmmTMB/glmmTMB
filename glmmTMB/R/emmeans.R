@@ -133,7 +133,6 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
 
     ## FIXME: implement a 'KR limit' argument/option that determines whether to use KR for large problems ... ??
     component <- match.arg(component)
-    mode <- match.arg(mode)
     check_dots(.ignore = c("misc", "options"))
     misc <- list()
     ## ddf-processing
@@ -143,6 +142,11 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     ## from the fixed effects *and* the thresholds; only asymptotic
     ## (Wald z) inference is available for it
     ordinal_basis <- (fam == "ordinal" && component == "cond")
+    if (ordinal_basis) {
+        mode <- match.arg(mode)
+    } else if (!missing(mode)) {
+        stop("'mode' is only available for ordinal fits with component = \"cond\"")
+    }
 
     ddf_set <- function(used, requested = ddf) {
         if (requested != used) {
@@ -269,6 +273,12 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
             if (mint > 0L) modmat <- modmat[, -mint, drop = FALSE]
             nb <- estimability::nonest.basis(modmat)
             nbasis <- rbind(nb, matrix(0, nrow = k, ncol = ncol(nb)))
+            ## emmeans expects V over the estimable coefficients only
+            ## (columns dropped for rank deficiency are NA in bhat)
+            if (missing(vcov.)) {
+                keep <- c(!is.na(beta), rep(TRUE, k))
+                V <- V[keep, keep, drop = FALSE]
+            }
         }
         bhat <- c(beta, theta)
         if (mode == "latent") {
