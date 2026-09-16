@@ -45,3 +45,5 @@ glmmTMB/.gitsum
 *.zip
 *.dll
 air.toml
+
+/notes/separable-kron-work/
