@@ -250,7 +250,7 @@ utils::globalVariables(c(
   "betazi", "bzi", "thetazi",
   "Xdisp", "XdispS", "Zdisp", "dispoffset", "termsdisp",
   "betadisp", "bdisp", "thetadisp",
-  "psi", "combinom_disp_link", "ziPredictCode", "doPredict",
+  "psi", "combinom_disp_Link", "ziPredictCode", "doPredict",
   "whichPredict", "aggregate",
   "prior_distrib", "prior_whichpar", "prior_elstart", "prior_elend",
   "prior_npar", "prior_params"
@@ -315,7 +315,7 @@ rtmb_tpl <- function(parameters, data) {
   etadisp <- Xdispc %*% betadisp + Zdisp %*% bdisp + dispoffset
   etadisp <- as.vector(etadisp)
   phi <- exp(etadisp)
-  if (family_name == "combinomial" && combinom_disp_link == 1L) {
+  if (family_name == "combinomial" && combinom_disp_Link == 1L) {
     phi <- etadisp
   }
 

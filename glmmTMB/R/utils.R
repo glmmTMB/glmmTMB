@@ -451,12 +451,12 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     if (!"aggregate" %in% names(ee$data)) {
       ee$data[["aggregate"]] <- numeric(0)
     }
-    if (!"combinom_disp_link" %in% names(ee$data)) {
+    if (!"combinom_disp_Link" %in% names(ee$data)) {
       ## log link on dispersion (the default; only ever nonzero for
       ## combinomial fits with allow_negative_nu = TRUE)
       ## stored as double: TMB requires storage mode 'double' for data
       ## objects carrying the 'check.passed' attribute
-      ee$data[["combinom_disp_link"]] <- 0
+      ee$data[["combinom_disp_Link"]] <- 0
     }
 
     for (comp in c("terms", "termszi", "termsdisp")) {

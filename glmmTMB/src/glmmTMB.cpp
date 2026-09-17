@@ -876,7 +876,10 @@ Type objective_function<Type>::operator() ()
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
-  DATA_INTEGER(combinom_disp_link);  // 0 = log link on disp (default, nu > 0)
+  // defined as 'disp_Link' rather than 'disp_link' to avoid
+  // confusing `make enum-update`
+  // FIXME: implement alternative dispersion links more generally?
+  DATA_INTEGER(combinom_disp_Link);  // 0 = log link on disp (default, nu > 0)
                                        // 1 = identity link  (nu in R)
 
   // Flags
@@ -943,8 +946,8 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etadisp);
   // combinomial with allow_negative_nu=TRUE uses an identity link on the
   // dispersion (nu may be negative), so undo the exp() applied above;
-  // combinom_disp_link is only ever nonzero for the combinomial family
-  if (combinom_disp_link == 1) phi = etadisp;
+  // combinom_disp_Link is only ever nonzero for the combinomial family
+  if (combinom_disp_Link == 1) phi = etadisp;
   vector<Type> log_nzprob(eta.size());
   if (!trunc_Family(family)) {
     log_nzprob.setZero();
@@ -1096,7 +1099,7 @@ Type objective_function<Type>::operator() ()
         // uses log link), so we exponentiate.
         {
           s1 = mu(i) * size(i);     // mean = n * p
-          if (combinom_disp_link == 0) {
+          if (combinom_disp_Link == 0) {
             s2 = exp(etadisp(i));    // log link
           } else {
             s2 = etadisp(i);         // identity link

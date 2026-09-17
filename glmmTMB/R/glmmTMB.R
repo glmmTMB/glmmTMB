@@ -456,7 +456,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     link_name = family$link,
     ## combinomial: 0 = log link on dispersion (default, nu > 0),
     ##               1 = identity link (allows nu in R, U-shape regime)
-    combinom_disp_link = if (family$family == "combinomial" &&
+    ## defined as 'disp_Link' rather than 'disp_link' to avoid
+    ##  confusing `make enum-update`
+    combinom_disp_Link = if (family$family == "combinomial" &&
                               isTRUE(family$allow_negative_nu)) 1L else 0L,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
