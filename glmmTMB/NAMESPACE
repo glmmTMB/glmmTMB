@@ -113,6 +113,7 @@ export(truncated_nbinom2)
 export(truncated_poisson)
 export(tweedie)
 export(up2date)
+export(useRTMB)
 export(vcovHC)
 export(ziGamma)
 if(getRversion() >= "3.6.0") { S3method(car::Anova, glmmTMB) } else { export(Anova.glmmTMB) }
@@ -128,6 +129,10 @@ importFrom(Matrix,
   rankMatrix,
   solve,
   t
+)
+importFrom(RTMB,
+  ADREPORT,
+  REPORT
 )
 importFrom(TMB,
   MakeADFun,

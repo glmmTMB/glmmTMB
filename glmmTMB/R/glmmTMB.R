@@ -452,9 +452,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     termsdisp = dispReStruc,
     family = .valid_family[family$family],
     link = .valid_link[family$link],
+    family_name = family$family,
+    link_name = family$link,
     ## combinomial: 0 = log link on dispersion (default, nu > 0),
     ##               1 = identity link (allows nu in R, U-shape regime)
-    combinom_disp_link = if (family$family == "combinomial" &&
+    ## defined as 'disp_Link' rather than 'disp_link' to avoid
+    ##  confusing `make enum-update`
+    combinom_disp_Link = if (family$family == "combinomial" &&
                               isTRUE(family$allow_negative_nu)) 1L else 0L,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
@@ -1110,6 +1114,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                     blockSize = blksize[i],
                     blockNumTheta = blockNumTheta[[i]],
                     blockCode = covCode[i],
+                    blockName = ss[i],
                     simCode = simCode[i],
                     fullCor = as.integer(full_cor[i])
                     )
@@ -1214,6 +1219,7 @@ binomialType <- function(x) {
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom reformulas subbars mkReTrms
 ##' @importFrom Matrix t
+##' @importFrom RTMB ADREPORT REPORT
 ##' @importFrom TMB MakeADFun sdreport
 ##' @details
 ##' \itemize{
@@ -1583,6 +1589,7 @@ glmmTMB <- function(
 ##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @param full_cor compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually
 ##' @param drop_unused_levels drop unused levels in grouping variables?
+##' @param use_rtmb override the global \code{\link{useRTMB}} setting for this fit only? \code{NULL} leaves the current setting unchanged; \code{TRUE} uses the RTMB backend for this fit and then restores the previous setting; \code{FALSE} similarly uses the TMB backend for this fit and then restores the previous setting.
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1634,7 +1641,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip"),
                            full_cor = TRUE,
-                           drop_unused_levels = TRUE) {
+                           drop_unused_levels = TRUE,
+                           use_rtmb = NULL) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1665,6 +1673,10 @@ glmmTMBControl <- function(optCtrl=NULL,
     
     rank_check <- match.arg(rank_check)
     conv_check <- match.arg(conv_check)
+    if (!is.null(use_rtmb) &&
+        (!is.logical(use_rtmb) || length(use_rtmb) != 1L || is.na(use_rtmb))) {
+        stop("'use_rtmb' in glmmTMBControl() must be NULL, TRUE, or FALSE")
+    }
 
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
@@ -1673,7 +1685,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
               eigval_check, zerodisp_val, start_method, rank_check, conv_check,
-              full_cor, drop_unused_levels)
+              full_cor, drop_unused_levels, use_rtmb)
 }
 
 ##' collapse duplicated observations
@@ -1953,6 +1965,12 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         on.exit({
             do.call(openmp, n_orig)
         })
+    }
+
+    if (!is.null(control$use_rtmb)) {
+        old_use_rtmb <- useRTMB()
+        useRTMB(control$use_rtmb)
+        on.exit(useRTMB(old_use_rtmb), add = TRUE)
     }
 
     if (control $ collect) {
