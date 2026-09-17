@@ -54,7 +54,18 @@
       \item \code{getME()} now works to extract \code{"cnms"} (effect
       names) and \code{"flist"} (factor list) for random effects
       (conditional model components only)
-    }
+      \item the package now includes an experimental (for now)
+      \pkg{RTMB} back-end, disabled by default,
+      which can be turned on for a specific model fit
+      by \code{control = glmmTMBControl(use_rtmb = TRUE)}, or
+      persistently via \code{useRTMB(TRUE)}. Runs using the RTMB
+      back-end should match TMB back-end results up to floating point
+      error, and should be as fast as old-style TMB fits.
+      Going forward we expect to switch development to the RTMB
+      back-end, which allows more flexibility without a performance
+      cost; the TMB back-end will be maintained for at least the
+      next few releases, although new features may be RTMB-only.
+    } % itemize
   } % new features
  \subsection{BUG FIXES}{
     \itemize{
