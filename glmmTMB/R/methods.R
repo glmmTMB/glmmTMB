@@ -747,23 +747,33 @@ family_params <- function(object) {
            )
 }
 
-## ordinal family: thresholds and their delta-method standard errors.
-## The thresholds are a joint function of *all* psi elements,
+## ordinal family: Jacobian of the thresholds with respect to the
+## internal (softmax) parameters psi. The thresholds are a joint
+## function of *all* psi elements,
 ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j), so univariate
 ## transformation of the psi-scale variances does not apply; use the
 ## analytic Jacobian
 ## J[j, m] = s[m] * ((m <= j) - C_j) / (C_j * (1 - C_j)),
-## where s = softmax(c(psi, 0)) and C_j = cumsum(s)[j]
-ordinal_thresholds <- function(object) {
-    fp <- family_params(object)
+## where s = softmax(c(psi, 0)) and C_j = cumsum(s)[j].
+## Returns the (K-1) x (K-1) matrix J = d theta / d psi, used to
+## delta-method the psi block of vcov(., full = TRUE) onto the
+## threshold scale (ordinal_thresholds(), emm_basis.glmmTMB())
+ordinal_threshold_jacobian <- function(object) {
     pars <- get_pars(object)
     tf <- unname(pars[names(pars) == "psi"])
     w <- exp(c(tf, 0) - max(tf, 0))
     s <- w / sum(w)
     Cj <- cumsum(s)[seq_along(tf)]
-    J <- outer(seq_along(tf), seq_along(tf),
-               function(j, m) s[m] * ((m <= j) - Cj[j]) /
-                              (Cj[j] * (1 - Cj[j])))
+    outer(seq_along(tf), seq_along(tf),
+          function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                         (Cj[j] * (1 - Cj[j])))
+}
+
+## ordinal family: thresholds and their delta-method standard errors
+## (see ordinal_threshold_jacobian() for the transformation)
+ordinal_thresholds <- function(object) {
+    fp <- family_params(object)
+    J <- ordinal_threshold_jacobian(object)
     Vfull <- vcov(object, full = TRUE)
     vi <- match(names(fp), rownames(Vfull))
     se <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))

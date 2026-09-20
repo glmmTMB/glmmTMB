@@ -89,6 +89,34 @@ While the examples below are disabled for earlier versions of
 R, they may still work; it may be necessary to refer to private
 versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }
+\section{Cumulative-link (ordinal) fits in \code{emmeans}}{
+
+For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
+the same \code{mode} and \code{rescale} arguments as for \code{MASS::polr} fits
+(\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
+does not apply here; see the \code{clm}/\code{polr} entries in
+\code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
+centered on the average threshold, with no back-transformation, so
+\code{type = "response"} has no effect), \code{"linear.predictor"}
+(\eqn{\theta_j - x'\beta} for each threshold \eqn{j}, with a grid
+variable \code{cut}), \code{"cum.prob"} (cumulative probabilities
+\eqn{P(Y \le j)}), \code{"exc.prob"} (exceedance probabilities
+\eqn{P(Y > j)}), \code{"prob"} (probabilities of each response
+category, indexed by the response variable) and \code{"mean.class"}
+(the expected category index). Standard errors combine the
+fixed-effect covariance with the delta-method covariance of the
+thresholds (as in \code{summary()}), and denominator degrees of freedom
+are always asymptotic (a \code{ddf} request for
+\code{"satterthwaite"} or \code{"kenward-roger"} warns and is
+ignored). In \code{"latent"} mode, \code{rescale = c(a, b)} reports
+\eqn{a + b \mu} in place of the latent mean \eqn{\mu}, as for
+\code{MASS::polr}. A user-supplied \code{vcov.} must be the joint
+covariance matrix of the conditional fixed effects (in the order of
+\code{fixef(.)$cond}, omitting coefficients dropped for rank
+deficiency) followed by the \eqn{K-1} thresholds on the threshold
+scale, as in the \code{thresholds} element of \code{summary(.)}.
+}
+
 \section{Denominator degrees of freedom in \code{emmeans}}{
 
 For models with random effects, the \code{ddf} argument to \code{emmeans()}
