@@ -5,12 +5,9 @@ is_rtmb_fit <- function(x) {
 }
 
 test_that("glmmTMBControl use_rtmb overrides backend for one fit", {
-    skip_if_not_installed("RTMB")
     data("sleepstudy", package = "lme4")
-    old_use_rtmb <- glmmTMB::useRTMB()
-    withr::defer(glmmTMB::useRTMB(old_use_rtmb))
+    local_useRTMB(FALSE)
 
-    glmmTMB::useRTMB(FALSE)
     m_rtmb <- glmmTMB(Reaction ~ Days, data = sleepstudy, se = FALSE,
                       control = glmmTMBControl(use_rtmb = TRUE))
     expect_true(is_rtmb_fit(m_rtmb))
@@ -24,12 +21,9 @@ test_that("glmmTMBControl use_rtmb overrides backend for one fit", {
 })
 
 test_that("glmmTMBControl use_rtmb NULL leaves backend unchanged", {
-    skip_if_not_installed("RTMB")
     data("sleepstudy", package = "lme4")
-    old_use_rtmb <- glmmTMB::useRTMB()
-    withr::defer(glmmTMB::useRTMB(old_use_rtmb))
+    local_useRTMB(FALSE)
 
-    glmmTMB::useRTMB(FALSE)
     m_tmb <- glmmTMB(Reaction ~ Days, data = sleepstudy, se = FALSE,
                      control = glmmTMBControl(use_rtmb = NULL))
     expect_false(is_rtmb_fit(m_tmb))

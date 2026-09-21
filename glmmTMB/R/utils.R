@@ -2,6 +2,15 @@
 
 #' switch to using RTMB
 #' @param flag FALSE (default) to use TMB backend; TRUE to use RTMB backend
+#' @note Fitting with \code{useRTMB(TRUE)} (or \code{control=glmmTMBControl(use_rtmb=TRUE)})
+#' loads the \code{RTMB} package. RTMB (<= 2.0) registers an S4 method for
+#' \code{solve()} with an overly broad signature that also drops any extra
+#' arguments (e.g. \code{tol=}); once RTMB is loaded, calls to \code{solve()}
+#' with more than two arguments can fail elsewhere in the same R session,
+#' even in code unrelated to glmmTMB or RTMB, for the remainder of that
+#' session (see \url{https://github.com/kaskr/RTMB/issues/92}). This is
+#' fixed in RTMB's development version; until a fixed RTMB is released,
+#' restart R (or avoid \code{useRTMB(TRUE)}) if you hit this.
 #' @export
 useRTMB <- local({
   useRTMB <- FALSE
