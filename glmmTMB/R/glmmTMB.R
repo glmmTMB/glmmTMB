@@ -2029,7 +2029,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         ## (see mkTMBStruc/randomArg), so drop it here: 'h' must match
         ## the par vector of the rebuilt objective below, which excludes it
         Qm <- GMRFmarginal(Q, whichNotRandom(parnames,
-                                             include_beta = TMBStruc$REML))
+                                             include_beta = isTRUE(TMBStruc$REML)))
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
         TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
         ## Build object

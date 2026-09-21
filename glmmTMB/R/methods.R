@@ -458,8 +458,9 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
           dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
       }
       ## keep "beta" here (include_beta = FALSE): the joint precision
-      ## carries it under REML and users expect fixed-effect output
-      ## to look as it does under ML
+      ## carries it under REML, and the fixed-effect rows must survive
+      ## the marginalization because they are what vcov() returns
+      ## (the keepTag grep below selects the "beta*" columns)
       Qm <- GMRFmarginal(Q, whichNotRandom(rownames(Q)))
       cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
       if (inherits(cov.all.parms, "try-error")) {
