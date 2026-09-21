@@ -126,7 +126,7 @@ test_that("profile=TRUE works with REML=TRUE", {
                 info = "poisson no-RE" )
 })
 
-test_that("whichNotRandom() drops the random-effect blocks, and beta under REML", {
+test_that("whichNotRandom() drops the random-effect blocks, and beta when include_beta = TRUE", {
     nm <- c("beta", "b", "theta", "bzi", "betazi", "bdisp", "betadisp", "psi")
     expect_identical(whichNotRandom(nm), c(1L, 3L, 5L, 7L, 8L))
     expect_identical(whichNotRandom(nm, include_beta = TRUE),

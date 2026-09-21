@@ -1064,8 +1064,9 @@ our_binom_initialize <- function(family) {
 #' random-effect parameters
 #' @details Redundant with the construction of \code{randomArg} in
 #' \code{mkTMBStruc()}, deliberately: the names are spelled out here so
-#' the two marginalization sites (the profile branch of \code{fitTMB()}
-#' and \code{vcov.glmmTMB()}) share one definition. Keep the list in sync
+#' the two sites that marginalize over the random-effect blocks (the
+#' profile branch of \code{fitTMB()} and \code{vcov.glmmTMB()}) share one
+#' definition. Keep the list in sync
 #' with \code{mkTMBStruc/randomArg}.
 #' @noRd
 whichNotRandom <- function(namevec, include_beta = FALSE) {

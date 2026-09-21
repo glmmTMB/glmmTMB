@@ -2026,8 +2026,8 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
         ## under REML the TMB objective treats "beta" as random too
-        ## (see mkTMBStruc/randomArg), so drop it from the Hessian
-        ## handed to the rebuilt objective below, whose par excludes it
+        ## (see mkTMBStruc/randomArg), so drop it here: 'h' must match
+        ## the par vector of the rebuilt objective below, which excludes it
         Qm <- GMRFmarginal(Q, whichNotRandom(parnames,
                                              include_beta = TMBStruc$REML))
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
