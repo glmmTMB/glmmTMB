@@ -127,6 +127,12 @@
       \item \code{glmmTMBControl(profile = TRUE)} now works with
       \code{REML = TRUE} (previously every such fit failed with a
       dimension mismatch in \code{solve()})
+      \item \code{ddf = "satterthwaite"} (in \code{summary}, or via
+      \code{emmeans}) no longer fails with "non-conformable arguments" for
+      a rank-deficient conditional model (i.e. one with a dropped/aliased
+      fixed-effect column); the aliased coefficient now gets \code{NA} ddf,
+      like its \code{NA} estimate and standard error, rather than erroring
+      (GH #1326, @qdread)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
