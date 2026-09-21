@@ -457,8 +457,10 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       if (is.null(rownames(Q))) { ## may be missing??
           dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
       }
-      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi", "bdisp") )
-      Qm <- GMRFmarginal(Q, whichNotRandom)
+      ## keep "beta" here (include_beta = FALSE): the joint precision
+      ## carries it under REML and users expect fixed-effect output
+      ## to look as it does under ML
+      Qm <- GMRFmarginal(Q, whichNotRandom(rownames(Q)))
       cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
       if (inherits(cov.all.parms, "try-error")) {
           cov.all.parms <- matrix(NA_real_, nrow = nrow(Qm), ncol = ncol(Qm),

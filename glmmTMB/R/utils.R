@@ -1054,6 +1054,26 @@ our_binom_initialize <- function(family) {
     return(b0)
 }
 
+#' indices of the parameters that are not random effects
+#'
+#' @param namevec character vector of parameter names (e.g. the row names
+#' of a joint precision matrix)
+#' @param include_beta treat the conditional fixed effects (\code{beta})
+#' as random too, as the TMB objective does under REML
+#' @return integer vector of the positions in \code{namevec} that are not
+#' random-effect parameters
+#' @details Redundant with the construction of \code{randomArg} in
+#' \code{mkTMBStruc()}, deliberately: the names are spelled out here so
+#' the two marginalization sites (the profile branch of \code{fitTMB()}
+#' and \code{vcov.glmmTMB()}) share one definition. Keep the list in sync
+#' with \code{mkTMBStruc/randomArg}.
+#' @noRd
+whichNotRandom <- function(namevec, include_beta = FALSE) {
+    random_args <- c("b", "bzi", "bdisp")
+    if (include_beta) random_args <- c(random_args, "beta")
+    which(!namevec %in% random_args)
+}
+
 #' retrieve current value of TMB autopar setting
 get_autopar <- function() {
     attr(TMB::openmp(DLL = "glmmTMB"), "autopar")

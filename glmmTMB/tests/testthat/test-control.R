@@ -126,8 +126,16 @@ test_that("profile=TRUE works with REML=TRUE", {
                 info = "poisson no-RE" )
 })
 
-
-
+test_that("whichNotRandom() drops the random-effect blocks, and beta under REML", {
+    nm <- c("beta", "b", "theta", "bzi", "betazi", "bdisp", "betadisp", "psi")
+    expect_identical(whichNotRandom(nm), c(1L, 3L, 5L, 7L, 8L))
+    expect_identical(whichNotRandom(nm, include_beta = TRUE),
+                     c(3L, 5L, 7L, 8L))
+    ## exact matching: "betazi"/"betadisp" are never dropped
+    expect_identical(whichNotRandom(c("betazi", "betadisp"), include_beta = TRUE),
+                     c(1L, 2L))
+    expect_identical(whichNotRandom(character(0)), integer(0))
+})
 
 test_that("parallel regions", {
 

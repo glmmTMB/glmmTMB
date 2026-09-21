@@ -1994,7 +1994,9 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     if (control $ profile) {
         ## profiling needs at least one free fixed-effect parameter;
         ## with none, sdreport() below returns no jointPrecision (GH #1317)
-        ## ([["beta"]], not $beta: '$' would partially match 'betazi')
+        ## only the conditional fixed effects count, because profile = "beta"
+        ## below profiles that vector alone ([["beta"]], not $beta: '$'
+        ## would partially match 'betazi' or 'betadisp')
         n_free_beta <- with(TMBStruc,
                             if (is.null(mapArg[["beta"]])) length(parameters[["beta"]])
                             else length(unique(na.omit(mapArg[["beta"]]))))
@@ -2023,9 +2025,11 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
-        ## under REML, randomArg also contains "beta"
-        whichNotRandom <- which( ! parnames %in% TMBStruc$randomArg )
-        Qm <- GMRFmarginal(Q, whichNotRandom)
+        ## under REML the TMB objective treats "beta" as random too
+        ## (see mkTMBStruc/randomArg), so drop it from the Hessian
+        ## handed to the rebuilt objective below, whose par excludes it
+        Qm <- GMRFmarginal(Q, whichNotRandom(parnames,
+                                             include_beta = TMBStruc$REML))
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
         TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
         ## Build object
