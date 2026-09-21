@@ -130,10 +130,6 @@ importFrom(Matrix,
   solve,
   t
 )
-importFrom(RTMB,
-  ADREPORT,
-  REPORT
-)
 importFrom(TMB,
   MakeADFun,
   sdreport,

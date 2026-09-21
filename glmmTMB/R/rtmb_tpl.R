@@ -561,27 +561,32 @@ rtmb_tpl <- function(parameters, data) {
   sddisp <- disp_re$sd
   fact_load <- cond_re$fact_load
 
-  REPORT(corr)
-  REPORT(sd)
-  REPORT(corrzi)
-  REPORT(sdzi)
-  REPORT(corrdisp)
-  REPORT(sddisp)
-  REPORT(fact_load)
-  REPORT(b)
-  REPORT(bzi)
-  REPORT(bdisp)
-  REPORT(mu_predict)
-  REPORT(eta_predict)
+  ## Fully qualify RTMB::REPORT/RTMB::ADREPORT (rather than importing them)
+  ## to avoid eagerly loading RTMB's namespace on every library(glmmTMB);
+  ## RTMB (<= 2.0) registers an overly broad S4 solve() method that drops
+  ## ... args, breaking solve() calls elsewhere in the session once loaded:
+  ## https://github.com/kaskr/RTMB/issues/92
+  RTMB::REPORT(corr)
+  RTMB::REPORT(sd)
+  RTMB::REPORT(corrzi)
+  RTMB::REPORT(sdzi)
+  RTMB::REPORT(corrdisp)
+  RTMB::REPORT(sddisp)
+  RTMB::REPORT(fact_load)
+  RTMB::REPORT(b)
+  RTMB::REPORT(bzi)
+  RTMB::REPORT(bdisp)
+  RTMB::REPORT(mu_predict)
+  RTMB::REPORT(eta_predict)
 
   if (doPredict == 1) {
-    ADREPORT(mu_predict)
+    RTMB::ADREPORT(mu_predict)
   } else if (doPredict == 2) {
-    ADREPORT(eta_predict)
+    RTMB::ADREPORT(eta_predict)
   } else if (doPredict == 3) {
-    ADREPORT(b)
-    ADREPORT(bzi)
-    ADREPORT(bdisp)
+    RTMB::ADREPORT(b)
+    RTMB::ADREPORT(bzi)
+    RTMB::ADREPORT(bdisp)
   }
 
   nll
