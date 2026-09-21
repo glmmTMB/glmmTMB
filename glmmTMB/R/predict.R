@@ -166,6 +166,7 @@ predict.glmmTMB <- function(object,
     if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
     se.fit <- TRUE
   }
+  rtmb_fit <- !is.null(environment(object$obj$fn)$rtmb_data_env)
   
   if(is.null(aggregate)) {
     aggregate <- factor()
@@ -262,6 +263,9 @@ predict.glmmTMB <- function(object,
     }
     dd$ziPredictCode <- ziPredCode
     assign("data",dd, ee) ## stick this in the appropriate environment
+    if (!is.null(ee$rtmb_data_env)) {
+      ee$rtmb_data_env$d <- dd
+    }
     newObj <- object$obj
     
     ## restore original values to environment of the object
@@ -272,6 +276,10 @@ predict.glmmTMB <- function(object,
         for (i in names(orig_vals)) {
           dd[[i]] <- orig_vals[[i]]
           assign("data",dd, environment(object$obj$fn))
+          rtmb_data_env <- environment(object$obj$fn)$rtmb_data_env
+          if (!is.null(rtmb_data_env)) {
+            rtmb_data_env$d <- dd
+          }
         }
       },
       add = TRUE)
@@ -536,13 +544,19 @@ predict.glmmTMB <- function(object,
     pred <- rr[[return_par]]
   } else {
     H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
+    sdreport_fun <- if (!is.null(newObj$env$rtmb_data_env)) {
+      RTMB::sdreport
+    } else {
+      sdreport
+    }
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
     if (cov.fit) {
-      sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
+      sdr <- sdreport_fun(newObj,oldPar,hessian.fixed=H,
+                          getReportCovariance=TRUE)
       covfit <- sdr$cov
-    } else     sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
+    } else     sdr <- sdreport_fun(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
 
     sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
     ## split summary matrix by parameter name
