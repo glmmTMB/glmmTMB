@@ -383,16 +383,35 @@ dof_KR <- function(model) {
 #' @param L a contrast matrix: by default, equal to an identity matrix (i.e., ddfs are returned
 #' for each fixed-effect parameter)
 dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
-    model_vcov <- vcov(model, full = TRUE)
+    beta <- fixef(model)$cond
+    keep <- !is.na(beta)
 
     pre <- .satt_precompute(model)
     cov_varpar_kappa <- pre$cov_varpar_kappa
     jac_kappa <- pre$jac_kappa
 
-    res <- numeric(nrow(L))
+    ## jac_kappa/cov_varpar_kappa and vcov(model, include_nonest = FALSE)
+    ## live in the *estimable* coefficient subspace: TMB drops
+    ## aliased/rank-deficient columns entirely rather than estimating them.
+    ## L may already be restricted to that subspace (as emmeans supplies
+    ## it, via estimability::nonest.basis()) or may still span the full
+    ## nominal coefficient vector (the identity default used by summary());
+    ## in the latter case, reduce it to match, and mark any row that puts
+    ## nonzero weight on a dropped column as inestimable (NA df), the same
+    ## way its estimate/SE are already NA
+    non_estimable <- rep(FALSE, nrow(L))
+    if (ncol(L) == length(beta) && !all(keep)) {
+        non_estimable <- rowSums(L[, !keep, drop = FALSE] != 0) > 0
+        L <- L[, keep, drop = FALSE]
+    }
+
+    Vcond <- vcov(model, include_nonest = FALSE)$cond
+
+    res <- rep(NA_real_, nrow(L))
     for (i in seq_along(res)) {
+        if (non_estimable[i]) next
         grad_kappa <- .get_gradient(jac_kappa, L[i,])
-        var_Lbeta <- drop(t(L[i,]) %*% vcov(model)$cond %*% L[i,])
+        var_Lbeta <- drop(t(L[i,]) %*% Vcond %*% L[i,])
         v_numerator <- 2 * var_Lbeta ^ 2
         v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
         res[i] <- v_numerator/v_denominator_kappa

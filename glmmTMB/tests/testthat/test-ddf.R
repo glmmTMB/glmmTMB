@@ -338,4 +338,34 @@ if (requireNamespace("emmeans")) {
             }
         }
     })
+
+    test_that("satterthwaite ddf works for a rank-deficient conditional model (#1326)", {
+        rd_data <- data.frame(
+            genotype = factor(rep(c("a", "c", "b", "c"), c(6L, 6L, 12L, 6L))),
+            plate = factor(rep(c("1", "2", "3", "4", "5", "6"), 5)),
+            n_seeds = 5,
+            n_disease = rep(
+                c(0, 1, 3, 0, 1, 0, 1, 0, 2, 0, 1, 0, 1, 0),
+                c(1L, 1L, 1L, 6L, 1L, 2L, 2L, 2L, 1L, 7L, 1L, 2L, 1L, 2L)
+            ),
+            year = factor(rep(c("1", "2"), c(18L, 12L)))
+        )
+        fit_rd <- expect_message(
+            glmmTMB(cbind(n_disease, n_seeds - n_disease) ~ genotype * year +
+                        (1 | plate:genotype:year),
+                    family = binomial, data = rd_data),
+            "dropping columns from rank-deficient conditional model"
+        )
+
+        ## the aliased coefficient (genotypec:year2) gets NA ddf, like its
+        ## NA estimate/SE, rather than erroring
+        cc <- suppressWarnings(summary(fit_rd, ddf = "satterthwaite"))$coefficients$cond
+        expect_true(is.na(cc["genotypec:year2", "ddf"]))
+        expect_true(all(is.finite(cc[rownames(cc) != "genotypec:year2", "ddf"])))
+
+        emm <- suppressWarnings(emmeans::emmeans(
+            fit_rd, ~ genotype | year, weights = "flat",
+            nesting = "genotype %in% year", ddf = "satterthwaite"))
+        expect_true(all(is.finite(summary(emm)$df)))
+    })
 }
