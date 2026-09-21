@@ -40,7 +40,9 @@ fixef.glmmTMB <- function(object, ...) {
 
   get_vec <- function(vals, X) {
     dropped <- attr(X, "col.dropped")
-    if (is.null(dropped)) return(setNames(vals, colnames(X)))
+    if (is.null(dropped) || inherits(X, "sparseMatrix")) {
+      return(setNames(vals, colnames(X)))
+    }
     n_tot <- ncol(X) + length(dropped)
     cc <- numeric(n_tot)
     cc[-dropped] <- vals
@@ -80,6 +82,19 @@ trivialDisp <- function(object) {
 
 zeroDisp <- function(object) {
     formComp(object, "dispformula", ~0)
+}
+
+## TRUE if a dispersion parameter is actually estimated: 'betadisp' survives
+## into the fitted (post-'map') parameter vector. This is about the parameters,
+## whereas trivialDisp()/zeroDisp() are about the structure of dispformula;
+## 'map' pinning to a shared level still estimates one parameter, so it's TRUE
+estDisp <- function(object) {
+    pnames <- names(object$obj$env$par)
+    ## unusable or pre-'betadisp' parameter vector (see up2date()): assume it
+    ## was estimated, the historical assumption, rather than guessing otherwise
+    if (length(pnames) == 0 ||
+        !"betadisp" %in% names(object$obj$env$parameters)) return(TRUE)
+    "betadisp" %in% pnames
 }
 
 noZI <- function(object) {
@@ -444,8 +459,11 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       if (is.null(rownames(Q))) { ## may be missing??
           dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
       }
-      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi", "bdisp") )
-      Qm <- GMRFmarginal(Q, whichNotRandom)
+      ## keep "beta" here (include_beta = FALSE): the joint precision
+      ## carries it under REML, and the fixed-effect rows must survive
+      ## the marginalization because they are what vcov() returns
+      ## (the keepTag grep below selects the "beta*" columns)
+      Qm <- GMRFmarginal(Q, whichNotRandom(rownames(Q)))
       cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
       if (inherits(cov.all.parms, "try-error")) {
           cov.all.parms <- matrix(NA_real_, nrow = nrow(Qm), ncol = ncol(Qm),
@@ -747,6 +765,39 @@ family_params <- function(object) {
            )
 }
 
+## ordinal family: Jacobian of the thresholds with respect to the
+## internal (softmax) parameters psi. The thresholds are a joint
+## function of *all* psi elements,
+## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j), so univariate
+## transformation of the psi-scale variances does not apply; use the
+## analytic Jacobian
+## J[j, m] = s[m] * ((m <= j) - C_j) / (C_j * (1 - C_j)),
+## where s = softmax(c(psi, 0)) and C_j = cumsum(s)[j].
+## Returns the (K-1) x (K-1) matrix J = d theta / d psi, used to
+## delta-method the psi block of vcov(., full = TRUE) onto the
+## threshold scale (ordinal_thresholds(), emm_basis.glmmTMB())
+ordinal_threshold_jacobian <- function(object) {
+    pars <- get_pars(object)
+    tf <- unname(pars[names(pars) == "psi"])
+    w <- exp(c(tf, 0) - max(tf, 0))
+    s <- w / sum(w)
+    Cj <- cumsum(s)[seq_along(tf)]
+    outer(seq_along(tf), seq_along(tf),
+          function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                         (Cj[j] * (1 - Cj[j])))
+}
+
+## ordinal family: thresholds and their delta-method standard errors
+## (see ordinal_threshold_jacobian() for the transformation)
+ordinal_thresholds <- function(object) {
+    fp <- family_params(object)
+    J <- ordinal_threshold_jacobian(object)
+    Vfull <- vcov(object, full = TRUE)
+    vi <- match(names(fp), rownames(Vfull))
+    se <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+    cbind("Estimate" = fp, "Std. Error" = se)
+}
+
 ## obsolete
 .tweedie_power <- function(object) {
     warning(".tweedie_power is deprecated in favor of family_params()")
@@ -758,7 +809,11 @@ family_params <- function(object) {
 #' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
-    if (length(val) > 0) {
+    if (object$modelInfo$family$family == "ordinal") {
+        cat("\nThreshold coefficients:",
+            paste(names(val), formatC(val, digits = 3), sep = " = ",
+                  collapse = ", "), "\n")
+    } else if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
                     names(val)[1],
                     paste(formatC(val, digits=3),
@@ -1237,22 +1292,8 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             fp <- family_params(object)
             if (length(fp)>0) {
                 if (ff == "ordinal") {
-                    ## thresholds are a joint function of *all* psi
-                    ## elements (softmax), so the univariate-monotone CI
-                    ## machinery does not apply; use the delta method with
-                    ## the analytic Jacobian of
-                    ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
-                    pars <- get_pars(object)
-                    tf <- unname(pars[names(pars) == "psi"])
-                    w <- exp(c(tf, 0) - max(tf, 0))
-                    s <- w / sum(w)
-                    Cj <- cumsum(s)[seq_along(tf)]
-                    J <- outer(seq_along(tf), seq_along(tf),
-                               function(j, m) s[m] * ((m <= j) - Cj[j]) /
-                                              (Cj[j] * (1 - Cj[j])))
-                    Vfull <- vcov(object, full = TRUE)
-                    vi <- match(names(fp), rownames(Vfull))
-                    se_th <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+                    ## delta-method threshold SEs (see ordinal_thresholds)
+                    se_th <- ordinal_thresholds(object)[, "Std. Error"]
                     qn <- qnorm((1 + level) / 2)
                     ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
                     if (estimate) ci.shape <- cbind(ci.shape, fp)
@@ -2096,7 +2137,8 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     
     # Save original weights, negative log-likelihood
     # and gradient.
-    original_weights <- x$obj$env$data$weights
+    original_data <- x$obj$env$data
+    original_weights <- original_data$weights
     original_neg_log_lik <- x$obj$fn(x$fit$par)
     env_vars <- c("par", "last.par", "last.par.best", "last.par.ok",
                   "parameters")
@@ -2112,7 +2154,8 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     # at exit of this function.
     on.exit({
         # Reset the weights to the original values.
-        x$obj$env$data$weights <- original_weights
+        original_data$weights <- original_weights
+        .setObjData(x$obj, original_data)
         for (n in env_vars) {
             assign(n, orig_env_vars[[n]],
                    envir = x$obj$env)
@@ -2130,7 +2173,9 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
         new_weights <- ifelse(belongs_cluster, original_weights, zero_weights)    
 
         # Modify the weights in the TMB object.
-        x$obj$env$data$weights <- new_weights
+        new_data <- original_data
+        new_data$weights <- new_weights
+        .setObjData(x$obj, new_data)
 
         # Retape the TMB object to apply the changes.
         x$obj$retape(set.defaults = FALSE)

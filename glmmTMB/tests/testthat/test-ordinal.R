@@ -79,6 +79,38 @@ test_that("ordinal mixed model matches ordinal::clmm", {
     expect_equal(unname(attr(VarCorr(fit_tmb)$cond$judge, "stddev")),
                  unname(sqrt(ordinal::VarCorr(fit_clmm)$judge[1, 1])),
                  tolerance = 1e-3)
+    ## threshold SEs on the theta scale match clmm (issue #1323)
+    expect_equal(unname(glmmTMB:::ordinal_thresholds(fit_tmb)[, "Std. Error"]),
+                 unname(sqrt(diag(vcov(fit_clmm)))[seq_along(fit_clmm$alpha)]),
+                 tolerance = 1e-3)
+})
+
+test_that("ordinal threshold standard errors (delta method)", {
+    fit_polr <- MASS::polr(Sat ~ Infl + Type + Cont, weights = Freq,
+                           data = housing, Hess = TRUE)
+    thr <- glmmTMB:::ordinal_thresholds(fit_ord)
+    expect_identical(rownames(thr), c("Low|Medium", "Medium|High"))
+    expect_equal(thr[, "Estimate"], family_params(fit_ord))
+    expect_equal(unname(thr[, "Std. Error"]),
+                 unname(summary(fit_polr)$coefficients[rownames(thr),
+                                                       "Std. Error"]),
+                 tolerance = 1e-4)
+    ## consistent with the Wald CIs from confint()
+    ci <- confint(fit_ord, component = "all")
+    expect_equal(unname(thr[, "Std. Error"]),
+                 unname((ci[rownames(thr), 2] - ci[rownames(thr), 1]) /
+                        (2 * qnorm(0.975))),
+                 tolerance = 1e-8)
+    ## exposed in summary() as a separate 'thresholds' table
+    ss <- summary(fit_ord)
+    expect_identical(colnames(ss$thresholds),
+                     c("Estimate", "Std. Error", "z value"))
+    expect_equal(ss$thresholds[, c("Estimate", "Std. Error")], thr)
+    expect_false("thresholds" %in% names(ss$coefficients))
+    expect_output(print(ss), "Threshold coefficients:")
+    expect_output(print(fit_ord), "Low\\|Medium = .*Medium\\|High = ")
+    fit_pois <- glmmTMB(count ~ mined, family = poisson, data = Salamanders)
+    expect_null(summary(fit_pois)$thresholds)
 })
 
 test_that("ordinal simulate/residuals/refit", {
@@ -227,4 +259,210 @@ test_that("ordinal REML null model stays usable", {
     dd <- data.frame(y = rnorm(50))
     expect_s3_class(vcov(glmmTMB(y ~ 0, data = dd, REML = TRUE)),
                     "vcov.glmmTMB")
+})
+
+## emmeans modes for ordinal fits (cumulative-link modes as for
+## ordinal::clm / MASS::polr). Oracle records for the numeric assertions
+## in the four blocks below (ID: type; asserting block/expectation; source):
+##   ORD-EMM-1: live; "ordinal emmeans modes match ordinal::clm",
+##     estimate + SE columns per (formula, mode); emmeans on ordinal::clm
+##     (emmeans:::emm_basis.clm, ordinal package), logit and probit links
+##   ORD-EMM-2: live; "ordinal emmeans on a mixed model", (a) prob column;
+##     emmeans on ordinal::clmm (emmeans:::emm_basis.clmm)
+##   ORD-EMM-3: invariant; same block (b) and "ordinal emmeans with a
+##     mapped coefficient"; predict(., type = "probs") (an independent
+##     route through the TMB template) must agree with the emmeans grid
+##   ORD-EMM-4: closed-form; same block (c) P(Y <= j) = plogis(theta_j - eta),
+##     written out in the test; Agresti (2010) Analysis of Ordinal
+##     Categorical Data, ch. 3. (d) E[class] = sum_j j * P(Y = j) is the
+##     definition of mean.class in vignette("models", package = "emmeans")
+test_that("ordinal emmeans modes match ordinal::clm", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m_tmb <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine)
+    m_clm <- ordinal::clm(rating ~ temp + contact, data = wine)
+    m_tmb_p <- glmmTMB(rating ~ temp + contact,
+                       family = ordinal(link = "probit"), data = wine)
+    m_clm_p <- ordinal::clm(rating ~ temp + contact, data = wine,
+                            link = "probit")
+    cmp_clm <- function(fit_tmb, fit_clm, formula, mode) {
+        s <- summary(emmeans::emmeans(fit_tmb, formula, mode = mode))
+        s_clm <- summary(emmeans::emmeans(fit_clm, formula, mode = mode))
+        en <- attr(s, "estName")
+        expect_identical(en, attr(s_clm, "estName"), info = mode)
+        expect_equal(s[[en]], s_clm[[en]], tolerance = 1e-4, info = mode)
+        expect_equal(s[["SE"]], s_clm[["SE"]], tolerance = 1e-4, info = mode)
+    }
+    cases <- list(list(~ temp, "latent"),
+                  list(~ cut | temp, "linear.predictor"),
+                  list(~ cut | temp, "cum.prob"),
+                  list(~ cut | temp, "exc.prob"),
+                  list(~ rating | temp, "prob"),
+                  list(~ temp, "mean.class"))
+    for (cs in cases) cmp_clm(m_tmb, m_clm, cs[[1]], cs[[2]])
+    cmp_clm(m_tmb_p, m_clm_p, ~ cut | temp, "cum.prob")
+    ## default mode is latent, on which type = "response" is a no-op
+    s_def <- summary(emmeans::emmeans(m_tmb, ~ temp))
+    s_lat <- summary(emmeans::emmeans(m_tmb, ~ temp, mode = "latent"))
+    expect_equal(s_def$emmean, s_lat$emmean)
+    expect_equal(s_def$SE, s_lat$SE)
+    s_resp <- summary(emmeans::emmeans(m_tmb, ~ temp, type = "response"))
+    expect_equal(s_resp$emmean, s_def$emmean)
+})
+
+test_that("ordinal emmeans on a mixed model", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m_mix <- glmmTMB(rating ~ temp + contact + (1 | judge),
+                     family = ordinal, data = wine)
+    m_clmm <- ordinal::clmm(rating ~ temp + contact + (1 | judge),
+                            data = wine)
+    ## (a) class probabilities agree with emmeans on ordinal::clmm
+    s_prob <- summary(emmeans::emmeans(m_mix, ~ rating | temp + contact,
+                                       mode = "prob"))
+    s_clmm <- summary(emmeans::emmeans(m_clmm, ~ rating | temp + contact,
+                                       mode = "prob"))
+    expect_equal(s_prob$prob, s_clmm$prob, tolerance = 1e-3)
+    s_cum <- summary(emmeans::emmeans(m_mix, ~ cut | temp + contact,
+                                      mode = "cum.prob"))
+    en_cum <- attr(s_cum, "estName")
+    s_mc <- summary(emmeans::emmeans(m_mix, ~ temp + contact,
+                                     mode = "mean.class"))
+    theta <- family_params(m_mix)
+    cells <- expand.grid(temp = levels(wine$temp),
+                         contact = levels(wine$contact))
+    for (i in seq_len(nrow(cells))) {
+        cell <- cells[i, ]
+        sel <- function(s) s$temp == cell$temp & s$contact == cell$contact
+        ## (b) population-level predict() gives the same probabilities
+        p <- drop(predict(m_mix, newdata = cell, type = "probs",
+                          re.form = NA))
+        expect_equal(s_prob$prob[sel(s_prob)], unname(p), tolerance = 1e-8)
+        ## (c) cumulative probabilities: P(Y <= j) = plogis(theta_j - eta),
+        ## eta = x'beta with the (always zero) intercept column removed
+        Xc <- model.matrix(~ temp + contact, cell)
+        Xc[, "(Intercept)"] <- 0
+        eta <- drop(Xc %*% fixef(m_mix)$cond)
+        expect_equal(s_cum[[en_cum]][sel(s_cum)],
+                     unname(plogis(theta - eta)), tolerance = 1e-8)
+        ## (d) mean class: E[Y] = sum_j j * P(Y = j)
+        expect_equal(s_mc$mean.class[sel(s_mc)],
+                     sum(seq_len(5) * p), tolerance = 1e-8)
+    }
+})
+
+test_that("ordinal emmeans with a mapped coefficient", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m_map <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine,
+                     map = list(beta = factor(c(NA, 1, NA))),
+                     start = list(beta = c(0, 0, 0)))
+    expect_no_error(
+        expect_no_warning(
+            em <- emmeans::emmeans(m_map, ~ rating | temp + contact,
+                                   mode = "prob")))
+    s <- summary(em)
+    cells <- expand.grid(temp = levels(wine$temp),
+                         contact = levels(wine$contact))
+    for (i in seq_len(nrow(cells))) {
+        cell <- cells[i, ]
+        p <- drop(predict(m_map, newdata = cell, type = "probs"))
+        expect_equal(s$prob[s$temp == cell$temp & s$contact == cell$contact],
+                     unname(p), tolerance = 1e-8)
+    }
+})
+
+test_that("ordinal emmeans handles a rank-deficient fit", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    wine$dup <- wine$temp
+    m_rd <- suppressWarnings(glmmTMB(rating ~ temp + contact + dup,
+                                     family = ordinal, data = wine))
+    expect_true(is.na(fixef(m_rd)$cond[["dupwarm"]]))
+    em <- expect_no_error(
+        emmeans::emmeans(m_rd, ~ rating | temp + contact, mode = "prob"))
+    s <- summary(em)
+    expect_false(anyNA(s$SE))
+    cells <- expand.grid(temp = levels(wine$temp),
+                         contact = levels(wine$contact))
+    for (i in seq_len(nrow(cells))) {
+        cell <- cells[i, ]
+        cell$dup <- cell$temp
+        p <- drop(predict(m_rd, newdata = cell, type = "probs"))
+        expect_equal(s$prob[s$temp == cell$temp & s$contact == cell$contact],
+                     unname(p), tolerance = 1e-8)
+    }
+})
+
+test_that("ordinal emmeans carries a free intercept from a user map", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    ## a user map that leaves the intercept free (the default map fixes
+    ## it to zero); the basis must include its estimate
+    m_free <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine,
+                      map = list(beta = factor(c(1, 2, 3))))
+    expect_false(fixef(m_free)$cond[["(Intercept)"]] == 0)
+    s <- summary(emmeans::emmeans(m_free, ~ rating | temp + contact,
+                                  mode = "prob"))
+    cells <- expand.grid(temp = levels(wine$temp),
+                         contact = levels(wine$contact))
+    for (i in seq_len(nrow(cells))) {
+        cell <- cells[i, ]
+        p <- drop(predict(m_free, newdata = cell, type = "probs"))
+        expect_equal(s$prob[s$temp == cell$temp & s$contact == cell$contact],
+                     unname(p), tolerance = 1e-8)
+    }
+})
+
+test_that("ordinal emmeans latent mode honours rescale as MASS::polr", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    skip_if_not_installed("MASS")
+    data("wine", package = "ordinal")
+    m_tmb <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine)
+    m_polr <- MASS::polr(rating ~ temp + contact, data = wine, Hess = TRUE)
+    s <- summary(emmeans::emmeans(m_tmb, ~ temp, mode = "latent",
+                                  rescale = c(1, 10)))
+    s_polr <- summary(emmeans::emmeans(m_polr, ~ temp, mode = "latent",
+                                       rescale = c(1, 10)))
+    expect_equal(s$emmean, s_polr$emmean, tolerance = 1e-4)
+    expect_equal(s$SE, s_polr$SE, tolerance = 1e-4)
+    s1 <- summary(emmeans::emmeans(m_tmb, ~ temp, mode = "latent"))
+    expect_equal(s$emmean, 1 + 10 * s1$emmean, tolerance = 1e-8)
+    expect_equal(s$SE, 10 * s1$SE, tolerance = 1e-8)
+})
+
+test_that("emmeans mode argument is rejected off the ordinal branch", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m_num <- glmmTMB(as.numeric(rating) ~ temp + contact, data = wine)
+    expect_error(emmeans::emmeans(m_num, ~ temp, mode = "prob"),
+                 "only available for ordinal fits")
+    m_ord <- glmmTMB(rating ~ temp + contact, family = ordinal, data = wine)
+    expect_error(emmeans::emmeans(m_ord, ~ temp, mode = "nonsense"),
+                 "'arg' should be one of")
+})
+
+test_that("ordinal emmeans forces asymptotic ddf", {
+    skip_if_not_installed("emmeans")
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m_mix <- glmmTMB(rating ~ temp + contact + (1 | judge),
+                     family = ordinal, data = wine)
+    msgs <- character(0)
+    em <- withCallingHandlers(
+        emmeans::emmeans(m_mix, ~ temp, ddf = "satterthwaite"),
+        warning = function(w) {
+            msgs <<- c(msgs, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        })
+    expect_length(msgs, 1L)
+    expect_match(msgs, "using ddf 'asymptotic'")
+    expect_true(all(summary(em)$df == Inf))
 })

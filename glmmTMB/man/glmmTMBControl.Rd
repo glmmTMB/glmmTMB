@@ -18,7 +18,8 @@ glmmTMBControl(
   rank_check = c("adjust", "warning", "stop", "skip"),
   conv_check = c("warning", "skip"),
   full_cor = TRUE,
-  drop_unused_levels = TRUE
+  drop_unused_levels = TRUE,
+  use_rtmb = NULL
 )
 }
 \arguments{
@@ -29,7 +30,13 @@ glmmTMBControl(
 \item{optimizer}{Function to use in model fitting. See \code{Details} for required properties of this function.}
 
 \item{profile}{(logical) Experimental option to improve speed and
-robustness when a model has many fixed effects}
+robustness when a model has many fixed effects. The
+model must have at least one free fixed-effect
+parameter (e.g., not \code{~ 0}, and not with the
+entire \code{beta} vector fixed via \code{map}, and
+not an intercept-only \code{ordinal} model, whose
+intercept is fixed internally); otherwise
+\code{glmmTMB} stops with an error}
 
 \item{collect}{(logical) Experimental option to improve speed by
 recognizing duplicated observations.}
@@ -60,6 +67,8 @@ To trace OpenMP settings, use \code{options(glmmTMB_openmp_debug = TRUE)}.}
 \item{full_cor}{compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually}
 
 \item{drop_unused_levels}{drop unused levels in grouping variables?}
+
+\item{use_rtmb}{override the global \code{\link{useRTMB}} setting for this fit only? \code{NULL} leaves the current setting unchanged; \code{TRUE} uses the RTMB backend for this fit and then restores the previous setting; \code{FALSE} similarly uses the TMB backend for this fit and then restores the previous setting.}
 }
 \description{
 Control parameters for glmmTMB optimization

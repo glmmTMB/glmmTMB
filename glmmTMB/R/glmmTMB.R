@@ -452,9 +452,13 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     termsdisp = dispReStruc,
     family = .valid_family[family$family],
     link = .valid_link[family$link],
+    family_name = family$family,
+    link_name = family$link,
     ## combinomial: 0 = log link on dispersion (default, nu > 0),
     ##               1 = identity link (allows nu in R, U-shape regime)
-    combinom_disp_link = if (family$family == "combinomial" &&
+    ## defined as 'disp_Link' rather than 'disp_link' to avoid
+    ##  confusing `make enum-update`
+    combinom_disp_Link = if (family$family == "combinomial" &&
                               isTRUE(family$allow_negative_nu)) 1L else 0L,
     ziPredictCode = .valid_zipredictcode[ziPredictCode],
     doPredict = doPredict,
@@ -1110,6 +1114,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                     blockSize = blksize[i],
                     blockNumTheta = blockNumTheta[[i]],
                     blockCode = covCode[i],
+                    blockName = ss[i],
                     simCode = simCode[i],
                     fullCor = as.integer(full_cor[i])
                     )
@@ -1214,6 +1219,7 @@ binomialType <- function(x) {
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom reformulas subbars mkReTrms
 ##' @importFrom Matrix t
+##' @importFrom RTMB ADREPORT REPORT
 ##' @importFrom TMB MakeADFun sdreport
 ##' @details
 ##' \itemize{
@@ -1567,7 +1573,13 @@ glmmTMB <- function(
 ##' @param optCtrl   Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}
 ##' @param optArgs   additional arguments to be passed to optimizer function (e.g.: \code{list(method="BFGS")} when \code{optimizer=optim})
 ##' @param profile   (logical) Experimental option to improve speed and
-##'                  robustness when a model has many fixed effects
+##'                  robustness when a model has many fixed effects. The
+##'                  model must have at least one free fixed-effect
+##'                  parameter (e.g., not \code{~ 0}, and not with the
+##'                  entire \code{beta} vector fixed via \code{map}, and
+##'                  not an intercept-only \code{ordinal} model, whose
+##'                  intercept is fixed internally); otherwise
+##'                  \code{glmmTMB} stops with an error
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
 ##' @param parallel  (named list with an integer value \code{n} and a logical value \code{autopar},
@@ -1590,6 +1602,7 @@ glmmTMB <- function(
 ##' @param conv_check Do basic checks of convergence (check for non-positive definite Hessian and non-zero convergence code from optimizer). Default is 'warning'; 'skip' ignores these tests (not recommended for general use!)
 ##' @param full_cor compute full correlation matrices? can be either a length-1 logical vector (TRUE/FALSE) to include full correlation matrices for all or none of the random-effect terms in the model, or a logical vector with length equal to the number of correlation matrices, to include/exclude correlation matrices individually
 ##' @param drop_unused_levels drop unused levels in grouping variables?
+##' @param use_rtmb override the global \code{\link{useRTMB}} setting for this fit only? \code{NULL} leaves the current setting unchanged; \code{TRUE} uses the RTMB backend for this fit and then restores the previous setting; \code{FALSE} similarly uses the TMB backend for this fit and then restores the previous setting.
 ##' @details
 ##' By default, \code{\link{glmmTMB}} uses the nonlinear optimizer
 ##' \code{\link{nlminb}} for parameter estimation. Users may sometimes
@@ -1641,7 +1654,8 @@ glmmTMBControl <- function(optCtrl=NULL,
                            rank_check = c("adjust", "warning", "stop", "skip"),
                            conv_check = c("warning", "skip"),
                            full_cor = TRUE,
-                           drop_unused_levels = TRUE) {
+                           drop_unused_levels = TRUE,
+                           use_rtmb = NULL) {
 
     if (is.null(optCtrl) && identical(optimizer,nlminb)) {
         optCtrl <- list(iter.max=300, eval.max=400)
@@ -1672,6 +1686,10 @@ glmmTMBControl <- function(optCtrl=NULL,
     
     rank_check <- match.arg(rank_check)
     conv_check <- match.arg(conv_check)
+    if (!is.null(use_rtmb) &&
+        (!is.logical(use_rtmb) || length(use_rtmb) != 1L || is.na(use_rtmb))) {
+        stop("'use_rtmb' in glmmTMBControl() must be NULL, TRUE, or FALSE")
+    }
 
     ## FIXME: Change defaults - add heuristic to decide if 'profile' is beneficial.
     ##        Something like
@@ -1680,7 +1698,7 @@ glmmTMBControl <- function(optCtrl=NULL,
     ## (TMB tweedie derivatives currently slow)
     namedList(optCtrl, profile, collect, parallel, optimizer, optArgs,
               eigval_check, zerodisp_val, start_method, rank_check, conv_check,
-              full_cor, drop_unused_levels)
+              full_cor, drop_unused_levels, use_rtmb)
 }
 
 ##' collapse duplicated observations
@@ -1962,6 +1980,12 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         })
     }
 
+    if (!is.null(control$use_rtmb)) {
+        old_use_rtmb <- useRTMB()
+        useRTMB(control$use_rtmb)
+        on.exit(useRTMB(old_use_rtmb), add = TRUE)
+    }
+
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
         ## original data (with duplicates) after fitting.
@@ -1993,11 +2017,31 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     }
 
     if (control $ profile) {
+        ## profiling needs at least one free fixed-effect parameter;
+        ## with none, sdreport() below returns no jointPrecision (GH #1317)
+        ## only the conditional fixed effects count, because profile = "beta"
+        ## below profiles that vector alone ([["beta"]], not $beta: '$'
+        ## would partially match 'betazi' or 'betadisp')
+        n_free_beta <- with(TMBStruc,
+                            if (is.null(mapArg[["beta"]])) length(parameters[["beta"]])
+                            else length(unique(na.omit(mapArg[["beta"]]))))
+        if (n_free_beta == 0) {
+            stop("profile = TRUE requires at least one free fixed-effect ",
+                 "parameter, but this model has no free fixed-effect ",
+                 "parameters (the formula has no fixed effects, e.g. ",
+                 "'~ 0'; every element of 'beta' is fixed via 'map'; or ",
+                 "the family fixes the only fixed effect internally, as ",
+                 "'ordinal' does for an intercept-only model); ",
+                 "use glmmTMBControl(profile = FALSE)")
+        }
+        ## MakeADFun() adds the profiled parameters to 'random' itself,
+        ## so drop "beta" (present under REML) to avoid its
+        ## "Duplicates in 'random'" message
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
                               parameters,
                               map = mapArg,
-                              random = randomArg,
+                              random = setdiff(randomArg, "beta"),
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
@@ -2006,8 +2050,11 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
-        whichNotRandom <- which( ! parnames %in% c("b", "bzi", "bdisp") )
-        Qm <- GMRFmarginal(Q, whichNotRandom)
+        ## under REML the TMB objective treats "beta" as random too
+        ## (see mkTMBStruc/randomArg), so drop it here: 'h' must match
+        ## the par vector of the rebuilt objective below, which excludes it
+        Qm <- GMRFmarginal(Q, whichNotRandom(parnames,
+                                             include_beta = isTRUE(TMBStruc$REML)))
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
         TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
         ## Build object
@@ -2024,7 +2071,9 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         ## FIXME: Make configurable ?
         max.newton.steps <- 5
         newton.tol <- 1e-10
-        if (sdr$pdHess) {
+        ## (under REML with no other non-random parameters, e.g. a Poisson
+        ##  model with no random effects, 'par' is empty: nothing to refine)
+        if (sdr$pdHess && length(par) > 0) {
             ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
           ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
           ##    * Option 1: Fall back to old method
@@ -2089,7 +2138,8 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
 
     if (TMBStruc$se) {
         if(control$profile)
-            sdr <- sdreport(obj, hessian.fixed = h)
+            sdr <- sdreport(obj, hessian.fixed = h,
+                            getJointPrecision = TMBStruc$REML)
         else
             sdr <- sdreport(obj, getJointPrecision = TMBStruc$REML)
         ## FIXME: assign original rownames to fitted?
@@ -2270,6 +2320,12 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' warning, because their performance (and theoretical justification) for GLMMs is poorly understood
 ##' @param ... unused, for method compatibility
 ##' @inheritParams vcov.glmmTMB
+##' @details For the \code{ordinal} family, the returned object has a
+##' \code{thresholds} element (a matrix of threshold estimates, delta-method
+##' standard errors, and z values), printed as \dQuote{Threshold coefficients};
+##' the thresholds are estimated internally via a softmax parameterization, so
+##' the corresponding rows of \code{vcov(., full = TRUE)} are not on the
+##' threshold scale
 ##' @export
 summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenward-roger", "satterthwaite"), cluster = getGroups(object), ...) {
     check_dots(...)
@@ -2338,6 +2394,17 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
         }
     }
 
+    ## ordinal family: thresholds with delta-method SEs (GH #1323). Kept
+    ## separate from 'coefficients' so downstream code iterating over
+    ## cond/zi/disp tables is unaffected. Sandwich vcov is not used here
+    thresholds <- NULL
+    if (famL$family == "ordinal") {
+        thresholds <- ordinal_thresholds(object)
+        thresholds <- cbind(thresholds,
+                            "z value" = thresholds[, "Estimate"] /
+                                thresholds[, "Std. Error"])
+    }
+
     llAIC <- llikAIC(object)
 
     ## FIXME: You can't count on object@re@flist,
@@ -2349,6 +2416,7 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
 		   coefficients = coefs,
+                   thresholds = thresholds,
                    sigma = sig,
 		   vcov = vv, # No need to potentially recompute here anything.
 		   varcor = varcor, # and use formatVC(.) for printing.
@@ -2402,6 +2470,11 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
             printCoefmat(cc, zap.ind = 3, #, tst.ind = 4
                          digits = digits, signif.stars = signif.stars)
         } ## if (p>0)
+    }
+    if (!is.null(x$thresholds)) {
+        cat("\nThreshold coefficients:\n")
+        printCoefmat(x$thresholds, digits = digits, has.Pvalue = FALSE,
+                     signif.stars = FALSE)
     }
     if (!is.null(x$priors)) {
         cat("\nPriors:\n")

@@ -1,3 +1,35 @@
+## TMB/RTMB switch
+
+#' switch to using RTMB
+#' @param flag FALSE (default) to use TMB backend; TRUE to use RTMB backend
+#' @export
+useRTMB <- local({
+  useRTMB <- FALSE
+  function(flag = NULL) { useRTMB <<- flag %||% useRTMB ; useRTMB }
+})
+MakeADFun <- function(data, ..., DLL) {
+  if (!useRTMB()) {
+    TMB::MakeADFun(data=data, ..., DLL=DLL)
+  }else {
+    rtmb_fun <- cmb(rtmb_tpl, data)
+    obj <- RTMB::MakeADFun(rtmb_fun, ...)
+    attr(data, "func") <- rtmb_fun
+    obj$env$data <- data
+    obj$env$rtmb_data_env <- environment(rtmb_fun)
+    obj$env$report <- obj$report
+    obj
+    #RTMB::MakeADFun(cmb(rtmb_tpl, data), ...)
+  }
+}
+
+.setObjData <- function(obj, data) {
+  obj$env$data <- data
+  if (!is.null(obj$env$rtmb_data_env)) {
+    obj$env$rtmb_data_env$d <- data
+  }
+  invisible(obj)
+}
+
 ## backward compat (copied from lme4)
 if((Rv <- getRversion()) < "3.2.1") {
     lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
@@ -419,12 +451,12 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     if (!"aggregate" %in% names(ee$data)) {
       ee$data[["aggregate"]] <- numeric(0)
     }
-    if (!"combinom_disp_link" %in% names(ee$data)) {
+    if (!"combinom_disp_Link" %in% names(ee$data)) {
       ## log link on dispersion (the default; only ever nonzero for
       ## combinomial fits with allow_negative_nu = TRUE)
       ## stored as double: TMB requires storage mode 'double' for data
       ## objects carrying the 'check.passed' attribute
-      ee$data[["combinom_disp_link"]] <- 0
+      ee$data[["combinom_disp_Link"]] <- 0
     }
 
     for (comp in c("terms", "termszi", "termsdisp")) {
@@ -440,6 +472,10 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
       ## these are DATA_IVECTOR but apparently after processing
       ##  TMB turns these into numeric ... ??
       for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+      ee$data$rtmb_prior_distrib_name <- factor(character(0),
+                                                levels = names(.valid_prior))
+      ee$data$rtmb_prior_whichpar_name <- factor(character(0),
+                                                 levels = names(.valid_vprior))
       for (v in prior_fvars) ee$data[[v]] <- numeric(0)
       
     }
@@ -459,7 +495,7 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
     }
 
     oldfit$obj <- with(ee,
-                       TMB::MakeADFun(data,
+                            MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
@@ -762,6 +798,9 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
             ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
         }
     }
+    if (!is.null(ee$rtmb_data_env)) {
+        ee$rtmb_data_env$d <- ee$data
+    }
 
 }
 
@@ -1052,6 +1091,33 @@ our_binom_initialize <- function(family) {
     b0 <- binomial()$initialize
     b0[[length(b0)+1]] <- newtest
     return(b0)
+}
+
+#' indices of the parameters the objective does not integrate out
+#'
+#' @param namevec character vector of parameter names (e.g. the row names
+#' of a joint precision matrix)
+#' @param include_beta treat the conditional fixed effects (\code{beta})
+#' as random too, as the TMB objective does under REML
+#' @return integer vector of the positions in \code{namevec} that are not
+#' random-effect parameters; with \code{include_beta = TRUE} the
+#' \code{beta} positions are excluded from the result as well
+#' @details Names the same blocks as \code{randomArg} in
+#' \code{mkTMBStruc()}, unconditionally where \code{randomArg} adds a
+#' block only when its Z matrix is non-empty (safe, because an absent
+#' block contributes no parameter names) and with \code{beta} gated on the
+#' argument where \code{randomArg} gates it on \code{REML}. The names are
+#' spelled out here so the two sites that marginalize over the
+#' random-effect blocks (the profile branch of \code{fitTMB()} and
+#' \code{vcov.glmmTMB()}) share one definition; \code{.covbeta_kappa()} in
+#' denom_df.R also calls \code{GMRFmarginal()} but selects \code{beta}
+#' directly and is unaffected. Keep the list in sync
+#' with \code{mkTMBStruc/randomArg}.
+#' @noRd
+whichNotRandom <- function(namevec, include_beta = FALSE) {
+    random_args <- c("b", "bzi", "bdisp")
+    if (include_beta) random_args <- c(random_args, "beta")
+    which(!namevec %in% random_args)
 }
 
 #' retrieve current value of TMB autopar setting

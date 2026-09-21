@@ -45,8 +45,9 @@ Authors@R: c(person("Mollie","Brooks",
   person("Coralie", "Williams", role = "ctb",
     comment = c(ORCID = "0000-0003-1312-4953")),
   person("Julius", "Bogomolovas", role = "ctb",
-    comment = c(ORCID = "0000-0001-8344-1909"))
-	)
+    comment = c(ORCID = "0000-0001-8344-1909")),
+  person("Divit", "Purwar", role = "ctb")
+ )
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
     likelihood estimation via 'TMB' (Template Model Builder). Random effects are
@@ -57,6 +58,7 @@ License: AGPL-3
 Depends: R (>= 3.6.0)
 Imports:
     methods,
+    RTMB,
     TMB (>= 1.9.23),
     lme4 (>= 1.1-18.9000),
     Matrix,
@@ -71,6 +73,7 @@ Suggests:
     knitr,
     rmarkdown,
     testthat,
+    withr,
     MASS,
     ordinal,
     lattice,
@@ -112,4 +115,4 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0
