@@ -42,8 +42,100 @@ test_that("profile method", {
     expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ) )
 })
 
+## data from GH #1317
+set.seed(101)
+d_1317 <- data.frame(y = rnorm(50))
+d2_1317 <- data.frame(y = rnorm(50), x = rnorm(50))
 
+test_that("profile=TRUE errors early with no free fixed effects (GH #1317)", {
+    skip_on_cran()
+    ctrl <- glmmTMBControl(profile = TRUE)
+    fits <- list(
+        no_fixef      = quote(glmmTMB(y ~ 0, data = d_1317, control = ctrl)),
+        no_fixef_REML = quote(glmmTMB(y ~ 0, data = d_1317, control = ctrl,
+                                      REML = TRUE)),
+        all_mapped    = quote(glmmTMB(y ~ x, data = d2_1317, control = ctrl,
+                                      start = list(beta = c(0, 0)),
+                                      map = list(beta = factor(c(NA, NA))))),
+        all_mapped_REML = quote(glmmTMB(y ~ x, data = d2_1317, control = ctrl,
+                                        start = list(beta = c(0, 0)),
+                                        map = list(beta = factor(c(NA, NA))),
+                                        REML = TRUE)))
+    for (nm in names(fits)) {
+        expect_error(eval(fits[[nm]]), regexp = "profile", info = nm)
+        expect_error(eval(fits[[nm]]), regexp = "free fixed-effect", info = nm)
+    }
+})
 
+test_that("profile=TRUE works with a partially mapped beta (ML)", {
+    skip_on_cran()
+    expect_no_warning(
+        m <- glmmTMB(y ~ x, data = d2_1317,
+                     control = glmmTMBControl(profile = TRUE),
+                     start = list(beta = c(0, 0)),
+                     map = list(beta = factor(c(NA, 1))))
+    )
+    expect_equal(fixef(m)$cond[["(Intercept)"]], 0)
+})
+
+test_that("profile=TRUE guard ignores a fully mapped betazi", {
+    skip_on_cran()
+    ## conditional beta is free; only the zi coefficients are mapped
+    ## ('$' partial matching of map$beta -> map$betazi would trip the guard)
+    set.seed(102)
+    d3 <- d2_1317
+    d3$y <- rpois(50, exp(0.5 * d3$x))
+    expect_no_error(
+        glmmTMB(y ~ x, zi = ~ x, family = poisson, data = d3,
+                control = glmmTMBControl(profile = TRUE),
+                start = list(betazi = c(-3, 0)),
+                map = list(betazi = factor(c(NA, NA))))
+    )
+})
+
+test_that("profile=TRUE works with REML=TRUE", {
+    skip_on_cran()
+    cmp_reml <- function(label, ...) {
+        m1 <- glmmTMB(..., REML = TRUE,
+                      control = glmmTMBControl(profile = FALSE))
+        m2 <- glmmTMB(..., REML = TRUE,
+                      control = glmmTMBControl(profile = TRUE))
+        expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ),
+                    info = label )
+        expect_false( anyNA(vcov(m2, full = TRUE)), info = label )
+    }
+    cmp_reml("gaussian y ~ x", y ~ x, data = d2_1317)
+    cmp_reml("salamanders", count ~ mined + (1|site),
+             family = poisson, data = Salamanders)
+    cmp_reml("salamanders zi", count ~ mined * spp + (1|site),
+             zi = ~ (1|spp), family = poisson, data = Salamanders)
+
+    ## Poisson with no random effects under REML: beta is integrated
+    ## out and nothing else is estimated, so the rebuilt objective has
+    ## an empty parameter vector and the Newton refinement must be skipped
+    set.seed(103)
+    d4 <- d2_1317
+    d4$y <- rpois(50, exp(0.5 * d4$x))
+    expect_no_warning(
+        m2 <- glmmTMB(y ~ x, family = poisson, data = d4, REML = TRUE,
+                      control = glmmTMBControl(profile = TRUE))
+    )
+    m1 <- glmmTMB(y ~ x, family = poisson, data = d4, REML = TRUE,
+                  control = glmmTMBControl(profile = FALSE))
+    expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ),
+                info = "poisson no-RE" )
+})
+
+test_that("whichNotRandom() drops the random-effect blocks, and beta when include_beta = TRUE", {
+    nm <- c("beta", "b", "theta", "bzi", "betazi", "bdisp", "betadisp", "psi")
+    expect_identical(whichNotRandom(nm), c(1L, 3L, 5L, 7L, 8L))
+    expect_identical(whichNotRandom(nm, include_beta = TRUE),
+                     c(3L, 5L, 7L, 8L))
+    ## exact matching: "betazi"/"betadisp" are never dropped
+    expect_identical(whichNotRandom(c("betazi", "betadisp"), include_beta = TRUE),
+                     c(1L, 2L))
+    expect_identical(whichNotRandom(character(0)), integer(0))
+})
 
 test_that("parallel regions", {
 

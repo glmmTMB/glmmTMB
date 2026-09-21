@@ -89,6 +89,34 @@ While the examples below are disabled for earlier versions of
 R, they may still work; it may be necessary to refer to private
 versions of methods, e.g. \code{glmmTMB:::Anova.glmmTMB(model, ...)}.
 }
+\section{Cumulative-link (ordinal) fits in \code{emmeans}}{
+
+For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
+the same \code{mode} and \code{rescale} arguments as for \code{MASS::polr} fits
+(\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
+does not apply here; see the \code{clm}/\code{polr} entries in
+\code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
+centered on the average threshold, with no back-transformation, so
+\code{type = "response"} has no effect), \code{"linear.predictor"}
+(\eqn{\theta_j - x'\beta} for each threshold \eqn{j}, with a grid
+variable \code{cut}), \code{"cum.prob"} (cumulative probabilities
+\eqn{P(Y \le j)}), \code{"exc.prob"} (exceedance probabilities
+\eqn{P(Y > j)}), \code{"prob"} (probabilities of each response
+category, indexed by the response variable) and \code{"mean.class"}
+(the expected category index). Standard errors combine the
+fixed-effect covariance with the delta-method covariance of the
+thresholds (as in \code{summary()}), and denominator degrees of freedom
+are always asymptotic (a \code{ddf} request for
+\code{"satterthwaite"} or \code{"kenward-roger"} warns and is
+ignored). In \code{"latent"} mode, \code{rescale = c(a, b)} reports
+\eqn{a + b \mu} in place of the latent mean \eqn{\mu}, as for
+\code{MASS::polr}. A user-supplied \code{vcov.} must be the joint
+covariance matrix of the conditional fixed effects (in the order of
+\code{fixef(.)$cond}, omitting coefficients dropped for rank
+deficiency) followed by the \eqn{K-1} thresholds on the threshold
+scale, as in the \code{thresholds} element of \code{summary(.)}.
+}
+
 \section{Denominator degrees of freedom in \code{emmeans}}{
 
 For models with random effects, the \code{ddf} argument to \code{emmeans()}
@@ -102,6 +130,26 @@ family with an estimated dispersion parameter, and throws an error for families 
 \code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
 \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
 their performance (and theoretical justification) for GLMMs is poorly understood.
+
+For Gaussian models \emph{without} random effects, \code{emmeans()} defaults
+to the residual degrees of freedom for a plain fit, i.e. one with
+\code{dispformula = ~1} and an estimated dispersion parameter. Any other such
+fit defaults to \code{"asymptotic"} (infinite df): a non-trivial
+\code{dispformula}, \code{dispformula = ~0}, or a dispersion parameter held
+fixed via the \code{map} argument to \code{\link{glmmTMB}}. In the last case
+there is no variance parameter left to estimate, so the residual variance is
+known and the Wald statistics are exactly standard normal. (As elsewhere in
+\pkg{glmmTMB}, the residual degrees of freedom count the dispersion
+parameter, so they are one lower than \code{lm()} reports for the same
+fixed-effect model.) Those are defaults, as is a value taken from
+\code{getOption("glmmTMB.df")}; a \code{ddf} passed in the call itself is
+respected where possible. \code{"kenward-roger"} and \code{"satterthwaite"}
+need random effects, so for models without them they fall back to the
+residual degrees of freedom with a message, exactly as in
+\code{\link{summary.glmmTMB}}. That fallback also applies to a model whose
+dispersion parameter is fixed, where it overrides the infinite-df default
+described above, so that \code{emmeans()} and \code{summary()} give the same
+answer to the same request.
 }
 
 \examples{

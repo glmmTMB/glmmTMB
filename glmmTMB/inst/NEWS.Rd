@@ -23,6 +23,16 @@
       \code{thresholds} element of the summary object); the threshold
       rows of \code{vcov(., full = TRUE)} remain on the internal
       (softmax) scale (GH #1323)
+      \item \code{emmeans()} on \code{ordinal} fits gains the \code{mode}
+      and \code{rescale} arguments of its \code{MASS::polr} method
+      (\code{"latent"} [the default], \code{"linear.predictor"},
+      \code{"cum.prob"}, \code{"exc.prob"}, \code{"prob"},
+      \code{"mean.class"}), with standard errors that include the
+      delta-method covariance of the thresholds. The default now reports
+      the latent-scale mean centered on the average threshold, on the
+      latent scale only, so \code{type = "response"} no longer
+      back-transforms it (the previous default reported the linear
+      predictor without the thresholds, on the link scale)
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level
@@ -114,6 +124,20 @@
       binomial-type models fitted with a two-column matrix
       (\code{cbind(successes, failures)}) response, matching \code{glm} and
       \code{glmer} (GH #1319)
+      \item \code{emmeans} now respects an explicitly specified \code{ddf}
+      for Gaussian models without random effects; the request was previously
+      replaced by residual df without warning, and
+      \code{"kenward-roger"}/\code{"satterthwaite"} errored for a model with
+      a non-trivial \code{dispformula} on their way into \code{dof_satt},
+      which requires random effects (Paul Schmidt)
+      \item \code{glmmTMBControl(profile = TRUE)} now stops early with an
+      informative error for a model with no free fixed-effect parameters
+      (e.g. \code{y ~ 0}, or a model whose entire \code{beta} vector is
+      fixed via \code{map}), instead of failing with "attempt to set an
+      attribute on NULL" (GH #1317)
+      \item \code{glmmTMBControl(profile = TRUE)} now works with
+      \code{REML = TRUE} (previously every such fit failed with a
+      dimension mismatch in \code{solve()})
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
@@ -127,6 +151,18 @@
       \code{"satterthwaite"} with a warning instead); \code{"kenward-roger"}
       and \code{"satterthwaite"} on a non-Gaussian family now consistently
       emit a warning (rather than a message, or nothing) across all four
+      \item \code{emmeans} no longer reports residual degrees of freedom for
+      a Gaussian model without random effects whose dispersion parameter is
+      held fixed via \code{map}: with no variance parameter estimated the
+      residual variance is known, so \code{"asymptotic"} (infinite df) is
+      used instead (Paul Schmidt)
+      \item an unrecognized \code{ddf} string passed to \code{emmeans} is now
+      an error, as it already was in \code{summary}/\code{anova}/\code{Anova};
+      for a Gaussian model without random effects it was previously treated as
+      residual df without warning, and for the \code{zi}/\code{disp}
+      components it gave a warning and asymptotic df. Partial matches such as
+      \code{ddf = "satt"} are now accepted, as they already were in
+      \code{summary} (Paul Schmidt)
     } % itemize
   } % user-visible changes
  } % 1.1.15
