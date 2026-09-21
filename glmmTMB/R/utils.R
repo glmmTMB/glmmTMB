@@ -1054,6 +1054,33 @@ our_binom_initialize <- function(family) {
     return(b0)
 }
 
+#' indices of the parameters the objective does not integrate out
+#'
+#' @param namevec character vector of parameter names (e.g. the row names
+#' of a joint precision matrix)
+#' @param include_beta treat the conditional fixed effects (\code{beta})
+#' as random too, as the TMB objective does under REML
+#' @return integer vector of the positions in \code{namevec} that are not
+#' random-effect parameters; with \code{include_beta = TRUE} the
+#' \code{beta} positions are excluded from the result as well
+#' @details Names the same blocks as \code{randomArg} in
+#' \code{mkTMBStruc()}, unconditionally where \code{randomArg} adds a
+#' block only when its Z matrix is non-empty (safe, because an absent
+#' block contributes no parameter names) and with \code{beta} gated on the
+#' argument where \code{randomArg} gates it on \code{REML}. The names are
+#' spelled out here so the two sites that marginalize over the
+#' random-effect blocks (the profile branch of \code{fitTMB()} and
+#' \code{vcov.glmmTMB()}) share one definition; \code{.covbeta_kappa()} in
+#' denom_df.R also calls \code{GMRFmarginal()} but selects \code{beta}
+#' directly and is unaffected. Keep the list in sync
+#' with \code{mkTMBStruc/randomArg}.
+#' @noRd
+whichNotRandom <- function(namevec, include_beta = FALSE) {
+    random_args <- c("b", "bzi", "bdisp")
+    if (include_beta) random_args <- c(random_args, "beta")
+    which(!namevec %in% random_args)
+}
+
 #' retrieve current value of TMB autopar setting
 get_autopar <- function() {
     attr(TMB::openmp(DLL = "glmmTMB"), "autopar")

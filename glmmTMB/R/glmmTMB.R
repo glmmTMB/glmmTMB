@@ -1560,7 +1560,13 @@ glmmTMB <- function(
 ##' @param optCtrl   Passed as argument \code{control} to optimizer. Default value (if default \code{nlminb} optimizer is used): \code{list(iter.max=300, eval.max=400)}
 ##' @param optArgs   additional arguments to be passed to optimizer function (e.g.: \code{list(method="BFGS")} when \code{optimizer=optim})
 ##' @param profile   (logical) Experimental option to improve speed and
-##'                  robustness when a model has many fixed effects
+##'                  robustness when a model has many fixed effects. The
+##'                  model must have at least one free fixed-effect
+##'                  parameter (e.g., not \code{~ 0}, and not with the
+##'                  entire \code{beta} vector fixed via \code{map}, and
+##'                  not an intercept-only \code{ordinal} model, whose
+##'                  intercept is fixed internally); otherwise
+##'                  \code{glmmTMB} stops with an error
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
 ##' @param parallel  (named list with an integer value \code{n} and a logical value \code{autopar},
@@ -1986,11 +1992,31 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
     }
 
     if (control $ profile) {
+        ## profiling needs at least one free fixed-effect parameter;
+        ## with none, sdreport() below returns no jointPrecision (GH #1317)
+        ## only the conditional fixed effects count, because profile = "beta"
+        ## below profiles that vector alone ([["beta"]], not $beta: '$'
+        ## would partially match 'betazi' or 'betadisp')
+        n_free_beta <- with(TMBStruc,
+                            if (is.null(mapArg[["beta"]])) length(parameters[["beta"]])
+                            else length(unique(na.omit(mapArg[["beta"]]))))
+        if (n_free_beta == 0) {
+            stop("profile = TRUE requires at least one free fixed-effect ",
+                 "parameter, but this model has no free fixed-effect ",
+                 "parameters (the formula has no fixed effects, e.g. ",
+                 "'~ 0'; every element of 'beta' is fixed via 'map'; or ",
+                 "the family fixes the only fixed effect internally, as ",
+                 "'ordinal' does for an intercept-only model); ",
+                 "use glmmTMBControl(profile = FALSE)")
+        }
+        ## MakeADFun() adds the profiled parameters to 'random' itself,
+        ## so drop "beta" (present under REML) to avoid its
+        ## "Duplicates in 'random'" message
         obj <- with(TMBStruc,
                     MakeADFun(data.tmb,
                               parameters,
                               map = mapArg,
-                              random = randomArg,
+                              random = setdiff(randomArg, "beta"),
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
@@ -1999,8 +2025,11 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         sdr <- sdreport(obj, getJointPrecision=TRUE)
         parnames <- names(obj$env$par)
         Q <- sdr$jointPrecision; dimnames(Q) <- list(parnames, parnames)
-        whichNotRandom <- which( ! parnames %in% c("b", "bzi", "bdisp") )
-        Qm <- GMRFmarginal(Q, whichNotRandom)
+        ## under REML the TMB objective treats "beta" as random too
+        ## (see mkTMBStruc/randomArg), so drop it here: 'h' must match
+        ## the par vector of the rebuilt objective below, which excludes it
+        Qm <- GMRFmarginal(Q, whichNotRandom(parnames,
+                                             include_beta = isTRUE(TMBStruc$REML)))
         h <- as.matrix(Qm) ## Hessian of *all* (non-random) parameters
         TMBStruc$parameters <- obj$env$parList(fit$par, obj$env$last.par.best)
         ## Build object
@@ -2017,7 +2046,9 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         ## FIXME: Make configurable ?
         max.newton.steps <- 5
         newton.tol <- 1e-10
-        if (sdr$pdHess) {
+        ## (under REML with no other non-random parameters, e.g. a Poisson
+        ##  model with no random effects, 'par' is empty: nothing to refine)
+        if (sdr$pdHess && length(par) > 0) {
             ## pdHess can be FALSE (FIXME: neither of these fallback options is implemented?)
           ##  * Happens for boundary fits (e.g. dispersion close to 0 - see 'spline' example)
           ##    * Option 1: Fall back to old method
@@ -2082,7 +2113,8 @@ finalizeTMB <- function(TMBStruc, obj, fit, h = NULL, data.tmb.old = NULL) {
 
     if (TMBStruc$se) {
         if(control$profile)
-            sdr <- sdreport(obj, hessian.fixed = h)
+            sdr <- sdreport(obj, hessian.fixed = h,
+                            getJointPrecision = TMBStruc$REML)
         else
             sdr <- sdreport(obj, getJointPrecision = TMBStruc$REML)
         ## FIXME: assign original rownames to fitted?

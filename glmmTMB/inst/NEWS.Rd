@@ -119,6 +119,14 @@
       \code{"kenward-roger"}/\code{"satterthwaite"} errored for a model with
       a non-trivial \code{dispformula} on their way into \code{dof_satt},
       which requires random effects (Paul Schmidt)
+      \item \code{glmmTMBControl(profile = TRUE)} now stops early with an
+      informative error for a model with no free fixed-effect parameters
+      (e.g. \code{y ~ 0}, or a model whose entire \code{beta} vector is
+      fixed via \code{map}), instead of failing with "attempt to set an
+      attribute on NULL" (GH #1317)
+      \item \code{glmmTMBControl(profile = TRUE)} now works with
+      \code{REML = TRUE} (previously every such fit failed with a
+      dimension mismatch in \code{solve()})
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
