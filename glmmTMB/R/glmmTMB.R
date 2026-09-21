@@ -1219,12 +1219,11 @@ binomialType <- function(x) {
 ##' @importFrom stats gaussian binomial poisson nlminb as.formula terms model.weights
 ##' @importFrom reformulas subbars mkReTrms
 ##' @importFrom Matrix t
-## Deliberately no @importFrom RTMB ADREPORT REPORT: RTMB (<= 2.0) registers
-## an overly broad S4 solve() method that drops ... args, breaking solve()
-## calls elsewhere in the session once RTMB's namespace loads. Calling
-## RTMB::REPORT()/RTMB::ADREPORT() explicitly (in rtmb_tpl.R) instead of
-## importing them keeps RTMB's namespace unloaded until useRTMB(TRUE) is
-## actually used, instead of on every library(glmmTMB).
+## RTMB is imported eagerly (rather than loaded lazily on first use) so
+## that .onLoad() (zzz.R) can patch RTMB's broken solve() S4 method before
+## glmmTMB's own namespace locks -- see the comment there and
+## https://github.com/kaskr/RTMB/issues/92.
+##' @importFrom RTMB ADREPORT REPORT
 ##' @importFrom TMB MakeADFun sdreport
 ##' @details
 ##' \itemize{
