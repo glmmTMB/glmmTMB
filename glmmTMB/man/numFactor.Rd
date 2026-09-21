@@ -2,10 +2,13 @@
 % Please edit documentation in R/utils_covstruct.R
 \name{numFactor}
 \alias{numFactor}
+\alias{sepgrid}
 \alias{parseNumLevels}
 \title{Factor with numeric interpretable levels.}
 \usage{
 numFactor(x, ...)
+
+sepgrid(x, ...)
 
 parseNumLevels(levels)
 }
@@ -33,6 +36,13 @@ original numeric coordinates are recoverable without loss of
 precision using the function \code{parseNumLevels}.  Factor levels
 are sorted coordinate wise from left to right: first coordinate is
 fastest running.
+
+\code{sepgrid} is similar to \code{numFactor}, but creates levels for
+the complete Cartesian product of the supplied coordinate levels.  Factor
+inputs preserve unused levels; non-factor inputs use sorted observed
+values.  Use factors with explicit levels when globally unobserved cells
+are part of the intended separable grid, for example an unobserved day in
+an AR(1) time series.
 }
 \examples{
 ## 1D example
