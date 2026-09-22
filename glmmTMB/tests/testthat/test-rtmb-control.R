@@ -42,3 +42,11 @@ test_that("glmmTMBControl use_rtmb validates scalar logical input", {
     expect_error(glmmTMBControl(use_rtmb = 1), "use_rtmb")
     expect_error(glmmTMBControl(use_rtmb = "TRUE"), "use_rtmb")
 })
+
+test_that("RTMB's solve() does not break solve() with extra arguments", {
+    ## RTMB (<= 2.0) registers an overly broad S4 solve() method that drops
+    ## ... arguments once its namespace is loaded (kaskr/RTMB#92); glmmTMB
+    ## works around this with a corrected setMethod() call (to_be_removed.R),
+    ## so this should hold just from loading glmmTMB.
+    expect_no_error(solve(diag(3), tol = 1e-6))
+})
