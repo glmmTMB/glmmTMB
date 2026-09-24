@@ -388,12 +388,14 @@ namespace glmmtmb{
   /* Simulate from tweedie distribution */
   template<class Type>
   Type rtweedie(Type mu, Type phi, Type p) {
-    // Copied from R function tweedie::rtweedie
+    // Adapted from R function tweedie::rtweedie
     Type lambda = pow(mu, 2. - p) / (phi * (2. - p));
     Type alpha  = (2. - p) / (1. - p);
     Type gam = phi * (p - 1.) * pow(mu, p - 1.);
-    int N = (int) asDouble(rpois(lambda));
-    Type ans = rgamma(N, -alpha /* shape */, gam /* scale */).sum();
+    // A sum of N Gamma(shape, scale) draws is Gamma(N * shape, scale);
+    // rgamma() with shape 0 returns 0, so N == 0 still gives an exact zero.
+    Type N = rpois(lambda);
+    Type ans = rgamma(-alpha * N /* shape */, gam /* scale */);
     return ans;
   }
 

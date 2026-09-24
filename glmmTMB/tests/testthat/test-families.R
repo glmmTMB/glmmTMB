@@ -420,6 +420,47 @@ test_that("tweedie", {
                  structure(list(cond = list(), zi = list(), disp = list()), class = "ranef.glmmTMB"))
 })
 
+test_that("tweedie simulation near power 2", {
+    skip_on_cran()
+    ## GH #1341: the simulated mean, variance and share of exact zeros
+    ## should match the Tweedie distribution, including near p = 2
+    mu <- 2; phi <- 2
+    for (p in c(1.5, 1.999)) {
+        y <- simulate_new(~1, newdata = data.frame(id = seq_len(1e4)),
+                          family = tweedie(),
+                          newparams = list(beta = log(mu), betadisp = log(phi),
+                                           psi = qlogis(p - 1)),
+                          seed = 101)[[1]]
+        expect_equal(mean(y), mu, tolerance = 0.05)
+        expect_equal(var(y), phi * mu^p, tolerance = 0.15)
+        ## P(Y = 0) is 0.24 at p = 1.5 but about 5e-218 at p = 1.999
+        p0 <- exp(-mu^(2 - p) / (phi * (2 - p)))
+        if (p0 > 1e-3) {
+            expect_equal(mean(y == 0), p0, tolerance = 0.1)
+        } else {
+            expect_true(all(y > 0))
+        }
+    }
+})
+
+test_that("tweedie simulation draws one Gamma variate per response", {
+    ## GH #1341: draws must match the single-Gamma algorithm of TMB's
+    ## rtweedie() exactly (the old sum of N Gamma draws gives other values).
+    ## With one row, simulate_new() uses the RNG in the same order as the
+    ## reference below: one Poisson and then one Gamma draw per simulation.
+    mu <- 2; phi <- 2; p <- 1.5
+    y <- simulate_new(~1, newdata = data.frame(id = 1), family = tweedie(),
+                      nsim = 20, seed = 101,
+                      newparams = list(beta = log(mu), betadisp = log(phi),
+                                       psi = qlogis(p - 1)))
+    set.seed(101)
+    ref <- replicate(20, {
+        N <- rpois(1, mu^(2 - p) / (phi * (2 - p)))
+        rgamma(1, shape = N * (2 - p) / (p - 1), scale = phi * (p - 1) * mu^(p - 1))
+    })
+    expect_equal(unname(unlist(y)), ref)
+})
+
 test_that("gaussian_sqrt", {
     set.seed(101)
     nobs <- 200
