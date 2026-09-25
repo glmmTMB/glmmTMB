@@ -206,10 +206,25 @@ if (requireNamespace("car", quietly = TRUE)) {
                     "only supported for component")
     })
 
-    test_that("Anova() rejects ddf for models with map-fixed conditional coefficients", {
+    test_that("Anova() ddf works for models with map-fixed conditional coefficients (GH #1340)", {
+        ## a coefficient fixed via 'map' (here to zero, hence 'start') no
+        ## longer blocks the F tests; the remaining two f coefficients are
+        ## tested (the oracle comparisons are in test-ddf.R)
         m_map <- glmmTMB(y_gauss ~ f + (1|g), data = dd_anova, REML = TRUE,
+                         start = list(beta = c(0, 0, 0, 0)),
                          map = list(beta = factor(c(1, NA, 2, 3))))
-        expect_error(car::Anova(m_map, ddf = "kenward-roger"), "map-fixed")
+        ## oracle: fB == 0 is the same model as merging level B into the reference level
+        dd_or <- transform(dd_anova, f = factor(ifelse(f == "B", "A", as.character(f))))
+        m_or <- glmmTMB(y_gauss ~ f + (1|g), data = dd_or, REML = TRUE)
+        expect_equal(logLik(m_map), logLik(m_or), tolerance = 1e-8, ignore_attr = TRUE)
+        for (dd in c("kenward-roger", "satterthwaite")) {
+            for (type in c("II", "III")) {
+                res <- car::Anova(m_map, type = type, ddf = dd)
+                o <- car::Anova(m_or, type = type, ddf = dd)
+                expect_equal(unlist(res["f", c("F", "Num Df", "Den Df")]),
+                             unlist(o["f", c("F", "Num Df", "Den Df")]), tolerance = 1e-6)
+            }
+        }
     })
 
     test_that("Anova() test.statistic='F' without ddf is a clear error", {
