@@ -369,3 +369,197 @@ if (requireNamespace("emmeans")) {
         expect_true(all(is.finite(summary(emm)$df)))
     })
 }
+
+## ---- coefficients tied/fixed via 'map', with and without rank deficiency (GH #1340) ----
+##
+## Oracles: a coefficient fixed to zero via 'map' is the same model as the
+## formula without that column, and coefficients tied via 'map' are the same
+## model as the formula with the columns summed; both refits go through the
+## unmapped code path. The ddf of the mapped fit must reproduce them.
+if (requireNamespace("lme4")) {
+    ss <- lme4::sleepstudy
+    ss$Days2 <- ss$Days^2
+    f_tied <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = ss, REML = TRUE,
+                      map = list(beta = factor(c(1, 2, 2))))
+    f_fixed <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = ss, REML = TRUE,
+                       start = list(beta = c(250, 10, 0)),
+                       map = list(beta = factor(c(1, 2, NA))))
+    o_tied <- glmmTMB(Reaction ~ I(Days + Days2) + (1 | Subject), data = ss, REML = TRUE)
+    o_fixed <- glmmTMB(Reaction ~ Days + (1 | Subject), data = ss, REML = TRUE)
+    ## (the Satterthwaite tolerance allows for its finite-difference Jacobians)
+    tol_kr <- 1e-8
+    tol_satt <- 1e-6
+
+    test_that("mapped fits are the same models as their unmapped oracles", {
+        expect_equal(logLik(f_tied), logLik(o_tied), tolerance = 1e-8, ignore_attr = TRUE)
+        expect_equal(logLik(f_fixed), logLik(o_fixed), tolerance = 1e-8, ignore_attr = TRUE)
+    })
+
+    test_that("ddf for coefficients tied via 'map' (one value per coefficient, the tied ones shared)", {
+        for (ff in list(list(dof_KR, tol_kr), list(dof_satt, tol_satt))) {
+            d <- unname(c(ff[[1]](f_tied)))
+            expect_length(d, 3L)
+            expect_identical(d[2], d[3])
+            expect_equal(d[1:2], unname(c(ff[[1]](o_tied))), tolerance = ff[[2]])
+        }
+        ## the KR-adjusted vcov is reported for all three coefficients, with
+        ## the tied pair perfectly correlated
+        V <- attr(dof_KR(f_tied), "vcov")
+        expect_identical(dim(V), c(3L, 3L))
+        expect_equal(V["Days", ], V["Days2", ], ignore_attr = TRUE)
+        expect_equal(unname(V[1:2, 1:2]), unname(attr(dof_KR(o_tied), "vcov")), tolerance = tol_kr)
+    })
+
+    test_that("ddf for a coefficient fixed via 'map' is NA (known constant), the others unchanged", {
+        for (ff in list(list(dof_KR, tol_kr), list(dof_satt, tol_satt))) {
+            d <- unname(c(ff[[1]](f_fixed)))
+            expect_length(d, 3L)
+            expect_true(is.na(d[3]))
+            expect_equal(d[1:2], unname(c(ff[[1]](o_fixed))), tolerance = ff[[2]])
+        }
+        ## zero (not NA) variance in the reported KR vcov, so downstream
+        ## linear algebra can use it; NA in the printed summary
+        V <- attr(dof_KR(f_fixed), "vcov")
+        expect_identical(dim(V), c(3L, 3L))
+        expect_equal(unname(V["Days2", ]), rep(0, 3))
+        cc <- summary(f_fixed, ddf = "kenward-roger")$coefficients$cond
+        expect_true(is.na(cc["Days2", "ddf"]))
+        expect_identical(unname(cc[, "ddf"]), unname(c(dof_KR(f_fixed))))
+    })
+
+    test_that("Satterthwaite ddf of a contrast: NA only if it involves *only* map-fixed coefficients", {
+        L <- rbind(c(0, 0, 1),   # Days2 alone: fixed, no variance
+                   c(0, 1, 1))   # Days + Days2: estimable, same as Days
+        d <- dof_satt(f_fixed, L = L)
+        expect_true(is.na(d[1]))
+        expect_equal(d[2], unname(dof_satt(o_fixed))[2], tolerance = tol_satt)
+    })
+
+    ## empty cell c:2 -> the g:yr interaction loses a column
+    ss2 <- transform(ss,
+                     g = factor(rep(c("a", "b", "c"), length.out = nrow(ss))),
+                     yr = factor(ifelse(ss$Days < 5, "1", "2")))
+    ss2$g[ss2$g == "c" & ss2$yr == "2"] <- "b"
+    ss2$g <- droplevels(ss2$g)
+
+    test_that("ddf for a rank-deficient model with tied coefficients (both reductions at once)", {
+        ## on top of the dropped column, the two g main-effect coefficients are tied
+        f_both <- suppressMessages(
+            glmmTMB(Reaction ~ g * yr + (1 | Subject), data = ss2, REML = TRUE,
+                    map = list(beta = factor(c(1, 2, 2, 3, 4)))))
+        expect_length(fixef(f_both)$cond, 6L)          # nominal
+        expect_identical(ncol(getME(f_both, "X")), 5L)   # rank-reduced
+        ## oracle: refit on the estimated parameters' design columns
+        X <- as.matrix(getME(f_both, "X"))
+        Z <- cbind(X[, 1], X[, 2] + X[, 3], X[, 4], X[, 5])
+        colnames(Z) <- paste0("Z", 1:4)
+        o_both <- glmmTMB(Reaction ~ 0 + Z1 + Z2 + Z3 + Z4 + (1 | Subject),
+                          data = data.frame(Reaction = ss2$Reaction, Subject = ss2$Subject, Z),
+                          REML = TRUE)
+        expect_equal(logLik(f_both), logLik(o_both), tolerance = 1e-8, ignore_attr = TRUE)
+        for (ff in list(list(dof_KR, tol_kr), list(dof_satt, tol_satt))) {
+            d <- unname(c(ff[[1]](f_both)))
+            o <- unname(c(ff[[1]](o_both)))
+            expect_length(d, 6L)
+            expect_true(is.na(d[6]))                    # aliased
+            expect_equal(d[c(1, 2, 4, 5)], o, tolerance = ff[[2]])
+            expect_identical(d[2], d[3])                # tied
+        }
+    })
+
+    test_that("a map that only permutes the parameters gives the ddf of the unmapped fit", {
+        f_perm <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = ss, REML = TRUE,
+                          map = list(beta = factor(c(2, 1, 3))))
+        f_plain <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = ss, REML = TRUE)
+        expect_equal(dof_KR(f_perm), dof_KR(f_plain), tolerance = tol_kr, ignore_attr = TRUE)
+        expect_equal(dof_satt(f_perm), dof_satt(f_plain), tolerance = tol_satt)
+    })
+
+    test_that("anova() F tests carry the restriction over to the tied parameter", {
+        m0 <- glmmTMB(Reaction ~ 1 + (1 | Subject), data = ss, REML = TRUE)
+        for (dd in c("kenward-roger", "satterthwaite")) {
+            a <- anova(m0, f_tied, ddf = dd)
+            o <- anova(m0, o_tied, ddf = dd)
+            expect_equal(a[2, "Num Df"], 1)      # two tied columns, one restriction
+            expect_equal(unlist(a[2, c("F", "Num Df", "Den Df")]),
+                         unlist(o[2, c("F", "Num Df", "Den Df")]), tolerance = tol_satt)
+        }
+    })
+
+    test_that("a joint hypothesis that contradicts a nonzero fixed value gives NA with a warning", {
+        f_half <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = ss, REML = TRUE,
+                          start = list(beta = c(250, 10, 0.5)), map = list(beta = factor(c(1, 2, NA))))
+        L <- rbind(c(0, 1, 0), c(0, 1, 1))  # Days = 0 and Days + Days2 = 0, but Days2 == 0.5
+        expect_warning(res <- glmmTMB:::.joint_test(f_half, L, "kenward-roger"), "contradict")
+        expect_true(is.na(res$Fstat))
+        ## with the coefficient fixed to zero the two rows agree and reduce to one
+        res0 <- glmmTMB:::.joint_test(f_fixed, L, "kenward-roger")
+        expect_equal(res0$ndf, 1)
+        expect_equal(res0$Fstat, glmmTMB:::.joint_test(f_fixed, L[1, , drop = FALSE], "kenward-roger")$Fstat)
+    })
+
+    test_that("ddf are NA (without error) when every coefficient is fixed via 'map'", {
+        f_all <- glmmTMB(Reaction ~ 1 + (1 | Subject), data = ss, REML = TRUE,
+                         start = list(beta = 298), map = list(beta = factor(NA)))
+        expect_true(is.na(dof_KR(f_all)))
+        expect_true(is.na(dof_satt(f_all)))
+    })
+
+    test_that("an NA-filled fixed-effect vcov (boundary fit) gives NA ddf with a warning, not an eigen() error", {
+        ## sdreport() can return one for a fit on the boundary; inject it
+        testthat::with_mocked_bindings(
+            .Phi_est = function(model, component = "cond") matrix(NA_real_, 2, 2),
+            .package = "glmmTMB", {
+                expect_warning(d <- dof_KR(o_fixed), "contains NA values")
+                expect_true(all(is.na(d)))
+                expect_warning(d <- dof_satt(o_fixed), "contains NA values")
+                expect_true(all(is.na(d)))
+            })
+    })
+
+    if (requireNamespace("emmeans")) {
+        test_that("emmeans works for coefficients tied via 'map' (all ddf), matching the unmapped oracle", {
+            for (dd in c("asymptotic", "kenward-roger", "satterthwaite")) {
+                em <- summary(emmeans::emmeans(f_tied, ~ 1, at = list(Days = 3, Days2 = 9), ddf = dd))
+                eo <- summary(emmeans::emmeans(o_tied, ~ 1, at = list(Days = 3, Days2 = 9), ddf = dd))
+                expect_equal(em$emmean, eo$emmean, tolerance = 1e-8)
+                expect_equal(em$SE, eo$SE, tolerance = 1e-8)
+                expect_equal(em$df, eo$df, tolerance = tol_satt)
+            }
+        })
+        test_that("emmeans works for a coefficient fixed via 'map' with ddf='kenward-roger'", {
+            em <- summary(emmeans::emmeans(f_fixed, ~ 1, at = list(Days = 3, Days2 = 9), ddf = "kenward-roger"))
+            eo <- summary(emmeans::emmeans(o_fixed, ~ 1, at = list(Days = 3), ddf = "kenward-roger"))
+            expect_equal(em$SE, eo$SE, tolerance = 1e-8)
+            expect_equal(em$df, eo$df, tolerance = tol_kr)
+        })
+    }
+
+    if (requireNamespace("car")) {
+        test_that("car::Anova F tests run for a rank-deficient model", {
+            f_rd <- suppressMessages(glmmTMB(Reaction ~ g * yr + (1 | Subject), data = ss2, REML = TRUE))
+            w <- car::Anova(f_rd)   # Type II Wald, on the non-aliased coefficients
+            for (dd in c("kenward-roger", "satterthwaite")) {
+                a <- car::Anova(f_rd, ddf = dd)
+                expect_equal(a[["Num Df"]], w[["Df"]])
+                expect_true(all(is.finite(a[["F"]])))
+            }
+            ## Satterthwaite only changes the denominator: F * Num Df is the Wald chi-square
+            expect_equal(a[["F"]] * a[["Num Df"]], w[["Chisq"]], tolerance = 1e-8)
+        })
+        test_that("car::Anova F tests work for coefficients tied or fixed via 'map'", {
+            for (dd in c("kenward-roger", "satterthwaite")) {
+                ## tied: each of Days/Days2 tests the one shared parameter
+                a <- car::Anova(f_tied, type = "III", ddf = dd)
+                o <- car::Anova(o_tied, type = "III", ddf = dd)
+                expect_equal(unlist(a["Days", ]), unlist(a["Days2", ]))
+                expect_equal(unlist(a["Days", ]), unlist(o["I(Days + Days2)", ]), tolerance = tol_satt)
+                ## fixed: an untestable (NA) row for the fixed coefficient
+                a <- car::Anova(f_fixed, type = "III", ddf = dd)
+                o <- car::Anova(o_fixed, type = "III", ddf = dd)
+                expect_true(is.na(a["Days2", "F"]))
+                expect_equal(unlist(a["Days", ]), unlist(o["Days", ]), tolerance = tol_satt)
+            }
+        })
+    }
+}

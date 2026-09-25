@@ -66,9 +66,10 @@ has.intercept.glmmTMB <- function (model, component="cond", ...) {
 ##' approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). \code{"kenward-roger"}
 ##' additionally requires a family with an estimated dispersion parameter, and throws an error
 ##' for families such as \code{binomial} or \code{poisson} that lack one (\code{"satterthwaite"}
-##' has no such restriction). Not currently supported together with a user-supplied \code{vcov.},
-##' \code{component != "cond"}, or models with aliased/rank-deficient or \code{map}-fixed
-##' conditional coefficients.
+##' has no such restriction). Not currently supported together with a user-supplied \code{vcov.}
+##' or \code{component != "cond"}. Hypotheses that involve only coefficients fixed via
+##' \code{map} (known constants) are untestable and give an \code{NA} row; coefficients
+##' tied via \code{map} count once towards a term's numerator df.
 
 Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
                            test.statistic = c("Chisq","F"),
@@ -161,57 +162,24 @@ linearHypothesis_glmmTMB <- function (model, hypothesis.matrix,
 }                  
     
 ## shared setup for the ddf-based (Kenward-Roger/Satterthwaite) F-test path
-## in Anova.II/III.glmmTMB: adds the Anova-specific "no aliased/map-fixed
-## coefficients" guard (check_ddf(), called once already by Anova.glmmTMB(),
-## validates everything else -- REML, family, presence of random effects)
-## and precomputes the potentially expensive Kenward-Roger adjusted vcov
-## once so it isn't recomputed for every term
+## in Anova.II/III.glmmTMB: check_ddf() (called once already by
+## Anova.glmmTMB()) validates REML, family and the presence of random
+## effects; this precomputes the model-level pieces (notably the expensive
+## Kenward-Roger adjusted vcov) once rather than per term. The hypothesis
+## matrices are built on the non-aliased coefficients and .joint_test()
+## carries them over to the estimated parameters, so aliased and
+## map-fixed coefficients need no special treatment here
 .Anova_ddf_setup <- function(mod, component, ddf, not.aliased) {
     if (ddf == "asymptotic") return(NULL)
-    if (!all(not.aliased)) {
-        stop("ddf='", ddf, "' is not currently supported for models with ",
-             "aliased/rank-deficient conditional coefficients; use ddf='asymptotic'")
-    }
-    unadjusted_vcov <- stats::vcov(mod)[[component]]
-    ## map-fixed coefficients keep their fixed *value* in fixef() (unlike
-    ## aliased/rank-deficient ones, which show up as NA there and are
-    ## already caught above by not.aliased) -- in the raw, unpadded vcov()
-    ## used here they instead show up as NA variance (pad_mapped_vcov(),
-    ## used by the asymptotic path, turns that NA into an explicit 0; this
-    ## path bypasses pad_mapped_vcov() since a padded/zero-variance matrix
-    ## isn't meaningful input for Kenward-Roger/Satterthwaite). Left
-    ## unguarded, this reaches .vcov_kenward_adjusted()'s linear algebra
-    ## and fails with an opaque eigen() error instead
-    if (anyNA(diag(unadjusted_vcov))) {
-        stop("ddf='", ddf, "' is not currently supported for models with ",
-             "map-fixed conditional coefficients; use ddf='asymptotic'")
-    }
-    has_random <- hasRandom(mod)
-    list(hasRandom = has_random,
-         beta = fixef(mod)[[component]],
-         unadjusted_vcov = unadjusted_vcov,
-         residual_df = stats::df.residual(mod),
-         adjusted_vcov = if (ddf == "kenward-roger" && has_random) .vcov_kenward_adjusted(mod) else NULL)
+    .joint_test_setup(mod, ddf)
 }
 
-## per-term F-test given an already-built hypothesis matrix; used in place
-## of linearHypothesis_glmmTMB() when ddf != "asymptotic". Dispatches to the
-## same joint Kenward-Roger/Satterthwaite/no-random-effects machinery
-## anova.glmmTMB() uses for model-comparison F-tests (denom_df.R), just
-## given a hypothesis matrix directly instead of a pair of nested models
+## per-term F-test given an already-built hypothesis matrix (columns = the
+## non-aliased coefficients); used in place of linearHypothesis_glmmTMB()
+## when ddf != "asymptotic", through the same joint-test machinery
+## anova.glmmTMB() uses for model-comparison F-tests (denom_df.R)
 .Anova_ddf_test <- function(mod, hyp.matrix, ddf, ddf_info) {
-    if (nrow(hyp.matrix) == 0) {
-        return(c(Fstat = NA_real_, ndf = 0, ddf = NA_real_, pval = NA_real_))
-    }
-    res <- if (!ddf_info$hasRandom) {
-        .wald_joint_test(ddf_info$unadjusted_vcov, hyp.matrix, ddf_info$beta,
-                         ddf = ddf_info$residual_df)
-    } else if (ddf == "kenward-roger") {
-        .KR_adjust_joint(ddf_info$adjusted_vcov, ddf_info$unadjusted_vcov,
-                         hyp.matrix, ddf_info$beta)
-    } else {
-        .satt_adjust_joint(mod, hyp.matrix)
-    }
+    res <- .joint_test(mod, hyp.matrix, ddf, info = ddf_info)
     c(Fstat = res$Fstat, ndf = res$ndf, ddf = res$ddf, pval = res$p.value)
 }
 

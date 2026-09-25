@@ -147,6 +147,15 @@
       fixed-effect column); the aliased coefficient now gets \code{NA} ddf,
       like its \code{NA} estimate and standard error, rather than erroring
       (GH #1326, @qdread)
+      \item \code{dof_KR}, \code{dof_satt} and the \code{ddf} options of
+      \code{summary}, \code{anova}, \code{car::Anova} and \code{emmeans}
+      now work for conditional coefficients tied or fixed via \code{map},
+      and (Kenward-Roger) for rank-deficient models; previously
+      "non-conformable arguments", an \code{eigen()} error, or rejected by
+      \code{car::Anova}. Tied coefficients share one ddf; fixed coefficients,
+      and hypotheses involving only fixed coefficients, get \code{NA} (GH #1340)
+      \item relatedly, \code{emmeans()} no longer fails ("logical subscript
+      too long") for models with coefficients tied via \code{map} (GH #1340)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
