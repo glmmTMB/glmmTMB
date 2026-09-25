@@ -66,6 +66,39 @@ test_that("equalto vs map-start on simulated data", {
 # a <- as.vector(c("a", "b", "c"))
 # glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, a), data=dat)
 
+test_that("glmmTMB errors when equalto matrix row/col order doesn't match id factor level order", {
+
+  # simulate data for a multilevel meta-analysis
+  k.studies <- 10
+  study <- rep(seq_len(k.studies), times = 5)
+  k <- length(study)
+  id <- seq_len(k)
+  set.seed(123); vi <- rbeta(k, 2, 20)
+  set.seed(123); u <- rnorm(k.studies, 0, sqrt(0.2))[study]
+  set.seed(123); m <- rnorm(k, 0, sqrt(0.3))
+  set.seed(123); e <- rnorm(k, 0, sqrt(vi))[study]
+  y <- 0.2 + u + m + e
+
+  dat <- data.frame(y = y, vi = vi, study = study, id = factor(id), g = 1)
+
+  # correctly-ordered matrix (named to match factor levels of id, in order): fits without error
+  V <- diag(dat$vi)
+  dimnames(V) <- list(paste0("id", levels(dat$id)), paste0("id", levels(dat$id)))
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, V), data = dat, REML = TRUE),
+    NA
+  )
+
+  # same matrix, but rows/columns permuted so the order no longer matches
+  # the factor level order of id -- this must throw an error
+  perm <- sample(seq_len(k))
+  Vperm <- V[perm, perm]
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vperm), data = dat, REML = TRUE),
+    "different order"
+  )
+})
+
 
 ## ------ test comparing output with metafor with example dataset
 test_that("compare glmmTMB equalto with metafor rma.mv", {

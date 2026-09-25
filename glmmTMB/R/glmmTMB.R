@@ -1867,10 +1867,25 @@ checkEqualto <- function(aa, cnms){
     stop("equalto matrix must be a square matrix.", call. = FALSE)
   #check dimensions of aa 
   if (nrow(aa) != k) 
-    stop(paste0("The length of the equalto random effect term (", k, ") and the length/dimensions of the equalto object (", nrow(aa), ") are not the same."), call. = FALSE)
+    stop(sprintf("equalto matrix has dimensions %d x %d, but the random effect term has %d levels/columns (%s). These must match.",
+                  nrow(aa), ncol(aa), k, paste(cnms, collapse = ", ")), call. = FALSE)
   ## check if aa is numeric
   if (!is.numeric(aa)) 
     stop("The object specified for equalto is not numeric.", call. = FALSE)
+  ## check that row/column names (if present) match the order of cnms
+  rn <- rownames(aa)
+  cn <- colnames(aa)
+  if ((!is.null(rn) && !is.null(cn)) && !identical(rn, cn))
+    stop("row and column names of equalto matrix do not match", call. = FALSE)
+  matNames <- if (is.null(rn)) cn else rn
+  if (!is.null(matNames) && !identical(matNames, cnms)) {
+    if (identical(sort(matNames), sort(cnms))) {
+      stop("row/column names of the equalto matrix match the terms, but are in a different order",
+           call. = FALSE)
+    }
+    stop("row or column names of the equalto matrix do not match the terms. Expecting names: ",
+         paste(sQuote(cnms), collapse = ", "), call. = FALSE)
+  }
 }
 
 ##' Checks if the row or column names of the propto matrix in aa matches cnms
