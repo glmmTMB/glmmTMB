@@ -389,6 +389,9 @@ namespace glmmtmb{
   template<class Type>
   Type rtweedie(Type mu, Type phi, Type p) {
     // Adapted from R function tweedie::rtweedie
+    // p can round to exactly 1 or 2; stop there, as RTMB's rtweedie() does
+    if (asDouble(p) <= 1. || asDouble(p) >= 2.)
+      error("'p' must be in the interval (1, 2)");
     Type lambda = pow(mu, 2. - p) / (phi * (2. - p));
     Type alpha  = (2. - p) / (1. - p);
     Type gam = phi * (p - 1.) * pow(mu, p - 1.);

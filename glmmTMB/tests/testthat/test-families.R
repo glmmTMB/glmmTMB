@@ -461,6 +461,18 @@ test_that("tweedie simulation draws one Gamma variate per response", {
     expect_equal(unname(unlist(y)), ref)
 })
 
+test_that("tweedie simulation stops if the power rounds to 1 or 2", {
+    ## psi beyond about +/-37 gives a power of exactly 1 or 2 in double
+    ## precision; the draws would be NaN (and segfaulted at 2 before)
+    for (psi in c(-40, 40)) {
+        expect_error(simulate_new(~1, newdata = data.frame(id = 1:5),
+                                  family = tweedie(),
+                                  newparams = list(beta = 0, betadisp = 0,
+                                                   psi = psi)),
+                     "interval")
+    }
+})
+
 test_that("gaussian_sqrt", {
     set.seed(101)
     nobs <- 200
