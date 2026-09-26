@@ -236,6 +236,8 @@
 \section{CHANGES IN VERSION 1.1.12 (2025-08-18)}{
   \subsection{BUG FIXES}{
     \itemize{
+      \item Smooth random-effect coefficient indices now count coefficients,
+      rather than observations, and respect interleaved grouping terms.
       \item default value for \code{allow.new.levels} in
       \code{predict.glmmTMB} is now NULL, meaning that
       new levels in grouping variables are allowed when
