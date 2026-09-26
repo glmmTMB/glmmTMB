@@ -62,6 +62,15 @@ test_that("three-margin kron() matches ar1()", {
   expect_equal(logLik(f1), logLik(f2), tolerance = tol_logLik)
 })
 
+test_that("kron() works next to other terms", {
+  dd <- transform(kron_data, site = factor(as.integer(dyad) %% 5))
+  dd$y <- dd$y + rnorm(5)[dd$site]
+  f1 <- fit_rtmb(y ~ x + (1 | site) + kron(homdiag(0 + member) %x% ar1(0 + time) | dyad), dd)
+  f2 <- fit_rtmb(y ~ x + (1 | site) + ar1(0 + time | dyad:member), dd)
+  expect_equal(logLik(f1), logLik(f2), tolerance = tol_logLik)
+  expect_equal(names(VarCorr(f1)$cond), c("site", "dyad", "dyad.1"))
+})
+
 test_that("kron() works with formula(), simulate() and predict(newdata)", {
   expect_identical(deparse1(formula(fit_kron)),
                    "y ~ x + kron(us(0 + member) %x% ar1(0 + time) | dyad)")
