@@ -36,6 +36,21 @@ test_that("kron() matches an equivalent ordinary structure", {
                tolerance = 1e-4)
 })
 
+test_that("kron() Gaussian likelihood matches the dense marginal likelihood", {
+  vc <- VarCorr(fit_kron)$cond
+  expect_equal(names(vc), c("dyad", "dyad.1"))
+  ## as in kronecker(), the last (time) margin varies fastest
+  B <- kronecker(vc[[1]], vc[[2]])
+  Z <- as.matrix(getME(fit_kron, "Z"))
+  V <- Z %*% kronecker(diag(25), B) %*% t(Z) +
+    sigma(fit_kron)^2 * diag(nrow(kron_data))
+  r <- kron_data$y - getME(fit_kron, "X") %*% fixef(fit_kron)$cond
+  R <- chol(V)
+  nll <- sum(log(diag(R))) + sum(backsolve(R, r, transpose = TRUE)^2) / 2 +
+    nrow(kron_data) * log(2 * pi) / 2
+  expect_equal(-as.numeric(logLik(fit_kron)), nll, tolerance = tol_logLik)
+})
+
 test_that("three-margin kron() matches ar1()", {
   dd <- expand.grid(a = factor(1:2), time = factor(1:4), b = factor(1:3),
                     g = factor(1:10))

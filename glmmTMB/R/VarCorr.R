@@ -230,12 +230,24 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 
     for (i in seq_along(comp_nms)) {
         restruc <- reS[[paste0(comp_nms2[i],  "ReStruc")]]
+        cn <- reT[[comp_nms2[i]]]$cnms
+        cor <- xrep[[paste0("corr", comp_nms[i])]]
+        sd <- xrep[[paste0("sd", comp_nms[i])]]
+        ## show each kron() margin as a term of its own
+        for (j in rev(seq_along(restruc))) {
+            if (is.null(m <- restruc[[j]]$margins)) next
+            ins <- function(x, v) append(x[-j], v, after = j - 1)
+            cn <- ins(cn, setNames(restruc[[j]]$cnms, rep(names(cn)[j], length(m))))
+            cor <- ins(cor, cor[[j]])
+            sd <- ins(sd, sd[[j]])
+            restruc <- ins(restruc, m)
+        }
         ## lapply() rather than [vs]apply, don't want to lose names
         bcvec <- lapply(restruc, function(x) x[["blockCode"]])
         fcvec <- lapply(restruc, function(x) x[["fullCor"]])
-        if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
-            vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
-                       sd  = xrep[[paste0("sd", comp_nms[i])]],
+        if(length(cn)) {
+            vc <- mkVC(cor = cor,
+                       sd  = sd,
                        cnms = cn,
                        sc = sigma,
                        bc = bcvec,
