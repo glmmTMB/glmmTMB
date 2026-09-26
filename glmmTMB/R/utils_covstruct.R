@@ -71,3 +71,27 @@ parseNumLevels <- function(levels) {
     ans
 }
 
+## Rewrite kron(A(0 + f1) %x% B(0 + f2) | g) as the ordinary covstruct term
+## kron(0 + f2:f1 | g, c("A", "B")): as in kronecker(), the last margin
+## varies fastest
+kron_sugar <- function(x) {
+    if (identical(x[[1]], quote(kron)) && length(x) == 2) {
+        flat <- function(e) {
+            if (!is.call(e) || !identical(e[[1]], quote(`%x%`))) return(list(e))
+            c(flat(e[[2]]), flat(e[[3]]))
+        }
+        margin <- function(e) {
+            tt <- if (is.call(e) && length(e) == 2) terms(eval(call("~", e[[2]])))
+            lab <- attr(tt, "term.labels")
+            if (length(lab) != 1 || attr(tt, "intercept"))
+                stop("kron() margins must look like us(0 + f)", call. = FALSE)
+            c(struc = deparse(e[[1]]), f = lab)
+        }
+        m <- vapply(flat(x[[2]][[2]]), margin, c(struc = "", f = ""))
+        lhs <- str2lang(paste("0 +", paste(rev(m["f", ]), collapse = ":")))
+        return(call("kron", call("|", lhs, x[[2]][[3]]), m["struc", ]))
+    }
+    for (i in seq_along(x)[-1]) if (is.call(x[[i]])) x[[i]] <- kron_sugar(x[[i]])
+    x
+}
+

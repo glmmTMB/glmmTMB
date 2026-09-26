@@ -1098,6 +1098,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "kron" = NA, # set below from its margins
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1135,6 +1136,24 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
         } else if(ss[i] %in% c("exp", "gau", "mat")){
             coords <- parseNumLevels(reTrms$cnms[[i]])
             tmp$dist <- as.matrix( dist(coords) )
+        } else if(ss[i] == "kron") {
+            ## describe the margins (in the order written) as ordinary
+            ## terms of a single group, so the code above handles each one;
+            ## rev(): the term's factors are in reverse order (kron_sugar())
+            lev <- rev(.getXlevels(reXterms[[i]], fr))
+            k <- length(lev)
+            if (k != length(aa[[i]]))
+                stop("kron() margins must look like us(0 + f), with f a factor")
+            if (any(aa[[i]] %in% c("rr", "propto", "equalto", "kron")))
+                stop("kron() margins cannot be rr, propto, equalto or kron")
+            cnms <- Map(paste0, names(lev), lev)
+            mrt <- list(flist = structure(list(factor(1)), assign = rep(1, k)),
+                        Gp = cumsum(c(0, lengths(lev))), cnms = cnms)
+            mterms <- lapply(names(lev), function(v) terms(reformulate(v)))
+            tmp$margins <- getReStruc(mrt, aa[[i]], NULL, mterms, fr, rep(full_cor[i], k))
+            tmp$cnms <- cnms
+            ## the first margin carries the scale: later margins lose their first log-SD
+            tmp$blockNumTheta <- sum(vapply(tmp$margins, `[[`, 0, "blockNumTheta")) - (k - 1)
         }
         ans[[i]] <- tmp
     }
@@ -1430,6 +1449,12 @@ glmmTMB <- function(
 
     environment(dispformula) <- environment(formula)
     call$dispformula <- dispformula
+
+    ## rewrite kron() terms as ordinary terms; the stored call keeps the
+    ## user's syntax
+    formula <- kron_sugar(formula)
+    ziformula <- kron_sugar(ziformula)
+    dispformula <- kron_sugar(dispformula)
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
