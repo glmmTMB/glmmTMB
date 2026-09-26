@@ -2015,6 +2015,8 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         useRTMB(control$use_rtmb)
         on.exit(useRTMB(old_use_rtmb), add = TRUE)
     }
+    if (!useRTMB() && "kron" %in% with(TMBStruc, c(condList$ss, ziList$ss, dispList$ss)))
+        stop("kron() needs the RTMB back-end: use glmmTMBControl(use_rtmb = TRUE)")
 
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore

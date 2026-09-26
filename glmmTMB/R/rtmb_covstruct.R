@@ -147,6 +147,7 @@ termwise_nll <- function(U, theta, term) {
       block_name[1L]
     }
   }
+  if (name == "kron") return(kron_nll(U, theta, term))
   supported <- c(
     "diag", "homdiag", "us", "cs", "homcs", "toep", "homtoep",
     "ar1", "hetar1", "ou", "exp", "gau", "mat", "rr", "propto", "equalto"
@@ -634,5 +635,41 @@ termwise_nll <- function(U, theta, term) {
     sd = report_sd,
     fact_load = matrix(numeric(0), 0, 0),
     u = if (inherits(U, "simref")) NULL else as.vector(U)
+  )
+}
+
+## Kronecker product of the margins' own densities, via RTMB::dseparable().
+## As in kronecker(), the last margin varies fastest; the groups form an
+## extra iid margin. The first margin carries the scale: later margins have
+## their first theta (a log-SD) fixed at 0.
+kron_nll <- function(U, theta, term) {
+  "c" <- RTMB::ADoverload("c") # keep AD in c(0, theta)
+  margins <- term$margins
+  k <- length(margins)
+  nt <- vapply(margins, `[[`, 0, "blockNumTheta") - (seq_len(k) > 1)
+  th <- split(theta, rep(factor(seq_len(k)), nt))
+  th[-1] <- lapply(th[-1], function(t) c(0, t))
+  f <- Map(function(t, m) function(x) -termwise_nll(x, t, m)$nll, th, margins)
+
+  simulation <- inherits(U, "simref")
+  nll <- 0
+  if (simulation && term$simCode == .valid_simcode[["zero"]]) {
+    U[] <- 0
+  } else if (simulation && term$simCode == .valid_simcode[["fix"]]) {
+    U[] <- U$getOrig(seq_along(U))
+  } else {
+    dim(U) <- c(rev(vapply(margins, `[[`, 0, "blockSize")), term$blockReps)
+    iid <- function(x) sum(RTMB::dnorm(x, log = TRUE))
+    nll <- -do.call(RTMB::dseparable, c(rev(f), iid))(U)
+  }
+
+  ## report each margin like a term of its own
+  r <- Map(function(t, m) termwise_nll(numeric(m$blockSize), t, m), th, margins)
+  list(
+    nll = nll,
+    corr = lapply(r, `[[`, "corr"),
+    sd = lapply(r, `[[`, "sd"),
+    fact_load = matrix(numeric(0), 0, 0),
+    u = if (simulation) NULL else as.vector(U)
   )
 }
