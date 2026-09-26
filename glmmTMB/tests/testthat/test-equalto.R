@@ -1,30 +1,30 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
-## ------ test with simulated data
+## ------ simulate data for a multilevel meta-analysis (shared across test_that() blocks below)
+
+k.studies <- 10 #number of studies
+study <- rep(seq_len(k.studies), times=5) #study id - set 5 effect sizes per study
+k <- length(study) #total number of effect sizes
+id <- seq_len(k) #effect size id (across all studies) 
+es.id <- unlist(lapply(5, seq_len)) #id of within-study effect sizes
+b0 <- 0.2 #fixed effect coeff true value
+sigma2.u <- 0.2 #study level random effect
+sigma2.m <- 0.3 #obs level random effect
+set.seed(123); vi <- rbeta(k, 2, 20) # simulate sampling errors variances
+set.seed(123); u <- rnorm(k.studies, 0, sqrt(sigma2.u))[study] # simulate study level variance
+set.seed(123); m <- rnorm(k, 0, sqrt(sigma2.m)) # simulate obs level variance
+set.seed(123); e <- rnorm(k, 0, sqrt(vi))[study] #simulate samplign errors - without within-study correlation (just a diag VCV)
+y <- b0 + u + m + e #compute y
+
+# sim dataset
+dat <- data.frame(y = y, vi = vi, study = study, id = factor(id), es.id = es.id, g = 1)
+V <- diag(dat$vi)
+colnames(V) <- rownames(V) <- dat$id
 
 test_that("equalto vs map-start on simulated data", {
 
-  # simulate data for a multilevel meta-analysis 
-  k.studies <- 10 #number of studies
-  study <- rep(seq_len(k.studies), times=5) #study id - set 5 effect sizes per study
-  k <- length(study) #total number of effect sizes
-  id <- seq_len(k) #effect size id (across all studies) 
-  es.id <- unlist(lapply(5, seq_len)) #id of within-study effect sizes
-  b0 <- 0.2 #fixed effect coeff true value
-  sigma2.u <- 0.2 #study level random effect
-  sigma2.m <- 0.3 #obs level random effect
-  set.seed(123); vi <- rbeta(k, 2, 20) # simulate sampling errors variances
-  set.seed(123); u <- rnorm(k.studies, 0, sqrt(sigma2.u))[study] # simulate study level variance
-  set.seed(123); m <- rnorm(k, 0, sqrt(sigma2.m)) # simulate obs level variance
-  set.seed(123); e <- rnorm(k, 0, sqrt(vi))[study] #simulate samplign errors - without within-study correlation (just a diag VCV)
-  y <- b0 + u + m + e #compute y
-  
-  # sim dataset
-  dat <- data.frame(y = y, vi = vi, study = study, id = factor(id), es.id = es.id, g = 1)
-  
   # fit with equalto
-  V <- diag(dat$vi)
   fit1 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, V),
                   data=dat,
                   REML=TRUE)
@@ -42,29 +42,70 @@ test_that("equalto vs map-start on simulated data", {
   expect_equal(c(sigma(fit1)^2),
                c(VarCorr(fit2)$cond[[2]][1]))
   
-  # check these are equivalent 
-  mod1 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, diag(vi)), data=dat, REML=TRUE)
-  mod2 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, V), data=dat, REML=TRUE)
-  expect_equal(mod1$fit$par, mod2$fit$par)
-  expect_equal(mod1$sdr$gradient.fixed, mod1$sdr$gradient.fixed)
-
+  expect_equal(c(logLik(fit1)),
+               c(logLik(fit2)))
 })
 
-### checking error messages for input matrix 
-# #-expect an error
-# mod0 <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, vi), data=dat) 
-# #-expect an error
-# vix <- vi[1:45]
-# modx <- glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, vix), data=dat)
-# #-expect an error: one column matrix
-# Vbad <- matrix(1:5)
-# glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vbad), data=dat)
-# #-expect an error: non-symmtric
-# Vt <- matrix(1:5, 1:2)
-# glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vt), data=dat)
-# #-expect an error: input character vector
-# a <- as.vector(c("a", "b", "c"))
-# glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, a), data=dat)
+
+
+
+test_that("equalto error messages for bad input matrices", {
+
+  # expect an error: numeric vector rather than a matrix
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, vi), data=dat),
+    "equalto() matrix must be a numeric matrix", fixed = TRUE
+  )
+  # expect an error: input character vector
+  a <- as.vector(c("a", "b", "c"))
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, a), data=dat),
+    "must be a numeric matrix"
+  )
+  # expect an error: matrix contains NA values
+  Vna <- V
+  Vna[1, 2] <- NA
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vna), data=dat),
+    "equalto() matrix contains missing values", fixed = TRUE
+  )
+  # expect an error: one column matrix (dimensions don't match)
+  Vbad <- matrix(1:5)
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vbad), data=dat),
+    "equalto() matrix has dimensions 5 x 1, but the random effect term has 50 levels. These must match.",
+    fixed = TRUE
+  )
+  # expect an error: square but non-symmetric matrix
+  Vt <- matrix(seq_len(50^2), 50, 50)
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vt), data=dat),
+    "equalto() matrix must be symmetric", fixed = TRUE
+  )
+  # expect an error: row and column names differ
+  Vrc <- V
+  colnames(Vrc) <- paste0(colnames(V), "x")
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vrc), data=dat),
+    "row and column names of the equalto() matrix differ", fixed = TRUE
+  )
+  # expect an error: row/column names match RE levels but in a different order
+  Vord <- V[rev(seq_len(nrow(V))), rev(seq_len(ncol(V)))]
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vord), data=dat),
+    "row/column names of the equalto() matrix match the random effect level names, but are in a different order",
+    fixed = TRUE
+  )
+  # expect an error: row/column names don't match the random effect level names at all
+  Vwrong <- V
+  dimnames(Vwrong) <- list(paste0("z", seq_len(nrow(V))), paste0("z", seq_len(nrow(V))))
+  expect_error(
+    glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vwrong), data=dat),
+    "row/column names of the equalto() matrix do not match the random effect level names. Expecting names: ",
+    fixed = TRUE
+  )
+})
+
 
 
 ## ------ test comparing output with metafor with example dataset
@@ -80,6 +121,7 @@ test_that("compare glmmTMB equalto with metafor rma.mv", {
   
   # assume that the effect sizes within studies are correlated with rho=0.6
   V <- vcalc(vi, cluster=study, obs=esid, data=dat, rho=0.6)
+  colnames(V) <- rownames(V) <- dat$id
   
   options(na.action = "na.omit") #metafor global options default
   fit.rma <- metafor::rma.mv(yi, V,

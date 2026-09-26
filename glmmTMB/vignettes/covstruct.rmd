@@ -775,6 +775,7 @@ dat$id <- as.factor(1:nrow(dat)) #effect size id - this needs to be a factor
 # create variance-covariance matrix for sampling errors 
 # assume that the effect sizes within studies are correlated by rho=0.6
 VCV <- metafor::vcalc(vi, cluster=study, obs=esid, data=dat, rho=0.6)
+colnames(VCV) <- rownames(VCV) <- dat$id
 round(VCV[dat$study %in% c(1,2), dat$study %in% c(1,2)], 4)
 
 # fit meta-analysis using approximate VCV matrix
@@ -785,7 +786,8 @@ We can fit the same model assuming sampling errors are independent:
 
 ```{r glmmTMB_meta, eval=params$have_metafor}
 # assume sampling errors are independent
-V <- diag(dat$vi) 
+V <- diag(dat$vi)
+colnames(V) <- rownames(V) <- dat$id
 # fit meta-analysis with a diagonal matrix VCV
 fit_ma <- glmmTMB(yi ~ 1 + (1|study) + equalto(0 + id|g, V), REML=TRUE, data=dat)
 
