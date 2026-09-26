@@ -1268,6 +1268,7 @@ binomialType <- function(x) {
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 ##' \item \code{equalto} (* equal to user-specified variance-covariance matrix)
+##' \item \code{kron} (* Kronecker product of two or more of the structures above except \code{rr}, \code{propto} and \code{equalto}, e.g. \code{kron(us(0 + member) \%x\% ar1(0 + time) | dyad)}; RTMB back-end only. Each margin takes one factor and no intercept. The first margin carries the variance; later margins have their first standard deviation fixed at 1)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.

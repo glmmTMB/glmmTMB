@@ -83,6 +83,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
  Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # -
+ Kronecker product                # `kron`        #  margins' total $-(k-1)$ # RTMB back-end # the $k$ margins' parameters in order, without the first log-SD of each later margin (fixed at 0)
 "
 )
 knitr::kable(ctab)
@@ -818,6 +819,33 @@ fit_rma2 <- metafor::rma.mv(yi, vi,
 As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
 
 In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
+
+## Kronecker products
+
+`kron()` combines two or more of the structures above into their Kronecker product (a *separable* covariance). For example, for dyads measured repeatedly, `kron(us(0 + member) %x% ar1(0 + time) | dyad)` gives each dyad one random effect per member and time point, with
+
+$$\textrm{Cov}(u_{it}, u_{js}) = \Sigma_{ij} \, \phi^{|t-s|},$$
+
+where $\Sigma$ is the unstructured member covariance and $\phi$ the AR(1) correlation.
+
+- Each margin is written like the left-hand side of an ordinary term, with one factor and no intercept (a `numFactor()` for `ou`, `exp`, `gau` and `mat`). All structures above except `rr`, `propto` and `equalto` can be margins.
+- The first margin carries the variance; later margins have their first standard deviation fixed at 1.
+- `kron()` needs the RTMB back-end.
+
+```{r kron}
+set.seed(101)
+dd <- expand.grid(member = factor(1:2), time = factor(1:10), dyad = factor(1:50))
+Sigma <- matrix(c(1, 0.5, 0.5, 2), 2)
+R <- 0.7^abs(outer(1:10, 1:10, "-"))
+## one row per dyad; member varies fastest, as in the rows of dd
+b <- MASS::mvrnorm(50, mu = rep(0, 20), Sigma = kronecker(R, Sigma))
+dd$y <- c(t(b)) + rnorm(nrow(dd), sd = 0.5)
+fit.kron <- glmmTMB(y ~ kron(us(0 + member) %x% ar1(0 + time) | dyad),
+                    data = dd, control = glmmTMBControl(use_rtmb = TRUE))
+VarCorr(fit.kron)
+```
+
+`VarCorr()` shows each margin as a block of its own: the member standard deviations and correlation (`dyad`), then the AR(1) margin with its standard deviation fixed at 1 (`dyad.1`).
 
 ## Construction of structured covariance matrices
 
