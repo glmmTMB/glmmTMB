@@ -764,14 +764,15 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             ##  ... which bits are actually used hereafter?
             avec[nonbarpos] <-  length(augReTrms$flist)
             attr(augReTrms$flist, "assign") <- avec
-            ncol_fun <- function(x) if (is.null(x)) 0 else ncol(x)
-            b_lens <- vapply(augReTrms$Ztlist, ncol_fun, FUN.VALUE = numeric(1))
+            ## Zt has coefficients in rows, observations in columns.
+            ncoef_fun <- function(x) if (is.null(x)) 0L else nrow(x)
+            b_lens <- vapply(augReTrms$Ztlist, ncoef_fun, FUN.VALUE = integer(1))
             for (i in seq_along(smooth_terms2)) {
                 s <- smooth_terms2[[i]]
                 pos <- nonbarpos[i]
                 Zt <- as(t(s$re$rand$Xr), "dgCMatrix")
-                b_lens[pos] <- ncol(Zt)
-                b_ind <- sum(b_lens[seq_along(b_lens)<i]) + seq(ncol(Zt))
+                b_lens[pos] <- nrow(Zt)
+                b_ind <- sum(b_lens[seq_along(b_lens) < pos]) + seq_len(nrow(Zt))
                 ## perhaps redundant with b indices stored elsewhere
                 smooth_terms2[[i]]$re$b_ind <- b_ind
                 npar <- nrow(Zt)
