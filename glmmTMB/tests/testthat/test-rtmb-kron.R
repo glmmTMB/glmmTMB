@@ -75,6 +75,19 @@ test_that("kron() works next to other terms", {
   expect_equal(names(VarCorr(f1)$cond), c("site", "dyad (kron 1/2)", "dyad (kron 2/2)"))
 })
 
+test_that("kron() expands nested grouping factors", {
+  dd <- transform(kron_data, site = factor(as.integer(dyad) %% 5))
+  nested <- glmmTMB(
+    y ~ x + kron(us(0 + member) %x% ar1(0 + time) | site/dyad),
+    data = dd, doFit = FALSE)
+  explicit <- glmmTMB(
+    y ~ x + kron(us(0 + member) %x% ar1(0 + time) | dyad:site) +
+      kron(us(0 + member) %x% ar1(0 + time) | site),
+    data = dd, doFit = FALSE)
+  expect_equal(nested$condReStruc, explicit$condReStruc)
+  expect_equal(nested$data.tmb$Z, explicit$data.tmb$Z)
+})
+
 test_that("kron() works with formula(), simulate() and predict(newdata)", {
   expect_identical(deparse1(formula(m_kron)),
                    "y ~ x + kron(us(0 + member) %x% ar1(0 + time) | dyad)")

@@ -101,7 +101,11 @@ rewriteKron <- function(x) {
         factors <- vapply(margins, marginFactor, "")
         strucs <- vapply(margins, function(e) deparse(e[[1]]), "")
         lhs <- str2lang(paste("0 +", paste(rev(factors), collapse = ":")))
-        return(call("kron", call("|", lhs, bar[[3]]), strucs))
+        ## Split nested groups here (g/h -> h:g and g, as for us(0 + f | g/h)):
+        ## splitForm() does not split them in terms with a second argument
+        groups <- reformulas::expandGrpVar(bar[[3]])
+        return(reformulas::sumTerms(lapply(groups, function(g)
+            call("kron", call("|", lhs, g), strucs))))
     }
     ## Otherwise, look for kron() terms in the arguments
     for (i in seq_along(x)[-1]) if (is.call(x[[i]])) x[[i]] <- rewriteKron(x[[i]])
