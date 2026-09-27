@@ -14,7 +14,7 @@ kron_data <- expand.grid(
 )
 S_member <- matrix(c(1, 0.5, 0.5, 1.5), 2)
 S_time <- 0.6^abs(outer(1:5, 1:5, "-"))
-L <- t(chol(kronecker(S_time, S_member))) ## member varies fastest in the rows
+L <- t(chol(kronecker(S_time, S_member))) ## member varies fastest in kron_data's rows
 b <- as.vector(L %*% matrix(rnorm(10 * 25), 10))
 kron_data$x <- rnorm(nrow(kron_data))
 kron_data$y <- 1 + 0.5 * kron_data$x + b + rnorm(nrow(kron_data), sd = 0.5)
@@ -29,6 +29,7 @@ fit_rtmb <- function(formula, data = kron_data) {
 fit_kron <- fit_rtmb(y ~ x + kron(us(0 + member) %x% ar1(0 + time) | dyad))
 
 test_that("kron() matches an equivalent ordinary structure", {
+  ## homdiag() as a later margin is the identity (its SD is fixed at 1)
   f1 <- fit_rtmb(y2 ~ kron(us(0 + member) %x% homdiag(0 + time) | dyad))
   f2 <- fit_rtmb(y2 ~ us(0 + member | dyad:time))
   expect_equal(logLik(f1), logLik(f2), tolerance = tol_logLik)
@@ -39,21 +40,22 @@ test_that("kron() matches an equivalent ordinary structure", {
 test_that("kron() Gaussian likelihood matches the dense marginal likelihood", {
   vc <- VarCorr(fit_kron)$cond
   expect_equal(names(vc), c("dyad", "dyad.1"))
-  ## as in kronecker(), the last (time) margin varies fastest
+  ## B in Z's column order: time (the last margin) varies fastest
   B <- kronecker(vc[[1]], vc[[2]])
   Z <- as.matrix(getME(fit_kron, "Z"))
   V <- Z %*% kronecker(diag(25), B) %*% t(Z) +
     sigma(fit_kron)^2 * diag(nrow(kron_data))
   r <- kron_data$y - getME(fit_kron, "X") %*% fixef(fit_kron)$cond
   R <- chol(V)
-  nll <- sum(log(diag(R))) + sum(backsolve(R, r, transpose = TRUE)^2) / 2 +
-    nrow(kron_data) * log(2 * pi) / 2
+  z <- backsolve(R, r, transpose = TRUE) ## whitened residuals, iid N(0, 1)
+  nll <- sum(log(diag(R))) - sum(dnorm(z, log = TRUE))
   expect_equal(-as.numeric(logLik(fit_kron)), nll, tolerance = tol_logLik)
 })
 
 test_that("three-margin kron() matches ar1()", {
   dd <- expand.grid(a = factor(1:2), time = factor(1:4), b = factor(1:3),
                     g = factor(1:10))
+  ## rows of dd: a varies fastest, then time, then b
   S <- kronecker(diag(3), kronecker(0.5^abs(outer(1:4, 1:4, "-")), diag(2)))
   dd$y <- as.vector(t(chol(S)) %*% matrix(rnorm(24 * 10), 24)) +
     rnorm(nrow(dd), sd = 0.5)
@@ -82,10 +84,10 @@ test_that("kron() works with formula(), simulate() and predict(newdata)", {
 
   obj <- fit_kron$obj
   set_simcodes(obj, "zero")
-  expect_equal(obj$simulate()$b, rep(0, 250))
+  expect_equal(obj$simulate()$b, rep(0, 10 * 25))
   set_simcodes(obj, "fix")
   expect_equal(obj$simulate()$b, obj$report()$b)
-  set_simcodes(obj, "random")
+  set_simcodes(obj, "random") ## restore the default
 })
 
 test_that("kron() gives clear errors", {

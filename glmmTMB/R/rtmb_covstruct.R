@@ -638,18 +638,25 @@ termwise_nll <- function(U, theta, term) {
   )
 }
 
-## Kronecker product of the margins' own densities, via RTMB::dseparable().
-## As in kronecker(), the last margin varies fastest; the groups form an
-## extra iid margin. The first margin carries the scale: later margins have
-## their first theta (a log-SD) fixed at 0.
+## Density with covariance kronecker(margin 1, margin 2, ...), built from the
+## margins' own densities with RTMB::dseparable(). As in kronecker(), the last
+## margin varies fastest; the groups form an extra iid margin. The first
+## margin carries the scale: later margins have their first theta (a log-SD)
+## fixed at 0.
 kron_nll <- function(U, theta, term) {
-  "c" <- RTMB::ADoverload("c") # keep AD in c(0, theta)
+  "c" <- RTMB::ADoverload("c") # keep AD in c(0, th)
   margins <- term$margins
-  k <- length(margins)
-  nt <- vapply(margins, `[[`, 0, "blockNumTheta") - (seq_len(k) > 1)
-  th <- split(theta, rep(factor(seq_len(k)), nt))
-  th[-1] <- lapply(th[-1], function(t) c(0, t))
-  f <- Map(function(t, m) function(x) -termwise_nll(x, t, m)$nll, th, margins)
+
+  ## split theta by margin and put back the fixed log-SD of later margins;
+  ## factor() keeps an (empty) group for a later margin with no free theta
+  ## (e.g. homdiag)
+  n_free_theta <- vapply(margins, `[[`, 0, "blockNumTheta")
+  n_free_theta[-1] <- n_free_theta[-1] - 1
+  margin_theta <- split(theta, rep(factor(seq_along(margins)), n_free_theta))
+  margin_theta[-1] <- lapply(margin_theta[-1], function(th) c(0, th))
+  margin_logdens <- Map(function(th, margin) {
+    function(x) -termwise_nll(x, th, margin)$nll
+  }, margin_theta, margins)
 
   simulation <- inherits(U, "simref")
   nll <- 0
@@ -658,17 +665,23 @@ kron_nll <- function(U, theta, term) {
   } else if (simulation && term$simCode == .valid_simcode[["fix"]]) {
     U[] <- U$getOrig(seq_along(U))
   } else {
+    ## fit, or simulate new values (simCode "random"). dseparable()'s first
+    ## density acts on the first (fastest) dimension of U, which is the last
+    ## margin: hence rev(). The groups come last (iid).
     dim(U) <- c(rev(vapply(margins, `[[`, 0, "blockSize")), term$blockReps)
-    iid <- function(x) sum(RTMB::dnorm(x, log = TRUE))
-    nll <- -do.call(RTMB::dseparable, c(rev(f), iid))(U)
+    iid_logdens <- function(x) sum(RTMB::dnorm(x, log = TRUE))
+    nll <- -do.call(RTMB::dseparable, c(rev(margin_logdens), iid_logdens))(U)
   }
 
-  ## report each margin like a term of its own
-  r <- Map(function(t, m) termwise_nll(numeric(m$blockSize), t, m), th, margins)
+  ## report each margin like a term of its own; only its corr and sd are
+  ## used, so a block of zeros stands in for U
+  margin_report <- Map(function(th, margin) {
+    termwise_nll(numeric(margin$blockSize), th, margin)
+  }, margin_theta, margins)
   list(
     nll = nll,
-    corr = lapply(r, `[[`, "corr"),
-    sd = lapply(r, `[[`, "sd"),
+    corr = lapply(margin_report, `[[`, "corr"),
+    sd = lapply(margin_report, `[[`, "sd"),
     fact_load = matrix(numeric(0), 0, 0),
     u = if (simulation) NULL else as.vector(U)
   )

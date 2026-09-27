@@ -1137,23 +1137,33 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
             coords <- parseNumLevels(reTrms$cnms[[i]])
             tmp$dist <- as.matrix( dist(coords) )
         } else if(ss[i] == "kron") {
-            ## describe the margins (in the order written) as ordinary
-            ## terms of a single group, so the code above handles each one;
-            ## rev(): the term's factors are in reverse order (kron_sugar())
-            lev <- rev(.getXlevels(reXterms[[i]], fr))
-            k <- length(lev)
-            if (k != length(aa[[i]]))
+            margin_strucs <- aa[[i]] # e.g. c("us", "ar1"), from kron_sugar()
+            ## rev() undoes kron_sugar()'s reversal of the factors, giving the
+            ## margins in the order written
+            margin_levels <- rev(.getXlevels(reXterms[[i]], fr))
+            n_margins <- length(margin_levels)
+            ## numeric margins are missing here: .getXlevels() skips them
+            if (n_margins != length(margin_strucs))
                 stop("kron() margins must look like us(0 + f), with f a factor")
-            if (any(aa[[i]] %in% c("rr", "propto", "equalto", "kron")))
+            if (any(margin_strucs %in% c("rr", "propto", "equalto", "kron")))
                 stop("kron() margins cannot be rr, propto, equalto or kron")
-            cnms <- Map(paste0, names(lev), lev)
-            mrt <- list(flist = structure(list(factor(1)), assign = rep(1, k)),
-                        Gp = cumsum(c(0, lengths(lev))), cnms = cnms)
-            mterms <- lapply(names(lev), function(v) terms(reformulate(v)))
-            tmp$margins <- getReStruc(mrt, aa[[i]], NULL, mterms, fr, rep(full_cor[i], k))
-            tmp$cnms <- cnms
+            ## column names per margin (also used by VarCorr())
+            tmp$cnms <- Map(paste0, names(margin_levels), margin_levels)
+            ## pass the margins back through getReStruc() as the terms of one
+            ## group with a single level, so each margin gets the usual checks
+            ## and parameter count
+            margin_reTrms <- list(
+                flist = structure(list(factor(1)), assign = rep(1, n_margins)),
+                Gp = cumsum(c(0, lengths(margin_levels))),
+                cnms = tmp$cnms)
+            margin_terms <- lapply(names(margin_levels),
+                                   function(v) terms(reformulate(v)))
+            tmp$margins <- getReStruc(margin_reTrms, ss = margin_strucs,
+                                      reXterms = margin_terms, fr = fr,
+                                      full_cor = rep(full_cor[i], n_margins))
             ## the first margin carries the scale: later margins lose their first log-SD
-            tmp$blockNumTheta <- sum(vapply(tmp$margins, `[[`, 0, "blockNumTheta")) - (k - 1)
+            margin_num_theta <- vapply(tmp$margins, `[[`, 0, "blockNumTheta")
+            tmp$blockNumTheta <- sum(margin_num_theta) - (n_margins - 1)
         }
         ans[[i]] <- tmp
     }

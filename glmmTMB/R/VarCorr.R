@@ -233,14 +233,19 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         cn <- reT[[comp_nms2[i]]]$cnms
         cor <- xrep[[paste0("corr", comp_nms[i])]]
         sd <- xrep[[paste0("sd", comp_nms[i])]]
-        ## show each kron() margin as a term of its own
+        ## show each kron() margin as a term of its own: replace the kron term's
+        ## entry by one entry per margin (kron_nll() reports corr and sd per
+        ## margin); going backwards keeps the positions still to visit valid
         for (j in rev(seq_along(restruc))) {
-            if (is.null(m <- restruc[[j]]$margins)) next
-            ins <- function(x, v) append(x[-j], v, after = j - 1)
-            cn <- ins(cn, setNames(restruc[[j]]$cnms, rep(names(cn)[j], length(m))))
-            cor <- ins(cor, cor[[j]])
-            sd <- ins(sd, sd[[j]])
-            restruc <- ins(restruc, m)
+            margins <- restruc[[j]]$margins
+            if (is.null(margins)) next
+            replace_term <- function(x, per_margin)
+                append(x[-j], per_margin, after = j - 1)
+            group_names <- rep(names(cn)[j], length(margins))
+            cn <- replace_term(cn, setNames(restruc[[j]]$cnms, group_names))
+            cor <- replace_term(cor, cor[[j]])
+            sd <- replace_term(sd, sd[[j]])
+            restruc <- replace_term(restruc, margins)
         }
         ## lapply() rather than [vs]apply, don't want to lose names
         bcvec <- lapply(restruc, function(x) x[["blockCode"]])
