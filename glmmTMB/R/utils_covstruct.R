@@ -71,12 +71,12 @@ parseNumLevels <- function(levels) {
     ans
 }
 
-## Rewrite kron(A(0 + f1) %x% B(0 + f2) | g) as the ordinary covstruct term
-## kron(0 + f2:f1 | g, c("A", "B")). The factors are reversed because in
-## f2:f1 the first factor (f2) varies fastest, while in kronecker() the last
-## margin varies fastest.
-kron_sugar <- function(x) {
-    ## rewrite only the one-argument user syntax, not the ordinary form
+## Rewrite each kron(A(0 + f1) %x% B(0 + f2) | g) in a formula into the
+## internal form kron(0 + f2:f1 | g, c("A", "B")), parsed like rr(0 + f | g, 2).
+## The factors are reversed: in the columns of f2:f1 the first factor (f2)
+## varies fastest, while in kronecker() the last margin does.
+rewriteKron <- function(x) {
+    ## Rewrite only the one-argument user syntax, not the internal form
     if (identical(x[[1]], quote(kron)) && length(x) == 2) {
         ## A(0 + f1) %x% B(0 + f2) %x% ...  ->  list(A(0 + f1), B(0 + f2), ...)
         flatten <- function(e) {
@@ -84,7 +84,7 @@ kron_sugar <- function(x) {
             c(flatten(e[[2]]), flatten(e[[3]]))
         }
         ## A(0 + f)  ->  "f"
-        margin_factor <- function(e) {
+        marginFactor <- function(e) {
             if (is.call(e) && length(e) == 2) {
                 tt <- terms(eval(call("~", e[[2]])))
                 lab <- attr(tt, "term.labels")
@@ -94,13 +94,13 @@ kron_sugar <- function(x) {
         }
         bar <- x[[2]] # A(0 + f1) %x% B(0 + f2) | g
         margins <- flatten(bar[[2]])
-        factors <- vapply(margins, margin_factor, "")
+        factors <- vapply(margins, marginFactor, "")
         strucs <- vapply(margins, function(e) deparse(e[[1]]), "")
         lhs <- str2lang(paste("0 +", paste(rev(factors), collapse = ":")))
         return(call("kron", call("|", lhs, bar[[3]]), strucs))
     }
-    ## otherwise, look for kron() terms in the arguments
-    for (i in seq_along(x)[-1]) if (is.call(x[[i]])) x[[i]] <- kron_sugar(x[[i]])
+    ## Otherwise, look for kron() terms in the arguments
+    for (i in seq_along(x)[-1]) if (is.call(x[[i]])) x[[i]] <- rewriteKron(x[[i]])
     x
 }
 

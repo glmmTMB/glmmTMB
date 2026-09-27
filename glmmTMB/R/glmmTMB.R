@@ -1137,31 +1137,32 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
             coords <- parseNumLevels(reTrms$cnms[[i]])
             tmp$dist <- as.matrix( dist(coords) )
         } else if(ss[i] == "kron") {
-            margin_strucs <- aa[[i]] # e.g. c("us", "ar1"), from kron_sugar()
-            ## rev() undoes kron_sugar()'s reversal of the factors, giving the
+            margin_strucs <- aa[[i]] # e.g. c("us", "ar1"), from rewriteKron()
+            ## rev() undoes rewriteKron()'s reversal of the factors, giving the
             ## margins in the order written
             margin_levels <- rev(.getXlevels(reXterms[[i]], fr))
             n_margins <- length(margin_levels)
-            ## numeric margins are missing here: .getXlevels() skips them
+            ## .getXlevels() skips numeric margins, so they fail this check
             if (n_margins != length(margin_strucs))
                 stop("kron() margins must look like us(0 + f), with f a factor")
             if (any(margin_strucs %in% c("rr", "propto", "equalto", "kron")))
                 stop("kron() margins cannot be rr, propto, equalto or kron")
             ## column names per margin (also used by VarCorr())
             tmp$cnms <- Map(paste0, names(margin_levels), margin_levels)
-            ## pass the margins back through getReStruc() as the terms of one
-            ## group with a single level, so each margin gets the usual checks
-            ## and parameter count
+            ## pass the margins back through getReStruc() as terms of a grouping
+            ## factor with one level, so each margin gets the usual checks and
+            ## parameter count
             margin_reTrms <- list(
                 flist = structure(list(factor(1)), assign = rep(1, n_margins)),
                 Gp = cumsum(c(0, lengths(margin_levels))),
                 cnms = tmp$cnms)
-            margin_terms <- lapply(names(margin_levels),
-                                   function(v) terms(reformulate(v)))
+            margin_reXterms <- lapply(names(margin_levels),
+                                      function(v) terms(reformulate(v)))
             tmp$margins <- getReStruc(margin_reTrms, ss = margin_strucs,
-                                      reXterms = margin_terms, fr = fr,
+                                      reXterms = margin_reXterms, fr = fr,
                                       full_cor = rep(full_cor[i], n_margins))
-            ## the first margin carries the scale: later margins lose their first log-SD
+            ## the first margin carries the variance: each later margin's first
+            ## log-SD is fixed at 0 (SD 1), so it is not counted
             margin_num_theta <- vapply(tmp$margins, `[[`, 0, "blockNumTheta")
             tmp$blockNumTheta <- sum(margin_num_theta) - (n_margins - 1)
         }
@@ -1461,11 +1462,11 @@ glmmTMB <- function(
     environment(dispformula) <- environment(formula)
     call$dispformula <- dispformula
 
-    ## rewrite kron() terms as ordinary terms; the stored call keeps the
+    ## rewrite kron() terms into the internal form; the stored call keeps the
     ## user's syntax
-    formula <- kron_sugar(formula)
-    ziformula <- kron_sugar(ziformula)
-    dispformula <- kron_sugar(dispformula)
+    formula <- rewriteKron(formula)
+    ziformula <- rewriteKron(ziformula)
+    dispformula <- rewriteKron(dispformula)
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),

@@ -235,14 +235,15 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         sd <- xrep[[paste0("sd", comp_nms[i])]]
         ## show each kron() margin as a term of its own: replace the kron term's
         ## entry by one entry per margin (kron_nll() reports corr and sd per
-        ## margin); going backwards keeps the positions still to visit valid
+        ## margin); loop backwards so the insertions don't shift entries not
+        ## yet visited
         for (j in rev(seq_along(restruc))) {
             margins <- restruc[[j]]$margins
             if (is.null(margins)) next
             replace_term <- function(x, per_margin)
                 append(x[-j], per_margin, after = j - 1)
-            group_names <- rep(names(cn)[j], length(margins))
-            cn <- replace_term(cn, setNames(restruc[[j]]$cnms, group_names))
+            grpvar <- rep(names(cn)[j], length(margins))
+            cn <- replace_term(cn, setNames(restruc[[j]]$cnms, grpvar))
             cor <- replace_term(cor, cor[[j]])
             sd <- replace_term(sd, sd[[j]])
             restruc <- replace_term(restruc, margins)
