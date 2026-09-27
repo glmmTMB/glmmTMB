@@ -150,6 +150,8 @@
       fixed-effect column); the aliased coefficient now gets \code{NA} ddf,
       like its \code{NA} estimate and standard error, rather than erroring
       (GH #1326, @qdread)
+      \item \code{predict()} with new data now uses the back-end the model
+      was fitted with, rather than the global \code{useRTMB()} setting
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
