@@ -845,7 +845,7 @@ fit.kron <- glmmTMB(y ~ kron(us(0 + member) %x% ar1(0 + time) | dyad),
 VarCorr(fit.kron)
 ```
 
-`VarCorr()` shows each margin as a block of its own: the member standard deviations and correlation (`dyad`), then the AR(1) margin with its standard deviation fixed at 1 (`dyad.1`).
+`VarCorr()` shows each margin as a block of its own: the member standard deviations and correlation (`dyad (kron 1/2)`), then the AR(1) margin with its standard deviation fixed at 1 (`dyad (kron 2/2)`).
 
 ## Construction of structured covariance matrices
 

@@ -242,7 +242,10 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
             if (is.null(margins)) next
             replace_term <- function(x, per_margin)
                 append(x[-j], per_margin, after = j - 1)
-            grpvar <- rep(names(cn)[j], length(margins))
+            ## label the margins as parts of one term, e.g. "dyad (kron 1/2)",
+            ## so they don't look like separate (added) terms
+            grpvar <- sprintf("%s (kron %d/%d)", names(cn)[j],
+                              seq_along(margins), length(margins))
             cn <- replace_term(cn, setNames(restruc[[j]]$cnms, grpvar))
             cor <- replace_term(cor, cor[[j]])
             sd <- replace_term(sd, sd[[j]])

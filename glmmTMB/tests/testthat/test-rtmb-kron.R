@@ -40,7 +40,7 @@ test_that("kron() matches an equivalent ordinary structure", {
 
 test_that("kron() Gaussian likelihood matches the dense marginal likelihood", {
   vc <- VarCorr(m_kron)$cond
-  expect_equal(names(vc), c("dyad", "dyad.1"))
+  expect_equal(names(vc), c("dyad (kron 1/2)", "dyad (kron 2/2)"))
   ## covariance of one dyad's random effects, in Z's column order: time (the
   ## last margin) varies fastest
   S_block <- kronecker(vc[[1]], vc[[2]])
@@ -72,7 +72,7 @@ test_that("kron() works next to other terms", {
   f1 <- fit_rtmb(y ~ x + (1 | site) + kron(homdiag(0 + member) %x% ar1(0 + time) | dyad), dd)
   f2 <- fit_rtmb(y ~ x + (1 | site) + ar1(0 + time | dyad:member), dd)
   expect_equal(logLik(f1), logLik(f2), tolerance = tol_logLik)
-  expect_equal(names(VarCorr(f1)$cond), c("site", "dyad", "dyad.1"))
+  expect_equal(names(VarCorr(f1)$cond), c("site", "dyad (kron 1/2)", "dyad (kron 2/2)"))
 })
 
 test_that("kron() works with formula(), simulate() and predict(newdata)", {
