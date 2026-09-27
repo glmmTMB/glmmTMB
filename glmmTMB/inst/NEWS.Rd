@@ -77,7 +77,7 @@
       next few releases, although new features may be RTMB-only.
       \item new \code{kron()} covariance structure (RTMB back-end only):
       the Kronecker product of two or more existing structures, e.g.
-      \code{kron(us(0 + member) \%x\% ar1(0 + time) | dyad)} (GH #592)
+      \code{kron(us(0 + trait) \%x\% ar1(0 + time) | subject)} (GH #592)
     } % itemize
   } % new features
  \subsection{BUG FIXES}{
