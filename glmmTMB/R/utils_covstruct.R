@@ -93,6 +93,10 @@ rewriteKron <- function(x) {
             stop("kron() margins must look like us(0 + f)", call. = FALSE)
         }
         bar <- x[[2]] # A(0 + f1) %x% B(0 + f2) | g
+        ## Require "| g" (a "|| g" is read as "| g", as for other structures)
+        if (!is.call(bar) || !deparse1(bar[[1]]) %in% c("|", "||"))
+            stop("kron() needs a grouping factor, as in ",
+                 "kron(us(0 + f1) %x% ar1(0 + f2) | g)", call. = FALSE)
         margins <- flatten(bar[[2]])
         factors <- vapply(margins, marginFactor, "")
         strucs <- vapply(margins, function(e) deparse(e[[1]]), "")

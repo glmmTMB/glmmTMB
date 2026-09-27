@@ -101,4 +101,6 @@ test_that("kron() gives clear errors", {
                "cannot be rr")
   expect_error(fit_rtmb(y ~ kron(us(member) %x% ar1(0 + time) | dyad)),
                "must look like")
+  expect_error(fit_rtmb(y ~ kron(us(0 + member) %x% ar1(0 + time))),
+               "needs a grouping factor")
 })
