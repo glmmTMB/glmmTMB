@@ -205,6 +205,10 @@ mkVC <- function(cor, sd, cnms, sc, bc, useSc, fullCor = NULL) {
 ##' of the correlation matrix, filled in column-wise order
 ##' (see the \href{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}{TMB documentation}
 ##' for further details).
+##'
+##' For a \code{kron()} term, each margin is returned as a block of its own,
+##' labelled e.g. \code{"subject (kron 1/2)"} and \code{"subject (kron 2/2)"};
+##' the covariance of the whole term is the \code{kronecker()} product of these blocks.
 ##' @keywords internal
 VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 {
@@ -230,12 +234,33 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
 
     for (i in seq_along(comp_nms)) {
         restruc <- reS[[paste0(comp_nms2[i],  "ReStruc")]]
+        cn <- reT[[comp_nms2[i]]]$cnms
+        cor <- xrep[[paste0("corr", comp_nms[i])]]
+        sd <- xrep[[paste0("sd", comp_nms[i])]]
+        ## show each kron() margin as a term of its own: replace the kron term's
+        ## entry by one entry per margin (kron_nll() reports corr and sd per
+        ## margin); loop backwards so the insertions don't shift entries not
+        ## yet visited
+        for (j in rev(seq_along(restruc))) {
+            margins <- restruc[[j]]$margins
+            if (is.null(margins)) next
+            replace_term <- function(x, per_margin)
+                append(x[-j], per_margin, after = j - 1)
+            ## label the margins as parts of one term, e.g. "dyad (kron 1/2)",
+            ## so they don't look like separate (added) terms
+            grpvar <- sprintf("%s (kron %d/%d)", names(cn)[j],
+                              seq_along(margins), length(margins))
+            cn <- replace_term(cn, setNames(restruc[[j]]$cnms, grpvar))
+            cor <- replace_term(cor, cor[[j]])
+            sd <- replace_term(sd, sd[[j]])
+            restruc <- replace_term(restruc, margins)
+        }
         ## lapply() rather than [vs]apply, don't want to lose names
         bcvec <- lapply(restruc, function(x) x[["blockCode"]])
         fcvec <- lapply(restruc, function(x) x[["fullCor"]])
-        if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
-            vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
-                       sd  = xrep[[paste0("sd", comp_nms[i])]],
+        if(length(cn)) {
+            vc <- mkVC(cor = cor,
+                       sd  = sd,
                        cnms = cn,
                        sc = sigma,
                        bc = bcvec,
