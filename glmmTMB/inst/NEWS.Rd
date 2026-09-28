@@ -4,6 +4,16 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1.15.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Tweedie simulation is faster, especially when the power
+      parameter is close to 2. Simulated values for a given seed differ
+      from previous versions (GH #1341, Pascal Küng)
+    } % itemize
+  } % user-visible changes
+} % 1.1.15.9000
+
 \section{CHANGES IN VERSION 1.1.15}{
   \subsection{NEW FEATURES}{
     \itemize{

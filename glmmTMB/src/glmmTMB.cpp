@@ -1201,9 +1201,13 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i);  // mean
         s2 = phi(i); // phi
         s3 = invlogit(psi(0)) + Type(1); // p, 1<p<2
-        tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
-        SIMULATE {
+        // skip the density when simulating: it is not used, and its
+        // series gets long as p approaches 2 (GH #1341)
+        if (isDouble<Type>::value && this->do_simulate) {
+          tmp_loglik = 0;
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
+        } else {
+          tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
         }
 	break;
       case lognormal_family:
