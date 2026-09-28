@@ -9,22 +9,84 @@
 #' @details Kenward-Roger adjustments \emph{should not be used} for models fitted with ML rather than REML;
 #' the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
 #' Use at your own risk for GLMMs!
+#'
+#' Both approximations are computed for the parameters that are actually
+#' estimated, and reported for every coefficient in \code{fixef(model)$cond}:
+#' coefficients tied to each other via \code{map} share one value, while
+#' coefficients fixed via \code{map} (known constants with zero variance) and
+#' coefficients dropped from a rank-deficient model (not estimable, with
+#' \code{NA} estimates) get \code{NA}. Likewise, a contrast (row of \code{L})
+#' gets \code{NA} if it puts weight on a dropped coefficient or if it involves
+#' only fixed coefficients.
 #' @param model a fitted \code{glmmTMB} object
 #' @export
 ## avoid conflict with insight::dof_kenward ...
-## FIXME: check with various combinations of mapping etc.
 dof_KR <- function(model) {
-    fe <- fixef(model)$cond
-    param_names <- names(fe)
-    L <- as.data.frame(diag(rep(1, length(fe))))
-    krvcov <- .vcov_kenward_adjusted(model)
-
-    dof <- vapply(L, .kenward_adjusted_ddf, model = model, adjusted_vcov = krvcov,
-                  FUN.VALUE = numeric(1))
-    names(dof) <- param_names
+    sp <- .beta_spaces(model, "cond")
+    Phi <- .Phi_est(model)
+    dof <- rep(NA_real_, sp$p_nom)
+    names(dof) <- sp$names_nom
+    krvcov <- Phi
+    if (sp$p_est > 0 && .Phi_ok(Phi, "Kenward-Roger")) {
+        krvcov <- .vcov_kenward_adjusted(model, sp, Phi)
+        ## one unit contrast per coefficient, carried over to the estimated
+        ## space (dropped and map-fixed coefficients keep NA)
+        Lest <- .lift_contrasts_est(diag(nrow = sp$p_nom), sp)
+        for (i in which(Lest$ok)) dof[i] <- .adjusted_ddf(krvcov, Lest$L[i, ], Phi)
+    }
+    ## reported in the nominal space like vcov(include_nonest = TRUE): NA
+    ## rows/columns for dropped, zero rows/columns for map-fixed coefficients
+    krvcov <- .lift_vcov_nominal(krvcov, sp)
     attr(dof, "vcov") <- krvcov
     attr(dof, "se") <- abs(sqrt(diag(krvcov)))
     dof
+}
+
+## Covariance matrix of the *estimated* conditional fixed effects (see
+## .beta_spaces()): what the Kenward-Roger and Satterthwaite machinery
+## works with. A 0 x 0 matrix if no coefficient is estimated at all (every
+## coefficient fixed via 'map'), in which case vcov() returns NULL
+.Phi_est <- function(model, component = "cond") {
+    Phi <- stats::vcov(model, include_nonest = FALSE)[[component]]
+    if (is.null(Phi)) return(matrix(numeric(0), 0, 0))
+    as.matrix(Phi)
+}
+
+## sdreport() can return an NA-filled covariance matrix for a boundary fit
+## (random-effects variance -> 0) even with pdHess = TRUE; warn once and let
+## the callers return NA rather than fail inside eigen()
+.Phi_ok <- function(Phi, what) {
+    if (!anyNA(Phi)) return(TRUE)
+    warning(sprintf(
+        "covariance matrix of the fixed effects contains NA values (see diagnose()); %s degrees of freedom set to NA",
+        what), call. = FALSE)
+    FALSE
+}
+
+## Carry contrasts (one per row of L) over to the estimated space. L may be
+## given on the nominal coefficients (as summary()'s identity default), on
+## the X-space (non-NA) coefficients (as emmeans supplies them) or already
+## on the estimated parameters; the three can only coincide in width when
+## they coincide in meaning. Returns the estimated-space matrix and a
+## per-row flag that is FALSE for contrasts without a df: those with weight
+## on a rank-dropped (not estimable) coefficient, and those that vanish in
+## the estimated space (involving only map-fixed coefficients, so that the
+## contrast is a known constant with zero variance)
+.lift_contrasts_est <- function(L, sp) {
+    if (!is.matrix(L)) L <- matrix(L, nrow = 1)
+    ok <- rep(TRUE, nrow(L))
+    if (ncol(L) == sp$p_nom && sp$p_X < sp$p_nom) {
+        ok <- rowSums(L[, !sp$keep, drop = FALSE] != 0) == 0
+        L <- L[, sp$keep, drop = FALSE]
+    }
+    if (ncol(L) == sp$p_X && sp$mapped) {
+        L <- L %*% sp$A
+    } else if (ncol(L) != sp$p_est) {
+        stop(sprintf("contrast matrix has %d columns; expected %s (one per fixed-effect coefficient)",
+                     ncol(L), paste(unique(c(sp$p_nom, sp$p_X, sp$p_est)), collapse = " or ")))
+    }
+    ok <- ok & rowSums(L != 0) > 0
+    list(L = L, ok = ok)
 }
 
 ## The following code was taken from the "pbkrtest" package and slightly modified
@@ -68,9 +130,6 @@ dof_KR <- function(model) {
     }
 }
 
-.kenward_adjusted_ddf <- function(model, linear_coef, adjusted_vcov) {
-    .adjusted_ddf(adjusted_vcov, linear_coef, stats::vcov(model)$cond)
-}
 
 .adjusted_ddf <- function(adjusted_vcov, linear_coef, unadjusted_vcov = adjusted_vcov) {
 
@@ -126,9 +185,14 @@ dof_KR <- function(model) {
     }
 }
 
-## FIXME: why do we go through this?
-.vcov_kenward_adjusted <- function(model) {
-    .vcovAdj16_internal(stats::vcov(model)$cond, .get_SigmaG(model), glmmTMB::getME(model, "X"))
+## Kenward-Roger adjusted covariance matrix, in the estimated space (see
+## .beta_spaces()): X is restricted to the estimated parameters, X %*% A,
+## so that it conforms with the covariance matrix of those parameters.
+## Carries the "P" and "W" attributes needed by .adjusted_ddf()
+.vcov_kenward_adjusted <- function(model, sp = .beta_spaces(model, "cond"), Phi = .Phi_est(model)) {
+    X <- glmmTMB::getME(model, "X")
+    if (sp$mapped) X <- X %*% sp$A
+    .vcovAdj16_internal(Phi, .get_SigmaG(model), X)
 }
 
 .get_SigmaG <- function(model) {
@@ -381,37 +445,25 @@ dof_KR <- function(model) {
 #'
 #' @export
 #' @param L a contrast matrix: by default, equal to an identity matrix (i.e., ddfs are returned
-#' for each fixed-effect parameter)
+#' for each fixed-effect parameter). Columns may correspond to all coefficients in
+#' \code{fixef(model)$cond}, to the non-\code{NA} (estimable) ones, or to the parameters
+#' actually estimated (after \code{map})
 dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
-    beta <- fixef(model)$cond
-    keep <- !is.na(beta)
+    if (!is.matrix(L)) L <- matrix(L, nrow = 1)
+    sp <- .beta_spaces(model, "cond")
+    Lest <- .lift_contrasts_est(L, sp)
+    res <- rep(NA_real_, nrow(L))
+    Phi <- .Phi_est(model)
+    if (sp$p_est == 0 || !any(Lest$ok) || !.Phi_ok(Phi, "Satterthwaite")) return(res)
 
     pre <- .satt_precompute(model)
     cov_varpar_kappa <- pre$cov_varpar_kappa
     jac_kappa <- pre$jac_kappa
 
-    ## jac_kappa/cov_varpar_kappa and vcov(model, include_nonest = FALSE)
-    ## live in the *estimable* coefficient subspace: TMB drops
-    ## aliased/rank-deficient columns entirely rather than estimating them.
-    ## L may already be restricted to that subspace (as emmeans supplies
-    ## it, via estimability::nonest.basis()) or may still span the full
-    ## nominal coefficient vector (the identity default used by summary());
-    ## in the latter case, reduce it to match, and mark any row that puts
-    ## nonzero weight on a dropped column as inestimable (NA df), the same
-    ## way its estimate/SE are already NA
-    non_estimable <- rep(FALSE, nrow(L))
-    if (ncol(L) == length(beta) && !all(keep)) {
-        non_estimable <- rowSums(L[, !keep, drop = FALSE] != 0) > 0
-        L <- L[, keep, drop = FALSE]
-    }
-
-    Vcond <- vcov(model, include_nonest = FALSE)$cond
-
-    res <- rep(NA_real_, nrow(L))
-    for (i in seq_along(res)) {
-        if (non_estimable[i]) next
-        grad_kappa <- .get_gradient(jac_kappa, L[i,])
-        var_Lbeta <- drop(t(L[i,]) %*% Vcond %*% L[i,])
+    for (i in which(Lest$ok)) {
+        l <- Lest$L[i, ]
+        grad_kappa <- .get_gradient(jac_kappa, l)
+        var_Lbeta <- drop(t(l) %*% Phi %*% l)
         v_numerator <- 2 * var_Lbeta ^ 2
         v_denominator_kappa <- sum(grad_kappa * (cov_varpar_kappa %*% grad_kappa))
         res[i] <- v_numerator/v_denominator_kappa
@@ -463,14 +515,54 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
 
 ## ---- joint (multi-parameter) ddf calculations ----
 ## used by anova.glmmTMB (ddf != "asymptotic") to compare two nested models
-## via an F-ratio test rather than a likelihood ratio test.
-##
+## via an F-ratio test rather than a likelihood ratio test, and by
+## car::Anova() for its per-term Type II/III F tests. The hypothesis
+## L %*% beta = betaH comes with L on the X-space coefficients (what
+## car::Anova() and pbkrtest::make_restriction_matrix() supply) and is
+## carried over to the estimated space by .hypothesis_est() first.
+
+## L_est = L %*% A (see .beta_spaces()). Rows that vanish there involve only
+## map-fixed coefficients (known constants): untestable, dropped, as
+## car::Anova() does for its Wald tests. Rows that become linearly dependent
+## (e.g. two tied coefficients tested separately) are reduced to a row
+## basis, which the F-test algebra requires; this is only legitimate if the
+## dropped rows say the same thing as the kept ones once the fixed values
+## are substituted, otherwise the hypothesis contradicts itself (e.g. a
+## "nested" model that fixes a coefficient to a nonzero value) and gets NA.
+## The estimate Lb = L %*% beta_X - betaH is formed on the X-space
+## coefficients so that the fixed values enter it.
+.hypothesis_est <- function(L, beta_X, betaH = 0, sp) {
+    L <- as.matrix(L)
+    if (ncol(L) != sp$p_X) {
+        stop(sprintf("hypothesis matrix has %d columns; expected %d (one per estimable coefficient)",
+                     ncol(L), sp$p_X))
+    }
+    Lb <- L %*% cbind(beta_X - betaH)
+    L_est <- if (sp$mapped) L %*% sp$A else L
+    ok <- rowSums(L_est != 0) > 0
+    L_est <- L_est[ok, , drop = FALSE]
+    Lb <- Lb[ok, , drop = FALSE]
+    if (nrow(L_est) > 1 && (qrL <- qr(t(L_est)))$rank < nrow(L_est)) {
+        if (max(abs(qr.resid(qr(L_est), Lb))) > 1e-8 * max(1, abs(Lb))) {
+            warning("hypothesis rows contradict each other once the coefficients fixed via 'map' ",
+                    "are substituted; test set to NA", call. = FALSE)
+            return(list(L = L_est[0, , drop = FALSE], Lb = Lb[0, , drop = FALSE], q = 0L))
+        }
+        rows <- sort(qrL$pivot[seq_len(qrL$rank)])
+        L_est <- L_est[rows, , drop = FALSE]
+        Lb <- Lb[rows, , drop = FALSE]
+    }
+    list(L = L_est, Lb = Lb, q = nrow(L_est))
+}
+
 ## `.KR_adjust_joint` generalizes `.adjusted_ddf` (above) from a single contrast
 ## vector to a q-row contrast matrix L, and additionally returns the F-statistic
 ## and p-value for the joint test; adapted from the (unexported) `.KR_adjust`
 ## function in pbkrtest (which is itself model-class-agnostic, unlike the rest
-## of pbkrtest's Kenward-Roger machinery)
-.KR_adjust_joint <- function(adjusted_vcov, unadjusted_vcov, L, beta, betaH = 0) {
+## of pbkrtest's Kenward-Roger machinery). L and both covariance matrices
+## live in the estimated space (see .hypothesis_est()); Lb is the estimate
+## of the hypothesis, L %*% beta - betaH
+.KR_adjust_joint <- function(adjusted_vcov, unadjusted_vcov, L, Lb) {
     Theta <- t(L) %*% solve(L %*% unadjusted_vcov %*% t(L), L)
     P <- attr(adjusted_vcov, "P")
     W <- attr(adjusted_vcov, "W")
@@ -486,7 +578,7 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
             A2 <- A2 + e * W[ii, jj] * sum(ui * t(uj))
         }
     }
-    q <- as.numeric(Matrix::rankMatrix(L))
+    q <- nrow(L)
     B <- (A1 + 6 * A2) / (2 * q)
     g <- ((q + 1) * A1 - (q + 4) * A2) / ((q + 2) * A2)
     c1 <- g / (3 * q + 2 * (1 - g))
@@ -500,28 +592,10 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     df2 <- 4 + (q + 2) / (q * rho - 1)
     F.scaling <- if (abs(df2 - 2) < 0.01) 1 else df2 * (1 - A2 / q) / (df2 - 2)
 
-    betaDiff <- cbind(beta - betaH)
-    Lb2 <- L %*% betaDiff
-    Wald <- as.numeric(t(Lb2) %*% solve(L %*% adjusted_vcov %*% t(L), Lb2))
+    Wald <- as.numeric(t(Lb) %*% solve(L %*% adjusted_vcov %*% t(L), Lb))
     Fstat <- F.scaling * (Wald / q)
     list(Fstat = Fstat, ndf = q, ddf = df2,
          p.value = stats::pf(Fstat, df1 = q, df2 = df2, lower.tail = FALSE))
-}
-
-##' Kenward-Roger F-ratio test comparing two nested \code{glmmTMB} models
-##'
-##' @param largeModel the model with more (conditional) fixed-effect parameters
-##' @param smallModel the model with fewer fixed-effect parameters, nested in \code{largeModel}
-##' @param betaH null-hypothesis value(s) for the restricted parameters (default 0)
-##' @return a list with elements \code{Fstat}, \code{ndf}, \code{ddf}, \code{p.value}
-##' @noRd
-.joint_ddf_KR <- function(largeModel, smallModel, betaH = 0) {
-    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
-                                                      getME(smallModel, "X")))
-    adjusted_vcov <- .vcov_kenward_adjusted(largeModel)
-    unadjusted_vcov <- stats::vcov(largeModel)$cond
-    beta <- fixef(largeModel)$cond
-    .KR_adjust_joint(adjusted_vcov, unadjusted_vcov, L, beta, betaH)
 }
 
 ## combine per-eigenvalue Satterthwaite dfs into a single ddf for a joint
@@ -535,21 +609,18 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     2 * E / (E - length(nu))
 }
 
-## Satterthwaite F-ratio test for an arbitrary hypothesis L %*% beta = betaH;
-## split out from .joint_ddf_satt() so callers that already have a hypothesis
-## matrix in hand (car::Anova()'s Type II/III per-term tests) don't need to
-## construct it via a pair of nested models -- mirrors .KR_adjust_joint(),
-## which already takes L directly rather than two models
+## Satterthwaite F-ratio test for a hypothesis given in the estimated space
+## (L, and its estimate Lb = L %*% beta - betaH, from .hypothesis_est());
+## mirrors .KR_adjust_joint(), which likewise takes L directly rather than
+## two models
 ##' @param model a fitted glmmTMB model
-##' @param L a hypothesis matrix (ncol == number of conditional fixed-effect parameters)
-##' @param betaH null-hypothesis value(s) for \code{L \%*\% beta} (default 0)
+##' @param L hypothesis matrix in the estimated space
+##' @param Lb estimate of the hypothesis, \code{L \%*\% beta - betaH}
+##' @param vcov_beta covariance matrix of the estimated coefficients
 ##' @param eps eigenvalue tolerance (relative to the largest eigenvalue), below which
 ##' a contrast direction is dropped from the test
 ##' @noRd
-.satt_adjust_joint <- function(model, L, betaH = 0, eps = sqrt(.Machine$double.eps)) {
-    beta <- fixef(model)$cond
-    vcov_beta <- stats::vcov(model)$cond
-
+.satt_adjust_joint <- function(model, L, Lb, vcov_beta, eps = sqrt(.Machine$double.eps)) {
     ## reuse the per-model cache from .satt_precompute() (shared with
     ## dof_satt()) instead of redoing the expensive kappa Hessian/Jacobian
     ## computation from scratch on every call -- car::Anova(..., ddf =
@@ -567,8 +638,7 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
     qq <- sum(d > tol)
     PtL <- crossprod(eig$vectors, L)[seq_len(qq), , drop = FALSE]
 
-    betaDiff <- beta - betaH
-    t2 <- drop(PtL %*% betaDiff)^2 / d[seq_len(qq)]
+    t2 <- drop(crossprod(eig$vectors, Lb))[seq_len(qq)]^2 / d[seq_len(qq)]
     Fstat <- sum(t2) / qq
 
     nu_m <- vapply(seq_len(qq), function(m) {
@@ -581,43 +651,76 @@ dof_satt <- function(model, L = diag(length(fixef(model)$cond))) {
          p.value = stats::pf(Fstat, df1 = qq, df2 = ddf, lower.tail = FALSE))
 }
 
-##' Satterthwaite F-ratio test comparing two nested \code{glmmTMB} models
-##' @inheritParams .joint_ddf_KR
-##' @param eps eigenvalue tolerance (relative to the largest eigenvalue), below which
-##' a contrast direction is dropped from the test
+## classical Wald F-test for L %*% beta = betaH at a caller-supplied ddf (no
+## Kenward-Roger/Satterthwaite correction), used when the model has no random
+## effects: there is then no variance-component uncertainty to correct for,
+## and the denominator df is simply the residual df (nobs - npar). L, Lb and
+## the covariance matrix live in the estimated space, as above
 ##' @noRd
-.joint_ddf_satt <- function(largeModel, smallModel, betaH = 0, eps = sqrt(.Machine$double.eps)) {
-    L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
-                                                      getME(smallModel, "X")))
-    .satt_adjust_joint(largeModel, L, betaH = betaH, eps = eps)
-}
-
-## classical (exact, for Gaussian fixed-effect-only fits) multi-parameter Wald
-## F-test, used in place of `.joint_ddf_KR`/`.joint_ddf_satt` when neither model
-## has random effects: there is then no variance-component uncertainty for
-## Kenward-Roger/Satterthwaite to correct for, and the denominator df is simply
-## the residual df (nobs - npar) of the fuller model
-##' @inheritParams .joint_ddf_KR
-##' @noRd
-## classical Wald F-test for L %*% beta = betaH at a caller-supplied ddf
-## (no Kenward-Roger/Satterthwaite correction); factored out so both
-## .joint_ddf_none() (model-comparison form) and car::Anova()'s per-term
-## no-random-effects fallback can share it
-##' @noRd
-.wald_joint_test <- function(unadjusted_vcov, L, beta, ddf, betaH = 0) {
-    q <- as.numeric(Matrix::rankMatrix(L))
-    Lb2 <- L %*% cbind(beta - betaH)
-    Wald <- as.numeric(t(Lb2) %*% solve(L %*% unadjusted_vcov %*% t(L), Lb2))
+.wald_joint_test <- function(unadjusted_vcov, L, Lb, ddf) {
+    q <- nrow(L)
+    Wald <- as.numeric(t(Lb) %*% solve(L %*% unadjusted_vcov %*% t(L), Lb))
     Fstat <- Wald / q
     list(Fstat = Fstat, ndf = q, ddf = ddf,
          p.value = stats::pf(Fstat, df1 = q, df2 = ddf, lower.tail = FALSE))
 }
 
-.joint_ddf_none <- function(largeModel, smallModel, betaH = 0) {
+## Common driver for the joint F tests (ddf = "kenward-roger",
+## "satterthwaite" or "none" = Wald F with residual df, which is also what
+## a model without random effects gets): L on the X-space coefficients. A
+## hypothesis with nothing testable left, or a model with no estimated
+## coefficient or an NA-filled covariance matrix, gives an NA row rather
+## than an error. 'info' (from .joint_test_setup()) lets callers reuse the
+## model-level pieces, notably the Kenward-Roger adjusted vcov, across
+## several hypotheses
+.joint_test <- function(model, L, ddf, betaH = 0, info = .joint_test_setup(model, ddf)) {
+    empty <- list(Fstat = NA_real_, ndf = 0, ddf = NA_real_, p.value = NA_real_)
+    sp <- info$sp
+    if (sp$p_est == 0) return(empty)
+    hyp <- .hypothesis_est(L, fixef(model)$cond[sp$keep], betaH, sp)
+    if (hyp$q == 0) return(empty)
+    if (!info$Phi_ok) {
+        empty$ndf <- hyp$q
+        return(empty)
+    }
+    switch(info$ddf,
+           "kenward-roger" = .KR_adjust_joint(info$adjusted_vcov, info$Phi, hyp$L, hyp$Lb),
+           "satterthwaite" = .satt_adjust_joint(model, hyp$L, hyp$Lb, info$Phi),
+           "none" = .wald_joint_test(info$Phi, hyp$L, hyp$Lb, ddf = stats::df.residual(model)),
+           stop(sprintf("unknown ddf specification '%s'", info$ddf)))
+}
+
+.joint_test_setup <- function(model, ddf) {
+    if (!hasRandom(model)) ddf <- "none"
+    sp <- .beta_spaces(model, "cond")
+    Phi <- .Phi_est(model)
+    Phi_ok <- sp$p_est > 0 && .Phi_ok(Phi, "F-test denominator")
+    list(ddf = ddf, sp = sp, Phi = Phi, Phi_ok = Phi_ok,
+         adjusted_vcov = if (ddf == "kenward-roger" && Phi_ok) .vcov_kenward_adjusted(model, sp, Phi) else NULL)
+}
+
+##' F-ratio tests comparing two nested \code{glmmTMB} models
+##'
+##' @param largeModel the model with more (conditional) fixed-effect parameters
+##' @param smallModel the model with fewer fixed-effect parameters, nested in \code{largeModel}
+##' @param betaH null-hypothesis value(s) for the restricted parameters (default 0)
+##' @return a list with elements \code{Fstat}, \code{ndf}, \code{ddf}, \code{p.value}
+##' @noRd
+.joint_ddf_models <- function(largeModel, smallModel, ddf, betaH = 0) {
     L <- as.matrix(pbkrtest::make_restriction_matrix(getME(largeModel, "X"),
                                                       getME(smallModel, "X")))
-    .wald_joint_test(stats::vcov(largeModel)$cond, L, fixef(largeModel)$cond,
-                      ddf = stats::df.residual(largeModel), betaH = betaH)
+    .joint_test(largeModel, L, ddf, betaH = betaH)
+}
+.joint_ddf_KR <- function(largeModel, smallModel, betaH = 0) {
+    .joint_ddf_models(largeModel, smallModel, "kenward-roger", betaH)
+}
+.joint_ddf_satt <- function(largeModel, smallModel, betaH = 0) {
+    .joint_ddf_models(largeModel, smallModel, "satterthwaite", betaH)
+}
+## used in place of `.joint_ddf_KR`/`.joint_ddf_satt` when neither model
+## has random effects
+.joint_ddf_none <- function(largeModel, smallModel, betaH = 0) {
+    .joint_ddf_models(largeModel, smallModel, "none", betaH)
 }
 
 ## the Kenward-Roger correction is derived from REML variance-component

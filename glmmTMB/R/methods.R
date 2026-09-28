@@ -699,35 +699,84 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
-## Pad a fixed-effect covariance matrix with zero rows/columns for
-## coefficients that were fixed via 'map' (internally, e.g. the ordinal
-## family intercept, or by the user): these are known constants, so their
-## sampling variance is exactly zero. Restores the convention that
-## dim(vcov) matches length(fixef) for downstream consumers
-## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
-pad_mapped_vcov <- function(object, V, component = "cond") {
-    map_nm <- switch(component, cond = "beta", zi = "betazi",
-                     disp = "betadisp")
-    bmap <- object$obj$env$map[[map_nm]]
-    if (is.null(bmap) || !any(is.na(bmap)) || is.null(dim(V))) return(V)
+## ---- coefficient spaces --------------------------------------------------
+## A fixed-effect component's coefficients live in three nested spaces:
+## nominal (one per model-matrix column: fixef(), vcov(include_nonest =
+## TRUE), the ddf vectors), X-space (columns of getME(., "X"), i.e. minus
+## the columns dropped for rank deficiency: what emmeans and car::Anova
+## work with) and estimated (after 'map': tied coefficients are one
+## parameter, fixed ones none: vcov(include_nonest = FALSE), the
+## Kenward-Roger matrices, the Satterthwaite Jacobians). 'keep' selects
+## X-space within nominal; the 0/1 matrix 'A' (ncol(X) x n_est) satisfies
+## beta_X = A beta_est + (fixed values), so a contrast c becomes t(A) c and
+## a covariance matrix V_est becomes A V_est A'. The map is read from
+## obj$env$map rather than modelInfo$map because the ordinal family maps
+## its intercept internally without a user-supplied map.
+.beta_spaces <- function(object, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi", disp = "betadisp")
+    X_nm <- switch(component, cond = "X", zi = "Xzi", disp = "Xdisp")
     bhat <- fixef(object)[[component]]
-    nb <- length(bhat)
-    fixed <- which(is.na(bmap))
-    if (nrow(V) == nb - length(fixed)) {
-        ## reduced vcov (include_nonest = FALSE): pad to full size
-        est <- which(!is.na(bmap))
-        Vfull <- matrix(0, nb, nb,
-                        dimnames = list(names(bhat), names(bhat)))
-        Vfull[est, est] <- as.matrix(V)
-        return(Vfull)
-    }
-    if (nrow(V) == nb) {
-        ## full-size vcov stores NA rows/columns for mapped coefficients;
-        ## replace with zeros so they do not propagate through
-        ## linear-hypothesis algebra
+    X <- getME(object, X_nm)
+    p_nom <- length(bhat)
+    keep <- rep(TRUE, p_nom)
+    dropped <- attr(X, "col.dropped")
+    ## (fixef() ignores col.dropped for sparse X; mirror that)
+    if (!is.null(dropped) && !inherits(X, "sparseMatrix")) keep[dropped] <- FALSE
+    p_X <- sum(keep)
+    bmap <- object$obj$env$map[[map_nm]]
+    ## TMB orders the estimated parameters by factor level of the map
+    idx <- if (is.null(bmap)) seq_len(p_X) else as.integer(bmap)
+    lev <- sort(unique(idx[!is.na(idx)]))
+    A <- matrix(0, nrow = p_X, ncol = length(lev))
+    A[cbind(which(!is.na(idx)), match(idx[!is.na(idx)], lev))] <- 1
+    list(p_nom = p_nom, p_X = p_X, p_est = ncol(A),
+         names_nom = names(bhat), names_X = names(bhat)[keep],
+         keep = keep, A = A, pinned = rowSums(A) == 0,
+         ## anything to do beyond the rank-deficiency bookkeeping? (a map
+         ## that only permutes the parameters still reorders them)
+         mapped = ncol(A) < p_X || any(diag(A) != 1))
+}
+
+## A %*% V_est %*% t(A): lift an estimated-space covariance matrix to the
+## X-space. Tied coefficients get identical (perfectly correlated)
+## rows/columns, map-fixed coefficients zero variance (they are known
+## constants); with no 'map' this is the identity
+.lift_vcov_X <- function(V, sp) {
+    V <- as.matrix(V)
+    if (sp$mapped) V <- sp$A %*% V %*% t(sp$A)
+    dimnames(V) <- list(sp$names_X, sp$names_X)
+    V
+}
+
+## ... and further to the nominal space, with NA rows/columns for
+## coefficients dropped for rank deficiency (not estimable), matching
+## vcov(include_nonest = TRUE)
+.lift_vcov_nominal <- function(V, sp) {
+    Vn <- matrix(NA_real_, sp$p_nom, sp$p_nom,
+                 dimnames = list(sp$names_nom, sp$names_nom))
+    Vn[sp$keep, sp$keep] <- .lift_vcov_X(V, sp)
+    Vn
+}
+
+## Bring a fixed-effect covariance matrix into line with the coefficient
+## vector for downstream consumers (emmeans, car::Anova, ...) when
+## coefficients were tied or fixed via 'map' (internally, e.g. the ordinal
+## family intercept, or by the user). A reduced matrix (vcov(include_nonest
+## = FALSE)) is lifted to the X-space via .lift_vcov_X(); in a full-size
+## (nominal) matrix the NA rows/columns of map-fixed coefficients are
+## replaced by zeros (known constants, zero sampling variance) so they do
+## not propagate through linear-hypothesis algebra. No-op when no
+## coefficients are mapped
+pad_mapped_vcov <- function(object, V, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi", disp = "betadisp")
+    if (is.null(dim(V)) || is.null(object$obj$env$map[[map_nm]])) return(V)
+    sp <- .beta_spaces(object, component)
+    if (!sp$mapped) return(V)
+    if (nrow(V) == sp$p_est) return(.lift_vcov_X(V, sp))
+    if (nrow(V) == sp$p_nom) {
+        fixed <- which(sp$keep)[sp$pinned]
         V[fixed, ] <- 0
         V[, fixed] <- 0
-        return(V)
     }
     V
 }
