@@ -87,6 +87,14 @@ correlation parameter \eqn{\theta}{theta}; the correlation is
 equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
 For random-effects terms with more than two elements, the mapping
 is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
+
+For the \code{ordinal} family, "wald" reports the thresholds on the
+threshold scale (rows labelled by the adjacent response levels,
+e.g. \code{Low|Medium}), with delta-method standard errors; the
+thresholds have Wald intervals only. "profile" and "uniroot" report
+the internal threshold parameters (\code{psi1}, \code{psi2}, ...,
+the softmax parameterization described in \code{\link{ordinal}}),
+as does \code{\link{profile.glmmTMB}}.
 }
 \examples{
 data(sleepstudy, package="lme4")

@@ -147,6 +147,25 @@
       fixed-effect column); the aliased coefficient now gets \code{NA} ddf,
       like its \code{NA} estimate and standard error, rather than erroring
       (GH #1326, @qdread)
+      \item an \code{ordinal} fit with a user \code{map} on another
+      parameter vector (e.g. \code{map = list(betazi = factor())}) no
+      longer leaves the fixed-effect intercept free: partial matching of
+      the map's \code{beta} element skipped the internal intercept map,
+      so the intercept and the thresholds were not jointly identifiable
+      (GH #1348)
+      \item \code{vcov(., full = TRUE)} now handles a family-specific
+      parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
+      \code{NA} rows and columns like other mapped parameters (previously
+      the row was silently dropped, or for the \code{ordinal} family the
+      expansion failed with "number of items to replace is not a
+      multiple of replacement length"). For the \code{ordinal} family,
+      \code{summary()}, Wald \code{confint()} and \code{emmeans} treat
+      user-fixed \code{psi} elements as known constants in the threshold
+      standard errors (both fixed gives standard error 0)
+      \item \code{confint(method = "uniroot")} labelled its rows from
+      the full parameter list while computing them for the estimated
+      parameters, so with any parameter fixed via \code{map} the labels
+      were shifted onto the wrong rows
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
@@ -172,6 +191,23 @@
       components it gave a warning and asymptotic df. Partial matches such as
       \code{ddf = "satt"} are now accepted, as they already were in
       \code{summary} (Paul Schmidt)
+      \item an \code{ordinal} formula without an intercept
+      (\code{~ 0 + x}, \code{~ x - 1}) now warns that an intercept is
+      needed and assumed, and is fitted with the intercept added, as
+      \code{ordinal::clm} and \code{MASS::polr} do (the intercept is
+      fixed to zero and absorbed into the thresholds); previously the
+      model was fitted with the intercept-free parameterization
+      \item for the \code{ordinal} family, \code{profile()},
+      \code{confint(method = "profile")}, \code{confint(method =
+      "uniroot")} and \code{vcov(., full = TRUE)} label the internal
+      threshold parameters \code{psi1}, \code{psi2}, ... instead of
+      reusing the threshold labels (\code{Low|Medium}), since those rows
+      are on the internal (softmax) scale. The thresholds themselves have
+      Wald intervals only, reported on the threshold scale by
+      \code{confint()} and \code{summary()}
+      \item \code{residuals(type = "working")} is now an error for the
+      \code{ordinal} family (the response residual is on the
+      category-index scale, so the GLM working residual is not defined)
     } % itemize
   } % user-visible changes
  } % 1.1.15
