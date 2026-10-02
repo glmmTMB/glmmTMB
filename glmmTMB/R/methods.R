@@ -947,6 +947,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
     }
     r <- mr - mu
     fam <- family(object)
+    if (type == "working" && fam$family == "ordinal") {
+        ## r is on the category-index scale and mu.eta() of the link is
+        ## not the derivative of E[Y] for a cumulative-link model
+        stop("working residuals are not defined for the ordinal family; ",
+             "use type = \"response\" or type = \"dunn-smyth\"")
+    }
     res <- switch(type,
            response=r,
            working = {
