@@ -449,6 +449,38 @@ test_that("emmeans mode argument is rejected off the ordinal branch", {
                  "'arg' should be one of")
 })
 
+## identifiability and reporting under a user map, an intercept-free
+## formula, mapped psi and the profile-type interval methods. Oracle
+## records for the numeric assertions (ID: type; asserting block; source):
+##   ORD-ID-1: invariant; "ordinal user map on another component keeps the
+##     intercept fixed" and "ordinal intercept-free formula is refitted
+##     with an intercept"; the unmapped with-intercept fit fit_ord (GH #1348)
+##   ORD-ID-2: live; "ordinal intercept-free formula is refitted with an
+##     intercept", logLik and predict(type = "probs"); ordinal::clm on the
+##     same intercept-free formula, which also assumes an intercept
+##   ORD-ID-3: closed-form; "ordinal mapped psi: vcov, summary and Wald
+##     confint", thresholds are a deterministic function of psi, so fixing
+##     every psi element gives standard error 0 and an interval of width 0
+##   ORD-ID-4: invariant; "ordinal profile-type intervals are labelled
+##     psi", the uniroot Estimate column must equal the psi values stored
+##     in the fitted object (two routes to the same number)
+test_that("ordinal user map on another component keeps the intercept fixed", {
+    ## a map on a different parameter vector must not disable the
+    ## internal intercept map (partial matching of map$beta, GH #1348)
+    fit_map <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                       data = housing, family = ordinal(),
+                       map = list(betazi = factor()))
+    expect_equal(fixef(fit_map)$cond[["(Intercept)"]], 0)
+    bmap <- fit_map$obj$env$map$beta
+    expect_true(is.na(bmap[[1]]))
+    expect_false("(Intercept)" %in%
+                 rownames(summary(fit_map)$coefficients$cond))
+    expect_equal(fixef(fit_map)$cond, fixef(fit_ord)$cond, tolerance = 1e-6)
+    expect_equal(family_params(fit_map), family_params(fit_ord),
+                 tolerance = 1e-6)
+    expect_equal(c(logLik(fit_map)), c(logLik(fit_ord)), tolerance = 1e-6)
+})
+
 test_that("ordinal emmeans forces asymptotic ddf", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")
