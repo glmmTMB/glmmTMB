@@ -1135,7 +1135,15 @@ format_perc <- function (probs, digits) {
 ##' equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
 ##' For random-effects terms with more than two elements, the mapping
 ##' is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
-##' 
+##'
+##' For the \code{ordinal} family, "wald" reports the thresholds on the
+##' threshold scale (rows labelled by the adjacent response levels,
+##' e.g. \code{Low|Medium}), with delta-method standard errors; the
+##' thresholds have Wald intervals only. "profile" and "uniroot" report
+##' the internal threshold parameters (\code{psi1}, \code{psi2}, ...,
+##' the softmax parameterization described in \code{\link{ordinal}}),
+##' as does \code{\link{profile.glmmTMB}}.
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
@@ -1395,7 +1403,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- lapply(as.list(parm), FUN)
         }
         L <- do.call(rbind,L)
-        rownames(L) <- rownames(vcov(object,full=TRUE))[parm]
+        ## parm indexes the estimated parameters, so the names must come
+        ## from the estimated-only vcov: the default include_nonest = TRUE
+        ## also lists mapped parameters, which shifts the labels
+        rownames(L) <- rownames(vcov(object, full = TRUE,
+                                     include_nonest = FALSE))[parm]
         if (estimate) {
             ee <- object$obj$env
             par <- ee$last.par.best
