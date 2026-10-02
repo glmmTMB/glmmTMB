@@ -78,6 +78,26 @@ test_that("car::Anova tolerates a user-supplied vcov with NA variances", {
     expect_true(all(is.na(a3[["Chisq"]])))
 })
 
+test_that("vcov(full = TRUE) handles a mapped family parameter (psi)", {
+    ## the psi block was edited from the wrong component list entry, so a
+    ## mapped psi left the name list unchanged and the full vcov either
+    ## silently dropped the psi row or failed to expand
+    set.seed(101)
+    dd <- data.frame(x = rnorm(200))
+    dd$y <- 1 + 0.5 * dd$x + rt(200, df = 5)
+    fit_t <- glmmTMB(y ~ x, data = dd, family = t_family(),
+                     map = list(psi = factor(NA)), start = list(psi = log(5)))
+    V <- vcov(fit_t, full = TRUE)
+    expect_identical(unname(rownames(V)),
+                     c("(Intercept)", "x", "disp~(Intercept)",
+                       "Student-t df"))
+    expect_true(all(is.na(V["Student-t df", ])))
+    expect_false(anyNA(V[1:3, 1:3]))
+    Vest <- vcov(fit_t, full = TRUE, include_nonest = FALSE)
+    expect_identical(unname(rownames(Vest)), unname(rownames(V))[1:3])
+    expect_equal(unname(Vest), unname(V[1:3, 1:3]))
+})
+
 test_that("mapping a non-intercept coefficient also works", {
     skip_if_not_installed("car")
     fit_map2 <- glmmTMB(count ~ mined + spp, family = poisson,

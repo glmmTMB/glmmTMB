@@ -304,6 +304,19 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
+    ## ordinal family: the thresholds take the place of the intercept, so
+    ## the model matrix must carry an intercept column (fixed to zero
+    ## below). An intercept-free formula is refitted with the intercept
+    ## added, as ordinal::clm and MASS::polr do; the amended formula is
+    ## what modelInfo$allForm stores, so predict() with newdata uses it
+    if (family$family == "ordinal" &&
+        attr(terms(formula), "intercept") == 0) {
+        warning("an intercept is needed and assumed in 'formula' for the ",
+                "ordinal family (it is fixed to zero and absorbed into ",
+                "the thresholds)")
+        formula <- update(formula, . ~ . + 1)
+    }
+
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
     condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)

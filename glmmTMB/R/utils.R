@@ -633,7 +633,10 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
+## in the order of the name list getParnames() builds (its 'full' branch
+## appends theta, thetazi, thetadisp and then psi); a missing entry here
+## makes a user 'map' on the later components edit the wrong block
+par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","psi")
 
 ## all parameters, including both mapped and rank-dropped
 getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,
@@ -688,7 +691,14 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
 
       ##
       if (length(fp <- family_params(object)) > 0) {
-          nameList <- c(nameList, list(psi = names(fp)))
+          ## ordinal: the psi rows are the internal (softmax) threshold
+          ## parameters, not the thresholds family_params() reports, so
+          ## they are labelled psi1, psi2, ... (the a|b labels belong to
+          ## the threshold scale: summary()$thresholds, Wald confint())
+          psi_names <- if (family(object)$family == "ordinal") {
+                           paste0("psi", seq_along(fp))
+                       } else names(fp)
+          nameList <- c(nameList, list(psi = psi_names))
       }
       
   }
