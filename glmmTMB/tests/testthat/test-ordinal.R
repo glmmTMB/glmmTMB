@@ -481,6 +481,105 @@ test_that("ordinal user map on another component keeps the intercept fixed", {
     expect_equal(c(logLik(fit_map)), c(logLik(fit_ord)), tolerance = 1e-6)
 })
 
+test_that("ordinal intercept-free formula is refitted with an intercept", {
+    ## as ordinal::clm and MASS::polr: warn, then assume the intercept
+    for (ff in list(Sat ~ 0 + Infl + Type + Cont,
+                    Sat ~ Infl + Type + Cont - 1)) {
+        expect_warning(fit0 <- glmmTMB(ff, weights = Freq, data = housing,
+                                       family = ordinal()),
+                       "intercept is needed and assumed")
+        expect_equal(fixef(fit0)$cond, fixef(fit_ord)$cond, tolerance = 1e-6)
+        expect_equal(family_params(fit0), family_params(fit_ord),
+                     tolerance = 1e-6)
+        expect_equal(c(logLik(fit0)), c(logLik(fit_ord)), tolerance = 1e-6)
+        ## the stored formula carries the intercept, so prediction on new
+        ## data builds the same model matrix
+        expect_equal(attr(terms(formula(fit0, component = "cond")),
+                          "intercept"), 1L)
+        expect_equal(predict(fit0, newdata = housing[1:6, ], type = "probs"),
+                     predict(fit_ord, type = "probs")[1:6, ],
+                     tolerance = 1e-6)
+    }
+    ## other families keep their intercept-free parameterization
+    expect_no_warning(m <- glmmTMB(count ~ 0 + mined, data = Salamanders,
+                                   family = poisson))
+    expect_identical(names(fixef(m)$cond), c("minedyes", "minedno"))
+
+    skip_if_not_installed("ordinal")
+    ## live oracle: clm on the same intercept-free formula (it drops a
+    ## different factor level, so compare the fit, not the coefficients)
+    fit_clm <- suppressWarnings(
+        ordinal::clm(Sat ~ 0 + Infl + Type + Cont, weights = Freq,
+                     data = housing))
+    fit0 <- suppressWarnings(glmmTMB(Sat ~ 0 + Infl + Type + Cont,
+                                     weights = Freq, data = housing,
+                                     family = ordinal()))
+    expect_equal(c(logLik(fit0)), c(logLik(fit_clm)), tolerance = 1e-5)
+    p_clm <- suppressWarnings(
+        predict(fit_clm, newdata = housing[, c("Infl", "Type", "Cont")],
+                type = "prob")$fit)
+    expect_equal(unname(predict(fit0, type = "probs")), unname(p_clm),
+                 tolerance = 1e-4)
+    ## with a random effect
+    data("wine", package = "ordinal")
+    expect_warning(m0 <- glmmTMB(rating ~ 0 + temp + contact + (1 | judge),
+                                 data = wine, family = ordinal()),
+                   "intercept is needed")
+    m1 <- glmmTMB(rating ~ temp + contact + (1 | judge), data = wine,
+                  family = ordinal())
+    expect_equal(c(logLik(m0)), c(logLik(m1)), tolerance = 1e-6)
+    expect_equal(fixef(m0)$cond, fixef(m1)$cond, tolerance = 1e-5)
+})
+
+test_that("ordinal mapped psi: vcov, summary and Wald confint", {
+    ## the thresholds are a joint function of all psi elements: fixing
+    ## one of two leaves both thresholds free, fixing both makes them
+    ## constants (here at psi = 0: equiprobable baseline categories)
+    fit_p1 <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                      data = housing, family = ordinal(),
+                      map = list(psi = factor(c(NA, 1))),
+                      start = list(psi = c(0, 0)))
+    fit_p2 <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                      data = housing, family = ordinal(),
+                      map = list(psi = factor(c(NA, NA))),
+                      start = list(psi = c(0, 0)))
+    ## full vcov: NA rows and columns for the mapped psi entries only
+    V1 <- vcov(fit_p1, full = TRUE)
+    expect_true(all(c("psi1", "psi2") %in% rownames(V1)))
+    expect_true(all(is.na(V1["psi1", ])) && all(is.na(V1[, "psi1"])))
+    expect_true(is.finite(V1["psi2", "psi2"]))
+    expect_true(is.finite(V1["InflHigh", "psi2"]))
+    V2 <- vcov(fit_p2, full = TRUE)
+    expect_true(all(is.na(V2[c("psi1", "psi2"), ])))
+    expect_true(all(is.na(V2[, c("psi1", "psi2")])))
+    expect_false(anyNA(V2[c("InflHigh", "ContHigh"), c("InflHigh", "ContHigh")]))
+    for (fit in list(fit_p1, fit_p2)) {
+        th <- summary(fit)$thresholds
+        expect_true(all(is.finite(th[, c("Estimate", "Std. Error")])))
+        ci <- confint(fit, component = "all")
+        thr <- family_params(fit)
+        expect_true(all(names(thr) %in% rownames(ci)))
+        expect_true(all(is.finite(ci[names(thr), ])))
+        ## the Wald half-width reproduces the summary standard error
+        expect_equal(unname((ci[names(thr), 2] - ci[names(thr), 1]) /
+                            (2 * qnorm(0.975))),
+                     unname(th[, "Std. Error"]), tolerance = 1e-8)
+    }
+    expect_true(all(summary(fit_p1)$thresholds[, "Std. Error"] > 0))
+    expect_equal(unname(summary(fit_p2)$thresholds[, "Std. Error"]), c(0, 0))
+    ## psi = (0, 0) gives thresholds qlogis(1/3), qlogis(2/3)
+    expect_equal(unname(family_params(fit_p2)), qlogis(c(1, 2) / 3))
+    skip_if_not_installed("emmeans")
+    s <- summary(emmeans::emmeans(fit_p2, ~ Sat | Infl + Type + Cont,
+                                  mode = "prob"))
+    expect_false(anyNA(s$SE))
+    p <- drop(predict(fit_p2, newdata = data.frame(Infl = "Low", Type = "Tower",
+                                                   Cont = "Low", Freq = 1),
+                      type = "probs"))
+    sel <- s$Infl == "Low" & s$Type == "Tower" & s$Cont == "Low"
+    expect_equal(s$prob[sel], unname(p), tolerance = 1e-8)
+})
+
 test_that("ordinal emmeans forces asymptotic ddf", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")

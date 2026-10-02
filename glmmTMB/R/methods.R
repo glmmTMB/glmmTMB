@@ -792,10 +792,28 @@ ordinal_threshold_jacobian <- function(object) {
 ordinal_thresholds <- function(object) {
     fp <- family_params(object)
     J <- ordinal_threshold_jacobian(object)
-    Vfull <- vcov(object, full = TRUE)
-    vi <- match(names(fp), rownames(Vfull))
-    se <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+    Vpsi <- ordinal_psi_vcov(object)
+    se <- sqrt(diag(J %*% Vpsi %*% t(J)))
     cbind("Estimate" = fp, "Std. Error" = se)
+}
+
+## ordinal family: covariance matrix of the internal psi parameters,
+## taken from the "psi1", ..., "psi(K-1)" rows of vcov(., full = TRUE).
+## psi elements fixed via a user 'map' are known constants, so their NA
+## rows/columns are set to zero before the delta method (as
+## pad_mapped_vcov() does for fixed coefficients); with every element
+## fixed the thresholds get standard error 0
+ordinal_psi_vcov <- function(object, Vfull = vcov(object, full = TRUE)) {
+    k <- length(object$modelInfo$ord_levels) - 1L
+    vi <- match(paste0("psi", seq_len(k)), rownames(Vfull))
+    V <- as.matrix(Vfull)[vi, vi, drop = FALSE]
+    pmap <- object$obj$env$map[["psi"]]
+    if (!is.null(pmap)) {
+        fixed <- which(is.na(pmap))
+        V[fixed, ] <- 0
+        V[, fixed] <- 0
+    }
+    V
 }
 
 ## obsolete
@@ -1263,6 +1281,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
     if (method=="wald") {
         map <- object$modelInfo$map
+        thr_names <- character(0)
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
                 length(fixef(object)[[component]])>0) {
@@ -1298,6 +1317,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
                     if (estimate) ci.shape <- cbind(ci.shape, fp)
                     ci <- rbind(ci, ci.shape)
+                    thr_names <- names(fp)
                 } else {
                     ci.shape <- .CI_univariate_monotone(object,
                                                     family_params,
@@ -1323,6 +1343,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## identify mapped values: lwr and upr CIs equal but *not NaN
         ##  (which indicates a failed fit instead)
         mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
+        ## ordinal thresholds are derived from psi rather than mapped
+        ## themselves: keep their rows even when every psi element is
+        ## fixed by the user and the interval has width 0 (as
+        ## summary()$thresholds reports them with standard error 0)
+        mapped <- mapped & !(rownames(ci) %in% thr_names)
         if (!include_nonest) {
             ## drop mapped values (where lower == upper)
             ci <- ci[!mapped, , drop=FALSE]

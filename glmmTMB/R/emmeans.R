@@ -307,7 +307,10 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         k <- length(theta)
         if (missing(vcov.)) {
             Vfull <- as.matrix(vcov(object, full = TRUE))
-            vi <- match(c(names(beta), names(theta)), rownames(Vfull))
+            ## the internal threshold parameters are the "psi1", ...
+            ## rows of the full vcov (see getParnames())
+            vi <- match(c(names(beta), paste0("psi", seq_len(k))),
+                        rownames(Vfull))
             V <- Vfull[vi, vi, drop = FALSE]
             ## coefficients fixed via 'map' are known constants (NA
             ## rows/columns in the full vcov): zero them, as
@@ -319,10 +322,18 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
                 V[fi, ] <- 0
                 V[, fi] <- 0
             }
+            ## likewise psi elements fixed via a user 'map' (their rows
+            ## and columns, including the covariances with beta, are NA)
+            ti <- length(beta) + seq_len(k)
+            pmap <- object$obj$env$map[["psi"]]
+            if (!is.null(pmap)) {
+                pi <- ti[is.na(pmap)]
+                V[pi, ] <- 0
+                V[, pi] <- 0
+            }
             ## delta method: bdiag(I, J) V bdiag(I, J)'
             J <- ordinal_threshold_jacobian(object)
             B <- diag(1, length(beta) + k)
-            ti <- length(beta) + seq_len(k)
             B[ti, ti] <- J
             V <- B %*% V %*% t(B)
             dimnames(V) <- list(c(names(beta), names(theta)),
