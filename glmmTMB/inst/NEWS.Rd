@@ -164,8 +164,9 @@
       standard errors (both fixed gives standard error 0)
       \item \code{confint(method = "uniroot")} labelled its rows from
       the full parameter list while computing them for the estimated
-      parameters, so with any parameter fixed via \code{map} the labels
-      were shifted onto the wrong rows
+      parameters, so when a parameter was fixed via \code{map} (including
+      the intercept the \code{ordinal} family fixes internally), the rows
+      after it carried the wrong labels
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
@@ -193,18 +194,19 @@
       \code{summary} (Paul Schmidt)
       \item an \code{ordinal} formula without an intercept
       (\code{~ 0 + x}, \code{~ x - 1}) now warns that an intercept is
-      needed and assumed, and is fitted with the intercept added, as
-      \code{ordinal::clm} and \code{MASS::polr} do (the intercept is
-      fixed to zero and absorbed into the thresholds); previously the
-      model was fitted with the intercept-free parameterization
+      needed and assumed, and is fitted with the intercept added (the
+      intercept is fixed to zero and absorbed into the thresholds),
+      giving the same fit as \code{ordinal::clm} and \code{MASS::polr},
+      which give the same warning; previously the model was fitted with
+      the intercept-free parameterization
       \item for the \code{ordinal} family, \code{profile()},
       \code{confint(method = "profile")}, \code{confint(method =
       "uniroot")} and \code{vcov(., full = TRUE)} label the internal
       threshold parameters \code{psi1}, \code{psi2}, ... instead of
       reusing the threshold labels (\code{Low|Medium}), since those rows
       are on the internal (softmax) scale. The thresholds themselves have
-      Wald intervals only, reported on the threshold scale by
-      \code{confint()} and \code{summary()}
+      Wald intervals only, from \code{confint()}; \code{confint()} and
+      \code{summary()} report the thresholds on the threshold scale
       \item \code{residuals(type = "working")} is now an error for the
       \code{ordinal} family (the response residual is on the
       category-index scale, so the GLM working residual is not defined)

@@ -306,9 +306,11 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
     ## ordinal family: the thresholds take the place of the intercept, so
     ## the model matrix must carry an intercept column (fixed to zero
-    ## below). An intercept-free formula is refitted with the intercept
-    ## added, as ordinal::clm and MASS::polr do; the amended formula is
-    ## what modelInfo$allForm stores, so predict() with newdata uses it
+    ## below). An intercept-free formula is fitted with the intercept
+    ## added; ordinal::clm and MASS::polr give the same warning and the
+    ## same fit but keep the intercept-free coding and drop an aliased
+    ## column. The amended formula is what modelInfo$allForm stores, so
+    ## predict() with newdata uses it
     if (family$family == "ordinal" &&
         attr(terms(formula), "intercept") == 0) {
         warning("an intercept is needed and assumed in 'formula' for the ",
