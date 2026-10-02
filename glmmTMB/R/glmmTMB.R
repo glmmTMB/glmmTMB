@@ -313,10 +313,25 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     ## predict() with newdata uses it
     if (family$family == "ordinal" &&
         attr(terms(formula), "intercept") == 0) {
+        ## a user 'beta' map or start vector is sized and ordered for the
+        ## intercept-free model matrix; the added intercept column would
+        ## shift it onto the wrong coefficients
+        if (!is.null(mapArg[["beta"]]) ||
+            (is.list(start) && !is.null(start[["beta"]]))) {
+            stop("the ordinal family needs an intercept in 'formula' ",
+                 "(it is fixed to zero and absorbed into the thresholds): ",
+                 "include it before supplying 'beta' in 'map' or 'start', ",
+                 "since the intercept column changes the coefficient ",
+                 "positions")
+        }
         warning("an intercept is needed and assumed in 'formula' for the ",
                 "ordinal family (it is fixed to zero and absorbed into ",
                 "the thresholds)")
-        formula <- update(formula, . ~ . + 1)
+        ## predict() passes a one-sided formula, which update() would
+        ## otherwise turn into `. ~ x`
+        formula <- if (length(formula) == 3L) {
+                       update(formula, . ~ . + 1)
+                   } else update(formula, ~ . + 1)
     }
 
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction

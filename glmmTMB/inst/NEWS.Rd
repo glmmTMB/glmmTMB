@@ -156,9 +156,12 @@
       \item \code{vcov(., full = TRUE)} now handles a family-specific
       parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
       \code{NA} rows and columns like other mapped parameters (previously
-      the row was silently dropped, or for the \code{ordinal} family the
-      expansion failed with "number of items to replace is not a
-      multiple of replacement length"). For the \code{ordinal} family,
+      the mapped row was dropped and the remaining rows lost their
+      labels, or for the \code{ordinal} family the expansion failed with
+      "number of items to replace is not a multiple of replacement
+      length"). A random effect in the dispersion model fixed via
+      \code{map = list(thetadisp = )} no longer fails at fit time with
+      "missing value where TRUE/FALSE needed". For the \code{ordinal} family,
       \code{summary()}, Wald \code{confint()} and \code{emmeans} treat
       user-fixed \code{psi} elements as known constants in the threshold
       standard errors (both fixed gives standard error 0)
@@ -198,7 +201,10 @@
       intercept is fixed to zero and absorbed into the thresholds),
       giving the same fit as \code{ordinal::clm} and \code{MASS::polr},
       which give the same warning; previously the model was fitted with
-      the intercept-free parameterization
+      the intercept-free parameterization. Supplying \code{beta} in
+      \code{map} or \code{start} together with an intercept-free formula
+      is an error, because the added intercept column shifts the
+      coefficient positions
       \item for the \code{ordinal} family, \code{profile()},
       \code{confint(method = "profile")}, \code{confint(method =
       "uniroot")} and \code{vcov(., full = TRUE)} label the internal
@@ -206,7 +212,9 @@
       reusing the threshold labels (\code{Low|Medium}), since those rows
       are on the internal (softmax) scale. The thresholds themselves have
       Wald intervals only, from \code{confint()}; \code{confint()} and
-      \code{summary()} report the thresholds on the threshold scale
+      \code{summary()} report the thresholds on the threshold scale. The
+      threshold labels are still accepted in \code{parm} and select the
+      \code{psi} element they are derived from
       \item \code{residuals(type = "working")} is now an error for the
       \code{ordinal} family (the response residual is on the
       category-index scale, so the GLM working residual is not defined)

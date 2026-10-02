@@ -327,9 +327,9 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
             ti <- length(beta) + seq_len(k)
             pmap <- object$obj$env$map[["psi"]]
             if (!is.null(pmap)) {
-                pi <- ti[is.na(pmap)]
-                V[pi, ] <- 0
-                V[, pi] <- 0
+                pfix <- ti[is.na(pmap)]
+                V[pfix, ] <- 0
+                V[, pfix] <- 0
             }
             ## delta method: bdiag(I, J) V bdiag(I, J)'
             J <- ordinal_threshold_jacobian(object)

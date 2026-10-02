@@ -516,7 +516,13 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
                         dimnames = list(fnl, fnl))
-          res[nl, nl] <- covF
+          ## place the estimated block by position, not by name: a name
+          ## can repeat across blocks (a fixed-effect column named like
+          ## an internal parameter such as "psi2", or the theta names of
+          ## a dispersion-model random effect), and `res[nl, nl]` would
+          ## then fill the first row carrying that name
+          ep <- est_positions(fullNameList, estNameList)
+          res[ep, ep] <- covF
       }
       ## end if (full)
   } else {
@@ -1156,7 +1162,9 @@ format_perc <- function (probs, digits) {
 ##' @param parm which parameters to profile, specified
 #' \itemize{
 #' \item by index (position) [\emph{after} component selection for \code{confint}, if any]
-#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)});
+#'   for the \code{ordinal} family a threshold label (e.g. \code{"Low|Medium"})
+#'   selects the internal \code{psi} parameter it is derived from
 #' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 #' }
 #'  Parameter indexing by number may give unusual results when
