@@ -580,6 +580,31 @@ test_that("ordinal mapped psi: vcov, summary and Wald confint", {
     expect_equal(s$prob[sel], unname(p), tolerance = 1e-8)
 })
 
+test_that("ordinal profile-type intervals are labelled psi", {
+    pars <- glmmTMB:::get_pars(fit_ord)
+    psi_hat <- unname(pars[names(pars) == "psi"])
+    ## the internal rows of the full vcov are psi1, psi2
+    expect_identical(unname(tail(rownames(vcov(fit_ord, full = TRUE)), 2)),
+                     c("psi1", "psi2"))
+    ci_u <- confint(fit_ord, parm = "psi_", method = "uniroot")
+    expect_identical(rownames(ci_u), c("psi1", "psi2"))
+    ## the rows hold the psi values, not those of the parameters listed
+    ## above them (the mapped intercept used to shift the labels)
+    expect_equal(unname(ci_u[, "Estimate"]), psi_hat, tolerance = 1e-8)
+    expect_true(all(ci_u[, 1] < psi_hat & psi_hat < ci_u[, 2]))
+    pr <- profile(fit_ord, parm = "psi_", npts = 4)
+    expect_identical(levels(pr$.par), c("psi1", "psi2"))
+    ci_p <- confint(fit_ord, parm = "psi_", method = "profile", npts = 4)
+    expect_identical(rownames(ci_p), c("psi1", "psi2"))
+    expect_equal(unname(ci_p), unname(ci_u[, 1:2]), tolerance = 1e-2)
+    ## Wald intervals stay on the threshold scale with threshold labels
+    ci_w <- confint(fit_ord, component = "all")
+    expect_true(all(c("Low|Medium", "Medium|High") %in% rownames(ci_w)))
+    expect_false(any(grepl("^psi", rownames(ci_w))))
+    expect_identical(rownames(summary(fit_ord)$thresholds),
+                     c("Low|Medium", "Medium|High"))
+})
+
 test_that("ordinal emmeans forces asymptotic ddf", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")
