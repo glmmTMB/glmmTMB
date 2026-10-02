@@ -605,6 +605,14 @@ test_that("ordinal profile-type intervals are labelled psi", {
                      c("Low|Medium", "Medium|High"))
 })
 
+test_that("ordinal working residuals are refused", {
+    expect_error(residuals(fit_ord, type = "working"),
+                 "working residuals are not defined for the ordinal family")
+    ## the supported types still work
+    expect_length(residuals(fit_ord, type = "response"), nrow(housing))
+    expect_length(residuals(fit_ord, type = "dunn-smyth"), nrow(housing))
+})
+
 test_that("ordinal emmeans forces asymptotic ddf", {
     skip_if_not_installed("emmeans")
     skip_if_not_installed("ordinal")
