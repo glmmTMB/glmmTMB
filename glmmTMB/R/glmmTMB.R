@@ -548,7 +548,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (family$family == "ordinal") {
       Xnames <- colnames(if (sparseX[["cond"]]) data.tmb$XS else data.tmb$X)
       icpt <- which(Xnames == "(Intercept)")
-      if (length(icpt) == 1L && is.null(mapArg$beta)) {
+      ## [["beta"]], not $beta: $ would partially match a user map on
+      ## betazi or betadisp and skip the intercept map (GH #1348)
+      if (length(icpt) == 1L && is.null(mapArg[["beta"]])) {
           betamap <- seq_along(parameters$beta)
           betamap[icpt] <- NA
           mapArg <- c(mapArg, list(beta = factor(betamap)))
@@ -2390,9 +2392,9 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
     ## ordinal family: drop the internally-mapped intercept (fixed to 0,
     ## absorbed into the thresholds) from the coefficient table; keep it
     ## if the user supplied their own beta map
-    if (famL$family == "ordinal" && is.null(object$modelInfo$map$beta) &&
+    if (famL$family == "ordinal" && is.null(object$modelInfo$map[["beta"]]) &&
         !is.null(coefs$cond)) {
-        bmap <- object$obj$env$map$beta
+        bmap <- object$obj$env$map[["beta"]]
         icpt <- which(rownames(coefs$cond) == "(Intercept)")
         if (length(icpt) == 1 && !is.null(bmap) && is.na(bmap[icpt])) {
             coefs$cond <- coefs$cond[-icpt, , drop = FALSE]
