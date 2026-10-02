@@ -203,6 +203,13 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
                    identical(parm, "sigma")) {
             parm <- grep("^betadisp", intnames)
         } else { ## generic parameter vector
+            ## ordinal: a threshold label ("Low|Medium") selects the
+            ## internal psi parameter it is derived from, since the vcov
+            ## rows are labelled psi1, psi2, ... (see getParnames())
+            if (family(object)$family == "ordinal") {
+                thr <- match(parm, names(family_params(object)))
+                parm[!is.na(thr)] <- paste0("psi", thr[!is.na(thr)])
+            }
             nparm <- match(parm,pnames)
             if (any(is.na(nparm))) {
                 stop("unrecognized parameter names: ",
@@ -637,6 +644,31 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## appends theta, thetazi, thetadisp and then psi); a missing entry here
 ## makes a user 'map' on the later components edit the wrong block
 par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","psi")
+
+## positions of the estimated parameters (getParnames() with
+## include_mapped = FALSE, include_dropped = FALSE) within the full list
+## (getParnames() with the defaults), matched block by block and in
+## order, so a name that repeats in another block is never matched
+est_positions <- function(fullNameList, estNameList) {
+    offset <- 0L
+    pos <- integer(0)
+    for (nm in names(fullNameList)) {
+        fn <- fullNameList[[nm]]
+        en <- estNameList[[nm]]
+        j <- 0L
+        for (e in en) {
+            k <- match(e, fn[seq.int(j + 1L, length.out = length(fn) - j)])
+            if (is.na(k)) {
+                stop("internal error: estimated parameter '", e,
+                     "' not found in the full parameter list")
+            }
+            j <- j + k
+            pos <- c(pos, offset + j)
+        }
+        offset <- offset + length(fn)
+    }
+    pos
+}
 
 ## all parameters, including both mapped and rank-dropped
 getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,

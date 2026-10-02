@@ -464,6 +464,15 @@ test_that("emmeans mode argument is rejected off the ordinal branch", {
 ##   ORD-ID-4: invariant; "ordinal profile-type intervals are labelled
 ##     psi", the uniroot Estimate column must equal the psi values stored
 ##     in the fitted object (two routes to the same number)
+##   ORD-ID-5: invariant; "ordinal mapped psi: vcov, summary and Wald
+##     confint", emmeans(mode = "prob") against predict(type = "probs")
+##     on the same fit (two routes to the same probabilities)
+##   ORD-ID-6: invariant; "ordinal profile-type intervals are labelled
+##     psi", the profile interval against the uniroot interval at 1e-2
+##     (two root finders on the same profile likelihood)
+##   ORD-ID-7: invariant; "ordinal psi labels do not collide with a
+##     fixed-effect column", the fixed-effect block of vcov(full = TRUE)
+##     against vcov()$cond (two routes to the same matrix)
 test_that("ordinal user map on another component keeps the intercept fixed", {
     ## a map on a different parameter vector must not disable the
     ## internal intercept map (partial matching of map$beta, GH #1348)
@@ -471,7 +480,7 @@ test_that("ordinal user map on another component keeps the intercept fixed", {
                        data = housing, family = ordinal(),
                        map = list(betazi = factor()))
     expect_equal(fixef(fit_map)$cond[["(Intercept)"]], 0)
-    bmap <- fit_map$obj$env$map$beta
+    bmap <- fit_map$obj$env$map[["beta"]]
     expect_true(is.na(bmap[[1]]))
     expect_false("(Intercept)" %in%
                  rownames(summary(fit_map)$coefficients$cond))
@@ -603,6 +612,65 @@ test_that("ordinal profile-type intervals are labelled psi", {
     expect_false(any(grepl("^psi", rownames(ci_w))))
     expect_identical(rownames(summary(fit_ord)$thresholds),
                      c("Low|Medium", "Medium|High"))
+})
+
+test_that("ordinal intercept-free formula with a user beta map or start is an error", {
+    ## the user's map or start vector is sized for the intercept-free
+    ## model matrix; the added intercept would shift it
+    expect_error(glmmTMB(Sat ~ 0 + Infl + Type + Cont, weights = Freq,
+                         data = housing, family = ordinal(),
+                         map = list(beta = factor(1:7))),
+                 "needs an intercept in 'formula'")
+    expect_error(glmmTMB(Sat ~ 0 + Infl + Type + Cont, weights = Freq,
+                         data = housing, family = ordinal(),
+                         start = list(beta = rep(0, 7))),
+                 "needs an intercept in 'formula'")
+    ## a one-sided formula (as predict() passes) keeps its terms when
+    ## the intercept is added
+    fit_old <- fit_ord
+    fit_old$modelInfo$allForm$formula <- Sat ~ 0 + Infl + Type + Cont
+    expect_warning(p_old <- predict(fit_old, newdata = housing[1:6, ],
+                                    type = "probs"),
+                   "intercept is needed")
+    expect_equal(p_old, predict(fit_ord, type = "probs")[1:6, ],
+                 tolerance = 1e-8)
+})
+
+test_that("ordinal threshold labels select the psi parameter in confint", {
+    ci_w <- confint(fit_ord, component = "all")
+    expect_equal(confint(fit_ord, parm = "Low|Medium"),
+                 ci_w["Low|Medium", , drop = FALSE])
+    expect_equal(confint(fit_ord, parm = c("ContHigh", "Medium|High")),
+                 ci_w[c("cond.ContHigh", "Medium|High"), ],
+                 ignore_attr = "dimnames")
+    ci_u <- confint(fit_ord, parm = "psi_", method = "uniroot")
+    expect_equal(confint(fit_ord, parm = "Medium|High", method = "uniroot"),
+                 ci_u["psi2", , drop = FALSE])
+})
+
+test_that("ordinal psi labels do not collide with a fixed-effect column", {
+    ## a factor named psi gives a fixed-effect column "psi2", the same
+    ## label as the second internal threshold parameter; the full vcov
+    ## must be filled by position, not by name
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    set.seed(1)
+    wine$psi <- factor(sample(1:2, nrow(wine), replace = TRUE))
+    m <- glmmTMB(rating ~ temp + psi, data = wine, family = ordinal())
+    V <- as.matrix(vcov(m, full = TRUE))
+    expect_identical(unname(rownames(V)),
+                     c("(Intercept)", "tempwarm", "psi2",
+                       paste0("psi", 1:4)))
+    ## every estimated row is finite; only the mapped intercept is NA
+    expect_false(anyNA(V[-1, -1]))
+    expect_true(all(is.na(V[1, ])))
+    ## the fixed-effect block is the fixed-effect vcov
+    expect_equal(unname(V[2:3, 2:3]),
+                 unname(as.matrix(vcov(m, include_nonest = FALSE)$cond)))
+    ## and the threshold standard errors come from the psi block
+    th <- summary(m)$thresholds
+    expect_true(all(is.finite(th[, "Std. Error"])))
+    expect_true(all(th[, "Std. Error"] > 0))
 })
 
 test_that("ordinal working residuals are refused", {

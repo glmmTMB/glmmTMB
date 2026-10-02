@@ -98,6 +98,25 @@ test_that("vcov(full = TRUE) handles a mapped family parameter (psi)", {
     expect_equal(unname(Vest), unname(V[1:3, 1:3]))
 })
 
+test_that("vcov(full = TRUE) handles a mapped dispersion random effect", {
+    ## the thetadisp map used to hit an NA index in par_components and
+    ## fail at fit time; the cond and disp theta rows share a name, so
+    ## the full vcov must be filled by position
+    skip_if_not_installed("lme4")
+    data("sleepstudy", package = "lme4")
+    fit_d <- glmmTMB(Reaction ~ Days + (1 | Subject),
+                     dispformula = ~ 1 + (1 | Subject),
+                     data = sleepstudy,
+                     map = list(thetadisp = factor(NA)),
+                     start = list(thetadisp = 0))
+    V <- as.matrix(vcov(fit_d, full = TRUE))
+    expect_identical(unname(rownames(V)),
+                     c("(Intercept)", "Days", "disp~(Intercept)",
+                       "theta_1|Subject.1", "theta_1|Subject.1"))
+    expect_false(anyNA(V[1:4, 1:4]))
+    expect_true(all(is.na(V[5, ])))
+})
+
 test_that("mapping a non-intercept coefficient also works", {
     skip_if_not_installed("car")
     fit_map2 <- glmmTMB(count ~ mined + spp, family = poisson,
