@@ -304,6 +304,36 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
+    ## ordinal family: the thresholds take the place of the intercept, so
+    ## the model matrix must carry an intercept column (fixed to zero
+    ## below). An intercept-free formula is fitted with the intercept
+    ## added; ordinal::clm and MASS::polr give the same warning and the
+    ## same fit but keep the intercept-free coding and drop an aliased
+    ## column. The amended formula is what modelInfo$allForm stores, so
+    ## predict() with newdata uses it
+    if (family$family == "ordinal" &&
+        attr(terms(formula), "intercept") == 0) {
+        ## a user 'beta' map or start vector is sized and ordered for the
+        ## intercept-free model matrix; the added intercept column would
+        ## shift it onto the wrong coefficients
+        if (!is.null(mapArg[["beta"]]) ||
+            (is.list(start) && !is.null(start[["beta"]]))) {
+            stop("the ordinal family needs an intercept in 'formula' ",
+                 "(it is fixed to zero and absorbed into the thresholds): ",
+                 "include it before supplying 'beta' in 'map' or 'start', ",
+                 "since the intercept column changes the coefficient ",
+                 "positions")
+        }
+        warning("an intercept is needed and assumed in 'formula' for the ",
+                "ordinal family (it is fixed to zero and absorbed into ",
+                "the thresholds)")
+        ## predict() passes a one-sided formula, which update() would
+        ## otherwise turn into `. ~ x`
+        formula <- if (length(formula) == 3L) {
+                       update(formula, . ~ . + 1)
+                   } else update(formula, ~ . + 1)
+    }
+
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
     condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)
@@ -548,7 +578,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (family$family == "ordinal") {
       Xnames <- colnames(if (sparseX[["cond"]]) data.tmb$XS else data.tmb$X)
       icpt <- which(Xnames == "(Intercept)")
-      if (length(icpt) == 1L && is.null(mapArg$beta)) {
+      ## [["beta"]], not $beta: $ would partially match a user map on
+      ## betazi or betadisp and skip the intercept map (GH #1348)
+      if (length(icpt) == 1L && is.null(mapArg[["beta"]])) {
           betamap <- seq_along(parameters$beta)
           betamap[icpt] <- NA
           mapArg <- c(mapArg, list(beta = factor(betamap)))
@@ -2390,9 +2422,9 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
     ## ordinal family: drop the internally-mapped intercept (fixed to 0,
     ## absorbed into the thresholds) from the coefficient table; keep it
     ## if the user supplied their own beta map
-    if (famL$family == "ordinal" && is.null(object$modelInfo$map$beta) &&
+    if (famL$family == "ordinal" && is.null(object$modelInfo$map[["beta"]]) &&
         !is.null(coefs$cond)) {
-        bmap <- object$obj$env$map$beta
+        bmap <- object$obj$env$map[["beta"]]
         icpt <- which(rownames(coefs$cond) == "(Intercept)")
         if (length(icpt) == 1 && !is.null(bmap) && is.na(bmap[icpt])) {
             coefs$cond <- coefs$cond[-icpt, , drop = FALSE]

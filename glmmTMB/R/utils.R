@@ -203,6 +203,13 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
                    identical(parm, "sigma")) {
             parm <- grep("^betadisp", intnames)
         } else { ## generic parameter vector
+            ## ordinal: a threshold label ("Low|Medium") selects the
+            ## internal psi parameter it is derived from, since the vcov
+            ## rows are labelled psi1, psi2, ... (see getParnames())
+            if (family(object)$family == "ordinal") {
+                thr <- match(parm, names(family_params(object)))
+                parm[!is.na(thr)] <- paste0("psi", thr[!is.na(thr)])
+            }
             nparm <- match(parm,pnames)
             if (any(is.na(nparm))) {
                 stop("unrecognized parameter names: ",
@@ -633,7 +640,35 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
+## in the order of the name list getParnames() builds (its 'full' branch
+## appends theta, thetazi, thetadisp and then psi); a missing entry here
+## makes a user 'map' on the later components edit the wrong block
+par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","psi")
+
+## positions of the estimated parameters (getParnames() with
+## include_mapped = FALSE, include_dropped = FALSE) within the full list
+## (getParnames() with the defaults), matched block by block and in
+## order, so a name that repeats in another block is never matched
+est_positions <- function(fullNameList, estNameList) {
+    offset <- 0L
+    pos <- integer(0)
+    for (nm in names(fullNameList)) {
+        fn <- fullNameList[[nm]]
+        en <- estNameList[[nm]]
+        j <- 0L
+        for (e in en) {
+            k <- match(e, fn[seq.int(j + 1L, length.out = length(fn) - j)])
+            if (is.na(k)) {
+                stop("internal error: estimated parameter '", e,
+                     "' not found in the full parameter list")
+            }
+            j <- j + k
+            pos <- c(pos, offset + j)
+        }
+        offset <- offset + length(fn)
+    }
+    pos
+}
 
 ## all parameters, including both mapped and rank-dropped
 getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,
@@ -688,7 +723,14 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
 
       ##
       if (length(fp <- family_params(object)) > 0) {
-          nameList <- c(nameList, list(psi = names(fp)))
+          ## ordinal: the psi rows are the internal (softmax) threshold
+          ## parameters, not the thresholds family_params() reports, so
+          ## they are labelled psi1, psi2, ... (the a|b labels belong to
+          ## the threshold scale: summary()$thresholds, Wald confint())
+          psi_names <- if (family(object)$family == "ordinal") {
+                           paste0("psi", seq_along(fp))
+                       } else names(fp)
+          nameList <- c(nameList, list(psi = psi_names))
       }
       
   }

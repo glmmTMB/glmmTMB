@@ -516,7 +516,13 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
                         dimnames = list(fnl, fnl))
-          res[nl, nl] <- covF
+          ## place the estimated block by position, not by name: a name
+          ## can repeat across blocks (a fixed-effect column named like
+          ## an internal parameter such as "psi2", or the theta names of
+          ## a dispersion-model random effect), and `res[nl, nl]` would
+          ## then fill the first row carrying that name
+          ep <- est_positions(fullNameList, estNameList)
+          res[ep, ep] <- covF
       }
       ## end if (full)
   } else {
@@ -792,10 +798,28 @@ ordinal_threshold_jacobian <- function(object) {
 ordinal_thresholds <- function(object) {
     fp <- family_params(object)
     J <- ordinal_threshold_jacobian(object)
-    Vfull <- vcov(object, full = TRUE)
-    vi <- match(names(fp), rownames(Vfull))
-    se <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+    Vpsi <- ordinal_psi_vcov(object)
+    se <- sqrt(diag(J %*% Vpsi %*% t(J)))
     cbind("Estimate" = fp, "Std. Error" = se)
+}
+
+## ordinal family: covariance matrix of the internal psi parameters,
+## taken from the "psi1", ..., "psi(K-1)" rows of vcov(., full = TRUE).
+## psi elements fixed via a user 'map' are known constants, so their NA
+## rows/columns are set to zero before the delta method (as
+## pad_mapped_vcov() does for fixed coefficients); with every element
+## fixed the thresholds get standard error 0
+ordinal_psi_vcov <- function(object, Vfull = vcov(object, full = TRUE)) {
+    k <- length(object$modelInfo$ord_levels) - 1L
+    vi <- match(paste0("psi", seq_len(k)), rownames(Vfull))
+    V <- as.matrix(Vfull)[vi, vi, drop = FALSE]
+    pmap <- object$obj$env$map[["psi"]]
+    if (!is.null(pmap)) {
+        fixed <- which(is.na(pmap))
+        V[fixed, ] <- 0
+        V[, fixed] <- 0
+    }
+    V
 }
 
 ## obsolete
@@ -929,6 +953,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
     }
     r <- mr - mu
     fam <- family(object)
+    if (type == "working" && fam$family == "ordinal") {
+        ## r is on the category-index scale and mu.eta() of the link is
+        ## not the derivative of E[Y] for a cumulative-link model
+        stop("working residuals are not defined for the ordinal family; ",
+             "use type = \"response\" or type = \"dunn-smyth\"")
+    }
     res <- switch(type,
            response=r,
            working = {
@@ -1117,14 +1147,24 @@ format_perc <- function (probs, digits) {
 ##' equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
 ##' For random-effects terms with more than two elements, the mapping
 ##' is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
-##' 
+##'
+##' For the \code{ordinal} family, "wald" reports the thresholds on the
+##' threshold scale (rows labelled by the adjacent response levels,
+##' e.g. \code{Low|Medium}), with delta-method standard errors; the
+##' thresholds have Wald intervals only. "profile" and "uniroot" report
+##' the internal threshold parameters (\code{psi1}, \code{psi2}, ...,
+##' the softmax parameterization described in \code{\link{ordinal}}),
+##' as does \code{\link{profile.glmmTMB}}.
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
 ##' @param parm which parameters to profile, specified
 #' \itemize{
 #' \item by index (position) [\emph{after} component selection for \code{confint}, if any]
-#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)});
+#'   for the \code{ordinal} family a threshold label (e.g. \code{"Low|Medium"})
+#'   selects the internal \code{psi} parameter it is derived from
 #' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 #' }
 #'  Parameter indexing by number may give unusual results when
@@ -1263,6 +1303,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
     if (method=="wald") {
         map <- object$modelInfo$map
+        thr_names <- character(0)
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
                 length(fixef(object)[[component]])>0) {
@@ -1298,6 +1339,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                     ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
                     if (estimate) ci.shape <- cbind(ci.shape, fp)
                     ci <- rbind(ci, ci.shape)
+                    thr_names <- names(fp)
                 } else {
                     ci.shape <- .CI_univariate_monotone(object,
                                                     family_params,
@@ -1323,6 +1365,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## identify mapped values: lwr and upr CIs equal but *not NaN
         ##  (which indicates a failed fit instead)
         mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
+        ## ordinal thresholds are derived from psi rather than mapped
+        ## themselves: keep their rows even when every psi element is
+        ## fixed by the user and the interval has width 0 (as
+        ## summary()$thresholds reports them with standard error 0)
+        mapped <- mapped & !(rownames(ci) %in% thr_names)
         if (!include_nonest) {
             ## drop mapped values (where lower == upper)
             ci <- ci[!mapped, , drop=FALSE]
@@ -1370,7 +1417,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- lapply(as.list(parm), FUN)
         }
         L <- do.call(rbind,L)
-        rownames(L) <- rownames(vcov(object,full=TRUE))[parm]
+        ## parm indexes the estimated parameters, so the names must come
+        ## from the estimated-only vcov: the default include_nonest = TRUE
+        ## also lists mapped parameters, which shifts the labels
+        rownames(L) <- rownames(vcov(object, full = TRUE,
+                                     include_nonest = FALSE))[parm]
         if (estimate) {
             ee <- object$obj$env
             par <- ee$last.par.best
