@@ -1098,6 +1098,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "kron" = NA, # set below from its margins
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1135,6 +1136,35 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
         } else if(ss[i] %in% c("exp", "gau", "mat")){
             coords <- parseNumLevels(reTrms$cnms[[i]])
             tmp$dist <- as.matrix( dist(coords) )
+        } else if(ss[i] == "kron") {
+            margin_strucs <- aa[[i]] # e.g. c("us", "ar1"), from rewriteKron()
+            ## rev() undoes rewriteKron()'s reversal of the factors, giving the
+            ## margins in the order written
+            margin_levels <- rev(.getXlevels(reXterms[[i]], fr))
+            n_margins <- length(margin_levels)
+            ## .getXlevels() skips numeric margins, so they fail this check
+            if (n_margins != length(margin_strucs))
+                stop("kron() margins must look like us(0 + f), with f a factor")
+            if (any(margin_strucs %in% c("rr", "propto", "equalto", "kron")))
+                stop("kron() margins cannot be rr, propto, equalto or kron")
+            ## column names per margin (also used by VarCorr())
+            tmp$cnms <- Map(paste0, names(margin_levels), margin_levels)
+            ## pass the margins back through getReStruc() as terms of a grouping
+            ## factor with one level, so each margin gets the usual checks and
+            ## parameter count
+            margin_reTrms <- list(
+                flist = structure(list(factor(1)), assign = rep(1, n_margins)),
+                Gp = cumsum(c(0, lengths(margin_levels))),
+                cnms = tmp$cnms)
+            margin_reXterms <- lapply(names(margin_levels),
+                                      function(v) terms(reformulate(v)))
+            tmp$margins <- getReStruc(margin_reTrms, ss = margin_strucs,
+                                      reXterms = margin_reXterms, fr = fr,
+                                      full_cor = rep(full_cor[i], n_margins))
+            ## the first margin carries the variance: each later margin's first
+            ## log-SD is fixed at 0 (SD 1), so it is not counted
+            margin_num_theta <- vapply(tmp$margins, `[[`, 0, "blockNumTheta")
+            tmp$blockNumTheta <- sum(margin_num_theta) - (n_margins - 1)
         }
         ans[[i]] <- tmp
     }
@@ -1249,6 +1279,7 @@ binomialType <- function(x) {
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 ##' \item \code{equalto} (* equal to user-specified variance-covariance matrix)
+##' \item \code{kron} (* Kronecker product of two or more of the structures above except \code{rr}, \code{propto} and \code{equalto}, e.g. \code{kron(us(0 + trait) \%x\% ar1(0 + time) | subject)}; RTMB back-end only. Each margin takes one factor and no intercept. The first margin sets the overall scale; later margins have their first standard deviation fixed at 1)
 ##' }
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
@@ -1430,6 +1461,12 @@ glmmTMB <- function(
 
     environment(dispformula) <- environment(formula)
     call$dispformula <- dispformula
+
+    ## rewrite kron() terms into the internal form; the stored call keeps the
+    ## user's syntax
+    formula <- rewriteKron(formula)
+    ziformula <- rewriteKron(ziformula)
+    dispformula <- rewriteKron(dispformula)
 
     ## now work on evaluating model frame
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
@@ -1990,6 +2027,8 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
         useRTMB(control$use_rtmb)
         on.exit(useRTMB(old_use_rtmb), add = TRUE)
     }
+    if (!useRTMB() && "kron" %in% with(TMBStruc, c(condList$ss, ziList$ss, dispList$ss)))
+        stop("kron() needs the RTMB back-end: use glmmTMBControl(use_rtmb = TRUE)")
 
     if (control $ collect) {
         ## To avoid side-effects (e.g. nobs.glmmTMB), we restore
