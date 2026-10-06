@@ -75,6 +75,11 @@
       back-end, which allows more flexibility without a performance
       cost; the TMB back-end will be maintained for at least the
       next few releases, although new features may be RTMB-only.
+      \item new \code{indisting} covariance structure for indistinguishable
+      (exchangeable) dyads, parameterized through independent shared (sum)
+      and difference blocks that guarantee positive definiteness. The member
+      variable must be a factor with two levels; see
+      \code{vignette("covstruct", package = "glmmTMB")} (GH #1288)
     } % itemize
   } % new features
  \subsection{BUG FIXES}{

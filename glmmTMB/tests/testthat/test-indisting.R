@@ -81,3 +81,27 @@ test_that("indisting: missing intercept suppression gives informative error", {
     "must not include an intercept"
   )
 })
+
+test_that("indisting k=2: log-likelihood matches sum-and-difference us()", {
+  ## Rescaled since otherwise us() fit gets stuck at a boundary
+  d <- sleepstudy2
+  d$Reaction <- d$Reaction / 100
+  d$Idiff    <- ifelse(d$member == "1", 1, -1)
+  
+  ## indisting() reparameterizes independent shared and difference blocks,
+  ## so both models should have the exact same likelihood
+  fm_ind <- glmmTMB(Reaction ~ Days_c +
+                      indisting(0 + member + member:Days_c | dyad) +
+                      indisting(0 + member | dyad:Days_f),
+                    data = d, dispformula = ~0, REML = TRUE)
+  fm_us <- glmmTMB(Reaction ~ Days_c +
+                     us(1 + Days_c | dyad) +
+                     us(0 + Idiff + Idiff:Days_c | dyad) +
+                     us(1 | dyad:Days_f) +
+                     us(0 + Idiff | dyad:Days_f),
+                   data = d, dispformula = ~0, REML = TRUE)
+  
+  ll_ind <- as.numeric(logLik(fm_ind))
+  expect_false(is.na(ll_ind))
+  expect_equal(ll_ind, as.numeric(logLik(fm_us)), tolerance = 1e-6)
+})
