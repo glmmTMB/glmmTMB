@@ -13,7 +13,9 @@ dof_satt(model, L = diag(length(fixef(model)$cond)))
 \item{model}{a fitted \code{glmmTMB} object}
 
 \item{L}{a contrast matrix: by default, equal to an identity matrix (i.e., ddfs are returned
-for each fixed-effect parameter)}
+for each fixed-effect parameter). Columns may correspond to all coefficients in
+\code{fixef(model)$cond}, to the non-\code{NA} (estimable) ones, or to the parameters
+actually estimated (after \code{map})}
 }
 \value{
 a named vector of ddf for each conditional fixed-effect parameter; \code{dof_KR} includes attributes 'vcov'
@@ -29,4 +31,13 @@ for Satterthwaite approximations
 Kenward-Roger adjustments \emph{should not be used} for models fitted with ML rather than REML;
 the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
 Use at your own risk for GLMMs!
+
+Both approximations are computed for the parameters that are actually
+estimated, and reported for every coefficient in \code{fixef(model)$cond}:
+coefficients tied to each other via \code{map} share one value, while
+coefficients fixed via \code{map} (known constants with zero variance) and
+coefficients dropped from a rank-deficient model (not estimable, with
+\code{NA} estimates) get \code{NA}. Likewise, a contrast (row of \code{L})
+gets \code{NA} if it puts weight on a dropped coefficient or if it involves
+only fixed coefficients.
 }
