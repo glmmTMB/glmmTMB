@@ -111,14 +111,15 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
     test_that("propto error about non-matrix", {
         junk <- "junk"
         expect_error( glmmTMB(y ~ x + propto(x | spp, junk), data = dat, family = poisson),
-                     "expecting a matrix for propto")
+        "propto() matrix must be a numeric matrix", fixed = TRUE)
     })
     ## test dimensions of matrix
     test_that("propto error with incorrect dimensions", {
       smallmat <- mat[1:10, 1:10]
       expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, smallmat),
                             data = liz),
-                    "matrix is not the correct dimension")
+                    "propto() matrix has dimensions 10 x 10, but the random effect term has 18 levels. These must match.",
+                    fixed = TRUE)
     })
     ## test names of matrix
     test_that("propto error with incorrect names", {
@@ -127,18 +128,40 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
       rownames(mattest) <- NULL
       expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
               data = liz),
-              regexp = "column or row names of the propto matrix do not match the terms. Expecting names:.sppSa..sppSh..sppTl..sppMc..sppMy..sppPh..sppPg..sppPa..sppPb..sppPm..sppAe..sppTt..sppTs..sppZo..sppZv..sppLa..sppLs..sppLv.",
+              regexp = "the propto() matrix must have row and column names (matching the random effect level names)",
+              fixed = TRUE
       )
     })
 
-    test_that("propto error with unsorted names", {
+    test_that("propto error with one matrix name not matching", {
         mattest <- mat
         colnames(mattest) <- rev(colnames(mattest))
         rownames(mattest) <- NULL
         expect_error(glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
                              data = liz),
-                     "in a different order")
+                     "the propto() matrix must have row and column names (matching the random effect level names)",
+                     fixed = TRUE)
     })
+
+    test_that("test propto fit - matrix reordering", {
+        # permute the matrix rows/columns into a different order
+        set.seed(42)
+        perm <- sample(nrow(mat))
+        mat_reordered <- mat[perm, perm]
+        fit_phylo <- glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat),
+                                          data = liz, dispformula = ~0)
+        # should warn about reordering
+        expect_warning(fit_phylo_reordered <- glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat_reordered), data = liz, dispformula = ~0),
+         "row/column names of the propto() matrix match the random effect level names but were in a different order; reordering" , 
+         fixed = TRUE)
+  
+        # results should be identical to the correctly-ordered fit
+        expect_equal(fixef(fit_phylo_reordered)$cond, fixef(fit_phylo)$cond, tolerance = 1e-6)
+  
+        cc_reordered <- attr(VarCorr(fit_phylo_reordered)$cond[[1]], "correlation")
+        dimnames(cc_reordered) <- lapply(dimnames(cc_reordered), function(x) gsub("^spp", "", x))
+        expect_equal(cc_reordered, mat, tolerance = 1e-6)
+})
     
     ## FIXME: test, remove if unnecessary
     options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?
