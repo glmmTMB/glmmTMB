@@ -12,6 +12,31 @@ getParList <- function(object) {
     object$obj$env$parList(object$fit$par, object$fit$parfull)
 }
 
+##' Split sep terms into one entry per component, so mkVC()/docov() see ordinary terms
+#' @param cn named list of term column names (\code{reTrms$<comp>$cnms})
+#' @param cl,sl reported corr and sd lists, one entry per term (lists of matrices/vectors for sep terms)
+#' @param bc,fc block code and fullCor lists, one entry per term
+#' @param sep \code{reTrms$<comp>$sep}: per-term sep info (NULL if there are no sep terms)
+#' @param restruc the \code{<comp>ReStruc} list (supplies \code{blockSepNames})
+#' @return list(cnms, cor, sd, bc, fc), one entry per ordinary term or sep component
+expandSepTerms <- function(cn, cl, sl, bc, fc, restruc) {
+    parts <- lapply(seq_along(cn), function(i) {
+        cls <- restruc[[i]][["blockSepNames"]]
+        if (is.null(cls))                                   # ordinary term, as before
+            return(list(cnms = cn[i], cor = cl[i], sd = sl[i], bc = bc[i], fc = fc[i]))
+        sc <- restruc[[i]][["blockSepCnms"]]  
+        stopifnot(length(cls) == length(cl[[i]]),  length(cls) == length(sc))
+        nms <- paste0(names(cn)[i], " [", seq_along(cls), ": ", cls, "]")
+        list(cnms = setNames(sc, nms),            # per-component column names
+             cor  = setNames(cl[[i]], nms),
+             sd   = setNames(sl[[i]], nms),
+             bc   = setNames(lapply(cls, function(k) .valid_covstruct[k]), nms),
+             fc   = setNames(rep(fc[i], length(cls)), nms))
+    })
+    flat <- function(f) do.call(c, lapply(parts, `[[`, f))
+    list(cnms = flat("cnms"), cor = flat("cor"), sd = flat("sd"), bc = flat("bc"), fc = flat("fc"))
+}
+
 
 ##' Extract residual standard deviation or dispersion parameter
 ##'
@@ -234,16 +259,14 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         bcvec <- lapply(restruc, function(x) x[["blockCode"]])
         fcvec <- lapply(restruc, function(x) x[["fullCor"]])
         if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
-            vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
-                       sd  = xrep[[paste0("sd", comp_nms[i])]],
-                       cnms = cn,
-                       sc = sigma,
-                       bc = bcvec,
-                       useSc = useSc,
-                       fullCor = fcvec)
+            ex <- expandSepTerms(cn, cl = xrep[[paste0("corr", comp_nms[i])]],
+                                 sl = xrep[[paste0("sd",   comp_nms[i])]], 
+                                 bc = bcvec, fc = fcvec,
+                                 restruc = restruc)
+            vc <- mkVC(cor = ex$cor, sd = ex$sd, cnms = ex$cnms, sc = sigma, bc = ex$bc, useSc = useSc, fullCor = ex$fc)
             for (j in seq_along(vc)) {
-                attr(vc[[j]],"blockCode") <- bcvec[[j]]
-                class(vc[[j]]) <- c(paste0("vcmat_", names(bcvec[[j]])), class(vc[[j]]))
+                attr(vc[[j]],"blockCode") <- ex$bc[[j]]
+                class(vc[[j]]) <- c(paste0("vcmat_", names(ex$bc[[j]])), class(vc[[j]]))
             }
             corr_list[[comp_nms2[[i]]]] <- vc
         }

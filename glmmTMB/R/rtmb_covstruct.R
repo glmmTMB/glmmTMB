@@ -1,5 +1,86 @@
 ## RTMB random-effect likelihoods, simulation, and covariance reporting.
 
+## Negative log density for a "separable" term: calls the 
+## termwise_nll() per Kronecker factor, then combines via RTMB::dseparable.
+separable_nll <- function(U, theta, term) {
+  sep_names <- term$blockSepNames
+  sep_reps <- term$blockSepReps
+  sep_sizes <- term$blockSepSizes
+  sep_nt <- term$blockSepNumTheta
+  reps <- term$blockReps
+  n_sep <- length(sep_names)
+
+  sep_block_dim <- sep_sizes * sep_reps      ## length of each re's block: LHS columns x and the RHS fct  
+  stopifnot(length(U) == prod(sep_block_dim) * reps,
+            length(theta) == sum(sep_nt))  
+
+  tcounter <- c(0L, cumsum(sep_nt))
+  
+  ## each sep re struc - theta, block info
+  sep_th  <- lapply(seq_len(n_sep), function(i) theta[(tcounter[i] + 1L):tcounter[i + 1L]])
+  sep_cmp <- lapply(seq_len(n_sep), function(i)
+    list(blockName = sep_names[i], blockSize = sep_sizes[i], blockReps = sep_reps[i], 
+      simCode = term$simCode, fullCor = term$fullCor))
+
+  get_sep_stuc <- function(cmp, th) function(x)  -termwise_nll(x, th, cmp)$nll
+  sep_fns <- lapply(seq_len(n_sep), function(i) get_sep_stuc(sep_cmp[[i]], sep_th[[i]]))
+
+  sepdens <- do.call(RTMB::dseparable, sep_fns)
+
+  blockN <- prod(sep_block_dim)
+  rr_trms <- which(sep_names == "rr")
+
+  ## rr covstrucs - density function is not defined by theta, i.e. factor loadings
+  ## u = [Lambda 0] b, which is what goes into Z %*% u. Need to retrieve the transformed latent variables.
+  ## for each rr component i: 
+  ##   idx: a permutation of 1..blockN that makes dimension i the fastest-varying index (termwise_nll does dim(U) <- c(blockSize, blockReps) 
+  ##       index depends on where i sits in the Kronecker product (identity if i = 1).
+  ##   cmp: the component's settings with blockReps set to the number of columns in the permuted vector: G_i x (product of all other dimensions).
+  rr_ids <- lapply(rr_trms, function(i) {
+    perm <- c(i, seq_len(n_sep)[-i])
+    idx  <- as.vector(aperm(array(seq_len(blockN), sep_block_dim), perm))   # plain integers, no AD
+    cmp  <- sep_cmp[[i]]
+    cmp$blockReps <- sep_reps[i] * prod(sep_block_dim[-i])             # G_i x (all other columns)
+    list(i = i, idx = idx, cmp = cmp)
+  } )
+
+  Umat <- U
+  dim(Umat) <- c(prod(sep_block_dim), reps)  
+  Ut <- Umat
+  nll <- 0
+  for (k in seq_len(reps)) {
+    uk <- Umat[, k]
+    dim(uk) <- sep_block_dim   # each block: size * rep        
+    nll <- nll - sepdens(uk)
+
+    # fix rr u by getting lambda * u
+    ut <- as.vector(uk)
+    for(ri in rr_ids){
+      v <- termwise_nll(ut[ri$idx], sep_th[[ri$i]], ri$cmp)$u     
+      ut[ri$idx] <- v    # put back in original order
+    }
+    Ut[, k] <- ut
+  }  
+
+  corr      <- vector("list", n_sep)
+  sd        <- vector("list", n_sep)
+  fact_load <- vector("list", n_sep)
+  for (i in seq_len(n_sep)) {
+    r <- termwise_nll(rep(0, sep_block_dim[i]), sep_th[[i]], sep_cmp[[i]])
+    corr[[i]]      <- r$corr
+    sd[[i]]        <- r$sd
+    fact_load[[i]] <- r$fact_load
+  }
+
+  list(
+    nll = nll,
+    corr = corr,
+    sd = sd,
+    fact_load = fact_load,
+    u = if (inherits(U, "simref")) NULL else as.vector(Ut)
+  )
+}
+
 ## Partition the concatenated random effects and covariance parameters by term
 ## Term slicing is translated from allterms_nll() in glmmTMB.cpp:803-826
 allterms_nll <- function(u, theta, terms) {
@@ -46,7 +127,12 @@ allterms_nll <- function(u, theta, terms) {
       tseg <- numeric(0)
     }
 
-    ans <- termwise_nll(useg, tseg, term)
+    #ans <- termwise_nll(useg, tseg, term) 
+    ans <- if (!identical(term$blockName, "sep")) {
+      termwise_nll(useg, tseg, term)
+    } else {
+      separable_nll(useg, tseg, term)
+    }
     nll <- nll + ans$nll
     corr[[i]] <- ans$corr
     sd[[i]] <- ans$sd
@@ -149,7 +235,7 @@ termwise_nll <- function(U, theta, term) {
   }
   supported <- c(
     "diag", "homdiag", "us", "cs", "homcs", "toep", "homtoep",
-    "ar1", "hetar1", "ou", "exp", "gau", "mat", "rr", "propto", "equalto"
+    "ar1", "hetar1", "ou", "exp", "gau", "mat", "rr", "propto", "equalto", "sep"
   )
 
   if (!name %in% supported) {
@@ -193,7 +279,7 @@ termwise_nll <- function(U, theta, term) {
     }
   }
 
-  expected_num_theta <- switch(
+  expected_num_theta_fn <- function(name, n, rr_rank){ switch(
     name,
     diag = n,
     homdiag = 1L,
@@ -211,7 +297,10 @@ termwise_nll <- function(U, theta, term) {
     rr = n * rr_rank - (rr_rank - 1L) * rr_rank / 2L,
     propto = n * (n + 1L) / 2L + 1L,
     equalto = n * (n + 1L) / 2L
-  )
+  )}
+
+  expected_num_theta <- expected_num_theta_fn(name, n, rr_rank)
+
   if (length(theta) != expected_num_theta) {
     stop(
       "Expected ", expected_num_theta, " covariance parameters for '",
