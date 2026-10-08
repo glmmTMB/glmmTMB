@@ -520,8 +520,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         
         else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="equalto") { # if equalto then get vcov values
           a <- List[["aa"]][[i]]
-          checkMatrix(aa = a, cnms = List$reTrms$cnms[[i]], label = "equalto",
-                            reXtrm = List$reXterms[[i]])
           tl[[i]] <- as.theta.vcov(a) 
         } #end else if equalto
       } #end for loop
@@ -919,10 +917,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
           }
           else if(ss$reTrmClasses[i] == "propto"){
-            checkMatrix(aa = aa[[i]], cnms = reTrms$cnms[[i]], label = "propto", reXtrm = reXterms[[i]])
+            aa[[i]] <- checkMatrix(aa = aa[[i]], cnms = reTrms$cnms[[i]], label = "propto", reXtrm = reXterms[[i]])
           }
           else if(ss$reTrmClasses[i] == "equalto"){
-            checkMatrix(aa = aa[[i]], cnms = reTrms$cnms[[i]], label = "equalto", reXtrm = reXterms[[i]])
+            aa[[i]] <- checkMatrix(aa = aa[[i]], cnms = reTrms$cnms[[i]], label = "equalto", reXtrm = reXterms[[i]])
           }
         }
 
@@ -1887,16 +1885,22 @@ checkMatrix <- function(aa, cnms, label = c("equalto", "propto"), reXtrm) {
     stop(sprintf("row/column names of the %s() matrix must be unique", label), call. = FALSE)
   if (!identical(matNames, cnms)) {
       reTrmLabs <- attr(terms(reXtrm), "term.labels")
-      aaLabs <- paste0(reTrmLabs, matNames)
+      aaLabs <- paste0(reTrmLabs, matNames) #paste factor name
       if (!identical(aaLabs, cnms)) {
-          if (identical(sort(aaLabs), sort(cnms)) || identical(sort(matNames), sort(cnms))) {
-              stop(sprintf("row/column names of the %s() matrix match the random effect level names, but are in a different order", label),
-                   call. = FALSE)
+        use_aaLabs <- identical(sort(aaLabs), sort(cnms))
+        use_matNames <- identical(sort(matNames), sort(cnms))
+          if (use_aaLabs || use_matNames) { 
+              # Reorder instead of error
+              ord <- match(cnms, if (use_aaLabs) aaLabs else matNames)
+              aa <- aa[ord, ord, drop = FALSE]
+              warning(sprintf("row/column names of the %s() matrix match the random effect level names but were in a different order; reordering", label), call. = FALSE)
+          } else {
+            stop(sprintf("row/column names of the %s() matrix do not match the random effect level names. Expecting names: ", label),
+              paste(sQuote(head(cnms, 5)), collapse = ", "), if (length(cnms) > 5) ", ...", call. = FALSE)
           }
-          stop(sprintf("row/column names of the %s() matrix do not match the random effect level names. Expecting names: ", label),
-               paste(sQuote(head(cnms, 5)), collapse = ", "), if (length(cnms) > 5) ", ...", call. = FALSE)
-      }
+        }
   }
+  return(aa)
 }
 
 ##' Optimize TMB models and package results, modularly

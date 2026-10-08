@@ -49,7 +49,7 @@ test_that("equalto vs map-start on simulated data", {
 
 
 
-test_that("equalto error messages for bad input matrices", {
+test_that("equalto error/warning messages for bad input matrices", {
 
   # expect an error: numeric vector rather than a matrix
   expect_error(
@@ -89,11 +89,11 @@ test_that("equalto error messages for bad input matrices", {
     glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vrc), data=dat),
     "row and column names of the equalto() matrix differ", fixed = TRUE
   )
-  # expect an error: row/column names match RE levels but in a different order
+  # expect an warning: row/column names match RE levels but in a different order
   Vord <- V[rev(seq_len(nrow(V))), rev(seq_len(ncol(V)))]
-  expect_error(
+  expect_warning(
     glmmTMB(y ~ 1 + (1|study) + equalto(0 + id|g, Vord), data=dat),
-    "row/column names of the equalto() matrix match the random effect level names, but are in a different order",
+    "row/column names of the equalto() matrix match the random effect level names but were in a different order; reordering",
     fixed = TRUE
   )
   # expect an error: row/column names don't match the random effect level names at all
