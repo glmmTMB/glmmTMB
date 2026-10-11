@@ -38,7 +38,7 @@ allFit.methods <- data.frame(
 ##        if necessary do the modular steps again, ideally re-use info from fitted model
 ##        optional whether we should start from best fit or from default/specified starting values
 ##        optional whether to include original alg
-allFit <- function(fit, methods = allFit.methods) {
+allFit <- function(fit, methods = allFit.methods, verbose = FALSE) {
     res <- vector("list", length = nrow(methods))
     names(res) <- paste(methods$optimizer,
                         methods$alg,
@@ -46,7 +46,7 @@ allFit <- function(fit, methods = allFit.methods) {
     for (i in seq(nrow(methods))) {
         optimizer <- methods$optimizer[i]
         alg <- methods$alg[i]
-        cat("** ", i, optimizer, alg, "\n")
+        if (verbose) cat("** ", i, optimizer, alg, "\n")
         ctrl <- switch(optimizer,
             nlminb = glmmTMBControl(optimizer=nlminb),
             optim = glmmTMBControl(optimizer=optim,

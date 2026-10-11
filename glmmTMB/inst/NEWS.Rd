@@ -4,7 +4,246 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.11.9000}{
+\section{CHANGES IN VERSION 1.1.15.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Tweedie simulation is faster, especially when the power
+      parameter is close to 2. Simulated values for a given seed differ
+      from previous versions (GH #1341, Pascal Küng)
+    } % itemize
+  } % user-visible changes
+} % 1.1.15.9000
+
+\section{CHANGES IN VERSION 1.1.15.2 (2026-09-29)}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new \code{ordinal} family implementing cumulative-link
+      (proportional odds) models for ordered categorical responses with
+      logit, probit, or cloglog links, supporting the full range of
+      \code{glmmTMB} random-effects structures (GH #514). The response
+      should be an ordered factor; thresholds are reported by
+      \code{family_params()}, per-category probabilities by
+      \code{predict(., type = "probs")}, and Dunn-Smyth residuals and
+      \code{simulate()} are supported. Nominal (category-specific) and
+      scale effects are not (yet) implemented; \code{REML=TRUE} warns,
+      since it integrates out the fixed effects but not the thresholds
+      \item \code{summary()} for the \code{ordinal} family reports the
+      thresholds with delta-method standard errors in a
+      \dQuote{Threshold coefficients} block (also available as the
+      \code{thresholds} element of the summary object); the threshold
+      rows of \code{vcov(., full = TRUE)} remain on the internal
+      (softmax) scale (GH #1323)
+      \item \code{emmeans()} on \code{ordinal} fits gains the \code{mode}
+      and \code{rescale} arguments of its \code{MASS::polr} method
+      (\code{"latent"} [the default], \code{"linear.predictor"},
+      \code{"cum.prob"}, \code{"exc.prob"}, \code{"prob"},
+      \code{"mean.class"}), with standard errors that include the
+      delta-method covariance of the thresholds. The default now reports
+      the latent-scale mean centered on the average threshold, on the
+      latent scale only, so \code{type = "response"} no longer
+      back-transforms it (the previous default reported the linear
+      predictor without the thresholds, on the link scale)
+      \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
+      \code{residuals()}) are now available for the \code{bell} and
+      \code{genpois} families; the Bell distribution uses internal C-level
+      implementations of the PMF and Lambert W function
+      \item density and cumulative distribution functions for the Bell
+      (\code{dbell}, \code{pbell}) and generalized Poisson
+      (\code{dgenpois}, \code{pgenpois}) distributions are now exported
+      \item \code{anova.glmmTMB} gains a \code{ddf} argument, matching
+      \code{summary.glmmTMB}: the default \code{"asymptotic"} gives the
+      usual likelihood ratio test, while \code{"kenward-roger"} or
+      \code{"satterthwaite"} instead give an F-ratio test between each pair
+      of nested models
+      \item \code{car::Anova} (Type II/III) also gains a \code{ddf}
+      argument: \code{"kenward-roger"} or \code{"satterthwaite"} give an
+      F-ratio table instead of the default Wald chi-squared table, with
+      each term's denominator df computed via the same machinery as
+      \code{anova.glmmTMB}/\code{summary.glmmTMB}
+      \item new family \code{combinomial} implementing the
+      (mean-parameterized) Conway-Maxwell-Binomial distribution for
+      under- and over-dispersed binomial-type responses;
+      \code{combinomial(allow_negative_nu = TRUE)} uses an identity link
+      for the dispersion model, allowing the dispersion parameter to go
+      negative (super-dispersion). Dunn-Smyth and Pearson residuals,
+      simulation (hence \pkg{DHARMa} and
+      \code{performance::check_model()}) and \pkg{emmeans} (conditional
+      and dispersion components) are supported. \strong{Requires TMB
+      newer than 1.9.21.} The density and cumulative distribution
+      functions (\code{dcombinom}, \code{pcombinom}) are exported
+      \item \code{getME()} now works to extract \code{"cnms"} (effect
+      names) and \code{"flist"} (factor list) for random effects
+      (conditional model components only)
+      \item the package now includes an experimental (for now)
+      \pkg{RTMB} back-end, disabled by default,
+      which can be turned on for a specific model fit
+      by \code{control = glmmTMBControl(use_rtmb = TRUE)}, or
+      persistently via \code{useRTMB(TRUE)}. Runs using the RTMB
+      back-end should match TMB back-end results up to floating point
+      error, and should be as fast as old-style TMB fits.
+      Going forward we expect to switch development to the RTMB
+      back-end, which allows more flexibility without a performance
+      cost; the TMB back-end will be maintained for at least the
+      next few releases, although new features may be RTMB-only.
+    } % itemize
+  } % new features
+ \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{getME(., "Gp")} now works to return a vector of group
+      pointers for random effects
+      \item \code{vcov} (and hence \code{summary}, \code{confint},
+      \code{car::Anova}) no longer fails with "attempt to set an attribute
+      on NULL" for a \code{REML=TRUE} fit that has no free fixed effects to
+      integrate out (e.g. \code{y ~ 0}, or a model whose entire \code{beta}
+      vector is fixed via \code{map}); such fits are numerically identical
+      to the corresponding ML fit
+      \item \code{profile.glmmTMB} with a custom parallel cluster produced
+      error on "object 'new_cl' not found" (GH #1265; Henrik Bengtsson)
+      \item Fix mapping for models with rr structures (GH #1276)
+      \item \code{diagnose} now prints the intended threshold value (rather
+      than the flagged standard deviations themselves) in its "unusually
+      large or small standard deviations" report; the \code{check_zstats}
+      argument documentation was corrected to describe the Z-statistic as
+      estimate/std.error (GH #1292; Paul Schmidt)
+      \item the \code{estfun.glmmTMB} correctly restores the parameter
+      values in the environment of a \code{glmmTMB} object, so that
+      (e.g.) subsequent calls to \code{predict} are not modified by
+      \code{estfun} (or upstream functions such as \code{vcovHC})
+      (GH #1294; Vincent Arel-Bundock)
+      \item \code{emmeans()} with \code{ddf = "satterthwaite"} failed with
+      'could not find function "dof_satt"' because \pkg{emmeans} strips
+      the enclosing environment of the degrees-of-freedom function before
+      calling it (GH #1304, Ariel Muldoon)
+      \item relatedly, \code{emmeans()} with \code{ddf = "satterthwaite"}
+      would have failed for any request involving more than one contrast
+      (e.g. pairwise comparisons) once the issue above was fixed, because
+      the Satterthwaite degrees-of-freedom function was being called with
+      a single contrast vector rather than the one-row matrix it expected
+      (GH #1304)
+      \item Dunn-Smyth residuals for binomial models with two-column
+      (\code{cbind(successes, failures)}) responses and more than one
+      trial per observation were computed with the number of trials
+      fixed at 1; the number of trials is now passed through to the
+      binomial CDF
+      \item \code{emmeans} and \code{car::Anova} now work for models with
+      fixed-effect coefficients fixed via \code{map} (previously a
+      dimension mismatch in \code{emmeans}, and a singular-matrix error or
+      \code{NA} test statistic in \code{Anova}); such coefficients are
+      treated as known constants with zero variance
+      \item \code{weights()} now returns the total number of trials for
+      binomial-type models fitted with a two-column matrix
+      (\code{cbind(successes, failures)}) response, matching \code{glm} and
+      \code{glmer} (GH #1319)
+      \item \code{glmmTMB} no longer leaks a copy of \code{stats::weights}
+      (or, in principle, the fitted \code{weights}/\code{offset} values) into
+      the calling environment (GH #1296)
+      \item \code{emmeans} now respects an explicitly specified \code{ddf}
+      for Gaussian models without random effects; the request was previously
+      replaced by residual df without warning, and
+      \code{"kenward-roger"}/\code{"satterthwaite"} errored for a model with
+      a non-trivial \code{dispformula} on their way into \code{dof_satt},
+      which requires random effects (Paul Schmidt)
+      \item \code{glmmTMBControl(profile = TRUE)} now stops early with an
+      informative error for a model with no free fixed-effect parameters
+      (e.g. \code{y ~ 0}, or a model whose entire \code{beta} vector is
+      fixed via \code{map}), instead of failing with "attempt to set an
+      attribute on NULL" (GH #1317)
+      \item \code{glmmTMBControl(profile = TRUE)} now works with
+      \code{REML = TRUE} (previously every such fit failed with a
+      dimension mismatch in \code{solve()})
+      \item \code{ddf = "satterthwaite"} (in \code{summary}, or via
+      \code{emmeans}) no longer fails with "non-conformable arguments" for
+      a rank-deficient conditional model (i.e. one with a dropped/aliased
+      fixed-effect column); the aliased coefficient now gets \code{NA} ddf,
+      like its \code{NA} estimate and standard error, rather than erroring
+      (GH #1326, @qdread)
+    }
+  } % bug fixes
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Satterthwaite ddf approximation now uses a faster, slightly
+      less accurate approximation method; results may change slightly
+      \item fixed garbled warning from Kenward-Roger correction (GH #1310)
+      \item \code{ddf = "kenward-roger"} on a non-REML fit now throws an
+      error consistently across \code{summary}, \code{anova}, \code{Anova},
+      and \code{emmeans} (previously \code{emmeans} silently substituted
+      \code{"satterthwaite"} with a warning instead); \code{"kenward-roger"}
+      and \code{"satterthwaite"} on a non-Gaussian family now consistently
+      emit a warning (rather than a message, or nothing) across all four
+      \item \code{emmeans} no longer reports residual degrees of freedom for
+      a Gaussian model without random effects whose dispersion parameter is
+      held fixed via \code{map}: with no variance parameter estimated the
+      residual variance is known, so \code{"asymptotic"} (infinite df) is
+      used instead (Paul Schmidt)
+      \item an unrecognized \code{ddf} string passed to \code{emmeans} is now
+      an error, as it already was in \code{summary}/\code{anova}/\code{Anova};
+      for a Gaussian model without random effects it was previously treated as
+      residual df without warning, and for the \code{zi}/\code{disp}
+      components it gave a warning and asymptotic df. Partial matches such as
+      \code{ddf = "satt"} are now accepted, as they already were in
+      \code{summary} (Paul Schmidt)
+    } % itemize
+  } % user-visible changes
+ } % 1.1.15
+
+\section{CHANGES IN VERSION 1.1.14 (2026-01-15)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item Fix theta initialization for propto/equalto and enable them in
+      disp/zi components (GH #1255)
+      \item more informative error message when \code{family=ziGamma} is
+      specified, with zeros in the data, without setting \code{ziformula}
+      (GH #1213)
+      \item \code{simulate_new} with \code{return_val="pars"} no longer
+      requires \code{newparams} to be specified (GH #1242)
+      \item Non-estimated parameters (via \code{map}) no longer cause an error
+      message in \code{vcov.glmmTMB} with the default arguments (GH #1269)
+    } % itemize
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new covariance structure \code{equalto}
+      (GH #1253, Coralie Williams), see \code{vignette("covstruct")}
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item more compact printing of covariance structures, see
+      \code{vignette("covstruct")}
+      \item functions and methods for formatting/printing covariance matrices have
+      moved to the \code{reformulas} package
+    } % itemize
+  } % user-visible changes
+} % 1.1.14
+
+\section{CHANGES IN VERSION 1.1.13 (2025-10-09)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item Pearson residual calculation corrected for Beta models (GH
+      #1229, @amdavenport).
+    }
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new covariance structure \code{homtoep} (homogeneous Toeplitz) has been
+      added (GH #1095, Daniel Sabanés Bové)
+      \item EXPERIMENTAL implementation of Kenward-Roger and
+      Satterthwaite denominator-degree-of-freedom approximations; see
+      \code{ddf} argument for \code{summary.glmmTMB}, \code{?dof_KR}
+    }
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Log-normal and skew-normal variance models
+      (\code{family(model)$variance})
+      have been changed to return scaled Pearson residuals;
+      beta-binomial returns unscaled Pearson residuals, with
+      a message (see \code{?residuals.merMod})
+    }
+  } % user-visible changes
+} % 1.1.13
+
+\section{CHANGES IN VERSION 1.1.12 (2025-08-18)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item Smooth random-effect coefficient indices now count coefficients,
@@ -17,13 +256,24 @@
       TRUE (GH#1189, @fisher-j)
       \item implementation of \code{hetar1} covstruct was wrong, fixed now
       (GH #1204, Daniel Sabanés Bové and Nik Krieger)
+      \item prediction on rank-deficient X matrices could throw a false
+      positive error (Erin McCallum,
+      \url{https://stackoverflow.com/q/77517125/190277})
+      \item \code{predict} method no longer fails on subsets of data
+      involving ordered factors (resolving an issue comparing contrasts
+      associated with factors in original data and \code{newdata}) (GH
+      #1197, @fisher-j); we no longer check contrasts of factors that
+      appear only as grouping variables
     }
   } % bug fixes
   \subsection{NEW FEATURES}{
     \itemize{
+      \item robust sandwich covariance matrix \code{vcovHC} has been added for
+      \code{glmmTMB} objects, please see the Model evaluation vignette for details
+      (GH #443, Daniel Sabanés Bové)
       \item new argument \code{full_corr} for \code{glmmTMBControl} to
       enable/disable computation and storage of full correlation
-      matrices for random effect terms (helps with GH#995)
+matrices for random effect terms (helps with GH#995)
     }
   } % new features
   \subsection{USER-VISIBLE CHANGES}{
@@ -34,16 +284,7 @@
       data now throw a warning rather than an error (related to GH #1197)
     }
   } % user-visible changes
-  \subsection{BUG FIXES}{
-    \itemize{
-      \item \code{predict} method no longer fails on subsets of data
-      involving ordered factors (resolving an issue comparing contrasts
-      associated with factors in original data and \code{newdata}) (GH
-      #1197, @fisher-j); we no longer check contrasts of factors that
-      appear only as grouping variables
-    }
-  }
-} % 1.1.11.9000 (devel)
+} % 1.1.12
 
 \section{CHANGES IN VERSION 1.1.11 (2025-04-02)}{
   \subsection{NEW FEATURES}{
@@ -90,7 +331,7 @@
   } % user-visible changes
 
 } % 1.1.11
-  
+
 \section{CHANGES IN VERSION 1.1.10  (2024-09-26)}{
   \subsection{NEW FEATURES}{
     \itemize{
@@ -151,7 +392,7 @@
     } % itemize
   } % other changes
 } % 1.1.10
-  
+
 \section{CHANGES IN VERSION 1.1.9 (2024-03-20)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
@@ -208,8 +449,8 @@
       \item "lognormal" family available (log-Normal, parameterized
       by the mean and standard deviation on the \emph{data scale})
       \item an experimental implementation of penalized splines
-      (and related smooth terms) is available, 
-      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.  
+      (and related smooth terms) is available,
+      based on \code{mgcv}. See the example using \code{s} in \code{?glmmTMB}.
       Constructive feedback welcome at
       \url{https://github.com/glmmTMB/glmmTMB/issues/928}
       \item population-level prediction with new data no longer requires
@@ -249,7 +490,7 @@
     } % itemize
   } % user-visible changes
 } % version 1.1.7.9000
-  
+
 \section{CHANGES IN VERSION 1.1.7 (2023-04-05)}{
   \itemize{
     \item \code{up2date()} adds a dispersion component to family
@@ -274,11 +515,11 @@
       than from a fitted object)
       \item \code{emmeans.glmmTMB} method adds two options
       for the \code{component} argument: "response" and "cmean",
-      corresponding  to \code{type = "response"} and \code{type = "conditional"} 
+      corresponding  to \code{type = "response"} and \code{type = "conditional"}
       in \code{predict.glmmTMB} (Russ Lenth)
       \item new covariance structure \code{homdiag} (homogeneous diagonal;
       the existing diagonal covariance structure, \code{diag}, assumes heterogeneous
-      variances)					    
+      variances)
     }
   } % new features
  \subsection{USER-VISIBLE CHANGES}{

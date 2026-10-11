@@ -33,6 +33,63 @@
 ##' \item the \code{effects} package computes graphical tabular effect displays
 ##' (only for the fixed effects of the conditional component)
 ##' }
+##' @section Cumulative-link (ordinal) fits in \code{emmeans}:
+##' For models fitted with the \code{ordinal} family, \code{emmeans()} accepts
+##' the same \code{mode} and \code{rescale} arguments as for \code{MASS::polr} fits
+##' (\code{ordinal::clm}'s method additionally offers \code{"scale"}, which
+##' does not apply here; see the \code{clm}/\code{polr} entries in
+##' \code{vignette("models", package = "emmeans")}): \code{"latent"} (the default; means on the latent scale,
+##' centered on the average threshold, with no back-transformation, so
+##' \code{type = "response"} has no effect), \code{"linear.predictor"}
+##' (\eqn{\theta_j - x'\beta} for each threshold \eqn{j}, with a grid
+##' variable \code{cut}), \code{"cum.prob"} (cumulative probabilities
+##' \eqn{P(Y \le j)}), \code{"exc.prob"} (exceedance probabilities
+##' \eqn{P(Y > j)}), \code{"prob"} (probabilities of each response
+##' category, indexed by the response variable) and \code{"mean.class"}
+##' (the expected category index). Standard errors combine the
+##' fixed-effect covariance with the delta-method covariance of the
+##' thresholds (as in \code{summary()}), and denominator degrees of freedom
+##' are always asymptotic (a \code{ddf} request for
+##' \code{"satterthwaite"} or \code{"kenward-roger"} warns and is
+##' ignored). In \code{"latent"} mode, \code{rescale = c(a, b)} reports
+##' \eqn{a + b \mu} in place of the latent mean \eqn{\mu}, as for
+##' \code{MASS::polr}. A user-supplied \code{vcov.} must be the joint
+##' covariance matrix of the conditional fixed effects (in the order of
+##' \code{fixef(.)$cond}, omitting coefficients dropped for rank
+##' deficiency) followed by the \eqn{K-1} thresholds on the threshold
+##' scale, as in the \code{thresholds} element of \code{summary(.)}.
+##' @section Denominator degrees of freedom in \code{emmeans}:
+##' For models with random effects, the \code{ddf} argument to \code{emmeans()}
+##' (default taken from \code{getOption("glmmTMB.df", "asymptotic")}) additionally accepts
+##' \code{"satterthwaite"} and \code{"kenward-roger"} (see \code{\link{dof_KR}} and
+##' \code{\link{dof_satt}} for the underlying calculations), matching the same argument
+##' to \code{\link{summary.glmmTMB}} and \code{\link{anova.glmmTMB}}. \code{ddf = "kenward-roger"}
+##' requires a model fitted with \code{REML = TRUE}: for an ML fit (\pkg{glmmTMB}'s default),
+##' it throws an error rather than silently substituting another method; it also requires a
+##' family with an estimated dispersion parameter, and throws an error for families such as
+##' \code{binomial} or \code{poisson} that lack one. For families other than \code{gaussian},
+##' \code{"kenward-roger"} and \code{"satterthwaite"} are allowed but emit a warning, because
+##' their performance (and theoretical justification) for GLMMs is poorly understood.
+##'
+##' For Gaussian models \emph{without} random effects, \code{emmeans()} defaults
+##' to the residual degrees of freedom for a plain fit, i.e. one with
+##' \code{dispformula = ~1} and an estimated dispersion parameter. Any other such
+##' fit defaults to \code{"asymptotic"} (infinite df): a non-trivial
+##' \code{dispformula}, \code{dispformula = ~0}, or a dispersion parameter held
+##' fixed via the \code{map} argument to \code{\link{glmmTMB}}. In the last case
+##' there is no variance parameter left to estimate, so the residual variance is
+##' known and the Wald statistics are exactly standard normal. (As elsewhere in
+##' \pkg{glmmTMB}, the residual degrees of freedom count the dispersion
+##' parameter, so they are one lower than \code{lm()} reports for the same
+##' fixed-effect model.) Those are defaults, as is a value taken from
+##' \code{getOption("glmmTMB.df")}; a \code{ddf} passed in the call itself is
+##' respected where possible. \code{"kenward-roger"} and \code{"satterthwaite"}
+##' need random effects, so for models without them they fall back to the
+##' residual degrees of freedom with a message, exactly as in
+##' \code{\link{summary.glmmTMB}}. That fallback also applies to a model whose
+##' dispersion parameter is fixed, where it overrides the infinite-df default
+##' described above, so that \code{emmeans()} and \code{summary()} give the same
+##' answer to the same request.
 ##' @param mod a glmmTMB model
 ##' @param component which component of the model to test/analyze ("cond", "zi", or "disp")
 ##'     or, in \pkg{emmeans} only, "response" or "cmean" as described in Details.
@@ -68,6 +125,7 @@ NULL  ## don't document the files here!
 ## recover_data method -- DO NOT export -- see zzz.R
 ## do not document either
 
+##' @exportS3Method NULL
 recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "response", "cmean"), ...) {
     if (!requireNamespace("emmeans")) 
         stop("please install (if necessary) and load the emmeans package")
@@ -93,23 +151,134 @@ recover_data.glmmTMB <- function (object, component = c("cond", "zi", "disp", "r
 }
 
 
-emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi", 
-                                                                       "disp", "response", "cmean"), vcov., ...) 
-{
+##' @exportS3Method NULL
+emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "zi",
+                                                                       "disp", "response", "cmean"), vcov.,
+                               ddf = getOption("glmmTMB.df", "asymptotic"),
+                               mode = c("latent", "linear.predictor", "cum.prob",
+                                        "exc.prob", "prob", "mean.class"),
+                               rescale = c(0, 1),
+                               ...) {
+
+    ## FIXME: implement a 'KR limit' argument/option that determines whether to use KR for large problems ... ??
     component <- match.arg(component)
-    L <- list(...)
-    if (length(L) > 0) {
-    }
+    check_dots(.ignore = c("misc", "options"))
     misc <- list()
-    if (family(object)$family == "gaussian") {
-        dfargs <- list(df = df.residual(object))
-        dffun <- function(k, dfargs) dfargs$df
+    ## ddf-processing
+    ## 1. no random effects
+    fam <- family(object)$family
+    ## cumulative-link (ordinal) fits get their own basis below, built
+    ## from the fixed effects *and* the thresholds; only asymptotic
+    ## (Wald z) inference is available for it
+    ordinal_basis <- (fam == "ordinal" && component == "cond")
+    if (ordinal_basis) {
+        mode <- match.arg(mode)
+    } else if (!missing(mode) || !missing(rescale)) {
+        stop("'mode' and 'rescale' are only available for ordinal fits with component = \"cond\"")
     }
-    else {
-        dffun <- function(k, dfargs) Inf
+
+    ## did the caller actually ask for a particular ddf in this call, or are we
+    ## falling back on the default? only the latter may be silently overridden
+    ## below. A ddf coming from getOption("glmmTMB.df") is a default, not a
+    ## request: summary()/anova()/Anova() don't read that option at all, so
+    ## treating it as a request here would make emmeans() disagree with them
+    ## whenever it is set. NB has to be evaluated before the match.arg() below,
+    ## which would make missing(ddf) FALSE
+    ddf_explicit <- !missing(ddf)
+    ## same choices as summary()/anova()/Anova(); without this an unrecognized
+    ## string silently ended up as residual df. "df.residual" is what get_ddf()
+    ## returns internally and has always been accepted here too, so keep it
+    ## working, but don't offer it as a choice: the other entry points don't
+    ## take it
+    if (!identical(ddf, "df.residual")) {
+        ddf <- match.arg(ddf, c("asymptotic", "kenward-roger", "satterthwaite"))
+    }
+
+    ddf_set <- function(used, requested = ddf) {
+        if (requested != used) {
+            warning(gettextf("ddf '%s' specified, using ddf '%s' instead", requested, used))
+        }
+        return(used)
+    }
+    get_ddf <- function() {
+
+        if (component != "cond") return(ddf_set("asymptotic"))
+        if (ordinal_basis) return(ddf_set("asymptotic"))
+
+        if (!hasRandom(object)) {
+            if (fam != "gaussian") return(ddf_set("asymptotic"))
+            if (!ddf_explicit) {
+                ## default: residual df for a plain LM-like fit (nobs - npar,
+                ## which counts the dispersion parameter, so one fewer than
+                ## lm() would report) -- but *not* when no dispersion
+                ## parameter is estimated at all (e.g. pinned via 'map'). The
+                ## residual variance is known then, the Wald statistics are
+                ## exactly normal, and residual df would only make the
+                ## intervals spuriously wide
+                if (trivialDisp(object) && estDisp(object)) {
+                    return("df.residual")  ## don't want to warn here
+                }
+                return("asymptotic")
+            }
+            ## an explicit request is honoured where it can be, and otherwise
+            ## downgraded through the same check_ddf() that
+            ## summary()/anova()/Anova() use, so emmeans gives the same
+            ## message and the same df instead of silently ignoring the
+            ## request (trivial dispformula) or erroring inside
+            ## GMRFmarginal() on its way through dof_satt() (non-trivial
+            ## one), which needs the joint precision matrix of a model with
+            ## random effects
+            if (ddf %in% c("asymptotic", "df.residual")) return(ddf)
+            check_ddf(object, ddf)
+            return("df.residual")
+        }
+
+        ## hard error (not a silent downgrade) for KR + non-REML, matching
+        ## summary.glmmTMB()/anova.glmmTMB() via check_ddf()
+        if (ddf == "kenward-roger") {
+            .check_KR_reml(object)
+            ## Kenward-Roger's variance-component machinery only supports
+            ## families with an estimated dispersion parameter (see the
+            ## matching check in check_ddf()); without this, families such
+            ## as binomial/poisson fail with an opaque error instead
+            if (!usesDispersion(fam)) {
+                stop(sprintf(
+                    "ddf='kenward-roger' is not supported for family '%s' (no estimated dispersion parameter); use ddf='satterthwaite' or ddf='asymptotic' instead",
+                    fam), call. = FALSE)
+            }
+        }
+
+        if (fam != "gaussian" && ddf != "asymptotic") .warn_ddf_glmm(ddf)
+        return(ddf)
+    }
+
+    ddf <- get_ddf()
+
+    if (ddf == "kenward-roger") {
+        V <- vcov(object)[[component]]
+        dfargs <- list(unadjV = V,
+                       adjV = .vcov_kenward_adjusted(object))
+        V_kr <- as.matrix(dfargs$adjV)
+        V <- V_kr
+        dffun <- function(k, dfargs) pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
+    } else if (ddf == "satterthwaite") {
+        ## emmeans::ref_grid() strips dffun's enclosing environment
+        ## (sets it to baseenv()), so dffun can't rely on free variables
+        ## such as a captured dof_satt (glmmTMB#1304) -- stash it in
+        ## dfargs instead, where it's reached via the 'dfargs' argument
+        dfargs <- list(object = object, dof_satt = dof_satt)
+        ## emmeans calls dffun() once per contrast, passing a bare
+        ## vector k rather than a full contrast matrix; dof_satt()
+        ## expects a matrix (one row per contrast), so wrap k accordingly
+        dffun <- function(k, dfargs) suppressMessages(dfargs$dof_satt(dfargs$object, L = matrix(k, nrow = 1)))
+    } else if (ddf == "df.residual") {
+        dfargs <- list(object = object)
+        dffun <- function(k, dfargs) stats::df.residual(dfargs$object)
+    } else if (ddf == "asymptotic") {
         dfargs <- list()
-    }
-    
+        dffun <- function(k, dfargs) Inf
+    } else stop(sprintf("unknown ddf specification '%s'", ddf))
+
     # internal fcn for identifying non-estimable components
     .which.nonest <- function(cmp) {
         bh <- fixef(object)[[cmp]]
@@ -121,8 +290,82 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     }
     
     nbasis <- estimability::all.estble
-    if (component %in% c("response", "cmean")) {
-        ptype <- ifelse(component == "cmean", "conditional", 
+    if (ordinal_basis) {
+        ## modeled on emmeans:::emm_basis.polr: the linear predictor for
+        ## P(Y <= j) is theta_j - x'beta, so the basis carries the
+        ## fixed effects and the K-1 thresholds, with the thresholds'
+        ## covariance obtained by the delta method from the internal
+        ## (softmax) parameters. The intercept is kept: by default it is
+        ## fixed to zero via 'map' (its vcov rows are then zeroed below),
+        ## but a user-supplied map may leave it free
+        contrasts <- attr(model.matrix(object, component = "cond"),
+                          "contrasts")
+        m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
+        X <- model.matrix(trms, m, contrasts.arg = contrasts)
+        beta <- fixef(object)[["cond"]]
+        theta <- family_params(object)
+        k <- length(theta)
+        if (missing(vcov.)) {
+            Vfull <- as.matrix(vcov(object, full = TRUE))
+            vi <- match(c(names(beta), names(theta)), rownames(Vfull))
+            V <- Vfull[vi, vi, drop = FALSE]
+            ## coefficients fixed via 'map' are known constants (NA
+            ## rows/columns in the full vcov): zero them, as
+            ## pad_mapped_vcov() does for the single-component case
+            bmap <- object$obj$env$map[["beta"]]
+            if (!is.null(bmap)) {
+                fixed <- names(fixef(object)[["cond"]])[is.na(bmap)]
+                fi <- match(fixed, rownames(V), nomatch = 0L)
+                V[fi, ] <- 0
+                V[, fi] <- 0
+            }
+            ## delta method: bdiag(I, J) V bdiag(I, J)'
+            J <- ordinal_threshold_jacobian(object)
+            B <- diag(1, length(beta) + k)
+            ti <- length(beta) + seq_len(k)
+            B[ti, ti] <- J
+            V <- B %*% V %*% t(B)
+            dimnames(V) <- list(c(names(beta), names(theta)),
+                                c(names(beta), names(theta)))
+        } else {
+            V <- vcov.
+        }
+        if (any(is.na(beta))) {
+            modmat <- model.matrix(trms, model.frame(object),
+                                   contrasts.arg = contrasts)
+            nb <- estimability::nonest.basis(modmat)
+            nbasis <- rbind(nb, matrix(0, nrow = k, ncol = ncol(nb)))
+            ## emmeans expects V over the estimable coefficients only
+            ## (columns dropped for rank deficiency are NA in bhat)
+            if (missing(vcov.)) {
+                keep <- c(!is.na(beta), rep(TRUE, k))
+                V <- V[keep, keep, drop = FALSE]
+            }
+        }
+        bhat <- c(beta, theta)
+        if (mode == "latent") {
+            ## latent-scale mean: x'beta - mean(theta), reported as
+            ## rescale[1] + rescale[2] * (.) as in emm_basis.polr
+            X <- rescale[2] * cbind(X, matrix(-1/k, nrow = nrow(X), ncol = k))
+            bhat <- c(beta, theta - rescale[1] / rescale[2])
+            misc <- list(offset.mult = rescale[2])
+        } else {
+            ## one row per (grid point, threshold): theta_j - x'beta
+            j <- matrix(1, nrow = k, ncol = 1)
+            J1 <- matrix(1, nrow = nrow(X), ncol = 1)
+            X <- cbind(kronecker(-j, X), kronecker(diag(1, k), J1))
+            misc <- list(ylevs = list(cut = names(theta)),
+                         tran = family(object)$link,
+                         inv.lbl = "cum.prob", offset.mult = -1)
+            if (mode != "linear.predictor") {
+                misc$mode <- mode
+                misc$postGridHook <- ".clm.postGrid"
+            }
+        }
+        misc$respName <- as.character.default(terms(object))[2]
+    }
+    else if (component %in% c("response", "cmean")) {
+        ptype <- ifelse(component == "cmean", "conditional",
                         "response")
         for (nm in object$modelInfo$grpVar) grid[[nm]] <- NA
         tmp <- predict(object, newdata = grid, type = ptype, 
@@ -142,11 +385,18 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         }
     }
     else {
+	## combinomial with allow_negative_nu uses identity link on dispersion;
+        ## other families always use log link on dispformula
+        disp_link <- if (isTRUE(object$modelInfo$family$allow_negative_nu)) "identity" else "log"
         fam <- switch(component, cond = family(object), zi = list(link = "logit"), 
-                      disp = list(link = "log"))
+                      disp = list(link = disp_link))
         misc <- emmeans::.std.link.labels(fam, misc)
         if (missing(vcov.)) {
             V <- as.matrix(vcov(object, include_nonest = FALSE)[[component]])
+            ## coefficients fixed via 'map' are known constants: pad the
+            ## covariance matrix with zero rows/columns so its dimension
+            ## matches the full coefficient vector used for the grid
+            V <- pad_mapped_vcov(object, V, component)
         }
         else {
             V <- vcov.
@@ -164,4 +414,3 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     }
     namedList(X, bhat, nbasis, V, dffun, dfargs, misc)
 }
-

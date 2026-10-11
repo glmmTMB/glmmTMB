@@ -1,3 +1,44 @@
+## TMB/RTMB switch
+
+#' switch to using RTMB
+#' @param flag FALSE (default) to use TMB backend; TRUE to use RTMB backend
+#' @note Fitting with \code{useRTMB(TRUE)} (or \code{control=glmmTMBControl(use_rtmb=TRUE)})
+#' loads the \code{RTMB} package. RTMB (<= 2.0) registers an S4 method for
+#' \code{solve()} with an overly broad signature that also drops any extra
+#' arguments (e.g. \code{tol=}); once RTMB is loaded, calls to \code{solve()}
+#' with more than two arguments can fail elsewhere in the same R session,
+#' even in code unrelated to glmmTMB or RTMB, for the remainder of that
+#' session (see \url{https://github.com/kaskr/RTMB/issues/92}). This is
+#' fixed in RTMB's development version; until a fixed RTMB is released,
+#' restart R (or avoid \code{useRTMB(TRUE)}) if you hit this.
+#' @export
+useRTMB <- local({
+  useRTMB <- FALSE
+  function(flag = NULL) { useRTMB <<- flag %||% useRTMB ; useRTMB }
+})
+MakeADFun <- function(data, ..., DLL) {
+  if (!useRTMB()) {
+    TMB::MakeADFun(data=data, ..., DLL=DLL)
+  }else {
+    rtmb_fun <- cmb(rtmb_tpl, data)
+    obj <- RTMB::MakeADFun(rtmb_fun, ...)
+    attr(data, "func") <- rtmb_fun
+    obj$env$data <- data
+    obj$env$rtmb_data_env <- environment(rtmb_fun)
+    obj$env$report <- obj$report
+    obj
+    #RTMB::MakeADFun(cmb(rtmb_tpl, data), ...)
+  }
+}
+
+.setObjData <- function(obj, data) {
+  obj$env$data <- data
+  if (!is.null(obj$env$rtmb_data_env)) {
+    obj$env$rtmb_data_env$d <- data
+  }
+  invisible(obj)
+}
+
 ## backward compat (copied from lme4)
 if((Rv <- getRversion()) < "3.2.1") {
     lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
@@ -18,6 +59,7 @@ namedList <- function (...) {
 
 ## Sparse Schur complement (Marginal of precision matrix)
 ##' @importFrom Matrix Cholesky solve
+##' @importFrom methods as
 GMRFmarginal <- function(Q, i, ...) {
     ind <- seq_len(nrow(Q))
     i1 <- (ind)[i]
@@ -187,9 +229,13 @@ check_dots <- function(..., .ignore = NULL, .action="stop") {
         L <- L[!names(L) %in% .ignore]
     }
     if (length(L)>0) {
+        args <- paste(shQuote(names(L)), collapse=",")
+        msg <- switch(.action,
+                      stop = sprintf("unknown arguments: %s", args),
+                      warning = ,
+                      message = sprintf("unknown arguments ignored: %s", args))
         FUN <- get(.action)
-        FUN("unknown arguments: ",
-            paste(names(L), collapse=","))
+        FUN(msg)
     }
     return(NULL)
 }
@@ -274,7 +320,18 @@ check_dep_version <- function(this_pkg = "glmmTMB",  dep_pkg = "TMB", dep_type =
 #' require that you re-install a \emph{binary-compatible} version of \code{glmmTMB},
 #' i.e. a version that has been compiled with the updated version of the upstream
 #' package.
+#'
+#' While you'll always get a warning when there is a mismatch between
+#' the version(s) of the upstream package(s) used to build \code{glmmTMB} and
+#' the version(s) you have installed, these are only warnings. Such mismatches
+#' may cause problems, but the problems are likely to be obvious (crashes); if
+#' \code{glmmTMB} seems to be working OK anyway, you can ignore the warning.
+#'
+#' If not:
 #' \itemize{
+#' \item You may be able to install a freshly built binary (of the development version) from \code{glmmTMB}'s
+#' \href{https://glmmtmb.r-universe.dev/glmmTMB}{R-universe page} via
+#' \code{install.packages('glmmTMB', repos = c('https://glmmtmb.r-universe.dev', 'https://cloud.r-project.org'))}
 #' \item If you have development tools (compilers etc.) installed, you
 #' should be able to re-install a binary-compatible version of the package by running
 #' \code{install.packages("glmmTMB", type="source")}. If you want to install
@@ -283,34 +340,15 @@ check_dep_version <- function(this_pkg = "glmmTMB",  dep_pkg = "TMB", dep_type =
 #' (On Windows, you can install development tools following the instructions at
 #' \url{https://cran.r-project.org/bin/windows/Rtools/}; on MacOS, see
 #' \url{https://mac.r-project.org/tools/}.)
+#' }
 #'
-#' \item If you do \emph{not} have development tools and can't/don't want to
-#' install them (and so can't install packages with compiled code from source),
-#' you have two choices:
-#' \itemize{
-#' \item revert the upstream package(s) to their previous binary version. For example, using the
-#' \code{checkpoint} package:
-#' \preformatted{
-#' ## load (installing if necessary) the checkpoint package
-#' while (!require("checkpoint")) install.packages("checkpoint")
-#' ## retrieve build date of installed version of glmmTMB
-#' bd <- as.character(asDateBuilt(
-#'       packageDescription("glmmTMB",fields="Built")))
-#' oldrepo <- getOption("repos")
-#' use_mran_snapshot(bd) ## was setSnapshot() pre-checkpoint v1.0.0
-#' install.packages("TMB")
-#' options(repos=oldrepo) ## restore original repo
-#' }
-#' A similar recipe (substituting \code{Matrix} for \code{TMB} and \code{TMB} for \code{glmmTMB})
-#' can be used if you get warnings about an incompatibility between \code{TMB} and \code{Matrix}.
-#' \item hope that the glmmTMB maintainers have posted a binary
-#' version of the package that works with your system; try installing it via
-#' \code{install.packages("glmmTMB",repos="https://glmmTMB.github.io/glmmTMB/repos",type="binary")}
-#' If this doesn't work, please file an issue (with full details about your
+#' If R-universe isn't working for you,
+#' you don't have development tools installed, and you can't
+#' install them for some reason(and so can't install packages with compiled code from source),
+#' please file an issue (with full details about your
 #' operating system and R version) asking the maintainers to build and
-#' post an appropriate binary version of the package.
-#' }
-#' }
+#' post an appropriate binary version of the package (we may or may not
+#' be able to help, depending on your system and how much time we have).
 NULL
 
 #' Check OpenMP status
@@ -358,106 +396,131 @@ up2date <- function(oldfit, update_gauss_disp = FALSE) {
   openmp(1)  ## non-parallel/make sure NOT grabbing all the threads!
   obj <- oldfit$obj
   ee <- obj$env
+  ee2 <- oldfit$sdr$env
 
   if (isNullPointer(oldfit$obj$env$ADFun$ptr)) {
 
-      pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
-                "parfull")
+    pars <- c(grep("last\\.par", names(ee), value = TRUE), "par",
+              "parfull")
 
-      ## using ee$parList() rather than ee$parameters should help
-      ##  with mapped parameter s... ??
-      params <- ee$parList()
+    ## using ee$parList() rather than ee$parameters should help
+    ##  with mapped parameters... ??
+    params <- ee$parList()
 
-      if (length(ee$map) > 0) {
-          for (n in names(ee$map)) {
-              ee$parameters[[n]] <- params[[n]]
-          }
+    if (length(ee$map) > 0) {
+      for (n in names(ee$map)) {
+        ee$parameters[[n]] <- params[[n]]
       }
-      
-      ## change name of thetaf to psi
-      if ("thetaf" %in% names(params)) {
-          ee$parameters$psi <- params$thetaf
-          ee$parameters$thetaf <- NULL
-          pars <- c(grep("last\\.par", names(ee), value = TRUE),
-                    "par")
-          for (p in pars) {
-              if (!is.null(nm <- names(ee[[p]]))) {
-                  names(ee[[p]])[nm == "thetaf"] <- "psi"
-              }
-          }
+    }
+
+    ## all elements containing parameter values
+    par_els <- c(grep("last\\.par", names(ee), value = TRUE), "par")
+
+    ## rename in place rather than assigning/NULLing
+    rename_fun <- function(x, oldname, newname) {
+      nm <- names(x)
+      names(x)[nm == oldname] <- newname
+      x
+    }
+
+    ## might be able to repeat *slightly* less ...
+    
+    ## change name of thetaf to psi
+    if ("thetaf" %in% names(params)) {
+      ee$parameters <- rename_fun(ee$parameters, "thetaf", "psi")
+      ee2$parameters <- rename_fun(ee2$parameters, "thetaf", "psi")
+      oldfit$fit$par <- rename_fun(oldfit$fit$par, "thetaf", "psi")
+      oldfit$fit$parfull <- rename_fun(oldfit$fit$parfull, "thetaf", "psi")
+
+      for (p in par_els) {
+        if (!is.null(nm <- names(ee[[p]]))) {
+          ee[[p]] <- rename_fun(ee[[p]], "thetaf", "psi")
+        }
       }
-      if ("betad" %in% names(ee$parameters)) { #FIXME: DRY
-      	ee$parameters$betadisp <- params$betad
-      	ee$parameters$betad <- NULL
-      	pars <- c(grep("last\\.par", names(ee), value = TRUE),
-      						"par")
-      	for (p in pars) {
-      		if (!is.null(nm <- names(ee[[p]]))) {
-      			names(ee[[p]])[nm == "betad"] <- "betadisp"
+    }
+    
+    if ("betad" %in% names(ee$parameters)) {
+      ee$parameters <- rename_fun(ee$parameters, "betad", "betadisp")
+      ee2$parameters <- rename_fun(ee2$parameters, "betad", "betadisp")
+      oldfit$fit$par <- rename_fun(oldfit$fit$par, "betad", "betadisp")
+      oldfit$fit$parfull <- rename_fun(oldfit$fit$parfull, "betad", "betadisp")
+      for (p in par_els) {
+        if (!is.null(nm <- names(ee[[p]]))) {
+          ee[[p]] <- rename_fun(ee[[p]], "betad", "betadisp")
       		}
-      	}
-      	ee$data$Xdisp <- ee$data$Xd
-      	ee$data$Xd <- NULL
-      	ee$data$dispoffset <- ee$data$doffset
-      	ee$data$doffset <- NULL
       }
-      if(!"Zdisp" %in% names(ee$data)) {
-      	ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
-      	ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
-      	ee$parameters$thetadisp <- numeric(0)
-      }
-      if (!"aggregate" %in% names(ee$data)) {
-      	ee$data[["aggregate"]] <- numeric(0)
-      } 
-      ee2 <- oldfit$sdr$env
-      if ("thetaf" %in% names(ee2$parameters)) {
-          ee2$parameters$psi <- ee2$parameters$thetaf
-          ee2$parameters$thetaf <- NULL
-      }
+      ee$data <- rename_fun(ee$data, "Xd", "Xdisp")
+      ee$data <- rename_fun(ee$data, "doffset", "dispoffset")
+    }
+    if(!"Zdisp" %in% names(ee$data)) {
+      ee$data$Zdisp <- new("dgTMatrix",Dim=c(as.integer(nrow(ee$data$Xdisp)),0L)) ## matrix(0, ncol=0, nrow=nobs)
+      ee$parameters$bdisp <- rep(0, ncol(ee$data$Zdisp))
+      ee$parameters$thetadisp <- numeric(0)
+    }
+    if (!"aggregate" %in% names(ee$data)) {
+      ee$data[["aggregate"]] <- numeric(0)
+    }
+    if (!"combinom_disp_Link" %in% names(ee$data)) {
+      ## log link on dispersion (the default; only ever nonzero for
+      ## combinomial fits with allow_negative_nu = TRUE)
+      ## stored as double: TMB requires storage mode 'double' for data
+      ## objects carrying the 'check.passed' attribute
+      ee$data[["combinom_disp_Link"]] <- 0
+    }
 
-      for (comp in c("terms", "termszi", "termsdisp")) {
-          for (i in seq_along(ee$data[[comp]])) {
-              ee$data[[comp]][[i]]$simCode <- .valid_simcode[["random"]]
-              ee$data[[comp]][[i]]$fullCor <- 1.0
-          }
+    for (comp in c("terms", "termszi", "termsdisp")) {
+      for (i in seq_along(ee$data[[comp]])) {
+        ee$data[[comp]][[i]]$simCode <- .valid_simcode[["random"]]
+        ee$data[[comp]][[i]]$fullCor <- 1.0
       }
+    }
       
-      if ("betad" %in% names(ee2$parameters)) { #FIXME: DRY
-      	ee2$parameters$betadisp <- ee2$parameters$betad
-      	ee2$parameters$betad <- NULL
-      }
 
-      ## prior_ivars, prior_fvars are defined in priors.R
-      if (!"prior_distrib" %in% names(ee$data)) {
-          ## these are DATA_IVECTOR but apparently after processing
-          ##  TMB turns these into numeric ... ??
-          for (v in prior_ivars) ee$data[[v]] <- numeric(0)
-          for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+    ## prior_ivars, prior_fvars are defined in priors.R
+    if (!"prior_distrib" %in% names(ee$data)) {
+      ## these are DATA_IVECTOR but apparently after processing
+      ##  TMB turns these into numeric ... ??
+      for (v in prior_ivars) ee$data[[v]] <- numeric(0)
+      ee$data$rtmb_prior_distrib_name <- factor(character(0),
+                                                levels = names(.valid_prior))
+      ee$data$rtmb_prior_whichpar_name <- factor(character(0),
+                                                 levels = names(.valid_vprior))
+      for (v in prior_fvars) ee$data[[v]] <- numeric(0)
+      
+    }
 
+    ## switch from variance to SD parameterization
+    if (update_gauss_disp &&
+        family(oldfit)$family == "gaussian") {
+      ee$parameters$betadisp <- ee$parameters$betadisp/2
+      for (p in par_els) {
+        if (!is.null(nm <- names(ee[[p]]))) {
+          ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
+        }
+        if (!is.null(nm <- names(oldfit$fit[[p]]))) {
+          oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
+        }
       }
+    }
 
-      ## switch from variance to SD parameterization
-      if (update_gauss_disp &&
-          family(oldfit)$family == "gaussian") {
-          ee$parameters$betadisp <- params$betadisp/2
-          for (p in pars) {
-              if (!is.null(nm <- names(ee[[p]]))) {
-                  ee[[p]][nm == "betadisp"] <- ee[[p]][nm == "betadisp"]/2
-              }
-              if (!is.null(nm <- names(oldfit$fit[[p]]))) {
-                  oldfit$fit[[p]][nm == "betadisp"] <- oldfit$fit[[p]][nm == "betadisp"]/2
-              }
-          }
-      }
-       oldfit$obj <- with(ee,
-                       TMB::MakeADFun(data,
+    oldfit$obj <- with(ee,
+                            MakeADFun(data,
                                       parameters,
                                       map = map,
                                       random = random,
                                       silent = silent,
                                       DLL = "glmmTMB"))
-      oldfit$obj$env$last.par.best <- ee$last.par.best
-      ##
+
+    ## replace carefully (ordering problem)
+    replace_vals <- function(x, y) {
+      for (nm in unique(names(x))) {
+        x[names(x)==nm] <- y[names(y)==nm]
+      }
+      x
+    }
+
+    oldfit$obj$env$last.par.best <- replace_vals(oldfit$obj$env$last.par.best, ee$last.par.best)
+
   }
 
   for (t in c("condReStruc", "ziRestruc", "dispRestruc")) {
@@ -744,6 +807,9 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
             ee$data$terms[[i]]$simCode <- .valid_simcode[[val]]
         }
     }
+    if (!is.null(ee$rtmb_data_env)) {
+        ee$rtmb_data_env$d <- ee$data
+    }
 
 }
 
@@ -817,7 +883,8 @@ simulate_new <- function(object,
                          nsim = 1,
                          seed = NULL,
                          family = gaussian,
-                         newdata, newparams, ...,
+                         newdata,
+                         newparams = NULL, ...,
                          return_val = c("sim", "pars", "object")) {
     return_val <- match.arg(return_val)
     family <- get_family(family, deparse(substitute(family)))
@@ -1033,6 +1100,33 @@ our_binom_initialize <- function(family) {
     b0 <- binomial()$initialize
     b0[[length(b0)+1]] <- newtest
     return(b0)
+}
+
+#' indices of the parameters the objective does not integrate out
+#'
+#' @param namevec character vector of parameter names (e.g. the row names
+#' of a joint precision matrix)
+#' @param include_beta treat the conditional fixed effects (\code{beta})
+#' as random too, as the TMB objective does under REML
+#' @return integer vector of the positions in \code{namevec} that are not
+#' random-effect parameters; with \code{include_beta = TRUE} the
+#' \code{beta} positions are excluded from the result as well
+#' @details Names the same blocks as \code{randomArg} in
+#' \code{mkTMBStruc()}, unconditionally where \code{randomArg} adds a
+#' block only when its Z matrix is non-empty (safe, because an absent
+#' block contributes no parameter names) and with \code{beta} gated on the
+#' argument where \code{randomArg} gates it on \code{REML}. The names are
+#' spelled out here so the two sites that marginalize over the
+#' random-effect blocks (the profile branch of \code{fitTMB()} and
+#' \code{vcov.glmmTMB()}) share one definition; \code{.covbeta_kappa()} in
+#' denom_df.R also calls \code{GMRFmarginal()} but selects \code{beta}
+#' directly and is unaffected. Keep the list in sync
+#' with \code{mkTMBStruc/randomArg}.
+#' @noRd
+whichNotRandom <- function(namevec, include_beta = FALSE) {
+    random_args <- c("b", "bzi", "bdisp")
+    if (include_beta) random_args <- c(random_args, "beta")
+    which(!namevec %in% random_args)
 }
 
 #' retrieve current value of TMB autopar setting

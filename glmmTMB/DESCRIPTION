@@ -1,6 +1,6 @@
 Package: glmmTMB
 Title: Generalized Linear Mixed Models using Template Model Builder
-Version: 1.1.11.9000
+Version: 1.1.15.9000
 Authors@R: c(person("Mollie","Brooks",
 		comment=c(ORCID="0000-0001-6963-8326"),
 		role = c("aut", "cre"),
@@ -41,8 +41,13 @@ Authors@R: c(person("Mollie","Brooks",
   person("Daniel", "Sabanés Bové", role = "ctb",
     comment = c(ORCID = "0000-0002-0176-9239")),
   person("Nikolas", "Krieger", role = "ctb",
-    comment = c(ORCID = "0000-0002-4581-3545"))
-	)
+    comment = c(ORCID = "0000-0002-4581-3545")),
+  person("Coralie", "Williams", role = "ctb",
+    comment = c(ORCID = "0000-0003-1312-4953")),
+  person("Julius", "Bogomolovas", role = "ctb",
+    comment = c(ORCID = "0000-0001-8344-1909")),
+  person("Divit", "Purwar", role = "ctb")
+ )
 Description: Fit linear and generalized linear mixed models with various
     extensions, including zero-inflation. The models are fitted using maximum
     likelihood estimation via 'TMB' (Template Model Builder). Random effects are
@@ -53,19 +58,24 @@ License: AGPL-3
 Depends: R (>= 3.6.0)
 Imports:
     methods,
-    TMB (>= 1.9.0),
+    RTMB,
+    TMB (>= 1.9.23),
     lme4 (>= 1.1-18.9000),
     Matrix,
     nlme,
     numDeriv,
     mgcv,
-    reformulas (>= 0.4.1)
+    reformulas (>= 0.4.3.1),
+    pbkrtest,
+    sandwich
 LinkingTo: TMB, RcppEigen
 Suggests:
     knitr,
     rmarkdown,
     testthat,
+    withr,
     MASS,
+    ordinal,
     lattice,
     ggplot2 (>= 2.2.1),
     mlmRev,
@@ -95,7 +105,9 @@ Suggests:
     dplyr,
     ade4,
     ape,
-    gsl
+    gsl,
+    lmerTest,
+    metafor
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
@@ -103,4 +115,4 @@ LazyData: TRUE
 BugReports: https://github.com/glmmTMB/glmmTMB/issues
 NeedsCompilation: yes
 Encoding: UTF-8
-RoxygenNote: 7.3.2.9000
+Config/roxygen2/version: 8.1.0

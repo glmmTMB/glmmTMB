@@ -10,7 +10,7 @@ simulate_new(
   seed = NULL,
   family = gaussian,
   newdata,
-  newparams,
+  newparams = NULL,
   ...,
   return_val = c("sim", "pars", "object")
 )

@@ -42,6 +42,28 @@ test_that("REML with all parameters fixed", {
     expect_equal(vcov(mod6_REML), vcov(mod6_ML))
 })
 
+test_that("REML with no free fixed effects stays usable", {
+    ## with nothing random left at all -- no random effects, and no free
+    ## fixed effects to integrate out -- sdreport() returns no
+    ## jointPrecision, and vcov() used to fail with "attempt to set an
+    ## attribute on NULL"
+    set.seed(101)
+    dd <- data.frame(y = rnorm(50), x = rnorm(50))
+    m0 <- glmmTMB(y ~ 0, data = dd, REML = TRUE)
+    expect_null(m0$sdr$jointPrecision)
+    expect_s3_class(vcov(m0), "vcov.glmmTMB")
+    expect_s3_class(summary(m0), "summary.glmmTMB")
+    ## same when every fixed effect is map-fixed
+    m1 <- glmmTMB(y ~ x, data = dd, REML = TRUE,
+                  start = list(beta = c(0, 0)),
+                  map = list(beta = factor(c(NA, NA))))
+    expect_null(m1$sdr$jointPrecision)
+    expect_s3_class(vcov(m1), "vcov.glmmTMB")
+    ## a genuine REML fit is unaffected: beta really is integrated out
+    expect_setequal(unique(names(fm1.glmmTMB$sdr$par.random)),
+                    c("beta", "b"))
+})
+
 test_that("correct df.residual for REML=TRUE", {
     ## nobs = 180 - 6 (beta = 2 + betadisp = 1 + theta = 3)
     expect_equal(df.residual(fm1.glmmTMB), 174)

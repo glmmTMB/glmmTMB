@@ -33,6 +33,13 @@ if (require(emmeans)) {
     expect_equal(summary(em1[[2]])$estimate[1], -0.8586306, tolerance=1e-4)
     expect_equal(summary(em2[[2]])$ratio[1], 0.42374, tolerance=1e-4)
 
+    # Optionally can use the robust covariance matrix via the vcov argument.
+    em1_robust <- expect_silent(
+      emmeans(m1, poly ~ FoodTreatment | SexParent, vcov = vcovHC(m1))
+    )
+    expect_equal(summary(em1[[2]])$SE[1], 0.14864, tolerance = 1e-4)
+    expect_equal(summary(em1_robust[[2]])$SE[1], 0.23343, tolerance = 1e-4)
+
     m2 <- glmmTMB(count ~ spp + mined + (1|site),
                   zi=~spp + mined,
                   family=nbinom2, data=Salamanders)
@@ -64,7 +71,9 @@ if (require(emmeans)) {
     e1 <- emmeans(test3,c("spp","mined"),component="zi",type="response")
     expect_is(e1, "emmGrid")
   }
-  ) ## test_that
+  ) ## test_that (big emmeans)
+
+  
 
   test_that("joint_test with non-estimable terms", {
       

@@ -3,7 +3,7 @@ stopifnot(require("testthat"),
           require("mgcv"))
 
 data("Nile")
-ndat <- data.frame(time = time(Nile), val = c(Nile))
+ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
 
 test_that("basic smooth", {
     sm0 <- gam(val ~ s(time), data = ndat, method = "REML")

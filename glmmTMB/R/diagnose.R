@@ -24,7 +24,7 @@
 ##' @param big_zstat numeric tolerance for Z-statistic
 ##' @param check_coefs identify large-magnitude coefficients? (Only checks conditional-model parameters if a (log, logit, cloglog, probit) link is used. Always checks zero-inflation, dispersion, and random-effects parameters. May produce false positives if predictor variables have extremely large scales.)
 ##' @param check_hessian identify non-positive-definite Hessian components?
-##' @param check_zstats identify parameters with unusually large Z-statistics (ratio of standard error to mean)? Identifies likely failures of Wald confidence intervals/p-values.
+##' @param check_zstats identify parameters with unusually large Z-statistics (ratio of estimate to standard error)? Identifies likely failures of Wald confidence intervals/p-values.
 ##' @param check_scales identify predictors with unusually small or large scales?
 ##' @param explain provide detailed explanation of each test?
 ##' @return a logical value based on whether anything questionable was found
@@ -105,7 +105,7 @@ diagnose <- function(fit,
         sdvec <- sdvec[sdvec>0 & abs(log10(sdvec))>big_sd_log10]
         if (length(sdvec)>0) {
             model_OK <- FALSE
-            cat(sprintf("\npredictors with unusually large or small standard deviations (|log10(sd)|>%g):\n\n",sdvec))
+            cat(sprintf("\npredictors with unusually large or small standard deviations (|log10(sd)|>%g):\n\n",big_sd_log10))
             print(sdvec)
             prt_explain("Predictor variables with very narrow or wide ranges generally give rise to parameters with very large or",
                         "small magnitudes, which can sometimes exacerbate numerical instability, and may also be appear",
@@ -173,7 +173,7 @@ diagnose <- function(fit,
             if (any(is.na(h))) {
                 bad <- NA
                 eigs <- eigen(fit$sdr$cov.fixed)
-                complex_eigs <- is.complex(eigs)
+                complex_eigs <- is.complex(eigs$values)
             } else {
                 eigs <- eigen(h)
                 ## non-positive definite means some of the eigenvectors are <= 0

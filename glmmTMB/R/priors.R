@@ -44,6 +44,8 @@ proc_priors <- function(priors, info = NULL) {
     for (p in prior_ivars) {
         assign(p, integer(np))
     }
+    rtmb_prior_distrib_name <- character(np)
+    rtmb_prior_whichpar_name <- character(np)
 
     prior_params <- list()
 
@@ -53,6 +55,7 @@ proc_priors <- function(priors, info = NULL) {
         ## process prior value (character to distribution code and parameter vector)
         pp <- priors[["prior"]][i]
         pname <- gsub("\\(.*", "", pp) ## extract distribution name
+        rtmb_prior_distrib_name[i] <- pname
         prior_distrib[i] <- .valid_prior[pname]
         if (is.na(prior_distrib[i])) stop("unknown prior distribution ",pname)
         
@@ -73,6 +76,7 @@ proc_priors <- function(priors, info = NULL) {
         pcl <- gsub("_(cor|sd)$", "", pcl)
 
         cl <- to_prior_syn(pcl)
+        rtmb_prior_whichpar_name[i] <- cl
         prior_whichpar[i] <- .valid_vprior[cl]
         if (is.na(prior_whichpar[i])) stop("unknown prior variable ", cl)
 
@@ -82,20 +86,21 @@ proc_priors <- function(priors, info = NULL) {
         ## if non-blank suffix (sd/cor), figure out which elements based on ss/cnms
         ## process 'coef' (particular element)
 
-        nthetavec <- sapply(info$re,
-                            function(x) {
-                                ntheta <- vapply(x, "[[",
-                                                 "blockNumTheta",
-                                                 FUN.VALUE = numeric(1))
-                                cc <- cumsum(ntheta)
-                                ## want *starting* value of each theta term
-                                ## keep names, shift back one
-                                nm <- names(cc)
-                                if (length(cc) == 0) return(integer(0))
-                                cc <- c(1, cc)
-                                names(cc) <- c(nm, "..total")
-                                return(cc)
-                            })
+        nthfun <- function(x) {
+          ntheta <- vapply(x, "[[",
+                           "blockNumTheta",
+                           FUN.VALUE = numeric(1))
+          cc <- cumsum(ntheta)
+          ## want *starting* value of each theta term
+          ## keep names, shift back one
+          nm <- names(cc)
+          if (length(cc) == 0) return(integer(0))
+          cc <- c(1, cc)
+          names(cc) <- c(nm, "..total")
+          return(cc)
+        }
+        nthetavec <- lapply(info$re, nthfun)
+
 
         nospace <- function(x) gsub(" +", "", x)
         thetanames <- lapply(info$re,
@@ -191,7 +196,14 @@ proc_priors <- function(priors, info = NULL) {
     } ## loop over priors
     prior_params <- if (np == 0) numeric(0) else unlist(prior_params)
     ## FIXME: replace with mget() ?
-    return(namedList(prior_distrib, prior_whichpar, prior_elstart, prior_elend, prior_npar, prior_params))
+    rtmb_prior_distrib_name <- factor(rtmb_prior_distrib_name,
+                                      levels = names(.valid_prior))
+    rtmb_prior_whichpar_name <- factor(rtmb_prior_whichpar_name,
+                                       levels = names(.valid_vprior))
+
+    return(namedList(prior_distrib, prior_whichpar, prior_elstart,
+                     prior_elend, prior_npar, prior_params,
+                     rtmb_prior_distrib_name, rtmb_prior_whichpar_name))
 }
 
 #' use of priors in glmmTMB
@@ -240,6 +252,7 @@ NULL
 
 #' @importFrom stats reformulate
 #' @importFrom utils capture.output
+#' @export
 print.glmmTMB_prior <- function(x, compact = FALSE, ...) {
     if (is.null(x)) return(invisible(x))
     pstr <- character(nrow(x))
