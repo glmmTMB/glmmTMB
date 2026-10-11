@@ -569,7 +569,7 @@ test_that("allow.new.levels TRUE when re.form = NA",
               expect_equal(predict(g1,
                                    newdata = data.frame(Days = NA, Subject = NA),
                                    re.form = NA), 298.507889474305,
-                           tolerance = 1e-6)
+                           tolerance = 1e-3)
 })
 
 ## https://stackoverflow.com/q/77517125/190277

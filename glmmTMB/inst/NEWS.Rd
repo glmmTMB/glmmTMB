@@ -14,7 +14,7 @@
   } % user-visible changes
 } % 1.1.15.9000
 
-\section{CHANGES IN VERSION 1.1.15}{
+\section{CHANGES IN VERSION 1.1.15.2 (2026-09-29)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item new \code{ordinal} family implementing cumulative-link
@@ -111,7 +111,7 @@
       \code{estfun} (or upstream functions such as \code{vcovHC})
       (GH #1294; Vincent Arel-Bundock)
       \item \code{emmeans()} with \code{ddf = "satterthwaite"} failed with
-      "could not find function \"dof_satt\"" because \pkg{emmeans} strips
+      'could not find function "dof_satt"' because \pkg{emmeans} strips
       the enclosing environment of the degrees-of-freedom function before
       calling it (GH #1304, Ariel Muldoon)
       \item relatedly, \code{emmeans()} with \code{ddf = "satterthwaite"}
