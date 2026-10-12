@@ -26,7 +26,13 @@ expandSepTerms <- function(cn, cl, sl, bc, fc, restruc) {
             return(list(cnms = cn[i], cor = cl[i], sd = sl[i], bc = bc[i], fc = fc[i]))
         sc <- restruc[[i]][["blockSepCnms"]]  
         stopifnot(length(cls) == length(cl[[i]]),  length(cls) == length(sc))
-        nms <- paste0(names(cn)[i], " [", seq_along(cls), ": ", cls, "]")
+
+        sepTrmsGrp <- ifelse(!is.null(names(sc)),  names(sc), rep("", length(cls)))     
+        outer     <- names(cn)[i]                       # "1" when there is no outer bar
+        has_outer <- !is.na(outer) && outer != "1"
+        nms <- if(has_outer) paste0(outer, "[sep:", cls, ",", sepTrmsGrp, "]") 
+                else paste0("[sep:", cls, ",", sepTrmsGrp, "]")   
+      
         list(cnms = setNames(sc, nms),            # per-component column names
              cor  = setNames(cl[[i]], nms),
              sd   = setNames(sl[[i]], nms),
