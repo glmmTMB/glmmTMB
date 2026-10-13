@@ -541,6 +541,17 @@ return(theta)
                        thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
+    ### Change mapping for propto 
+    for (component in c("cond", "zi", "disp")) {
+        rList <- get(paste0(component, "List"))
+        if(length(rList$ss) > 0 && any(c(rList$ss, unlist(rList[["sepClasses"]])) %in% c("propto", "equalto") )){
+            reStrucComp <- get(paste0(component, "ReStruc"))      
+            mapArg.orig <- mapArg
+            out <- map.theta.propto(reStrucComp, mapArg.orig, component, start, parameters)
+            mapArg <- out$map
+            start  <- out$start
+        }
+    }
 
   ## ordinal family: a fixed-effect intercept is redundant with the
   ## thresholds; fix it to zero (it is absorbed into the thresholds)
@@ -572,15 +583,7 @@ return(theta)
   }
 
   
-  ### Change mapping for propto 
-  for (component in c("cond", "zi", "disp")) {
-    rList <- get(paste0(component, "List"))
-    if(length(rList$ss) > 0 && any(c(rList$ss, unlist(rList[["sepClasses"]])) %in% c("propto", "equalto") )){
-      restruccomp <- get(paste0(component, "ReStruc"))
-      mapArg.orig <- mapArg
-      mapArg <- map.theta.propto(restruccomp, mapArg.orig, component)
-    }
-  }
+
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi",
@@ -594,7 +597,7 @@ return(theta)
             family, contrasts, respCol, ord_levels,
             allForm=namedList(combForm,formula,ziformula,dispformula),
             fr, se, call, verbose, REML, map, sparseX, priors))
-  }
+}
 
 ##' Create X and random effect terms from formula
 ##' @param formula current formula, containing both fixed & random effects
@@ -1022,7 +1025,8 @@ mapStrucTheta <- function(cls, idx) {
 #' @param map a list of mapped elements
 #' @param component a character string specifying the parameter component to map
 #' @return the corresponding \code{theta} parameter vector
-map.theta.propto <- function(ReStruc, map, component) {
+map.theta.propto <- function(ReStruc, map, component,
+                             start = NULL, parameters = NULL) {
   if (is.null(map))
       params <- list()
   else
@@ -1030,6 +1034,8 @@ map.theta.propto <- function(ReStruc, map, component) {
   
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
+
+  thetaName <- if (component == "cond") "theta" else paste0("theta", component) 
 
   nt <- sum(getVal(ReStruc, "blockNumTheta"))
   map.theta <- c(1:nt) #initialises all parameters as separate values
@@ -1051,12 +1057,28 @@ map.theta.propto <- function(ReStruc, map, component) {
     }
   }
   map.theta <- unlist(tl, use.names = FALSE)
-  if(component == "cond")
-    params$theta <- factor(map.theta)
-  else
-      params[[paste0("theta", component)]] <- factor(map.theta)
+  
+  ## allow user-supplied map/start to contain only the estimated parameters
+  fixed <- is.na(map.theta)
+  expand <- function(x, default) {
+    if (length(x) == length(default)) return(x)
+    if (length(x) != sum(!fixed))
+      stop("length(", thetaName, ")==", length(x), ", should be ", sum(!fixed),
+           " (estimated parameters) or ", length(default), " (all parameters)")
+    default[!fixed] <- x
+    default
+  }
+    
+  if (!is.null(params[[thetaName]])) {                                  # user supplied map params
+    user <- as.numeric(as.character(params[[thetaName]]))
+    map.theta <- ifelse(fixed, NA, expand(user, map.theta))  # if already fixed (i.e., set to NA) keep NA, otherwise
+  }
+  if (!is.null(start[[thetaName]]))                                     # NEW
+    start[[thetaName]] <- expand(start[[thetaName]], parameters[[thetaName]])
 
-  return(params)
+  params[[thetaName]] <- factor(map.theta)    
+  
+  return(list(map = params, start = start))  
 }
 
 #' Check structures ar1, hetar1, ou, exp etc and return any derived data
