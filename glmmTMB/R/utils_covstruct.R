@@ -71,3 +71,44 @@ parseNumLevels <- function(levels) {
     ans
 }
 
+## Rewrite each kron(A(0 + f1) %x% B(0 + f2) | g) in a formula into the
+## internal form kron(0 + f2:f1 | g, c("A", "B")), parsed like rr(0 + f | g, 2).
+## The factors are reversed: in the columns of f2:f1 the first factor (f2)
+## varies fastest, while in kronecker() the last margin does.
+rewriteKron <- function(x) {
+    ## Rewrite only the one-argument user syntax, not the internal form
+    if (identical(x[[1]], quote(kron)) && length(x) == 2) {
+        ## A(0 + f1) %x% B(0 + f2) %x% ...  ->  list(A(0 + f1), B(0 + f2), ...)
+        flatten <- function(e) {
+            if (!is.call(e) || !identical(e[[1]], quote(`%x%`))) return(list(e))
+            c(flatten(e[[2]]), flatten(e[[3]]))
+        }
+        ## A(0 + f)  ->  "f"
+        marginFactor <- function(e) {
+            if (is.call(e) && length(e) == 2) {
+                tt <- terms(eval(call("~", e[[2]])))
+                lab <- attr(tt, "term.labels")
+                if (length(lab) == 1 && !attr(tt, "intercept")) return(lab)
+            }
+            stop("kron() margins must look like us(0 + f)", call. = FALSE)
+        }
+        bar <- x[[2]] # A(0 + f1) %x% B(0 + f2) | g
+        ## Require "| g" (a "|| g" is read as "| g", as for other structures)
+        if (!is.call(bar) || !deparse1(bar[[1]]) %in% c("|", "||"))
+            stop("kron() needs a grouping factor, as in ",
+                 "kron(us(0 + f1) %x% ar1(0 + f2) | g)", call. = FALSE)
+        margins <- flatten(bar[[2]])
+        factors <- vapply(margins, marginFactor, "")
+        strucs <- vapply(margins, function(e) deparse(e[[1]]), "")
+        lhs <- str2lang(paste("0 +", paste(rev(factors), collapse = ":")))
+        ## Split nested groups here (g/h -> h:g and g, as for us(0 + f | g/h)):
+        ## splitForm() does not split them in terms with a second argument
+        groups <- reformulas::expandGrpVar(bar[[3]])
+        return(reformulas::sumTerms(lapply(groups, function(g)
+            call("kron", call("|", lhs, g), strucs))))
+    }
+    ## Otherwise, look for kron() terms in the arguments
+    for (i in seq_along(x)[-1]) if (is.call(x[[i]])) x[[i]] <- rewriteKron(x[[i]])
+    x
+}
+

@@ -9,6 +9,7 @@
 #' @details Kenward-Roger adjustments \emph{should not be used} for models fitted with ML rather than REML;
 #' the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
 #' Use at your own risk for GLMMs!
+#' Kenward-Roger adjustments are not supported for models with a conditional \code{kron()} term.
 #' @param model a fitted \code{glmmTMB} object
 #' @export
 ## avoid conflict with insight::dof_kenward ...
@@ -128,6 +129,13 @@ dof_KR <- function(model) {
 
 ## FIXME: why do we go through this?
 .vcov_kenward_adjusted <- function(model) {
+    re <- model$modelInfo$reStruc$condReStruc
+    block_codes <- vapply(re, `[[`, 0, "blockCode")
+    ## .get_SigmaG() expects one VarCorr() block per term; kron() gives one per margin
+    if (.valid_covstruct[["kron"]] %in% block_codes) {
+        stop("Kenward-Roger adjustments are not supported for models with a ",
+             "conditional kron() term", call. = FALSE)
+    }
     .vcovAdj16_internal(stats::vcov(model)$cond, .get_SigmaG(model), glmmTMB::getME(model, "X"))
 }
 

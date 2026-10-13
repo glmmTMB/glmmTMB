@@ -83,6 +83,7 @@ ctab <- read.delim(sep = "#", comment = "",
  Reduced-rank                     # `rr`          #  $nd-d(d-1)/2$  # rank (d)    # Factor loading matrix (see [Reduced-rank])
  Proportional                       # `propto`      #  $1$            # Variance-covariance matrix # log(proportionality constant)
  Equal                            # `equalto`     #  $0$            # Variance-covariance matrix # -
+ Kronecker product                # `kron`        #  margins' total $-(k-1)$ # RTMB back-end # the $k$ margins' parameters in order, without the first log-SD of each later margin (fixed at 0; see [Kronecker products])
 "
 )
 knitr::kable(ctab)
@@ -818,6 +819,50 @@ fit_rma2 <- metafor::rma.mv(yi, vi,
 As with `propto`, we need to specify the random term without an intercept so each column maps to a single effect, and ensure the variance-covariance row/column are ordered as the factor levels of the `id` variable. 
 
 In most meta-analysis applications we want we set the right-hand grouping term `g` to a single level, giving one vector of sampling-error random effects over `id` (one element per effect-size row) with covariance fixed. If `g` has multiple levels, the model creates one such vector per group, treating groups as independent blocks that all share the same variance–covariance matrix.
+
+## Kronecker products
+
+`kron()` combines two or more of the structures listed above, except `rr`, `propto` and `equalto`. Each component is called a *margin*. Their Kronecker product gives a *separable* covariance.
+
+Consider two outcomes, or traits, measured repeatedly on each subject. The term `kron(us(0 + trait) %x% ar1(0 + time) | subject)` combines an unstructured trait covariance with AR(1) correlation over time. It gives each subject one random effect $u_{it}$ for each trait $i$ and time point $t$. Within a subject, the covariance between two such random effects is
+
+$$\textrm{Cov}(u_{it}, u_{js}) = \Sigma_{ij} \, \phi^{|t-s|}.$$
+
+Here $i$ and $j$ index traits, and $t$ and $s$ index equally spaced time points. The matrix $\Sigma$ contains the trait variances and covariance, while $\phi$ is the correlation between adjacent time points. The trait covariance matrix stays the same at every time point, and both traits share the same AR(1) pattern. Random effects from different subjects are independent.
+
+- Each margin takes one factor and no intercept, as in `us(0 + trait)`. Use a `numFactor()` variable for `ou`, `exp`, `gau` and `mat`.
+- In each later margin, the first standard deviation is fixed at 1, so the first margin sets the overall scale.
+- `kron()` requires the RTMB back-end.
+
+The Gaussian example below gives each trait its own mean. We use `dispformula = ~0` to fix the independent residual variance close to zero, so the `kron()` term accounts for essentially all residual covariance (as `TYPE=UN@AR(1)` in SAS).
+
+```{r kron}
+set.seed(101)
+dd <- expand.grid(trait = factor(1:2), time = factor(1:10), subject = factor(1:50))
+Sigma <- matrix(c(1, 0.5, 0.5, 2), 2)
+R <- 0.7^abs(outer(1:10, 1:10, "-"))
+## One row per subject. Within each row, trait varies fastest, as in dd.
+b <- matrix(rnorm(50 * 20), 50) %*% chol(kronecker(R, Sigma))
+dd$y <- c(0, 1)[dd$trait] + c(t(b))
+fit.kron <- glmmTMB(y ~ 0 + trait + kron(us(0 + trait) %x% ar1(0 + time) | subject),
+                    dispformula = ~0, data = dd,
+                    control = glmmTMBControl(use_rtmb = TRUE))
+VarCorr(fit.kron)
+```
+
+`VarCorr()` returns one block per margin. The first block, `subject (kron 1/2)`, gives trait standard deviations of 0.98 and 1.43 and a correlation of 0.34 at the same time point. The second block, `subject (kron 2/2)`, gives the AR(1) correlation of 0.73. Its standard deviation is fixed at 1.
+
+To inspect the combined covariance, take the `kronecker()` product of the two blocks. The last margin varies fastest, so all time points for trait 1 come before those for trait 2. Below we show the first three time points for each trait, with standard deviations on the diagonal and correlations elsewhere.
+
+```{r kron-cov}
+vc <- VarCorr(fit.kron)$cond
+V <- kronecker(vc[[1]], vc[[2]][1:3, 1:3])
+sdcor <- cov2cor(V)
+diag(sdcor) <- sqrt(diag(V))
+round(sdcor, 2)
+```
+
+Within a trait, the correlation is 0.73 one time point apart and $0.73^2 \approx 0.53$ two apart. Between traits, it is 0.34 at the same time point and $0.34 \times 0.73 \approx 0.25$ one time point apart.
 
 ## Construction of structured covariance matrices
 
