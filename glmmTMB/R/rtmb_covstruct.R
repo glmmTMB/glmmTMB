@@ -8,6 +8,8 @@ separable_nll <- function(U, theta, term) {
   sep_sizes <- term$blockSepSizes
   sep_nt <- term$blockSepNumTheta
   reps <- term$blockReps
+  sep_times <- term$blockSepTimes
+  sep_dist <- term$blockSepDists
   n_sep <- length(sep_names)
 
   sep_block_dim <- sep_sizes * sep_reps      ## length of each re's block: LHS columns x and the RHS fct  
@@ -19,8 +21,9 @@ separable_nll <- function(U, theta, term) {
   ## each sep re struc - theta, block info
   sep_th  <- lapply(seq_len(n_sep), function(i) theta[(tcounter[i] + 1L):tcounter[i + 1L]])
   sep_cmp <- lapply(seq_len(n_sep), function(i)
-    list(blockName = sep_names[i], blockSize = sep_sizes[i], blockReps = sep_reps[i], 
-      simCode = term$simCode, fullCor = term$fullCor))
+    list(blockName = sep_names[i], blockSize = sep_sizes[i], blockReps = sep_reps[i],
+      simCode = term$simCode, fullCor = term$fullCor, 
+      times = sep_times[[i]], dist = sep_dist[[i]]))
 
   get_sep_stuc <- function(cmp, th) function(x)  -termwise_nll(x, th, cmp)$nll
   sep_fns <- lapply(seq_len(n_sep), function(i) get_sep_stuc(sep_cmp[[i]], sep_th[[i]]))
