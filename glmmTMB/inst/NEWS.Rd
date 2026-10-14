@@ -4,7 +4,24 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.15}{
+\section{CHANGES IN VERSION 1.1.15.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Tweedie simulation is faster, especially when the power
+      parameter is close to 2. Simulated values for a given seed differ
+      from previous versions (GH #1341, Pascal Küng)
+    } % itemize
+  } % user-visible changes
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item Smooth random-effect coefficient indices now count coefficients,
+      rather than observations, and respect interleaved grouping terms.
+      (Gavin Simpson)
+    } % itemize
+  } % bug fixes
+} % 1.1.15.9000
+
+\section{CHANGES IN VERSION 1.1.15.2 (2026-09-29)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item new \code{ordinal} family implementing cumulative-link
@@ -101,7 +118,7 @@
       \code{estfun} (or upstream functions such as \code{vcovHC})
       (GH #1294; Vincent Arel-Bundock)
       \item \code{emmeans()} with \code{ddf = "satterthwaite"} failed with
-      "could not find function \"dof_satt\"" because \pkg{emmeans} strips
+      'could not find function "dof_satt"' because \pkg{emmeans} strips
       the enclosing environment of the degrees-of-freedom function before
       calling it (GH #1304, Ariel Muldoon)
       \item relatedly, \code{emmeans()} with \code{ddf = "satterthwaite"}
