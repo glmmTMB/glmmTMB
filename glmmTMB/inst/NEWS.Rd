@@ -5,13 +5,22 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.15.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Tweedie simulation is faster, especially when the power
+      parameter is close to 2. Simulated values for a given seed differ
+      from previous versions (GH #1341, Pascal Küng)
+    } % itemize
+  } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
-      \item nothing yet
+      \item Smooth random-effect coefficient indices now count coefficients,
+      rather than observations, and respect interleaved grouping terms.
+      (Gavin Simpson)
     } % itemize
   } % bug fixes
-} % 1.1.15.9000 (devel)
-  
+} % 1.1.15.9000
+
 \section{CHANGES IN VERSION 1.1.15.2 (2026-09-29)}{
   \subsection{NEW FEATURES}{
     \itemize{
