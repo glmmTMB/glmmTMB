@@ -17,6 +17,22 @@
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item \code{dof_KR}, \code{dof_satt} and the \code{ddf} options of
+      \code{summary}, \code{anova}, \code{car::Anova} and \code{emmeans}
+      now work for conditional coefficients tied or fixed via \code{map},
+      and (Kenward-Roger) for rank-deficient models; previously
+      "non-conformable arguments", an \code{eigen()} error, or rejected by
+      \code{car::Anova}. Tied coefficients share one ddf; fixed coefficients,
+      and hypotheses involving only fixed coefficients, get \code{NA} (GH #1340)
+      \item relatedly, \code{emmeans()} no longer fails ("logical subscript
+      too long") for models with coefficients tied via \code{map} (GH #1340)
+      \item \code{vcov(., include_nonest = FALSE)} no longer fails ("length
+      of 'dimnames'") when the dispersion model has no fixed-effect
+      parameters, e.g. \code{dispformula = ~0 + offset(log(se))} or
+      \code{~0 + (1|g)}, or for a \code{dispformula} given to a family
+      without dispersion; \code{dof_satt()},
+      \code{summary(., ddf = "satterthwaite")}, \code{emmeans()} and
+      \code{confint()} now work for such models (GH #1344)
     } % itemize
   } % bug fixes
 } % 1.1.15.9000
