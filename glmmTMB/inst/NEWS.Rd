@@ -156,6 +156,13 @@
       and hypotheses involving only fixed coefficients, get \code{NA} (GH #1340)
       \item relatedly, \code{emmeans()} no longer fails ("logical subscript
       too long") for models with coefficients tied via \code{map} (GH #1340)
+      \item \code{vcov(., include_nonest = FALSE)} no longer fails ("length
+      of 'dimnames'") when the dispersion model has no fixed-effect
+      parameters, e.g. \code{dispformula = ~0 + offset(log(se))} or
+      \code{~0 + (1|g)}, or for a \code{dispformula} given to a family
+      without dispersion; \code{dof_satt()},
+      \code{summary(., ddf = "satterthwaite")}, \code{emmeans()} and
+      \code{confint()} now work for such models (GH #1344)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{

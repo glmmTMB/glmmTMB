@@ -563,3 +563,55 @@ if (requireNamespace("lme4")) {
         })
     }
 }
+
+## ---- dispersion model without fixed-effect parameters, e.g. ~0 + offset(.) ----
+##
+## vcov(include_nonest = FALSE), which the ddf code and emmeans() use, used to
+## fail for these models. Oracle: an offset-only dispersion model is the same
+## model as the offset plus a dispersion intercept fixed to 0 via 'map', and
+## that fit has always gone through vcov(include_nonest = FALSE).
+set.seed(101)
+dd_off <- data.frame(g = factor(rep(1:8, each = 5)), x = rnorm(40), se = runif(40, 0.8, 1.6))
+dd_off$y <- rnorm(8)[dd_off$g] + dd_off$x + rnorm(40, 0, dd_off$se)
+f_off <- glmmTMB(y ~ x + (1 | g), dispformula = ~ 0 + offset(log(se)),
+                 data = dd_off, REML = TRUE)
+o_off <- glmmTMB(y ~ x + (1 | g), dispformula = ~ offset(log(se)),
+                 data = dd_off, REML = TRUE,
+                 start = list(betadisp = 0), map = list(betadisp = factor(NA)))
+
+test_that("offset-only dispformula is the same model as the pinned-intercept oracle", {
+    expect_equal(logLik(f_off), logLik(o_off), tolerance = 1e-8, ignore_attr = TRUE)
+})
+
+test_that("vcov(include_nonest = FALSE) works when dispformula has no fixed-effect parameters", {
+    expect_equal(vcov(f_off, include_nonest = FALSE),
+                 vcov(o_off, include_nonest = FALSE), tolerance = 1e-8)
+})
+
+test_that("ddf and F tests work when dispformula has no fixed-effect parameters", {
+    expect_equal(dof_KR(f_off), dof_KR(o_off), tolerance = 1e-8)
+    expect_equal(dof_satt(f_off), dof_satt(o_off), tolerance = 1e-6)
+    for (dd in c("kenward-roger", "satterthwaite")) {
+        expect_equal(summary(f_off, ddf = dd)$coefficients$cond,
+                     summary(o_off, ddf = dd)$coefficients$cond, tolerance = 1e-6)
+    }
+    ## the F tests go through vcov(include_nonest = FALSE) as well
+    if (requireNamespace("car")) {
+        for (dd in c("kenward-roger", "satterthwaite")) {
+            expect_equal(car::Anova(f_off, ddf = dd), car::Anova(o_off, ddf = dd),
+                         tolerance = 1e-6)
+        }
+    }
+})
+
+if (requireNamespace("emmeans")) {
+    test_that("emmeans works when dispformula has no fixed-effect parameters", {
+        for (dd in c("asymptotic", "kenward-roger", "satterthwaite")) {
+            e1 <- summary(emmeans::emtrends(f_off, ~ 1, var = "x", ddf = dd))
+            e2 <- summary(emmeans::emtrends(o_off, ~ 1, var = "x", ddf = dd))
+            expect_equal(e1$x.trend, e2$x.trend, tolerance = 1e-8)
+            expect_equal(e1$SE, e2$SE, tolerance = 1e-8)
+            expect_equal(e1$df, e2$df, tolerance = 1e-6)
+        }
+    })
+}

@@ -531,6 +531,11 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
           xnms <- estNameList[[cnm]]
+          ## a dispersion model without fixed-effect parameters (e.g.
+          ## dispformula = ~0 + offset(.) or ~0 + (1|g), or a dispformula
+          ## for a family without dispersion) has an empty block here,
+          ## while getParnames() still returns a placeholder ("disp~")
+          if (nrow(m) == 0L) xnms <- character(0)
           fnm <- fullNameList[[cnm]]
           if (!include_nonest ||
               nrow(m) == length(fnm)) {

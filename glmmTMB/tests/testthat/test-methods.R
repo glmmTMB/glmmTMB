@@ -922,6 +922,8 @@ test_that("handle empty betadisp in vcov", {
                  c(cond = 2L, zi = 0L, disp = 0L))
     expect_equal(vcov(m)$disp,
                  matrix(NA_real_, dimnames = list("disp~", "disp~")))
+    ## no 'disp' block to name when only estimated parameters are kept
+    expect_equal(vcov(m, include_nonest = FALSE)$cond, vcov(m)$cond)
 })
 
 test_that("getGroups works as expected with a single group", {
