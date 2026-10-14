@@ -320,9 +320,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                                                sprintf("%d != 1 or %d", length(full_cor), nREtot))
     full_cor <- rep(full_cor, length.out = nREtot)
     fc_list <- split(full_cor, factor(rep(1:3, times = nRE), levels=1:3))
-    condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[1]]))
-    ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[2]]))
-    dispReStruc <- with(dispList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[3]]))
+    condReStruc <- with(condList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[1]], sepClasses, aa_sep))
+    ziReStruc <- with(ziList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[2]], sepClasses, aa_sep))
+    dispReStruc <- with(dispList, getReStruc(reTrms, ss, aa, reXterms, fr, fc_list[[3]], sepClasses, aa_sep))
     
     grpVar <- with(condList, getGrpVar(reTrms$flist))
 
@@ -470,7 +470,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
     data.tmb <- c(data.tmb, Xlist, prior_struc)
 
   ## identify covariance structures that have non-default theta values
-  ndThetaStruc <- function(lst) any(lst$ss %in% c("rr", "propto", "equalto"))
+  ndThetaStruc <- function(lst) any(c(lst$ss, unlist(lst$sepClasses)) %in% c("rr", "propto", "equalto")) 
 
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -511,23 +511,22 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
       thetaseq <- rep.int(seq_along(blockNumTheta), blockNumTheta)
       tl <- split(theta, thetaseq)
       for(i in 1:length(blockCode)){
-        if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="rr") # if rr start theta at 1
-          tl[[i]] <- rep(1, blockNumTheta[i])
-        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="propto") { # if propto then set theta to be transformed values
-          a <- List[["aa"]][[i]]
-          tl[[i]] <- c(as.theta.vcov(a), 0) # last theta is lambda (proportional parameter)
-        } #end else if propto
-        
-        else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="equalto") { # if equalto then get vcov values
-          a <- List[["aa"]][[i]]
-          checkEqualto(aa = a, cnms = List$reTrms$cnms[[i]])
-          tl[[i]] <- as.theta.vcov(a) 
-        } #end else if equalto
-      } #end for loop
-      theta <- unlist(tl, use.names = F)
+          cls <- names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]
+          if(cls != "sep"){
+              tl[[i]] <- startTheta(cls, tl[[i]], List[["aa"]][[i]], List$reTrms$cnms[[i]])                
+          } else {
+              nm  <- ReStruc[[i]]$blockSepNames
+              nt  <- ReStruc[[i]]$blockSepNumTheta
+              thj <- split(tl[[i]], rep(seq_along(nt), nt))
+              tl[[i]] <- unlist(lapply(seq_along(nm), function(j) 
+                                    startTheta(nm[j], thj[[j]], List[["aa_sep"]][[i]][[j]],
+                                    List$reTrms$sep[[i]]$cnms[[j]])), use.names = FALSE)
+          }
+        theta <- unlist(tl, use.names = F)
+      }
     }
-    return(theta)
-  }
+return(theta)
+} # end
 
   parameters <- with(data.tmb,
                      list(
@@ -542,6 +541,17 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
+    ### Change mapping for propto 
+    for (component in c("cond", "zi", "disp")) {
+        rList <- get(paste0(component, "List"))
+        if(length(rList$ss) > 0 && any(c(rList$ss, unlist(rList[["sepClasses"]])) %in% c("propto", "equalto") )){
+            reStrucComp <- get(paste0(component, "ReStruc"))      
+            mapArg.orig <- mapArg
+            out <- map.theta.propto(reStrucComp, mapArg.orig, component, start, parameters)
+            mapArg <- out$map
+            start  <- out$start
+        }
+    }
 
   ## ordinal family: a fixed-effect intercept is redundant with the
   ## thresholds; fix it to zero (it is absorbed into the thresholds)
@@ -573,15 +583,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   }
 
   
-  ### Change mapping for propto 
-  for (component in c("cond", "zi", "disp")) {
-    rList <- get(paste0(component, "List"))
-    if(length(rList$ss) > 0 && any(rList$ss %in% c("propto", "equalto") )){
-      restruccomp <- get(paste0(component, "ReStruc"))
-      mapArg.orig <- mapArg
-      mapArg <- map.theta.propto(restruccomp, mapArg.orig, component)
-    }
-  }
+
 
   randomArg <- c(if(ncol(data.tmb$Z)   > 0) "b",
                  if(ncol(data.tmb$Zzi) > 0) "bzi",
@@ -611,10 +613,12 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 ##' \item{Z}{design matrix for random effects}
 ##' \item{reTrms}{output from \code{\link[reformulas]{mkReTrms}}, possibly augmented with information about \code{mgcv}-style smooth terms}
 ##' \item{ss}{splitform of the formula}
-##' \item{aa}{additional arguments, used to obtain rank}
+##' \item{aa}{additional arguments, used to obtain rank and user-specified matrix}
 ##' \item{terms}{terms for the fixed effects}
 ##' \item{offset}{offset vector, or vector of zeros if offset not specified}
 ##' \item{reXterms}{terms for the model matrix in each RE term}
+##' \item{sepClasses}{splitform of the separable formula}
+##' \item{aa_sep}{additional arguments, used to obtain rank and user-specified matrix}
 ##'
 ##' @importFrom stats model.matrix contrasts
 ##' @importFrom methods new
@@ -767,6 +771,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         Z <- new("dgCMatrix",Dim=c(as.integer(nobs),0L)) ## matrix(0, ncol=0, nrow=nobs)
         aa <- integer(0) #added for rr to get rank
         ss <- integer(0)
+        sepClasses <- integer(0)
+        aa_sep <- integer(0)
     } else {
 
         ## FIXME: check whether predvars are carried along correctly in terms
@@ -886,6 +892,8 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         }
         aa <- lapply(ss$reTrmAddArgs, get_arg)
 
+        aa_sep <- lapply(ss$reTrmSep, function(s)if (is.null(s)) NULL else lapply(s$reTrmAddArgs, get_arg))
+
         ## terms for the model matrix in each RE term
         ## this is imperfect: it should really be done in mkReTrms/mkBlist,
         ## where we are generating these terms anyway on the way
@@ -908,24 +916,42 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
         ##  so we can recognize it.
         ## Here, we're using the fact that the ...AddArgs stuff is still in an unevaluated form
         drop_s <- function(f, a) {
-            if (identical(a[[1]], as.symbol('s'))) NA else termsfun(f)
+            if (identical(a[[1]], as.symbol('s'))) NA 
+            else if (is.list(f)) lapply(f, termsfun)      # sep term: one terms object per component
+            else termsfun(f)
         }
         reXterms <- Map(drop_s, ss$reTrmFormulas, ss$reTrmAddArgs)
-        
-        for (i in seq_along(ss$reTrmAddArgs)) {
-          if(ss$reTrmClasses[i] == "rr") {
-            if (!is.na(aa[i]) & is.na(suppressWarnings(as.numeric( aa[i] )))) {
+        ssSep <- ss$reTrmSep
+
+        check_re_args <- function(cls, a_list, k, cnms, reXtrm) {
+          if(cls == "rr") {
+            if (!is.na(a_list[k]) & is.na(suppressWarnings(as.numeric( a_list[k] )))) {
               stop("non-numeric value for reduced-rank dimension", call. = FALSE)
             }
           }
-          else if(ss$reTrmClasses[i] == "propto"){
-            checkProptoNames(aa = aa[[i]], cnms = reTrms$cnms[[i]], reXtrm = reXterms[[i]])
+          else if(cls == "propto"){
+            checkProptoNames(aa = a_list[[k]], cnms = cnms, reXtrm = reXtrm)
           }
-          else if(ss$reTrmClasses[i] == "equalto"){
-            checkEqualto(aa = aa[[i]], cnms = reTrms$cnms[[i]])
+          else if(cls == "equalto"){
+            checkEqualto(aa = a_list[[k]], cnms = cnms)
           }
         }
 
+        for (i in seq_along(ss$reTrmAddArgs)) {
+            if (ss$reTrmClasses[i] == "sep") {
+                ## check each component as if it were a standalone term
+                for (j in seq_along(ssSep[[i]]$reTrmClasses)) {
+                    check_re_args(ssSep[[i]]$reTrmClasses[j], aa_sep[[i]], j,
+                                             cnms   = reTrms$sep[[i]]$cnms[[j]],     # this component's LHS column names
+                                             reXtrm = reXterms[[i]][[j]])
+                }
+            } else {
+                check_re_args(ss$reTrmClasses[i], aa, i,
+                                     cnms = reTrms$cnms[[i]], reXtrm = reXterms[[i]])
+            }
+        }
+
+        sepClasses <- lapply(ssSep, `[[`, "reTrmClasses")  
         ss <- unlist(ss$reTrmClasses)
 
         Z <- t(reTrms$Zt)   ## still sparse ...
@@ -941,7 +967,26 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
     ## list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
     ##      wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 
-    namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms)
+    namedList(X, Z, reTrms, ss, aa, terms, offset, reXterms, sepClasses, aa_sep)
+}
+
+##' Starting values for theta for a single covariance structure
+#' @param cls the structure name (e.g. \code{"us"}, \code{"propto"})
+#' @param th default starting values for this structure (length = its number of parameters)
+#' @param a the evaluated additional argument (a matrix for \code{propto} and \code{equalto})
+#' @param cnms column names of the term (or sep component), used for the \code{equalto} check
+#' @return the starting values, same length as \code{th}
+startTheta <- function(cls, th, a, cnms) {
+    res <- if (cls == "rr") {
+               rep(1, length(th))                          # rr starts at 1
+           } else if (cls == "propto") {
+               c(as.theta.vcov(a), 0)                      # last theta is lambda (proportional parameter)
+           } else if (cls == "equalto") {
+               checkEqualto(aa = a, cnms = cnms)
+               as.theta.vcov(a)
+           } else th
+    stopifnot(length(res) == length(th))
+    res
 }
 
 ##' Get theta parameterisation of a covariance structure
@@ -962,13 +1007,27 @@ as.theta.vcov <- function(Sigma, corrs.only=FALSE) {
   return(ret)
 }
 
+##' Fix (map to NA) the theta parameters of a structure that are not estimated
+#' @param cls the structure name
+#' @param idx the map indices for this structure's theta parameters
+#' @return \code{idx} with the fixed elements set to NA
+mapStrucTheta <- function(cls, idx) {
+  if (cls == "propto") {
+    idx[seq_len(length(idx) - 1)] <- NA        # only the last theta (lambda) is estimated
+  } else if (cls == "equalto") {
+    idx[] <- NA                                # everything fixed
+  }
+  idx
+}
+
 ##' Set map values for theta to be fixed (NA) for propto
 ## FIXME: Will need to adjust if map is already used
 #' @param ReStruc a random effects structure
 #' @param map a list of mapped elements
 #' @param component a character string specifying the parameter component to map
 #' @return the corresponding \code{theta} parameter vector
-map.theta.propto <- function(ReStruc, map, component) {
+map.theta.propto <- function(ReStruc, map, component,
+                             start = NULL, parameters = NULL) {
   if (is.null(map))
       params <- list()
   else
@@ -976,6 +1035,8 @@ map.theta.propto <- function(ReStruc, map, component) {
   
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
+
+  thetaName <- if (component == "cond") "theta" else paste0("theta", component) 
 
   nt <- sum(getVal(ReStruc, "blockNumTheta"))
   map.theta <- c(1:nt) #initialises all parameters as separate values
@@ -985,19 +1046,98 @@ map.theta.propto <- function(ReStruc, map, component) {
   thetaseq <- rep.int(seq_along(blockTheta), blockTheta)
   tl <- split(map.theta, thetaseq)
   for(i in 1:length(cov_code)){
-    if(cov_code[[i]] == 11) {
-      tl[[i]][1:(blockTheta[i] - 1)] <- rep(NA, blockTheta[i] - 1)
-    } else if(cov_code[[i]] == 15) { #for equalto
-      tl[[i]][1:(blockTheta[i])] <- rep(NA, blockTheta[i])
+    cls <- names(.valid_covstruct)[match(cov_code[i], .valid_covstruct)]
+    if (cls != "sep") {
+        tl[[i]] <- mapStrucTheta(cls, tl[[i]])
+    } else {
+        nt_j <- ReStruc[[i]]$blockSepNumTheta                    
+        nm   <- ReStruc[[i]]$blockSepNames                     
+        tj   <- split(tl[[i]], rep(seq_along(nt_j), nt_j))    
+        tl[[i]] <- unlist(lapply(seq_along(nm), function(j)
+                          mapStrucTheta(nm[j], tj[[j]])), use.names = FALSE)
     }
   }
   map.theta <- unlist(tl, use.names = FALSE)
-  if(component == "cond")
-    params$theta <- factor(map.theta)
-  else
-      params[[paste0("theta", component)]] <- factor(map.theta)
+  
+  ## allow user-supplied map/start to contain only the estimated parameters
+  fixed <- is.na(map.theta)
+  expand <- function(x, default) {
+    if (length(x) == length(default)) return(x)
+    if (length(x) != sum(!fixed))
+      stop("length(", thetaName, ")==", length(x), ", should be ", sum(!fixed),
+           " (estimated parameters) or ", length(default), " (all parameters)")
+    default[!fixed] <- x
+    default
+  }
+    
+  if (!is.null(params[[thetaName]])) {                                  # user supplied map params
+    user <- as.numeric(as.character(params[[thetaName]]))
+    map.theta <- ifelse(fixed, NA, expand(user, map.theta))  # if already fixed (i.e., set to NA) keep NA, otherwise
+  }
+  if (!is.null(start[[thetaName]]))                                     # NEW
+    start[[thetaName]] <- expand(start[[thetaName]], parameters[[thetaName]])
 
-  return(params)
+  params[[thetaName]] <- factor(map.theta)    
+  
+  return(list(map = params, start = start))  
+}
+
+#' Check structures ar1, hetar1, ou, exp etc and return any derived data
+#'
+#' @param ss_j structure name, e.g. `"ar1"`, `"ou"`, `"exp"`
+#' @param cnms_j cnms for this component
+#' @param xterms_i \code{reXterms[[i]]} (the outer grouping term, same for sep components)
+#' @param fr model frame
+#' @return a list with elements \code{times} and \code{dist}, either populated or \code{NULL}
+#' @noRd
+checkCovStruc <- function(ss_j, cnms_j, xterms_i, fr) {
+    out <- list(times = NULL, dist = NULL)
+
+    if (ss_j %in% c("ar1", "hetar1")) {
+        if (any(cnms_j[1] == "(Intercept)"))
+            warning(paste0(ss_j, "() not meaningful with intercept"), call. = FALSE)
+        if (length(.getXlevels(xterms_i, fr)) != 1)
+            stop(paste0(ss_j,
+                        "() expects a single factor variable as the time component"), call. = FALSE)
+
+    } else if (ss_j == "ou") {
+        times <- parseNumLevels(cnms_j)
+        if (ncol(times) != 1)
+            stop("'ou' structure is for 1D coordinates only.", call. = FALSE)
+        if (is.unsorted(times, strictly = TRUE))
+            stop("'ou' is for strictly sorted times only.", call. = FALSE)
+        out$times <- drop(times)
+
+    } else if (ss_j %in% c("exp", "gau", "mat")) {
+        coords <- parseNumLevels(cnms_j)
+        out$dist <- as.matrix(dist(coords))
+    }
+    out
+}
+
+
+##' Number of theta parameters for each component of a separable (sep) term
+#' @param ss a character vector of covariance structure names, one per random-effects term (\code{"sep"} for separable terms)
+#' @param sepClasses a list with one element per term: \code{NULL} for ordinary terms, otherwise the structure names of the components (e.g. \code{c("us", "propto")})
+#' @param aa_sep a list with one element per term: \code{NULL} for ordinary terms, otherwise the evaluated additional arguments of each component
+#' @param reTrms a list returned by \code{mkReTrms}; \code{reTrms$sep[[i]]$dims} gives the size of each Kronecker factor
+#' @param blksize a numeric vector of block sizes, one per term
+#' @param parFun a function \code{(struc, blksize, blkrank)} returning the number of parameters of a covariance structure
+#' @param getRank a function \code{(cov_name, a)} returning the rank of a reduced-rank (\code{rr}) structure
+#' @return a list with one element per term: \code{NULL} for ordinary terms, otherwise a numeric vector with the number of \code{theta} parameters of each component
+parFunSep <- function(ss, sepClasses, aa_sep, reTrms, blksize, parFun, getRank) {
+    out <- vector("list", length(ss))
+    for (i in which(ss == "sep")) {
+      cls  <- sepClasses[[i]]
+      sepi  <- reTrms[["sep"]][[i]]
+      csize <- sepi$dims
+      creps <- sepi$nrep
+      if (prod(csize * creps) != blksize[i])
+        stop("sep term ", i, ": block sizes x reps do not multiply to the sep block size", call. = FALSE)
+      rk <- mapply(getRank, cls, aa_sep[[i]])
+      out[[i]] <- unlist(mapply(parFun, cls, csize, rk, SIMPLIFY = FALSE), use.names = FALSE)
+    }
+    out
 }
 
 ##' Extract grouping variables for random effect terms from a factor list
@@ -1048,7 +1188,7 @@ getGrpVar <- function(x)
 ##' getReStruc(rt2)
 ##' @importFrom stats setNames dist .getXlevels
 ##' @export
-getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_cor=NULL) {
+getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_cor=NULL, sepClasses = NULL, aa_sep = NULL) {
 
     ## information from ReTrms is contained in cnms, flist elements
     ## cnms: list of column-name vectors per term
@@ -1071,6 +1211,14 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
 
     if (is.null(aa)) {
         aa <- rep(NA, length(blksize))
+    }
+
+    if (is.null(sepClasses)) {
+        sepClasses <- rep("us",length(blksize))
+    }
+
+    if (is.null(aa_sep)) {
+        aa_sep <- rep(NA, length(blksize))
     }
 
     getRank <- function(cov_name, a) {
@@ -1102,7 +1250,12 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
-    blockNumTheta <- mapply(parFun, ss, blksize, blkrank, SIMPLIFY=FALSE)
+    sepTrms <- ss == "sep"
+    blockNumTheta <- vector("list", length(ss))
+    blockNumTheta[!sepTrms] <- mapply(parFun,  ss[!sepTrms], blksize[!sepTrms], blkrank[!sepTrms], SIMPLIFY=FALSE)
+
+    sepNumTheta <- parFunSep(ss, sepClasses, aa_sep, reTrms, blksize, parFun, getRank)
+    blockNumTheta[sepTrms] <- lapply(sepNumTheta[sepTrms], sum)
 
     covCode <- .valid_covstruct[ss]
 
@@ -1119,23 +1272,33 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                     simCode = simCode[i],
                     fullCor = as.integer(full_cor[i])
                     )
-        if(ss[i] %in% c("ar1", "hetar1")) {
-            ## FIXME: Keep this warning ?
-            if (any(reTrms$cnms[[i]][1] == "(Intercept)") )
-                warning(paste0(ss[i], "() not meaningful with intercept"))
-            if (length(.getXlevels(reXterms[[i]],fr))!=1) {
-                stop(paste0(ss[i], "() expects a single, factor variable as the time component"))
+        if (ss[i] != "sep") {
+            chk <- checkCovStruc(ss[i], reTrms$cnms[[i]], reXterms[[i]], fr)
+            if (!is.null(chk$times)) tmp$times <- chk$times
+            if (!is.null(chk$dist))  tmp$dist  <- chk$dist
+        }
+        if (ss[i] == "sep") {                               
+            tmp$blockSepReps    <- reTrms[["sep"]][[i]]$nrep 
+            tmp$blockSepSizes    <- reTrms[["sep"]][[i]]$dims 
+            tmp$blockSepNumTheta <- sepNumTheta[[i]]  
+            tmp$blockSepNames    <- sepClasses[[i]]          
+            tmp$blockSepCnms <- reTrms[["sep"]][[i]]$cnms  
+
+            sepNames <- sepClasses[[i]]
+            if (any(sepNames %in% c("ou", "ar1", "hetar1", "exp", "gau", "mat"))) {
+                sepTimes <- vector("list", length(sepNames))
+                sepDists <- vector("list", length(sepNames))
+
+                for (j in seq_along(sepNames)) {
+                    chk <- checkCovStruc(sepNames[[j]], reTrms[["sep"]][[i]]$cnms[[j]], reXterms[[i]][[j]], fr)
+                    if (!is.null(chk$times)) sepTimes[[j]] <- chk$times
+                    if (!is.null(chk$dist))  sepDists[[j]] <- chk$dist
+                }
+                if (!all(vapply(sepTimes, is.null, logical(1))))
+                    tmp$blockSepTimes <- sepTimes
+                if (!all(vapply(sepDists, is.null, logical(1))))
+                    tmp$blockSepDists <- sepDists
             }
-        } else if(ss[i] == "ou") {
-            times <- parseNumLevels(reTrms$cnms[[i]])
-            if (ncol(times) != 1)
-                stop("'ou' structure is for 1D coordinates only.")
-            if (is.unsorted(times, strictly=TRUE))
-                stop("'ou' is for strictly sorted times only.")
-            tmp$times <- drop(times)
-        } else if(ss[i] %in% c("exp", "gau", "mat")){
-            coords <- parseNumLevels(reTrms$cnms[[i]])
-            tmp$dist <- as.matrix( dist(coords) )
         }
         ans[[i]] <- tmp
     }
