@@ -696,18 +696,34 @@ test_that("ordinal threshold labels select their own row with random effects", {
     expect_equal(confint(m, parm = c("tempwarm", "4|5", "theta_1|judge.1")),
                  ci_w[c("cond.tempwarm", "4|5",
                         "cond.Std.Dev.(Intercept)|judge"), ])
-    ## a threshold whose psi element is fixed via map
+    ## a numeric parm indexes the Wald rows after component selection
+    expect_equal(confint(m, parm = 3), ci_w[3, , drop = FALSE])
+    expect_equal(confint(m, parm = -1), ci_w[-1, , drop = FALSE])
+    ci_o <- confint(m, component = "other")
+    expect_equal(confint(m, component = "other", parm = 1),
+                 ci_o[1, , drop = FALSE])
+    ## psi names and "psi_" give the thresholds
+    expect_equal(confint(m, parm = "psi2"), ci_w["2|3", , drop = FALSE])
+    expect_equal(confint(m, parm = "psi_"),
+                 ci_w[c("1|2", "2|3", "3|4", "4|5"), ])
+    ## a threshold outside the selected component
+    expect_error(confint(m, component = "cond", parm = "1|2"),
+                 "not in the selected component")
+    ## a threshold whose psi element is fixed via map keeps its Wald row
     mm <- glmmTMB(rating ~ temp + (1 | judge), data = wine,
                   family = ordinal(),
                   map = list(psi = factor(c(1, NA, 2, 3))),
                   start = list(psi = c(0, 0.5, 0, 0)))
     ci_m <- confint(mm)
-    expect_equal(confint(mm, parm = c("3|4", "1|2")),
-                 ci_m[c("3|4", "1|2"), ])
-    expect_error(confint(mm, parm = "2|3"),
-                 "is fixed or tied to another element via 'map'")
+    expect_equal(confint(mm, parm = c("3|4", "2|3", "tempwarm")),
+                 ci_m[c("3|4", "2|3", "cond.tempwarm"), ])
+    expect_equal(confint(mm, parm = "psi_"),
+                 ci_m[c("1|2", "2|3", "3|4", "4|5"), ])
     expect_equal(confint(mm, parm = "2|3", include_nonest = TRUE),
                  ci_m["2|3", , drop = FALSE])
+    ## but its psi element cannot be profiled
+    expect_error(confint(mm, parm = "2|3", method = "uniroot"),
+                 "is fixed or tied to another element via 'map'")
 })
 
 test_that("ordinal working residuals are refused", {

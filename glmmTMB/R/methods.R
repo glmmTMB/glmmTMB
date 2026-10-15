@@ -1241,8 +1241,20 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
 
+    thr_lab <- NULL
     if (!is.null(parm) || method != "wald") {
         parm0 <- parm
+        if (method == "wald" && is.character(parm) &&
+            family(object)$family == "ordinal") {
+            ## ordinal thresholds are derived from psi and keep their Wald
+            ## rows when a user 'map' fixes psi, so threshold labels (and
+            ## "psi_", all of them) select those rows by name below; only
+            ## the other names go through getParms()
+            thr <- names(family_params(object))
+            if (identical(parm, "psi_")) parm0 <- parm <- thr
+            thr_lab <- parm %in% thr
+            parm <- parm[!thr_lab]
+        }
         parm <- getParms(parm, object, full, include_nonest = include_nonest)
     }
 
@@ -1380,15 +1392,25 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         
         ## now get selected parameters
         if (!is.null(parm)) {
-            if (length(thr_names) > 0) {
-                ## ordinal: 'parm' indexes the rows of vcov(full = TRUE),
-                ## where the psi block comes last, but the rows above put
-                ## the thresholds before the random-effect SDs; map each
-                ## psi row to the threshold it is derived from
+            if (!is.null(thr_lab)) {
+                ## ordinal, parameters named: getParms() gave positions in
+                ## vcov(full = TRUE), where the psi block comes last, but
+                ## the rows above put the thresholds before the
+                ## random-effect SDs. Map psi positions ("psi2") to the
+                ## threshold each gives and the other positions to the
+                ## remaining rows in order; threshold labels match by name.
+                ## (A numeric 'parm' indexes the rows above directly.)
                 is_thr <- rownames(ci) %in% thr_names
                 j <- match(parm, psi_block_pos(object, include_nonest))
                 thr_row <- which(is_thr)[ordinal_psi_present(object, include_nonest)]
-                parm <- ifelse(is.na(j), which(!is_thr)[parm], thr_row[j])
+                sel <- integer(length(parm0))
+                sel[thr_lab] <- match(parm0[thr_lab], rownames(ci))
+                sel[!thr_lab] <- ifelse(is.na(j), which(!is_thr)[parm], thr_row[j])
+                if (anyNA(sel)) {
+                    stop("parameters not in the selected component(s): ",
+                         paste(parm0[is.na(sel)], collapse = ", "))
+                }
+                parm <- sel
             }
             ci <- ci[parm, , drop=FALSE]
         } else {

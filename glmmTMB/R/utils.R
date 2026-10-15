@@ -219,10 +219,8 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
                         stop("the psi parameter of threshold ",
                              paste(parm[fixed_thr], collapse = ", "),
                              " is fixed or tied to another element via 'map',",
-                             " so it cannot be selected",
-                             " among the estimated parameters",
-                             " (Wald confint() can report it with",
-                             " include_nonest = TRUE)")
+                             " so it cannot be profiled",
+                             " (Wald confint() reports the threshold)")
                     }
                 }
             }
