@@ -65,6 +65,10 @@
       parameters, so when a parameter was fixed via \code{map} (including
       the intercept the \code{ordinal} family fixes internally), the rows
       after it carried the wrong labels
+      \item for the \code{ordinal} family with random effects, Wald
+      \code{confint()} with \code{parm} given by name (e.g.
+      \code{"theta_"}) returned the wrong rows, because its table lists
+      the thresholds before the random-effect standard deviations
     } % itemize
   } % bug fixes
 } % 1.1.15.9000

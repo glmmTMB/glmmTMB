@@ -810,9 +810,9 @@ ordinal_thresholds <- function(object) {
 ## rows/columns are set to zero before the delta method (as
 ## pad_mapped_vcov() does for fixed coefficients); with every element
 ## fixed the thresholds get standard error 0
-ordinal_psi_vcov <- function(object, Vfull = vcov(object, full = TRUE)) {
+ordinal_psi_vcov <- function(object) {
     vi <- psi_block_pos(object)
-    V <- as.matrix(Vfull)[vi, vi, drop = FALSE]
+    V <- as.matrix(vcov(object, full = TRUE))[vi, vi, drop = FALSE]
     pmap <- object$obj$env$map[["psi"]]
     if (!is.null(pmap)) {
         fixed <- which(is.na(pmap))
@@ -1165,7 +1165,9 @@ format_perc <- function (probs, digits) {
 #' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)});
 #'   for the \code{ordinal} family a threshold label (e.g. \code{"Low|Medium"})
 #'   selects the threshold for Wald intervals and the internal \code{psi}
-#'   parameter it is derived from for profile and uniroot intervals
+#'   parameter it is derived from for profile and uniroot intervals; in
+#'   Wald intervals \code{"psi_"} and the names of estimated \code{psi}
+#'   elements also select the corresponding thresholds
 #' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 #' }
 #'  Parameter indexing by number may give unusual results when
@@ -1241,21 +1243,25 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
 
-    thr_lab <- NULL
+    ord_sel <- NULL
     if (!is.null(parm) || method != "wald") {
         parm0 <- parm
         if (method == "wald" && is.character(parm) &&
-            family(object)$family == "ordinal") {
+            object$modelInfo$family$family == "ordinal") {
             ## ordinal thresholds are derived from psi and keep their Wald
-            ## rows when a user 'map' fixes psi, so threshold labels (and
-            ## "psi_", all of them) select those rows by name below; only
-            ## the other names go through getParms()
+            ## rows when a user 'map' fixes psi, so a threshold label (and
+            ## "psi_" alone, all of them) selects its row by name below;
+            ## each other element, a name or a keyword such as "theta_",
+            ## gives all its vcov(full = TRUE) positions via getParms()
             thr <- names(family_params(object))
             if (identical(parm, "psi_")) parm0 <- parm <- thr
-            thr_lab <- parm %in% thr
-            parm <- parm[!thr_lab]
+            ord_sel <- lapply(parm, function(p) {
+                if (p %in% thr) p
+                else getParms(p, object, full, include_nonest = include_nonest)
+            })
+        } else {
+            parm <- getParms(parm, object, full, include_nonest = include_nonest)
         }
-        parm <- getParms(parm, object, full, include_nonest = include_nonest)
     }
 
     wald_comp <- function(component) {
@@ -1392,7 +1398,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         
         ## now get selected parameters
         if (!is.null(parm)) {
-            if (!is.null(thr_lab)) {
+            if (!is.null(ord_sel)) {
                 ## ordinal, parameters named: getParms() gave positions in
                 ## vcov(full = TRUE), where the psi block comes last, but
                 ## the rows above put the thresholds before the
@@ -1401,16 +1407,20 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                 ## remaining rows in order; threshold labels match by name.
                 ## (A numeric 'parm' indexes the rows above directly.)
                 is_thr <- rownames(ci) %in% thr_names
-                j <- match(parm, psi_block_pos(object, include_nonest))
+                psi_pos <- psi_block_pos(object, include_nonest)
                 thr_row <- which(is_thr)[ordinal_psi_present(object, include_nonest)]
-                sel <- integer(length(parm0))
-                sel[thr_lab] <- match(parm0[thr_lab], rownames(ci))
-                sel[!thr_lab] <- ifelse(is.na(j), which(!is_thr)[parm], thr_row[j])
-                if (anyNA(sel)) {
+                other_row <- which(!is_thr)
+                rows <- lapply(ord_sel, function(p) {
+                    if (is.character(p)) return(match(p, rownames(ci)))
+                    j <- match(p, psi_pos)
+                    as.integer(ifelse(is.na(j), other_row[p], thr_row[j]))
+                })
+                bad <- vapply(rows, anyNA, logical(1))
+                if (any(bad)) {
                     stop("parameters not in the selected component(s): ",
-                         paste(parm0[is.na(sel)], collapse = ", "))
+                         paste(parm0[bad], collapse = ", "))
                 }
-                parm <- sel
+                parm <- unlist(rows)
             }
             ci <- ci[parm, , drop=FALSE]
         } else {

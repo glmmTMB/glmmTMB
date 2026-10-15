@@ -706,6 +706,23 @@ test_that("ordinal threshold labels select their own row with random effects", {
     expect_equal(confint(m, parm = "psi2"), ci_w["2|3", , drop = FALSE])
     expect_equal(confint(m, parm = "psi_"),
                  ci_w[c("1|2", "2|3", "3|4", "4|5"), ])
+    ## keywords expand to all their rows, also inside a vector, in order
+    m2 <- glmmTMB(rating ~ temp + contact + (1 | judge) + (1 | bottle),
+                  data = wine, family = ordinal())
+    ci_2 <- confint(m2)
+    th_rows <- grep("Std.Dev", rownames(ci_2))
+    expect_length(th_rows, 2)
+    expect_equal(unname(confint(m2, parm = "beta_")),
+                 unname(ci_2[c("cond.tempwarm", "cond.contactyes"), ]))
+    expect_equal(unname(confint(m2, parm = "theta_")),
+                 unname(ci_2[th_rows, ]))
+    expect_equal(confint(m2, parm = c("4|5", "theta_", "tempwarm")),
+                 ci_2[c("4|5", rownames(ci_2)[th_rows], "cond.tempwarm"), ])
+    m0 <- glmmTMB(rating ~ temp, data = wine, family = ordinal())
+    expect_equal(nrow(confint(m0, parm = "theta_")), 0)
+    expect_equal(nrow(confint(m0, parm = "disp_")), 0)
+    expect_equal(confint(m0, parm = c("theta_", "1|2")),
+                 confint(m0)["1|2", , drop = FALSE])
     ## a threshold outside the selected component
     expect_error(confint(m, component = "cond", parm = "1|2"),
                  "not in the selected component")
