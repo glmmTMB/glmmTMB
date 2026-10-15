@@ -1807,6 +1807,23 @@ refit.glmmTMB <- function(object, newresp, ...) {
   mf0 <- model.frame(object)
   rcol <- attr(attr(mf0, "terms"), "response")
   rnm <- deparse(fresp)
+  ## accept simulate() output directly
+  if (is.data.frame(newresp) && length(newresp) == 1) newresp <- newresp[[1]]
+  ## newresp is inserted into the original data, so a response with one
+  ## value per observation used in the fit must be padded with NAs in the
+  ## rows dropped by na.action (napredict() only pads for class "exclude")
+  na.act <- attr(mf0, "na.action")
+  if (length(na.act) > 0 && NROW(newresp) == nrow(mf0) &&
+      nrow(mf0) + length(na.act) == nrow(newdata)) {
+      class(na.act) <- "exclude"
+      newresp <- napredict(na.act, newresp)
+  }
+  if (NROW(newresp) != nrow(newdata)) {
+      stop(sprintf(paste("'newresp' has %d rows but the original data has %d;",
+                         "refit() does not work for models fitted with 'subset',",
+                         "or if the data have changed since fitting"),
+                   NROW(newresp), nrow(newdata)))
+  }
   if (binomialType(family(object)$family)) {
       ## FIXME: check for factor column?
       if ("(weights)" %in% names(mf0)) {
