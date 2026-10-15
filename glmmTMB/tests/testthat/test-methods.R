@@ -349,6 +349,12 @@ test_that("confint with mapped parameters", {
     ## getParms("theta_", test2) ## 4:5
     ## getParms("theta_", test2, include_mapped = TRUE) ## 5:6
 
+    ## uniroot rows are the estimated parameters: labels must skip the
+    ## mapped one rather than shift (the x row used to carry z's interval)
+    cu <- confint(test2, parm = "beta_", method = "uniroot")
+    expect_equal(rownames(cu), c("(Intercept)", "z"))
+    expect_equal(cu[, "Estimate"], fixef(test2)$cond[c("(Intercept)", "z")])
+
     c3 <- confint(test2)
     expect_equal(nrow(c3), 4)
     expect_equal(rownames(c3),
