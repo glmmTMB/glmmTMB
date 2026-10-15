@@ -1250,13 +1250,13 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             object$modelInfo$family$family == "ordinal") {
             ## ordinal thresholds are derived from psi and keep their Wald
             ## rows when a user 'map' fixes psi, so a threshold label (and
-            ## "psi_" alone, all of them) selects its row by name below;
-            ## each other element, a name or a keyword such as "theta_",
-            ## gives all its vcov(full = TRUE) positions via getParms()
+            ## "psi_", all of them) selects its row by name below; each
+            ## other element, a name or a keyword such as "theta_", gives
+            ## all its vcov(full = TRUE) positions via getParms()
             thr <- names(family_params(object))
-            if (identical(parm, "psi_")) parm0 <- parm <- thr
             ord_sel <- lapply(parm, function(p) {
-                if (p %in% thr) p
+                if (identical(p, "psi_")) thr
+                else if (p %in% thr) p
                 else getParms(p, object, full, include_nonest = include_nonest)
             })
         } else {
@@ -1421,6 +1421,15 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                          paste(parm0[bad], collapse = ", "))
                 }
                 parm <- unlist(rows)
+            } else if (is.character(parm0) &&
+                       any(lengths(object$modelInfo$reStruc) > 0) &&
+                       any(parm %in% psi_block_pos(object, include_nonest))) {
+                ## other families: the rows above put the family parameter
+                ## before the random-effect SDs, so its vcov(full = TRUE)
+                ## position does not index them
+                stop("selecting the family parameter by name in Wald",
+                     " intervals is not supported for this family in models",
+                     " with random effects")
             }
             ci <- ci[parm, , drop=FALSE]
         } else {

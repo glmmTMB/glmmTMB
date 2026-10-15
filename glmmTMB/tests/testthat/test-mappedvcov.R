@@ -128,3 +128,19 @@ test_that("mapping a non-intercept coefficient also works", {
     expect_true(is.na(a2["mined", "Chisq"]))
     expect_false(is.na(a2["spp", "Chisq"]))
 })
+
+test_that("Wald confint() refuses a family parameter by name with random effects", {
+    ## the Wald rows put the family parameter before the random-effect
+    ## SDs, so a name resolved to its vcov(full = TRUE) position would
+    ## select a random-effect row
+    set.seed(5)
+    d <- data.frame(g = factor(rep(1:10, each = 20)), x = rnorm(200))
+    d$y <- 1 + d$x + rep(rnorm(10), each = 20) + rt(200, df = 5)
+    ft <- glmmTMB(y ~ x + (1 | g), data = d, family = t_family(),
+                  map = list(psi = factor(NA)), start = list(psi = log(5)))
+    expect_error(confint(ft, parm = "Student-t df", include_nonest = TRUE),
+                 "not supported for this family")
+    ## other names still select their rows
+    ci <- confint(ft)
+    expect_equal(confint(ft, parm = "x"), ci["x", , drop = FALSE])
+})

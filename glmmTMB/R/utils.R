@@ -226,7 +226,7 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
             }
             if (any(is.na(nparm))) {
                 stop("unrecognized parameter names: ",
-                     parm[is.na(nparm)])
+                     paste(parm[is.na(nparm)], collapse = ", "))
             }
             parm <- nparm
         }

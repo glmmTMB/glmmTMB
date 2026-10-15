@@ -736,6 +736,8 @@ test_that("ordinal threshold labels select their own row with random effects", {
                  ci_m[c("3|4", "2|3", "cond.tempwarm"), ])
     expect_equal(confint(mm, parm = "psi_"),
                  ci_m[c("1|2", "2|3", "3|4", "4|5"), ])
+    expect_equal(confint(mm, parm = c("psi_", "tempwarm")),
+                 ci_m[c("1|2", "2|3", "3|4", "4|5", "cond.tempwarm"), ])
     expect_equal(confint(mm, parm = "2|3", include_nonest = TRUE),
                  ci_m["2|3", , drop = FALSE])
     ## but its psi element cannot be profiled

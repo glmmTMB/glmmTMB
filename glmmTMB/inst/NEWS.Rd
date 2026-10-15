@@ -68,7 +68,10 @@
       \item for the \code{ordinal} family with random effects, Wald
       \code{confint()} with \code{parm} given by name (e.g.
       \code{"theta_"}) returned the wrong rows, because its table lists
-      the thresholds before the random-effect standard deviations
+      the thresholds before the random-effect standard deviations. For
+      other families with a family parameter (\code{psi}) and random
+      effects, a \code{parm} that names that parameter now gives an error
+      instead of a random-effect row
     } % itemize
   } % bug fixes
 } % 1.1.15.9000
