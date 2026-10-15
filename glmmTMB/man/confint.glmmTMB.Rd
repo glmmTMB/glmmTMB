@@ -27,7 +27,8 @@
 \item by index (position) [\emph{after} component selection for \code{confint}, if any]
 \item by name (matching the row/column names of \code{vcov(object,full=TRUE)});
   for the \code{ordinal} family a threshold label (e.g. \code{"Low|Medium"})
-  selects the internal \code{psi} parameter it is derived from
+  selects the threshold for Wald intervals and the internal \code{psi}
+  parameter it is derived from for profile and uniroot intervals
 \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 }
  Parameter indexing by number may give unusual results when

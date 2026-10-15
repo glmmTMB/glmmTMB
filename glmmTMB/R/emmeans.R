@@ -307,10 +307,12 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         k <- length(theta)
         if (missing(vcov.)) {
             Vfull <- as.matrix(vcov(object, full = TRUE))
-            ## the internal threshold parameters are the "psi1", ...
-            ## rows of the full vcov (see getParnames())
-            vi <- match(c(names(beta), paste0("psi", seq_len(k))),
-                        rownames(Vfull))
+            ## the conditional coefficients come first in the full
+            ## vcov and the internal threshold parameters form its psi
+            ## block, taken by position (a fixed-effect column may also
+            ## be called "psi2")
+            vi <- c(match(names(beta), rownames(Vfull)),
+                    psi_block_pos(object))
             V <- Vfull[vi, vi, drop = FALSE]
             ## coefficients fixed via 'map' are known constants (NA
             ## rows/columns in the full vcov): zero them, as

@@ -28,8 +28,9 @@
       are on the internal (softmax) scale. The thresholds themselves have
       Wald intervals only, from \code{confint()}; \code{confint()} and
       \code{summary()} report the thresholds on the threshold scale. The
-      threshold labels are still accepted in \code{parm} and select the
-      \code{psi} element they are derived from
+      threshold labels are still accepted in \code{parm}: Wald
+      \code{confint()} returns the threshold, and the profile methods the
+      \code{psi} element it is derived from
       \item \code{residuals(type = "working")} is now an error for the
       \code{ordinal} family (the response residual is on the
       category-index scale, so the GLM working residual is not defined)
@@ -53,11 +54,12 @@
       labels, or for the \code{ordinal} family the expansion failed with
       "number of items to replace is not a multiple of replacement
       length"). A random effect in the dispersion model fixed via
-      \code{map = list(thetadisp = )} no longer fails at fit time with
+      \code{map = list(thetadisp = )} no longer makes \code{vcov()} and
+      \code{summary()} fail with
       "missing value where TRUE/FALSE needed". For the \code{ordinal} family,
       \code{summary()}, Wald \code{confint()} and \code{emmeans} treat
       user-fixed \code{psi} elements as known constants in the threshold
-      standard errors (both fixed gives standard error 0)
+      standard errors (with every element fixed, the standard errors are 0)
       \item \code{confint(method = "uniroot")} labelled its rows from
       the full parameter list while computing them for the estimated
       parameters, so when a parameter was fixed via \code{map} (including

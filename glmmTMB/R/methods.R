@@ -804,14 +804,14 @@ ordinal_thresholds <- function(object) {
 }
 
 ## ordinal family: covariance matrix of the internal psi parameters,
-## taken from the "psi1", ..., "psi(K-1)" rows of vcov(., full = TRUE).
+## taken from the psi block of vcov(., full = TRUE) by position
+## (psi_block_pos()).
 ## psi elements fixed via a user 'map' are known constants, so their NA
 ## rows/columns are set to zero before the delta method (as
 ## pad_mapped_vcov() does for fixed coefficients); with every element
 ## fixed the thresholds get standard error 0
 ordinal_psi_vcov <- function(object, Vfull = vcov(object, full = TRUE)) {
-    k <- length(object$modelInfo$ord_levels) - 1L
-    vi <- match(paste0("psi", seq_len(k)), rownames(Vfull))
+    vi <- psi_block_pos(object)
     V <- as.matrix(Vfull)[vi, vi, drop = FALSE]
     pmap <- object$obj$env$map[["psi"]]
     if (!is.null(pmap)) {
@@ -1164,7 +1164,8 @@ format_perc <- function (probs, digits) {
 #' \item by index (position) [\emph{after} component selection for \code{confint}, if any]
 #' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)});
 #'   for the \code{ordinal} family a threshold label (e.g. \code{"Low|Medium"})
-#'   selects the internal \code{psi} parameter it is derived from
+#'   selects the threshold for Wald intervals and the internal \code{psi}
+#'   parameter it is derived from for profile and uniroot intervals
 #' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 #' }
 #'  Parameter indexing by number may give unusual results when
@@ -1379,6 +1380,16 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         
         ## now get selected parameters
         if (!is.null(parm)) {
+            if (length(thr_names) > 0) {
+                ## ordinal: 'parm' indexes the rows of vcov(full = TRUE),
+                ## where the psi block comes last, but the rows above put
+                ## the thresholds before the random-effect SDs; map each
+                ## psi row to the threshold it is derived from
+                is_thr <- rownames(ci) %in% thr_names
+                j <- match(parm, psi_block_pos(object, include_nonest))
+                thr_row <- which(is_thr)[ordinal_psi_present(object, include_nonest)]
+                parm <- ifelse(is.na(j), which(!is_thr)[parm], thr_row[j])
+            }
             ci <- ci[parm, , drop=FALSE]
         } else {
             ## drop residual std dev/trivial dispersion parameter

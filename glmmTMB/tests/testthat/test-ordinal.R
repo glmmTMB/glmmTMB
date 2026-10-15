@@ -453,9 +453,9 @@ test_that("emmeans mode argument is rejected off the ordinal branch", {
 ## formula, mapped psi and the profile-type interval methods. Oracle
 ## records for the numeric assertions (ID: type; asserting block; source):
 ##   ORD-ID-1: invariant; "ordinal user map on another component keeps the
-##     intercept fixed" and "ordinal intercept-free formula is refitted
+##     intercept fixed" and "ordinal intercept-free formula is fitted
 ##     with an intercept"; the unmapped with-intercept fit fit_ord (GH #1348)
-##   ORD-ID-2: live; "ordinal intercept-free formula is refitted with an
+##   ORD-ID-2: live; "ordinal intercept-free formula is fitted with an
 ##     intercept", logLik and predict(type = "probs"); ordinal::clm on the
 ##     same intercept-free formula, which also assumes an intercept
 ##   ORD-ID-3: closed-form; "ordinal mapped psi: vcov, summary and Wald
@@ -490,7 +490,7 @@ test_that("ordinal user map on another component keeps the intercept fixed", {
     expect_equal(c(logLik(fit_map)), c(logLik(fit_ord)), tolerance = 1e-6)
 })
 
-test_that("ordinal intercept-free formula is refitted with an intercept", {
+test_that("ordinal intercept-free formula is fitted with an intercept", {
     ## as ordinal::clm and MASS::polr: warn, then assume the intercept
     for (ff in list(Sat ~ 0 + Infl + Type + Cont,
                     Sat ~ Infl + Type + Cont - 1)) {
@@ -667,10 +667,47 @@ test_that("ordinal psi labels do not collide with a fixed-effect column", {
     ## the fixed-effect block is the fixed-effect vcov
     expect_equal(unname(V[2:3, 2:3]),
                  unname(as.matrix(vcov(m, include_nonest = FALSE)$cond)))
-    ## and the threshold standard errors come from the psi block
-    th <- summary(m)$thresholds
-    expect_true(all(is.finite(th[, "Std. Error"])))
-    expect_true(all(th[, "Std. Error"] > 0))
+    ## the threshold standard errors, Wald intervals and emmeans come
+    ## from the psi block, so they equal those of the same model with
+    ## the factor renamed (no collision)
+    wine$grp <- wine$psi
+    m0 <- glmmTMB(rating ~ temp + grp, data = wine, family = ordinal())
+    expect_equal(summary(m)$thresholds, summary(m0)$thresholds,
+                 tolerance = 1e-6)
+    expect_equal(confint(m, parm = "1|2"), confint(m0, parm = "1|2"),
+                 tolerance = 1e-6)
+    skip_if_not_installed("emmeans")
+    em <- summary(emmeans::emmeans(m, ~ rating | temp, mode = "prob"))
+    em0 <- summary(emmeans::emmeans(m0, ~ rating | temp, mode = "prob"))
+    expect_equal(em$SE, em0$SE, tolerance = 1e-6)
+})
+
+test_that("ordinal threshold labels select their own row with random effects", {
+    ## the Wald rows put the thresholds before the random-effect SDs,
+    ## while parm indexes vcov(full = TRUE), where psi comes last
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    m <- glmmTMB(rating ~ temp + (1 | judge), data = wine,
+                 family = ordinal())
+    ci_w <- confint(m)
+    for (lab in c("1|2", "2|3", "3|4", "4|5")) {
+        expect_equal(confint(m, parm = lab), ci_w[lab, , drop = FALSE])
+    }
+    expect_equal(confint(m, parm = c("tempwarm", "4|5", "theta_1|judge.1")),
+                 ci_w[c("cond.tempwarm", "4|5",
+                        "cond.Std.Dev.(Intercept)|judge"), ])
+    ## a threshold whose psi element is fixed via map
+    mm <- glmmTMB(rating ~ temp + (1 | judge), data = wine,
+                  family = ordinal(),
+                  map = list(psi = factor(c(1, NA, 2, 3))),
+                  start = list(psi = c(0, 0.5, 0, 0)))
+    ci_m <- confint(mm)
+    expect_equal(confint(mm, parm = c("3|4", "1|2")),
+                 ci_m[c("3|4", "1|2"), ])
+    expect_error(confint(mm, parm = "2|3"),
+                 "is fixed or tied to another element via 'map'")
+    expect_equal(confint(mm, parm = "2|3", include_nonest = TRUE),
+                 ci_m["2|3", , drop = FALSE])
 })
 
 test_that("ordinal working residuals are refused", {

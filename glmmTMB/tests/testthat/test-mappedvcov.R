@@ -100,7 +100,7 @@ test_that("vcov(full = TRUE) handles a mapped family parameter (psi)", {
 
 test_that("vcov(full = TRUE) handles a mapped dispersion random effect", {
     ## the thetadisp map used to hit an NA index in par_components and
-    ## fail at fit time; the cond and disp theta rows share a name, so
+    ## make vcov() and summary() fail; the cond and disp theta rows share a name, so
     ## the full vcov must be filled by position
     skip_if_not_installed("lme4")
     data("sleepstudy", package = "lme4")

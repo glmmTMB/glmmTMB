@@ -203,14 +203,29 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
                    identical(parm, "sigma")) {
             parm <- grep("^betadisp", intnames)
         } else { ## generic parameter vector
+            nparm <- match(parm,pnames)
             ## ordinal: a threshold label ("Low|Medium") selects the
-            ## internal psi parameter it is derived from, since the vcov
-            ## rows are labelled psi1, psi2, ... (see getParnames())
+            ## internal psi parameter it is derived from (the vcov rows
+            ## are labelled psi1, psi2, ...; see getParnames()), found by
+            ## position within the psi block
             if (family(object)$family == "ordinal") {
                 thr <- match(parm, names(family_params(object)))
-                parm[!is.na(thr)] <- paste0("psi", thr[!is.na(thr)])
+                if (any(!is.na(thr))) {
+                    psi_rows <- psi_block_pos(object, include_nonest)
+                    present <- ordinal_psi_present(object, include_nonest)
+                    nparm[!is.na(thr)] <- psi_rows[match(thr[!is.na(thr)], present)]
+                    fixed_thr <- !is.na(thr) & is.na(nparm)
+                    if (any(fixed_thr)) {
+                        stop("the psi parameter of threshold ",
+                             paste(parm[fixed_thr], collapse = ", "),
+                             " is fixed or tied to another element via 'map',",
+                             " so it cannot be selected",
+                             " among the estimated parameters",
+                             " (Wald confint() can report it with",
+                             " include_nonest = TRUE)")
+                    }
+                }
             }
-            nparm <- match(parm,pnames)
             if (any(is.na(nparm))) {
                 stop("unrecognized parameter names: ",
                      parm[is.na(nparm)])
@@ -642,7 +657,8 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## for matching map names vs nameList components ...
 ## in the order of the name list getParnames() builds (its 'full' branch
 ## appends theta, thetazi, thetadisp and then psi); a missing entry here
-## makes a user 'map' on the later components edit the wrong block
+## makes a user 'map' on that component fail and a 'map' on the later
+## components edit the wrong block
 par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","psi")
 
 ## positions of the estimated parameters (getParnames() with
@@ -668,6 +684,34 @@ est_positions <- function(fullNameList, estNameList) {
         offset <- offset + length(fn)
     }
     pos
+}
+
+## positions of the psi block among the rows of
+## vcov(full = TRUE, include_nonest = ), from the block lengths of
+## getParnames(); by position, since a fixed-effect column may share a
+## name such as "psi2" with an internal threshold parameter
+psi_block_pos <- function(object, include_nonest = TRUE) {
+    nl <- if (include_nonest) {
+              getParnames(object, full = TRUE)
+          } else {
+              getParnames(object, full = TRUE, include_mapped = FALSE,
+                          include_dropped = FALSE)
+          }
+    len <- lengths(nl)
+    i <- match("psi", names(nl))
+    if (is.na(i)) return(integer(0))
+    sum(len[seq_len(i - 1L)]) + seq_len(len[i])
+}
+
+## ordinal: the threshold index of each psi row of
+## vcov(full = TRUE, include_nonest = ): every threshold, or only those
+## whose psi element a user 'map' leaves estimated and not tied to an
+## earlier element
+ordinal_psi_present <- function(object, include_nonest = TRUE) {
+    k <- length(object$modelInfo$ord_levels) - 1L
+    pmap <- object$obj$env$map[["psi"]]
+    if (include_nonest || is.null(pmap)) return(seq_len(k))
+    which(!(is.na(pmap) | duplicated(pmap)))
 }
 
 ## all parameters, including both mapped and rank-dropped
