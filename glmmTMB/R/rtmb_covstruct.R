@@ -55,6 +55,7 @@ separable_nll <- function(U, theta, term) {
     uk <- Umat[, k]
     dim(uk) <- sep_block_dim   # each block: size * rep        
     nll <- nll - sepdens(uk)
+    if (inherits(U, "simref")) next 
 
     # fix rr u by getting lambda * u
     ut <- as.vector(uk)

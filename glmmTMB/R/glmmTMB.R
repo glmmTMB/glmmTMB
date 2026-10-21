@@ -541,13 +541,15 @@ return(theta)
                        thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
-    ### Change mapping for propto 
+
+    ### Change mapping for propto / equalto covstruc (need to fix them (NA) to the parameters values)
+    ### Change mapping for sep covstruc, fix scale parameters (sd) after the first term to a fixed value
     for (component in c("cond", "zi", "disp")) {
         rList <- get(paste0(component, "List"))
-        if(length(rList$ss) > 0 && any(c(rList$ss, unlist(rList[["sepClasses"]])) %in% c("propto", "equalto") )){
+        if(length(rList$ss) > 0 && any(c(rList$ss, unlist(rList[["sepClasses"]])) %in% c("propto", "equalto", "sep") )){
             reStrucComp <- get(paste0(component, "ReStruc"))      
             mapArg.orig <- mapArg
-            out <- map.theta.propto(reStrucComp, mapArg.orig, component, start, parameters)
+            out <- map.theta.covstrucs(reStrucComp, mapArg.orig, component, start, parameters)
             mapArg <- out$map
             start  <- out$start
         }
@@ -1020,18 +1022,19 @@ mapStrucTheta <- function(cls, idx) {
   idx
 }
 
-##' Set map values for theta to be fixed (NA) for propto
+##' Set map values for theta to be fixed (NA) for propto/equalto, or map scale parameters after the first term in a separable struc
 ## FIXME: Will need to adjust if map is already used
 #' @param ReStruc a random effects structure
 #' @param map a list of mapped elements
 #' @param component a character string specifying the parameter component to map
-#' @return the corresponding \code{theta} parameter vector
-map.theta.propto <- function(ReStruc, map, component,
-                             start = NULL, parameters = NULL) {
+#' @param start user-supplied start list
+#' @parameters list of parameter values 
+#' @return the corresponding \code{map} parameter list, and the \code{start} list
+map.theta.covstrucs <- function(ReStruc, map, component, start = NULL, parameters = NULL) {
   if (is.null(map))
-      params <- list()
+      map.params <- list()
   else
-      params <- map
+      map.params <- map
   
   getVal <- function(obj, component)
     vapply(obj, function(x) x[[component]], numeric(1))
@@ -1052,9 +1055,19 @@ map.theta.propto <- function(ReStruc, map, component,
     } else {
         nt_j <- ReStruc[[i]]$blockSepNumTheta                    
         nm   <- ReStruc[[i]]$blockSepNames                     
-        tj   <- split(tl[[i]], rep(seq_along(nt_j), nt_j))    
-        tl[[i]] <- unlist(lapply(seq_along(nm), function(j)
-                          mapStrucTheta(nm[j], tj[[j]])), use.names = FALSE)
+        tj   <- split(tl[[i]], rep(seq_along(nt_j), nt_j)) 
+        prevScaled <- FALSE # does the previous component(s) have a scale parameter
+        for(j in seq_along(nm)){
+            tj[[j]] <- mapStrucTheta(nm[j], tj[[j]]) # map for propto/equalto covstrucs
+            # fix scale parameters after the first term if needed (e.g. not needed if equalto is the first covstruc)
+            pos_scale_par <- if (nm[j] == "propto") length(tj[[j]]) else 1 # propto proportional param is the last theta,  FIX ME: might need to change this - check other covstrucs
+            if(!is.na(tj[[j]][pos_scale_par])) { #if it is not already set to NA
+                if(prevScaled) # if there has already been a scale parameter - need to fix param at the pos_scale_par position 
+                    tj[[j]][pos_scale_par] <- NA          # not the first one, so fix it
+                prevScaled <- TRUE
+            }
+        }
+        tl[[i]] <- unlist(tj, use.names = FALSE)
     }
   }
   map.theta <- unlist(tl, use.names = FALSE)
@@ -1070,16 +1083,16 @@ map.theta.propto <- function(ReStruc, map, component,
     default
   }
     
-  if (!is.null(params[[thetaName]])) {                                  # user supplied map params
-    user <- as.numeric(as.character(params[[thetaName]]))
+  if (!is.null(map.params[[thetaName]])) {                                  # user supplied map params
+    user <- as.numeric(as.character(map.params[[thetaName]]))
     map.theta <- ifelse(fixed, NA, expand(user, map.theta))  # if already fixed (i.e., set to NA) keep NA, otherwise
   }
   if (!is.null(start[[thetaName]]))                                     # NEW
     start[[thetaName]] <- expand(start[[thetaName]], parameters[[thetaName]])
 
-  params[[thetaName]] <- factor(map.theta)    
+  map.params[[thetaName]] <- factor(map.theta)    
   
-  return(list(map = params, start = start))  
+  return(list(map = map.params, start = start))  
 }
 
 #' Check structures ar1, hetar1, ou, exp etc and return any derived data
@@ -1277,7 +1290,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
             if (!is.null(chk$times)) tmp$times <- chk$times
             if (!is.null(chk$dist))  tmp$dist  <- chk$dist
         }
-        if (ss[i] == "sep") {                               
+        if (ss[i] == "sep") {      #get list of component terms, and do checks for each sep component class                         
             tmp$blockSepReps    <- reTrms[["sep"]][[i]]$nrep 
             tmp$blockSepSizes    <- reTrms[["sep"]][[i]]$dims 
             tmp$blockSepNumTheta <- sepNumTheta[[i]]  

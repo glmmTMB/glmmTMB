@@ -38,24 +38,37 @@ test_that("sep terms parse into K component bars plus a replicate bar", {
 tol = 1e-4
 ## Salamanders: two grouping factors, no outer bar 
 ## sep(diag %*% propto) is block diagonal over coefficients, so it equals propto x*spp
-test_that("sep(diag %*% propto) equals propto on the interaction grouping", {
-  Cs <- namedC(spp_lvls)                                                 # for 0 + spp
+
+Cs <- namedC(spp_lvls)        # for 0 + spp
+f_sep <- count ~ spp + sep(diag(0 + DOP | site) %*% propto(0 + spp | sample, Cs))
+test_that("sep(diag %*% propto) equals propto on the interaction grouping", {                                          
   Cx <- namedC(colnames(model.matrix(~ 0 + spp:DOP, Salamanders)))          # for 0 + spp:DOP (see note 1)
-  f_sep <- count ~ spp + sep(diag(0 + DOP | site) %*% propto(0 + spp | sample, Cs))
   f_add <- count ~ spp + propto(0 + spp:DOP | site:sample, Cx)
-  sep_fixed_diag_propto <-  glmmTMB(f_sep, Salamanders, family = poisson, start = list(theta = c(0 , 0)),
-                                        map = list(theta = factor(c(1, NA))) )  # theta = (diag log sd, propto log lambda)
+  sep_fixed_diag_propto <-  glmmTMB(f_sep, Salamanders, family = poisson)  
   propto_sal <- glmmTMB(f_add, Salamanders, family = poisson)
   expect_equal(as.numeric(logLik(sep_fixed_diag_propto)), as.numeric(logLik(propto_sal)), tolerance = tol)
   expect_equal(unname(fixef(sep_fixed_diag_propto)$cond), unname(fixef(propto_sal)$cond), tolerance = 1e-3)
 })
 
+test_that("sep: setup map with fixed values for the scale of later components automatically", {
+  m <- glmmTMB(f_sep, Salamanders, family = poisson, doFit = FALSE)
+  expect_equal(length(m$mapArg$theta), length(m$parameters$theta)) 
+  expect_equal(sum(!is.na(m$mapArg$theta)), 1)    # only the logsd of diag is estimated
+})
+
+test_that("sep with other random effects: setup map with fixed values for the sep term, map is the right length", {
+  f_sep2 <- update(f_sep, . ~ . + (1 | site))
+  m <- glmmTMB(f_sep2, Salamanders, family = poisson, doFit = FALSE)
+  expect_equal(length(m$mapArg$theta), length(m$parameters$theta))  
+  expect_equal(sum(!is.na(m$mapArg$theta)), 2)    # logsd of diag  and logsd of intercept of (1 | site) 
+})
+
 test_that("sep(ar1 %*% homdiag | site) equals ar1 within each site:spp", {
   f_sep <- count ~ spp + sep(ar1(0 + sample | one) %*% homdiag(0 + spp | one) | site)
   f_ar1 <- count ~ spp + ar1(0 + sample | site:spp)
-  sep_fixed_ar1 <- glmmTMB(f_sep, Salamanders,family = poisson,
-                      start = list(theta = c(rep(0, 3))), map = list(theta = factor(c(1,2, NA))))       # theta = (ar1 log sd, ar1 rho, homdiag log sd)
+  sep_fixed_ar1 <- glmmTMB(f_sep, Salamanders,family = poisson)       # theta = (ar1 log sd, ar1 rho, homdiag log sd)
   ar1_sal <- glmmTMB(f_ar1, Salamanders, family = poisson)
+  expect_equal(unname(attr(VarCorr(sep_fixed_ar1)$cond[[2]], "stddev")[1]), 1, tolerance = tol) # second component (homdiag) sd should equal to 1
   expect_equal(as.numeric(logLik(sep_fixed_ar1)), as.numeric(logLik(ar1_sal)), tolerance = tol)
   expect_equal(unname(fixef(sep_fixed_ar1)$cond), unname(fixef(ar1_sal)$cond), tolerance = 1e-3)
 })
@@ -79,8 +92,7 @@ if (require("agridat", quietly = TRUE)) {
   agDat$g <- 1
   m1_glmmTMB <- glmmTMB(yield ~ gen + sep( ar1(0 + rowf| g) %*% ar1(0 + colf | g)), 
                           dispformula = ~0,
-                          data = agDat, REML = TRUE, start = list(theta = c(0,0,0,0)),
-                          map = list(theta = factor(c(1, 2, NA, 3))),
+                          data = agDat, REML = TRUE, 
                           control = glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS")))  
 
   test_that("sep(ar1 %*% ar1) reproduces asreml estimates", {
@@ -94,7 +106,6 @@ if (require("agridat", quietly = TRUE)) {
   m1b_glmmTMB <- glmmTMB(yield ~ gen + sep( ar1(0 + rowf| g) %*% ar1(0 + colf | g)), 
                           dispformula = ~0,
                           data = agDat, REML = TRUE,
-                          start = list(theta = c(0,0,0,0)), map = list(theta = factor(c(1, 2, NA, 3))),
                           control = glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS")))  
 
   expect_equal(as.numeric(logLik(m1_glmmTMB)), as.numeric(logLik(m1b_glmmTMB)), tolerance = 1e-6)
@@ -106,8 +117,6 @@ if (require("agridat", quietly = TRUE)) {
   d$yearf <- factor(d$year); d$one <- factor(1)
 
   fit_3sep <- glmmTMB(yield ~ yearf + sep(ar1(0 + rowf | one) %*% ar1(0 + colf | one) %*% ar1(0 + yearf | one) | one),
-                        start = list(theta = rep(0, 6)),
-                        map = list(theta = factor(c(1, 2, NA, 3, NA, 4))),
                         data = d, REML = TRUE)
 
 
@@ -142,7 +151,6 @@ if (require("nlme", quietly = TRUE)) {
 
     ref <- glmmTMB(height ~ age + ou(0 + agenf | Subject), data = Oxboys)   # standard path
     sep_ou <- glmmTMB(height ~ age + sep(ou(0 + agenf | one) %*% homdiag(0 + Subject | one) | one),
-                            start = list(theta = c(0,0,0)), map = list(theta = factor(c(1, 2, NA))),
                     data = Oxboys)
     
     expect_equal(as.numeric(logLik(sep_ou)), as.numeric(logLik(ref)), tolerance = 1e-4)
@@ -158,7 +166,6 @@ if (require("nlme", quietly = TRUE)) {
     ref <- glmmTMB(yield ~ variety + exp(0 + lonf | latf), data = w)
     sep_exp <- glmmTMB(
       yield ~ variety + sep(exp(0 + lonf | one) %*% homdiag(0 + latf | one)),
-      start = list(theta = c(0, 0, 0)), map = list(theta = factor(c(1, 2, NA))),
       data = w)
     expect_equal(as.numeric(logLik(sep_exp)), as.numeric(logLik(ref)), tolerance = 1e-4)
   })
@@ -170,18 +177,10 @@ if (require("nlme", quietly = TRUE)) {
 ## Datasets (nlme): Orthodont (27 children x 4 ages) and Wheat2 (field trial).
 ## To do homtoep, toep
 
-theta_est <- function(fit) {
-  pf <- fit$sdr$par.fixed
-  unname(pf[names(pf) == "theta"])
-}
-
 expect_sep_matches <- function(ref, term, lhs, data, grp, dispformula = ~1, start0 = 0) {
-  n <- length(theta_est(ref))
   fit <- glmmTMB(
     as.formula(sprintf("%s + sep(%s %%*%% homdiag(0 + %s | one) | one)", lhs, term, grp)),
     dispformula = dispformula,
-    start = list(theta = c(rep(start0, n), 0)),
-    map   = list(theta = factor(c(seq_len(n), NA))),
     data  = data)
   expect_equal(as.numeric(logLik(fit)), as.numeric(logLik(ref)), tolerance = 1e-4)
 }
