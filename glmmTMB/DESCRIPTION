@@ -107,7 +107,8 @@ Suggests:
     ape,
     gsl,
     lmerTest,
-    metafor
+    metafor,
+    agridat
 SystemRequirements: GNU make
 VignetteBuilder: knitr, rmarkdown
 URL: https://github.com/glmmTMB/glmmTMB
