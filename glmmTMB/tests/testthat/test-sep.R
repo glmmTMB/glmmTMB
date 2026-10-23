@@ -26,8 +26,8 @@ local_useRTMB(TRUE)
 ## formula parsing ----------------------------------------------------------------
 test_that("sep terms parse into K component bars plus a replicate bar", {
   sp <- c(names(glmmTMB:::.valid_covstruct), "s")
-  s1 <- reformulas::splitForm(y ~ x + sep(us(0 + a | g1) %*% ar1(0 + b | g2) | grp), specials = sp)
-  s2 <- reformulas::splitForm(y ~ x + sep(us(0 + a | g1) %*% ar1(0 + b | g2)), specials = sp)
+  s1 <- reformulas::splitForm(y ~ x + sep(us(0 + a | g1) , ar1(0 + b | g2) | grp), specials = sp)
+  s2 <- reformulas::splitForm(y ~ x + sep(us(0 + a | g1) , ar1(0 + b | g2)), specials = sp)
   expect_equal(s1$reTrmClasses, "sep")
   expect_length(s1$reTrmFormulas[[1]], 3)                          # 2 components + replicate bar
   expect_equal(s1$reTrmFormulas[[1]][[3]], quote(1 | grp))
@@ -37,11 +37,11 @@ test_that("sep terms parse into K component bars plus a replicate bar", {
 
 tol = 1e-4
 ## Salamanders: two grouping factors, no outer bar 
-## sep(diag %*% propto) is block diagonal over coefficients, so it equals propto x*spp
+## sep(diag , propto) is block diagonal over coefficients, so it equals propto x*spp
 
 Cs <- namedC(spp_lvls)        # for 0 + spp
-f_sep <- count ~ spp + sep(diag(0 + DOP | site) %*% propto(0 + spp | sample, Cs))
-test_that("sep(diag %*% propto) equals propto on the interaction grouping", {                                          
+f_sep <- count ~ spp + sep(diag(0 + DOP | site) , propto(0 + spp | sample, Cs))
+test_that("sep(diag , propto) equals propto on the interaction grouping", {                                          
   Cx <- namedC(colnames(model.matrix(~ 0 + spp:DOP, Salamanders)))          # for 0 + spp:DOP (see note 1)
   f_add <- count ~ spp + propto(0 + spp:DOP | site:sample, Cx)
   sep_fixed_diag_propto <-  glmmTMB(f_sep, Salamanders, family = poisson)  
@@ -63,8 +63,8 @@ test_that("sep with other random effects: setup map with fixed values for the se
   expect_equal(sum(!is.na(m$mapArg$theta)), 2)    # logsd of diag  and logsd of intercept of (1 | site) 
 })
 
-test_that("sep(ar1 %*% homdiag | site) equals ar1 within each site:spp", {
-  f_sep <- count ~ spp + sep(ar1(0 + sample | one) %*% homdiag(0 + spp | one) | site)
+test_that("sep(ar1 , homdiag | site) equals ar1 within each site:spp", {
+  f_sep <- count ~ spp + sep(ar1(0 + sample | one) , homdiag(0 + spp | one) | site)
   f_ar1 <- count ~ spp + ar1(0 + sample | site:spp)
   sep_fixed_ar1 <- glmmTMB(f_sep, Salamanders,family = poisson)       # theta = (ar1 log sd, ar1 rho, homdiag log sd)
   ar1_sal <- glmmTMB(f_ar1, Salamanders, family = poisson)
@@ -90,12 +90,12 @@ if (require("agridat", quietly = TRUE)) {
                     )
   
   agDat$g <- 1
-  m1_glmmTMB <- glmmTMB(yield ~ gen + sep( ar1(0 + rowf| g) %*% ar1(0 + colf | g)), 
+  m1_glmmTMB <- glmmTMB(yield ~ gen + sep( ar1(0 + rowf| g) , ar1(0 + colf | g)), 
                           dispformula = ~0,
                           data = agDat, REML = TRUE, 
                           control = glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS")))  
 
-  test_that("sep(ar1 %*% ar1) reproduces asreml estimates", {
+  test_that("sep(ar1 , ar1) reproduces asreml estimates", {
     est <- VarCorr(m1_glmmTMB)$cond
     expect_equal(unname(attr(est$X.sep.ar1.g., "stddev")[1]),  sqrt(asreml_ref$sigma2),  tolerance = 1e-3)   
     expect_equal(unname(attr(est$X.sep.ar1.g., "correlation")[2, 1]), asreml_ref$rho_row, tolerance = 1e-3)     
@@ -103,7 +103,7 @@ if (require("agridat", quietly = TRUE)) {
   })
 
   test_that("model fit does not depend on the order of the two factors in sep()", {
-  m1b_glmmTMB <- glmmTMB(yield ~ gen + sep( ar1(0 + rowf| g) %*% ar1(0 + colf | g)), 
+  m1b_glmmTMB <- glmmTMB(yield ~ gen + sep( ar1(0 + rowf| g) , ar1(0 + colf | g)), 
                           dispformula = ~0,
                           data = agDat, REML = TRUE,
                           control = glmmTMBControl(optimizer=optim, optArgs=list(method="BFGS")))  
@@ -116,7 +116,7 @@ if (require("agridat", quietly = TRUE)) {
   d$rowf <- factor(d$row); d$colf <- factor(d$col)
   d$yearf <- factor(d$year); d$one <- factor(1)
 
-  fit_3sep <- glmmTMB(yield ~ yearf + sep(ar1(0 + rowf | one) %*% ar1(0 + colf | one) %*% ar1(0 + yearf | one) | one),
+  fit_3sep <- glmmTMB(yield ~ yearf + sep(ar1(0 + rowf | one) , ar1(0 + colf | one) , ar1(0 + yearf | one) | one),
                         data = d, REML = TRUE)
 
 
@@ -130,7 +130,7 @@ if (require("agridat", quietly = TRUE)) {
                          rho_year = 0.1800972  # rowf:colf:yearf!yearf!cor
                         )
   
-  test_that("sep(ar1 %*% ar1) reproduces asreml estimates", {
+  test_that("sep(ar1 , ar1) reproduces asreml estimates", {
     est <- VarCorr(fit_3sep)$cond
     expect_equal(unname(attr(est$one.sep.ar1.one., "stddev")[1]),  sqrt(asreml_ref_3$rowcolyear_sigma2),  tolerance = 1e-3)   
     expect_equal(unname(attr(est$one.sep.ar1.one., "correlation")[2, 1]), asreml_ref_3$rho_row, tolerance = 1e-3)     
@@ -142,7 +142,7 @@ if (require("agridat", quietly = TRUE)) {
   
 ## ou and exp covstruc - times and dist components ----------------------------------------------------------------
 if (require("nlme", quietly = TRUE)) {
-  test_that("sep(ou %*% homdiag) fits on Oxboys", {
+  test_that("sep(ou , homdiag) fits on Oxboys", {
     data(Oxboys, package = "nlme")
     Oxboys <- as.data.frame(Oxboys)
     Oxboys$Subject = factor(Oxboys$Subject, ordered = FALSE)
@@ -150,13 +150,13 @@ if (require("nlme", quietly = TRUE)) {
     Oxboys$one = factor(1)
 
     ref <- glmmTMB(height ~ age + ou(0 + agenf | Subject), data = Oxboys)   # standard path
-    sep_ou <- glmmTMB(height ~ age + sep(ou(0 + agenf | one) %*% homdiag(0 + Subject | one) | one),
+    sep_ou <- glmmTMB(height ~ age + sep(ou(0 + agenf | one) , homdiag(0 + Subject | one) | one),
                     data = Oxboys)
     
     expect_equal(as.numeric(logLik(sep_ou)), as.numeric(logLik(ref)), tolerance = 1e-4)
   })
   
-  test_that("sep(exp %*% homdiag) matches exp(0 + lonf | latf) on Wheat2", {
+  test_that("sep(exp , homdiag) matches exp(0 + lonf | latf) on Wheat2", {
     data(Wheat2, package = "nlme")
     w <- as.data.frame(Wheat2)
     w$lonf <- numFactor(w$longitude)
@@ -165,21 +165,21 @@ if (require("nlme", quietly = TRUE)) {
 
     ref <- glmmTMB(yield ~ variety + exp(0 + lonf | latf), data = w)
     sep_exp <- glmmTMB(
-      yield ~ variety + sep(exp(0 + lonf | one) %*% homdiag(0 + latf | one)),
+      yield ~ variety + sep(exp(0 + lonf | one) , homdiag(0 + latf | one)),
       data = w)
     expect_equal(as.numeric(logLik(sep_exp)), as.numeric(logLik(ref)), tolerance = 1e-4)
   })
 }
 
 ## One test per covariance structure. 
-## Each checks that sep(S %*% homdiag(group)) (homdiag log-sd is fixed at 0.)
+## Each checks that sep(S , homdiag(group)) (homdiag log-sd is fixed at 0.)
 ## gives the same log-likelihood as the standard term S(... | group): an independent S per group. 
 ## Datasets (nlme): Orthodont (27 children x 4 ages) and Wheat2 (field trial).
 ## To do homtoep, toep
 
 expect_sep_matches <- function(ref, term, lhs, data, grp, dispformula = ~1, start0 = 0) {
   fit <- glmmTMB(
-    as.formula(sprintf("%s + sep(%s %%*%% homdiag(0 + %s | one) | one)", lhs, term, grp)),
+    as.formula(sprintf("%s + sep(%s , homdiag(0 + %s | one) | one)", lhs, term, grp)),
     dispformula = dispformula,
     data  = data)
   expect_equal(as.numeric(logLik(fit)), as.numeric(logLik(ref)), tolerance = 1e-4)
