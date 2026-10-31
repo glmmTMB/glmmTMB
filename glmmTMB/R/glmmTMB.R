@@ -1082,6 +1082,11 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
     blkrank <- mapply(getRank, ss, aa)
     
     parFun <- function(struc, blksize, blkrank) {
+        if (struc == "cor" && blksize < 2) {
+            stop("the 'cor' covariance structure requires at least two ",
+                 "random-effect terms per group (it has no variance parameters)",
+                 call. = FALSE)
+        }
         switch(as.character(struc),
                "diag" = blksize, # (heterogenous) diag
                "us" = blksize * (blksize+1) / 2,
@@ -1099,6 +1104,7 @@ getReStruc <- function(reTrms, ss=NULL, aa=NULL, reXterms=NULL, fr=NULL, full_co
                "homcs" = 2,
                "homtoep" = blksize,
                "equalto" = blksize * (blksize+1) / 2, #equalto (same as us)
+               "cor" = blksize * (blksize-1) / 2, # correlations only (unit SDs)
                stop(sprintf("undefined number of parameters for covstruct '%s'", struc))
                )
     }
@@ -1248,6 +1254,7 @@ binomialType <- function(x) {
 ##' \item \code{homtoep} (* Toeplitz, homogeneous variance)
 ##' \item \code{rr} (reduced-rank/factor-analytic model)
 ##' \item \code{homdiag} (diagonal, homogeneous variance)
+##' \item \code{cor} (unstructured correlation matrix with all variances fixed to 1, e.g. for repeated binary outcomes where only the correlations are identifiable)
 ##' \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 ##' \item \code{equalto} (* equal to user-specified variance-covariance matrix)
 ##' }

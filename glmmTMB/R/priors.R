@@ -158,8 +158,10 @@ proc_priors <- function(priors, info = NULL) {
                         blocksize <- re_info[[w]]$blockSize
                         blockcodelab <- names(.valid_covstruct)[match(re_info[[w]]$blockCode, .valid_covstruct)]
                         if (blockcodelab == "rr") stop("can't do priors for rr models yet")
-                        nsd <- if (blockcodelab == "homdiag") 1 else blocksize
+                        nsd <- covstruct_n_sd(blockcodelab, blocksize)
                         if (suffix == "sd") {
+                            if (nsd == 0) stop("RE term ", re_term,
+                                               " has no SD parameters ('cor' structure)")
                             ## all suffixes
                             prior_elstart[i] <- theta_start
                             prior_elend[i] <- theta_start + nsd - 1

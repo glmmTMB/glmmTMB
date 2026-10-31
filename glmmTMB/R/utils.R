@@ -1133,3 +1133,14 @@ whichNotRandom <- function(namevec, include_beta = FALSE) {
 get_autopar <- function() {
     attr(TMB::openmp(DLL = "glmmTMB"), "autopar")
 }
+
+## number of leading log-SD elements in a random-effects term's theta vector:
+## one per term (heterogeneous variance), one in total (homogeneous variance),
+## or none ('cor', whose variances are fixed at 1). Not meaningful for 'rr'.
+covstruct_n_sd <- function(struc, blksize) {
+    switch(struc,
+           homdiag = , homcs = , homtoep = ,
+           ar1 = , ou = , exp = , gau = , mat = 1L,
+           cor = 0L,
+           as.integer(blksize))
+}
