@@ -66,3 +66,17 @@ test_that("random-only covariance structures reject other simCode modes", {
     )
   }
 })
+
+test_that("simulate() works with REML = TRUE and matches TMB (GH #1358)", {
+  sims <- lapply(c(rtmb = TRUE, tmb = FALSE), function(backend) {
+    glmmTMB::useRTMB(backend)
+    model <- glmmTMB(
+      Reaction ~ Days + (1 | Subject),
+      data = sleepstudy,
+      REML = TRUE,
+      se = FALSE
+    )
+    simulate(model, nsim = 2, seed = 5006)
+  })
+  expect_equal(sims$rtmb, sims$tmb)
+})

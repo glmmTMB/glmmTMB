@@ -224,3 +224,42 @@ test_that("rr simulation works under RTMB", {
   expect_length(simulation, nrow(rr_gaussian_data))
   expect_true(all(is.finite(simulation)))
 })
+
+test_that("rr simulation applies the loadings and matches TMB (GH #1357)", {
+  theta <- c(1, 0.5, 0.2, -0.4, 0.3, 0.6, -0.2)
+  fit_rr <- function(backend) {
+    glmmTMB::useRTMB(backend)
+    glmmTMB(
+      response ~ x + rr(0 + level | group, d = 2),
+      family = gaussian,
+      data = rr_gaussian_data,
+      start = list(theta = theta),
+      map = list(theta = factor(rep(NA, length(theta)))),
+      se = FALSE
+    )
+  }
+  local_useRTMB(TRUE)
+  m_rtmb <- fit_rr(TRUE)
+  m_tmb <- fit_rr(FALSE)
+
+  expect_equal(simulate(m_rtmb, nsim = 3, seed = 5003),
+               simulate(m_tmb, nsim = 3, seed = 5003))
+
+  fitted_b <- m_tmb$obj$report()$b
+  for (code in c("random", "zero", "fix")) {
+    set_simcodes(m_rtmb$obj, code)
+    set_simcodes(m_tmb$obj, code)
+    set.seed(5004)
+    b_rtmb <- m_rtmb$obj$simulate(complete = TRUE)$b
+    set.seed(5004)
+    b_tmb <- m_tmb$obj$simulate(complete = TRUE)$b
+    expect_equal(b_rtmb, b_tmb, tolerance = 1e-6, info = code)
+  }
+  ## random draws are not spherical: their covariance reflects the loadings
+  set_simcodes(m_rtmb$obj, "random")
+  set.seed(5005)
+  b_sim <- replicate(200, m_rtmb$obj$simulate(complete = TRUE)$b)
+  Lambda <- m_tmb$obj$report()$fact_load[[1]]
+  emp_cov <- cov(t(matrix(b_sim, nrow = 4)))
+  expect_equal(emp_cov, tcrossprod(Lambda), tolerance = 0.1)
+})
