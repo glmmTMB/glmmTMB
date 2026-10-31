@@ -616,7 +616,7 @@ termwise_nll <- function(U, theta, term) {
   }
 
   conditional_full_cor <- c(
-    "us", "cs", "homcs", "toep", "homtoep", "propto"
+    "us", "cor", "cs", "homcs", "toep", "homtoep", "propto"
   )
   if (name %in% conditional_full_cor && term$fullCor == 0) {
     report_corr <- matrix(NaN, 1L, 1L)

@@ -100,6 +100,32 @@ test_that("ranef_sd priors are rejected for cor terms", {
     expect_error(update(fit_cor, priors = pr), "no SD parameters")
     pr2 <- data.frame(prior = "lkj(2)", class = "ranef_cor", coef = "id")
     expect_no_error(update(fit_cor, priors = pr2))
+    ## blanket SD priors (blank or omitted coef) must not reach correlations
+    pr_blank <- data.frame(prior = "normal(0, 1)", class = "ranef_sd", coef = "")
+    expect_error(update(fit_cor, priors = pr_blank),
+                 "no random-effects terms.*standard-deviation")
+    pr_nocoef <- data.frame(prior = "normal(0, 1)", class = "ranef_sd")
+    expect_error(update(fit_cor, priors = pr_nocoef),
+                 "no random-effects terms.*standard-deviation")
+    ## a blanket correlation prior covers all three correlation parameters
+    pr_cor <- data.frame(prior = "lkj(2)", class = "ranef_cor")
+    fit_pr <- update(fit_cor, priors = pr_cor)
+    dd <- fit_pr$obj$env$data
+    expect_equal(c(dd$prior_elstart, dd$prior_elend), c(0, 2))
+})
+
+test_that("cor respects full_cor = FALSE on both back ends", {
+    for (backend in c(FALSE, TRUE)) {
+        if (backend) skip_if_not_installed("RTMB")
+        old <- glmmTMB::useRTMB()
+        glmmTMB::useRTMB(backend)
+        fit <- glmmTMB(y ~ time + cor(0 + time | id), data = dd_cor,
+                       family = binomial, weights = rep(20, nrow(dd_cor)),
+                       se = FALSE, control = glmmTMBControl(full_cor = FALSE))
+        glmmTMB::useRTMB(old)
+        expect_identical(fit$obj$report()$corr[[1]], matrix(NaN, 1, 1),
+                         info = paste("RTMB:", backend))
+    }
 })
 
 test_that("RTMB backend matches TMB for cor", {

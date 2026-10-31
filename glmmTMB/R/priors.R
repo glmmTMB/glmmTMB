@@ -20,6 +20,48 @@ from_prior_syn <- function(x) {
     names(prior_synonyms)[match(x, prior_synonyms)]
 }
     
+## A ranef_sd/ranef_cor (or _zi) prior with a blank or missing coef applies
+## to the SD (or correlation) parameters of every RE term in that component.
+## Those elements are not contiguous in theta, so expand the row into one
+## row per qualifying term; the per-term code in proc_priors() then selects
+## the right elements of each term.
+expand_re_suffix_priors <- function(priors, info) {
+    if (is.null(priors) || nrow(priors) == 0 || is.null(info$re)) return(priors)
+    if (is.null(priors[["coef"]])) priors[["coef"]] <- ""
+    priors[["coef"]][is.na(priors[["coef"]])] <- ""
+    expand_row <- function(i) {
+        p <- priors[i, , drop = FALSE]
+        pcl <- p[["class"]]
+        if (!grepl("_(cor|sd)$", pcl) || trimws(p[["coef"]]) != "") return(p)
+        suffix <- sub("^.*_", "", pcl)
+        cl <- to_prior_syn(sub("_(cor|sd)$", "", pcl))
+        component <- match_names(cl, prefix = "theta")
+        re_info <- info$re[[component]]
+        if (is.null(re_info)) return(p)
+        has_el <- vapply(re_info, function(r) {
+            ## terms that share the previous term's theta have no elements
+            if (r$blockNumTheta == 0) return(FALSE)
+            lab <- names(.valid_covstruct)[match(r$blockCode, .valid_covstruct)]
+            ## keep rr so that the per-term code gives its informative error
+            if (lab == "rr") return(TRUE)
+            nsd <- covstruct_n_sd(lab, r$blockSize)
+            if (suffix == "sd") nsd > 0 else r$blockNumTheta > nsd
+        }, logical(1))
+        if (!any(has_el)) {
+            stop(sprintf("no random-effects terms in the %s model have %s parameters for prior class '%s'",
+                         component,
+                         if (suffix == "sd") "standard-deviation" else "correlation",
+                         pcl), call. = FALSE)
+        }
+        p <- p[rep(1L, sum(has_el)), , drop = FALSE]
+        p[["coef"]] <- names(re_info)[has_el]
+        p
+    }
+    res <- do.call(rbind, lapply(seq_len(nrow(priors)), expand_row))
+    rownames(res) <- NULL
+    res
+}
+
 #' @noRd
 #' @param priors data frame with ...
 #' @param info additional info needed: list(fix = list(cond = , zi =, disp = )) [colnames of X matrices];
@@ -38,6 +80,7 @@ proc_priors <- function(priors, info = NULL) {
     ## priors is a data frame as in brms
     ## process prior list into TMB data structures
     ## 'info' parameter for translating elements into indices; not implemented yet
+    priors <- expand_re_suffix_priors(priors, info)
     np <- if (is.null(priors)) 0 else nrow(priors)
 
     ## set up prior vectors (FIXME: should be a list?)
@@ -91,11 +134,11 @@ proc_priors <- function(priors, info = NULL) {
                            "blockNumTheta",
                            FUN.VALUE = numeric(1))
           cc <- cumsum(ntheta)
-          ## want *starting* value of each theta term
-          ## keep names, shift back one
+          ## 1-based *starting* index of each term's theta elements,
+          ## plus the total number of elements as "..total"
           nm <- names(cc)
           if (length(cc) == 0) return(integer(0))
-          cc <- c(1, cc)
+          cc <- c(1, head(cc, -1) + 1, cc[length(cc)])
           names(cc) <- c(nm, "..total")
           return(cc)
         }
@@ -218,7 +261,7 @@ proc_priors <- function(priors, info = NULL) {
 #' \describe{
 #' \item{\code{prior}}{character; the prior specification, e.g. "normal(0,2)"}
 #' \item{\code{class}}{the name of the underlying parameter vector on which to impose the prior ("fixef", "fixef_zi", "fixef_disp", "ranef", "ranef_zi", "psi")}
-#' \item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term. If the \code{class} element is missing, or a particular element is blank, then all of the elements of the specified parameter vector use independent priors with the given specification. The exception is for the fixed-effect parameter vectors ("fixef", "fixef_zi", "fixef_disp"), where the intercept (if present) is not included; the prior on the intercept must be set explicitly.}
+#' \item{\code{coef}}{(optional) a string (if present) specifying the particular elements of the parameter vector to apply the prior to. \code{coef} should specify an integer parameter index, a column name from the fixed effect model matrix or a grouping variable for a random effect (the behaviour is currently undefined if there is more one than random effect term with the same grouping variable in a model ...); one can also append "_cor" or "_sd" to a random-effects \code{class} specification to denote the correlation parameters, or all of the standard deviation parameters, corresponding to a particular random effect term (with a blank \code{coef}, a \code{_sd} or \code{_cor} prior applies to the standard-deviation or correlation parameters of every random-effects term in that model component). If the \code{class} element is missing, or a particular element is blank, then all of the elements of the specified parameter vector use independent priors with the given specification. The exception is for the fixed-effect parameter vectors ("fixef", "fixef_zi", "fixef_disp"), where the intercept (if present) is not included; the prior on the intercept must be set explicitly.}
 #' }
 #' `The available prior distributions are:
 #' \itemize{
