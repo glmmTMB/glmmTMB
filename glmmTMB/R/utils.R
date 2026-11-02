@@ -920,7 +920,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' See \code{vignette("covstruct", package = "glmmTMB")} for details on the parameterizations used
 ##' for various random-effects models (i.e., \code{theta}).
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
-##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
+##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, except \code{psi} for the \code{ordinal} family, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
 ##' @seealso \code{\link{glmmTMB}}, \code{\link{family_glmmTMB}} (for conditional distribution parameterizations [\code{betadisp}]), \code{\link{put_cor}} (for correlation matrix parameterizations)
 ##' @examples
@@ -982,10 +982,25 @@ simulate_new <- function(object,
     form <- object
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
-    ## insert a legal value: 1.0 is OK as long as family != "beta"
+    ## insert a legal value: 1.0 is OK as long as family is not "beta" or "ordinal"
     ## (note the family *function* is 'beta_family' but the internal
     ##  $family value is 'beta')
-    newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
+    if (family$family == "ordinal") {
+        ## number of categories comes from psi; all must appear in the fake response
+        K <- length(newparams$psi) + 1L
+        if (K < 2) {
+            stop("simulate_new with the ordinal family needs newparams$psi ",
+                 "(length K-1 for K categories)")
+        }
+        if (nrow(newdata) < K) {
+            stop("simulate_new with the ordinal family needs at least as ",
+                 "many rows in newdata as categories")
+        }
+        newdata[["..y"]] <- ordered(rep_len(seq_len(K), nrow(newdata)),
+                                    levels = seq_len(K))
+    } else {
+        newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
+    }
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
@@ -1045,6 +1060,20 @@ simulate_new <- function(object,
     ## (for cnms etc., simulations, etc.)
     r2 <- fitTMB(r1, doOptim = FALSE)
 
+    simparams <- newparams
+    if (family$family == "ordinal") {
+        beta <- newparams[["beta"]]
+        if (length(beta) == length(r1$parameters[["beta"]]) && beta[1] != 0) {
+            stop("the ordinal intercept is fixed to zero: ",
+                 "the first element of newparams$beta must be 0")
+        }
+        ## the intercept is mapped: make_pars() wants the free elements of beta
+        betamap <- attr(r2$env$parameters[["beta"]], "map")
+        if (length(beta) == length(betamap)) {
+            simparams$beta <- beta[betamap >= 0]
+        }
+    }
+
     set_b <-  function(x, b, map = NULL) {
         if (!is.null(map)) {
             b <- b[!is.na(map)]
@@ -1055,7 +1084,7 @@ simulate_new <- function(object,
     }
 
     pars <- do.call("make_pars",
-                    c(list(r2$env$parameters), newparams,
+                    c(list(r2$env$parameters), simparams,
                       list(include_extra = FALSE)))
 
     if (!is.null(seed)) set.seed(seed)
@@ -1063,7 +1092,7 @@ simulate_new <- function(object,
         b_vals <- r2$simulate(par = pars)$b
         if (return_val == "pars") {
             pars <- do.call("make_pars",
-                            c(list(r2$env$parameters), newparams,
+                            c(list(r2$env$parameters), simparams,
                               list(include_extra = TRUE)))
             return(set_b(pars, b_vals))
         }
@@ -1077,7 +1106,11 @@ simulate_new <- function(object,
         r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map$b)
         return(r3)
     }
-    replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+    ss <- replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+    if (family$family == "ordinal") {
+        ss <- lapply(ss, ordered, levels = seq_len(K))
+    }
+    ss
 }
 
 set_class <- function(x, cls, prepend = TRUE) {

@@ -165,6 +165,39 @@ test_that("ordinal downstream: emmeans and car::Anova handle mapped intercept", 
     expect_equal(aa["Cont", "Chisq"], z_cont^2, tolerance = 1e-6)
 })
 
+test_that("ordinal cloglog link matches ordinal::clm", {
+    skip_if_not_installed("ordinal")
+    fit_clm <- ordinal::clm(Sat ~ Infl + Type + Cont, weights = Freq,
+                            data = housing, link = "cloglog")
+    fit_ord_c <- update(fit_ord, family = ordinal(link = "cloglog"))
+    expect_equal(unname(fixef(fit_ord_c)$cond[-1]), unname(fit_clm$beta),
+                 tolerance = 1e-3)
+    expect_equal(unname(family_params(fit_ord_c)), unname(fit_clm$alpha),
+                 tolerance = 1e-3)
+    expect_equal(c(logLik(fit_ord_c)), c(logLik(fit_clm)), tolerance = 1e-5)
+})
+
+test_that("ordinal random slope matches ordinal::clmm", {
+    skip_if_not_installed("ordinal")
+    set.seed(101)
+    dd <- data.frame(x = rnorm(600),
+                     g = factor(rep(1:30, each = 20)))
+    eta <- rnorm(30)[as.integer(dd$g)] +
+        (1 + rnorm(30, sd = 0.8)[as.integer(dd$g)]) * dd$x
+    cum <- plogis(outer(c(-1, 0.5, 2), eta, "-"))
+    dd$y <- ordered(1 + colSums(sweep(cum, 2, runif(600), "<")), levels = 1:4)
+    fit_clmm <- ordinal::clmm(y ~ x + (x | g), data = dd)
+    fit_tmb <- glmmTMB(y ~ x + (x | g), data = dd, family = ordinal())
+    expect_equal(c(logLik(fit_tmb)), c(logLik(fit_clmm)), tolerance = 1e-5)
+    expect_equal(unname(fixef(fit_tmb)$cond[-1]), unname(fit_clmm$beta),
+                 tolerance = 1e-3)
+    expect_equal(unname(family_params(fit_tmb)), unname(fit_clmm$alpha),
+                 tolerance = 1e-3)
+    expect_equal(unname(attr(VarCorr(fit_tmb)$cond$g, "stddev")),
+                 unname(attr(ordinal::VarCorr(fit_clmm)$g, "stddev")),
+                 tolerance = 1e-2)
+})
+
 test_that("ordinal numerical robustness at extreme parameters", {
     ## probit/cloglog cumulative log-probs must stay finite at extreme
     ## eta (logspace_sub(-Inf, -Inf) = NaN would poison the gradient)
@@ -226,6 +259,62 @@ test_that("ordinal error handling", {
     expect_warning(glmmTMB(Satu ~ Infl, weights = Freq, data = housing3,
                            family = ordinal()),
                    "unordered factor")
+})
+
+test_that("ordinal response checks", {
+    dd <- data.frame(x = 1:12, n = rep(c(1, 2, 3), 4), i = rep(c(1, 3, 4), 4))
+    dd$f <- ordered(dd$i, levels = 1:4)
+    expect_warning(glmmTMB(i ~ x, data = dd, family = ordinal()),
+                   "category\\(ies\\) 2$")
+    expect_warning(glmmTMB(f ~ x, data = dd, family = ordinal()),
+                   "level\\(s\\) 2$")
+    expect_warning(glmmTMB(ordered(n) ~ x, data = dd, family = ordinal(),
+                           weights = as.numeric(n != 2)),
+                   "level\\(s\\) 2$")
+    dd$ch <- as.character(dd$f)
+    dd$lg <- dd$n > 1
+    expect_error(glmmTMB(ch ~ x, data = dd, family = ordinal()),
+                 "ordered factor or positive \\(1-based\\) integer")
+    expect_error(glmmTMB(lg ~ x, data = dd, family = ordinal()),
+                 "ordered factor or positive \\(1-based\\) integer")
+    ## every category observed
+    expect_no_warning(glmmTMB(ordered(n) ~ x, data = dd, family = ordinal()))
+    w <- capture_warnings(glmmTMB(n ~ x, data = dd, family = ordinal()))
+    expect_length(w, 1L)
+    expect_match(w, "integer codes")
+})
+
+test_that("ordinal simulate_new", {
+    dd <- data.frame(i = seq_len(20000))
+    psi <- c(0.5, -0.5)
+    expect_no_warning(ss <- simulate_new(~ 1, newdata = dd, family = ordinal(),
+                                         newparams = list(beta = 0, psi = psi),
+                                         seed = 101))
+    expect_true(is.ordered(ss[[1]]))
+    expect_identical(levels(ss[[1]]), c("1", "2", "3"))
+    p <- exp(c(psi, 0)) / sum(exp(c(psi, 0)))
+    expect_true(all(abs(prop.table(table(ss[[1]])) - p) < 0.02))
+    dd$x <- rep(0:1, each = 10000)
+    expect_no_warning(ss2 <- simulate_new(~ x, newdata = dd, family = ordinal(),
+                                          newparams = list(beta = c(0, 1), psi = psi),
+                                          seed = 101))
+    expect_lt(abs(mean(ss2[[1]][dd$x == 1] == "1") - plogis(qlogis(p[1]) - 1)), 0.02)
+    expect_error(simulate_new(~ x, newdata = dd, family = ordinal(),
+                              newparams = list(beta = c(5, 1), psi = psi)),
+                 "intercept is fixed to zero")
+    expect_error(simulate_new(~ 1, newdata = dd, family = ordinal(),
+                              newparams = list(beta = 0)),
+                 "needs newparams\\$psi")
+    expect_error(simulate_new(~ 1, newdata = dd[1:2, , drop = FALSE],
+                              family = ordinal(),
+                              newparams = list(beta = 0, psi = psi)),
+                 "at least as many rows")
+})
+
+test_that("ordinal links", {
+    for (l in list("cauchit", "identity", "log", make.link("cauchit"))) {
+        expect_error(ordinal(link = l), "logit, probit, cloglog")
+    }
 })
 
 test_that("ordinal REML warns that thresholds are not integrated out", {
