@@ -920,7 +920,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' See \code{vignette("covstruct", package = "glmmTMB")} for details on the parameterizations used
 ##' for various random-effects models (i.e., \code{theta}).
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
-##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
+##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, except \code{psi} for the \code{ordinal} family, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
 ##' @seealso \code{\link{glmmTMB}}, \code{\link{family_glmmTMB}} (for conditional distribution parameterizations [\code{betadisp}]), \code{\link{put_cor}} (for correlation matrix parameterizations)
 ##' @examples
@@ -982,7 +982,7 @@ simulate_new <- function(object,
     form <- object
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
-    ## insert a legal value: 1.0 is OK as long as family != "beta"
+    ## insert a legal value: 1.0 is OK as long as family is not "beta" or "ordinal"
     ## (note the family *function* is 'beta_family' but the internal
     ##  $family value is 'beta')
     if (family$family == "ordinal") {
