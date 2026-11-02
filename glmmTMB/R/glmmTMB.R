@@ -304,6 +304,36 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         dispformula[] <- ~0
     }
 
+    ## ordinal family: the thresholds take the place of the intercept, so
+    ## the model matrix must carry an intercept column (fixed to zero
+    ## below). An intercept-free formula is fitted with the intercept
+    ## added; ordinal::clm and MASS::polr give the same warning and the
+    ## same fit but keep the intercept-free coding and drop an aliased
+    ## column. The amended formula is what modelInfo$allForm stores, so
+    ## predict() with newdata uses it
+    if (family$family == "ordinal" &&
+        attr(terms(formula), "intercept") == 0) {
+        ## a user 'beta' map or start vector is sized and ordered for the
+        ## intercept-free model matrix; the added intercept column would
+        ## shift it onto the wrong coefficients
+        if (!is.null(mapArg[["beta"]]) ||
+            (is.list(start) && !is.null(start[["beta"]]))) {
+            stop("the ordinal family needs an intercept in 'formula' ",
+                 "(it is fixed to zero and absorbed into the thresholds): ",
+                 "include it before supplying 'beta' in 'map' or 'start', ",
+                 "since the intercept column changes the coefficient ",
+                 "positions")
+        }
+        warning("an intercept is needed and assumed in 'formula' for the ",
+                "ordinal family (it is fixed to zero and absorbed into ",
+                "the thresholds)")
+        ## predict() passes a one-sided formula, which update() would
+        ## otherwise turn into `. ~ x`
+        formula <- if (length(formula) == 3L) {
+                       update(formula, . ~ . + 1)
+                   } else update(formula, ~ . + 1)
+    }
+
     ## fixme: may need to modify here, or modify getXReTrms, for smooth-term prediction
     condList  <- getXReTrms(formula, mf, fr, type="conditional", contrasts=contrasts, sparse=sparseX[["cond"]],
                             old_smooths = old_smooths$cond)
@@ -520,7 +550,6 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
         
         else if(names(.valid_covstruct)[match(blockCode[i], .valid_covstruct)]=="equalto") { # if equalto then get vcov values
           a <- List[["aa"]][[i]]
-          checkEqualto(aa = a, cnms = List$reTrms$cnms[[i]])
           tl[[i]] <- as.theta.vcov(a) 
         } #end else if equalto
       } #end for loop
@@ -548,7 +577,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   if (family$family == "ordinal") {
       Xnames <- colnames(if (sparseX[["cond"]]) data.tmb$XS else data.tmb$X)
       icpt <- which(Xnames == "(Intercept)")
-      if (length(icpt) == 1L && is.null(mapArg$beta)) {
+      ## [["beta"]], not $beta: $ would partially match a user map on
+      ## betazi or betadisp and skip the intercept map (GH #1348)
+      if (length(icpt) == 1L && is.null(mapArg[["beta"]])) {
           betamap <- seq_along(parameters$beta)
           betamap[icpt] <- NA
           mapArg <- c(mapArg, list(beta = factor(betamap)))
@@ -919,10 +950,10 @@ getXReTrms <- function(formula, mf, fr, ranOK=TRUE, type="",
             }
           }
           else if(ss$reTrmClasses[i] == "propto"){
-            checkProptoNames(aa = aa[[i]], cnms = reTrms$cnms[[i]], reXtrm = reXterms[[i]])
+            aa[[i]] <- checkMatrix(aa = aa[[i]], cnms = reTrms$cnms[[i]], label = "propto", reXtrm = reXterms[[i]])
           }
           else if(ss$reTrmClasses[i] == "equalto"){
-            checkEqualto(aa = aa[[i]], cnms = reTrms$cnms[[i]])
+            aa[[i]] <- checkMatrix(aa = aa[[i]], cnms = reTrms$cnms[[i]], label = "equalto", reXtrm = reXterms[[i]])
           }
         }
 
@@ -1850,59 +1881,59 @@ glmmTMBControl <- function(optCtrl=NULL,
   return(Xlist)
 }
 
-##' Checks for the equalto matrix in aa matches cnms
-##' @param aa additional argument of a RE term (expecting equalto matrix)
+##' Checks a user-supplied covariance matrix (equalto/propto) against cnms:
+##' matrix type, missing values, dimensions, symmetry,and row/column name agreement.
+##' The supplied matrix row/column names are mandatory, and must match the cnms of the corresponding random effect term.
+##' @param aa additional argument of a RE term (expecting a cov matrix)
 ##' @param cnms column-names of Z for a random effect term
+##' @param label "equalto" or "propto", used for error messages
+##' @param reXtrm terms object corresponding to a RE term (for prefix match)
 ##' @noRd
-checkEqualto <- function(aa, cnms){
-  #cases where aa is the utils::vi() function
-  if (identical(aa, utils::vi)) 
-    stop("equalto matrix argument cannot be found.", call. = FALSE)
-  #length of equalto random effect term
-  k <- length(cnms)
-  #check if numeric matrix
+checkMatrix <- function(aa, cnms, label = c("equalto", "propto"), reXtrm) {
+  label <- match.arg(label)
+  #cases where aa is the utils::vi() function (more for equalto if the metafor vi naming is used)
+  if (identical(aa, utils::vi))
+    stop(sprintf("%s() matrix cannot be found", label), call. = FALSE)
   if (!is.matrix(aa) || !is.numeric(aa))
-    stop("equalto matrix must be a numeric matrix.", call. = FALSE)
-  #check if square matrix
-  if (nrow(aa) != ncol(aa))
-    stop("equalto matrix must be a square matrix.", call. = FALSE)
-  #check dimensions of aa 
-  if (nrow(aa) != k) 
-    stop(paste0("The length of the equalto random effect term (", k, ") and the length/dimensions of the equalto object (", nrow(aa), ") are not the same."), call. = FALSE)
-  ## check if aa is numeric
-  if (!is.numeric(aa)) 
-    stop("The object specified for equalto is not numeric.", call. = FALSE)
-}
+    stop(sprintf("%s() matrix must be a numeric matrix", label), call. = FALSE)
+  if (anyNA(aa))
+    stop(sprintf("%s() matrix contains missing values", label), call. = FALSE)
+  if (nrow(aa) != length(cnms) || ncol(aa) != length(cnms))
+    stop(sprintf("%s() matrix has dimensions %d x %d, but the random effect term has %d levels. These must match.",
+                  label, nrow(aa), ncol(aa), length(cnms)), call. = FALSE)
+  if (!isSymmetric(unname(aa)))
+    stop(sprintf("%s() matrix must be symmetric", label), call. = FALSE)
 
-##' Checks if the row or column names of the propto matrix in aa matches cnms
-##' @param aa additional argument of a RE term (expecting propto matrix)
-##' @param cnms column-names of Z for a random effect term
-##' @param reXtrm terms object corresponding to a RE term
-##' @noRd
-checkProptoNames <- function(aa, cnms, reXtrm){
-  if( !is.matrix( aa ) )
-    stop("expecting a matrix for propto", call. = FALSE)
-  if(!(ncol(aa) == length(cnms) && nrow(aa) == length(cnms) ) )
-      stop("matrix is not the correct dimensions", call. = FALSE)
   cn <- colnames(aa)
   rn <- rownames(aa)
-  if (is.null(cn) && is.null(rn))
-      stop("row or column names of propto matrix are required", call. = FALSE)
-  if((!is.null(rn) && !is.null(cn)) && !identical(cn, rn)) {
-      stop("row and column names of propto matrix do not match", call. = FALSE)
+  if (is.null(cn) || is.null(rn)) {
+      stop(sprintf("the %s() matrix must have row and column names (matching the random effect level names)",
+      label), call. = FALSE)
   }
-  matNames <- if (is.null(cn)) rn else cn
-  if(!identical(matNames, cnms)) {
+  if (!identical(cn, rn)) {
+      stop(sprintf("row and column names of the %s() matrix differ", label), call. = FALSE)
+  }
+  matNames <- cn
+  if (anyDuplicated(matNames))
+    stop(sprintf("row/column names of the %s() matrix must be unique", label), call. = FALSE)
+  if (!identical(matNames, cnms)) {
       reTrmLabs <- attr(terms(reXtrm), "term.labels")
-      aaLabs <- paste0(reTrmLabs, matNames )
-      if(!identical(aaLabs, cnms)) {
-          if (identical(sort(aaLabs), sort(cnms))) {
-              stop("column/row names of the propto matrix match the terms, but are in a different order",
-                   call. = FALSE)
+      aaLabs <- paste0(reTrmLabs, matNames) #paste factor name
+      if (!identical(aaLabs, cnms)) {
+        use_aaLabs <- identical(sort(aaLabs), sort(cnms))
+        use_matNames <- identical(sort(matNames), sort(cnms))
+          if (use_aaLabs || use_matNames) { 
+              # Reorder instead of error
+              ord <- match(cnms, if (use_aaLabs) aaLabs else matNames)
+              aa <- aa[ord, ord, drop = FALSE]
+              warning(sprintf("row/column names of the %s() matrix match the random effect level names but were in a different order; reordering", label), call. = FALSE)
+          } else {
+            stop(sprintf("row/column names of the %s() matrix do not match the random effect level names. Expecting names: ", label),
+              paste(sQuote(head(cnms, 5)), collapse = ", "), if (length(cnms) > 5) ", ...", call. = FALSE)
           }
-          stop( "column or row names of the propto matrix do not match the terms. Expecting names:", sQuote(cnms), call. = FALSE)
-      }
+        }
   }
+  return(aa)
 }
 
 ##' Optimize TMB models and package results, modularly
@@ -2391,9 +2422,9 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
     ## ordinal family: drop the internally-mapped intercept (fixed to 0,
     ## absorbed into the thresholds) from the coefficient table; keep it
     ## if the user supplied their own beta map
-    if (famL$family == "ordinal" && is.null(object$modelInfo$map$beta) &&
+    if (famL$family == "ordinal" && is.null(object$modelInfo$map[["beta"]]) &&
         !is.null(coefs$cond)) {
-        bmap <- object$obj$env$map$beta
+        bmap <- object$obj$env$map[["beta"]]
         icpt <- which(rownames(coefs$cond) == "(Intercept)")
         if (length(icpt) == 1 && !is.null(bmap) && is.na(bmap[icpt])) {
             coefs$cond <- coefs$cond[-icpt, , drop = FALSE]
