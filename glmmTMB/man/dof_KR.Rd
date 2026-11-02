@@ -29,4 +29,5 @@ for Satterthwaite approximations
 Kenward-Roger adjustments \emph{should not be used} for models fitted with ML rather than REML;
 the theory is only well understood, and the model is only tested, for LMMs (\code{family = "gaussian"}).
 Use at your own risk for GLMMs!
+Kenward-Roger adjustments are not supported for models with a conditional \code{kron()} term.
 }

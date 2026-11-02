@@ -96,7 +96,8 @@ enum valid_covStruct {
   hetar1_covstruct = 12,
   homcs_covstruct = 13,
   homtoep_covstruct = 14,
-  equalto_covstruct = 15
+  equalto_covstruct = 15,
+  kron_covstruct = 16
 };
 
 // should probably be named just 'predictCode';

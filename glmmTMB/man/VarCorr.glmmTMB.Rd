@@ -24,6 +24,10 @@ while the remaining n(n-1)/2 parameters are the elements of the Cholesky factor
 of the correlation matrix, filled in column-wise order
 (see the \href{http://kaskr.github.io/adcomp/classdensity_1_1UNSTRUCTURED__CORR__t.html}{TMB documentation}
 for further details).
+
+For a \code{kron()} term, each margin is returned as a block of its own,
+labelled e.g. \code{"subject (kron 1/2)"} and \code{"subject (kron 2/2)"};
+the covariance of the whole term is the \code{kronecker()} product of these blocks.
 }
 \examples{
 ## Comparing variance-covariance matrix with manual computation
