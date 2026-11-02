@@ -31,6 +31,28 @@ test_that("pad_mapped_vcov aligns vcov with fixef for mapped models", {
                      Vfree)
 })
 
+test_that("pad_mapped_vcov lifts the reduced vcov for coefficients tied via 'map' (GH #1340)", {
+    ## two spp coefficients tied: 8 nominal coefficients, 7 estimated
+    fit_tie <- glmmTMB(count ~ mined + spp, family = poisson,
+                       data = Salamanders,
+                       map = list(beta = factor(c(1, 2, 3, 3, 4, 5, 6, 7))))
+    Vred <- vcov(fit_tie, include_nonest = FALSE)$cond
+    expect_identical(dim(Vred), c(7L, 7L))
+    Vpad <- glmmTMB:::pad_mapped_vcov(fit_tie, Vred, "cond")
+    expect_identical(dim(Vpad), c(8L, 8L))
+    expect_identical(rownames(Vpad), names(fixef(fit_tie)$cond))
+    ## the tied pair shares one parameter: identical rows, correlation 1 ...
+    expect_equal(Vpad[3, ], Vpad[4, ], ignore_attr = TRUE)
+    ## ... and the result is what vcov(include_nonest = TRUE) reports
+    expect_equal(Vpad, as.matrix(vcov(fit_tie)$cond), ignore_attr = TRUE)
+    skip_if_not_installed("emmeans")
+    ## used to fail in emmeans:::.qf.non0 ("logical subscript too long")
+    em <- summary(emmeans::emmeans(fit_tie, ~ spp))
+    expect_false(anyNA(em$SE))
+    ## the tied pair (sppPR, sppDM) gives identical standard errors
+    expect_equal(em$SE[em$spp == "PR"], em$SE[em$spp == "DM"])
+})
+
 test_that("emmeans works with a mapped fixed-effect coefficient", {
     skip_if_not_installed("emmeans")
     em <- summary(emmeans::emmeans(fit_map, ~ mined))
