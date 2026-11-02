@@ -165,6 +165,39 @@ test_that("ordinal downstream: emmeans and car::Anova handle mapped intercept", 
     expect_equal(aa["Cont", "Chisq"], z_cont^2, tolerance = 1e-6)
 })
 
+test_that("ordinal cloglog link matches ordinal::clm", {
+    skip_if_not_installed("ordinal")
+    fit_clm <- ordinal::clm(Sat ~ Infl + Type + Cont, weights = Freq,
+                            data = housing, link = "cloglog")
+    fit_ord_c <- update(fit_ord, family = ordinal(link = "cloglog"))
+    expect_equal(unname(fixef(fit_ord_c)$cond[-1]), unname(fit_clm$beta),
+                 tolerance = 1e-3)
+    expect_equal(unname(family_params(fit_ord_c)), unname(fit_clm$alpha),
+                 tolerance = 1e-3)
+    expect_equal(c(logLik(fit_ord_c)), c(logLik(fit_clm)), tolerance = 1e-5)
+})
+
+test_that("ordinal random slope matches ordinal::clmm", {
+    skip_if_not_installed("ordinal")
+    set.seed(101)
+    dd <- data.frame(x = rnorm(600),
+                     g = factor(rep(1:30, each = 20)))
+    eta <- rnorm(30)[as.integer(dd$g)] +
+        (1 + rnorm(30, sd = 0.8)[as.integer(dd$g)]) * dd$x
+    cum <- plogis(outer(c(-1, 0.5, 2), eta, "-"))
+    dd$y <- ordered(1 + colSums(sweep(cum, 2, runif(600), "<")), levels = 1:4)
+    fit_clmm <- ordinal::clmm(y ~ x + (x | g), data = dd)
+    fit_tmb <- glmmTMB(y ~ x + (x | g), data = dd, family = ordinal())
+    expect_equal(c(logLik(fit_tmb)), c(logLik(fit_clmm)), tolerance = 1e-5)
+    expect_equal(unname(fixef(fit_tmb)$cond[-1]), unname(fit_clmm$beta),
+                 tolerance = 1e-3)
+    expect_equal(unname(family_params(fit_tmb)), unname(fit_clmm$alpha),
+                 tolerance = 1e-3)
+    expect_equal(unname(attr(VarCorr(fit_tmb)$cond$g, "stddev")),
+                 unname(attr(ordinal::VarCorr(fit_clmm)$g, "stddev")),
+                 tolerance = 1e-2)
+})
+
 test_that("ordinal numerical robustness at extreme parameters", {
     ## probit/cloglog cumulative log-probs must stay finite at extreme
     ## eta (logspace_sub(-Inf, -Inf) = NaN would poison the gradient)
