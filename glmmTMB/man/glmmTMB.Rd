@@ -97,6 +97,7 @@ Fit a generalized linear mixed model (GLMM) using Template Model Builder (TMB).
 \item \code{homtoep} (* Toeplitz, homogeneous variance)
 \item \code{rr} (reduced-rank/factor-analytic model)
 \item \code{homdiag} (diagonal, homogeneous variance)
+\item \code{cor} (unstructured correlation matrix with all variances fixed to 1, e.g. for repeated binary outcomes where only the correlations are identifiable)
 \item \code{propto} (* proportional to user-specified variance-covariance matrix)
 \item \code{equalto} (* equal to user-specified variance-covariance matrix)
 }
