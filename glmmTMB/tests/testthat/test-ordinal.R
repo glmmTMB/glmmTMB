@@ -248,6 +248,30 @@ test_that("ordinal response checks", {
     expect_match(w, "integer codes")
 })
 
+test_that("ordinal simulate_new", {
+    dd <- data.frame(i = seq_len(20000))
+    psi <- c(0.5, -0.5)
+    expect_no_warning(ss <- simulate_new(~ 1, newdata = dd, family = ordinal(),
+                                         newparams = list(beta = 0, psi = psi),
+                                         seed = 101))
+    expect_true(is.ordered(ss[[1]]))
+    expect_identical(levels(ss[[1]]), c("1", "2", "3"))
+    p <- exp(c(psi, 0)) / sum(exp(c(psi, 0)))
+    expect_true(all(abs(prop.table(table(ss[[1]])) - p) < 0.02))
+    dd$x <- rep(0:1, each = 10000)
+    expect_no_warning(ss2 <- simulate_new(~ x, newdata = dd, family = ordinal(),
+                                          newparams = list(beta = c(0, 1), psi = psi),
+                                          seed = 101))
+    expect_lt(abs(mean(ss2[[1]][dd$x == 1] == "1") - plogis(qlogis(p[1]) - 1)), 0.02)
+    expect_error(simulate_new(~ 1, newdata = dd, family = ordinal(),
+                              newparams = list(beta = 0)),
+                 "needs newparams\\$psi")
+    expect_error(simulate_new(~ 1, newdata = dd[1:2, , drop = FALSE],
+                              family = ordinal(),
+                              newparams = list(beta = 0, psi = psi)),
+                 "at least as many rows")
+})
+
 test_that("ordinal links", {
     for (l in c("cauchit", "identity", "log")) {
         expect_error(ordinal(link = l), "logit, probit, cloglog")
