@@ -961,8 +961,8 @@ Type objective_function<Type>::operator() ()
 
   // Ordinal (cumulative link) family: thresholds are stored in psi via a
   // softmax parameterization (cf. Koslik et al 2025, arXiv:2511.17071, and
-  // GH #514): psi are log-weights of K baseline category probabilities
-  // (last weight fixed to 0 for identifiability) and
+  // GH #514): psi are log-weights (with the logit link, of K baseline category
+  // probabilities; last weight fixed to 0 for identifiability) and
   //   theta(j) = logit(cumsum(softmax(c(psi, 0)))(j))
   //            = logsumexp(psi[0..j]) - logsumexp(psi[j+1..], 0),
   // which is automatically increasing; the prefix/suffix logsumexp form
@@ -1250,7 +1250,7 @@ Type objective_function<Type>::operator() ()
 	}
       case ordinal_family:
 	{
-	  // cumulative link model (proportional odds): yobs in 1..K;
+	  // cumulative link model: yobs in 1..K;
 	  // theta_ord (monotone thresholds) computed above from psi.
 	  // Cumulative log-probabilities go through
 	  // logit_inverse_linkfun, which has accurate tail versions for

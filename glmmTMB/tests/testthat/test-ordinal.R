@@ -268,6 +268,9 @@ test_that("ordinal response checks", {
                    "category\\(ies\\) 2$")
     expect_warning(glmmTMB(f ~ x, data = dd, family = ordinal()),
                    "level\\(s\\) 2$")
+    expect_warning(glmmTMB(ordered(n) ~ x, data = dd, family = ordinal(),
+                           weights = as.numeric(n != 2)),
+                   "level\\(s\\) 2$")
     dd$ch <- as.character(dd$f)
     dd$lg <- dd$n > 1
     expect_error(glmmTMB(ch ~ x, data = dd, family = ordinal()),
@@ -296,6 +299,9 @@ test_that("ordinal simulate_new", {
                                           newparams = list(beta = c(0, 1), psi = psi),
                                           seed = 101))
     expect_lt(abs(mean(ss2[[1]][dd$x == 1] == "1") - plogis(qlogis(p[1]) - 1)), 0.02)
+    expect_error(simulate_new(~ x, newdata = dd, family = ordinal(),
+                              newparams = list(beta = c(5, 1), psi = psi)),
+                 "intercept is fixed to zero")
     expect_error(simulate_new(~ 1, newdata = dd, family = ordinal(),
                               newparams = list(beta = 0)),
                  "needs newparams\\$psi")
@@ -306,11 +312,8 @@ test_that("ordinal simulate_new", {
 })
 
 test_that("ordinal links", {
-    for (l in c("cauchit", "identity", "log")) {
+    for (l in list("cauchit", "identity", "log", make.link("cauchit"))) {
         expect_error(ordinal(link = l), "logit, probit, cloglog")
-    }
-    for (l in c("logit", "probit", "cloglog")) {
-        expect_identical(ordinal(link = l)$link, l)
     }
 })
 

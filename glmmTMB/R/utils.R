@@ -1062,10 +1062,15 @@ simulate_new <- function(object,
 
     simparams <- newparams
     if (family$family == "ordinal") {
+        beta <- newparams[["beta"]]
+        if (length(beta) == length(r1$parameters[["beta"]]) && beta[1] != 0) {
+            stop("the ordinal intercept is fixed to zero: ",
+                 "the first element of newparams$beta must be 0")
+        }
         ## the intercept is mapped: make_pars() wants the free elements of beta
-        betamap <- attr(r2$env$parameters$beta, "map")
-        if (length(newparams$beta) == length(betamap)) {
-            simparams$beta <- newparams$beta[betamap >= 0]
+        betamap <- attr(r2$env$parameters[["beta"]], "map")
+        if (length(beta) == length(betamap)) {
+            simparams$beta <- beta[betamap >= 0]
         }
     }
 

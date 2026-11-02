@@ -519,8 +519,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   if (family$family == "ordinal") {
       ## K-1 increasing thresholds via a softmax parameterization:
-      ## psi are log-weights of the K baseline category probabilities
-      ## (last fixed to 0) and theta = qlogis(cumsum(softmax(c(psi, 0)))).
+      ## psi are log-weights (with the logit link, of the K baseline category
+      ## probabilities; last fixed to 0) and theta = qlogis(cumsum(softmax(c(psi, 0)))).
       ## psi = 0 starts from equiprobable categories (cf. ordinal::clm)
       psi_init <- rr0(length(ord_levels) - 1L)
   } else {
@@ -1569,7 +1569,7 @@ glmmTMB <- function(
                        enclos = parent.frame())[[respCol]]
         }
         cats <- if (is.factor(y0)) levels(y0) else seq_len(max(y0, na.rm = TRUE))
-        empty <- setdiff(cats, y0)
+        empty <- setdiff(cats, y0[weights > 0])
         if (length(empty) > 0) {
             warning("no observations in ordinal response ",
                     if (is.factor(y0)) "level(s) " else "category(ies) ",

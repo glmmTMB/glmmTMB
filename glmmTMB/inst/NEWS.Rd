@@ -38,7 +38,7 @@
       \code{"logit"}, \code{"probit"} and \code{"cloglog"}
       \item an \code{ordinal} response with an empty category (integer
       codes) or an unused factor level now gives a warning that names it;
-      a character or logical response is now an error that names the
+      a character or logical response now gives an error that names the
       accepted types
       \item \code{simulate_new()} now supports the \code{ordinal} family;
       the number of categories comes from \code{newparams$psi}, and each
