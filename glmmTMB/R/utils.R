@@ -1051,6 +1051,9 @@ simulate_new <- function(object,
         }
         pList <- split(x, names(x))
         pList$b <- b
+        ## split() sorts the blocks alphabetically (b before beta), but
+        ## TMB reads parfull by position: restore TMB's parameter order
+        pList <- pList[intersect(names(r2$env$parameters), names(pList))]
         return(collapse_list(pList))
     }
 
@@ -1074,7 +1077,7 @@ simulate_new <- function(object,
             r1$parameters[[nm]] <- newparams[[nm]]
         }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
-        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map$b)
+        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map[["b"]])
         return(r3)
     }
     replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
