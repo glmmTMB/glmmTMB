@@ -524,6 +524,11 @@ ordbeta <- function(link="logit") {
 #' @export
 #' @rdname nbinom2
 ordinal <- function(link="logit") {
+    okLinks <- c("logit", "probit", "cloglog")
+    if (!(if (is.character(link)) link else link$name) %in% okLinks) {
+        stop("the ordinal family only supports these links: ",
+             paste(okLinks, collapse = ", "))
+    }
     r <- list(family="ordinal",
               initialize=expression({
                   if (is.factor(y)) {

@@ -228,6 +228,15 @@ test_that("ordinal error handling", {
                    "unordered factor")
 })
 
+test_that("ordinal links", {
+    for (l in c("cauchit", "identity", "log")) {
+        expect_error(ordinal(link = l), "logit, probit, cloglog")
+    }
+    for (l in c("logit", "probit", "cloglog")) {
+        expect_identical(ordinal(link = l)$link, l)
+    }
+})
+
 test_that("ordinal REML warns that thresholds are not integrated out", {
     expect_warning(fit <- glmmTMB(Sat ~ Infl, weights = Freq, data = housing,
                                   family = ordinal(), REML = TRUE),
