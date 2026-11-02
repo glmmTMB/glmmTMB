@@ -228,6 +228,26 @@ test_that("ordinal error handling", {
                    "unordered factor")
 })
 
+test_that("ordinal response checks", {
+    dd <- data.frame(x = 1:12, n = rep(c(1, 2, 3), 4), i = rep(c(1, 3, 4), 4))
+    dd$f <- ordered(dd$i, levels = 1:4)
+    expect_warning(glmmTMB(i ~ x, data = dd, family = ordinal()),
+                   "category\\(ies\\) 2$")
+    expect_warning(glmmTMB(f ~ x, data = dd, family = ordinal()),
+                   "level\\(s\\) 2$")
+    dd$ch <- as.character(dd$f)
+    dd$lg <- dd$n > 1
+    expect_error(glmmTMB(ch ~ x, data = dd, family = ordinal()),
+                 "ordered factor or positive \\(1-based\\) integer")
+    expect_error(glmmTMB(lg ~ x, data = dd, family = ordinal()),
+                 "ordered factor or positive \\(1-based\\) integer")
+    ## every category observed
+    expect_no_warning(glmmTMB(ordered(n) ~ x, data = dd, family = ordinal()))
+    w <- capture_warnings(glmmTMB(n ~ x, data = dd, family = ordinal()))
+    expect_length(w, 1L)
+    expect_match(w, "integer codes")
+})
+
 test_that("ordinal links", {
     for (l in c("cauchit", "identity", "log")) {
         expect_error(ordinal(link = l), "logit, probit, cloglog")

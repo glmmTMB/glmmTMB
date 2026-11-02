@@ -538,7 +538,7 @@ ordinal <- function(link="logit") {
                           warning("ordinal response is an unordered factor; ",
                                   "levels will be treated as ordered in their current order")
                   } else {
-                      if (any(y != round(y) | y < 1, na.rm = TRUE))
+                      if (!is.numeric(y) || any(y != round(y) | y < 1, na.rm = TRUE))
                           stop("ordinal response must be an ordered factor ",
                                "or positive (1-based) integer category codes")
                   }
