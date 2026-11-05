@@ -745,6 +745,8 @@ pad_mapped_vcov <- function(object, V, component = "cond") {
 #' are characterized by one or more additional parameters.
 #' @param object glmmTMB object
 #' @return a named numeric vector
+#' @details For \code{nbinom12}, returns the positive quadratic dispersion
+#' parameter \eqn{\psi}{psi} in \eqn{V = \mu(1 + \phi + \mu/\psi)}.
 #' @export
 family_params <- function(object) {
     ff <- object$modelInfo$family$family
@@ -755,6 +757,7 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           nbinom12 = c("NB12 quadratic dispersion" = exp(tf)),
            ordinal = {
                ## thresholds from softmax-parameterized psi:
                ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
@@ -1021,6 +1024,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              vargs$mu <- vargs$lambda <- mu
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
+             vargs$psi <- unname(shape)
              ## number of trials for binomial-type responses (combinomial)
              vargs$size <- wts
              # subset to only the arguments used by the variance function
