@@ -594,6 +594,13 @@ test_that("skewnormal family", {
     expect_equal(family_params(fit),
                  c(`Skewnormal shape` = -6.12362878509844),
                  tolerance = 1e-6)
+    shape <- c(-3, -1, -0.5, 0, 0.5, 1, 3)
+    expect_equal(vapply(shape, function(a)
+        skewnormal()$variance(mu = 0, phi = 1.5, shape = a), numeric(1)),
+        rep(1.5^2, length(shape)))
+    expected <- (dd$y - predict(fit, type = "response")) /
+        predict(fit, type = "disp")
+    expect_equal(unname(residuals(fit, type = "pearson")), unname(expected))
 })
 
 test_that("make_family initialize works", {

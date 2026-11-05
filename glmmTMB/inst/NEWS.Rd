@@ -41,6 +41,9 @@
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item For \code{skewnormal}, the variance helper now returns the
+      squared response standard deviation, matching the fitted parameterization
+      and correcting Pearson residual scaling (GH #1359, item 3).
       \item an \code{ordinal} fit with a user \code{map} on another
       parameter vector (e.g. \code{map = list(betazi = factor())}) no
       longer leaves the fixed-effect intercept free: partial matching of
