@@ -1019,6 +1019,11 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              shape <- family_params(object)
              vargs <- list()
              vargs$mu <- vargs$lambda <- mu
+             if (fam$family %in% c("truncated_nbinom1", "truncated_genpois",
+                                  "truncated_compois")) {
+                 vargs$mu <- fam$linkinv(predict(object, type = "link",
+                                                re.form = re.form))
+             }
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
              ## number of trials for binomial-type responses (combinomial)
