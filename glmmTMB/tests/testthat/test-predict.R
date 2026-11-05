@@ -692,3 +692,36 @@ test_that("betabinomial Pearson resids", {
   expect_equal(coef(lm(y~x, res))[["x"]], 0, tolerance = 2e-2)
 })
 
+
+test_that("prediction covariance retains dimensions and excluded rows", {
+    skip_on_cran()
+    local_useRTMB(FALSE)
+    dd <- data.frame(x = 1:6, y = c(1, 3, 2, 4, 3, 7))
+    for (use_rtmb in c(FALSE, TRUE)) {
+        useRTMB(use_rtmb)
+        fit <- glmmTMB(y ~ x, data = dd, family = poisson)
+        one <- predict(fit, newdata = data.frame(x = 2), cov.fit = TRUE)
+        expect_identical(dim(one$cov.fit), c(1L, 1L))
+        expect_equal(as.numeric(one$cov.fit), one$se.fit^2,
+                     ignore_attr = TRUE)
+        for (type in c("zprob", "zlink")) {
+            z <- predict(fit, newdata = data.frame(x = 1:3),
+                         type = type, cov.fit = TRUE)
+            expect_identical(dim(z$cov.fit), c(3L, 3L))
+            expect_true(all(is.na(z$cov.fit)))
+        }
+        dn <- dd
+        dn$x[3] <- NA
+        fit_na <- glmmTMB(y ~ x, data = dn, family = poisson,
+                          na.action = na.exclude)
+        complete <- predict(fit_na, newdata = dn[-3, ], cov.fit = TRUE)
+        restored <- predict(fit_na, cov.fit = TRUE)
+        expect_identical(dim(restored$cov.fit), c(6L, 6L))
+        expect_true(all(is.na(restored$cov.fit[3, ])))
+        expect_true(all(is.na(restored$cov.fit[, 3])))
+        expect_equal(unname(restored$cov.fit[-3, -3]),
+                     unname(complete$cov.fit))
+        expect_equal(diag(restored$cov.fit), restored$se.fit^2,
+                     ignore_attr = TRUE)
+    }
+})

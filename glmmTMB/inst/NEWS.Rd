@@ -65,6 +65,10 @@
       parameters, so when a parameter was fixed via \code{map} (including
       the intercept the \code{ordinal} family fixes internally), the rows
       after it carried the wrong labels
+      \item Prediction covariance output retains matrix dimensions for
+      single observations, uses the prediction-vector length for no-ZI output,
+      and restores both covariance axes under \code{na.exclude}
+      (GH #1359, item 6).
       \item for the \code{ordinal} family with random effects, Wald
       \code{confint()} with \code{parm} given by name (e.g.
       \code{"theta_"}) returned the wrong rows, because its table lists

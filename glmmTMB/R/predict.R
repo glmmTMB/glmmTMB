@@ -248,7 +248,7 @@ predict.glmmTMB <- function(object,
       pred <- napredict(na.act, pred)
       if (se.fit) se <- napredict(na.act,se)
     }
-    if (cov.fit) covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
+    if (cov.fit) covfit <- matrix(NA_real_, nrow = length(se), ncol = length(se), dimnames = list(names(se), names(se)))
     if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))
   }
 
@@ -564,7 +564,7 @@ predict.glmmTMB <- function(object,
     pred <- sdrsplit[[return_par]][,"Estimate"]
     se <- sdrsplit[[return_par]][,"Std. Error"]
     w <- which(rownames(sdrsum) == return_par)
-    if (cov.fit) covfit <- covfit[w, w]
+    if (cov.fit) covfit <- covfit[w, w, drop = FALSE]
     
     if (do.bias.correct) {
       return (sdrsum[w,])
@@ -587,8 +587,9 @@ predict.glmmTMB <- function(object,
     if (se.fit) se <- napredict(na.act,se)
     if (cov.fit) {
       tmp <- covfit
-      covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
-      covfit[!is.na(covfit)] <- as.vector(tmp)
+      keep <- !is.na(napredict(na.act, seq_len(nrow(tmp))))
+      covfit <- matrix(NA_real_, nrow = length(se), ncol = length(se), dimnames = list(names(se), names(se)))
+      covfit[keep, keep] <- tmp
     }
   }
   if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))
