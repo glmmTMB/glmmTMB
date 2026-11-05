@@ -408,8 +408,7 @@ tweedie <- function(link="log") {
 skewnormal <- function(link="identity") {
   r <- list(family="skewnormal",
             variance = function(mu, phi, shape) {
-              delta <- shape/sqrt(1-shape^2)
-              phi^2*(1-2*delta^2/pi)
+              phi^2
             })
   return(make_family(r,link))
 }
