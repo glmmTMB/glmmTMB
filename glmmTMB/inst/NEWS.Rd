@@ -47,6 +47,10 @@
       the map's \code{beta} element skipped the internal intercept map,
       so the intercept and the thresholds were not jointly identifiable
       (GH #1348)
+      \item The \code{t_family} variance helper now requires the degrees
+      of freedom as \code{shape}, returns scale squared times the Student-t
+      variance factor, and preserves the observation-vector length. Pearson
+      residuals use the fitted degrees of freedom (GH #1359, item 4).
       \item \code{vcov(., full = TRUE)} now handles a family-specific
       parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
       \code{NA} rows and columns like other mapped parameters (previously

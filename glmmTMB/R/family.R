@@ -143,7 +143,7 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
 ##'      \item{combinomial}{Conway-Maxwell-Binomial distribution: mean-parameterized as in Huang (2017) but for the binomial. The dispersion parameter \eqn{\nu}{nu} controls under- (\eqn{\nu>1}) and over- (\eqn{\nu<1}) dispersion relative to the binomial; \eqn{\nu=1} recovers the binomial. \eqn{V} has no closed form and is computed numerically.}
 ##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^{power}}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}, i.e. the compound Poisson-gamma distribution. Code taken from the \code{tweedie} package, written by Peter Dunn. The power parameter (designated \code{psi} in the list of parameters) uses the link function \code{qlogis(psi-1.0)}; thus one can fix the power parameter to a specified value using \code{start = list(psi = qlogis(fixed_power-1.0)), map = list(psi = factor(NA))}.}
-##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
+##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The variance helper requires \code{shape}, the degrees of freedom: \eqn{V=\phi^2\nu/(\nu-2)} for \eqn{\nu>2}; it returns \code{Inf} for \eqn{1<\nu\le2} and \code{NaN} for \eqn{\nu\le1}, where the mean is undefined. The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 ##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
@@ -499,8 +499,10 @@ ziGamma <- function(link="inverse") {
 #' @rdname nbinom2
 t_family <- function(link="identity") {
     r <- list(family="t",
-           variance=function(mu, phi) {
-               rep(phi, length(mu))
+           variance=function(mu, phi, shape) {
+               shape <- rep_len(shape, max(length(mu), length(phi), length(shape)))
+               ifelse(shape > 2, phi^2 * (1 + 2/(shape - 2)),
+                      ifelse(shape > 1, Inf, NaN))
            })
     return(make_family(r,link))
 }
