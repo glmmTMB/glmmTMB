@@ -34,6 +34,15 @@
       \item \code{residuals(type = "working")} is now an error for the
       \code{ordinal} family (the response residual is on the
       category-index scale, so the GLM working residual is not defined)
+      \item \code{ordinal()} now gives an error for links other than
+      \code{"logit"}, \code{"probit"} and \code{"cloglog"}
+      \item an \code{ordinal} response with an empty category (integer
+      codes) or an unused factor level now gives a warning that names it;
+      a character or logical response now gives an error that names the
+      accepted types
+      \item \code{simulate_new()} now supports the \code{ordinal} family;
+      the number of categories comes from \code{newparams$psi}, and each
+      simulation is an ordered factor
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{
