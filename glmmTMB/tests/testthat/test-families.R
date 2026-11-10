@@ -644,3 +644,63 @@ test_that("error message for ziGamma with zeros",
           ziformula = ~1))
   expect_is(g, "glmmTMB")
 })
+
+test_that("zero-truncated variance helpers and Pearson residuals", {
+    skip_on_cran()
+    local_useRTMB(FALSE)
+    mu <- c(0.5, 2, 6)
+    alpha <- c(0.4, 1, 2)
+    ref_nb <- vapply(seq_along(mu), function(i) {
+        y <- 1:2000
+        p <- dnbinom(y, mu = mu[i], size = mu[i]/alpha[i])
+        p <- p/sum(p)
+        sum((y - sum(y*p))^2 * p)
+    }, numeric(1))
+    expect_equal(truncated_nbinom1()$variance(mu, alpha), ref_nb,
+                 tolerance = 1e-10)
+    ref_pois <- vapply(mu, function(m) {
+        y <- 1:2000
+        p <- dpois(y, m)
+        p <- p/sum(p)
+        sum((y - sum(y*p))^2 * p)
+    }, numeric(1))
+    expect_equal(truncated_genpois()$variance(mu, 1), ref_pois,
+                 tolerance = 1e-10)
+    expect_equal(truncated_compois()$variance(mu, 1), ref_pois,
+                 tolerance = 1e-8)
+    expect_error(truncated_genpois()$variance(0.4, 0.5), "underdispersed")
+    expect_equal(truncated_genpois()$variance(1e16, 1), 1e16)
+    expect_equal(truncated_nbinom1()$variance(1e16, 1), 2e16)
+    y <- 1:200
+    theta <- 2/sqrt(2)
+    term <- theta + (1 - 1/sqrt(2)) * y
+    w <- exp(log(theta) + (y-1)*log(term) - term - lgamma(y+1))
+    w <- w/sum(w)
+    expect_equal(truncated_genpois()$variance(2, 2), sum(w * (y - sum(y*w))^2))
+    w <- as.numeric(RTMB::dcompois2(y, mean = rep(2, length(y)),
+                                     nu = rep(2, length(y))))
+    w <- w/sum(w)
+    expect_equal(truncated_compois()$variance(2, 0.5), sum(w * (y - sum(y*w))^2))
+    dd <- data.frame(x = rep(c(-1, 0, 1), each = 30))
+    set.seed(135905)
+    lambda <- exp(0.8 + 0.2*dd$x)
+    p0 <- ppois(0, lambda)
+    dd$y <- qpois(p0 + runif(nrow(dd)) * (1 - p0), lambda)
+    for (use_rtmb in c(FALSE, TRUE)) {
+        useRTMB(use_rtmb)
+        for (fam in list(truncated_nbinom1(), truncated_genpois(),
+                         truncated_compois())) {
+            fit <- glmmTMB(y ~ x, data = dd, family = fam,
+                           start = list(betadisp = 0),
+                           map = list(betadisp = factor(NA)), se = FALSE)
+            m0 <- fam$linkinv(predict(fit, type = "link"))
+            v <- switch(fam$family,
+                truncated_nbinom1 = fam$variance(m0, alpha = 1),
+                fam$variance(m0, phi = 1))
+            expected <- (dd$y - predict(fit, type = "response"))/sqrt(v)
+            expect_length(residuals(fit, type = "pearson"), nrow(dd))
+            expect_equal(unname(residuals(fit, type = "pearson")),
+                         unname(expected))
+        }
+    }
+})
