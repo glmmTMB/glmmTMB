@@ -5,6 +5,14 @@
 \encoding{UTF-8}
 
 \section{CHANGES IN VERSION 1.1.15.9000}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item new covariance structure \code{cor} (unstructured correlation
+      matrix with all variances fixed at 1), e.g. for repeated binary
+      outcomes where only the correlations are identifiable
+      (GH #1356, Staffan Betner)
+    } % itemize
+  } % new features
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item Tweedie simulation is faster, especially when the power
@@ -38,6 +46,17 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item Priors on random-effect standard deviations (\code{ranef_sd})
+      for homogeneous-variance structures other than \code{homdiag}
+      (e.g. \code{ar1}, \code{homcs}, \code{homtoep}) were applied to
+      the wrong elements of \code{theta}
+      \item \code{ranef_sd} and \code{ranef_cor} priors with a blank or
+      missing \code{coef} now apply only to the standard-deviation (or
+      correlation) parameters of each random-effects term; previously
+      they applied to all elements of \code{theta}
+      \item Priors whose \code{coef} names a random-effects term other
+      than the first were shifted one element to the left in
+      \code{theta}
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)

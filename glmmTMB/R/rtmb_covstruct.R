@@ -149,7 +149,8 @@ termwise_nll <- function(U, theta, term) {
   }
   supported <- c(
     "diag", "homdiag", "us", "cs", "homcs", "toep", "homtoep",
-    "ar1", "hetar1", "ou", "exp", "gau", "mat", "rr", "propto", "equalto"
+    "ar1", "hetar1", "ou", "exp", "gau", "mat", "rr", "propto", "equalto",
+    "cor"
   )
 
   if (!name %in% supported) {
@@ -210,7 +211,8 @@ termwise_nll <- function(U, theta, term) {
     mat = 3L,
     rr = n * rr_rank - (rr_rank - 1L) * rr_rank / 2L,
     propto = n * (n + 1L) / 2L + 1L,
-    equalto = n * (n + 1L) / 2L
+    equalto = n * (n + 1L) / 2L,
+    cor = n * (n - 1L) / 2L
   )
   if (length(theta) != expected_num_theta) {
     stop(
@@ -281,22 +283,18 @@ termwise_nll <- function(U, theta, term) {
     ))
   }
 
-  ## Homogeneous structures use one standard-deviation parameter;
-  ## heterogeneous structures use one parameter per term component.
-  homogeneous <- c(
-    "homdiag", "homcs", "homtoep", "ar1", "ou", "exp", "gau", "mat"
-  )
-  hetvar <- !name %in% homogeneous
-  n_sd_par <- if (hetvar) n else 1L
+  ## leading log-SD parameters: n (heterogeneous), 1 (homogeneous), 0 (cor)
+  n_sd_par <- covstruct_n_sd(name, n)
 
-  logsd <- if (hetvar) {
-    head(theta, n)
+  logsd <- if (n_sd_par == 0L) {
+    rep(0, n)
   } else {
-    rep(theta[1L], n)
+    rep_len(head(theta, n_sd_par), n)
   }
 
   sd <- exp(logsd)
-  corr_par <- theta[-seq_len(n_sd_par)]
+  ## theta[-seq_len(0)] would be empty, so drop leading elements via tail()
+  corr_par <- utils::tail(theta, length(theta) - n_sd_par)
 
   ## propto uses an unstructured correlation matrix with an additional
   ## parameter that proportionally scales the covariance matrix.
@@ -310,8 +308,8 @@ termwise_nll <- function(U, theta, term) {
   ## variants differ only in their standard-deviation parameterization.
   cov_structure <- sub("^hom", "", name)
 
-  ## propto and equalto use the unstructured correlation parameterization.
-  density_structure <- if (cov_structure %in% c("propto", "equalto")) {
+  ## propto, equalto, and cor use the unstructured correlation parameterization.
+  density_structure <- if (cov_structure %in% c("propto", "equalto", "cor")) {
     "us"
   } else if (cov_structure == "hetar1") {
     "ar1"
@@ -461,7 +459,7 @@ termwise_nll <- function(U, theta, term) {
     ## Only the first group currently has explicit RTMB implementations for all
     ## C++ simulation modes.  The second group can simulate new random effects,
     ## but fixed/zero simulation would need separate structure-specific code.
-    flexible_simulation <- c("diag", "us", "ar1", "hetar1", "ou")
+    flexible_simulation <- c("diag", "us", "cor", "ar1", "hetar1", "ou")
     random_only_simulation <- c(
       "homdiag", "cs", "homcs", "toep", "homtoep",
       "exp", "gau", "mat"
@@ -475,7 +473,8 @@ termwise_nll <- function(U, theta, term) {
         U[] <- U$getOrig(seq_along(U))
         simulate_density <- FALSE
       } else if (
-        name == "us" && term$simCode == .valid_simcode[["random"]]
+        name %in% c("us", "cor") &&
+        term$simCode == .valid_simcode[["random"]]
       ) {
         simulate_tmb_unstructured(U, sd, corr_par)
         simulate_density <- FALSE
@@ -617,7 +616,7 @@ termwise_nll <- function(U, theta, term) {
   }
 
   conditional_full_cor <- c(
-    "us", "cs", "homcs", "toep", "homtoep", "propto"
+    "us", "cor", "cs", "homcs", "toep", "homtoep", "propto"
   )
   if (name %in% conditional_full_cor && term$fullCor == 0) {
     report_corr <- matrix(NaN, 1L, 1L)

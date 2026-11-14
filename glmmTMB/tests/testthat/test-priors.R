@@ -181,3 +181,29 @@ test_that("prior on ranef for multiple components works (GH #1263)", {
   expect_equal(summary(m1)$priors, sprior)
 })
 
+
+test_that("blanket ranef_sd/ranef_cor priors select only SD/correlation elements", {
+    ss2 <- transform(sleepstudy, g2 = factor(rep(1:10, length.out = nrow(sleepstudy))))
+    ## theta: Subject (log-SD x 2, cor x 1), then g2 (log-SD x 1)
+    prior_els <- function(pr, form = Reaction ~ Days + (Days | Subject) + (1 | g2)) {
+        dd <- glmmTMB(form, data = ss2, priors = pr, doFit = FALSE)$data.tmb
+        cbind(start = dd$prior_elstart, end = dd$prior_elend)
+    }
+    ## C++ (0-based) element indices
+    expect_equal(prior_els(data.frame(prior = "gamma(1e8, 2)", class = "ranef_sd")),
+                 cbind(start = c(0, 3), end = c(1, 3)))
+    expect_equal(prior_els(data.frame(prior = "lkj(1)", class = "ranef_cor", coef = "")),
+                 cbind(start = 2, end = 2))
+    ## named priors on a later term start at that term's first element
+    expect_equal(prior_els(data.frame(prior = "normal(0, 5)", class = "ranef", coef = "g2")),
+                 cbind(start = 3, end = 3))
+    expect_equal(prior_els(data.frame(prior = "gamma(1e8, 2)", class = "ranef_sd", coef = "g2")),
+                 cbind(start = 3, end = 3))
+    ## without a suffix, a blanket prior still covers all of theta
+    expect_equal(prior_els(data.frame(prior = "normal(0, 5)", class = "ranef")),
+                 cbind(start = 0, end = 3))
+    ## a correlation prior with no correlation parameters anywhere is an error
+    expect_error(prior_els(data.frame(prior = "lkj(1)", class = "ranef_cor"),
+                           form = Reaction ~ Days + (1 | Subject)),
+                 "no random-effects terms.*correlation")
+})
