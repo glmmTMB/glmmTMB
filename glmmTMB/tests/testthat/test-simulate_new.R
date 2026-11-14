@@ -32,10 +32,9 @@ test_that("basic simulate_new, returning object", {
                  rep(c(exp(3*2), exp(3)*exp(0.5)*2/sqrt(2^2+1), exp(0.5*2)), times = c(1, 2, 1)))
     ## SDs are exp(3), exp(0.5), cor is 2/(sqrt(2^2 +1)
     expect_equal(unname(head(getME(s2, "b"))),
-                 c(-0.837259673343575,
-                   6.24196658894249, 1.32388051566616, 
-                   12.4287264928693, 0.829382894489882,
-                   18.4190056),
+                 c(-6.5486179685533, -0.0734463277712657,
+                   -13.556609498853, -0.837259673343575,
+                   6.24196658894249, 1.32388051566616),
                  tolerance = 1e-7)
 })
 
@@ -47,7 +46,17 @@ s3 <- simulate_new( ~ Days + (Days|Subject),
                    return_val = "pars")
 
 test_that("simulate_new, returning pars", {
-    ## FIXME: would be nice to have params in the canonical order
+    expect_identical(unique(names(s3)), c("beta", "betadisp", "b", "theta"))
+})
+
+test_that("simulate_new object stores the simulated b", {
+    s2 <- simulate_new( ~ Days + (Days|Subject),
+                       seed = 101,
+                       newdata = sleepstudy,
+                       family = gaussian,
+                       newparams = pp,
+                       return_val = "object")
+    expect_equal(unname(getME(s2, "b")), unname(s3[names(s3) == "b"]))
 })
 
 ### now work on fixing particular elements ...
@@ -88,6 +97,23 @@ test_that("simulate_new with specified b (object)", {
                      pp2$b)
 })
 
+test_that("simulate_new object with a beta map keeps all of b", {
+    ## the beta map must not be mistaken for a map on b
+    pp_nobeta <- pp[names(pp) != "beta"]
+    sim_obj <- function(...) {
+        simulate_new( ~ Days + (Days|Subject),
+                     seed = 101,
+                     newdata = sleepstudy,
+                     family = gaussian,
+                     newparams = pp_nobeta,
+                     return_val = "object", ...)
+    }
+    s_map <- sim_obj(map = list(beta = factor(c(1, NA))))
+    s_nomap <- sim_obj()
+    expect_length(getME(s_map, "b"), 36)
+    expect_equal(getME(s_map, "b"), getME(s_nomap, "b"))
+})
+
 pp3 <- c(pp, list(b = list("Days|Subject" = pp2$b)))
 
 test_that("simulate_new with specified b (pars, b as list)", {
@@ -118,7 +144,7 @@ s9 <- simulate_new( ~ 1 + (1|Subject) + ar1(0+factor(Days)|Subject),
                    return_val = "pars")
 
 test_that("simulate_new with two RE terms", {
-    expect_equal(unname(head(s9)),
+    expect_equal(unname(head(s9[names(s9) == "b"])),
                  c(-0.119942121932298, 0.203239358640131, -0.248297964136576, 
                    0.078858438002708, 0.114325605998615, 0.431878061822679))
 
@@ -206,7 +232,7 @@ s16 <- simulate_new( ~ 1 + (1|Subject) + hetar1(0+factor(Days)|Subject),
                     return_val = "pars")
 
 test_that("simulate_new with two RE terms", {
-  expect_equal(unname(head(s16)),
+  expect_equal(unname(head(s16[names(s16) == "b"])),
                c(-0.119942121932298, 0.203239358640131, -0.248297964136576,
                  0.078858438002708, 0.114325605998615, 0.431878061822679))
 })

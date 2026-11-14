@@ -63,6 +63,12 @@
       the map's \code{beta} element skipped the internal intercept map,
       so the intercept and the thresholds were not jointly identifiable
       (GH #1348)
+      \item \code{simulate_new(..., return_val = "object")} now stores the
+      simulated random effects correctly: \code{getME(., "b")} previously
+      returned values shifted by the number of fixed parameters, and a
+      \code{map} on \code{beta} was partially matched as a map on
+      \code{b}, truncating \code{b} (GH #1360). \code{return_val = "pars"}
+      now returns the parameters in their canonical order.
       \item \code{vcov(., full = TRUE)} now handles a family-specific
       parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
       \code{NA} rows and columns like other mapped parameters (previously
