@@ -48,9 +48,10 @@ table, with each term's denominator df computed via the Kenward-Roger or Sattert
 approximation (see \code{\link{dof_KR}}, \code{\link{dof_satt}}). \code{"kenward-roger"}
 additionally requires a family with an estimated dispersion parameter, and throws an error
 for families such as \code{binomial} or \code{poisson} that lack one (\code{"satterthwaite"}
-has no such restriction). Not currently supported together with a user-supplied \code{vcov.},
-\code{component != "cond"}, or models with aliased/rank-deficient or \code{map}-fixed
-conditional coefficients.}
+has no such restriction). Not currently supported together with a user-supplied \code{vcov.}
+or \code{component != "cond"}. Hypotheses that involve only coefficients fixed via
+\code{map} (known constants) are untestable and give an \code{NA} row; coefficients
+tied via \code{map} count once towards a term's numerator df.}
 
 \item{\dots}{Additional parameters that may be supported by the method.}
 
