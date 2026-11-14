@@ -41,6 +41,9 @@
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item For \code{skewnormal}, the variance helper now returns the
+      squared response standard deviation, matching the fitted parameterization
+      and correcting Pearson residual scaling (GH #1359, item 3).
       \item \code{dof_KR}, \code{dof_satt} and the \code{ddf} options of
       \code{summary}, \code{anova}, \code{car::Anova} and \code{emmeans}
       now work for conditional coefficients tied or fixed via \code{map},
