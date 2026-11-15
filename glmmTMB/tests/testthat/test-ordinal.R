@@ -960,3 +960,34 @@ test_that("ordinal tied beta map: emmeans", {
     s <- summary(emmeans::emmeans(fit_tiepsi, ~ Type, mode = "cum.prob"))
     expect_false(anyNA(s$SE))
 })
+
+test_that("ordinal tied psi map: vcov labels and profile", {
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    ## map level 1 is psi element 4, level 2 is elements 1 and 3
+    fw <- glmmTMB(rating ~ temp, data = wine, family = ordinal(),
+                  map = list(psi = factor(c(2, NA, 2, 1))))
+    cf <- fw$sdr$cov.fixed
+    pr <- which(rownames(cf) == "psi")
+    for (inc in c(TRUE, FALSE)) {
+        V <- vcov(fw, full = TRUE, include_nonest = inc)
+        expect_equal(V["psi4", "psi4"], cf[pr[1], pr[1]], tolerance = 1e-8)
+        expect_equal(V["psi1", "psi1"], cf[pr[2], pr[2]], tolerance = 1e-8)
+    }
+    rn <- rownames(vcov(fw, full = TRUE, include_nonest = FALSE))
+    expect_identical(unname(rn[grepl("^psi", rn)]), c("psi4", "psi1"))
+
+    ## with a random effect, where the Wald rows and the vcov positions
+    ## differ: a threshold label profiles its own psi element
+    fr <- glmmTMB(rating ~ temp + (1 | judge), data = wine,
+                  family = ordinal(),
+                  map = list(psi = factor(c(2, NA, 2, 1))))
+    pars <- glmmTMB:::get_pars(fr)
+    psi_hat <- unname(pars[names(pars) == "psi"])
+    ci1 <- confint(fr, parm = "1|2", method = "uniroot")
+    expect_identical(rownames(ci1), "psi1")
+    expect_equal(unname(ci1[, "Estimate"]), psi_hat[1], tolerance = 1e-8)
+    ci4 <- confint(fr, parm = "4|5", method = "uniroot")
+    expect_identical(rownames(ci4), "psi4")
+    expect_equal(unname(ci4[, "Estimate"]), psi_hat[4], tolerance = 1e-8)
+})
