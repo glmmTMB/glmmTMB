@@ -163,7 +163,9 @@
       \code{psi} map were out of first-appearance order,
       \code{vcov(., full = TRUE)} also put the variances on the wrong
       \code{psi} rows, and \code{confint(method = "uniroot")} profiled the
-      wrong element for a threshold label (GH #1363, GH #1360)
+      wrong element for a threshold label (GH #1363, GH #1360). The
+      \code{vcov(., full = TRUE)} row labels of an \code{ordbeta} fit with
+      a \code{psi} map out of first-appearance order are fixed the same way
     } % itemize
   } % bug fixes
 } % 1.1.15.9000

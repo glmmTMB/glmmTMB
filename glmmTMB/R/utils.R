@@ -663,9 +663,10 @@ par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","ps
 ## include_mapped = FALSE, include_dropped = FALSE) within the full list
 ## (getParnames() with the defaults), matched block by block, so a name
 ## that repeats in another block is never matched. Within a block each
-## name takes the first position not yet used: the estimated names need
-## not follow the full order (tied psi elements are listed by map
-## level, see getParnames())
+## name takes the next match after the previous one, so a name that
+## repeats within the block takes the right occurrence; the psi names,
+## which getParnames() lists by map level rather than in full order,
+## fall back to the first match not yet used
 est_positions <- function(fullNameList, estNameList) {
     offset <- 0L
     pos <- integer(0)
@@ -673,13 +674,17 @@ est_positions <- function(fullNameList, estNameList) {
         fn <- fullNameList[[nm]]
         en <- estNameList[[nm]]
         used <- logical(length(fn))
+        j <- 0L
         for (e in en) {
-            k <- which(fn == e & !used)[1L]
+            cand <- which(fn == e & !used)
+            k <- cand[cand > j][1L]
+            if (is.na(k)) k <- cand[1L]
             if (is.na(k)) {
                 stop("internal error: estimated parameter '", e,
                      "' not found in the full parameter list")
             }
             used[k] <- TRUE
+            j <- k
             pos <- c(pos, offset + k)
         }
         offset <- offset + length(fn)
