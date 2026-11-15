@@ -903,4 +903,16 @@ test_that("ordinal tied psi map: vcov labels and profile", {
     ci4 <- confint(fr, parm = "4|5", method = "uniroot")
     expect_identical(rownames(ci4), "psi4")
     expect_equal(unname(ci4[, "Estimate"]), psi_hat[4], tolerance = 1e-8)
+    ## a psi name selects the Wald row of the threshold it belongs to
+    ci_w <- confint(fr)
+    expect_equal(confint(fr, parm = "psi4"), ci_w["4|5", , drop = FALSE])
+    expect_equal(confint(fr, parm = "psi1"), ci_w["1|2", , drop = FALSE])
+
+    ## positions of the estimated names: psi names out of full order, and
+    ## a name that repeats within a block keeps its own occurrence
+    ep <- glmmTMB:::est_positions
+    expect_identical(ep(list(psi = paste0("psi", 1:4)),
+                        list(psi = c("psi4", "psi1"))), c(4L, 1L))
+    expect_identical(ep(list(theta = c("a", "b", "a")),
+                        list(theta = c("b", "a"))), c(2L, 3L))
 })
