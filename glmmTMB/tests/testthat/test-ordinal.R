@@ -866,7 +866,7 @@ test_that("ordinal emmeans forces asymptotic ddf", {
 ##     errors", the delta method written out in the test, with a central
 ##     finite-difference gradient of
 ##     theta_j = qlogis(cumsum(softmax(c(psi, 0))))_j over the free
-##     parameters and their covariance from fit$sdr$cov.fixed
+##     parameters and their covariance read from fit$sdr$cov.fixed
 ##   ORD-TIE-2: invariant; "ordinal tied beta map: emmeans", a refit in
 ##     which the tied factor levels are merged into one level is the same
 ##     model (two routes to the same estimates)
@@ -891,7 +891,8 @@ test_that("ordinal tied psi map: threshold standard errors", {
     a <- unname(pars[names(pars) == "psi"][1])
     h <- 1e-5
     d <- (ord_thr(c(a, a) + h) - ord_thr(c(a, a) - h)) / (2 * h)
-    vp <- vcov(fit_tiepsi, full = TRUE, include_nonest = FALSE)["psi1", "psi1"]
+    cf <- fit_tiepsi$sdr$cov.fixed
+    vp <- cf[rownames(cf) == "psi", rownames(cf) == "psi"]
     th <- summary(fit_tiepsi)$thresholds
     expect_equal(unname(th[, "Std. Error"]), abs(d) * sqrt(vp),
                  tolerance = 1e-4)
@@ -977,8 +978,9 @@ test_that("ordinal tied psi map: vcov labels and profile", {
     rn <- rownames(vcov(fw, full = TRUE, include_nonest = FALSE))
     expect_identical(unname(rn[grepl("^psi", rn)]), c("psi4", "psi1"))
 
-    ## with a random effect, where the Wald rows and the vcov positions
-    ## differ: a threshold label profiles its own psi element
+    ## with a random effect, so that the psi block comes after theta
+    ## among the fixed parameters: a threshold label profiles its own psi
+    ## element
     fr <- glmmTMB(rating ~ temp + (1 | judge), data = wine,
                   family = ordinal(),
                   map = list(psi = factor(c(2, NA, 2, 1))))
