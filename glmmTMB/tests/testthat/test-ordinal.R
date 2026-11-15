@@ -859,3 +859,68 @@ test_that("ordinal emmeans forces asymptotic ddf", {
     expect_match(msgs, "using ddf 'asymptotic'")
     expect_true(all(summary(em)$df == Inf))
 })
+
+## tied 'map' entries (GH #1363). Oracle records for the numeric
+## assertions (ID: type; asserting block; source):
+##   ORD-TIE-1: closed-form; "ordinal tied psi map: threshold standard
+##     errors", the delta method written out in the test, with a central
+##     finite-difference gradient of
+##     theta_j = qlogis(cumsum(softmax(c(psi, 0))))_j over the free
+##     parameters and their covariance from fit$sdr$cov.fixed
+##   ORD-TIE-2: invariant; "ordinal tied beta map: emmeans", a refit in
+##     which the tied factor levels are merged into one level is the same
+##     model (two routes to the same estimates)
+##   ORD-TIE-3: invariant; "ordinal tied psi map: vcov labels and
+##     profile", vcov(full = TRUE) rows against fit$sdr$cov.fixed and the
+##     uniroot Estimate column against get_pars() (two routes to the same
+##     numbers)
+
+## thresholds as a function of the full psi vector
+ord_thr <- function(psi) {
+    s <- exp(c(psi, 0)) / sum(exp(c(psi, 0)))
+    qlogis(cumsum(s))[seq_along(psi)]
+}
+
+## GH #1363 example 2: both psi elements tied to one parameter
+fit_tiepsi <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                      data = housing, family = ordinal(),
+                      map = list(psi = factor(c(1, 1))))
+
+test_that("ordinal tied psi map: threshold standard errors", {
+    pars <- glmmTMB:::get_pars(fit_tiepsi)
+    a <- unname(pars[names(pars) == "psi"][1])
+    h <- 1e-5
+    d <- (ord_thr(c(a, a) + h) - ord_thr(c(a, a) - h)) / (2 * h)
+    vp <- vcov(fit_tiepsi, full = TRUE, include_nonest = FALSE)["psi1", "psi1"]
+    th <- summary(fit_tiepsi)$thresholds
+    expect_equal(unname(th[, "Std. Error"]), abs(d) * sqrt(vp),
+                 tolerance = 1e-4)
+    ci <- confint(fit_tiepsi, component = "all")
+    expect_true(all(is.finite(ci[names(family_params(fit_tiepsi)), ])))
+
+    ## a fixed element, a tied pair, and tied levels out of
+    ## first-appearance order (the free parameters are ordered by level)
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    fw <- glmmTMB(rating ~ temp, data = wine, family = ordinal(),
+                  map = list(psi = factor(c(2, NA, 2, 1))))
+    pmap <- fw$obj$env$map[["psi"]]
+    pars <- glmmTMB:::get_pars(fw)
+    psi_hat <- unname(pars[names(pars) == "psi"])
+    free <- unname(fw$fit$par[names(fw$fit$par) == "psi"])
+    expand <- function(p) {
+        x <- psi_hat
+        x[!is.na(pmap)] <- p[as.integer(pmap[!is.na(pmap)])]
+        x
+    }
+    g <- sapply(seq_along(free), function(i) {
+        e <- replace(numeric(length(free)), i, h)
+        (ord_thr(expand(free + e)) - ord_thr(expand(free - e))) / (2 * h)
+    })
+    cf <- fw$sdr$cov.fixed
+    pr <- rownames(cf) == "psi"
+    se <- sqrt(diag(g %*% cf[pr, pr] %*% t(g)))
+    th <- summary(fw)$thresholds
+    expect_true(all(is.finite(th[, "Std. Error"])))
+    expect_equal(unname(th[, "Std. Error"]), se, tolerance = 1e-4)
+})

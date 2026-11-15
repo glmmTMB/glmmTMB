@@ -710,6 +710,19 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
+## 0/1 matrix A (n x number of estimated parameters) for a parameter
+## vector of length n under the 'map' factor 'map' (NULL: no map), with
+## x = A x_est + (fixed values). TMB orders the estimated parameters by
+## factor level of the map, so tied elements share a column and fixed
+## (NA) elements get a zero row; with no map A is the identity
+.map_A <- function(map, n = length(map)) {
+    idx <- if (is.null(map)) seq_len(n) else as.integer(map)
+    lev <- sort(unique(idx[!is.na(idx)]))
+    A <- matrix(0, nrow = n, ncol = length(lev))
+    A[cbind(which(!is.na(idx)), match(idx[!is.na(idx)], lev))] <- 1
+    A
+}
+
 ## ---- coefficient spaces --------------------------------------------------
 ## A fixed-effect component's coefficients live in three nested spaces:
 ## nominal (one per model-matrix column: fixef(), vcov(include_nonest =
@@ -734,12 +747,7 @@ printDispersion <- function(ff,s) {
     ## (fixef() ignores col.dropped for sparse X; mirror that)
     if (!is.null(dropped) && !inherits(X, "sparseMatrix")) keep[dropped] <- FALSE
     p_X <- sum(keep)
-    bmap <- object$obj$env$map[[map_nm]]
-    ## TMB orders the estimated parameters by factor level of the map
-    idx <- if (is.null(bmap)) seq_len(p_X) else as.integer(bmap)
-    lev <- sort(unique(idx[!is.na(idx)]))
-    A <- matrix(0, nrow = p_X, ncol = length(lev))
-    A[cbind(which(!is.na(idx)), match(idx[!is.na(idx)], lev))] <- 1
+    A <- .map_A(object$obj$env$map[[map_nm]], p_X)
     list(p_nom = p_nom, p_X = p_X, p_est = ncol(A),
          names_nom = names(bhat), names_X = names(bhat)[keep],
          keep = keep, A = A, pinned = rowSums(A) == 0,
@@ -860,22 +868,21 @@ ordinal_thresholds <- function(object) {
     cbind("Estimate" = fp, "Std. Error" = se)
 }
 
-## ordinal family: covariance matrix of the internal psi parameters,
-## taken from the psi block of vcov(., full = TRUE) by position
-## (psi_block_pos()).
-## psi elements fixed via a user 'map' are known constants, so their NA
-## rows/columns are set to zero before the delta method (as
-## pad_mapped_vcov() does for fixed coefficients); with every element
-## fixed the thresholds get standard error 0
+## ordinal family: covariance matrix of the internal psi parameters.
+## The covariance of the estimated psi parameters (the psi block of
+## vcov(., full = TRUE, include_nonest = FALSE), taken by position with
+## psi_block_pos()) is lifted to all K-1 elements as A V A' (.map_A()):
+## elements tied via a user 'map' get identical rows and columns, and
+## fixed elements, which are known constants, get zero rows and columns;
+## with every element fixed the thresholds get standard error 0
 ordinal_psi_vcov <- function(object) {
-    vi <- psi_block_pos(object)
-    V <- as.matrix(vcov(object, full = TRUE))[vi, vi, drop = FALSE]
-    pmap <- object$obj$env$map[["psi"]]
-    if (!is.null(pmap)) {
-        fixed <- which(is.na(pmap))
-        V[fixed, ] <- 0
-        V[, fixed] <- 0
-    }
+    vi <- psi_block_pos(object, include_nonest = FALSE)
+    V <- as.matrix(vcov(object, full = TRUE,
+                        include_nonest = FALSE))[vi, vi, drop = FALSE]
+    k <- length(object$modelInfo$ord_levels) - 1L
+    A <- .map_A(object$obj$env$map[["psi"]], k)
+    V <- A %*% V %*% t(A)
+    dimnames(V) <- list(paste0("psi", seq_len(k)), paste0("psi", seq_len(k)))
     V
 }
 
