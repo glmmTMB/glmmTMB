@@ -924,3 +924,39 @@ test_that("ordinal tied psi map: threshold standard errors", {
     expect_true(all(is.finite(th[, "Std. Error"])))
     expect_equal(unname(th[, "Std. Error"]), se, tolerance = 1e-4)
 })
+
+test_that("ordinal tied beta map: emmeans", {
+    skip_if_not_installed("emmeans")
+    ## GH #1363 example 1: Apartment and Atrium share one coefficient
+    ft <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                  data = housing, family = ordinal(),
+                  map = list(beta = factor(c(NA, 1, 2, 3, 3, 4, 5))))
+    ## the same model with the two levels merged
+    merge_type <- function(x) {
+        x <- as.character(x)
+        x[x %in% c("Apartment", "Atrium")] <- "AptAtr"
+        x
+    }
+    h2 <- housing
+    h2$Type <- factor(merge_type(h2$Type),
+                      levels = c("Tower", "AptAtr", "Terrace"))
+    fm <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                  data = h2, family = ordinal())
+    e1 <- summary(emmeans::emmeans(ft, ~ Type))
+    e2 <- summary(emmeans::emmeans(fm, ~ Type))
+    expect_false(anyNA(e1$SE))
+    i <- match(merge_type(e1$Type), as.character(e2$Type))
+    expect_equal(e1$emmean, e2$emmean[i], tolerance = 1e-3)
+    expect_equal(e1$SE, e2$SE[i], tolerance = 1e-3)
+    p1 <- summary(emmeans::emmeans(ft, ~ Type | Sat, mode = "prob"))
+    p2 <- summary(emmeans::emmeans(fm, ~ Type | Sat, mode = "prob"))
+    expect_false(anyNA(p1$SE))
+    i <- match(paste(merge_type(p1$Type), p1$Sat),
+               paste(p2$Type, p2$Sat))
+    expect_equal(p1$prob, p2$prob[i], tolerance = 1e-3)
+    expect_equal(p1$SE, p2$SE[i], tolerance = 1e-3)
+
+    ## GH #1363 example 2: tied psi elements
+    s <- summary(emmeans::emmeans(fit_tiepsi, ~ Type, mode = "cum.prob"))
+    expect_false(anyNA(s$SE))
+})
