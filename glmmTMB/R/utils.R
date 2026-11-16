@@ -661,23 +661,31 @@ par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","ps
 
 ## positions of the estimated parameters (getParnames() with
 ## include_mapped = FALSE, include_dropped = FALSE) within the full list
-## (getParnames() with the defaults), matched block by block and in
-## order, so a name that repeats in another block is never matched
+## (getParnames() with the defaults), matched block by block, so a name
+## that repeats in another block is never matched. Within a block each
+## name takes the next match after the previous one, so a name that
+## repeats within the block takes the right occurrence; the psi names,
+## which getParnames() lists by map level rather than in full order,
+## fall back to the first match not yet used
 est_positions <- function(fullNameList, estNameList) {
     offset <- 0L
     pos <- integer(0)
     for (nm in names(fullNameList)) {
         fn <- fullNameList[[nm]]
         en <- estNameList[[nm]]
+        used <- logical(length(fn))
         j <- 0L
         for (e in en) {
-            k <- match(e, fn[seq.int(j + 1L, length.out = length(fn) - j)])
+            cand <- which(fn == e & !used)
+            k <- cand[cand > j][1L]
+            if (is.na(k)) k <- cand[1L]
             if (is.na(k)) {
                 stop("internal error: estimated parameter '", e,
                      "' not found in the full parameter list")
             }
-            j <- j + k
-            pos <- c(pos, offset + j)
+            used[k] <- TRUE
+            j <- k
+            pos <- c(pos, offset + k)
         }
         offset <- offset + length(fn)
     }
@@ -704,12 +712,13 @@ psi_block_pos <- function(object, include_nonest = TRUE) {
 ## ordinal: the threshold index of each psi row of
 ## vcov(full = TRUE, include_nonest = ): every threshold, or only those
 ## whose psi element a user 'map' leaves estimated and not tied to an
-## earlier element
+## earlier element, in map level order as getParnames() lists them
 ordinal_psi_present <- function(object, include_nonest = TRUE) {
     k <- length(object$modelInfo$ord_levels) - 1L
     pmap <- object$obj$env$map[["psi"]]
     if (include_nonest || is.null(pmap)) return(seq_len(k))
-    which(!(is.na(pmap) | duplicated(pmap)))
+    keep <- which(!(is.na(pmap) | duplicated(pmap)))
+    keep[order(as.integer(pmap[keep]))]
 }
 
 ## all parameters, including both mapped and rank-dropped
@@ -792,6 +801,16 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
                     nameList[[w]] <- nameList[[w]][-missmap]
                 }
             }  ## if NA/duplicated values
+             ## TMB orders the estimated parameters by map level; list
+             ## the psi names that way too, so that they label the right
+             ## rows when map levels are out of first-appearance order
+             ## (GH #1363)
+             if (names(map)[m] == "psi" && !include_mapequal &&
+                 !is.null(nameList[["psi"]])) {
+                 keep <- setdiff(seq_along(map[[m]]), missmap)
+                 nameList[["psi"]] <-
+                     nameList[["psi"]][order(as.integer(map[[m]][keep]))]
+             }
          } ## for (m in seq_along(map))
      } ## if (length(map) > 0)
   }

@@ -770,3 +770,149 @@ test_that("ordinal emmeans forces asymptotic ddf", {
     expect_match(msgs, "using ddf 'asymptotic'")
     expect_true(all(summary(em)$df == Inf))
 })
+
+## tied 'map' entries (GH #1363). Oracle records for the numeric
+## assertions (ID: type; asserting block; source):
+##   ORD-TIE-1: closed-form; "ordinal tied psi map: threshold standard
+##     errors", the delta method written out in the test, with a central
+##     finite-difference gradient of
+##     theta_j = qlogis(cumsum(softmax(c(psi, 0))))_j over the free
+##     parameters and their covariance read from fit$sdr$cov.fixed
+##   ORD-TIE-2: invariant; "ordinal tied beta map: emmeans", a refit in
+##     which the tied factor levels are merged into one level is the same
+##     model (two routes to the same estimates)
+##   ORD-TIE-3: invariant; "ordinal tied psi map: vcov labels and
+##     profile", vcov(full = TRUE) rows against fit$sdr$cov.fixed and the
+##     uniroot Estimate column against get_pars() (two routes to the same
+##     numbers)
+
+## thresholds as a function of the full psi vector
+ord_thr <- function(psi) {
+    s <- exp(c(psi, 0)) / sum(exp(c(psi, 0)))
+    qlogis(cumsum(s))[seq_along(psi)]
+}
+
+## GH #1363 example 2: both psi elements tied to one parameter
+fit_tiepsi <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                      data = housing, family = ordinal(),
+                      map = list(psi = factor(c(1, 1))))
+
+test_that("ordinal tied psi map: threshold standard errors", {
+    pars <- glmmTMB:::get_pars(fit_tiepsi)
+    a <- unname(pars[names(pars) == "psi"][1])
+    h <- 1e-5
+    d <- (ord_thr(c(a, a) + h) - ord_thr(c(a, a) - h)) / (2 * h)
+    cf <- fit_tiepsi$sdr$cov.fixed
+    vp <- cf[rownames(cf) == "psi", rownames(cf) == "psi"]
+    th <- summary(fit_tiepsi)$thresholds
+    expect_equal(unname(th[, "Std. Error"]), abs(d) * sqrt(vp),
+                 tolerance = 1e-4)
+    ci <- confint(fit_tiepsi, component = "all")
+    expect_true(all(is.finite(ci[names(family_params(fit_tiepsi)), ])))
+
+    ## a fixed element, a tied pair, and tied levels out of
+    ## first-appearance order (the free parameters are ordered by level)
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    fw <- glmmTMB(rating ~ temp, data = wine, family = ordinal(),
+                  map = list(psi = factor(c(2, NA, 2, 1))))
+    pmap <- fw$obj$env$map[["psi"]]
+    pars <- glmmTMB:::get_pars(fw)
+    psi_hat <- unname(pars[names(pars) == "psi"])
+    free <- unname(fw$fit$par[names(fw$fit$par) == "psi"])
+    expand <- function(p) {
+        x <- psi_hat
+        x[!is.na(pmap)] <- p[as.integer(pmap[!is.na(pmap)])]
+        x
+    }
+    g <- sapply(seq_along(free), function(i) {
+        e <- replace(numeric(length(free)), i, h)
+        (ord_thr(expand(free + e)) - ord_thr(expand(free - e))) / (2 * h)
+    })
+    cf <- fw$sdr$cov.fixed
+    pr <- rownames(cf) == "psi"
+    se <- sqrt(diag(g %*% cf[pr, pr] %*% t(g)))
+    th <- summary(fw)$thresholds
+    expect_true(all(is.finite(th[, "Std. Error"])))
+    expect_equal(unname(th[, "Std. Error"]), se, tolerance = 1e-4)
+})
+
+test_that("ordinal tied beta map: emmeans", {
+    skip_if_not_installed("emmeans")
+    ## GH #1363 example 1: Apartment and Atrium share one coefficient
+    ft <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                  data = housing, family = ordinal(),
+                  map = list(beta = factor(c(NA, 1, 2, 3, 3, 4, 5))))
+    ## the same model with the two levels merged
+    merge_type <- function(x) {
+        x <- as.character(x)
+        x[x %in% c("Apartment", "Atrium")] <- "AptAtr"
+        x
+    }
+    h2 <- housing
+    h2$Type <- factor(merge_type(h2$Type),
+                      levels = c("Tower", "AptAtr", "Terrace"))
+    fm <- glmmTMB(Sat ~ Infl + Type + Cont, weights = Freq,
+                  data = h2, family = ordinal())
+    e1 <- summary(emmeans::emmeans(ft, ~ Type))
+    e2 <- summary(emmeans::emmeans(fm, ~ Type))
+    expect_false(anyNA(e1$SE))
+    i <- match(merge_type(e1$Type), as.character(e2$Type))
+    expect_equal(e1$emmean, e2$emmean[i], tolerance = 1e-3)
+    expect_equal(e1$SE, e2$SE[i], tolerance = 1e-3)
+    p1 <- summary(emmeans::emmeans(ft, ~ Type | Sat, mode = "prob"))
+    p2 <- summary(emmeans::emmeans(fm, ~ Type | Sat, mode = "prob"))
+    expect_false(anyNA(p1$SE))
+    i <- match(paste(merge_type(p1$Type), p1$Sat),
+               paste(p2$Type, p2$Sat))
+    expect_equal(p1$prob, p2$prob[i], tolerance = 1e-3)
+    expect_equal(p1$SE, p2$SE[i], tolerance = 1e-3)
+
+    ## GH #1363 example 2: tied psi elements
+    s <- summary(emmeans::emmeans(fit_tiepsi, ~ Type, mode = "cum.prob"))
+    expect_false(anyNA(s$SE))
+})
+
+test_that("ordinal tied psi map: vcov labels and profile", {
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    ## map level 1 is psi element 4, level 2 is elements 1 and 3
+    fw <- glmmTMB(rating ~ temp, data = wine, family = ordinal(),
+                  map = list(psi = factor(c(2, NA, 2, 1))))
+    cf <- fw$sdr$cov.fixed
+    pr <- which(rownames(cf) == "psi")
+    for (inc in c(TRUE, FALSE)) {
+        V <- vcov(fw, full = TRUE, include_nonest = inc)
+        expect_equal(V["psi4", "psi4"], cf[pr[1], pr[1]], tolerance = 1e-8)
+        expect_equal(V["psi1", "psi1"], cf[pr[2], pr[2]], tolerance = 1e-8)
+    }
+    rn <- rownames(vcov(fw, full = TRUE, include_nonest = FALSE))
+    expect_identical(unname(rn[grepl("^psi", rn)]), c("psi4", "psi1"))
+
+    ## with a random effect, so that the psi block comes after theta
+    ## among the fixed parameters: a threshold label profiles its own psi
+    ## element
+    fr <- glmmTMB(rating ~ temp + (1 | judge), data = wine,
+                  family = ordinal(),
+                  map = list(psi = factor(c(2, NA, 2, 1))))
+    pars <- glmmTMB:::get_pars(fr)
+    psi_hat <- unname(pars[names(pars) == "psi"])
+    ci1 <- confint(fr, parm = "1|2", method = "uniroot")
+    expect_identical(rownames(ci1), "psi1")
+    expect_equal(unname(ci1[, "Estimate"]), psi_hat[1], tolerance = 1e-8)
+    ci4 <- confint(fr, parm = "4|5", method = "uniroot")
+    expect_identical(rownames(ci4), "psi4")
+    expect_equal(unname(ci4[, "Estimate"]), psi_hat[4], tolerance = 1e-8)
+    ## a psi name selects the Wald row of the threshold it belongs to
+    ci_w <- confint(fr)
+    expect_equal(confint(fr, parm = "psi4"), ci_w["4|5", , drop = FALSE])
+    expect_equal(confint(fr, parm = "psi1"), ci_w["1|2", , drop = FALSE])
+
+    ## positions of the estimated names: psi names out of full order, and
+    ## a name that repeats within a block keeps its own occurrence
+    ep <- glmmTMB:::est_positions
+    expect_identical(ep(list(psi = paste0("psi", 1:4)),
+                        list(psi = c("psi4", "psi1"))), c(4L, 1L))
+    expect_identical(ep(list(theta = c("a", "b", "a")),
+                        list(theta = c("b", "a"))), c(2L, 3L))
+})

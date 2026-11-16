@@ -304,8 +304,8 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         ## fixed effects and the K-1 thresholds, with the thresholds'
         ## covariance obtained by the delta method from the internal
         ## (softmax) parameters. The intercept is kept: by default it is
-        ## fixed to zero via 'map' (its vcov rows are then zeroed below),
-        ## but a user-supplied map may leave it free
+        ## fixed to zero via 'map' (its vcov rows are then zero, see
+        ## below), but a user-supplied map may leave it free
         contrasts <- attr(model.matrix(object, component = "cond"),
                           "contrasts")
         m <- model.frame(trms, grid, na.action = na.pass, xlev = xlev)
@@ -314,38 +314,35 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         theta <- family_params(object)
         k <- length(theta)
         if (missing(vcov.)) {
-            Vfull <- as.matrix(vcov(object, full = TRUE))
-            ## the conditional coefficients come first in the full
-            ## vcov and the internal threshold parameters form its psi
-            ## block, taken by position (a fixed-effect column may also
-            ## be called "psi2")
-            vi <- c(match(names(beta), rownames(Vfull)),
-                    psi_block_pos(object))
-            V <- Vfull[vi, vi, drop = FALSE]
-            ## coefficients fixed via 'map' are known constants (NA
-            ## rows/columns in the full vcov): zero them, as
-            ## pad_mapped_vcov() does for the single-component case
-            bmap <- object$obj$env$map[["beta"]]
-            if (!is.null(bmap)) {
-                fixed <- names(fixef(object)[["cond"]])[is.na(bmap)]
-                fi <- match(fixed, rownames(V), nomatch = 0L)
-                V[fi, ] <- 0
-                V[, fi] <- 0
-            }
-            ## likewise psi elements fixed via a user 'map' (their rows
-            ## and columns, including the covariances with beta, are NA)
-            ti <- length(beta) + seq_len(k)
-            pmap <- object$obj$env$map[["psi"]]
-            if (!is.null(pmap)) {
-                pfix <- ti[is.na(pmap)]
-                V[pfix, ] <- 0
-                V[, pfix] <- 0
-            }
-            ## delta method: bdiag(I, J) V bdiag(I, J)'
-            J <- ordinal_threshold_jacobian(object)
-            B <- diag(1, length(beta) + k)
-            B[ti, ti] <- J
-            V <- B %*% V %*% t(B)
+            ## the joint covariance of the estimated (beta, psi)
+            ## parameters, lifted to the X-space coefficients and all K-1
+            ## psi elements with a block-diagonal 0/1 matrix
+            ## (.beta_spaces(), .map_A()): coefficients and psi elements
+            ## tied via 'map' get identical rows and columns, map-fixed
+            ## ones (such as the default intercept) zero rows and columns.
+            ## The conditional coefficients come first in the full vcov;
+            ## the psi block is taken by position (a fixed-effect column
+            ## may also be called "psi2")
+            Vest <- as.matrix(vcov(object, full = TRUE,
+                                   include_nonest = FALSE))
+            sp <- .beta_spaces(object, "cond")
+            Apsi <- .map_A(object$obj$env$map[["psi"]], k)
+            vi <- c(seq_len(sp$p_est),
+                    psi_block_pos(object, include_nonest = FALSE))
+            ti <- sp$p_X + seq_len(k)
+            A <- matrix(0, sp$p_X + k, sp$p_est + ncol(Apsi))
+            A[seq_len(sp$p_X), seq_len(sp$p_est)] <- sp$A
+            A[ti, sp$p_est + seq_len(ncol(Apsi))] <- Apsi
+            ## delta method onto the thresholds: bdiag(I, J)
+            B <- diag(1, sp$p_X + k)
+            B[ti, ti] <- ordinal_threshold_jacobian(object)
+            BA <- B %*% A
+            VX <- BA %*% Vest[vi, vi, drop = FALSE] %*% t(BA)
+            ## NA rows and columns for coefficients dropped for rank
+            ## deficiency, as .lift_vcov_nominal() gives (removed below)
+            keepX <- c(sp$keep, rep(TRUE, k))
+            V <- matrix(NA_real_, length(keepX), length(keepX))
+            V[keepX, keepX] <- VX
             dimnames(V) <- list(c(names(beta), names(theta)),
                                 c(names(beta), names(theta)))
         } else {
