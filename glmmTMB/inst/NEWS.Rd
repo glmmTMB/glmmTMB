@@ -41,7 +41,7 @@
       \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
       quadratic dispersion parameter, also shown by \code{print()}. Pearson
       residuals now pass this parameter to the variance function
-      (GH #1359, item 2). The family help also corrects the correspondence
+      (GH #1359, item 2). The help file for the family also corrects the correspondence
       with Lindén and Mäntyniemi (2011) to \eqn{\omega=1+\phi}.
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.

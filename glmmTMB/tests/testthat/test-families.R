@@ -574,14 +574,14 @@ test_that("nbinom12 family", {
     dd <- data.frame(x, y = rnbinom(n, mu = mu, size = k))
     m1 <- glmmTMB(y ~ x, family = nbinom12, data = dd)
     ## basic test
-    ## should have phi = 2, k = 0.5
+    ## should have phi = 2, psi = 0.5
     ## log(phi) ~ 0.7, log(psi) ~ -0.7
     expect_equal(    m1$obj$env$last.par.best,
                  c(beta = 1.98948426828242, beta = 1.00635151325394,
                    betadisp = 0.68344614610532, psi = -0.686823594633112),
                  tolerance = 1e-6)
     expect_equal(sigma(m1), 1.980692, tolerance = 1e-6)
-    psi <- exp(unname(m1$obj$env$last.par.best["psi"]))
+    psi <- exp(m1$obj$env$last.par.best[["psi"]])
     expect_equal(family_params(m1), c("NB12 quadratic dispersion" = psi))
     fitted_mu <- predict(m1, type = "conditional")
     phi <- predict(m1, type = "disp")
@@ -616,7 +616,6 @@ test_that("nbinom12 parameters and Pearson residuals with fixed psi", {
             mu^2 * p * (1 - p)
         expected <- (dd$y - (1 - p) * mu) * sqrt(dd$w) / sqrt(variance)
         actual <- residuals(fit, type = "pearson")
-        expect_length(actual, nrow(dd))
         expect_equal(unname(actual), expected)
         expect_true(all(is.finite(actual)))
     }

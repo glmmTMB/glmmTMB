@@ -1078,7 +1078,7 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              vargs$mu <- vargs$lambda <- mu
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
-             vargs$psi <- unname(shape)
+             vargs$psi <- shape
              ## number of trials for binomial-type responses (combinomial)
              vargs$size <- wts
              # subset to only the arguments used by the variance function
