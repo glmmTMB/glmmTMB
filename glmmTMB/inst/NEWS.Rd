@@ -7,6 +7,13 @@
 \section{CHANGES IN VERSION 1.1.15.9000}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
+      \item Starting values for the amount of smoothing in the main
+      (conditional) model now take account of the response and smooth terms.
+      This applies to Gaussian, Poisson, negative-binomial, binomial, beta,
+      Gamma, and Tweedie models with supported links and settings
+      (see \code{\link{glmmTMB}}). All other parameter starts are unchanged.
+      Supplying \code{map = list(theta = ...)} skips this choice for all
+      conditional smooths. Values supplied through \code{start} take precedence.
       \item Tweedie simulation is faster, especially when the power
       parameter is close to 2. Simulated values for a given seed differ
       from previous versions (GH #1341, Pascal Küng)
