@@ -41,12 +41,35 @@
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item For \code{skewnormal}, the variance helper now returns the
+      squared response standard deviation, matching the fitted parameterization
+      and correcting Pearson residual scaling (GH #1359, item 3).
+      \item \code{dof_KR}, \code{dof_satt} and the \code{ddf} options of
+      \code{summary}, \code{anova}, \code{car::Anova} and \code{emmeans}
+      now work for conditional coefficients tied or fixed via \code{map},
+      and (Kenward-Roger) for rank-deficient models; previously
+      "non-conformable arguments", an \code{eigen()} error, or rejected by
+      \code{car::Anova}. Tied coefficients share one ddf; fixed coefficients,
+      and hypotheses involving only fixed coefficients, get \code{NA} (GH #1340)
+      \item relatedly, \code{emmeans()} no longer fails ("logical subscript
+      too long") for models with coefficients tied via \code{map} (GH #1340)
+      \item \code{vcov(., include_nonest = FALSE)} no longer fails ("length
+      of 'dimnames'") when the dispersion model has no fixed-effect
+      parameters, e.g. \code{dispformula = ~0 + offset(log(se))} or
+      \code{~0 + (1|g)}, or for a \code{dispformula} given to a family
+      without dispersion; \code{dof_satt()},
+      \code{summary(., ddf = "satterthwaite")}, \code{emmeans()} and
+      \code{confint()} now work for such models (GH #1344)
       \item an \code{ordinal} fit with a user \code{map} on another
       parameter vector (e.g. \code{map = list(betazi = factor())}) no
       longer leaves the fixed-effect intercept free: partial matching of
       the map's \code{beta} element skipped the internal intercept map,
       so the intercept and the thresholds were not jointly identifiable
       (GH #1348)
+      \item The \code{t_family} variance helper now requires the degrees
+      of freedom as \code{shape}, returns scale squared times the Student-t
+      variance factor, and preserves the observation-vector length. Pearson
+      residuals use the fitted degrees of freedom (GH #1359, item 4).
       \item \code{vcov(., full = TRUE)} now handles a family-specific
       parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
       \code{NA} rows and columns like other mapped parameters (previously
@@ -73,6 +96,10 @@
       parameters, so when a parameter was fixed via \code{map} (including
       the intercept the \code{ordinal} family fixes internally), the rows
       after it carried the wrong labels
+      \item Prediction covariance output retains matrix dimensions for
+      single observations, uses the prediction-vector length for no-ZI output,
+      and restores both covariance axes under \code{na.exclude}
+      (GH #1359, item 6).
       \item for the \code{ordinal} family with random effects, Wald
       \code{confint()} with \code{parm} given by name (e.g.
       \code{"theta_"}) returned the wrong rows, because its table lists

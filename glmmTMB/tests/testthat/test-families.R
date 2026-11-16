@@ -549,6 +549,19 @@ test_that("t-distributed response", {
                   map = list(psi = factor(NA)))
     expect_equal(sigma(m2), 5.01338678750139,
                  tolerance = 1e-6)
+    v <- t_family()$variance
+    expect_equal(v(0, 1.5, shape = 5), 1.5^2 * 5/3)
+    expect_equal(v(rep(0, 5), rep(1.5, 5), shape = 5), rep(3.75, 5))
+    expect_equal(v(rep(0, 5), 1.5, shape = 5), rep(3.75, 5))
+    expect_equal(v(0, c(1, 2), shape = c(3, 5)), c(3, 20/3))
+    expect_equal(v(0, 1.5, shape = Inf), 1.5^2)
+    expect_identical(v(0, 1, shape = c(1.5, 2)), c(Inf, Inf))
+    expect_true(all(is.nan(v(0, 1, shape = c(0.5, 1)))))
+    mu <- predict(m2, type = "response")
+    phi <- predict(m2, type = "disp")
+    expected <- (dd$y - mu) / sqrt(phi^2 * 10/8)
+    expect_length(residuals(m2, type = "pearson"), nrow(dd))
+    expect_equal(unname(residuals(m2, type = "pearson")), unname(expected))
 })
 
 test_that("nbinom12 family", {
@@ -594,6 +607,13 @@ test_that("skewnormal family", {
     expect_equal(family_params(fit),
                  c(`Skewnormal shape` = -6.12362878509844),
                  tolerance = 1e-6)
+    shape <- c(-3, -1, -0.5, 0, 0.5, 1, 3)
+    expect_equal(vapply(shape, function(a)
+        skewnormal()$variance(mu = 0, phi = 1.5, shape = a), numeric(1)),
+        rep(1.5^2, length(shape)))
+    expected <- (dd$y - predict(fit, type = "response")) /
+        predict(fit, type = "disp")
+    expect_equal(unname(residuals(fit, type = "pearson")), unname(expected))
 })
 
 test_that("make_family initialize works", {
