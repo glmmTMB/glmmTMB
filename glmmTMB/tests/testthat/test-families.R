@@ -574,13 +574,51 @@ test_that("nbinom12 family", {
     dd <- data.frame(x, y = rnbinom(n, mu = mu, size = k))
     m1 <- glmmTMB(y ~ x, family = nbinom12, data = dd)
     ## basic test
-    ## should have phi = 2, k = 0.5
+    ## should have phi = 2, psi = 0.5
     ## log(phi) ~ 0.7, log(psi) ~ -0.7
     expect_equal(    m1$obj$env$last.par.best,
                  c(beta = 1.98948426828242, beta = 1.00635151325394,
                    betadisp = 0.68344614610532, psi = -0.686823594633112),
                  tolerance = 1e-6)
     expect_equal(sigma(m1), 1.980692, tolerance = 1e-6)
+    psi <- exp(m1$obj$env$last.par.best[["psi"]])
+    expect_equal(family_params(m1), c("NB12 quadratic dispersion" = psi))
+    fitted_mu <- predict(m1, type = "conditional")
+    phi <- predict(m1, type = "disp")
+    expected <- (dd$y - fitted_mu) /
+        sqrt(fitted_mu * (1 + phi + fitted_mu / psi))
+    expect_equal(unname(residuals(m1, type = "pearson")), expected)
+})
+
+test_that("nbinom12 parameters and Pearson residuals with fixed psi", {
+    skip_on_cran()
+    local_useRTMB(FALSE)
+    set.seed(1359)
+    dd <- data.frame(x = rep(seq(-1, 1, length.out = 8), each = 30))
+    dd$w <- rep(c(0.5, 1, 1.5), length.out = nrow(dd))
+    dd$off <- 0.1 * dd$x
+    mu <- exp(1 + 0.4 * dd$x + dd$off)
+    phi <- exp(log(0.6) + 0.3 * dd$x)
+    dd$y <- rnbinom(nrow(dd), mu = mu, size = mu / (phi + mu / 3))
+    dd$y[runif(nrow(dd)) < plogis(-1 + 0.2 * dd$x)] <- 0
+
+    for (use_rtmb in c(FALSE, TRUE)) {
+        useRTMB(use_rtmb)
+        fit <- glmmTMB(y ~ x + offset(off), data = dd, family = nbinom12,
+                      dispformula = ~ x, ziformula = ~ x, weights = w,
+                      start = list(psi = log(3)), map = list(psi = factor(NA)),
+                      se = FALSE)
+        expect_equal(family_params(fit), c("NB12 quadratic dispersion" = 3))
+        mu <- predict(fit, type = "conditional")
+        phi <- predict(fit, type = "disp")
+        p <- predict(fit, type = "zprob")
+        variance <- (1 - p) * mu * (1 + phi + mu / 3) +
+            mu^2 * p * (1 - p)
+        expected <- (dd$y - (1 - p) * mu) * sqrt(dd$w) / sqrt(variance)
+        actual <- residuals(fit, type = "pearson")
+        expect_equal(unname(actual), expected)
+        expect_true(all(is.finite(actual)))
+    }
 })
 
 test_that("skewnormal family", {
@@ -688,6 +726,8 @@ test_that("zero-truncated variance helpers and Pearson residuals", {
                  tolerance = 1e-10)
     expect_equal(truncated_compois()$variance(mu, 1), ref_pois,
                  tolerance = 1e-8)
+    expect_equal(truncated_compois()$variance(1:3, 1),
+                 truncated_poisson()$variance(1:3), tolerance = 1e-8)
     expect_error(truncated_genpois()$variance(0.4, 0.5), "underdispersed")
     expect_equal(truncated_genpois()$variance(1e16, 1), 1e16)
     expect_equal(truncated_nbinom1()$variance(1e16, 1), 2e16)
@@ -697,8 +737,8 @@ test_that("zero-truncated variance helpers and Pearson residuals", {
     w <- exp(log(theta) + (y-1)*log(term) - term - lgamma(y+1))
     w <- w/sum(w)
     expect_equal(truncated_genpois()$variance(2, 2), sum(w * (y - sum(y*w))^2))
-    w <- as.numeric(RTMB::dcompois2(y, mean = rep(2, length(y)),
-                                     nu = rep(2, length(y))))
+    w <- RTMB::dcompois2(y, mean = rep(2, length(y)),
+                          nu = rep(2, length(y)))
     w <- w/sum(w)
     expect_equal(truncated_compois()$variance(2, 0.5), sum(w * (y - sum(y*w))^2))
     dd <- data.frame(x = rep(c(-1, 0, 1), each = 30))
@@ -718,9 +758,55 @@ test_that("zero-truncated variance helpers and Pearson residuals", {
                 truncated_nbinom1 = fam$variance(m0, alpha = 1),
                 fam$variance(m0, phi = 1))
             expected <- (dd$y - predict(fit, type = "response"))/sqrt(v)
-            expect_length(residuals(fit, type = "pearson"), nrow(dd))
             expect_equal(unname(residuals(fit, type = "pearson")),
-                         unname(expected))
+                         expected)
+        }
+    }
+})
+
+test_that("Pearson residuals use untruncated Poisson and NB2 parameters", {
+    skip_on_cran()
+    local_useRTMB(FALSE)
+    for (use_rtmb in c(FALSE, TRUE)) {
+        useRTMB(use_rtmb)
+        for (fam in list(truncated_poisson(), truncated_nbinom2())) {
+            for (zi in c(FALSE, TRUE)) {
+                dd <- data.frame(y = if (zi) c(0, 0, 1, 1, 2, 2, 3, 3)
+                                 else c(1, 1, 2, 2, 3, 3))
+                args <- list(formula = y ~ 1, data = dd, family = fam,
+                             se = FALSE)
+                start <- map <- list()
+                if (fam$family == "truncated_nbinom2") {
+                    start$betadisp <- log(2)
+                    map$betadisp <- factor(NA)
+                }
+                if (zi) {
+                    args$ziformula <- ~ 1
+                    start$betazi <- qlogis(0.25)
+                    map$betazi <- factor(NA)
+                }
+                if (length(start)) args$start <- start
+                if (length(map)) args$map <- map
+                fit <- do.call(glmmTMB, args)
+                mu0 <- fam$linkinv(predict(fit, type = "link"))
+                m <- predict(fit, type = "conditional")
+                if (fam$family == "truncated_poisson") {
+                    p0 <- exp(-mu0)
+                    v0 <- mu0
+                } else {
+                    theta <- predict(fit, type = "disp")
+                    p0 <- dnbinom(0, mu = mu0, size = theta)
+                    v0 <- mu0 * (1 + mu0/theta)
+                }
+                q <- 1 - p0
+                vp <- v0/q - p0 * (mu0/q)^2
+                z <- predict(fit, type = "zprob")
+                variance <- (1 - z) * vp + z * (1 - z) * m^2
+                expected <- (dd$y - predict(fit, type = "response"))/
+                    sqrt(variance)
+                expect_equal(unname(residuals(fit, type = "pearson")),
+                             unname(expected))
+            }
         }
     }
 })

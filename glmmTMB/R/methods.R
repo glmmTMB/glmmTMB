@@ -799,6 +799,8 @@ pad_mapped_vcov <- function(object, V, component = "cond") {
 #' are characterized by one or more additional parameters.
 #' @param object glmmTMB object
 #' @return a named numeric vector
+#' @details For \code{nbinom12}, returns the positive quadratic dispersion
+#' parameter \eqn{\psi}{psi} in \eqn{V = \mu(1 + \phi + \mu/\psi)}.
 #' @export
 family_params <- function(object) {
     ff <- object$modelInfo$family$family
@@ -809,6 +811,7 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           nbinom12 = c("NB12 quadratic dispersion" = exp(tf)),
            ordinal = {
                ## thresholds from softmax-parameterized psi:
                ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
@@ -1073,13 +1076,16 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              shape <- family_params(object)
              vargs <- list()
              vargs$mu <- vargs$lambda <- mu
-             if (fam$family %in% c("truncated_nbinom1", "truncated_genpois",
+             if (fam$family %in% c("truncated_nbinom1", "truncated_nbinom2",
+                                  "truncated_poisson", "truncated_genpois",
                                   "truncated_compois")) {
-                 vargs$mu <- fam$linkinv(predict(object, type = "link",
-                                                re.form = re.form))
+                 vargs$mu <- vargs$lambda <-
+                     fam$linkinv(predict(object, type = "link",
+                                         re.form = re.form))
              }
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
+             vargs$psi <- shape
              ## number of trials for binomial-type responses (combinomial)
              vargs$size <- wts
              # subset to only the arguments used by the variance function

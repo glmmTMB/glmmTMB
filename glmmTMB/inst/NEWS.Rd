@@ -38,6 +38,11 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
+      quadratic dispersion parameter, also shown by \code{print()}. Pearson
+      residuals now pass this parameter to the variance function
+      (GH #1359, item 2). The help file for the family also corrects the correspondence
+      with Lindén and Mäntyniemi (2011) to \eqn{\omega=1+\phi}.
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
@@ -84,10 +89,10 @@
       user-fixed \code{psi} elements as known constants in the threshold
       standard errors (with every element fixed, the standard errors are 0)
       \item Variance helpers are implemented for \code{truncated_nbinom1},
-      \code{truncated_genpois}, and \code{truncated_compois}. The generalized Poisson helper supports dispersion at least one. Their Pearson
-      residuals evaluate variance at the untruncated mean while retaining the
-      truncated response mean in the residual (GH #1359, item 5). The family
-      help gives the conditional-moment identity and its relation to
+      \code{truncated_genpois}, and \code{truncated_compois}. The generalized Poisson helper supports dispersion at least one. Pearson residuals for all five zero-truncated count families
+      evaluate variance at the untruncated mean while retaining the
+      truncated response mean in the residual (GH #1359, item 5). The help file for these families
+      gives the conditional-moment identity and its relation to
       Shonkwiler (2016; \doi{10.1016/j.jeconom.2016.09.002}), Scollnik
       (1998; \doi{10.2143/AST.28.1.519083}), and Huang
       (2017; \doi{10.1177/1471082X17697749}).
