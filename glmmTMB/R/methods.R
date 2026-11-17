@@ -1076,6 +1076,13 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              shape <- family_params(object)
              vargs <- list()
              vargs$mu <- vargs$lambda <- mu
+             if (fam$family %in% c("truncated_nbinom1", "truncated_nbinom2",
+                                  "truncated_poisson", "truncated_genpois",
+                                  "truncated_compois")) {
+                 vargs$mu <- vargs$lambda <-
+                     fam$linkinv(predict(object, type = "link",
+                                         re.form = re.form))
+             }
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
              vargs$psi <- shape
