@@ -2082,6 +2082,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
+        if (!doOptim) return(obj)
         optTime <- system.time(fit <- optfun(), gcFirst = FALSE)
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
