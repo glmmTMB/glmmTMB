@@ -42,6 +42,18 @@ test_that("profile method", {
     expect_true( all( distFits(m1, m2) < c(1e-4, 1e-2, 1e-4) ) )
 })
 
+test_that("fitTMB skips optimization when profiling (GH #1347)", {
+    ctrl <- glmmTMBControl(profile = TRUE,
+                           optimizer = function(...) stop("unexpected optimization"))
+    model <- glmmTMB(count ~ mined + (1 | site), family = poisson,
+                     data = Salamanders, doFit = FALSE, control = ctrl)
+    obj <- fitTMB(model, doOptim = FALSE)
+
+    expect_type(obj$fn, "closure")
+    expect_type(obj$gr, "closure")
+    expect_false("beta" %in% names(obj$par))
+})
+
 ## data from GH #1317
 set.seed(101)
 d_1317 <- data.frame(y = rnorm(50))
