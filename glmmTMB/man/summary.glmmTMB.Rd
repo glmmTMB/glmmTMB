@@ -39,4 +39,10 @@ standard errors, and z values), printed as \dQuote{Threshold coefficients};
 the thresholds are estimated internally via a softmax parameterization, so
 the corresponding rows of \code{vcov(., full = TRUE)} are not on the
 threshold scale
+
+For \code{ordbeta}, a \code{cutoffs} matrix contains the two inverse-logit
+cutoff estimates and model-based delta-method standard errors.
+Standard errors respect fixed, shared, and reordered cutoff maps. These
+standard errors use the fitted model covariance, including when
+\code{sandwich = TRUE} is requested for the regression coefficients
 }

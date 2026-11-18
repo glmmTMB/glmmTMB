@@ -125,6 +125,13 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##' (Student-t df, Tweedie power parameters, ordered beta cutpoints,
 ##' skew-normal skew parameters, etc.) use various link functions and
 ##' are accessible via \code{\link{family_params}}.
+##'
+##' For \code{ordbeta}, the variance helper requires the interior beta mean
+##' \code{mu}, precision \code{phi}, and two \code{cutpoints} on the
+##' linear-predictor scale. It returns the full observation variance, including
+##' masses at zero and one. The optional \code{eta} defaults to the selected
+##' link applied to \code{mu}.
+##'
 ##' Denoting the variance as \eqn{V}, the dispersion parameter
 ##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 ##' and the predicted mean as \eqn{\mu}{mu}:
@@ -516,8 +523,18 @@ ordbeta <- function(link="logit") {
                                     stop("y values must be 0 <= y <= 1")
                                 mustart <- y
                             }),
-              ## from beta: not sure this is right ... ??
-              variance=function(mu) { warning("ordbeta variance function untested"); mu*(1-mu) }
+              ## Full mixture variance, including endpoint masses and precision.
+              variance=function(mu, phi, cutpoints,
+                                eta=if (is.character(link)) make.link(link)$linkfun(mu)
+                                    else link$linkfun(mu)) {
+                  p0 <- plogis(cutpoints[1] - eta)
+                  p1 <- plogis(eta - cutpoints[2])
+                  pc <- plogis(eta - cutpoints[1]) - p1
+                  M <- p1 + pc * mu
+                  ## Within-class variance plus squared distance from M for each class.
+                  pc * (mu * (1 - mu) / (phi + 1) + (mu - M)^2) +
+                      p0 * M^2 + p1 * (1 - M)^2
+              }
               )
     return(make_family(r,link))
 }

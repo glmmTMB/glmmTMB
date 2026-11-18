@@ -894,6 +894,10 @@ printFamily <- function(object) {
         cat("\nThreshold coefficients:",
             paste(names(val), formatC(val, digits = 3), sep = " = ",
                   collapse = ", "), "\n")
+    } else if (object$modelInfo$family$family == "ordbeta") {
+        cat("\nOrdered beta cutoffs:\n",
+            paste(names(val), formatC(val, digits = 3), sep = " = ",
+                  collapse = "\n"), "\n", sep = "")
     } else if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
                     names(val)[1],
@@ -1020,8 +1024,28 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
            response=r,
            working = {
                mu.eta <- fam$mu.eta
-               p <- predict(object, type = "link", fast = TRUE)
-               r/mu.eta(p)
+                if (fam$family == "ordbeta") {
+                    ## Working residual = (y-M) divided by the slope of M.
+                    ## Differentiate M = p1 + pc * interior at fixed cutoffs.
+                    ## pc' = p0*(1-p0) - p1*(1-p1). Collect both gate slopes, then add pc*interior'.
+                    p <- predict(object, type = "link", re.form = re.form,
+                                 fast = !pop_pred)
+                    cutpoints <- getParList(object)$psi
+                    interior <- fam$linkinv(p)
+                    p0 <- plogis(cutpoints[1] - p)
+                    p1 <- plogis(p - cutpoints[2])
+                    pc <- plogis(p - cutpoints[1]) - p1
+                    derivative <- p1 * (1 - p1) * (1 - interior) +
+                        p0 * (1 - p0) * interior + pc * mu.eta(p)
+                    if (!noZI(object)) {
+                        derivative <- derivative * (1 - predict(
+                            object, type = "zprob", re.form = re.form))
+                    }
+                    r/derivative
+                } else {
+                    p <- predict(object, type = "link", fast = TRUE)
+                    r/mu.eta(p)
+                }
            },
            "dunn-smyth" = {
                if (fam$family == "ordinal") {
@@ -1081,6 +1105,11 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              vargs$psi <- shape
              ## number of trials for binomial-type responses (combinomial)
              vargs$size <- wts
+              if (fam$family == "ordbeta") {
+                ## Supply the full mixture-variance parameters.
+                vargs$cutpoints <- getParList(object)$psi
+                vargs$eta <- predict(object, type = "link", re.form = re.form)
+              }
              # subset to only the arguments used by the variance function
              vargs <- vargs[vformals]
              ## suppress beta-binomial $variance() message, substitute
@@ -1106,6 +1135,15 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ##   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
                ##          = Var[X] * E[B] + E[X]^2 * Var[B]
                ##          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
+                if (fam$family == "ordbeta") {
+                  ## Use M = p1 + pc*mu for observations from the non-extra-zero group.
+                  ## The Bernoulli mixture below weights its variance by 1-zprob and adds between-group variance.
+                  eta <- vargs$eta
+                  cutpoints <- vargs$cutpoints
+                  p1 <- plogis(eta - cutpoints[2])
+                  pc <- plogis(eta - cutpoints[1]) - p1
+                  mu <- p1 + pc * mu
+                }
                vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
              } ## noZI
              r <- r/sqrt(vv)

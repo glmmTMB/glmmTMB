@@ -92,6 +92,13 @@ If specified, the dispersion model uses a log link; additional family parameters
 (Student-t df, Tweedie power parameters, ordered beta cutpoints,
 skew-normal skew parameters, etc.) use various link functions and
 are accessible via \code{\link{family_params}}.
+
+For \code{ordbeta}, the variance helper requires the interior beta mean
+\code{mu}, precision \code{phi}, and two \code{cutpoints} on the
+linear-predictor scale. It returns the full observation variance, including
+masses at zero and one. The optional \code{eta} defaults to the selected
+link applied to \code{mu}.
+
 Denoting the variance as \eqn{V}, the dispersion parameter
 as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
 and the predicted mean as \eqn{\mu}{mu}:
