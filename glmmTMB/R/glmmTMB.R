@@ -2457,7 +2457,7 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
         if (any(estimated)) {
             V <- vcov(object, full = TRUE, include_nonest = FALSE)
             ## psi is the final parameter block; index the actual covariance rows.
-            i <- tail(seq_len(nrow(V)), length(unique(free[estimated])))
+            i <- utils::tail(seq_len(nrow(V)), length(unique(free[estimated])))
             se[estimated] <- sqrt(diag(V)[i])[free[estimated]]
         }
         ## Multiply each raw cutoff SE by the slope a*(1-a) at a = plogis(cutoff).
