@@ -2363,6 +2363,12 @@ ngrps.factor <- function(object, ...) nlevels(object)
 ##' the thresholds are estimated internally via a softmax parameterization, so
 ##' the corresponding rows of \code{vcov(., full = TRUE)} are not on the
 ##' threshold scale
+##'
+##' For \code{ordbeta}, a \code{cutoffs} matrix contains the two inverse-logit
+##' cutoff estimates and model-based delta-method standard errors.
+##' Standard errors respect fixed, shared, and reordered cutoff maps. These
+##' standard errors use the fitted model covariance, including when
+##' \code{sandwich = TRUE} is requested for the regression coefficients
 ##' @export
 summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenward-roger", "satterthwaite"), cluster = getGroups(object), ...) {
     check_dots(...)
@@ -2442,13 +2448,30 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
                                 thresholds[, "Std. Error"])
     }
 
+    if (famL$family == "ordbeta") {
+        estimate <- family_params(object)
+        map <- object$modelInfo$map[["psi"]]
+        free <- if (is.null(map)) seq_along(estimate) else as.integer(map)
+        estimated <- !is.na(free)
+        se <- numeric(length(estimate))
+        if (any(estimated)) {
+            V <- vcov(object, full = TRUE, include_nonest = FALSE)
+            ## psi is the final parameter block; index the actual covariance rows.
+            i <- utils::tail(seq_len(nrow(V)), length(unique(free[estimated])))
+            se[estimated] <- sqrt(diag(V)[i])[free[estimated]]
+        }
+        ## Multiply each raw cutoff SE by the slope a*(1-a) at a = plogis(cutoff).
+        cutoffs <- cbind(Estimate = estimate,
+                            "Std. Error" = estimate * (1 - estimate) * se)
+    }
+
     llAIC <- llikAIC(object)
 
     ## FIXME: You can't count on object@re@flist,
     ##	      nor compute VarCorr() unless is(re, "reTrms"):
     varcor <- VarCorr(object)
 					# use S3 class for now
-    structure(list(logLik = llAIC[["logLik"]],
+    structure(c(list(logLik = llAIC[["logLik"]],
                    family = famL$family, link = famL$link,
 		   ngrps = ngrps(object),
                    nobs = nobs(object),
@@ -2463,8 +2486,8 @@ summary.glmmTMB <- function(object, sandwich = FALSE, ddf=c("asymptotic", "kenwa
                    ## residuals = residuals(object,"pearson",scaled = TRUE),
 		   ## fitMsgs = .merMod.msgs(object),
                    ## optinfo = object@optinfo
-		   ), class = "summary.glmmTMB")
-
+		   ), if (famL$family == "ordbeta") list(cutoffs = cutoffs)),
+              class = "summary.glmmTMB")
 }
 
 ## copied from lme4:::print.summary.merMod (makes use of
@@ -2511,6 +2534,11 @@ print.summary.glmmTMB <- function(x, digits = max(3, getOption("digits") - 3),
     if (!is.null(x$thresholds)) {
         cat("\nThreshold coefficients:\n")
         printCoefmat(x$thresholds, digits = digits, has.Pvalue = FALSE,
+                     signif.stars = FALSE)
+    }
+    if (!is.null(x$cutoffs)) {
+        cat("\nOrdered beta cutoffs:\n")
+        printCoefmat(x$cutoffs, digits = digits, has.Pvalue = FALSE,
                      signif.stars = FALSE)
     }
     if (!is.null(x$priors)) {

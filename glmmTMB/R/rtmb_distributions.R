@@ -354,9 +354,11 @@ dordbeta_rtmb <- function(x, eta, mean, phi, cutpoints, log = FALSE) {
     phi <- as.vector(phi)
     ans <- numeric(length(x))
     for (i in seq_along(ans)) {
-      if (stats::runif(1L) < stats::plogis(cutpoints[1L] - eta[i])) {
+      # One uniform draw partitions [0,1] into intervals of lengths p0, pc and p1.
+      u <- stats::runif(1L)
+      if (u < stats::plogis(cutpoints[1L] - eta[i])) {
         ans[i] <- 0
-      } else if (stats::runif(1L) < stats::plogis(eta[i] - cutpoints[2L])) {
+      } else if (u > 1 - stats::plogis(eta[i] - cutpoints[2L])) {
         ans[i] <- 1
       } else {
         ans[i] <- stats::rbeta(

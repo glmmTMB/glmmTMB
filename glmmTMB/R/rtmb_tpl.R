@@ -514,6 +514,17 @@ rtmb_tpl <- function(parameters, data) {
     mu_pred_all <- mu_pred_all / exp(log_nzprob_pred)
   }
 
+  if (family_name == "ordbeta" && zi_predict_name == "corrected") {
+    # Factor the difference of the two logistic gates to compute the interior mass.
+    # Report the full mean so AD includes derivatives with respect to the cutoffs.
+    eta_vector <- eta[seq_along(eta)]
+    p1 <- 1 / (1 + exp(psi[2L] - eta_vector))
+    pc <- (1 / (1 + exp(eta_vector - psi[2L]))) *
+      (1 / (1 + exp(psi[1L] - eta_vector))) *
+      (-expm1(psi[1L] - psi[2L]))
+    mu_pred_all <- p1 + pc * mu_pred_all
+  }
+
   if (has_zi || zi_predict_name == "prob") {
     zi_pred <- apply_zi_prediction(
       mu = mu_pred_all,
