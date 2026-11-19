@@ -312,8 +312,8 @@ test_that("ordinal simulate_new", {
 })
 
 test_that("ordinal links", {
-    for (l in list("cauchit", "identity", "log", make.link("cauchit"))) {
-        expect_error(ordinal(link = l), "logit, probit, cloglog")
+    for (link in list("cauchit", "identity", "log", make.link("cauchit"))) {
+        expect_error(ordinal(link = link), "logit, probit, cloglog")
     }
 })
 

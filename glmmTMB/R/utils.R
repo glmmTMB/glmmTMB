@@ -990,11 +990,13 @@ simulate_new <- function(object,
         K <- length(newparams$psi) + 1L
         if (K < 2) {
             stop("simulate_new with the ordinal family needs newparams$psi ",
-                 "(length K-1 for K categories)")
+                 "(length K-1 for K categories); got length ",
+                 length(newparams$psi))
         }
         if (nrow(newdata) < K) {
             stop("simulate_new with the ordinal family needs at least as ",
-                 "many rows in newdata as categories")
+                 "many rows in newdata as categories (", K, "); got ",
+                 nrow(newdata))
         }
         newdata[["..y"]] <- ordered(rep_len(seq_len(K), nrow(newdata)),
                                     levels = seq_len(K))
@@ -1065,10 +1067,13 @@ simulate_new <- function(object,
         beta <- newparams[["beta"]]
         if (length(beta) == length(r1$parameters[["beta"]]) && beta[1] != 0) {
             stop("the ordinal intercept is fixed to zero: ",
-                 "the first element of newparams$beta must be 0")
+                 "the first element of newparams$beta must be 0 (got ",
+                 beta[1], ")")
         }
         ## the intercept is mapped: make_pars() wants the free elements of beta
         betamap <- attr(r2$env$parameters[["beta"]], "map")
+        ## TMB's map attribute is negative for a fixed element and
+        ## gives the parameter's index (0-based) for a free one
         if (length(beta) == length(betamap)) {
             simparams$beta <- beta[betamap >= 0]
         }
