@@ -119,10 +119,7 @@ test_that("Pearson residuals have the expected mean square", {
         m <- suppressWarnings(do.call(glmmTMB, fargs))
         r2 <- mean(suppressMessages(residuals(m, type = "pearson"))^2)
         fam <- x$family$family
-        expected <- if (fam == "betabinomial") {
-                        ## not scaled by the dispersion factor
-                        (sigma(m) + x$size)/(sigma(m) + 1)
-                    } else if (identical(names(formals(x$family$variance)), "mu") &&
+        expected <- if (identical(names(formals(x$family$variance)), "mu") &&
                                fam != "bell") {
                         ## base-R convention: not scaled by sigma
                         ##  (with or without zero-inflation)

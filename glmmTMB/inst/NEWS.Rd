@@ -47,6 +47,10 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item Pearson residuals of beta-binomial models are now scaled by
+      the dispersion factor \eqn{(\phi+n)/(\phi+1)}, i.e. divided by the
+      full beta-binomial standard deviation; previously they were
+      divided by the binomial standard deviation only
       \item Pearson residuals of zero-inflated Gaussian and Gamma models
       with a constant dispersion are now divided by \code{sigma()} as a
       whole, as for models without zero-inflation; previously only the

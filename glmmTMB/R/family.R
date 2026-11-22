@@ -601,10 +601,7 @@ bell <- function(link="log") {
 ## phi: dispersion parameter, as returned by predict(type = "disp")
 ## shape: extra family parameter(s), as returned by family_params()
 ## size: number of trials (binomial-type families)
-## unscaled_betabinom: return mu*(1-mu) for the beta-binomial (the convention
-##  used by Pearson residuals) rather than its full variance
-full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL,
-                          unscaled_betabinom = FALSE) {
+full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL) {
     if (is.null(v <- fam$variance)) {
         stop("variance function undefined for family ", sQuote(fam$family))
     }
@@ -619,14 +616,15 @@ full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL,
         stop("variance function for family ", sQuote(fam$family),
              " needs ", paste(sQuote(miss), collapse = ", "))
     }
-    ## beta-binomial $variance() announces that it is unscaled
+    ## beta-binomial $variance() announces that it is unscaled; the
+    ##  scaling is applied below
     vv <- suppressMessages(do.call(v, vargs[vformals]))
     ## variance functions of classical GLM families take only mu, and return
     ##  the variance up to the dispersion factor; Bell's is complete
     if (identical(vformals, "mu") && fam$family != "bell") {
         vv <- vv * phi^2
     }
-    if (fam$family == "betabinomial" && !unscaled_betabinom) {
+    if (fam$family == "betabinomial") {
         if (is.null(size)) stop("beta-binomial variance needs 'size'")
         vv <- vv * (phi + size)/(phi + 1)
     }
