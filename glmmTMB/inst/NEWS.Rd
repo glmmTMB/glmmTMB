@@ -52,8 +52,8 @@
       full beta-binomial standard deviation; previously they were
       divided by the binomial standard deviation only
       \item Pearson residuals of zero-inflated Gaussian and Gamma models
-      with a constant dispersion are now divided by \code{sigma()} as a
-      whole, as for models without zero-inflation; previously only the
+      with a constant dispersion now use the complete variance divided by
+      \code{sigma()^2}, as for models without zero-inflation; previously only the
       conditional part of the variance was scaled, so the residuals
       were neither raw nor scaled Pearson residuals
       \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
