@@ -1086,11 +1086,6 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              ##  (except Bell's, which is complete)
              scaled_var <- identical(names(formals(fam$variance)), "mu") &&
                fam$family != "bell"
-             if (scaled_var && trivialDisp(object)) {
-               ## handle convention that Pearson residuals (in base-R lm()/glm())
-               ## are NOT scaled by the overall dispersion factor
-               vv <- vv/(sigma(object)^2)
-             }
              if (!noZI(object)) {
                ## if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
                ##   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
@@ -1098,6 +1093,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ##          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
                vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
              } ## noZI
+             if (scaled_var && trivialDisp(object)) {
+               ## handle convention that Pearson residuals (in base-R lm()/glm())
+               ## are NOT scaled by the overall dispersion factor;
+               ## applied to the complete variance (after zero-inflation)
+               vv <- vv/(sigma(object)^2)
+             }
              r <- r/sqrt(vv)
              if (!is.null(wts)) {
                r <- r * sqrt(wts)

@@ -47,6 +47,11 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item Pearson residuals of zero-inflated Gaussian and Gamma models
+      with a constant dispersion are now divided by \code{sigma()} as a
+      whole, as for models without zero-inflation; previously only the
+      conditional part of the variance was scaled, so the residuals
+      were neither raw nor scaled Pearson residuals
       \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
       quadratic dispersion parameter, also shown by \code{print()}. Pearson
       residuals now pass this parameter to the variance function
