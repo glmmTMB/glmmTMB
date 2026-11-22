@@ -143,7 +143,7 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##'     \item{betabinomial}{Beta-binomial distribution: parameterized according to Morris (1997). \eqn{V=\mu(1-\mu)(n(\phi+n)/(\phi+1))}{V=mu*(1-mu)*(n*(phi+n)/(phi+1))}}
 ##'      \item{combinomial}{Conway-Maxwell-Binomial distribution: mean-parameterized as in Huang (2017) but for the binomial. The dispersion parameter \eqn{\nu}{nu} controls under- (\eqn{\nu>1}) and over- (\eqn{\nu<1}) dispersion relative to the binomial; \eqn{\nu=1} recovers the binomial. \eqn{V} has no closed form and is computed numerically.}
 ##'      \item{tweedie}{Tweedie distribution: \eqn{V=\phi\mu^{power}}{V=phi*mu^power}. The power parameter is restricted to the interval \eqn{1<power<2}, i.e. the compound Poisson-gamma distribution. Code taken from the \code{tweedie} package, written by Peter Dunn. The power parameter (designated \code{psi} in the list of parameters) uses the link function \code{qlogis(psi-1.0)}; thus one can fix the power parameter to a specified value using \code{start = list(psi = qlogis(fixed_power-1.0)), map = list(psi = factor(NA))}.}
-##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}.}
+##'      \item{t_family}{Student-t distribution with adjustable scale and location parameters (also called a \href{https://en.wikipedia.org/wiki/Pearson_distribution#The_Pearson_type_VII_distribution}{Pearson type VII distribution}). The shape (degrees of freedom parameter) is fitted with a log link; it may be often be useful to fix the shape parameter using \code{start = list(psi = log(fixed_df)), map = list(psi = factor(NA))}. \eqn{V=\phi^2 \nu/(\nu-2)}{V=phi^2*df/(df-2)} for \eqn{\nu>2}{df>2}.}
 ##'      \item{ordbeta}{Ordered beta regression from Kubinec (2022); fits continuous (e.g. proportion) data in the \emph{closed} interval [0,1]. Unlike the implementation in the \code{ordbeta} package, this family will not automatically scale the data. If your response variable is defined on the closed interval [a,b], transform it to [0,1] via \code{y_scaled <- (y-a)/(b-a)}.}
 ##'      \item{lognormal}{Log-normal, parameterized by the mean and standard deviation \emph{on the data scale}}
 ##'      \item{skewnormal}{Skew-normal, parameterized by the mean, standard deviation, and shape (Azzalini & Capitanio, 2014); constant \eqn{V=\phi^2}{V=phi^2}}
@@ -407,9 +407,9 @@ tweedie <- function(link="log") {
 #' @export
 skewnormal <- function(link="identity") {
   r <- list(family="skewnormal",
-            variance = function(mu, phi, shape) {
-              delta <- shape/sqrt(1-shape^2)
-              phi^2*(1-2*delta^2/pi)
+            ## phi is the standard deviation (not the scale parameter omega)
+            variance = function(mu, phi) {
+              rep(phi^2, length.out = length(mu))
             })
   return(make_family(r,link))
 }
@@ -499,8 +499,15 @@ ziGamma <- function(link="inverse") {
 #' @rdname nbinom2
 t_family <- function(link="identity") {
     r <- list(family="t",
-           variance=function(mu, phi) {
-               rep(phi, length(mu))
+           ## phi is the scale parameter, shape the degrees of freedom;
+           ## the variance is infinite for 1 < df <= 2 and undefined for df <= 1
+           variance=function(mu, phi, shape) {
+               n <- max(length(mu), length(shape))
+               shape <- rep(shape, length.out = n)
+               v <- rep(phi^2, length.out = n) * shape/(shape - 2)
+               v[shape <= 2] <- Inf
+               v[shape <= 1] <- NaN
+               v
            })
     return(make_family(r,link))
 }
@@ -567,4 +574,46 @@ bell <- function(link="log") {
     ##              name = link ## mild hack to avoid make_family passing to make.link, which has hard-coded options
     ##              )
     return(make_family(r, link, needs_nonneg = TRUE, needs_int = TRUE))
+}
+
+## Conditional variance of the response, per unit prior weight, for a family
+##  (excluding zero-inflation).
+## For binomial-type families (binomial, betabinomial, combinomial) the
+##  response is a proportion and the value is size*Var(Y/size), the per-trial
+##  variance on the proportion scale (the convention of binomial()$variance);
+##  for other families it is Var(Y).
+## mu: conditional mean (a probability for binomial-type families)
+## phi: dispersion parameter, as returned by predict(type = "disp")
+## shape: extra family parameter(s), as returned by family_params()
+## size: number of trials (binomial-type families)
+## unscaled_betabinom: return mu*(1-mu) for the beta-binomial (the convention
+##  used by Pearson residuals) rather than its full variance
+full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL,
+                          unscaled_betabinom = FALSE) {
+    if (is.null(v <- fam$variance)) {
+        stop("variance function undefined for family ", sQuote(fam$family))
+    }
+    vformals <- names(formals(v))
+    ## argument names for the same quantity differ across families
+    vargs <- list()
+    vargs$mu <- vargs$lambda <- mu
+    vargs$theta <- vargs$phi <- vargs$alpha <- phi
+    vargs$shape <- vargs$power <- vargs$psi <- unname(shape)
+    vargs$size <- size
+    if (length(miss <- setdiff(vformals, names(vargs))) > 0) {
+        stop("variance function for family ", sQuote(fam$family),
+             " needs ", paste(sQuote(miss), collapse = ", "))
+    }
+    ## beta-binomial $variance() announces that it is unscaled
+    vv <- suppressMessages(do.call(v, vargs[vformals]))
+    ## variance functions of classical GLM families take only mu, and return
+    ##  the variance up to the dispersion factor; Bell's is complete
+    if (identical(vformals, "mu") && fam$family != "bell") {
+        vv <- vv * phi^2
+    }
+    if (fam$family == "betabinomial" && !unscaled_betabinom) {
+        if (is.null(size)) stop("beta-binomial variance needs 'size'")
+        vv <- vv * (phi + size)/(phi + 1)
+    }
+    vv
 }
