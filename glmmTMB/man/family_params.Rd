@@ -17,3 +17,7 @@ Most conditional distributions have only parameters governing their location
 (retrieved via \code{predict}) and scale (\code{sigma}). A few (e.g. Tweedie, Student t, ordered beta)
 are characterized by one or more additional parameters.
 }
+\details{
+For \code{nbinom12}, returns the positive quadratic dispersion
+parameter \eqn{\psi}{psi} in \eqn{V = \mu(1 + \phi + \mu/\psi)}.
+}
