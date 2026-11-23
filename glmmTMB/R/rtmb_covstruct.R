@@ -234,16 +234,6 @@ termwise_nll <- function(U, theta, term) {
       )
     }
 
-    if (!simulation || term$simCode == .valid_simcode[["random"]]) {
-      for (j in seq_len(reps)) {
-        nll <- nll - sum(RTMB::dnorm(U[, j], 0, 1, log = TRUE))
-      }
-    } else if (term$simCode == .valid_simcode[["zero"]]) {
-      U[] <- 0
-    } else {
-      U[] <- U$getOrig(seq_along(U))
-    }
-
     Lambda <- matrix(0, n, rr_rank)
     lam_diag <- head(theta, rr_rank)
     lam_lower <- utils::tail(theta, length(theta) - rr_rank)
@@ -251,14 +241,31 @@ termwise_nll <- function(U, theta, term) {
     Lambda[row(Lambda) == col(Lambda)] <- lam_diag
     Lambda[row(Lambda) > col(Lambda)] <- lam_lower
 
-    if (term$simCode != .valid_simcode[["fix"]]) {
-      for (j in seq_len(reps)) {
-        transformed_column <- Lambda %*% U[seq_len(rr_rank), j]
-        if (simulation) {
+    if (simulation) {
+      ## Each element of a simref can be filled only once, so U must be
+      ## assigned its final values directly: evaluating RTMB::dnorm() on U
+      ## here would fill it
+      ## with spherical draws before the loadings could be applied.
+      ## Random draws follow the C++ order: n spherical draws per column,
+      ## of which the first rr_rank are multiplied by Lambda.
+      if (term$simCode == .valid_simcode[["random"]]) {
+        for (j in seq_len(reps)) {
+          u_sph <- stats::rnorm(n)
           U_column <- U[, j]
-          U_column[] <- transformed_column
-        } else {
-          U[, j] <- transformed_column
+          U_column[] <- as.vector(Lambda %*% u_sph[seq_len(rr_rank)])
+        }
+      } else if (term$simCode == .valid_simcode[["zero"]]) {
+        U[] <- 0
+      } else {
+        U[] <- U$getOrig(seq_along(U))
+      }
+    } else {
+      for (j in seq_len(reps)) {
+        nll <- nll - sum(RTMB::dnorm(U[, j], 0, 1, log = TRUE))
+      }
+      if (term$simCode != .valid_simcode[["fix"]]) {
+        for (j in seq_len(reps)) {
+          U[, j] <- Lambda %*% U[seq_len(rr_rank), j]
         }
       }
     }

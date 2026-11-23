@@ -31,6 +31,28 @@ test_that("pad_mapped_vcov aligns vcov with fixef for mapped models", {
                      Vfree)
 })
 
+test_that("pad_mapped_vcov lifts the reduced vcov for coefficients tied via 'map' (GH #1340)", {
+    ## two spp coefficients tied: 8 nominal coefficients, 7 estimated
+    fit_tie <- glmmTMB(count ~ mined + spp, family = poisson,
+                       data = Salamanders,
+                       map = list(beta = factor(c(1, 2, 3, 3, 4, 5, 6, 7))))
+    Vred <- vcov(fit_tie, include_nonest = FALSE)$cond
+    expect_identical(dim(Vred), c(7L, 7L))
+    Vpad <- glmmTMB:::pad_mapped_vcov(fit_tie, Vred, "cond")
+    expect_identical(dim(Vpad), c(8L, 8L))
+    expect_identical(rownames(Vpad), names(fixef(fit_tie)$cond))
+    ## the tied pair shares one parameter: identical rows, correlation 1 ...
+    expect_equal(Vpad[3, ], Vpad[4, ], ignore_attr = TRUE)
+    ## ... and the result is what vcov(include_nonest = TRUE) reports
+    expect_equal(Vpad, as.matrix(vcov(fit_tie)$cond), ignore_attr = TRUE)
+    skip_if_not_installed("emmeans")
+    ## used to fail in emmeans:::.qf.non0 ("logical subscript too long")
+    em <- summary(emmeans::emmeans(fit_tie, ~ spp))
+    expect_false(anyNA(em$SE))
+    ## the tied pair (sppPR, sppDM) gives identical standard errors
+    expect_equal(em$SE[em$spp == "PR"], em$SE[em$spp == "DM"])
+})
+
 test_that("emmeans works with a mapped fixed-effect coefficient", {
     skip_if_not_installed("emmeans")
     em <- summary(emmeans::emmeans(fit_map, ~ mined))
@@ -78,6 +100,45 @@ test_that("car::Anova tolerates a user-supplied vcov with NA variances", {
     expect_true(all(is.na(a3[["Chisq"]])))
 })
 
+test_that("vcov(full = TRUE) handles a mapped family parameter (psi)", {
+    ## the psi block was edited from the wrong component list entry, so a
+    ## mapped psi left the name list unchanged and the full vcov either
+    ## silently dropped the psi row or failed to expand
+    set.seed(101)
+    dd <- data.frame(x = rnorm(200))
+    dd$y <- 1 + 0.5 * dd$x + rt(200, df = 5)
+    fit_t <- glmmTMB(y ~ x, data = dd, family = t_family(),
+                     map = list(psi = factor(NA)), start = list(psi = log(5)))
+    V <- vcov(fit_t, full = TRUE)
+    expect_identical(unname(rownames(V)),
+                     c("(Intercept)", "x", "disp~(Intercept)",
+                       "Student-t df"))
+    expect_true(all(is.na(V["Student-t df", ])))
+    expect_false(anyNA(V[1:3, 1:3]))
+    Vest <- vcov(fit_t, full = TRUE, include_nonest = FALSE)
+    expect_identical(unname(rownames(Vest)), unname(rownames(V))[1:3])
+    expect_equal(unname(Vest), unname(V[1:3, 1:3]))
+})
+
+test_that("vcov(full = TRUE) handles a mapped dispersion random effect", {
+    ## the thetadisp map used to hit an NA index in par_components and
+    ## make vcov() and summary() fail; the cond and disp theta rows share a name, so
+    ## the full vcov must be filled by position
+    skip_if_not_installed("lme4")
+    data("sleepstudy", package = "lme4")
+    fit_d <- glmmTMB(Reaction ~ Days + (1 | Subject),
+                     dispformula = ~ 1 + (1 | Subject),
+                     data = sleepstudy,
+                     map = list(thetadisp = factor(NA)),
+                     start = list(thetadisp = 0))
+    V <- as.matrix(vcov(fit_d, full = TRUE))
+    expect_identical(unname(rownames(V)),
+                     c("(Intercept)", "Days", "disp~(Intercept)",
+                       "theta_1|Subject.1", "theta_1|Subject.1"))
+    expect_false(anyNA(V[1:4, 1:4]))
+    expect_true(all(is.na(V[5, ])))
+})
+
 test_that("mapping a non-intercept coefficient also works", {
     skip_if_not_installed("car")
     fit_map2 <- glmmTMB(count ~ mined + spp, family = poisson,
@@ -88,4 +149,20 @@ test_that("mapping a non-intercept coefficient also works", {
     a2 <- car::Anova(fit_map2)
     expect_true(is.na(a2["mined", "Chisq"]))
     expect_false(is.na(a2["spp", "Chisq"]))
+})
+
+test_that("Wald confint() refuses a family parameter by name with random effects", {
+    ## the Wald rows put the family parameter before the random-effect
+    ## SDs, so a name resolved to its vcov(full = TRUE) position would
+    ## select a random-effect row
+    set.seed(5)
+    d <- data.frame(g = factor(rep(1:10, each = 20)), x = rnorm(200))
+    d$y <- 1 + d$x + rep(rnorm(10), each = 20) + rt(200, df = 5)
+    ft <- glmmTMB(y ~ x + (1 | g), data = d, family = t_family(),
+                  map = list(psi = factor(NA)), start = list(psi = log(5)))
+    expect_error(confint(ft, parm = "Student-t df", include_nonest = TRUE),
+                 "not supported for this family")
+    ## other names still select their rows
+    ci <- confint(ft)
+    expect_equal(confint(ft, parm = "x"), ci["x", , drop = FALSE])
 })

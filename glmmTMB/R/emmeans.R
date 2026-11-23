@@ -255,12 +255,20 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
     ddf <- get_ddf()
 
     if (ddf == "kenward-roger") {
-        V <- vcov(object)[[component]]
-        dfargs <- list(unadjV = V,
-                       adjV = .vcov_kenward_adjusted(object))
-        V_kr <- as.matrix(dfargs$adjV)
-        V <- V_kr
-        dffun <- function(k, dfargs) pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
+        ## the Kenward-Roger matrices live in the estimated space (see
+        ## .beta_spaces()); emmeans supplies contrasts on the non-NA
+        ## coefficients, so each one is carried over by t(A)
+        sp <- .beta_spaces(object, component)
+        Phi <- .Phi_est(object, component)
+        dfargs <- list(unadjV = Phi, A = sp$A,
+                       adjV = if (sp$p_est > 0 && .Phi_ok(Phi, "Kenward-Roger")) .vcov_kenward_adjusted(object, sp, Phi))
+        dffun <- function(k, dfargs) {
+            k <- drop(crossprod(dfargs$A, k))
+            ## a contrast involving only map-fixed coefficients is a known
+            ## constant: no variance, no df
+            if (is.null(dfargs$adjV) || all(k == 0)) return(NA_real_)
+            pbkrtest::Lb_ddf(k, dfargs$unadjV, dfargs$adjV)
+        }
     } else if (ddf == "satterthwaite") {
         ## emmeans::ref_grid() strips dffun's enclosing environment
         ## (sets it to baseenv()), so dffun can't rely on free variables
@@ -307,7 +315,12 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
         k <- length(theta)
         if (missing(vcov.)) {
             Vfull <- as.matrix(vcov(object, full = TRUE))
-            vi <- match(c(names(beta), names(theta)), rownames(Vfull))
+            ## the conditional coefficients come first in the full
+            ## vcov and the internal threshold parameters form its psi
+            ## block, taken by position (a fixed-effect column may also
+            ## be called "psi2")
+            vi <- c(match(names(beta), rownames(Vfull)),
+                    psi_block_pos(object))
             V <- Vfull[vi, vi, drop = FALSE]
             ## coefficients fixed via 'map' are known constants (NA
             ## rows/columns in the full vcov): zero them, as
@@ -319,10 +332,18 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
                 V[fi, ] <- 0
                 V[, fi] <- 0
             }
+            ## likewise psi elements fixed via a user 'map' (their rows
+            ## and columns, including the covariances with beta, are NA)
+            ti <- length(beta) + seq_len(k)
+            pmap <- object$obj$env$map[["psi"]]
+            if (!is.null(pmap)) {
+                pfix <- ti[is.na(pmap)]
+                V[pfix, ] <- 0
+                V[, pfix] <- 0
+            }
             ## delta method: bdiag(I, J) V bdiag(I, J)'
             J <- ordinal_threshold_jacobian(object)
             B <- diag(1, length(beta) + k)
-            ti <- length(beta) + seq_len(k)
             B[ti, ti] <- J
             V <- B %*% V %*% t(B)
             dimnames(V) <- list(c(names(beta), names(theta)),
