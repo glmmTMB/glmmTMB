@@ -1,18 +1,34 @@
-##' Hat values (and other influence measures) for glmmTMB objects
-##' 
-##' @param model a \code{glmmTMB} model
-##' @param diag Get diagonal only?
-##' @param \dots unused: for method compatibility only
-##' @examples
-##' fm0 <- glmmTMB(weight ~ Time, data=ChickWeight)
-##' fm1 <- lm(weight ~ Time, data = ChickWeight)
-##' all.equal(hatvalues(fm0), unname(hatvalues(fm1)))
-##' fm2 <- glmmTMB(weight ~ Time + diag(Time | Chick), data=ChickWeight)
-##' fm3 <- lme4::lmer(weight ~ Time + (Time || Chick), data = ChickWeight, REML = FALSE)
-##' all.equal(hatvalues(fm2), unname(hatvalues(fm3)), tolerance = 1e-2)
-##' @importFrom stats hatvalues
-##' @export
-hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
+## Hat values (and other influence measures) for glmmTMB objects
+##
+## The hat values are the derivatives of the fitted values (on the response scale)
+## with respect to the corresponding observations.
+## @param model a \code{glmmTMB} model
+## @param diag Get diagonal only?
+## @param type \code{"full"}: all top-level parameters (fixed effects, covariance and
+## dispersion parameters) are treated as functions of the data.
+## \code{"conditional"}: covariance, dispersion and other non-fixed-effect top-level
+## parameters are held at their estimates, and the fixed effects (conditional and
+## zero-inflation) are treated jointly with the random effects, i.e. as the joint
+## conditional mode given the covariance parameters (the definition used by
+## \code{lme4}). The conditional version is much faster and uses much less memory when
+## the model has many covariance parameters (e.g. reduced-rank (\code{rr}) terms),
+## since the memory used by the full version scales with
+## (number of observations) x (number of top-level parameters).
+## For non-Gaussian responses the fixed-effect estimates are not exactly the joint
+## conditional mode (glmmTMB maximizes the Laplace-approximated marginal likelihood),
+## so the conditional hat values are an approximation to the leverage holding the
+## covariance parameters fixed.
+## @param \dots unused: for method compatibility only
+## @examples
+## fm0 <- glmmTMB(weight ~ Time, data=ChickWeight)
+## fm1 <- lm(weight ~ Time, data = ChickWeight)
+## all.equal(hatvalues(fm0), unname(hatvalues(fm1)))
+## fm2 <- glmmTMB(weight ~ Time + diag(Time | Chick), data=ChickWeight)
+## fm3 <- lme4::lmer(weight ~ Time + (Time || Chick), data = ChickWeight, REML = FALSE)
+## all.equal(hatvalues(fm2, type = "conditional"), unname(hatvalues(fm3)), tolerance = 1e-5)
+## @importFrom stats hatvalues
+## @export
+hatvalues.glmmTMB <- function(model, diag=TRUE, type = c("full", "conditional"), ...) {
 
     ## FIXME: don't depend on RTMB
     ##  (GetTape, MakeTape, TMB::config() below)
@@ -22,8 +38,10 @@ hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
         warning("sorry, computing hatvalues currently requires that the RTMB package be installed")
         return(rep(NA, length=nobs(model)))
     }
-    
+
     check_dots(...)
+    type <- match.arg(type)
+    if (type == "conditional") return(hatvalues_conditional(model, diag = diag))
     has.random <- any(model$obj$env$lrandom())
     obj <- model$obj
     ## We mess with these... (cleanup on exit!)
@@ -149,8 +167,74 @@ hatvalues.glmmTMB <- function(model, diag=TRUE, ...) {
     term1 + term2
 }
 
-#' @export
-#' @importFrom stats rstudent
+## Conditional hat values: covariance/dispersion parameters held fixed;
+## x = (fixed effects, random effects) is the joint conditional mode, so by the
+## implicit function theorem
+##    d mu_hat / d y = - M Hxx^{-1} Hxy,
+## M = d mu / d x (nobs x nx), Hxx, Hxy = blocks of the Hessian of the joint nll.
+## All three are sparse. Each observation's mu and y-gradient involve the same
+## clique of x's, which lies inside the sparsity pattern of Hxx, so only the
+## sparse subset of Hxx^{-1} given by TMB:::solveSubset() is needed for the diagonal.
+hatvalues_conditional <- function(model, diag = TRUE) {
+    obj <- model$obj
+    env <- obj$env
+    oldvars <- mget(c("ADreport", "parameters", "data", "type"), envir = env)
+    on.exit({
+        for (v in names(oldvars)) assign(v, oldvars[[v]], envir = env)
+        obj$retape()
+    })
+    ## only the ADFun tape is used below; building ADGrad for the
+    ## nobs-dimensional ADreport function costs several GB on large models
+    env$type <- "ADFun"
+    parhat <- model$fit$parfull
+    lr <- env$lrandom()
+    ix <- which(lr | names(parhat) %in% c("beta", "betazi"))  ## inner parameters
+    yobs <- env$data$yobs
+    nobs <- length(yobs)
+    env$parameters <- env$parList(par = parhat)
+    ## Hessian blocks of the joint nll wrt (yobs, x)
+    env$parameters <- c(list(yobs = yobs), env$parameters)
+    env$data$yobs <- NULL
+    obj$retape()
+    G <- RTMB::GetTape(obj)$jacfun()  ## (yobs, par) -> gradient
+    full0 <- c(yobs, parhat)
+    iyx <- c(seq_len(nobs), nobs + ix)
+    Gx <- RTMB::MakeTape(function(z) {
+        full <- RTMB::advector(full0)
+        full[iyx] <- z
+        G(full)[nobs + ix]
+    }, full0[iyx])
+    H <- Gx$jacfun(sparse = TRUE)(full0[iyx])  ## rows: x; cols: (yobs, x)
+    Hxy <- H[, seq_len(nobs), drop = FALSE]
+    Hxx <- Matrix::forceSymmetric(H[, -seq_len(nobs), drop = FALSE])
+    ## M = d mu / d x (yobs back in data, mu reported via ADREPORT)
+    env$data$yobs <- yobs
+    env$parameters$yobs <- NULL
+    env$data$doPredict <- as.double(1)
+    env$data$whichPredict <- as.double(seq_len(nobs))
+    env$ADreport <- TRUE
+    obj$retape()
+    Fmu <- RTMB::GetTape(obj)
+    Mx <- RTMB::MakeTape(function(x) {
+        par <- RTMB::advector(parhat)
+        par[ix] <- x
+        Fmu(par)
+    }, parhat[ix])
+    M <- Mx$jacfun(sparse = TRUE)(parhat[ix])  ## nobs x nx
+    if (!diag) {
+        return(-as.matrix(M %*% Matrix::solve(Hxx, Hxy)))
+    }
+    iH <- as(TMB:::solveSubset(as(Hxx, "CsparseMatrix")), "generalMatrix")
+    ## diag(M iH Hxy)[i] = sum_k (M iH)[i, k] Hxy[k, i], over the nonzeros of Hxy only
+    nz <- Matrix::summary(as(Hxy, "TsparseMatrix"))  ## columns i (x index), j (obs), x
+    MiH <- Matrix::rowSums(M[nz$j, , drop = FALSE] * Matrix::t(iH[, nz$i, drop = FALSE]))
+    h <- -tapply(MiH * nz$x, factor(nz$j, levels = seq_len(nobs)), sum)
+    h[is.na(h)] <- 0
+    unname(as.vector(h))
+}
+
+## @export
+## @importFrom stats rstudent
 rstudent.glmmTMB <- function (model, ...) {
     ## FIXME: more careful about 0-weight, na.exclude, naming, etc.
     ## NOT consistent with stats:::rstudent.lm [res/(infl$sigma * sqrt(1 - infl$hat))]

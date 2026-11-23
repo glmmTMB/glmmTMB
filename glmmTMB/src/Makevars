@@ -1,4 +1,5 @@
-PKG_CPPFLAGS = -DTMBAD_FRAMEWORK -DTMBAD_INDEX_TYPE=uint64_t
+## TMB_MAX_ORDER=4: hatvalues(type = "full") needs higher-order derivatives in newton()
+PKG_CPPFLAGS = -DTMBAD_FRAMEWORK -DTMBAD_INDEX_TYPE=uint64_t -DTMB_MAX_ORDER=4
 ## need to compile **without** OpenMP for RTMB compatibility ...
 ## PKG_LIBS = $(SHLIB_OPENMP_CXXFLAGS)
 ## PKG_CXXFLAGS=$(SHLIB_OPENMP_CXXFLAGS)
