@@ -10,14 +10,20 @@ rrTerms(x)
 \item{x}{a fitted \code{glmmTMB} model}
 }
 \value{
-A named list with three components (\code{cond}, \code{zi}, \code{disp}). 
-  Each component contains a list with one element per random effect term. For rr 
-  structures, each element contains:
+A named list with three components:
+\item{cond}{a list with one element per random-effect term in the
+  conditional model.}
+\item{zi}{a list with one element per random-effect term in the
+  zero-inflation model.}
+\item{disp}{a list with one element per random-effect term in the
+  dispersion model.}
+For an \code{rr} term, the element is a list containing:
 \itemize{
-  \item \code{lv} matrix of latent variables with columns named \code{lv1}, \code{lv2},..
-  \item \code{fl} matrix of factor loadings
-}  
-  Non-rr terms return \code{NULL}.
+  \item \code{lv}: a matrix of latent variables, with one row per level of
+    the grouping factor and columns named \code{lv1}, \code{lv2}, \dots
+  \item \code{fl}: a matrix of factor loadings
+}
+Terms that are not \code{rr} terms  return \code{NULL}.
 }
 \description{
 Extracts the factor loadings and latent variables from reduced-rank 

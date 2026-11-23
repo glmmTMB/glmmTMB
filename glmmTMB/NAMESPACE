@@ -99,8 +99,9 @@ export(pgenpois)
 export(put_cor)
 export(ranef)
 export(refit)
-export(rrTerms)
 export(rgenpois)
+export(rrPlot)
+export(rrTerms)
 export(sandwich)
 export(set_simcodes)
 export(sigma)
@@ -135,6 +136,13 @@ importFrom(TMB,
   MakeADFun,
   sdreport,
   tmbprofile
+)
+importFrom(graphics,
+  abline,
+  arrows,
+  plot,
+  points,
+  text
 )
 importFrom(lme4,
   .prt.VC,
