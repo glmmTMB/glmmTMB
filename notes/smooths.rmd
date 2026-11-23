@@ -67,7 +67,7 @@ gtmb0 <- update(gtmb1, . ~  . - (1|Subject))
 
 ```{r nileex}
 data("Nile")
-ndat <- data.frame(time = time(Nile), val = c(Nile))
+ndat <- data.frame(time = c(time(Nile)), val = c(Nile))
 sm0 <- gam(val ~ s(time), data = ndat, method = "REML")
 
 sm0B <- glmmTMB(val ~ s(time), data = ndat, REML = TRUE)

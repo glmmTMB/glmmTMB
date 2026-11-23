@@ -1,4 +1,15 @@
 #define EIGEN_DONT_PARALLELIZE // see https://github.com/kaskr/adcomp/issues/390
+#define DISABLE_AD if(isDouble<Type>::value)
+#define NAN std::numeric_limits<double>::quiet_NaN()
+// set correlation matrix for output, unless corr output has been disabled
+// (make this a function instead?
+#define SET_COR    if (term.fullCor == 1) { \
+      term.corr = nldens.cov(); \
+    } else { \
+      term.corr.resize(1,1); \
+      term.corr(0,0) = NAN; \
+    }
+
 #include <TMB.hpp>
 #include <R_ext/Error.h>
 #include "init.h"
@@ -23,6 +34,7 @@ enum valid_family {
   gaussian_family = 0,
   binomial_family = 100,
   betabinomial_family =101,
+  combinomial_family   = 102,
   beta_family =200,
   ordbeta_family = 201,
   Gamma_family =300,
@@ -41,7 +53,8 @@ enum valid_family {
   tweedie_family = 700,
   lognormal_family = 800,
   skewnormal_family = 900,
-  bell_family = 1000
+  bell_family = 1000,
+  ordinal_family = 1100
 };
 
 // capitalize Family so this doesn't get picked up by the 'enum' scraper
@@ -81,7 +94,9 @@ enum valid_covStruct {
   // should perhaps be next to homdiag but don't want to mess
   //  up interpretation of stored fits ...
   hetar1_covstruct = 12,
-  homcs_covstruct = 13
+  homcs_covstruct = 13,
+  homtoep_covstruct = 14,
+  equalto_covstruct = 15
 };
 
 // should probably be named just 'predictCode';
@@ -293,6 +308,7 @@ struct per_term_info {
   int blockReps;     // Repeat block number of times
   int blockNumTheta; // Parameter count per block
   int simCode;       // Simulation code (zero, fixed, or draw new random deviate?)
+  int fullCor;       // Compute/store full correlation matrix?
   matrix<Type> dist;
   vector<Type> times;// For ar1 case
   // Report output
@@ -312,11 +328,13 @@ struct terms_t : vector<per_term_info<Type> > {
       int blockReps = (int) REAL(getListElement(y, "blockReps", &isNumericScalar))[0];
       int blockNumTheta = (int) REAL(getListElement(y, "blockNumTheta", &isNumericScalar))[0];
       int simCode = (int) REAL(getListElement(y, "simCode", &isNumericScalar))[0];
+      int fullCor = (int) REAL(getListElement(y, "fullCor", &isNumericScalar))[0];
       (*this)(i).blockCode = blockCode;
       (*this)(i).blockSize = blockSize;
       (*this)(i).blockReps = blockReps;
       (*this)(i).blockNumTheta = blockNumTheta;
       (*this)(i).simCode = simCode;
+      (*this)(i).fullCor = fullCor;
       // Optionally, pass time vector:
       SEXP t = getListElement(y, "times");
       if(!Rf_isNull(t)){
@@ -416,67 +434,76 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         
       }
     }
-    term.corr = nldens.cov(); // For report
+
+    // FIXME: DRY/make this into a function or macro
+    SET_COR;
+    
     term.sd = sd;             // For report
   }
   else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
-    // case: cs_covstruct
+    // case: cs_covstruct or homcs_covstruct
     int n = term.blockSize;
-    int nsd = (term.blockCode == cs_covstruct ? n : 1);
     vector<Type> logsd(n);
     for (int i = 0; i < n; i++) {
       if (term.blockCode == cs_covstruct) {
-	logsd(i) = theta(i);
+        logsd(i) = theta(i);
       } else {
-	logsd(i) = theta(0);
+        logsd(i) = theta(0);
       }
     }
-    Type corr_transf = theta(nsd);
+    Type corr_transf = theta.tail(1)(0);
     vector<Type> sd = exp(logsd);
     Type a = Type(1) / (Type(n) - Type(1));
     Type rho = invlogit(corr_transf) * (Type(1) + a) - a;
     matrix<Type> corr(n,n);
     for(int i=0; i<n; i++)
       for(int j=0; j<n; j++)
-	corr(i,j) = (i==j ? Type(1) : rho);
+        corr(i,j) = (i==j ? Type(1) : rho);
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-	if (term.simCode != random_simcode) {
-	  Rf_error("simcode not yet implemented for cs cov struct");
-	}
+        if (term.simCode != random_simcode) {
+          Rf_error("simcode not yet implemented for cs cov struct");
+        }
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
-  else if (term.blockCode == toep_covstruct){
-    // case: toep_covstruct
+  else if (term.blockCode == toep_covstruct || term.blockCode == homtoep_covstruct) {
+    // case: toep_covstruct or homtoep_covstruct
     int n = term.blockSize;
-    vector<Type> logsd = theta.head(n);
+    vector<Type> logsd(n);
+    for (int i = 0; i < n; i++) {
+      if (term.blockCode == toep_covstruct) {
+        logsd(i) = theta(i);
+      } else {
+        logsd(i) = theta(0);
+      }
+    }
     vector<Type> sd = exp(logsd);
-    vector<Type> parms = theta.tail(n-1);              // Corr parms
-    parms = parms / sqrt(Type(1.0) + parms * parms );  // Now in (-1,1)
+    vector<Type> corr_params = theta.tail(n-1);
+    corr_params = corr_params / sqrt(Type(1.0) + corr_params * corr_params);
     matrix<Type> corr(n,n);
-    for(int i=0; i<n; i++)
+    for (int i=0; i<n; i++)
       for(int j=0; j<n; j++)
         corr(i,j) = (i==j ? Type(1) :
-                     parms( (i > j ? i-j : j-i) - 1 ) );
+                     corr_params( (i > j ? i-j : j-i) - 1 ) );
     density::MVNORM_t<Type> nldens(corr);
     density::VECSCALE_t<density::MVNORM_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
       ans += scnldens(U.col(i));
       if (do_simulate) {
-	if (term.simCode != random_simcode) {
-	  Rf_error("simcode not yet implemented for toep cov struct");
-	}
+        if (term.simCode != random_simcode) {
+          Rf_error("simcode not yet implemented for toep and homtoep cov struct");
+        }
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = nldens.cov(); // For report
+    SET_COR;
     term.sd = sd;             // For report
   }
   else if (term.blockCode == ar1_covstruct ||
@@ -489,66 +516,82 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     Type corr_transf = theta(term.blockNumTheta-1);
     Type phi = corr_transf / sqrt(1.0 + pow(corr_transf, 2));
     vector<Type> sd = exp(logsd);
-    Type cursd;
+    
     for(int j = 0; j < term.blockReps; j++){
-      ans -= dnorm(U(0, j), Type(0), sd(0), true);   // Initialize
-      if (do_simulate) {
-	switch(term.simCode) {
-	case fix_simcode:
-	  break;
-	case zero_simcode:
-	  U(0,j) = Type(0);
-	  break;
-	case random_simcode:
-	  U(0, j) = rnorm(Type(0), sd(0));
-	  break;
-	}
+      // Initialize
+      if (term.blockCode == hetar1_covstruct) {
+        ans -= dnorm(U(0, j) / sd(0), Type(0), Type(1), true);
+        ans += logsd(0);
+      } else { // ar1_covstruct
+        ans -= dnorm(U(0, j), Type(0), sd(0), true);
       }
-      for(int i=1; i<n; i++){
-	if (term.blockCode == hetar1_covstruct) {
-	  cursd = sd(i-1);
-	} else {
-	  cursd = sd(0);
-	}
-	ans -= dnorm(U(i, j), phi * U(i-1, j), cursd * sqrt(1 - phi*phi), true);
-        if (do_simulate) {
-	  switch(term.simCode) {
+      if (do_simulate) {
+        switch(term.simCode) {
           case fix_simcode:
-          // do nothing, leave U values as is
-	    break;
+            break;
           case zero_simcode:
-            for (int i=0; i < U.rows(); i++) {
-              U(i,j) = Type(0);
-	    };
+            U(0,j) = Type(0);
             break;
           case random_simcode:
-            for(int i=1; i<n; i++){
-              U(i, j) = rnorm( phi * U(i-1, j), cursd * sqrt(1 - phi*phi) );
-              }
+            U(0, j) = rnorm(Type(0), sd(0));
             break;
-           default: error ("unknown simcode");
-	  } // term.simCode
-	} // do_simulate
+        }
+      }
+      for(int i=1; i<n; i++) {
+
+        if (term.blockCode == hetar1_covstruct) {
+          ans -= dnorm(U(i, j) / sd(i), phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi), true);
+          ans += logsd(i);
+        } else { // ar1_covstruct
+          ans -= dnorm(U(i, j), phi * U(i-1, j), sd(0) * sqrt(1 - phi*phi), true);
+        }
+      
+        if (do_simulate) {
+	        switch(term.simCode) {
+            case fix_simcode:
+              // do nothing, leave U values as is
+	            break;
+            case zero_simcode:
+              for (int i=0; i < U.rows(); i++) {
+                U(i, j) = Type(0);
+	            };
+              break;
+            case random_simcode:
+              if (term.blockCode == hetar1_covstruct) {
+                  U(i, j) = sd(i) * rnorm(phi * U(i-1, j) / sd(i-1), sqrt(1 - phi*phi));
+              } else {
+                  U(i, j) = rnorm(phi * U(i-1, j), sd(0) * sqrt(1 - phi*phi));
+              }
+              break;
+            default: error ("unknown simcode");
+	        } // term.simCode
+      	} // do_simulate
       } // loop over lags
     } // loop over blocks
-  
-    // For consistency with output for other structs we report entire
-    // covariance matrix.
-    if(isDouble<Type>::value) { // Disable AD for this part
-      term.corr.resize(n,n);
-      term.sd.resize(n);
-      for(int i=0; i<n; i++){
-	if (term.blockCode == hetar1_covstruct) {
-	  term.sd(i) = sd(i);
-	} else {
-	  term.sd(i) = sd(0);
-	}
-	for(int j=0; j<n; j++){
-	  term.corr(i,j) = pow(phi, abs(i-j));
-	}
+    DISABLE_AD { // Disable AD for this part
+      if (term.fullCor == 0) {
+        // report *only* phi in the corr struct
+        term.corr.resize(1,1);
+        term.corr(0,0) = phi;
+      } else {
+        term.corr.resize(n,n);
+        for (int i=0; i<n; i++) {
+          for(int j=0; j<n; j++){
+            term.corr(i,j) = pow(phi, abs(i-j));
+          }
+        }
       }
-    }
-  }
+      if (term.blockCode == hetar1_covstruct) {
+        term.sd.resize(n);
+        for(int i=0; i<n; i++){
+          term.sd(i) = sd(i);
+        }
+      } else { // ar1_covstruct
+        term.sd.resize(1);
+        term.sd(0) = sd(0);
+      }
+    } // DISABLE_AD 
+  } // [het]ar1_covstruct
   else if (term.blockCode == ou_covstruct){
     // case: ou_covstruct
     //  * NOTE: this is the continuous time version of ar1.
@@ -584,22 +627,30 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         default: error ("unknown simcode");
         }
       } // do_simulate
+
       
     }
-    // For consistency with output for other structs we report entire
-    // covariance matrix.
-    if(isDouble<Type>::value) { // Disable AD for this part
-      term.corr.resize(n,n);
-      term.sd.resize(n);
-      for(int i=0; i<n; i++){
-	term.sd(i) = sd;
-	for(int j=0; j<n; j++){
-	  term.corr(i,j) =
-	    exp(-exp(corr_transf) * CppAD::abs(term.times(i) - term.times(j)));
-	}
+    // Report only the sd and the decay parameter
+    DISABLE_AD { // Disable AD for this part
+      if (term.fullCor==1) {
+        term.corr.resize(n,n);
+        term.sd.resize(n);
+        for(int i=0; i<n; i++) {
+          term.sd(i) = sd;
+          for(int j=0; j<n; j++){
+            term.corr(i,j) =
+              exp(-exp(corr_transf) * CppAD::abs(term.times(i) - term.times(j)));
+          }
+        }
+      } else {
+        term.corr.resize(1,1);
+        term.sd.resize(1);
+        term.sd(0) = sd;
+        term.corr(0,0) = exp(corr_transf);
       }
     }
-  }
+  } // OU covstruct
+  
   // Spatial correlation structures
   else if (term.blockCode == exp_covstruct ||
            term.blockCode == gau_covstruct ||
@@ -642,7 +693,7 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    term.corr = corr;   // For report
+    if (term.fullCor==1) term.corr = corr;   // For report
     term.sd.resize(n);  // For report
     term.sd.fill(sd);
   }
@@ -696,18 +747,20 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     // (i.e. user is assumed to be passing the 'non-spherical' latent variables)
     if (term.simCode != fix_simcode) {
       for(int i = 0; i < term.blockReps; i++){
-	vector<Type> usub = U.col(i).segment(0, rank);
-	U.col(i) = Lambda * usub;
+        vector<Type> usub = U.col(i).segment(0, rank);
+        U.col(i) = Lambda * usub;
       }
     }
 
     // computing the correlation matrix and std devs
     // (the same D^(-1/2) L L^T D^(-1/2) transformation that we use for correlations
     term.fact_load = Lambda;
-    if(isDouble<Type>::value) {
-      term.corr = Lambda * Lambda.transpose();
-      term.sd = term.corr.diagonal().array().sqrt();
-      term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
+    if (term.fullCor==1) {
+      DISABLE_AD {
+        term.corr = Lambda * Lambda.transpose();
+        term.sd = term.corr.diagonal().array().sqrt();
+        term.corr.array() /= (term.sd.matrix() * term.sd.matrix().transpose()).array();
+      }
     }
   }
   else if (term.blockCode == propto_covstruct){
@@ -717,6 +770,23 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
     vector<Type> logsd = theta.head(n);
     vector<Type> sd =  exp(logsd + loglambda/2) ;
     vector<Type> corr_transf = theta.segment(n, theta.size() - n - 1);
+    density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
+    density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += scnldens(U.col(i));
+      if (do_simulate) {
+        U.col(i) = sd * nldens.simulate();
+      }
+    }
+    SET_COR;
+    term.sd = sd;             // For report
+  }
+  else if (term.blockCode == equalto_covstruct){
+    // case: equalto_covstruct
+    int n = term.blockSize;
+    vector<Type> logsd = theta.head(n);
+    vector<Type> sd =  exp(logsd);
+    vector<Type> corr_transf = theta.segment(n, theta.size() - n);
     density::UNSTRUCTURED_CORR_t<Type> nldens(corr_transf);
     density::VECSCALE_t<density::UNSTRUCTURED_CORR_t<Type> > scnldens = density::VECSCALE(nldens, sd);
     for(int i = 0; i < term.blockReps; i++){
@@ -806,10 +876,15 @@ Type objective_function<Type>::operator() ()
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
+  // defined as 'disp_Link' rather than 'disp_link' to avoid
+  // confusing `make enum-update`
+  // FIXME: implement alternative dispersion links more generally?
+  DATA_INTEGER(combinom_disp_Link);  // 0 = log link on disp (default, nu > 0)
+                                       // 1 = identity link  (nu in R)
 
   // Flags
   DATA_INTEGER(ziPredictCode);
-  bool zi_flag = (betazi.size() > 0);
+  bool zi_flag = (betazi.size() > 0 || bzi.size() > 0);
   // 0 = no prediction; 1 = predictions on link scale; 2 = predictions on
   // data scale; 3 = predictions of latent variables (b)
   DATA_INTEGER(doPredict);
@@ -869,6 +944,10 @@ Type objective_function<Type>::operator() ()
     mu(i) = inverse_linkfun(eta(i), link);
   vector<Type> pz = invlogit(etazi);
   vector<Type> phi = exp(etadisp);
+  // combinomial with allow_negative_nu=TRUE uses an identity link on the
+  // dispersion (nu may be negative), so undo the exp() applied above;
+  // combinom_disp_Link is only ever nonzero for the combinomial family
+  if (combinom_disp_Link == 1) phi = etadisp;
   vector<Type> log_nzprob(eta.size());
   if (!trunc_Family(family)) {
     log_nzprob.setZero();
@@ -879,6 +958,47 @@ Type objective_function<Type>::operator() ()
     }
   }
 
+
+  // Ordinal (cumulative link) family: thresholds are stored in psi via a
+  // softmax parameterization (cf. Koslik et al 2025, arXiv:2511.17071, and
+  // GH #514): psi are log-weights (with the logit link, of K baseline category
+  // probabilities; last weight fixed to 0 for identifiability) and
+  //   theta(j) = logit(cumsum(softmax(c(psi, 0)))(j))
+  //            = logsumexp(psi[0..j]) - logsumexp(psi[j+1..], 0),
+  // which is automatically increasing; the prefix/suffix logsumexp form
+  // avoids overflow when one category weight dominates. The number of
+  // response levels is psi.size() + 1.
+  // 'mu' is redefined as the expected category index,
+  //   E[Y] = K - sum_j P(Y <= j),
+  // so that mu_predict/fitted values are usable downstream; it is skipped
+  // during fitting (whichPredict empty) since the likelihood does not use
+  // mu and the extra AD-taped work scales with n*K.
+  int n_ord_levels = 0;
+  vector<Type> theta_ord;
+  if (family == ordinal_family) {
+    n_ord_levels = psi.size() + 1;
+    theta_ord.resize(psi.size());
+    vector<Type> suffix_lse(psi.size());  // logsumexp(psi[j+1..], 0)
+    Type s = Type(0);
+    for (int j = psi.size() - 1; j >= 0; j--) {
+      suffix_lse(j) = s;
+      s = logspace_add(s, psi(j));
+    }
+    Type prefix_lse = psi(0);
+    theta_ord(0) = prefix_lse - suffix_lse(0);
+    for (int j = 1; j < psi.size(); j++) {
+      prefix_lse = logspace_add(prefix_lse, psi(j));
+      theta_ord(j) = prefix_lse - suffix_lse(j);
+    }
+    if (whichPredict.size() > 0) {
+      for (int i = 0; i < mu.size(); i++) {
+	Type m = Type(n_ord_levels);
+	for (int j = 0; j < theta_ord.size(); j++)
+	  m -= inverse_linkfun(theta_ord(j) - eta(i), link);
+	mu(i) = m;
+      }
+    }
+  }
 
 // "zero-truncated" likelihood: ignore zeros in positive distributions
 // exact zero: use for positive distributions (Gamma, beta)
@@ -969,6 +1089,25 @@ Type objective_function<Type>::operator() ()
         tmp_loglik = glmmtmb::dbetabinom_robust(yobs(i), s1, s2, size(i), true);
         SIMULATE {
           yobs(i) = rbinom(size(i), rbeta(exp(s1), exp(s2)) );
+        }
+        break;
+      case combinomial_family:
+        // Conway-Maxwell-Binomial, mean-parameterized.
+        // glmmTMB's mu(i) for binomial-type families is the probability
+        // p in (0,1); the TMB density expects the expected count mean in (0,n),
+        // so we pass size(i) * mu(i). etadisp(i) is log(nu) (dispformula
+        // uses log link), so we exponentiate.
+        {
+          s1 = mu(i) * size(i);     // mean = n * p
+          if (combinom_disp_Link == 0) {
+            s2 = exp(etadisp(i));    // log link
+          } else {
+            s2 = etadisp(i);         // identity link
+          }
+          tmp_loglik = dcombinom2(yobs(i), size(i), s1, s2, true);
+          SIMULATE {
+            yobs(i) = glmmtmb::rcombinom2(s1, s2, size(i));
+          }
         }
         break;
       case nbinom1_family:
@@ -1062,9 +1201,13 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i);  // mean
         s2 = phi(i); // phi
         s3 = invlogit(psi(0)) + Type(1); // p, 1<p<2
-        tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
-        SIMULATE {
+        // skip the density when simulating: it is not used, and its
+        // series gets long as p approaches 2 (GH #1341)
+        if (isDouble<Type>::value && this->do_simulate) {
+          tmp_loglik = 0;
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
+        } else {
+          tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
         }
 	break;
       case lognormal_family:
@@ -1103,6 +1246,41 @@ Type objective_function<Type>::operator() ()
 	  btheta = glmmtmb::LambertW(mu(i));
 	  tmp_loglik = glmmtmb::dbell(yobs(i), btheta, true);
 	  SIMULATE{yobs(i) = glmmtmb::rbell(btheta);}
+	  break;
+	}
+      case ordinal_family:
+	{
+	  // cumulative link model: yobs in 1..K;
+	  // theta_ord (monotone thresholds) computed above from psi.
+	  // Cumulative log-probabilities go through
+	  // logit_inverse_linkfun, which has accurate tail versions for
+	  // probit and cloglog (logit_pnorm, logit_invcloglog), so that
+	  // log P stays finite at extreme eta where the direct
+	  // log(inverse_linkfun()) would underflow to -Inf and
+	  // logspace_sub(-Inf, -Inf) would poison the gradient with NaN.
+	  int yi = CppAD::Integer(yobs(i));
+	  if (yi <= 1) {
+	    s1 = logit_inverse_linkfun(theta_ord(0) - eta(i), link);
+	    tmp_loglik = -logspace_add(Type(0), -s1);           // log plogis(s1)
+	  } else if (yi >= n_ord_levels) {
+	    s1 = logit_inverse_linkfun(theta_ord(n_ord_levels - 2) - eta(i), link);
+	    tmp_loglik = -logspace_add(Type(0), s1);            // log plogis(-s1)
+	  } else {
+	    // log(plogis(s1) - plogis(s2)) in a form that is accurate in
+	    // every regime (both lower tail, both upper tail, straddling):
+	    //   = logspace_sub(s1, s2) - log1pexp(s1) - log1pexp(s2)
+	    s1 = logit_inverse_linkfun(theta_ord(yi - 1) - eta(i), link);
+	    s2 = logit_inverse_linkfun(theta_ord(yi - 2) - eta(i), link);
+	    tmp_loglik = logspace_sub(s1, s2)
+	      - logspace_add(Type(0), s1) - logspace_add(Type(0), s2);
+	  }
+	  SIMULATE{
+	    s1 = runif(Type(0), Type(1));
+	    yobs(i) = Type(1);
+	    for (int j = 0; j < theta_ord.size(); j++) {
+	      if (s1 > inverse_linkfun(theta_ord(j) - eta(i), link)) yobs(i) += Type(1);
+	    }
+	  }
 	  break;
 	}
       default:
@@ -1284,6 +1462,26 @@ Type objective_function<Type>::operator() ()
   whichPredict -= 1; // R-index -> C-index
   vector<Type> mu_predict = mu(whichPredict);
   vector<Type> eta_predict = eta(whichPredict);
+
+  // per-category probabilities for ordinal predictions
+  if (family == ordinal_family) {
+    matrix<Type> ordinal_probs(whichPredict.size(), n_ord_levels);
+    for (int i = 0; i < whichPredict.size(); i++) {
+      Type prev = Type(0);
+      for (int j = 0; j < n_ord_levels - 1; j++) {
+	Type cum = inverse_linkfun(theta_ord(j) - eta(whichPredict(i)), link);
+	ordinal_probs(i, j) = cum - prev;
+	prev = cum;
+      }
+      ordinal_probs(i, n_ord_levels - 1) = Type(1) - prev;
+    }
+    REPORT(ordinal_probs);
+    // doPredict == 4 requests SEs for the probability matrix
+    // (predict(type = "probs", se.fit = TRUE)); kept separate from
+    // doPredict == 1 so that response-scale predictions do not pay for
+    // an n-by-K delta-method Jacobian they never use (and vice versa)
+    if (doPredict == 4) ADREPORT(ordinal_probs);
+  }
 
   DATA_FACTOR(aggregate);
   if (aggregate.size() > 0) {

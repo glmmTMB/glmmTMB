@@ -4,7 +4,14 @@
 \alias{vcov.glmmTMB}
 \title{Calculate Variance-Covariance Matrix for a Fitted glmmTMB model}
 \usage{
-\method{vcov}{glmmTMB}(object, full = FALSE, include_nonest = TRUE, ...)
+\method{vcov}{glmmTMB}(
+  object,
+  full = FALSE,
+  include_nonest = TRUE,
+  sandwich = FALSE,
+  cluster = getGroups(object),
+  ...
+)
 }
 \arguments{
 \item{object}{a \dQuote{glmmTMB} fit}
@@ -12,6 +19,10 @@
 \item{full}{return a full variance-covariance matrix?}
 
 \item{include_nonest}{include variables that are mapped \emph{or} dropped due to rank-deficiency? (these will be given variances and covariances of NA)}
+
+\item{sandwich}{use the sandwich estimator for the variance-covariance matrix? (this only works for ML fits, but not for REML fits)}
+
+\item{cluster}{grouping factor for the sandwich estimator, only used if \code{sandwich==TRUE}.}
 
 \item{\dots}{ignored, for method compatibility}
 }

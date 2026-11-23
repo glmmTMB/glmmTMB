@@ -30,6 +30,40 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
                  tolerance = 1e-6)
   })
   
+  test_that("test propto zi fit - Identity", {
+    #fit using map
+    ft2zi <- glmmTMB(count ~ spp + (1|site),
+                   zi=~ diag(1 + mined | spp),
+                   map = list(thetazi = factor(c(rep(1, 2)))),
+                   family=poisson, data=Salamanders)
+    mat.ISal <-  diag(2)
+    colnames(mat.ISal) <- rownames(mat.ISal) <- ft2zi$modelInfo$reTrms$zi$cnms$spp
+    ft2zi.I <- glmmTMB(count ~ spp + (1|site),
+                       zi=~ propto(1 + mined | spp, mat.ISal),
+                       family=poisson, data=Salamanders)
+    ## check that var matrix is as the same
+    expect_equal(c(VarCorr(ft2zi.I)$zi[[1]]),
+                 c(VarCorr(ft2zi)$zi[[1]]),
+                 tolerance = 1e-4)
+  })
+  
+  test_that("test propto disp fit - Identity", {
+    #fit using map
+    ft2disp <- glmmTMB(count ~ spp + (1|site),
+                     dispformula = ~ diag(1 + mined | spp),
+                     map = list(thetadisp  = factor(c(rep(1, 2)))),
+                     family=gaussian, data=Salamanders)
+    mat.ISal <-  diag(2)
+    colnames(mat.ISal) <- rownames(mat.ISal) <- ft2disp$modelInfo$reTrms$disp$cnms$spp
+    ft2disp.I <- glmmTMB(count ~ spp + (1|site),
+                       dispformula =~ propto(1 + mined | spp, mat.ISal),
+                       family=gaussian, data=Salamanders)
+    ## check that var matrix is as the same
+    expect_equal(c(VarCorr(ft2disp.I)$disp[[1]]),
+                 c(VarCorr(ft2disp)$disp[[1]]),
+                 tolerance = 1e-4)
+  })
+  
   if (require("nlme", quietly = TRUE)) {
     # example taken from fixcorr
     data(lizards, package = "ade4")
@@ -61,17 +95,31 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
     
     })
   
+  test_that("test propto matrix in disp", {
+    
+    liz_disp_propto <- glmmTMB(mean.L ~ 1,
+                               dispformula = ~ 0 + propto(0 + spp | dummy, mat),
+                               data = liz)
+    
+    ## check that the correlation matrix is the same as constructed
+    cc_disp <- attr(VarCorr(liz_disp_propto)$disp[[1]], "correlation")
+    dimnames(cc_disp) = lapply(dimnames(cc_disp), function(x) gsub("^spp","",x))
+    expect_equal(cc_disp, mat,
+                 tolerance = 1e-6)
+  })
+  
     test_that("propto error about non-matrix", {
         junk <- "junk"
         expect_error( glmmTMB(y ~ x + propto(x | spp, junk), data = dat, family = poisson),
-                     "expecting a matrix for propto")
+        "propto() matrix must be a numeric matrix", fixed = TRUE)
     })
     ## test dimensions of matrix
     test_that("propto error with incorrect dimensions", {
       smallmat <- mat[1:10, 1:10]
       expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, smallmat),
                             data = liz),
-                    "matrix is not the correct dimension")
+                    "propto() matrix has dimensions 10 x 10, but the random effect term has 18 levels. These must match.",
+                    fixed = TRUE)
     })
     ## test names of matrix
     test_that("propto error with incorrect names", {
@@ -80,18 +128,40 @@ if (require("ade4", quietly = TRUE) && require("ape", quietly = TRUE)) {
       rownames(mattest) <- NULL
       expect_error( glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
               data = liz),
-              regexp = "column or row names of the matrix do not match the terms. Expecting names:.sppSa..sppSh..sppTl..sppMc..sppMy..sppPh..sppPg..sppPa..sppPb..sppPm..sppAe..sppTt..sppTs..sppZo..sppZv..sppLa..sppLs..sppLv.",
+              regexp = "the propto() matrix must have row and column names (matching the random effect level names)",
+              fixed = TRUE
       )
     })
 
-    test_that("propto error with unsorted names", {
+    test_that("propto error with one matrix name not matching", {
         mattest <- mat
         colnames(mattest) <- rev(colnames(mattest))
         rownames(mattest) <- NULL
         expect_error(glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mattest),
                              data = liz),
-                     "in a different order")
+                     "the propto() matrix must have row and column names (matching the random effect level names)",
+                     fixed = TRUE)
     })
+
+    test_that("test propto fit - matrix reordering", {
+        # permute the matrix rows/columns into a different order
+        set.seed(42)
+        perm <- sample(nrow(mat))
+        mat_reordered <- mat[perm, perm]
+        fit_phylo <- glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat),
+                                          data = liz, dispformula = ~0)
+        # should warn about reordering
+        expect_warning(fit_phylo_reordered <- glmmTMB(matur.L ~ age.mat + propto(0 + spp | dummy, mat_reordered), data = liz, dispformula = ~0),
+         "row/column names of the propto() matrix match the random effect level names but were in a different order; reordering" , 
+         fixed = TRUE)
+  
+        # results should be identical to the correctly-ordered fit
+        expect_equal(fixef(fit_phylo_reordered)$cond, fixef(fit_phylo)$cond, tolerance = 1e-6)
+  
+        cc_reordered <- attr(VarCorr(fit_phylo_reordered)$cond[[1]], "correlation")
+        dimnames(cc_reordered) <- lapply(dimnames(cc_reordered), function(x) gsub("^spp", "", x))
+        expect_equal(cc_reordered, mat, tolerance = 1e-6)
+})
     
     ## FIXME: test, remove if unnecessary
     options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?

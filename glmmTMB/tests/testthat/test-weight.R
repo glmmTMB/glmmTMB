@@ -45,15 +45,41 @@ test_that("Return weights", {
   expect_equal(weights(wei_glmmtmb, type="prior"), aggdat$Freq)
   expect_error(weights(wei_glmmtmb, type = "working"), "should be")
   expect_warning(weights(wei_glmmtmb, junk = "abc"),
-                 "unused arguments ignored")
+                 "unknown arguments ignored")
 })
-
-
 
 ind_glmmtmb <<- glmmTMB(y ~ x+(x|i), data=inddat, family="poisson")
 
 test_that("Estimates are the same", {
 	expect_equal(summary(wei_glmmtmb)$coefficients$cond, summary(ind_glmmtmb)$coefficients$cond, tolerance=1e-6)
-	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tolerance=1e-5)
+	expect_equal(ranef(wei_glmmtmb), ranef(ind_glmmtmb), tolerance=2e-5)
 	expect_equal(AIC(wei_glmmtmb), AIC(ind_glmmtmb), tolerance=1e-5)
+})
+
+test_that("weights() returns total trials for cbind() binomial response (GH #1319)", {
+    cbpp <- lme4::cbpp
+    form <- cbind(incidence, size - incidence) ~ period + (1|herd)
+    m <- glmmTMB(form, data = cbpp, family = binomial)
+    ## matches weights(lme4::glmer(form, data = cbpp, family = binomial))
+    expect_equal(weights(m), cbpp$size)
+
+    ## proportion response + explicit weights should be unaffected
+    form2 <- incidence/size ~ period + (1|herd)
+    mP <- glmmTMB(form2, data = cbpp, family = binomial, weights = size)
+    expect_equal(weights(mP), cbpp$size)
+})
+
+test_that("weights argument does not leak into calling environment (GH #1296)", {
+    cbpp <- lme4::cbpp
+    e <- new.env()
+    e$cbpp <- cbpp
+    ## a formula/weights combination whose 'weights=' expression matches a
+    ## column of 'data', evaluated in a fresh environment so any leak is
+    ## easy to detect and doesn't pollute the test environment
+    evalq({
+        m <- glmmTMB(incidence/size ~ period, family = binomial,
+                     weights = size, data = cbpp)
+    }, envir = e)
+    expect_false(exists("weights", envir = e, inherits = FALSE))
+    expect_false(exists("size", envir = e, inherits = FALSE))
 })

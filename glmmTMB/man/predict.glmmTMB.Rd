@@ -11,8 +11,9 @@
   se.fit = FALSE,
   cov.fit = FALSE,
   re.form = NULL,
-  allow.new.levels = FALSE,
-  type = c("link", "response", "conditional", "zprob", "zlink", "disp", "latent"),
+  allow.new.levels = NULL,
+  type = c("link", "response", "conditional", "zprob", "zlink", "disp", "latent",
+    "probs"),
   zitype = NULL,
   na.action = na.pass,
   fast = NULL,
@@ -56,6 +57,12 @@ and \code{mu} otherwise}
 the logit link function (returns \code{-Inf} for non-zero-inflated models)}
 \item{"disp"}{dispersion parameter, however it is defined for that particular family (as described in  \code{\link{sigma.glmmTMB}})}
 \item{"latent"}{return latent variables}
+\item{"probs"}{(ordinal family only) matrix of per-category
+probabilities, with one column per response level; for this family
+\code{"response"} returns the expected category index
+\eqn{E[Y] = \sum_j j P(Y=j)}{E[Y] = sum_j j P(Y=j)} and
+\code{"link"} returns the latent-scale linear predictor \eqn{\eta}{eta}
+(thresholds not included)}
 }}
 
 \item{zitype}{deprecated: formerly used to specify type of zero-inflation probability. Now synonymous with \code{type}}
@@ -83,7 +90,7 @@ prediction
 \itemize{
 \item To compute population-level predictions for a given grouping variable (i.e., setting all random effects for that grouping variable to zero), set the grouping variable values to \code{NA}. Finer-scale control of conditioning (e.g. allowing variation among groups in intercepts but not slopes when predicting from a random-slopes model) is not currently possible.
 \item Prediction of new random effect levels is possible as long as the model specification (fixed effects and parameters) is kept constant.
-However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels=FALSE} (the default).
+However, to ensure intentional usage, a warning is triggered if \code{allow.new.levels} is \code{NULL} (the default) and \code{re.form} is not NA, or if \code{allow.new.levels} is explicitly set to \code{TRUE}.
 \item Prediction using "data-dependent bases" (variables whose scaling or transformation depends on the original data, e.g. \code{\link{poly}}, \code{\link[splines]{ns}}, or \code{\link{poly}}) should work properly; however, users are advised to check results extra-carefully when using such variables. Models with different versions of the same data-dependent basis type in different components (e.g. \code{formula= y ~ poly(x,3), dispformula= ~poly(x,2)}) will probably \emph{not} produce correct predictions.
 \item Bias corrected predictions are based on the method described in Thorson J.T. & Kristensen (2016). These should be checked carefully by the user and are not extensively tested.
 }

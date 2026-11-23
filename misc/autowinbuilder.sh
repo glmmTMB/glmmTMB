@@ -6,7 +6,7 @@
 ## arg 1: which platform to test (both, release, or devel) ?
 whichrel=${1:-both}
 echo $whichrel
-MY_EMAIL=bbolker@gmail.com
+MY_EMAIL=bolker@mcmaster.ca
 MAINTAINER_EMAIL=mollieebrooks@gmail.com
 . misc/autoreplace.sh $MY_EMAIL $MAINTAINER_EMAIL
 ## https://serverfault.com/questions/279176/ftp-uploading-in-bash-script

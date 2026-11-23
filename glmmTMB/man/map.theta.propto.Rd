@@ -4,12 +4,14 @@
 \alias{map.theta.propto}
 \title{Set map values for theta to be fixed (NA) for propto}
 \usage{
-map.theta.propto(ReStruc, map)
+map.theta.propto(ReStruc, map, component)
 }
 \arguments{
 \item{ReStruc}{a random effects structure}
 
 \item{map}{a list of mapped elements}
+
+\item{component}{a character string specifying the parameter component to map}
 }
 \value{
 the corresponding \code{theta} parameter vector

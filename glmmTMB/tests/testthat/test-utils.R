@@ -67,3 +67,20 @@ test_that("up2date for models with mapped components", {
     expect_equal(vcov(m1_map), vcov(m1_mapu))
 })
 
+test_that("up2date doesn't mangle parameter order", {
+  m <- readRDS(system.file("test_data", "old_fit.rds", package = "glmmTMB"))
+  expect_identical(m$modelInfo$packageVersion, package_version("1.1.9.9000"))
+  expect_equal(range(residuals(up2date(m))),
+                     c(-0.52792570545058, 0.2441352439504439))
+})
+
+test_that("check_dots", {
+    expect_null(check_dots())
+    expect_null(check_dots(foo = 1, .ignore = "foo"))
+    expect_error(check_dots(foo = 1, bar = 2), ".foo.,.bar.")
+    expect_warning(check_dots(foo = 1, .action = "warning"),
+                   "unknown arguments ignored: .foo.")
+    expect_message(check_dots(foo = 1, .action = "message"),
+                    "unknown arguments ignored: .foo.")
+})
+
