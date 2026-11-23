@@ -204,9 +204,29 @@ getParms <- function(parm=NULL, object, full=FALSE, include_nonest = FALSE) {
             parm <- grep("^betadisp", intnames)
         } else { ## generic parameter vector
             nparm <- match(parm,pnames)
+            ## ordinal: a threshold label ("Low|Medium") selects the
+            ## internal psi parameter it is derived from (the vcov rows
+            ## are labelled psi1, psi2, ...; see getParnames()), found by
+            ## position within the psi block
+            if (family(object)$family == "ordinal") {
+                thr <- match(parm, names(family_params(object)))
+                if (any(!is.na(thr))) {
+                    psi_rows <- psi_block_pos(object, include_nonest)
+                    present <- ordinal_psi_present(object, include_nonest)
+                    nparm[!is.na(thr)] <- psi_rows[match(thr[!is.na(thr)], present)]
+                    fixed_thr <- !is.na(thr) & is.na(nparm)
+                    if (any(fixed_thr)) {
+                        stop("the psi parameter of threshold ",
+                             paste(parm[fixed_thr], collapse = ", "),
+                             " is fixed or tied to another element via 'map',",
+                             " so it cannot be profiled",
+                             " (Wald confint() reports the threshold)")
+                    }
+                }
+            }
             if (any(is.na(nparm))) {
                 stop("unrecognized parameter names: ",
-                     parm[is.na(nparm)])
+                     paste(parm[is.na(nparm)], collapse = ", "))
             }
             parm <- nparm
         }
@@ -633,7 +653,64 @@ dtruncated_nbinom1 <- function(x, phi, mu, k=0, log=FALSE) {
 ## utilities for constructing lists of parameter names
 
 ## for matching map names vs nameList components ...
-par_components <- c("beta","betazi","betadisp","theta","thetazi","psi")
+## in the order of the name list getParnames() builds (its 'full' branch
+## appends theta, thetazi, thetadisp and then psi); a missing entry here
+## makes a user 'map' on that component fail and a 'map' on the later
+## components edit the wrong block
+par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","psi")
+
+## positions of the estimated parameters (getParnames() with
+## include_mapped = FALSE, include_dropped = FALSE) within the full list
+## (getParnames() with the defaults), matched block by block and in
+## order, so a name that repeats in another block is never matched
+est_positions <- function(fullNameList, estNameList) {
+    offset <- 0L
+    pos <- integer(0)
+    for (nm in names(fullNameList)) {
+        fn <- fullNameList[[nm]]
+        en <- estNameList[[nm]]
+        j <- 0L
+        for (e in en) {
+            k <- match(e, fn[seq.int(j + 1L, length.out = length(fn) - j)])
+            if (is.na(k)) {
+                stop("internal error: estimated parameter '", e,
+                     "' not found in the full parameter list")
+            }
+            j <- j + k
+            pos <- c(pos, offset + j)
+        }
+        offset <- offset + length(fn)
+    }
+    pos
+}
+
+## positions of the psi block among the rows of
+## vcov(full = TRUE, include_nonest = ), from the block lengths of
+## getParnames(); by position, since a fixed-effect column may share a
+## name such as "psi2" with an internal threshold parameter
+psi_block_pos <- function(object, include_nonest = TRUE) {
+    nl <- if (include_nonest) {
+              getParnames(object, full = TRUE)
+          } else {
+              getParnames(object, full = TRUE, include_mapped = FALSE,
+                          include_dropped = FALSE)
+          }
+    len <- lengths(nl)
+    i <- match("psi", names(nl))
+    if (is.na(i)) return(integer(0))
+    sum(len[seq_len(i - 1L)]) + seq_len(len[i])
+}
+
+## ordinal: the threshold index of each psi row of
+## vcov(full = TRUE, include_nonest = ): every threshold, or only those
+## whose psi element a user 'map' leaves estimated and not tied to an
+## earlier element
+ordinal_psi_present <- function(object, include_nonest = TRUE) {
+    k <- length(object$modelInfo$ord_levels) - 1L
+    pmap <- object$obj$env$map[["psi"]]
+    if (include_nonest || is.null(pmap)) return(seq_len(k))
+    which(!(is.na(pmap) | duplicated(pmap)))
+}
 
 ## all parameters, including both mapped and rank-dropped
 getParnames <- function(object, full, include_dropped = TRUE, include_mapped = TRUE,
@@ -688,7 +765,14 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
 
       ##
       if (length(fp <- family_params(object)) > 0) {
-          nameList <- c(nameList, list(psi = names(fp)))
+          ## ordinal: the psi rows are the internal (softmax) threshold
+          ## parameters, not the thresholds family_params() reports, so
+          ## they are labelled psi1, psi2, ... (the a|b labels belong to
+          ## the threshold scale: summary()$thresholds, Wald confint())
+          psi_names <- if (family(object)$family == "ordinal") {
+                           paste0("psi", seq_along(fp))
+                       } else names(fp)
+          nameList <- c(nameList, list(psi = psi_names))
       }
       
   }
@@ -836,7 +920,7 @@ set_simcodes <- function(g, val = "zero", terms = "ALL") {
 ##' See \code{vignette("covstruct", package = "glmmTMB")} for details on the parameterizations used
 ##' for various random-effects models (i.e., \code{theta}).
 ##' @param ... other arguments to \code{glmmTMB} (e.g. \code{family})
-##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
+##' @param return_val what information to return: "sim" (the default) returns a list of vectors of simulated outcomes; "pars" returns the default parameter vector (this variant does not require \code{newparams} to be specified, except \code{psi} for the \code{ordinal} family, and is useful for figuring out the appropriate dimensions of the different parameter vectors); "object" returns a fake \code{glmmTMB} object (useful, e.g., for retrieving the Z matrix (\code{getME(simulate_new(...), "Z")}) or covariance matrices (\code{VarCorr(simulate_new(...))}) implied by a particular set of input data and parameter values)
 ##' @details Use the \code{weights} argument to set the size/number of trials per observation for binomial-type models; the default is 1 for every observation (i.e., Bernoulli trials)
 ##' @seealso \code{\link{glmmTMB}}, \code{\link{family_glmmTMB}} (for conditional distribution parameterizations [\code{betadisp}]), \code{\link{put_cor}} (for correlation matrix parameterizations)
 ##' @examples
@@ -898,10 +982,27 @@ simulate_new <- function(object,
     form <- object
     form[[3]] <- form[[2]]
     form[[2]] <- quote(..y)
-    ## insert a legal value: 1.0 is OK as long as family != "beta"
+    ## insert a legal value: 1.0 is OK as long as family is not "beta" or "ordinal"
     ## (note the family *function* is 'beta_family' but the internal
     ##  $family value is 'beta')
-    newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
+    if (family$family == "ordinal") {
+        ## number of categories comes from psi; all must appear in the fake response
+        K <- length(newparams$psi) + 1L
+        if (K < 2) {
+            stop("simulate_new with the ordinal family needs newparams$psi ",
+                 "(length K-1 for K categories); got length ",
+                 length(newparams$psi))
+        }
+        if (nrow(newdata) < K) {
+            stop("simulate_new with the ordinal family needs at least as ",
+                 "many rows in newdata as categories (", K, "); got ",
+                 nrow(newdata))
+        }
+        newdata[["..y"]] <- ordered(rep_len(seq_len(K), nrow(newdata)),
+                                    levels = seq_len(K))
+    } else {
+        newdata[["..y"]] <- if (family$family == "beta") 0.5 else 1.0
+    }
     r1 <- glmmTMB(form,
                   data = newdata,
                   family = family,
@@ -961,17 +1062,37 @@ simulate_new <- function(object,
     ## (for cnms etc., simulations, etc.)
     r2 <- fitTMB(r1, doOptim = FALSE)
 
+    simparams <- newparams
+    if (family$family == "ordinal") {
+        beta <- newparams[["beta"]]
+        if (length(beta) == length(r1$parameters[["beta"]]) && beta[1] != 0) {
+            stop("the ordinal intercept is fixed to zero: ",
+                 "the first element of newparams$beta must be 0 (got ",
+                 beta[1], ")")
+        }
+        ## the intercept is mapped: make_pars() wants the free elements of beta
+        betamap <- attr(r2$env$parameters[["beta"]], "map")
+        ## TMB's map attribute is negative for a fixed element and
+        ## gives the parameter's index (0-based) for a free one
+        if (length(beta) == length(betamap)) {
+            simparams$beta <- beta[betamap >= 0]
+        }
+    }
+
     set_b <-  function(x, b, map = NULL) {
         if (!is.null(map)) {
             b <- b[!is.na(map)]
         }
         pList <- split(x, names(x))
         pList$b <- b
+        ## split() sorts the blocks alphabetically (b before beta), but
+        ## TMB reads parfull by position: restore TMB's parameter order
+        pList <- pList[intersect(names(r2$env$parameters), names(pList))]
         return(collapse_list(pList))
     }
 
     pars <- do.call("make_pars",
-                    c(list(r2$env$parameters), newparams,
+                    c(list(r2$env$parameters), simparams,
                       list(include_extra = FALSE)))
 
     if (!is.null(seed)) set.seed(seed)
@@ -979,7 +1100,7 @@ simulate_new <- function(object,
         b_vals <- r2$simulate(par = pars)$b
         if (return_val == "pars") {
             pars <- do.call("make_pars",
-                            c(list(r2$env$parameters), newparams,
+                            c(list(r2$env$parameters), simparams,
                               list(include_extra = TRUE)))
             return(set_b(pars, b_vals))
         }
@@ -990,10 +1111,14 @@ simulate_new <- function(object,
             r1$parameters[[nm]] <- newparams[[nm]]
         }
         r3 <- suppressWarnings(fitTMB(r1, doOptim = TRUE))
-        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map$b)
+        r3$fit$parfull <- set_b(r3$fit$parfull, b_vals, r1$map[["b"]])
         return(r3)
     }
-    replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+    ss <- replicate(nsim, r2$simulate(par = pars)$yobs, simplify = FALSE)
+    if (family$family == "ordinal") {
+        ss <- lapply(ss, ordered, levels = seq_len(K))
+    }
+    ss
 }
 
 set_class <- function(x, cls, prepend = TRUE) {

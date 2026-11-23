@@ -349,6 +349,12 @@ test_that("confint with mapped parameters", {
     ## getParms("theta_", test2) ## 4:5
     ## getParms("theta_", test2, include_mapped = TRUE) ## 5:6
 
+    ## uniroot rows are the estimated parameters: labels must skip the
+    ## mapped one rather than shift (the x row used to carry z's interval)
+    cu <- confint(test2, parm = "beta_", method = "uniroot")
+    expect_equal(rownames(cu), c("(Intercept)", "z"))
+    expect_equal(cu[, "Estimate"], fixef(test2)$cond[c("(Intercept)", "z")])
+
     c3 <- confint(test2)
     expect_equal(nrow(c3), 4)
     expect_equal(rownames(c3),
@@ -510,6 +516,36 @@ test_that("binomial response types work with data in external scope", {
     s3 <- simulate(f3b, 1, seed=1)
     f3 <- fixef(refit(f3b,s3[[1]]))
     expect_equal(f1,f3)
+})
+
+test_that("refit works with missing values in the response", {
+    set.seed(101)
+    dNA <- data.frame(f = factor(rep(1:20, each = 5)), y = rnorm(100))
+    dNA$y[c(3, 17, 50)] <- NA
+    ## na.action is re-evaluated by refit(), so it can't be a loop variable
+    mlist <- list(glmmTMB(y ~ 1 + (1|f), data = dNA, na.action = na.omit),
+                  glmmTMB(y ~ 1 + (1|f), data = dNA, na.action = na.exclude))
+    for (m in mlist) {
+        s <- simulate(m, seed = 1)
+        ## full-length response (NAs in the same rows) is the reference
+        yfull <- rep(NA_real_, nrow(dNA))
+        yfull[!is.na(dNA$y)] <- s[[1]]
+        ref <- fixef(refit(m, yfull))$cond
+        expect_equal(fixef(refit(m, s[[1]]))$cond, ref)
+        expect_equal(fixef(refit(m, s))$cond, ref)
+        expect_equal(nobs(refit(m, s[[1]])), nobs(m))
+    }
+    ## matrix (binomial) response
+    dNAb <- transform(cbpp, nfail = size - incidence)
+    dNAb$incidence[c(2, 9)] <- NA
+    mb <- glmmTMB(cbind(incidence, nfail) ~ period + (1|herd),
+                  family = binomial, data = dNAb)
+    sb <- simulate(mb, seed = 1)
+    expect_equal(nobs(refit(mb, sb[[1]])), nobs(mb))
+    expect_equal(nobs(refit(mb, sb)), nobs(mb))
+    ## subset can't be handled: informative error
+    ms <- glmmTMB(y ~ 1 + (1|f), data = dNA, subset = f != "1")
+    expect_error(refit(ms, simulate(ms)[[1]]), "fitted with 'subset'")
 })
 
 test_that("confint works for models with dispformula", {
@@ -922,6 +958,8 @@ test_that("handle empty betadisp in vcov", {
                  c(cond = 2L, zi = 0L, disp = 0L))
     expect_equal(vcov(m)$disp,
                  matrix(NA_real_, dimnames = list("disp~", "disp~")))
+    ## no 'disp' block to name when only estimated parameters are kept
+    expect_equal(vcov(m, include_nonest = FALSE)$cond, vcov(m)$cond)
 })
 
 test_that("getGroups works as expected with a single group", {
