@@ -630,7 +630,10 @@ bell <- function(link="log") {
 ## phi: dispersion parameter, as returned by predict(type = "disp")
 ## shape: extra family parameter(s), as returned by family_params()
 ## size: number of trials (binomial-type families)
-full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL) {
+## cutpoints: ordered-beta cutpoints on the linear-predictor scale
+## eta: linear predictor, evaluated only when used by the variance function
+full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL,
+                          cutpoints = NULL, eta = fam$linkfun(mu)) {
     if (is.null(v <- fam$variance)) {
         stop("variance function undefined for family ", sQuote(fam$family))
     }
@@ -641,6 +644,8 @@ full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL) {
     vargs$theta <- vargs$phi <- vargs$alpha <- phi
     vargs$shape <- vargs$power <- vargs$psi <- unname(shape)
     vargs$size <- size
+    if ("cutpoints" %in% vformals) vargs$cutpoints <- cutpoints
+    if ("eta" %in% vformals) vargs$eta <- eta
     if (length(miss <- setdiff(vformals, names(vargs))) > 0) {
         stop("variance function for family ", sQuote(fam$family),
              " needs ", paste(sQuote(miss), collapse = ", "))

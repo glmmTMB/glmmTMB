@@ -291,18 +291,28 @@ test_that("ordered-beta variance includes the two endpoint masses and precision"
         M <- p1 + pc * mu
         expected <- p1 + pc * (mu^2 + mu * (1 - mu)/(phi + 1)) - M^2
         expect_warning(
-          v <- ordbeta(link)$variance,
+          fam <- ordbeta(link),
           if (link %in% c("logit", "probit", "cloglog")) NA else
             "may not be suitable for the ordbeta family"
         )
+        v <- fam$variance
         expect_equal(v(mu, phi, cut), expected, tolerance = 1e-12)
         expect_equal(v(mu, phi, cut, eta), expected, tolerance = 1e-12)
+        expect_equal(full_variance(fam, mu, phi = phi, cutpoints = cut),
+                     expected, tolerance = 1e-12)
     }
     expect_error(ordbeta()$variance(0.4), "phi|cutpoints")
+    expect_equal(full_variance(poisson(), mu = 2, phi = 1,
+                               cutpoints = stop("unused cutpoints"),
+                               eta = stop("unused eta")), 2)
 })
 test_that("ordered-beta variance remains finite when endpoint probabilities saturate", {
     eta <- c(-1000, 1000)
     expect_equal(ordbeta()$variance(plogis(eta), 8, c(-1, 1), eta), c(0, 0))
+    ## pnorm(10) rounds to one, so eta cannot be recovered from this mean.
+    p0 <- plogis(9 - 10)
+    expect_equal(full_variance(ordbeta("probit"), pnorm(10), phi = 8,
+                               cutpoints = c(9, 11), eta = 10), p0 * (1 - p0))
 })
 ordbeta_data <- function() {
     data.frame(y = c(rep(0, 200), rep(1, 160), qbeta(ppoints(440), 5, 5)))
