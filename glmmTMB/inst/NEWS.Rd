@@ -76,6 +76,12 @@
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item \code{refit()} now works when incomplete cases in the
+      original data were excluded by \code{na.action} (e.g.
+      \code{refit(m, simulate(m)[[1]])} previously failed in this case).
+      \code{refit()} also accepts the data frame returned by
+      \code{simulate()} directly, and gives an informative error for
+      models fitted with \code{subset}.
       \item For \code{skewnormal}, the variance helper now returns the
       squared response standard deviation, matching the fitted parameterization
       and correcting Pearson residual scaling (GH #1359, item 3).
