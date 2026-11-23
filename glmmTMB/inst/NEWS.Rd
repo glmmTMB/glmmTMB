@@ -17,6 +17,9 @@
       Both cutoffs are labelled in printed fits and included in summaries
       with model-based standard errors. Simulated values for a given seed
       change (GH #1359, item 1).
+      The \code{ordbeta()} family now warns for links other than \code{logit},
+      \code{probit}, and \code{cloglog}, explaining that their inverse links
+      can return values outside (0, 1).
       Formula references: Kubinec (2023, \doi{10.1017/pan.2022.20});
       Ospina and Ferrari (2010, \doi{10.1007/s00362-008-0125-4});
       Oehlert (1992, \doi{10.1080/00031305.1992.10475842}).

@@ -131,6 +131,10 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##' linear-predictor scale. It returns the full observation variance, including
 ##' masses at zero and one. The optional \code{eta} defaults to the selected
 ##' link applied to \code{mu}.
+##' A warning indicates that the selected link may not be suitable for
+##' \code{ordbeta} because its inverse link can return values outside (0, 1).
+##' This warning is issued for links other than \code{logit}, \code{probit},
+##' and \code{cloglog}.
 ##'
 ##' Denoting the variance as \eqn{V}, the dispersion parameter
 ##' as \eqn{\phi=\exp(\eta)}{phi=exp(eta)} (where \eqn{\eta}{eta} is the linear predictor from the dispersion model),
@@ -536,7 +540,15 @@ ordbeta <- function(link="logit") {
                       p0 * M^2 + p1 * (1 - M)^2
               }
               )
-    return(make_family(r,link))
+    r <- make_family(r, link)
+    if (!r$link %in% c("logit", "probit", "cloglog")) {
+      warning(
+        "The '", r$link,
+        "' link may not be suitable for the ordbeta family, ",
+        "because its inverse link can return values outside (0, 1)."
+      )
+    }
+    return(r)
 }
 
 #' @export

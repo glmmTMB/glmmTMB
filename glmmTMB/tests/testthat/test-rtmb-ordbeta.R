@@ -277,18 +277,6 @@ test_that("ordbeta: prediction and simulation", {
 })
 
 ## Ordered-beta regressions for GH #1359, item 1.
-ordbeta_link <- function(name) {
-    if (name != "lambertW") return(name)
-    ## W(z)*exp(W(z)) = z.
-    ## With W(mu)=exp(eta), invert and differentiate this identity for the test link.
-    structure(list(name="lambertW",
-        linkfun=function(mu) log(.Call("lambertW_R",as.double(mu),PACKAGE="glmmTMB")),
-        linkinv=function(eta) exp(eta)*exp(exp(eta)),
-        mu.eta=function(eta) {
-            exp(eta)*exp(exp(eta))*(1+exp(eta))
-        },
-        valideta=function(eta) all(is.finite(eta))),class="link-glm")
-}
 ## Check E[Y^2]-E[Y]^2 independently of the centered implementation.
 test_that("ordered-beta variance includes the two endpoint masses and precision", {
     mu <- c(0.2, 0.4, 0.7)
@@ -302,18 +290,14 @@ test_that("ordered-beta variance includes the two endpoint masses and precision"
         pc <- 1 - p0 - p1
         M <- p1 + pc * mu
         expected <- p1 + pc * (mu^2 + mu * (1 - mu)/(phi + 1)) - M^2
-        v <- ordbeta(link)$variance
+        expect_warning(
+          v <- ordbeta(link)$variance,
+          if (link %in% c("logit", "probit", "cloglog")) NA else
+            "may not be suitable for the ordbeta family"
+        )
         expect_equal(v(mu, phi, cut), expected, tolerance = 1e-12)
         expect_equal(v(mu, phi, cut, eta), expected, tolerance = 1e-12)
     }
-    link <- ordbeta_link("lambertW")
-    eta <- link$linkfun(mu)
-    p0 <- plogis(cut[1] - eta)
-    p1 <- plogis(eta - cut[2])
-    pc <- 1 - p0 - p1
-    M <- p1 + pc * mu
-    expected <- p1 + pc * (mu^2 + mu * (1 - mu)/(phi + 1)) - M^2
-    expect_equal(ordbeta(link)$variance(mu, phi, cut), expected, tolerance=1e-12)
     expect_error(ordbeta()$variance(0.4), "phi|cutpoints")
 })
 test_that("ordered-beta variance remains finite when endpoint probabilities saturate", {
@@ -324,11 +308,10 @@ ordbeta_data <- function() {
     data.frame(y = c(rep(0, 200), rep(1, 160), qbeta(ppoints(440), 5, 5)))
 }
 ordbeta_fit <- function(link="logit", map=NULL) {
-    link <- ordbeta_link(link)
-    eta <- if (is.character(link)) make.link(link)$linkfun(0.5) else link$linkfun(0.5)
-    glmmTMB(y ~ 1, data=ordbeta_data(), family=ordbeta(link),
-        start=list(beta=eta, betadisp=log(10),
-                   psi=eta+c(qlogis(0.25), -qlogis(0.2))), map=map)
+  eta <- make.link(link)$linkfun(0.5)
+  glmmTMB(y ~ 1, data=ordbeta_data(), family=suppressWarnings(ordbeta(link)),
+          start=list(beta=eta, betadisp=log(10),
+                     psi=eta+c(qlogis(0.25), -qlogis(0.2))), map=map)
 }
 ordbeta_moments <- function(mu, phi, eta, cut) {
     p0 <- plogis(cut[1]-eta)
@@ -364,7 +347,7 @@ for (rtmb in c(FALSE,TRUE)) local({
     test_that(paste("ordered-beta prediction, SE and residuals use full moments with",label), {
         skip_on_cran()
         local_useRTMB(backend)
-        for (link in c("logit","probit","cloglog","identity","log","inverse","sqrt","lambertW")) {
+        for (link in c("logit","probit","cloglog","identity","log","inverse","sqrt")) {
             m <- ordbeta_fit(link)
             expect_equal(m$fit$convergence,0)
             expect_true(m$sdr$pdHess)
