@@ -7,7 +7,7 @@
 \usage{
 \method{getME}{glmmTMB}(
   object,
-  name = c("X", "Xzi", "Z", "Zzi", "Xdisp", "theta", "beta", "b", "Gp"),
+  name = c("X", "Xzi", "Z", "Zzi", "Xdisp", "theta", "beta", "b", "Gp", "cnms", "flist"),
   ...
 )
 }
@@ -21,7 +21,14 @@
 \description{
 Extract or Get Generalize Components from a Fitted Mixed Effects Model
 }
+\note{
+The \code{"cnms"} and \code{"flist"} values are specific to the
+conditional component of the model (i.e., they do not include
+zero-inflation or dispersion terms). Users can extract the analogous
+values for those components via \code{object$modelInfo$reTrms[[component]]$cnms}
+(or \code{...$flist}), where \code{component} is \code{"zi"} or \code{"disp"}.
+See \code{\link[lme4]{getME}} for definitions of individual components.
+}
 \seealso{
 \code{\link[lme4]{getME}}
-Get generic and re-export:
 }

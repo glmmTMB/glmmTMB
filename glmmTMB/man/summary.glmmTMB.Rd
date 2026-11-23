@@ -32,3 +32,11 @@ warning, because their performance (and theoretical justification) for GLMMs is 
 \description{
 summary for glmmTMB fits
 }
+\details{
+For the \code{ordinal} family, the returned object has a
+\code{thresholds} element (a matrix of threshold estimates, delta-method
+standard errors, and z values), printed as \dQuote{Threshold coefficients};
+the thresholds are estimated internally via a softmax parameterization, so
+the corresponding rows of \code{vcov(., full = TRUE)} are not on the
+threshold scale
+}

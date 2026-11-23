@@ -5,6 +5,7 @@
 ##'  model in any order.
 
 ##'
+##' @exportS3Method NULL
 ##' @rawNamespace if(getRversion() >= "3.6.0") { S3method(effects::Effect, glmmTMB)  } else { export(Effect.glmmTMB) }
 Effect.glmmTMB <- function (focal.predictors, mod, ...) {
     fam <- family(mod)

@@ -876,12 +876,15 @@ Type objective_function<Type>::operator() ()
 
   DATA_INTEGER(family);
   DATA_INTEGER(link);
-  DATA_INTEGER(combinom_disp_link);  // 0 = log link on disp (default, nu > 0)
+  // defined as 'disp_Link' rather than 'disp_link' to avoid
+  // confusing `make enum-update`
+  // FIXME: implement alternative dispersion links more generally?
+  DATA_INTEGER(combinom_disp_Link);  // 0 = log link on disp (default, nu > 0)
                                        // 1 = identity link  (nu in R)
 
   // Flags
   DATA_INTEGER(ziPredictCode);
-  bool zi_flag = (betazi.size() > 0);
+  bool zi_flag = (betazi.size() > 0 || bzi.size() > 0);
   // 0 = no prediction; 1 = predictions on link scale; 2 = predictions on
   // data scale; 3 = predictions of latent variables (b)
   DATA_INTEGER(doPredict);
@@ -943,8 +946,8 @@ Type objective_function<Type>::operator() ()
   vector<Type> phi = exp(etadisp);
   // combinomial with allow_negative_nu=TRUE uses an identity link on the
   // dispersion (nu may be negative), so undo the exp() applied above;
-  // combinom_disp_link is only ever nonzero for the combinomial family
-  if (combinom_disp_link == 1) phi = etadisp;
+  // combinom_disp_Link is only ever nonzero for the combinomial family
+  if (combinom_disp_Link == 1) phi = etadisp;
   vector<Type> log_nzprob(eta.size());
   if (!trunc_Family(family)) {
     log_nzprob.setZero();
@@ -958,8 +961,8 @@ Type objective_function<Type>::operator() ()
 
   // Ordinal (cumulative link) family: thresholds are stored in psi via a
   // softmax parameterization (cf. Koslik et al 2025, arXiv:2511.17071, and
-  // GH #514): psi are log-weights of K baseline category probabilities
-  // (last weight fixed to 0 for identifiability) and
+  // GH #514): psi are log-weights (with the logit link, of K baseline category
+  // probabilities; last weight fixed to 0 for identifiability) and
   //   theta(j) = logit(cumsum(softmax(c(psi, 0)))(j))
   //            = logsumexp(psi[0..j]) - logsumexp(psi[j+1..], 0),
   // which is automatically increasing; the prefix/suffix logsumexp form
@@ -1096,7 +1099,7 @@ Type objective_function<Type>::operator() ()
         // uses log link), so we exponentiate.
         {
           s1 = mu(i) * size(i);     // mean = n * p
-          if (combinom_disp_link == 0) {
+          if (combinom_disp_Link == 0) {
             s2 = exp(etadisp(i));    // log link
           } else {
             s2 = etadisp(i);         // identity link
@@ -1198,9 +1201,13 @@ Type objective_function<Type>::operator() ()
         s1 = mu(i);  // mean
         s2 = phi(i); // phi
         s3 = invlogit(psi(0)) + Type(1); // p, 1<p<2
-        tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
-        SIMULATE {
+        // skip the density when simulating: it is not used, and its
+        // series gets long as p approaches 2 (GH #1341)
+        if (isDouble<Type>::value && this->do_simulate) {
+          tmp_loglik = 0;
           yobs(i) = glmmtmb::rtweedie(s1, s2, s3);
+        } else {
+          tmp_loglik = dtweedie(yobs(i), s1, s2, s3, true);
         }
 	break;
       case lognormal_family:
@@ -1243,7 +1250,7 @@ Type objective_function<Type>::operator() ()
 	}
       case ordinal_family:
 	{
-	  // cumulative link model (proportional odds): yobs in 1..K;
+	  // cumulative link model: yobs in 1..K;
 	  // theta_ord (monotone thresholds) computed above from psi.
 	  // Cumulative log-probabilities go through
 	  // logit_inverse_linkfun, which has accurate tail versions for

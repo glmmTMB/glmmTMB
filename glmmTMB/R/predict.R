@@ -166,6 +166,7 @@ predict.glmmTMB <- function(object,
     if (!se.fit) message("se.fit set to TRUE because cov.fit = TRUE")
     se.fit <- TRUE
   }
+  rtmb_fit <- !is.null(environment(object$obj$fn)$rtmb_data_env)
   
   if(is.null(aggregate)) {
     aggregate <- factor()
@@ -247,7 +248,7 @@ predict.glmmTMB <- function(object,
       pred <- napredict(na.act, pred)
       if (se.fit) se <- napredict(na.act,se)
     }
-    if (cov.fit) covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
+    if (cov.fit) covfit <- matrix(NA_real_, nrow = length(se), ncol = length(se), dimnames = list(names(se), names(se)))
     if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))
   }
 
@@ -262,6 +263,9 @@ predict.glmmTMB <- function(object,
     }
     dd$ziPredictCode <- ziPredCode
     assign("data",dd, ee) ## stick this in the appropriate environment
+    if (!is.null(ee$rtmb_data_env)) {
+      ee$rtmb_data_env$d <- dd
+    }
     newObj <- object$obj
     
     ## restore original values to environment of the object
@@ -272,6 +276,10 @@ predict.glmmTMB <- function(object,
         for (i in names(orig_vals)) {
           dd[[i]] <- orig_vals[[i]]
           assign("data",dd, environment(object$obj$fn))
+          rtmb_data_env <- environment(object$obj$fn)$rtmb_data_env
+          if (!is.null(rtmb_data_env)) {
+            rtmb_data_env$d <- dd
+          }
         }
       },
       add = TRUE)
@@ -536,13 +544,19 @@ predict.glmmTMB <- function(object,
     pred <- rr[[return_par]]
   } else {
     H <- with(object,optimHess(oldPar,obj$fn,obj$gr))
+    sdreport_fun <- if (!is.null(newObj$env$rtmb_data_env)) {
+      RTMB::sdreport
+    } else {
+      sdreport
+    }
     ## FIXME: Eventually add 'getReportCovariance=FALSE' to this sdreport
     ##        call to fix memory issue (requires recent TMB version)
     ## Fixed! (but do we want a flag to get it ? ...)
     if (cov.fit) {
-      sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=TRUE)
+      sdr <- sdreport_fun(newObj,oldPar,hessian.fixed=H,
+                          getReportCovariance=TRUE)
       covfit <- sdr$cov
-    } else     sdr <- sdreport(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
+    } else     sdr <- sdreport_fun(newObj,oldPar,hessian.fixed=H,getReportCovariance=FALSE,bias.correct=do.bias.correct,bias.correct.control=bias.correct.control)
 
     sdrsum <- summary(sdr, "report") ## TMB:::summary.sdreport(sdr, "report")
     ## split summary matrix by parameter name
@@ -550,7 +564,7 @@ predict.glmmTMB <- function(object,
     pred <- sdrsplit[[return_par]][,"Estimate"]
     se <- sdrsplit[[return_par]][,"Std. Error"]
     w <- which(rownames(sdrsum) == return_par)
-    if (cov.fit) covfit <- covfit[w, w]
+    if (cov.fit) covfit <- covfit[w, w, drop = FALSE]
     
     if (do.bias.correct) {
       return (sdrsum[w,])
@@ -573,8 +587,9 @@ predict.glmmTMB <- function(object,
     if (se.fit) se <- napredict(na.act,se)
     if (cov.fit) {
       tmp <- covfit
-      covfit <- matrix(NA_real_, nrow = length(se.fit), ncol = length(se.fit), dimnames = list(names(se.fit), names(se.fit)))
-      covfit[!is.na(covfit)] <- as.vector(tmp)
+      keep <- !is.na(napredict(na.act, seq_len(nrow(tmp))))
+      covfit <- matrix(NA_real_, nrow = length(se), ncol = length(se), dimnames = list(names(se), names(se)))
+      covfit[keep, keep] <- tmp
     }
   }
   if (!se.fit) return(pred) else if (cov.fit) return(list(fit=pred, se.fit=se, cov.fit = covfit)) else return(list(fit=pred, se.fit=se))

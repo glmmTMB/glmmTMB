@@ -105,7 +105,7 @@ sigma.glmmTMB <- function(object, ...) {
 ##' @param sc scale parameter (sigma)
 ##' @param bc vector of block codes
 ##' @param useSc use scale parameter?
-mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
+mkVC <- function(cor, sd, cnms, sc, bc, useSc, fullCor = NULL) {
     stopifnot(length(cnms) == (nc <- length(cor)),  nc == length(sd),
               is.list(cnms), is.list(cor), is.list(sd),
               is.character(nnms <- names(cnms)), nzchar(nnms))
@@ -123,7 +123,14 @@ mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
     do1cov <- function(sd, cor, n = length(sd)) {
         sd * cor * rep(sd, each = n)
     }
-    docov <- function(sd, cor, nm, bc) {
+    docov <- function(sd, cor, nm, bc, fullCor) {
+        block_name <- names(bc)[1]
+        if (block_name %in% c("ar1", "hetar1") &&
+            isTRUE(fullCor == 1L) && identical(dim(cor), c(1L, 1L))) {
+            phi <- as.numeric(cor[1, 1])
+            lag <- abs(row(diag(length(nm))) - col(diag(length(nm))))
+            cor <- phi^lag
+        }
         maxdim <- max(length(sd), nrow(cor))
         ## extend sd if necessary
         if (length(sd)==1 && maxdim > 1) {
@@ -153,7 +160,13 @@ mkVC <- function(cor, sd, cnms, sc, bc, useSc) {
         }
         structure(cov, stddev=sd, correlation=cor)
     }
-    ss <- setNames(mapply(docov, sd, cor, cnms, bc, SIMPLIFY=FALSE),nnms)
+    if (is.null(fullCor)) {
+        fullCor <- rep(list(NULL), length(bc))
+    }
+    ss <- setNames(
+        mapply(docov, sd, cor, cnms, bc, fullCor, SIMPLIFY=FALSE),
+        nnms
+    )
     ## ONLY first element -- otherwise breaks formatVC
     ## FIXME: do we want a message/warning here, or elsewhere,
     ##   when the 'Residual' var parameters are truncated?
@@ -219,13 +232,15 @@ VarCorr.glmmTMB <- function(x, sigma = 1, ... )
         restruc <- reS[[paste0(comp_nms2[i],  "ReStruc")]]
         ## lapply() rather than [vs]apply, don't want to lose names
         bcvec <- lapply(restruc, function(x) x[["blockCode"]])
+        fcvec <- lapply(restruc, function(x) x[["fullCor"]])
         if(length(cn <- reT[[comp_nms2[i]]]$cnms)) {
             vc <- mkVC(cor = xrep[[paste0("corr", comp_nms[i])]],
                        sd  = xrep[[paste0("sd", comp_nms[i])]],
                        cnms = cn,
                        sc = sigma,
                        bc = bcvec,
-                       useSc = useSc)
+                       useSc = useSc,
+                       fullCor = fcvec)
             for (j in seq_along(vc)) {
                 attr(vc[[j]],"blockCode") <- bcvec[[j]]
                 class(vc[[j]]) <- c(paste0("vcmat_", names(bcvec[[j]])), class(vc[[j]]))

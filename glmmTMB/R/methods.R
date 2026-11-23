@@ -40,7 +40,9 @@ fixef.glmmTMB <- function(object, ...) {
 
   get_vec <- function(vals, X) {
     dropped <- attr(X, "col.dropped")
-    if (is.null(dropped)) return(setNames(vals, colnames(X)))
+    if (is.null(dropped) || inherits(X, "sparseMatrix")) {
+      return(setNames(vals, colnames(X)))
+    }
     n_tot <- ncol(X) + length(dropped)
     cc <- numeric(n_tot)
     cc[-dropped] <- vals
@@ -80,6 +82,19 @@ trivialDisp <- function(object) {
 
 zeroDisp <- function(object) {
     formComp(object, "dispformula", ~0)
+}
+
+## TRUE if a dispersion parameter is actually estimated: 'betadisp' survives
+## into the fitted (post-'map') parameter vector. This is about the parameters,
+## whereas trivialDisp()/zeroDisp() are about the structure of dispformula;
+## 'map' pinning to a shared level still estimates one parameter, so it's TRUE
+estDisp <- function(object) {
+    pnames <- names(object$obj$env$par)
+    ## unusable or pre-'betadisp' parameter vector (see up2date()): assume it
+    ## was estimated, the historical assumption, rather than guessing otherwise
+    if (length(pnames) == 0 ||
+        !"betadisp" %in% names(object$obj$env$parameters)) return(TRUE)
+    "betadisp" %in% pnames
 }
 
 noZI <- function(object) {
@@ -297,8 +312,14 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @param name of the component to be retrieved
 ##' @param \dots ignored, for method compatibility
 ##'
+##' @note The \code{"cnms"} and \code{"flist"} values are specific to the
+##' conditional component of the model (i.e., they do not include
+##' zero-inflation or dispersion terms). Users can extract the analogous
+##' values for those components via \code{object$modelInfo$reTrms[[component]]$cnms}
+##' (or \code{...$flist}), where \code{component} is \code{"zi"} or \code{"disp"}.
+##' See \code{\link[lme4]{getME}} for definitions of individual components.
+##'
 ##' @seealso \code{\link[lme4]{getME}}
-##' Get generic and re-export:
 ##' @importFrom lme4 getME
 ##' @export getME
 ##'
@@ -306,7 +327,8 @@ print.coef.glmmTMB <- print.ranef.glmmTMB
 ##' @export
 getME.glmmTMB <- function(object,
                           name = c("X", "Xzi","Z", "Zzi",
-                                   "Xdisp", "theta", "beta", "b", "Gp"),
+                                   "Xdisp", "theta", "beta", "b", "Gp",
+                                   "cnms", "flist"),
                           ...)
 {
   if(missing(name)) stop("'name' must not be missing")
@@ -344,10 +366,12 @@ getME.glmmTMB <- function(object,
              if (is.null(cc)){
                  NULL
              } else {
-                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = integer(1))
+                 v <- vapply(cc, function(x) x$blockReps*x$blockSize, FUN.VALUE = numeric(1))
                  unname(cumsum(c(0,v)))
              }
          },
+         "cnms" = object$modelInfo$reTrms$cond$cnms,
+         "flist" = object$modelInfo$reTrms$cond$flist,
          "..foo.." = # placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
@@ -435,8 +459,11 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       if (is.null(rownames(Q))) { ## may be missing??
           dimnames(Q) <- list(names(sdr$par.random), names(sdr$par.random))
       }
-      whichNotRandom <- which( !rownames(Q)  %in% c("b", "bzi", "bdisp") )
-      Qm <- GMRFmarginal(Q, whichNotRandom)
+      ## keep "beta" here (include_beta = FALSE): the joint precision
+      ## carries it under REML, and the fixed-effect rows must survive
+      ## the marginalization because they are what vcov() returns
+      ## (the keepTag grep below selects the "beta*" columns)
+      Qm <- GMRFmarginal(Q, whichNotRandom(rownames(Q)))
       cov.all.parms <- try(solve(as.matrix(Qm)), silent = TRUE)
       if (inherits(cov.all.parms, "try-error")) {
           cov.all.parms <- matrix(NA_real_, nrow = nrow(Qm), ncol = ncol(Qm),
@@ -489,7 +516,13 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
       } else {
           res <- matrix(NA_real_, length(fnl), length(fnl),
                         dimnames = list(fnl, fnl))
-          res[nl, nl] <- covF
+          ## place the estimated block by position, not by name: a name
+          ## can repeat across blocks (a fixed-effect column named like
+          ## an internal parameter such as "psi2", or the theta names of
+          ## a dispersion-model random effect), and `res[nl, nl]` would
+          ## then fill the first row carrying that name
+          ep <- est_positions(fullNameList, estNameList)
+          res[ep, ep] <- covF
       }
       ## end if (full)
   } else {
@@ -504,6 +537,11 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
           m <- covF[ss[[nm]],ss[[nm]], drop=FALSE]
           cnm <- names(covList)[[i]]
           xnms <- estNameList[[cnm]]
+          ## a dispersion model without fixed-effect parameters (e.g.
+          ## dispformula = ~0 + offset(.) or ~0 + (1|g), or a dispformula
+          ## for a family without dispersion) has an empty block here,
+          ## while getParnames() still returns a placeholder ("disp~")
+          if (nrow(m) == 0L) xnms <- character(0)
           fnm <- fullNameList[[cnm]]
           if (!include_nonest ||
               nrow(m) == length(fnm)) {
@@ -672,35 +710,84 @@ printDispersion <- function(ff,s) {
     NULL
 }
 
-## Pad a fixed-effect covariance matrix with zero rows/columns for
-## coefficients that were fixed via 'map' (internally, e.g. the ordinal
-## family intercept, or by the user): these are known constants, so their
-## sampling variance is exactly zero. Restores the convention that
-## dim(vcov) matches length(fixef) for downstream consumers
-## (emmeans, car::Anova, ...). No-op when no coefficients are mapped.
-pad_mapped_vcov <- function(object, V, component = "cond") {
-    map_nm <- switch(component, cond = "beta", zi = "betazi",
-                     disp = "betadisp")
-    bmap <- object$obj$env$map[[map_nm]]
-    if (is.null(bmap) || !any(is.na(bmap)) || is.null(dim(V))) return(V)
+## ---- coefficient spaces --------------------------------------------------
+## A fixed-effect component's coefficients live in three nested spaces:
+## nominal (one per model-matrix column: fixef(), vcov(include_nonest =
+## TRUE), the ddf vectors), X-space (columns of getME(., "X"), i.e. minus
+## the columns dropped for rank deficiency: what emmeans and car::Anova
+## work with) and estimated (after 'map': tied coefficients are one
+## parameter, fixed ones none: vcov(include_nonest = FALSE), the
+## Kenward-Roger matrices, the Satterthwaite Jacobians). 'keep' selects
+## X-space within nominal; the 0/1 matrix 'A' (ncol(X) x n_est) satisfies
+## beta_X = A beta_est + (fixed values), so a contrast c becomes t(A) c and
+## a covariance matrix V_est becomes A V_est A'. The map is read from
+## obj$env$map rather than modelInfo$map because the ordinal family maps
+## its intercept internally without a user-supplied map.
+.beta_spaces <- function(object, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi", disp = "betadisp")
+    X_nm <- switch(component, cond = "X", zi = "Xzi", disp = "Xdisp")
     bhat <- fixef(object)[[component]]
-    nb <- length(bhat)
-    fixed <- which(is.na(bmap))
-    if (nrow(V) == nb - length(fixed)) {
-        ## reduced vcov (include_nonest = FALSE): pad to full size
-        est <- which(!is.na(bmap))
-        Vfull <- matrix(0, nb, nb,
-                        dimnames = list(names(bhat), names(bhat)))
-        Vfull[est, est] <- as.matrix(V)
-        return(Vfull)
-    }
-    if (nrow(V) == nb) {
-        ## full-size vcov stores NA rows/columns for mapped coefficients;
-        ## replace with zeros so they do not propagate through
-        ## linear-hypothesis algebra
+    X <- getME(object, X_nm)
+    p_nom <- length(bhat)
+    keep <- rep(TRUE, p_nom)
+    dropped <- attr(X, "col.dropped")
+    ## (fixef() ignores col.dropped for sparse X; mirror that)
+    if (!is.null(dropped) && !inherits(X, "sparseMatrix")) keep[dropped] <- FALSE
+    p_X <- sum(keep)
+    bmap <- object$obj$env$map[[map_nm]]
+    ## TMB orders the estimated parameters by factor level of the map
+    idx <- if (is.null(bmap)) seq_len(p_X) else as.integer(bmap)
+    lev <- sort(unique(idx[!is.na(idx)]))
+    A <- matrix(0, nrow = p_X, ncol = length(lev))
+    A[cbind(which(!is.na(idx)), match(idx[!is.na(idx)], lev))] <- 1
+    list(p_nom = p_nom, p_X = p_X, p_est = ncol(A),
+         names_nom = names(bhat), names_X = names(bhat)[keep],
+         keep = keep, A = A, pinned = rowSums(A) == 0,
+         ## anything to do beyond the rank-deficiency bookkeeping? (a map
+         ## that only permutes the parameters still reorders them)
+         mapped = ncol(A) < p_X || any(diag(A) != 1))
+}
+
+## A %*% V_est %*% t(A): lift an estimated-space covariance matrix to the
+## X-space. Tied coefficients get identical (perfectly correlated)
+## rows/columns, map-fixed coefficients zero variance (they are known
+## constants); with no 'map' this is the identity
+.lift_vcov_X <- function(V, sp) {
+    V <- as.matrix(V)
+    if (sp$mapped) V <- sp$A %*% V %*% t(sp$A)
+    dimnames(V) <- list(sp$names_X, sp$names_X)
+    V
+}
+
+## ... and further to the nominal space, with NA rows/columns for
+## coefficients dropped for rank deficiency (not estimable), matching
+## vcov(include_nonest = TRUE)
+.lift_vcov_nominal <- function(V, sp) {
+    Vn <- matrix(NA_real_, sp$p_nom, sp$p_nom,
+                 dimnames = list(sp$names_nom, sp$names_nom))
+    Vn[sp$keep, sp$keep] <- .lift_vcov_X(V, sp)
+    Vn
+}
+
+## Bring a fixed-effect covariance matrix into line with the coefficient
+## vector for downstream consumers (emmeans, car::Anova, ...) when
+## coefficients were tied or fixed via 'map' (internally, e.g. the ordinal
+## family intercept, or by the user). A reduced matrix (vcov(include_nonest
+## = FALSE)) is lifted to the X-space via .lift_vcov_X(); in a full-size
+## (nominal) matrix the NA rows/columns of map-fixed coefficients are
+## replaced by zeros (known constants, zero sampling variance) so they do
+## not propagate through linear-hypothesis algebra. No-op when no
+## coefficients are mapped
+pad_mapped_vcov <- function(object, V, component = "cond") {
+    map_nm <- switch(component, cond = "beta", zi = "betazi", disp = "betadisp")
+    if (is.null(dim(V)) || is.null(object$obj$env$map[[map_nm]])) return(V)
+    sp <- .beta_spaces(object, component)
+    if (!sp$mapped) return(V)
+    if (nrow(V) == sp$p_est) return(.lift_vcov_X(V, sp))
+    if (nrow(V) == sp$p_nom) {
+        fixed <- which(sp$keep)[sp$pinned]
         V[fixed, ] <- 0
         V[, fixed] <- 0
-        return(V)
     }
     V
 }
@@ -712,6 +799,8 @@ pad_mapped_vcov <- function(object, V, component = "cond") {
 #' are characterized by one or more additional parameters.
 #' @param object glmmTMB object
 #' @return a named numeric vector
+#' @details For \code{nbinom12}, returns the positive quadratic dispersion
+#' parameter \eqn{\psi}{psi} in \eqn{V = \mu(1 + \phi + \mu/\psi)}.
 #' @export
 family_params <- function(object) {
     ff <- object$modelInfo$family$family
@@ -722,6 +811,7 @@ family_params <- function(object) {
            t = c("Student-t df" = exp(tf)),
            ordbeta = setNames(plogis(tf), c("lower cutoff", "upper cutoff")),
            skewnormal = c("Skewnormal shape" = tf),
+           nbinom12 = c("NB12 quadratic dispersion" = exp(tf)),
            ordinal = {
                ## thresholds from softmax-parameterized psi:
                ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
@@ -738,6 +828,57 @@ family_params <- function(object) {
            )
 }
 
+## ordinal family: Jacobian of the thresholds with respect to the
+## internal (softmax) parameters psi. The thresholds are a joint
+## function of *all* psi elements,
+## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j), so univariate
+## transformation of the psi-scale variances does not apply; use the
+## analytic Jacobian
+## J[j, m] = s[m] * ((m <= j) - C_j) / (C_j * (1 - C_j)),
+## where s = softmax(c(psi, 0)) and C_j = cumsum(s)[j].
+## Returns the (K-1) x (K-1) matrix J = d theta / d psi, used to
+## delta-method the psi block of vcov(., full = TRUE) onto the
+## threshold scale (ordinal_thresholds(), emm_basis.glmmTMB())
+ordinal_threshold_jacobian <- function(object) {
+    pars <- get_pars(object)
+    tf <- unname(pars[names(pars) == "psi"])
+    w <- exp(c(tf, 0) - max(tf, 0))
+    s <- w / sum(w)
+    Cj <- cumsum(s)[seq_along(tf)]
+    outer(seq_along(tf), seq_along(tf),
+          function(j, m) s[m] * ((m <= j) - Cj[j]) /
+                         (Cj[j] * (1 - Cj[j])))
+}
+
+## ordinal family: thresholds and their delta-method standard errors
+## (see ordinal_threshold_jacobian() for the transformation)
+ordinal_thresholds <- function(object) {
+    fp <- family_params(object)
+    J <- ordinal_threshold_jacobian(object)
+    Vpsi <- ordinal_psi_vcov(object)
+    se <- sqrt(diag(J %*% Vpsi %*% t(J)))
+    cbind("Estimate" = fp, "Std. Error" = se)
+}
+
+## ordinal family: covariance matrix of the internal psi parameters,
+## taken from the psi block of vcov(., full = TRUE) by position
+## (psi_block_pos()).
+## psi elements fixed via a user 'map' are known constants, so their NA
+## rows/columns are set to zero before the delta method (as
+## pad_mapped_vcov() does for fixed coefficients); with every element
+## fixed the thresholds get standard error 0
+ordinal_psi_vcov <- function(object) {
+    vi <- psi_block_pos(object)
+    V <- as.matrix(vcov(object, full = TRUE))[vi, vi, drop = FALSE]
+    pmap <- object$obj$env$map[["psi"]]
+    if (!is.null(pmap)) {
+        fixed <- which(is.na(pmap))
+        V[fixed, ] <- 0
+        V[, fixed] <- 0
+    }
+    V
+}
+
 ## obsolete
 .tweedie_power <- function(object) {
     warning(".tweedie_power is deprecated in favor of family_params()")
@@ -749,7 +890,11 @@ family_params <- function(object) {
 #' @importFrom stats plogis qlogis
 printFamily <- function(object) {
     val <- family_params(object)
-    if (length(val) > 0) {
+    if (object$modelInfo$family$family == "ordinal") {
+        cat("\nThreshold coefficients:",
+            paste(names(val), formatC(val, digits = 3), sep = " = ",
+                  collapse = ", "), "\n")
+    } else if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
                     names(val)[1],
                     paste(formatC(val, digits=3),
@@ -865,6 +1010,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
     }
     r <- mr - mu
     fam <- family(object)
+    if (type == "working" && fam$family == "ordinal") {
+        ## r is on the category-index scale and mu.eta() of the link is
+        ## not the derivative of E[Y] for a cumulative-link model
+        stop("working residuals are not defined for the ordinal family; ",
+             "use type = \"response\" or type = \"dunn-smyth\"")
+    }
     res <- switch(type,
            response=r,
            working = {
@@ -925,8 +1076,16 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              shape <- family_params(object)
              vargs <- list()
              vargs$mu <- vargs$lambda <- mu
+             if (fam$family %in% c("truncated_nbinom1", "truncated_nbinom2",
+                                  "truncated_poisson", "truncated_genpois",
+                                  "truncated_compois")) {
+                 vargs$mu <- vargs$lambda <-
+                     fam$linkinv(predict(object, type = "link",
+                                         re.form = re.form))
+             }
              vargs$theta <- vargs$phi <- vargs$alpha <- theta
              vargs$shape <- vargs$power <- shape
+             vargs$psi <- shape
              ## number of trials for binomial-type responses (combinomial)
              vargs$size <- wts
              # subset to only the arguments used by the variance function
@@ -1053,14 +1212,27 @@ format_perc <- function (probs, digits) {
 ##' equal to \eqn{\rho = \theta/\sqrt{1+\theta^2}}{rho = theta/sqrt{1+theta^2}}.
 ##' For random-effects terms with more than two elements, the mapping
 ##' is more complicated: see https://github.com/glmmTMB/glmmTMB/blob/master/misc/glmmTMB_corcalcs.ipynb
-##' 
+##'
+##' For the \code{ordinal} family, "wald" reports the thresholds on the
+##' threshold scale (rows labelled by the adjacent response levels,
+##' e.g. \code{Low|Medium}), with delta-method standard errors; the
+##' thresholds have Wald intervals only. "profile" and "uniroot" report
+##' the internal threshold parameters (\code{psi1}, \code{psi2}, ...,
+##' the softmax parameterization described in \code{\link{ordinal}}),
+##' as does \code{\link{profile.glmmTMB}}.
+##'
 ##' @importFrom stats qnorm confint
 ##' @export
 ##' @param object \code{glmmTMB} fitted object.
 ##' @param parm which parameters to profile, specified
 #' \itemize{
 #' \item by index (position) [\emph{after} component selection for \code{confint}, if any]
-#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)})
+#' \item by name (matching the row/column names of \code{vcov(object,full=TRUE)});
+#'   for the \code{ordinal} family a threshold label (e.g. \code{"Low|Medium"})
+#'   selects the threshold for Wald intervals and the internal \code{psi}
+#'   parameter it is derived from for profile and uniroot intervals; in
+#'   Wald intervals \code{"psi_"} and the names of estimated \code{psi}
+#'   elements also select the corresponding thresholds
 #' \item as \code{"theta_"} (random-effects variance-covariance parameters), \code{"beta_"} (conditional and zero-inflation parameters), or \code{"disp_"} or \code{"sigma"} (dispersion parameters)
 #' }
 #'  Parameter indexing by number may give unusual results when
@@ -1136,9 +1308,25 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
                  dimnames=list(NULL,
                                if (!estimate) pct else c(pct, "Estimate")))
 
+    ord_sel <- NULL
     if (!is.null(parm) || method != "wald") {
         parm0 <- parm
-        parm <- getParms(parm, object, full, include_nonest = include_nonest)
+        if (method == "wald" && is.character(parm) &&
+            object$modelInfo$family$family == "ordinal") {
+            ## ordinal thresholds are derived from psi and keep their Wald
+            ## rows when a user 'map' fixes psi, so a threshold label (and
+            ## "psi_", all of them) selects its row by name below; each
+            ## other element, a name or a keyword such as "theta_", gives
+            ## all its vcov(full = TRUE) positions via getParms()
+            thr <- names(family_params(object))
+            ord_sel <- lapply(parm, function(p) {
+                if (identical(p, "psi_")) thr
+                else if (p %in% thr) p
+                else getParms(p, object, full, include_nonest = include_nonest)
+            })
+        } else {
+            parm <- getParms(parm, object, full, include_nonest = include_nonest)
+        }
     }
 
     wald_comp <- function(component) {
@@ -1199,6 +1387,7 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
 
     if (method=="wald") {
         map <- object$modelInfo$map
+        thr_names <- character(0)
         for (component in c("cond", "zi") ) {
             if (components.has(component) &&
                 length(fixef(object)[[component]])>0) {
@@ -1228,26 +1417,13 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             fp <- family_params(object)
             if (length(fp)>0) {
                 if (ff == "ordinal") {
-                    ## thresholds are a joint function of *all* psi
-                    ## elements (softmax), so the univariate-monotone CI
-                    ## machinery does not apply; use the delta method with
-                    ## the analytic Jacobian of
-                    ## theta_j = qlogis(cumsum(softmax(c(psi, 0)))_j)
-                    pars <- get_pars(object)
-                    tf <- unname(pars[names(pars) == "psi"])
-                    w <- exp(c(tf, 0) - max(tf, 0))
-                    s <- w / sum(w)
-                    Cj <- cumsum(s)[seq_along(tf)]
-                    J <- outer(seq_along(tf), seq_along(tf),
-                               function(j, m) s[m] * ((m <= j) - Cj[j]) /
-                                              (Cj[j] * (1 - Cj[j])))
-                    Vfull <- vcov(object, full = TRUE)
-                    vi <- match(names(fp), rownames(Vfull))
-                    se_th <- sqrt(diag(J %*% Vfull[vi, vi] %*% t(J)))
+                    ## delta-method threshold SEs (see ordinal_thresholds)
+                    se_th <- ordinal_thresholds(object)[, "Std. Error"]
                     qn <- qnorm((1 + level) / 2)
                     ci.shape <- cbind(fp - qn * se_th, fp + qn * se_th)
                     if (estimate) ci.shape <- cbind(ci.shape, fp)
                     ci <- rbind(ci, ci.shape)
+                    thr_names <- names(fp)
                 } else {
                     ci.shape <- .CI_univariate_monotone(object,
                                                     family_params,
@@ -1273,6 +1449,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         ## identify mapped values: lwr and upr CIs equal but *not NaN
         ##  (which indicates a failed fit instead)
         mapped <- !(is.na(ci[, 1] & is.na(ci[, 2]))) & (ci[,1] == ci[,2])
+        ## ordinal thresholds are derived from psi rather than mapped
+        ## themselves: keep their rows even when every psi element is
+        ## fixed by the user and the interval has width 0 (as
+        ## summary()$thresholds reports them with standard error 0)
+        mapped <- mapped & !(rownames(ci) %in% thr_names)
         if (!include_nonest) {
             ## drop mapped values (where lower == upper)
             ci <- ci[!mapped, , drop=FALSE]
@@ -1282,6 +1463,39 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
         
         ## now get selected parameters
         if (!is.null(parm)) {
+            if (!is.null(ord_sel)) {
+                ## ordinal, parameters named: getParms() gave positions in
+                ## vcov(full = TRUE), where the psi block comes last, but
+                ## the rows above put the thresholds before the
+                ## random-effect SDs. Map psi positions ("psi2") to the
+                ## threshold each gives and the other positions to the
+                ## remaining rows in order; threshold labels match by name.
+                ## (A numeric 'parm' indexes the rows above directly.)
+                is_thr <- rownames(ci) %in% thr_names
+                psi_pos <- psi_block_pos(object, include_nonest)
+                thr_row <- which(is_thr)[ordinal_psi_present(object, include_nonest)]
+                other_row <- which(!is_thr)
+                rows <- lapply(ord_sel, function(p) {
+                    if (is.character(p)) return(match(p, rownames(ci)))
+                    j <- match(p, psi_pos)
+                    as.integer(ifelse(is.na(j), other_row[p], thr_row[j]))
+                })
+                bad <- vapply(rows, anyNA, logical(1))
+                if (any(bad)) {
+                    stop("parameters not in the selected component(s): ",
+                         paste(parm0[bad], collapse = ", "))
+                }
+                parm <- unlist(rows)
+            } else if (is.character(parm0) &&
+                       any(lengths(object$modelInfo$reStruc) > 0) &&
+                       any(parm %in% psi_block_pos(object, include_nonest))) {
+                ## other families: the rows above put the family parameter
+                ## before the random-effect SDs, so its vcov(full = TRUE)
+                ## position does not index them
+                stop("selecting the family parameter by name in Wald",
+                     " intervals is not supported for this family in models",
+                     " with random effects")
+            }
             ci <- ci[parm, , drop=FALSE]
         } else {
             ## drop residual std dev/trivial dispersion parameter
@@ -1320,7 +1534,11 @@ confint.glmmTMB <- function (object, parm = NULL, level = 0.95,
             L <- lapply(as.list(parm), FUN)
         }
         L <- do.call(rbind,L)
-        rownames(L) <- rownames(vcov(object,full=TRUE))[parm]
+        ## parm indexes the estimated parameters, so the names must come
+        ## from the estimated-only vcov: the default include_nonest = TRUE
+        ## also lists mapped parameters, which shifts the labels
+        rownames(L) <- rownames(vcov(object, full = TRUE,
+                                     include_nonest = FALSE))[parm]
         if (estimate) {
             ee <- object$obj$env
             par <- ee$last.par.best
@@ -1799,9 +2017,7 @@ refit.glmmTMB <- function(object, newresp, ...) {
 ## ------  should work with fixef() + ranef()  alone
 coefMer <- function(object, component=NULL, ...)
 {
-    if (length(list(...)))
-        warning('arguments named "', paste(names(list(...)), collapse = ", "),
-                '" ignored')
+    check_dots(..., .action = "warning")
     fef <- fixef(object)
     if (!is.null(component)) fef <- fef[[component]]
     fef <- data.frame(rbind(fef), check.names = FALSE)
@@ -1858,18 +2074,15 @@ coef.glmmTMB <- function(object,
 ##' Extract weights from a glmmTMB object
 ##'
 ##' @details
-##' At present only explicitly specified
-##' \emph{prior weights} (i.e., weights specified
-##' in the \code{weights} argument) can be extracted from a fitted model.
-##' \itemize{
-##' \item Unlike other GLM-type models such as \code{\link{glm}} or
-##' \code{\link[lme4]{glmer}}, \code{weights()} does not currently return
-##' the total number of trials when binomial responses are specified
-##' as a two-column matrix.
-##' \item Since \code{glmmTMB} does not fit models via iteratively
+##' Returns the \emph{prior weights} used in fitting, i.e. weights
+##' specified in the \code{weights} argument. For binomial-type families
+##' fit with a two-column matrix response (\code{cbind(successes, failures)}),
+##' the total number of trials is included as well (multiplied by the
+##' \code{weights} argument, if specified), matching the behaviour of
+##' \code{\link{glm}} and \code{\link[lme4]{glmer}}.
+##' Since \code{glmmTMB} does not fit models via iteratively
 ##' weighted least squares, \code{working weights} (see \code{\link[stats:glm]{weights.glm}}) are unavailable.
-##' }
-##' @importFrom stats model.frame
+##' @importFrom stats model.frame model.response
 ##' @importFrom stats weights
 ##' @param object a fitted \code{glmmTMB} object
 ##' @param type weights type
@@ -1877,11 +2090,18 @@ coef.glmmTMB <- function(object,
 ##' @export
 weights.glmmTMB <- function(object, type="prior", ...) {
     type <- match.arg(type)  ## other types are *not* OK
-    if (length(list(...)>0)) {
-        warning("unused arguments ignored: ",
-             paste(shQuote(names(list(...))),collapse=","))
+  
+    check_dots(..., .action = "warning")
+    fr <- stats::model.frame(object)
+    w <- fr[["(weights)"]]
+    mr <- model.response(fr)
+    if (!is.null(dim(mr))) {
+        ## binomial-type response given as cbind(successes, failures):
+        ## total trials are an implicit weight, as in glm/glmer
+        n <- unname(mr[, 1] + mr[, 2])
+        w <- if (is.null(w)) n else w * n
     }
-    stats::model.frame(object)[["(weights)"]]
+    w
 }
 
 # would like to export this only as a method, but not sure how ...
@@ -2085,7 +2305,8 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     
     # Save original weights, negative log-likelihood
     # and gradient.
-    original_weights <- x$obj$env$data$weights
+    original_data <- x$obj$env$data
+    original_weights <- original_data$weights
     original_neg_log_lik <- x$obj$fn(x$fit$par)
     env_vars <- c("par", "last.par", "last.par.best", "last.par.ok",
                   "parameters")
@@ -2101,7 +2322,8 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
     # at exit of this function.
     on.exit({
         # Reset the weights to the original values.
-        x$obj$env$data$weights <- original_weights
+        original_data$weights <- original_weights
+        .setObjData(x$obj, original_data)
         for (n in env_vars) {
             assign(n, orig_env_vars[[n]],
                    envir = x$obj$env)
@@ -2119,7 +2341,9 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
         new_weights <- ifelse(belongs_cluster, original_weights, zero_weights)    
 
         # Modify the weights in the TMB object.
-        x$obj$env$data$weights <- new_weights
+        new_data <- original_data
+        new_data$weights <- new_weights
+        .setObjData(x$obj, new_data)
 
         # Retape the TMB object to apply the changes.
         x$obj$retape(set.defaults = FALSE)
@@ -2308,4 +2532,15 @@ vcovHC.glmmTMB <- function(x, type = "HC0", sandwich = TRUE, ...) {
     } else {
         meatHC(x, ...)
     }
+}
+
+#' @importFrom lme4 isGLMM
+#' @export
+lme4::isGLMM
+
+#' @export
+isGLMM.glmmTMB <- function(x,...) {
+  check_dots(...)
+  f <- family(x)
+  !(f$family == "gaussian" && f$link == "identity")
 }

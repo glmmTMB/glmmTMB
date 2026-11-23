@@ -4,7 +4,128 @@
 \title{glmmTMB News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1.15}{
+\section{CHANGES IN VERSION 1.1.15.9000}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Tweedie simulation is faster, especially when the power
+      parameter is close to 2. Simulated values for a given seed differ
+      from previous versions (GH #1341, Pascal Küng)
+      \item an \code{ordinal} formula without an intercept
+      (\code{~ 0 + x}, \code{~ x - 1}) now warns that an intercept is
+      needed and assumed, and is fitted with the intercept added (the
+      intercept is fixed to zero and absorbed into the thresholds),
+      giving the same fit as \code{ordinal::clm} and \code{MASS::polr},
+      which give the same warning; previously the model was fitted with
+      the intercept-free parameterization. Supplying \code{beta} in
+      \code{map} or \code{start} together with an intercept-free formula
+      is an error, because the added intercept column shifts the
+      coefficient positions
+      \item for the \code{ordinal} family, \code{profile()},
+      \code{confint(method = "profile")}, \code{confint(method =
+      "uniroot")} and \code{vcov(., full = TRUE)} label the internal
+      threshold parameters \code{psi1}, \code{psi2}, ... instead of
+      reusing the threshold labels (\code{Low|Medium}), since those rows
+      are on the internal (softmax) scale. The thresholds themselves have
+      Wald intervals only, from \code{confint()}; \code{confint()} and
+      \code{summary()} report the thresholds on the threshold scale. The
+      threshold labels are still accepted in \code{parm}: Wald
+      \code{confint()} returns the threshold, and the profile methods the
+      \code{psi} element it is derived from
+      \item \code{residuals(type = "working")} is now an error for the
+      \code{ordinal} family (the response residual is on the
+      category-index scale, so the GLM working residual is not defined)
+      \item \code{ordinal()} now gives an error for links other than
+      \code{"logit"}, \code{"probit"} and \code{"cloglog"}
+      \item an \code{ordinal} response with an empty category (integer
+      codes) or an unused factor level now gives a warning that names it;
+      a character or logical response now gives an error that names the
+      accepted types
+      \item \code{simulate_new()} now supports the \code{ordinal} family;
+      the number of categories comes from \code{newparams$psi}, and each
+      simulation is an ordered factor
+    } % itemize
+  } % user-visible changes
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
+      quadratic dispersion parameter, also shown by \code{print()}. Pearson
+      residuals now pass this parameter to the variance function
+      (GH #1359, item 2). The help file for the family also corrects the correspondence
+      with Lindén and Mäntyniemi (2011) to \eqn{\omega=1+\phi}.
+      \item Smooth random-effect coefficient indices now count coefficients,
+      rather than observations, and respect interleaved grouping terms.
+      (Gavin Simpson)
+      \item For \code{skewnormal}, the variance helper now returns the
+      squared response standard deviation, matching the fitted parameterization
+      and correcting Pearson residual scaling (GH #1359, item 3).
+      \item \code{dof_KR}, \code{dof_satt} and the \code{ddf} options of
+      \code{summary}, \code{anova}, \code{car::Anova} and \code{emmeans}
+      now work for conditional coefficients tied or fixed via \code{map},
+      and (Kenward-Roger) for rank-deficient models; previously
+      "non-conformable arguments", an \code{eigen()} error, or rejected by
+      \code{car::Anova}. Tied coefficients share one ddf; fixed coefficients,
+      and hypotheses involving only fixed coefficients, get \code{NA} (GH #1340)
+      \item relatedly, \code{emmeans()} no longer fails ("logical subscript
+      too long") for models with coefficients tied via \code{map} (GH #1340)
+      \item \code{vcov(., include_nonest = FALSE)} no longer fails ("length
+      of 'dimnames'") when the dispersion model has no fixed-effect
+      parameters, e.g. \code{dispformula = ~0 + offset(log(se))} or
+      \code{~0 + (1|g)}, or for a \code{dispformula} given to a family
+      without dispersion; \code{dof_satt()},
+      \code{summary(., ddf = "satterthwaite")}, \code{emmeans()} and
+      \code{confint()} now work for such models (GH #1344)
+      \item an \code{ordinal} fit with a user \code{map} on another
+      parameter vector (e.g. \code{map = list(betazi = factor())}) no
+      longer leaves the fixed-effect intercept free: partial matching of
+      the map's \code{beta} element skipped the internal intercept map,
+      so the intercept and the thresholds were not jointly identifiable
+      (GH #1348)
+      \item The \code{t_family} variance helper now requires the degrees
+      of freedom as \code{shape}, returns scale squared times the Student-t
+      variance factor, and preserves the observation-vector length. Pearson
+      residuals use the fitted degrees of freedom (GH #1359, item 4).
+      \item \code{vcov(., full = TRUE)} now handles a family-specific
+      parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
+      \code{NA} rows and columns like other mapped parameters (previously
+      the mapped row was dropped and the remaining rows lost their
+      labels, or for the \code{ordinal} family the expansion failed with
+      "number of items to replace is not a multiple of replacement
+      length"). A random effect in the dispersion model fixed via
+      \code{map = list(thetadisp = )} no longer makes \code{vcov()} and
+      \code{summary()} fail with
+      "missing value where TRUE/FALSE needed". For the \code{ordinal} family,
+      \code{summary()}, Wald \code{confint()} and \code{emmeans} treat
+      user-fixed \code{psi} elements as known constants in the threshold
+      standard errors (with every element fixed, the standard errors are 0)
+      \item Variance helpers are implemented for \code{truncated_nbinom1},
+      \code{truncated_genpois}, and \code{truncated_compois}. The generalized Poisson helper supports dispersion at least one. Pearson residuals for all five zero-truncated count families
+      evaluate variance at the untruncated mean while retaining the
+      truncated response mean in the residual (GH #1359, item 5). The help file for these families
+      gives the conditional-moment identity and its relation to
+      Shonkwiler (2016; \doi{10.1016/j.jeconom.2016.09.002}), Scollnik
+      (1998; \doi{10.2143/AST.28.1.519083}), and Huang
+      (2017; \doi{10.1177/1471082X17697749}).
+      \item \code{confint(method = "uniroot")} labelled its rows from
+      the full parameter list while computing them for the estimated
+      parameters, so when a parameter was fixed via \code{map} (including
+      the intercept the \code{ordinal} family fixes internally), the rows
+      after it carried the wrong labels
+      \item Prediction covariance output retains matrix dimensions for
+      single observations, uses the prediction-vector length for no-ZI output,
+      and restores both covariance axes under \code{na.exclude}
+      (GH #1359, item 6).
+      \item for the \code{ordinal} family with random effects, Wald
+      \code{confint()} with \code{parm} given by name (e.g.
+      \code{"theta_"}) returned the wrong rows, because its table lists
+      the thresholds before the random-effect standard deviations. For
+      other families with a family parameter (\code{psi}) and random
+      effects, a \code{parm} that names that parameter now gives an error
+      instead of a random-effect row
+    } % itemize
+  } % bug fixes
+} % 1.1.15.9000
+
+\section{CHANGES IN VERSION 1.1.15.2 (2026-09-29)}{
   \subsection{NEW FEATURES}{
     \itemize{
       \item new \code{ordinal} family implementing cumulative-link
@@ -17,6 +138,22 @@
       \code{simulate()} are supported. Nominal (category-specific) and
       scale effects are not (yet) implemented; \code{REML=TRUE} warns,
       since it integrates out the fixed effects but not the thresholds
+      \item \code{summary()} for the \code{ordinal} family reports the
+      thresholds with delta-method standard errors in a
+      \dQuote{Threshold coefficients} block (also available as the
+      \code{thresholds} element of the summary object); the threshold
+      rows of \code{vcov(., full = TRUE)} remain on the internal
+      (softmax) scale (GH #1323)
+      \item \code{emmeans()} on \code{ordinal} fits gains the \code{mode}
+      and \code{rescale} arguments of its \code{MASS::polr} method
+      (\code{"latent"} [the default], \code{"linear.predictor"},
+      \code{"cum.prob"}, \code{"exc.prob"}, \code{"prob"},
+      \code{"mean.class"}), with standard errors that include the
+      delta-method covariance of the thresholds. The default now reports
+      the latent-scale mean centered on the average threshold, on the
+      latent scale only, so \code{type = "response"} no longer
+      back-transforms it (the previous default reported the linear
+      predictor without the thresholds, on the link scale)
       \item Dunn-Smyth residuals (\code{type = "dunn-smyth"} in
       \code{residuals()}) are now available for the \code{bell} and
       \code{genpois} families; the Bell distribution uses internal C-level
@@ -45,10 +182,26 @@
       and dispersion components) are supported. \strong{Requires TMB
       newer than 1.9.21.} The density and cumulative distribution
       functions (\code{dcombinom}, \code{pcombinom}) are exported
-    }
+      \item \code{getME()} now works to extract \code{"cnms"} (effect
+      names) and \code{"flist"} (factor list) for random effects
+      (conditional model components only)
+      \item the package now includes an experimental (for now)
+      \pkg{RTMB} back-end, disabled by default,
+      which can be turned on for a specific model fit
+      by \code{control = glmmTMBControl(use_rtmb = TRUE)}, or
+      persistently via \code{useRTMB(TRUE)}. Runs using the RTMB
+      back-end should match TMB back-end results up to floating point
+      error, and should be as fast as old-style TMB fits.
+      Going forward we expect to switch development to the RTMB
+      back-end, which allows more flexibility without a performance
+      cost; the TMB back-end will be maintained for at least the
+      next few releases, although new features may be RTMB-only.
+    } % itemize
   } % new features
  \subsection{BUG FIXES}{
     \itemize{
+      \item \code{getME(., "Gp")} now works to return a vector of group
+      pointers for random effects
       \item \code{vcov} (and hence \code{summary}, \code{confint},
       \code{car::Anova}) no longer fails with "attempt to set an attribute
       on NULL" for a \code{REML=TRUE} fit that has no free fixed effects to
@@ -69,7 +222,7 @@
       \code{estfun} (or upstream functions such as \code{vcovHC})
       (GH #1294; Vincent Arel-Bundock)
       \item \code{emmeans()} with \code{ddf = "satterthwaite"} failed with
-      "could not find function \"dof_satt\"" because \pkg{emmeans} strips
+      'could not find function "dof_satt"' because \pkg{emmeans} strips
       the enclosing environment of the degrees-of-freedom function before
       calling it (GH #1304, Ariel Muldoon)
       \item relatedly, \code{emmeans()} with \code{ddf = "satterthwaite"}
@@ -88,6 +241,33 @@
       dimension mismatch in \code{emmeans}, and a singular-matrix error or
       \code{NA} test statistic in \code{Anova}); such coefficients are
       treated as known constants with zero variance
+      \item \code{weights()} now returns the total number of trials for
+      binomial-type models fitted with a two-column matrix
+      (\code{cbind(successes, failures)}) response, matching \code{glm} and
+      \code{glmer} (GH #1319)
+      \item \code{glmmTMB} no longer leaks a copy of \code{stats::weights}
+      (or, in principle, the fitted \code{weights}/\code{offset} values) into
+      the calling environment (GH #1296)
+      \item \code{emmeans} now respects an explicitly specified \code{ddf}
+      for Gaussian models without random effects; the request was previously
+      replaced by residual df without warning, and
+      \code{"kenward-roger"}/\code{"satterthwaite"} errored for a model with
+      a non-trivial \code{dispformula} on their way into \code{dof_satt},
+      which requires random effects (Paul Schmidt)
+      \item \code{glmmTMBControl(profile = TRUE)} now stops early with an
+      informative error for a model with no free fixed-effect parameters
+      (e.g. \code{y ~ 0}, or a model whose entire \code{beta} vector is
+      fixed via \code{map}), instead of failing with "attempt to set an
+      attribute on NULL" (GH #1317)
+      \item \code{glmmTMBControl(profile = TRUE)} now works with
+      \code{REML = TRUE} (previously every such fit failed with a
+      dimension mismatch in \code{solve()})
+      \item \code{ddf = "satterthwaite"} (in \code{summary}, or via
+      \code{emmeans}) no longer fails with "non-conformable arguments" for
+      a rank-deficient conditional model (i.e. one with a dropped/aliased
+      fixed-effect column); the aliased coefficient now gets \code{NA} ddf,
+      like its \code{NA} estimate and standard error, rather than erroring
+      (GH #1326, @qdread)
     }
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
@@ -101,6 +281,18 @@
       \code{"satterthwaite"} with a warning instead); \code{"kenward-roger"}
       and \code{"satterthwaite"} on a non-Gaussian family now consistently
       emit a warning (rather than a message, or nothing) across all four
+      \item \code{emmeans} no longer reports residual degrees of freedom for
+      a Gaussian model without random effects whose dispersion parameter is
+      held fixed via \code{map}: with no variance parameter estimated the
+      residual variance is known, so \code{"asymptotic"} (infinite df) is
+      used instead (Paul Schmidt)
+      \item an unrecognized \code{ddf} string passed to \code{emmeans} is now
+      an error, as it already was in \code{summary}/\code{anova}/\code{Anova};
+      for a Gaussian model without random effects it was previously treated as
+      residual df without warning, and for the \code{zi}/\code{disp}
+      components it gave a warning and asymptotic df. Partial matches such as
+      \code{ddf = "satt"} are now accepted, as they already were in
+      \code{summary} (Paul Schmidt)
     } % itemize
   } % user-visible changes
  } % 1.1.15

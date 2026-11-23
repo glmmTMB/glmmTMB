@@ -73,3 +73,24 @@ test_that("multiple smooths", {
                        c("(Intercept)", "s(x1)1", "s(x2)1"))
 
 })
+
+test_that("smooth coefficient indices count coefficients in formula order", {
+    set.seed(928)
+    d <- data.frame(x = runif(120), z = runif(120),
+                    g = factor(rep(seq_len(12), 10)))
+    d$y <- sin(6*d$x) + cos(6*d$z) + rnorm(12)[d$g] + rnorm(120, sd=.3)
+    for (f in list(y ~ (1|g) + s(x, k=6) + s(z, k=5),
+                   y ~ s(x, k=6) + (1|g) + s(z, k=5),
+                   y ~ s(x, k=6) + s(z, k=5) + (1|g))) {
+        m <- glmmTMB(f, d, REML=TRUE)
+        si <- m$modelInfo$reTrms$cond$smooth_info
+        blocks <- m$modelInfo$reStruc$condReStruc
+        sizes <- vapply(blocks, function(x) x$blockSize*x$blockReps, numeric(1))
+        ends <- cumsum(c(0, sizes))
+        for (i in which(lengths(si)>0)) {
+            expect_equal(unname(si[[i]]$re$b_ind),
+                         unname(seq.int(ends[i]+1, ends[i+1])))
+            expect_length(si[[i]]$re$b_ind, ncol(si[[i]]$re$rand$Xr))
+        }
+    }
+})
