@@ -47,6 +47,26 @@ test_that("VarCorr output equivalent to lme4", {
                  pfun(fm1C))
 })
 
+test_that("VarCorr prints compound symmetry correlations with full_cor = FALSE", {
+    forms <- list(incidence/size ~ 1 + cs(period | herd),
+                  incidence/size ~ 1 + homcs(period | herd))
+    for (form in forms) {
+        for (rtmb in c(FALSE, TRUE)) {
+            full <- glmmTMB(form, family = binomial, weights = size, data = cbpp,
+                            control = glmmTMBControl(use_rtmb = rtmb))
+            compact <- update(full, control = glmmTMBControl(full_cor = FALSE,
+                                                            use_rtmb = rtmb))
+            vc_full <- VarCorr(full)
+            vc_compact <- VarCorr(compact)
+            rho <- attr(vc_full$cond$herd, "correlation")[2L, 1L]
+            expect_equal(attr(vc_compact$cond$herd, "correlation"), matrix(rho))
+            expect_true(is.na(vc_compact$cond$herd))
+            expect_identical(capture.output(print(vc_compact)),
+                             capture.output(print(vc_full)))
+        }
+    }
+})
+
 data("Pixel", package="nlme")
 ## nPix <- nrow(Pixel)
 complex_form <- pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog)

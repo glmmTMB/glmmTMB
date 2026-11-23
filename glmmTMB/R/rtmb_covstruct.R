@@ -627,7 +627,11 @@ termwise_nll <- function(U, theta, term) {
     "us", "cs", "homcs", "toep", "homtoep", "propto"
   )
   if (name %in% conditional_full_cor && term$fullCor == 0) {
-    report_corr <- matrix(NaN, 1L, 1L)
+    report_corr <- if (cov_structure == "cs" && n > 1L) {
+      C[2L, 1L, drop = FALSE]
+    } else {
+      matrix(NaN, 1L, 1L)
+    }
   }
 
   report_sd <- if (name == "ar1" || (name == "ou" && term$fullCor == 0)) {

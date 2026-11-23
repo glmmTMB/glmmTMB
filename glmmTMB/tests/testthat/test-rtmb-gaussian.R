@@ -1564,8 +1564,6 @@ test_that("RTMB covariance reports respect full_cor = FALSE", {
 
   cases <- list(
     us = list(n = 2, theta = c(0, 0, 0.2)),
-    cs = list(n = 2, theta = c(0, 0, 0.2)),
-    homcs = list(n = 2, theta = c(0, 0.2)),
     toep = list(n = 3, theta = c(0, 0, 0, 0.2, 0.1)),
     homtoep = list(n = 3, theta = c(0, 0.2, 0.1)),
     propto = list(n = 2, theta = c(0, 0, 0.2, 0))

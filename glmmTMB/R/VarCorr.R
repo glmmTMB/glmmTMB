@@ -145,7 +145,9 @@ mkVC <- function(cor, sd, cnms, sc, bc, useSc, fullCor = NULL) {
         diagmodel <- identical(dim(cor),c(0L,0L))
         if (diagmodel) cor <- diag(length(sd))
         cov <- matrix(numeric(0))
-        if (identical(c(cor), NaN)) {
+        compact_cs <- block_name %in% c("cs", "homcs") &&
+            isTRUE(fullCor == 0L) && identical(dim(cor), c(1L, 1L))
+        if (compact_cs || identical(c(cor), NaN)) {
             cov <- NA
         } else {
             if (length(sd) == 1 || length(sd) == nrow(cor)) {

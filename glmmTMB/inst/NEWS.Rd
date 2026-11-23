@@ -54,6 +54,9 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item \code{VarCorr()} prints the estimated correlation for
+      \code{cs()} and \code{homcs()} random effects when
+      \code{full_cor = FALSE} (GH #1297).
       \item With the RTMB back end, \code{simulate()} now applies the
       factor loadings to \code{rr()} random effects (they were
       previously simulated as independent N(0,1) values), and works for
