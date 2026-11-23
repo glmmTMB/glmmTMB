@@ -282,6 +282,9 @@ rtmb_tpl <- function(parameters, data) {
   ## glmmTMB.cpp:833, 911-918, and 934-937
   sparseX <- nrow(X) == 0 && ncol(X) == 0
   Xc <- if (sparseX) XS else X
+  ## Under REML, beta is a random parameter with no density, so simulate()
+  ## passes it as an unfilled simref; use its fitted values instead.
+  if (inherits(beta, "simref")) beta <- beta$getOrig()
   eta <- Xc %*% beta + Z %*% b + offset
   eta <- as.vector(eta)
 

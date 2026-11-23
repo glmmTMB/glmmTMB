@@ -54,6 +54,11 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item With the RTMB back end, \code{simulate()} now applies the
+      factor loadings to \code{rr()} random effects (they were
+      previously simulated as independent N(0,1) values), and works for
+      models fitted with \code{REML = TRUE}. Simulations now match the
+      TMB back end. (GH #1357, #1358; Pascal Küng)
       \item Pearson residuals of beta-binomial models are now scaled by
       the dispersion factor \eqn{(\phi+n)/(\phi+1)}, i.e. divided by the
       full beta-binomial standard deviation; previously they were
