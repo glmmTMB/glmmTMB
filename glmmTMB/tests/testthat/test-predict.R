@@ -1,6 +1,7 @@
 stopifnot(require("testthat"),
           require("glmmTMB"))
 
+data("sleepstudy", package = "lme4")
 sleepstudy <- transform(sleepstudy, DaysFac = factor(cut(Days,2)) )
 ssNA <- transform(sleepstudy, Days = replace(Days,c(1,27,93,145), NA))
 ssNA2 <- transform(sleepstudy, Days = replace(Days,c(2,49), NA))
