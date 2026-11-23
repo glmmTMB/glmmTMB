@@ -130,7 +130,7 @@ get_nbinom_disp <- function(disp, pname1 = ".Theta", pname2 = "theta") {
 ##' and the predicted mean as \eqn{\mu}{mu}:
 ##'  \describe{
 ##'      \item{gaussian}{(from base R): constant \eqn{V=\phi^2}{V=phi^2}}
-##'      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu\phi}{V=mu*phi}}
+##'      \item{Gamma}{(from base R) phi is the shape parameter. \eqn{V=\mu^2/\phi}{V=mu^2/phi}; \code{sigma()} returns the coefficient of variation, \eqn{1/\sqrt{\phi}}{1/sqrt(phi)}}
 ##'       \item{ziGamma}{a modified version of \code{Gamma} that skips checks for zero values, allowing it to be used to fit hurdle-Gamma models}
 ##'      \item{nbinom2}{Negative binomial distribution: quadratic parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\mu/\phi) = \mu+\mu^2/\phi}{V=mu*(1+mu/phi) = mu+mu^2/phi}.}
 ##'      \item{nbinom1}{Negative binomial distribution: linear parameterization (Hardin & Hilbe 2007). \eqn{V=\mu(1+\phi)}{V=mu*(1+phi)}. \emph{Note} that the \eqn{phi} parameter has opposite meanings in the \code{nbinom1} and \code{nbinom2} families. In \code{nbinom1} overdispersion increases with increasing \code{phi} (the Poisson limit is \code{phi=0}); in \code{nbinom2} overdispersion decreases with increasing \code{phi} (the Poisson limit is reached as \code{phi} goes to infinity).}
@@ -422,7 +422,7 @@ tweedie <- function(link="log") {
 skewnormal <- function(link="identity") {
   r <- list(family="skewnormal",
             variance = function(mu, phi, shape) {
-              phi^2
+              rep_len(phi^2, max(length(mu), length(phi)))
             })
   return(make_family(r,link))
 }
@@ -589,4 +589,44 @@ bell <- function(link="log") {
     ##              name = link ## mild hack to avoid make_family passing to make.link, which has hard-coded options
     ##              )
     return(make_family(r, link, needs_nonneg = TRUE, needs_int = TRUE))
+}
+
+## Conditional variance of the response, per unit prior weight, for a family
+##  (excluding zero-inflation).
+## For binomial-type families (binomial, betabinomial, combinomial) the
+##  response is a proportion and the value is size*Var(Y/size), the per-trial
+##  variance on the proportion scale (the convention of binomial()$variance);
+##  for other families it is Var(Y).
+## mu: conditional mean (a probability for binomial-type families)
+## phi: dispersion parameter, as returned by predict(type = "disp")
+## shape: extra family parameter(s), as returned by family_params()
+## size: number of trials (binomial-type families)
+full_variance <- function(fam, mu, phi = NULL, shape = NULL, size = NULL) {
+    if (is.null(v <- fam$variance)) {
+        stop("variance function undefined for family ", sQuote(fam$family))
+    }
+    vformals <- names(formals(v))
+    ## argument names for the same quantity differ across families
+    vargs <- list()
+    vargs$mu <- vargs$lambda <- mu
+    vargs$theta <- vargs$phi <- vargs$alpha <- phi
+    vargs$shape <- vargs$power <- vargs$psi <- unname(shape)
+    vargs$size <- size
+    if (length(miss <- setdiff(vformals, names(vargs))) > 0) {
+        stop("variance function for family ", sQuote(fam$family),
+             " needs ", paste(sQuote(miss), collapse = ", "))
+    }
+    ## beta-binomial $variance() announces that it is unscaled; the
+    ##  scaling is applied below
+    vv <- suppressMessages(do.call(v, vargs[vformals]))
+    ## variance functions of classical GLM families take only mu, and return
+    ##  the variance up to the dispersion factor; Bell's is complete
+    if (identical(vformals, "mu") && fam$family != "bell") {
+        vv <- vv * phi^2
+    }
+    if (fam$family == "betabinomial") {
+        if (is.null(size)) stop("beta-binomial variance needs 'size'")
+        vv <- vv * (phi + size)/(phi + 1)
+    }
+    vv
 }

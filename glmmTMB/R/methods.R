@@ -978,7 +978,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
 ##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 ##' details on the definition of the deviance for GLMMs.
-##' \item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation. (The beta-binomial currently returns unscaled residuals.)
+##' \item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation.
 ##' }
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), re.form = NULL, ...) {
@@ -1065,49 +1065,24 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              if (!noZI(object)) {
                zprob <- predict(object, type = "zprob", re.form = re.form)
              }
-             if (is.null(v <- fam$variance)) {
+             if (is.null(fam$variance)) {
                stop("variance function undefined for family ",
                     sQuote(fam$family),"; cannot compute",
                     " Pearson residuals")
              }
-             vformals <- names(formals(v))
-             ## construct argument list for variance function based on its formals
-             ## some argument names vary across families
-             shape <- family_params(object)
-             vargs <- list()
-             vargs$mu <- vargs$lambda <- mu
-             if (fam$family %in% c("truncated_nbinom1", "truncated_nbinom2",
-                                  "truncated_poisson", "truncated_genpois",
-                                  "truncated_compois")) {
-                 vargs$mu <- vargs$lambda <-
-                     fam$linkinv(predict(object, type = "link",
-                                         re.form = re.form))
-             }
-             vargs$theta <- vargs$phi <- vargs$alpha <- theta
-             vargs$shape <- vargs$power <- shape
-             vargs$psi <- shape
-             ## number of trials for binomial-type responses (combinomial)
-             vargs$size <- wts
-             # subset to only the arguments used by the variance function
-             vargs <- vargs[vformals]
-             ## suppress beta-binomial $variance() message, substitute
-             ##  a residuals-specific message
-             suppressMessages(vv <- do.call(v, args = vargs))
-             if (fam$family=="beta-binomial") {
-               message("beta-binomial Pearson residuals are not scaled by dispersion factor")
-             }
-             ## Bell distribution is a special case
-             ## (returns complete variance, not scaled variance, even though
-             ##  variance function takes only 'mu')
-             scaled_var <- identical(vformals, "mu") && fam$family != "bell"
-             if (scaled_var) {
-               vv <- vv * theta^2
-               if (trivialDisp(object)) {
-                 ## handle convention that Pearson residuals (in base-R lm()/glm())
-                 ## are NOT scaled by the overall dispersion factor
-                 vv <- vv/(sigma(object)^2)
-               }
-             }
+             ## variance functions of truncated families take the mean of
+             ##  the untruncated distribution, not the (truncated) conditional mean
+             vmu <- if (grepl("^truncated", fam$family)) {
+                      fam$linkinv(predict(object, type = "link", re.form = re.form))
+                    } else mu
+             ## wts holds the number of trials for binomial-type responses
+             vv <- full_variance(fam, vmu, phi = theta,
+                                 shape = family_params(object),
+                                 size = wts)
+             ## variance functions taking only mu are scaled by the dispersion
+             ##  (except Bell's, which is complete)
+             scaled_var <- identical(names(formals(fam$variance)), "mu") &&
+               fam$family != "bell"
              if (!noZI(object)) {
                ## if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
                ##   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
@@ -1115,6 +1090,12 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ##          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
                vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
              } ## noZI
+             if (scaled_var && trivialDisp(object)) {
+               ## handle convention that Pearson residuals (in base-R lm()/glm())
+               ## are NOT scaled by the overall dispersion factor;
+               ## applied to the complete variance (after zero-inflation)
+               vv <- vv/(sigma(object)^2)
+             }
              r <- r/sqrt(vv)
              if (!is.null(wts)) {
                r <- r * sqrt(wts)
