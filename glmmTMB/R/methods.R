@@ -972,9 +972,10 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @importFrom stats fitted model.response residuals
 ##' @details
 ##' \itemize{
-##' \item Residuals are computed based on predictions of type "response",
-##' i.e. equal to the conditional mean for non-zero-inflated models and to \code{mu*(1-p)}
-##' for zero-inflated models
+##' \item Residuals are computed from predictions of type "response". For
+##' \code{ordbeta}, the response mean includes the masses at zero and one.
+##' For zero-inflated models, the mean of the conditional distribution is
+##' multiplied by the probability of avoiding an extra zero.
 ##' \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
 ##' function from the object's \code{family} component; at present this returns \code{NA} for most
 ##' "exotic" families (i.e. deviance residuals are currently only
@@ -982,7 +983,7 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' \item Deviance is computed as the sum of squared deviance residuals, so is available only
 ##' for the families listed in the bullet point above. See \link[lme4]{deviance.merMod} for more
 ##' details on the definition of the deviance for GLMMs.
-##' \item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation. (The beta-binomial currently returns unscaled residuals.)
+##' \item for distributions in the exponential dispersion family (Gaussian, Poisson, binomial, Gamma), for models with a fixed dispersion parameter (Poisson, binomial) or constant \code{dispformula} component, reported Pearson residuals are only scaled by a factor proportional to the residual standard deviation (for compatibility with base R); divide these values by \code{sigma(fitted_model)} to get raw residuals scaled by the standard deviation. For all other distributions/models, Pearson residuals are scaled by the residual standard deviation.
 ##' }
 ##' @export
 residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "deviance", "dunn-smyth"), re.form = NULL, ...) {
@@ -1089,47 +1090,25 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
              if (!noZI(object)) {
                zprob <- predict(object, type = "zprob", re.form = re.form)
              }
-             if (is.null(v <- fam$variance)) {
+             if (is.null(fam$variance)) {
                stop("variance function undefined for family ",
                     sQuote(fam$family),"; cannot compute",
                     " Pearson residuals")
              }
-             vformals <- names(formals(v))
-             ## construct argument list for variance function based on its formals
-             ## some argument names vary across families
-             shape <- family_params(object)
-             vargs <- list()
-             vargs$mu <- vargs$lambda <- mu
-             vargs$theta <- vargs$phi <- vargs$alpha <- theta
-             vargs$shape <- vargs$power <- shape
-             vargs$psi <- shape
-             ## number of trials for binomial-type responses (combinomial)
-             vargs$size <- wts
-              if (fam$family == "ordbeta") {
-                ## Supply the full mixture-variance parameters.
-                vargs$cutpoints <- getParList(object)$psi
-                vargs$eta <- predict(object, type = "link", re.form = re.form)
-              }
-             # subset to only the arguments used by the variance function
-             vargs <- vargs[vformals]
-             ## suppress beta-binomial $variance() message, substitute
-             ##  a residuals-specific message
-             suppressMessages(vv <- do.call(v, args = vargs))
-             if (fam$family=="beta-binomial") {
-               message("beta-binomial Pearson residuals are not scaled by dispersion factor")
-             }
-             ## Bell distribution is a special case
-             ## (returns complete variance, not scaled variance, even though
-             ##  variance function takes only 'mu')
-             scaled_var <- identical(vformals, "mu") && fam$family != "bell"
-             if (scaled_var) {
-               vv <- vv * theta^2
-               if (trivialDisp(object)) {
-                 ## handle convention that Pearson residuals (in base-R lm()/glm())
-                 ## are NOT scaled by the overall dispersion factor
-                 vv <- vv/(sigma(object)^2)
-               }
-             }
+             ## variance functions of truncated families take the mean of
+             ##  the untruncated distribution, not the (truncated) conditional mean
+             vmu <- if (grepl("^truncated", fam$family)) {
+                      fam$linkinv(predict(object, type = "link", re.form = re.form))
+                    } else mu
+             ## wts holds the number of trials for binomial-type responses
+             vv <- full_variance(fam, vmu, phi = theta,
+                                 shape = family_params(object), size = wts,
+                                 cutpoints = getParList(object)$psi,
+                                 eta = predict(object, type = "link", re.form = re.form))
+             ## variance functions taking only mu are scaled by the dispersion
+             ##  (except Bell's, which is complete)
+             scaled_var <- identical(names(formals(fam$variance)), "mu") &&
+               fam$family != "bell"
              if (!noZI(object)) {
                ## if Y = [X * B], B ~ Bernoulli(1 - zprob), then:
                ##   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
@@ -1138,14 +1117,20 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                 if (fam$family == "ordbeta") {
                   ## Use M = p1 + pc*mu for observations from the non-extra-zero group.
                   ## The Bernoulli mixture below weights its variance by 1-zprob and adds between-group variance.
-                  eta <- vargs$eta
-                  cutpoints <- vargs$cutpoints
+                  eta <- predict(object, type = "link", re.form = re.form)
+                  cutpoints <- getParList(object)$psi
                   p1 <- plogis(eta - cutpoints[2])
                   pc <- plogis(eta - cutpoints[1]) - p1
                   mu <- p1 + pc * mu
                 }
                vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
              } ## noZI
+             if (scaled_var && trivialDisp(object)) {
+               ## handle convention that Pearson residuals (in base-R lm()/glm())
+               ## are NOT scaled by the overall dispersion factor;
+               ## applied to the complete variance (after zero-inflation)
+               vv <- vv/(sigma(object)^2)
+             }
              r <- r/sqrt(vv)
              if (!is.null(wts)) {
                r <- r * sqrt(wts)
@@ -2006,6 +1991,23 @@ refit.glmmTMB <- function(object, newresp, ...) {
   mf0 <- model.frame(object)
   rcol <- attr(attr(mf0, "terms"), "response")
   rnm <- deparse(fresp)
+  ## accept simulate() output directly
+  if (is.data.frame(newresp) && length(newresp) == 1) newresp <- newresp[[1]]
+  ## newresp is inserted into the original data, so a response with one
+  ## value per observation used in the fit must be padded with NAs in the
+  ## rows dropped by na.action (napredict() only pads for class "exclude")
+  na.act <- attr(mf0, "na.action")
+  if (length(na.act) > 0 && NROW(newresp) == nrow(mf0) &&
+      nrow(mf0) + length(na.act) == nrow(newdata)) {
+      class(na.act) <- "exclude"
+      newresp <- napredict(na.act, newresp)
+  }
+  if (NROW(newresp) != nrow(newdata)) {
+      stop(sprintf(paste("'newresp' has %d rows but the original data has %d;",
+                         "refit() does not work for models fitted with 'subset',",
+                         "or if the data have changed since fitting"),
+                   NROW(newresp), nrow(newdata)))
+  }
   if (binomialType(family(object)$family)) {
       ## FIXME: check for factor column?
       if ("(weights)" %in% names(mf0)) {

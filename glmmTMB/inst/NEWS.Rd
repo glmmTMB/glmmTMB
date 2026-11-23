@@ -23,6 +23,13 @@
       Formula references: Kubinec (2023, \doi{10.1017/pan.2022.20});
       Ospina and Ferrari (2010, \doi{10.1007/s00362-008-0125-4});
       Oehlert (1992, \doi{10.1080/00031305.1992.10475842}).
+      \item Starting values for the amount of smoothing in the main
+      (conditional) model now take account of the response and smooth terms.
+      This applies to Gaussian, Poisson, negative-binomial, binomial, beta,
+      Gamma, and Tweedie models with supported links and settings
+      (see \code{\link{glmmTMB}}). All other parameter starts are unchanged.
+      Supplying \code{map = list(theta = ...)} skips this choice for all
+      conditional smooths. Values supplied through \code{start} take precedence.
       \item Tweedie simulation is faster, especially when the power
       parameter is close to 2. Simulated values for a given seed differ
       from previous versions (GH #1341, Pascal Küng)
@@ -50,10 +57,33 @@
       \item \code{residuals(type = "working")} is now an error for the
       \code{ordinal} family (the response residual is on the
       category-index scale, so the GLM working residual is not defined)
+      \item \code{ordinal()} now gives an error for links other than
+      \code{"logit"}, \code{"probit"} and \code{"cloglog"}
+      \item an \code{ordinal} response with an empty category (integer
+      codes) or an unused factor level now gives a warning that names it;
+      a character or logical response now gives an error that names the
+      accepted types
+      \item \code{simulate_new()} now supports the \code{ordinal} family;
+      the number of categories comes from \code{newparams$psi}, and each
+      simulation is an ordered factor
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item With the RTMB back end, \code{simulate()} now applies the
+      factor loadings to \code{rr()} random effects (they were
+      previously simulated as independent N(0,1) values), and works for
+      models fitted with \code{REML = TRUE}. Simulations now match the
+      TMB back end. (GH #1357, #1358; Pascal Küng)
+      \item Pearson residuals of beta-binomial models are now scaled by
+      the dispersion factor \eqn{(\phi+n)/(\phi+1)}, i.e. divided by the
+      full beta-binomial standard deviation; previously they were
+      divided by the binomial standard deviation only
+      \item Pearson residuals of zero-inflated Gaussian and Gamma models
+      with a constant dispersion now use the complete variance divided by
+      \code{sigma()^2}, as for models without zero-inflation; previously only the
+      conditional part of the variance was scaled, so the residuals
+      were neither raw nor scaled Pearson residuals
       \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
       quadratic dispersion parameter, also shown by \code{print()}. Pearson
       residuals now pass this parameter to the variance function
@@ -62,6 +92,12 @@
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item \code{refit()} now works when incomplete cases in the
+      original data were excluded by \code{na.action} (e.g.
+      \code{refit(m, simulate(m)[[1]])} previously failed in this case).
+      \code{refit()} also accepts the data frame returned by
+      \code{simulate()} directly, and gives an informative error for
+      models fitted with \code{subset}.
       \item For \code{skewnormal}, the variance helper now returns the
       squared response standard deviation, matching the fitted parameterization
       and correcting Pearson residual scaling (GH #1359, item 3).
@@ -87,6 +123,12 @@
       the map's \code{beta} element skipped the internal intercept map,
       so the intercept and the thresholds were not jointly identifiable
       (GH #1348)
+      \item \code{simulate_new(..., return_val = "object")} now stores the
+      simulated random effects correctly: \code{getME(., "b")} previously
+      returned values shifted by the number of fixed parameters, and a
+      \code{map} on \code{beta} was partially matched as a map on
+      \code{b}, truncating \code{b} (GH #1360). \code{return_val = "pars"}
+      now returns the parameters in their canonical order.
       \item The \code{t_family} variance helper now requires the degrees
       of freedom as \code{shape}, returns scale squared times the Student-t
       variance factor, and preserves the observation-vector length. Pearson
@@ -104,6 +146,14 @@
       \code{summary()}, Wald \code{confint()} and \code{emmeans} treat
       user-fixed \code{psi} elements as known constants in the threshold
       standard errors (with every element fixed, the standard errors are 0)
+      \item Variance helpers are implemented for \code{truncated_nbinom1},
+      \code{truncated_genpois}, and \code{truncated_compois}. The generalized Poisson helper supports dispersion at least one. Pearson residuals for all five zero-truncated count families
+      evaluate variance at the untruncated mean while retaining the
+      truncated response mean in the residual (GH #1359, item 5). The help file for these families
+      gives the conditional-moment identity and its relation to
+      Shonkwiler (2016; \doi{10.1016/j.jeconom.2016.09.002}), Scollnik
+      (1998; \doi{10.2143/AST.28.1.519083}), and Huang
+      (2017; \doi{10.1177/1471082X17697749}).
       \item \code{confint(method = "uniroot")} labelled its rows from
       the full parameter list while computing them for the estimated
       parameters, so when a parameter was fixed via \code{map} (including

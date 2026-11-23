@@ -519,8 +519,8 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
 
   if (family$family == "ordinal") {
       ## K-1 increasing thresholds via a softmax parameterization:
-      ## psi are log-weights of the K baseline category probabilities
-      ## (last fixed to 0) and theta = qlogis(cumsum(softmax(c(psi, 0)))).
+      ## psi are log-weights (with the logit link, of the K baseline category
+      ## probabilities; last fixed to 0) and theta = qlogis(cumsum(softmax(c(psi, 0)))).
       ## psi = 0 starts from equiprobable categories (cf. ordinal::clm)
       psi_init <- rr0(length(ord_levels) - 1L)
   } else {
@@ -571,6 +571,9 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
                        thetadisp = t01(ndTheta = ndThetaStruc(dispList), dispReStruc, dispList),
                        psi  = psi_init
                      ))
+
+  parameters <- smoothStart(parameters, condList, condReStruc, data.tmb,
+                            family, mapArg)
 
   ## ordinal family: a fixed-effect intercept is redundant with the
   ## thresholds; fix it to zero (it is absorbed into the thresholds)
@@ -1285,6 +1288,31 @@ binomialType <- function(x) {
 ##' Structures marked with * are experimental/untested. See \code{vignette("covstruct", package = "glmmTMB")} for more information.
 ##' \item For backward compatibility, the \code{family} argument can also be specified as a list comprising the name of the distribution and the link function (e.g. \code{list(family="binomial", link="logit")}). However, \strong{this alternative is now deprecated}; it produces a warning and will be removed at some point in the future. Furthermore, certain capabilities such as Pearson residuals or predictions on the data scale will only be possible if components such as \code{variance} and \code{linkfun} are present, see \code{\link{family}}.
 ##' \item Smooths taken from the \code{mgcv} package can be included in \code{glmmTMB} formulas using \code{s}; these terms will appear as additional components in both the fixed and the random-effects terms. This functionality is \emph{experimental} for now. We recommend using \code{REML=TRUE}. See \code{\link[mgcv]{s}} for details of specifying smooths (and \code{\link[mgcv]{smooth2random}} and the appendix of Wood (2004) for technical details).
+##' To help models with smooths converge, starting values for the amount of
+##' smoothing in the main (conditional) model are chosen using the variation in
+##' the response and the smooth terms.
+##' This applies to Gaussian models with an identity link; Poisson,
+##' \code{nbinom1}, \code{nbinom2}, and Tweedie models with a log link;
+##' binomial and beta models with a logit link; and Gamma models with a log or
+##' inverse link. For Gaussian models, these starting values are used only when
+##' dispersion is constant and estimated, and there is no zero inflation.
+##' The new smoothing starts are not used with zero-truncated count families.
+##'
+##' Starting values for all other parameters,
+##' including smooths in the zero-inflation and dispersion models, are unchanged.
+##' If you supply \code{map = list(theta = ...)}, the automatic choice of starting
+##' values is skipped for all smooths in the main model, even if your mapping only
+##' refers to ordinary random effects. The previous default starts are then used.
+##' Values supplied through \code{start} always take precedence.
+##'
+##' For non-Gaussian models, these smoothing starts are practical initial guesses.
+##' They do not estimate dispersion or change its starting values.
+##' The starting values for the mean and the zero-inflation part of the model are
+##' unchanged. Inverse-link Gamma models can still have invalid starting means.
+##' Some models, including zero-inflated models, may still benefit from values
+##' supplied through \code{start}. Successful convergence is not guaranteed,
+##' and trying different starts can sometimes improve the fit even when the
+##' model reports convergence.
 ##' }
 ##'
 ##' @note
@@ -1557,6 +1585,24 @@ glmmTMB <- function(
 
     if (!is.null(family$initialize)) {
         local(eval(family$initialize))  ## 'local' so it checks but doesn't modify 'y' and 'weights'
+    }
+
+    if (family$family == "ordinal") {
+        ## unused factor levels are gone from 'fr' if drop_unused_levels is TRUE
+        y0 <- y
+        if (is.factor(y)) {
+            mf0 <- mf
+            mf0$drop.unused.levels <- FALSE
+            y0 <- eval(mf0, envir = environment(formula),
+                       enclos = parent.frame())[[respCol]]
+        }
+        cats <- if (is.factor(y0)) levels(y0) else seq_len(max(y0, na.rm = TRUE))
+        empty <- setdiff(cats, y0[weights > 0])
+        if (length(empty) > 0) {
+            warning("no observations in ordinal response ",
+                    if (is.factor(y0)) "level(s) " else "category(ies) ",
+                    paste(empty, collapse = ", "))
+        }
     }
 
    if (grepl("^truncated", family$family) &&
@@ -2082,6 +2128,7 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
                               profile = "beta",
                               silent = !verbose,
                               DLL = "glmmTMB"))
+        if (!doOptim) return(obj)
         optTime <- system.time(fit <- optfun(), gcFirst = FALSE)
 
         sdr <- sdreport(obj, getJointPrecision=TRUE)
