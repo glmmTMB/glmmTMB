@@ -990,7 +990,6 @@ simulate_new <- function(object,
     ## insert a legal value: 1.0 is OK as long as family is not "beta" or "ordinal"
     ## (note the family *function* is 'beta_family' but the internal
     ##  $family value is 'beta')
-=======
     if (family$family == "ordinal") {
         ## number of categories comes from psi; all must appear in the fake response
         K <- length(newparams$psi) + 1L
