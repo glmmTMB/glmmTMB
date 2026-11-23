@@ -349,6 +349,12 @@ test_that("confint with mapped parameters", {
     ## getParms("theta_", test2) ## 4:5
     ## getParms("theta_", test2, include_mapped = TRUE) ## 5:6
 
+    ## uniroot rows are the estimated parameters: labels must skip the
+    ## mapped one rather than shift (the x row used to carry z's interval)
+    cu <- confint(test2, parm = "beta_", method = "uniroot")
+    expect_equal(rownames(cu), c("(Intercept)", "z"))
+    expect_equal(cu[, "Estimate"], fixef(test2)$cond[c("(Intercept)", "z")])
+
     c3 <- confint(test2)
     expect_equal(nrow(c3), 4)
     expect_equal(rownames(c3),
@@ -922,6 +928,8 @@ test_that("handle empty betadisp in vcov", {
                  c(cond = 2L, zi = 0L, disp = 0L))
     expect_equal(vcov(m)$disp,
                  matrix(NA_real_, dimnames = list("disp~", "disp~")))
+    ## no 'disp' block to name when only estimated parameters are kept
+    expect_equal(vcov(m, include_nonest = FALSE)$cond, vcov(m)$cond)
 })
 
 test_that("getGroups works as expected with a single group", {

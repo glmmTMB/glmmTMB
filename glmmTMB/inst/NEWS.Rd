@@ -7,9 +7,49 @@
 \section{CHANGES IN VERSION 1.1.15.9000}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
+      \item Starting values for the amount of smoothing in the main
+      (conditional) model now take account of the response and smooth terms.
+      This applies to Gaussian, Poisson, negative-binomial, binomial, beta,
+      Gamma, and Tweedie models with supported links and settings
+      (see \code{\link{glmmTMB}}). All other parameter starts are unchanged.
+      Supplying \code{map = list(theta = ...)} skips this choice for all
+      conditional smooths. Values supplied through \code{start} take precedence.
       \item Tweedie simulation is faster, especially when the power
       parameter is close to 2. Simulated values for a given seed differ
       from previous versions (GH #1341, Pascal Küng)
+      \item an \code{ordinal} formula without an intercept
+      (\code{~ 0 + x}, \code{~ x - 1}) now warns that an intercept is
+      needed and assumed, and is fitted with the intercept added (the
+      intercept is fixed to zero and absorbed into the thresholds),
+      giving the same fit as \code{ordinal::clm} and \code{MASS::polr},
+      which give the same warning; previously the model was fitted with
+      the intercept-free parameterization. Supplying \code{beta} in
+      \code{map} or \code{start} together with an intercept-free formula
+      is an error, because the added intercept column shifts the
+      coefficient positions
+      \item for the \code{ordinal} family, \code{profile()},
+      \code{confint(method = "profile")}, \code{confint(method =
+      "uniroot")} and \code{vcov(., full = TRUE)} label the internal
+      threshold parameters \code{psi1}, \code{psi2}, ... instead of
+      reusing the threshold labels (\code{Low|Medium}), since those rows
+      are on the internal (softmax) scale. The thresholds themselves have
+      Wald intervals only, from \code{confint()}; \code{confint()} and
+      \code{summary()} report the thresholds on the threshold scale. The
+      threshold labels are still accepted in \code{parm}: Wald
+      \code{confint()} returns the threshold, and the profile methods the
+      \code{psi} element it is derived from
+      \item \code{residuals(type = "working")} is now an error for the
+      \code{ordinal} family (the response residual is on the
+      category-index scale, so the GLM working residual is not defined)
+      \item \code{ordinal()} now gives an error for links other than
+      \code{"logit"}, \code{"probit"} and \code{"cloglog"}
+      \item an \code{ordinal} response with an empty category (integer
+      codes) or an unused factor level now gives a warning that names it;
+      a character or logical response now gives an error that names the
+      accepted types
+      \item \code{simulate_new()} now supports the \code{ordinal} family;
+      the number of categories comes from \code{newparams$psi}, and each
+      simulation is an ordered factor
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{
@@ -19,9 +59,95 @@
       previously simulated as independent N(0,1) values), and works for
       models fitted with \code{REML = TRUE}. Simulations now match the
       TMB back end. (GH #1357, #1358; Pascal Küng)
+      \item Pearson residuals of beta-binomial models are now scaled by
+      the dispersion factor \eqn{(\phi+n)/(\phi+1)}, i.e. divided by the
+      full beta-binomial standard deviation; previously they were
+      divided by the binomial standard deviation only
+      \item Pearson residuals of zero-inflated Gaussian and Gamma models
+      with a constant dispersion now use the complete variance divided by
+      \code{sigma()^2}, as for models without zero-inflation; previously only the
+      conditional part of the variance was scaled, so the residuals
+      were neither raw nor scaled Pearson residuals
+      \item For \code{nbinom12}, \code{family_params()} returns the natural-scale
+      quadratic dispersion parameter, also shown by \code{print()}. Pearson
+      residuals now pass this parameter to the variance function
+      (GH #1359, item 2). The help file for the family also corrects the correspondence
+      with Lindén and Mäntyniemi (2011) to \eqn{\omega=1+\phi}.
       \item Smooth random-effect coefficient indices now count coefficients,
       rather than observations, and respect interleaved grouping terms.
       (Gavin Simpson)
+      \item For \code{skewnormal}, the variance helper now returns the
+      squared response standard deviation, matching the fitted parameterization
+      and correcting Pearson residual scaling (GH #1359, item 3).
+      \item \code{dof_KR}, \code{dof_satt} and the \code{ddf} options of
+      \code{summary}, \code{anova}, \code{car::Anova} and \code{emmeans}
+      now work for conditional coefficients tied or fixed via \code{map},
+      and (Kenward-Roger) for rank-deficient models; previously
+      "non-conformable arguments", an \code{eigen()} error, or rejected by
+      \code{car::Anova}. Tied coefficients share one ddf; fixed coefficients,
+      and hypotheses involving only fixed coefficients, get \code{NA} (GH #1340)
+      \item relatedly, \code{emmeans()} no longer fails ("logical subscript
+      too long") for models with coefficients tied via \code{map} (GH #1340)
+      \item \code{vcov(., include_nonest = FALSE)} no longer fails ("length
+      of 'dimnames'") when the dispersion model has no fixed-effect
+      parameters, e.g. \code{dispformula = ~0 + offset(log(se))} or
+      \code{~0 + (1|g)}, or for a \code{dispformula} given to a family
+      without dispersion; \code{dof_satt()},
+      \code{summary(., ddf = "satterthwaite")}, \code{emmeans()} and
+      \code{confint()} now work for such models (GH #1344)
+      \item an \code{ordinal} fit with a user \code{map} on another
+      parameter vector (e.g. \code{map = list(betazi = factor())}) no
+      longer leaves the fixed-effect intercept free: partial matching of
+      the map's \code{beta} element skipped the internal intercept map,
+      so the intercept and the thresholds were not jointly identifiable
+      (GH #1348)
+      \item \code{simulate_new(..., return_val = "object")} now stores the
+      simulated random effects correctly: \code{getME(., "b")} previously
+      returned values shifted by the number of fixed parameters, and a
+      \code{map} on \code{beta} was partially matched as a map on
+      \code{b}, truncating \code{b} (GH #1360). \code{return_val = "pars"}
+      now returns the parameters in their canonical order.
+      \item The \code{t_family} variance helper now requires the degrees
+      of freedom as \code{shape}, returns scale squared times the Student-t
+      variance factor, and preserves the observation-vector length. Pearson
+      residuals use the fitted degrees of freedom (GH #1359, item 4).
+      \item \code{vcov(., full = TRUE)} now handles a family-specific
+      parameter (\code{psi}) fixed via \code{map}: the mapped entry gets
+      \code{NA} rows and columns like other mapped parameters (previously
+      the mapped row was dropped and the remaining rows lost their
+      labels, or for the \code{ordinal} family the expansion failed with
+      "number of items to replace is not a multiple of replacement
+      length"). A random effect in the dispersion model fixed via
+      \code{map = list(thetadisp = )} no longer makes \code{vcov()} and
+      \code{summary()} fail with
+      "missing value where TRUE/FALSE needed". For the \code{ordinal} family,
+      \code{summary()}, Wald \code{confint()} and \code{emmeans} treat
+      user-fixed \code{psi} elements as known constants in the threshold
+      standard errors (with every element fixed, the standard errors are 0)
+      \item Variance helpers are implemented for \code{truncated_nbinom1},
+      \code{truncated_genpois}, and \code{truncated_compois}. The generalized Poisson helper supports dispersion at least one. Pearson residuals for all five zero-truncated count families
+      evaluate variance at the untruncated mean while retaining the
+      truncated response mean in the residual (GH #1359, item 5). The help file for these families
+      gives the conditional-moment identity and its relation to
+      Shonkwiler (2016; \doi{10.1016/j.jeconom.2016.09.002}), Scollnik
+      (1998; \doi{10.2143/AST.28.1.519083}), and Huang
+      (2017; \doi{10.1177/1471082X17697749}).
+      \item \code{confint(method = "uniroot")} labelled its rows from
+      the full parameter list while computing them for the estimated
+      parameters, so when a parameter was fixed via \code{map} (including
+      the intercept the \code{ordinal} family fixes internally), the rows
+      after it carried the wrong labels
+      \item Prediction covariance output retains matrix dimensions for
+      single observations, uses the prediction-vector length for no-ZI output,
+      and restores both covariance axes under \code{na.exclude}
+      (GH #1359, item 6).
+      \item for the \code{ordinal} family with random effects, Wald
+      \code{confint()} with \code{parm} given by name (e.g.
+      \code{"theta_"}) returned the wrong rows, because its table lists
+      the thresholds before the random-effect standard deviations. For
+      other families with a family parameter (\code{psi}) and random
+      effects, a \code{parm} that names that parameter now gives an error
+      instead of a random-effect row
     } % itemize
   } % bug fixes
 } % 1.1.15.9000
