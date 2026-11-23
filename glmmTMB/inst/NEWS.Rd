@@ -47,7 +47,7 @@
       rank deficiency, since that combination now gives the matrix of the
       equivalent fit without \code{map}; the warning also came for any
       rank-deficient \code{zi} or \code{disp} model without a \code{map}
-      (Paul Schmidt)
+      (GH #1377, Paul Schmidt)
       \item \code{bread()} now returns the covariance matrix of the
       estimated parameters (\code{vcov(., include_nonest = FALSE)}), in the
       order \code{estfun()} uses (by the levels of a \code{map} factor),
@@ -61,7 +61,7 @@
       or fixed via \code{map} (also through the internal \code{map} of
       \code{propto()}), coefficients were dropped, or the dispersion model
       had no fixed effects. \code{sandwich()}, \code{vcovHC()} and
-      \code{vcov(., sandwich = TRUE)} now work for such models (Paul Schmidt)
+      \code{vcov(., sandwich = TRUE)} now work for such models (GH #1377, Paul Schmidt)
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{
@@ -101,7 +101,7 @@
       standard errors at the wrong coefficients, \code{sandwich()} and
       \code{vcovHC()} put their values at the wrong coefficients, and
       \code{car::Anova()} could be wrong when the map also fixed a
-      coefficient or the model was rank deficient (Paul Schmidt)
+      coefficient or the model was rank deficient (GH #1377, Paul Schmidt)
       \item an \code{ordinal} fit with a user \code{map} on another
       parameter vector (e.g. \code{map = list(betazi = factor())}) no
       longer leaves the fixed-effect intercept free: partial matching of
