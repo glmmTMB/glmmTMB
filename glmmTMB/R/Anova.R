@@ -119,7 +119,7 @@ Anova.glmmTMB <- function (mod, type = c("II", "III", 2, 3),
     ## coefficients fixed via 'map' are known constants (zero variance);
     ## adjust the default vcov so it aligns with the full coefficient
     ## vector -- a user-supplied matrix is trusted as-is
-    if (!user_vcov) vcov. <- pad_mapped_vcov(mod, vcov., component)
+    if (!user_vcov) vcov. <- pad_mapped_vcov(mod, vcov., component, reduced = FALSE)
     type <- as.character(type)
     type <- match.arg(type)
     if (missing(singular.ok))

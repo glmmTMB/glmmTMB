@@ -18,7 +18,16 @@ By default, \code{FALSE} such that the names are sanitized to user friendly name
 \item{...}{ignored additional arguments (only for methods compatibility).}
 }
 \value{
-The bread matrix, which is just the variance-covariance matrix.
+The bread matrix, which is just the variance-covariance matrix
+  of the estimated parameters, in the order that
+  \code{\link[sandwich]{estfun}} uses: \code{vcov(x, include_nonest =
+  FALSE)$cond} with \code{full = FALSE}, \code{vcov(x, full = TRUE,
+  include_nonest = FALSE)} with \code{full = TRUE}. TMB orders the
+  estimated parameters by the levels of a \code{map} factor; each row is
+  named after the first coefficient (with \code{full = TRUE}, the first
+  parameter) that its estimated parameter belongs to. Coefficients or
+  parameters tied via \code{map} share one row; those fixed via
+  \code{map}, and coefficients dropped for rank deficiency, have no row.
 }
 \description{
 This method for \code{\link[sandwich]{bread}} returns the variance-covariance

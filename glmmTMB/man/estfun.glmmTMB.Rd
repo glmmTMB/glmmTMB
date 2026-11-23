@@ -24,6 +24,10 @@ By default, \code{FALSE} such that the names are sanitized to user friendly name
 A matrix where each row corresponds to a cluster and each column
   corresponds to a parameter in the model. The values are the empirical estimating functions
  (score vectors) for each parameter in each cluster.
+  The columns are named and ordered as the rows of
+  \code{\link{bread.glmmTMB}} with the same \code{full}: the estimated
+  conditional fixed-effect parameters with \code{full = FALSE}, all
+  estimated parameters with \code{full = TRUE}.
 }
 \description{
 This method for \code{\link[sandwich]{estfun}} extracts the
