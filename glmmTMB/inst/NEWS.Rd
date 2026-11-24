@@ -163,9 +163,16 @@
       \code{psi} map were out of first-appearance order,
       \code{vcov(., full = TRUE)} also put the variances on the wrong
       \code{psi} rows, and \code{confint(method = "uniroot")} profiled the
-      wrong element for a threshold label (GH #1363, GH #1360). The
-      \code{vcov(., full = TRUE)} row labels of an \code{ordbeta} fit with
-      a \code{psi} map out of first-appearance order are fixed the same way
+      wrong element for a threshold label (GH #1363, GH #1360)
+      \item when the levels of a \code{map} were out of first-appearance
+      order (e.g. \code{map = list(beta = factor(c(2, 1, 3)))}),
+      \code{vcov(., full = TRUE, include_nonest = FALSE)} put the
+      variances of the mapped parameters on the wrong rows, and Wald
+      \code{confint()} gave fixed-effect coefficients the wrong standard
+      errors. The rows of \code{vcov(., full = TRUE, include_nonest =
+      FALSE)} and of Wald \code{confint()} now follow the levels of the
+      \code{map}, the order in which TMB estimates the parameters
+      (GH #1363)
     } % itemize
   } % bug fixes
 } % 1.1.15.9000
