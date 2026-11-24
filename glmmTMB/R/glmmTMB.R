@@ -75,14 +75,6 @@ startParams <- function(parameters,
     }
     resid <- as.data.frame(resid)
 
-    get_rank <- function(x) {
-      if (x[["blockCode"]] != .valid_covstruct[["rr"]]) return(0)
-      p <- x$blockSize
-      nt <- x$blockNumTheta
-      rank <- (2*p + 1 - sqrt((2*p+1)^2 - 8*nt))/2
-      return(rank)
-    }
-
     rank <- vapply(condReStruc,
                    get_rank,
                    FUN.VALUE=numeric(1))

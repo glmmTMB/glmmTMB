@@ -125,5 +125,27 @@ test_that("rr start and map", {
                partheta)
 })
 
+test_that("rrTerms reproduces ranef() ", {
+ 
+    spiderDat_common$fac <- sample(letters[1:3], nrow(spiderDat_common), replace = T)
+    spider_ri_rrs <- glmmTMB(abund ~ 1 + (1 |fac) + rr(Species + 0|id, d = 3) + rr(soil.dry | Species),
+                      family = poisson,
+                      data = spiderDat_common)
+    
+    rrt_ri_rrs <- rrTerms(spider_ri_rrs)$cond
+    re_ri_rrs   <- ranef(spider_ri_rrs)$cond
+
+    ## non-rr term is NULL
+    expect_null(rrt_ri_rrs[[1]])
+
+    ## rr terms reproduces ranef(), with matching names
+    for (i in 2:3) {
+        expect_equal(rrt_ri_rrs[[i]]$lv %*% t(rrt_ri_rrs[[i]]$fl), as.matrix(re_ri_rrs[[i]]),
+                     tolerance = 1e-6, check.attributes = FALSE)
+        expect_equal(rownames(rrt_ri_rrs[[i]]$lv), rownames(re_ri_rrs[[i]]))
+        expect_equal(rownames(rrt_ri_rrs[[i]]$fl), colnames(re_ri_rrs[[i]]))
+    }
+})
+
 ## FIXME: test, remove if unnecessary
 options(glmmTMB.control = op) ## just in case on.exit() is inappropriate?

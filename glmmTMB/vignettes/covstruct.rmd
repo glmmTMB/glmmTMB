@@ -647,7 +647,7 @@ g(\boldsymbol{\mu}) = \boldsymbol{X\beta} + \boldsymbol{Zb}
 
 where $g(.)$ is the link function; $\boldsymbol{\beta}$ is a p-dimensional vector of regression coefficients related to the covariates; $\boldsymbol{X}$ is an $n \times p$ model matrix; and $\boldsymbol{Z}$ is the $n\times q$ model matrix for the $q$-dimensional vector-valued random effects variable $\boldsymbol{U}$ which is multivariate normal with mean zero and a parameterized $q \times q$ variance-covariance matrix, $\boldsymbol{\Sigma}$, i.e., $\boldsymbol{U} \sim N(\boldsymbol{0}, \boldsymbol{\Sigma})$.
 
-A general latent variable model (GLVM) requires many fewer parameters for the variance-covariance matrix, $\boldsymbol{\Sigma}$. To a fit a GLVM we add a *reduced-rank* (rr) covariance structure, so the model becomes
+A generalised latent variable model (GLVM) requires many fewer parameters for the variance-covariance matrix, $\boldsymbol{\Sigma}$. To a fit a GLVM we add a *reduced-rank* (rr) covariance structure, so the model becomes
 <!-- -->
 \begin{align}
 g(\boldsymbol{\mu}) &= \boldsymbol{X\beta} + \boldsymbol{Z(I_n \otimes \Lambda)b} \\
@@ -715,26 +715,50 @@ if (require("ggplot2")) {
 ```
 
 If we instead want to get the factor loadings by Species and *latent* variables by site, we
-can use a (so far experimental) function to get a list with components `$fl` (factor loadings)
-and `$b` (latent variables by site)
+can use the function `rrTerms()`. It returns a list with components `cond`, `zi`, and `disp`, each containing one element per random-effect term. If the term has an `rr` structure, the element contains matrices of `$fl` (factor loadings) and `$lv` (latent variables by site). For the model fit `spider_rr`, we can get the factor loadings and latent variables as follows
 
 ```{r get-fl}
-source(system.file("misc", "extract_rr.R", package = "glmmTMB"))
-rr_info <- extract_rr(spider_rr)
+rr_info <- rrTerms(spider_rr)$cond[[1]]
 lapply(rr_info, dim)
 ```
 
-We can use this information to create an (ugly) biplot. (Improvements welcome!)
+The function `rrPlot()` plots the latent variables (by default the first two,
+for the first `rr` term in the conditional model). With `biplot = TRUE`,
+factor loadings are added as labelled points.
 
 ```{r spider-biplot, fig.width = 8, fig.height=8}
-par(las = 1)
-afac <- 4
-sp_names <- abbreviate(gsub("Species", "", rownames(rr_info$fl)))
-plot(rr_info$fl[,1], rr_info$fl[,2], xlab = "factor 1", ylab = "factor 2", pch = 16, cex = 2)
-text(rr_info$b[,1]*afac*1.05, rr_info$b[,2]*afac*1.05, rownames(rr_info$b))
-arrows(0, 0, rr_info$b[,1]*afac, rr_info$b[,2]*afac)
-text(rr_info$fl[,1], rr_info$fl[,2], sp_names, pos = 3, col = 2)
+par(mfrow= c(1,2))
+rrPlot(spider_rr)
+spiderbiplot <- rrPlot(spider_rr, biplot = TRUE)
 ```
+
+Other latent variables, and `rr` terms in the zero-inflation or dispersion
+parts of the model, can be specified in the argument `which_rr`; for example
+`which_rr = list(lvs = c(1, 3))` plots latent variables 1 and 3.
+
+If you wish to customise the plot, you can extract the latent variables and factor loadings from `rrTerms()`/ `rrPlot` and build your own figure with `ggplot2`, for example.
+
+```{r spider-ggplot, fig.width = 7, fig.height = 7, eval = requireNamespace("ggplot2", quietly = TRUE)}
+lv_df <- spiderbiplot$lv
+lv_df <- merge(lv_df, unique(spider_long[c("id", "moss")]), by = "id", all.x = TRUE, sort = FALSE)
+
+fl_df <- spiderbiplot$fl
+fl_df$Species <- gsub("Species", "", rownames(fl_df))
+
+sc <- spiderbiplot$scale
+if (require("ggplot2")) {
+  ggplot(lv_df, aes(lv1, lv2, colour = moss)) +
+    geom_point() + 
+    scale_colour_distiller(palette = "Greens", direction = 1) +
+    geom_text(aes(label = id), vjust = -0.7, size = 3) +
+    geom_text(data = fl_df, aes(fl1*sc, fl2*sc, label = Species),
+              colour = "blue", size = 3) +
+    coord_equal() +
+    labs(x = "Latent variable 1", y = "Latent variable 2") +
+    theme_minimal()
+}
+```
+
 
 ## Proportional
 
