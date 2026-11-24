@@ -664,9 +664,10 @@ par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","ps
 ## (getParnames() with the defaults), matched block by block, so a name
 ## that repeats in another block is never matched. Within a block each
 ## name takes the next match after the previous one, so a name that
-## repeats within the block takes the right occurrence; names that
-## getParnames() lists by map level rather than in full order fall back
-## to the first match not yet used
+## repeats within the block takes the right occurrence when the
+## estimated names are in full order; names that getParnames() lists by
+## map level fall back to the first match not yet used, which can pick
+## the wrong occurrence of a repeated name
 est_positions <- function(fullNameList, estNameList) {
     offset <- 0L
     pos <- integer(0)
