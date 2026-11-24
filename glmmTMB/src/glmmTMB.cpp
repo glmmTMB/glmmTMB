@@ -470,7 +470,12 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
         U.col(i) = sd * nldens.simulate();
       }
     }
-    SET_COR;
+    if (term.fullCor == 1) {
+      term.corr = nldens.cov();
+    } else {
+      term.corr.resize(1,1);
+      term.corr(0,0) = n > 1 ? rho : Type(NAN);
+    }
     term.sd = sd;             // For report
   }
   else if (term.blockCode == toep_covstruct || term.blockCode == homtoep_covstruct) {
