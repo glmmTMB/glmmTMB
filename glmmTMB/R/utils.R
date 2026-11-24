@@ -664,9 +664,9 @@ par_components <- c("beta","betazi","betadisp","theta","thetazi","thetadisp","ps
 ## (getParnames() with the defaults), matched block by block, so a name
 ## that repeats in another block is never matched. Within a block each
 ## name takes the next match after the previous one, so a name that
-## repeats within the block takes the right occurrence; the psi names,
-## which getParnames() lists by map level rather than in full order,
-## fall back to the first match not yet used
+## repeats within the block takes the right occurrence; names that
+## getParnames() lists by map level rather than in full order fall back
+## to the first match not yet used
 est_positions <- function(fullNameList, estNameList) {
     offset <- 0L
     pos <- integer(0)
@@ -802,14 +802,15 @@ getParnames <- function(object, full, include_dropped = TRUE, include_mapped = T
                 }
             }  ## if NA/duplicated values
              ## TMB orders the estimated parameters by map level; list
-             ## the psi names that way too, so that they label the right
+             ## the names that way too, so that they label the right
              ## rows when map levels are out of first-appearance order
              ## (GH #1363)
-             if (names(map)[m] == "psi" && !include_mapequal &&
-                 !is.null(nameList[["psi"]])) {
-                 keep <- setdiff(seq_along(map[[m]]), missmap)
-                 nameList[["psi"]] <-
-                     nameList[["psi"]][order(as.integer(map[[m]][keep]))]
+             w <- match(names(map)[m], par_components)
+             keep <- setdiff(seq_along(map[[m]]), missmap)
+             if (!include_mapequal && !is.na(w) && length(nameList) >= w &&
+                 length(nameList[[w]]) == length(keep)) {
+                 nameList[[w]] <-
+                     nameList[[w]][order(as.integer(map[[m]][keep]))]
              }
          } ## for (m in seq_along(map))
      } ## if (length(map) > 0)
