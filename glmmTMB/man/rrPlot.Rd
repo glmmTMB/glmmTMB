@@ -39,12 +39,15 @@ levels of the grouping factor}
 \item{\dots}{further arguments passed to \code{\link{plot}}}
 }
 \value{
-a list of the plotted latent variables (\code{lv}),
-  the selection used (\code{which_rr}), and, for a biplot, the loadings
-  (\code{fl}) and the arrow scaling (\code{scale})
+a list with components:
+ \item{lv}{a data frame of the plotted latent variables.}
+ \item{fl}{a data frame of the factor loadings.}
+\item{which_rr}{the selection used: a list with elements \code{component},
+  \code{n} and \code{lvs}.}
+\item{scale}{ the value the factor loadings were multiplied by before plotting (1 if they were not rescaled).}
 }
 \description{
-Plots latent variables from a reduced-rank (\code{glmmTMB}) random-effect term of a
+Plots latent variables from a reduced-rank random-effect term of a
 fitted \code{glmmTMB} model. When \code{biplot = TRUE} the factor loadings
 are added as labelled points (or arrows).
 }

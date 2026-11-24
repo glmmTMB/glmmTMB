@@ -125,9 +125,12 @@ rrTerms <- function(x){
 ##' @param scale a numeric to rescale the factor loadings relative to the latent variables when
 ##'   \code{biplot = TRUE}
 ##' @param \dots further arguments passed to \code{\link{plot}}
-##' @return a list of the plotted latent variables (\code{lv}),
-##'   the selection used (\code{which_rr}), and, for a biplot, the loadings
-##'   (\code{fl}) and the arrow scaling (\code{scale})
+##' @return a list with components:
+#'  \item{lv}{a data frame of the plotted latent variables.}
+#'  \item{fl}{a data frame of the factor loadings.}
+##' \item{which_rr}{the selection used: a list with elements \code{component},
+##'   \code{n} and \code{lvs}.}
+##' \item{scale}{ the value the factor loadings were multiplied by before plotting (1 if they were not rescaled).}
 ##' @seealso \code{\link{rrTerms}}
 ##' @importFrom graphics plot points abline arrows text
 ##' @export
@@ -143,7 +146,6 @@ rrPlot <- function(object,
                    arrows = FALSE,
                    labels = FALSE,
                    scale = NULL,
-                   main = NULL,
                    ...) {
 
   if (!is.list(which_rr)) {
@@ -164,6 +166,10 @@ rrPlot <- function(object,
   all_rr_terms <- rrTerms(object)
   rr_comp <- all_rr_terms[[component]]
   rr <- rr_comp[!vapply(rr_comp, is.null, NA)]
+
+  idx   <- which(!vapply(rr_comp, is.null, NA))[n]        # position among all RE terms
+  group <- getGrpVar(object$modelInfo$reTrms[[component]]$flist)[idx]   # e.g. "id"
+
   if (length(rr) == 0) {
     stop("no reduced-rank (rr) terms found in the '", component, "' component",
          call. = FALSE)
@@ -186,24 +192,35 @@ rrPlot <- function(object,
   }
 
   lv <- lv_fl_n$lv[, which_lvs, drop = FALSE]
+  lv_labs <- rownames(lv)
+
   fl <- lv_fl_n$fl[, which_lvs, drop = FALSE]
+  fl_labs <- rownames(fl)
+
   k <- if(biplot) { if(is.null(scale)) max(abs(lv)) / max(abs(fl)) else scale } else { 1 }
 
   ## common limits so that both axes have the same scale and loadings fit
   lim <- range(lv, if (biplot) fl * k)
-  lim <- lim + c(-1, 1) * 0.1 * diff(lim)
+  lim <- lim + c(-1, 1) * 0.05 * diff(lim)
 
   plot(lv, xlim = lim, ylim = lim,  pch = 16, ...)
-  if (labels) text(lv, labels = rownames(lv), pos = 3, cex = 0.7)
+  if (labels) text(lv, labels = lv_labs, pos = 3, cex = 0.7)
 
   if (biplot) {
     if (arrows) {
       arrows(0, 0, fl[, 1] * k, fl[, 2] * k, length = 0.08, col = "blue")
     } 
-    text(fl[, 1] * k, fl[, 2] * k, labels = rownames(fl),
+    text(fl[, 1] * k, fl[, 2] * k, labels = fl_labs,
          pos = 3, col = "blue", cex = 0.8)
   }
-  invisible(c(list(lv = lv,
-                   which_rr = list(component = component, n = n, lvs = which_lvs)),
-              if (biplot) list(fl = fl, scale = k)))
+
+  lvdf = setNames(data.frame(lv_labs, lv, row.names = NULL),
+                  c(group, colnames(lv)))
+  
+  invisible(list(lv = lvdf, # latent-variable
+                 fl = data.frame(fl),  # loadings
+                 which_rr = list(component, n, which_lvs),
+                 scale    = k  # biplot only
+  ) ) #end list
+
 }
