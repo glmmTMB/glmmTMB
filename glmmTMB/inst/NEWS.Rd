@@ -154,6 +154,26 @@
       other families with a family parameter (\code{psi}) and random
       effects, a \code{parm} that names that parameter now gives an error
       instead of a random-effect row
+      \item for the \code{ordinal} family, a \code{psi} map that ties
+      elements to each other (e.g. \code{map = list(psi = factor(c(1,
+      1)))}) gave \code{NA} threshold standard errors in \code{summary()},
+      Wald \code{confint()} and \code{emmeans()}, and a \code{beta} map
+      that ties coefficients gave \code{NA} standard errors in
+      \code{emmeans()}. When the levels of a
+      \code{psi} map were out of first-appearance order,
+      \code{vcov(., full = TRUE)} also put the variances on the wrong
+      \code{psi} rows, and \code{confint(method = "uniroot")} profiled the
+      wrong element for a threshold label (GH #1363, GH #1360)
+      \item when the levels of a \code{map} were out of first-appearance
+      order (e.g. \code{map = list(beta = factor(c(2, 1, 3)))}),
+      \code{vcov(., full = TRUE)} put the variances of the mapped
+      parameters on the wrong rows, and Wald \code{confint()} gave
+      fixed-effect coefficients the wrong standard errors. Both are
+      fixed; the rows of \code{vcov(., full = TRUE, include_nonest =
+      FALSE)} and of Wald \code{confint()} now follow the levels of the
+      \code{map}, the order in which TMB estimates the parameters. The
+      default \code{vcov()} and \code{summary()} can still pair
+      coefficients with the wrong standard errors for such a map (GH #1363)
     } % itemize
   } % bug fixes
 } % 1.1.15.9000

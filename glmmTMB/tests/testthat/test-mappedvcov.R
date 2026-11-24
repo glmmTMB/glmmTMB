@@ -139,6 +139,32 @@ test_that("vcov(full = TRUE) handles a mapped dispersion random effect", {
     expect_true(all(is.na(V[5, ])))
 })
 
+test_that("a map that permutes beta or theta keeps the vcov labels right (GH #1363)", {
+    skip_if_not_installed("lme4")
+    data("sleepstudy", package = "lme4")
+    sleepstudy$Days2 <- sleepstudy$Days^2
+    m0 <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = sleepstudy)
+    V0 <- diag(vcov(m0, full = TRUE))
+    nms <- c("(Intercept)", "Days", "Days2")
+    for (mp in list(c(2, 1, 3), c(2, 3, 1))) {
+        m <- update(m0, map = list(beta = factor(mp)))
+        for (nm in nms) {
+            expect_equal(confint(m, parm = nm, method = "wald"),
+                         confint(m0, parm = nm, method = "wald"),
+                         tolerance = 1e-4)
+        }
+        V <- diag(vcov(m, full = TRUE, include_nonest = FALSE))
+        expect_equal(V[nms], V0[nms], tolerance = 1e-4)
+    }
+    f0 <- glmmTMB(Reaction ~ Days + (Days | Subject), data = sleepstudy)
+    f1 <- update(f0, map = list(theta = factor(c(2, 1, 3))))
+    W0 <- diag(vcov(f0, full = TRUE))
+    W1 <- diag(vcov(f1, full = TRUE, include_nonest = FALSE))
+    th <- grep("^theta", names(W0), value = TRUE)
+    expect_length(th, 3L)
+    expect_equal(W1[th], W0[th], tolerance = 1e-4)
+})
+
 test_that("mapping a non-intercept coefficient also works", {
     skip_if_not_installed("car")
     fit_map2 <- glmmTMB(count ~ mined + spp, family = poisson,
