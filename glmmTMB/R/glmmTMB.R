@@ -1662,7 +1662,15 @@ glmmTMB <- function(
 ##'                  entire \code{beta} vector fixed via \code{map}, and
 ##'                  not an intercept-only \code{ordinal} model, whose
 ##'                  intercept is fixed internally); otherwise
-##'                  \code{glmmTMB} stops with an error
+##'                  \code{glmmTMB} stops with an error.
+##'                  Profiling is exact for linear mixed models with a
+##'                  Gaussian conditional response and Gaussian random effects.
+##'                  For non-Gaussian models, profiling is generally approximate.
+##'                  Standard errors use a Hessian derived from the profiled
+##'                  fit before Newton refinement. They may differ from those
+##'                  obtained with \code{profile = FALSE}.
+##'                  See the \href{https://kaskr.github.io/adcomp/Appendix.html}{TMB appendix}
+##'                  for the assumptions behind profiling.
 ##' @param collect   (logical) Experimental option to improve speed by
 ##'                  recognizing duplicated observations.
 ##' @param parallel  (named list with an integer value \code{n} and a logical value \code{autopar},
