@@ -11,7 +11,6 @@ rrPlot(
   arrows = FALSE,
   labels = FALSE,
   scale = NULL,
-  main = NULL,
   ...
 )
 }
