@@ -417,7 +417,7 @@ emm_basis.glmmTMB <- function (object, trms, xlev, grid, component = c("cond", "
             ## coefficients fixed via 'map' are known constants: pad the
             ## covariance matrix with zero rows/columns so its dimension
             ## matches the full coefficient vector used for the grid
-            V <- pad_mapped_vcov(object, V, component)
+            V <- pad_mapped_vcov(object, V, component, reduced = TRUE)
         }
         else {
             V <- vcov.

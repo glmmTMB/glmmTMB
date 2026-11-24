@@ -544,57 +544,27 @@ vcov.glmmTMB <- function(object, full = FALSE, include_nonest = TRUE,
           if (nrow(m) == 0L) xnms <- character(0)
           fnm <- fullNameList[[cnm]]
           if (!include_nonest ||
-              nrow(m) == length(fnm)) {
+              (nrow(m) == length(fnm) && is.null(map[[nm]]))) {
               dimnames(m) <- list(xnms,xnms)
+          } else if (nrow(m) == 0L) {
+              ## nothing estimated (every coefficient fixed via 'map', or
+              ## the placeholder of an empty dispersion model)
+              m <- matrix(NA_real_, length(fnm), length(fnm),
+                          dimnames = list(fnm, fnm))
           } else {
-
-              ## what are all the possibilities here?
-              ## * non-estimable parameters because of rank deficiency -- values should be NA
-              ## * mapped-fixed parameters (NA)
-              ## * mapped-equal parameters (square equal-valued blocks as explained below)
-
-              ## fixed params *or* rank-def columns dropped
-              any_mapped <- !is.null(cur_map <- map[[parnms[[i]]]])
-              ## some parameters mapped *to each other* (not fixed)
-              if (any_mapped && length(unique(cur_map)) < length(cur_map)) {
-                  ## filter out NAs from cur_map as we want to only subset the vcov to estimated parameters...
-                  cur_map <- na.omit(cur_map)
-                  ## replicate cov rows/cols appropriately
-                  m <- m[as.numeric(cur_map), as.numeric(cur_map)]
-                  map_split <- split(seq_along(cur_map), cur_map)
-                  for (cc in map_split) {
-                      if (length(cc)==1) next
-                      ## fix covariances in cov matrix
-                      ## all values equal to variance for mapped pairs ...
-                      ##  (variances of fixed parameters are all equal; correlations are == 1,
-                      ##   so covariances are also equal ... if users want something else they
-                      ##   can specify include_nonest = FALSE ...)
-                      ## combn() generates a 2-by-n matrix of pairs
-                      ccc <- combn(cc, 2)
-                      for (j in 1:ncol(ccc)) {
-                          m[ccc[1,j], ccc[2,j]] <- m[ccc[2,j], ccc[1,j]] <-
-                              m[ccc[1,j], ccc[1,j]]
-                      } ## loop over combinations
-                  } ## loop over mapped groups
-              } ## any mapped
-
-              has_dropped <- function(m) !is.null(attr(getME(object, m), "col.dropped"))
-              
-              if (any_mapped && has_dropped("X") || has_dropped("Xdisp") || has_dropped("Xzi")) {
-                  warning("the combination of mapping and columns dropped because of rank-deficiency may ",
-                          "give strange vcov() results; check your answers and contact the developers with ",
-                          "a reproducible answer if necessary")
-              }
-
-              mm <- matrix(NA_real_, length(fnm), length(fnm),
-                           dimnames=list(fnm, fnm))
-
-              estNameList <- getParnames(object, full, include_mapped = FALSE,
-                                         include_dropped = FALSE, include_mapequal = TRUE)
-
-              nms <- estNameList[[cnm]]
-              if (length(m)>0) mm[nms, nms] <- m
-              m <- mm
+              ## one row per coefficient: lift the block of estimated
+              ## parameters as A V A' (.beta_spaces()). TMB orders the
+              ## estimated parameters by factor level of the 'map', which
+              ## need not be the order of the coefficients; A also gives
+              ## coefficients tied via 'map' identical rows and columns.
+              ## Coefficients fixed via 'map' or dropped for rank
+              ## deficiency get NA
+              sp <- .beta_spaces(object, cnm)
+              m <- .lift_vcov_nominal(m, sp)
+              fixed <- which(sp$keep)[sp$pinned]
+              m[fixed, ] <- NA_real_
+              m[, fixed] <- NA_real_
+              dimnames(m) <- list(fnm, fnm)
           }
           covList[[i]] <- m
       }
@@ -748,6 +718,47 @@ printDispersion <- function(ff,s) {
          mapped = ncol(A) < p_X || any(diag(A) != 1))
 }
 
+## names of the estimated fixed-effect parameters of a component, in the
+## order TMB uses for them (bread(), estfun()): each is named after the
+## first coefficient it belongs to (coefficients tied via 'map' share one
+## parameter); coefficients fixed via 'map' or dropped have none
+.beta_est_names <- function(object, component = "cond") {
+    sp <- .beta_spaces(object, component)
+    sp$names_X[max.col(t(sp$A), ties.method = "first")]
+}
+
+## names of all estimated parameters, in the order TMB uses for them
+## (bread(full = TRUE), estfun(full = TRUE)): getParnames() of the
+## estimated parameters, with the fixed-effect blocks named as in
+## .beta_est_names() and the theta/psi blocks in the same way (TMB
+## orders them by map level too, each named after the first parameter
+## it maps); 'default' if the result does not have length 'n'
+.est_parnames <- function(object, n, default) {
+    nl <- getParnames(object, full = TRUE, include_mapped = FALSE,
+                      include_dropped = FALSE)
+    for (cmp in c("cond", "zi", "disp")) {
+        e <- .beta_est_names(object, cmp)
+        if (length(e) == 0L) {
+            ## nothing estimated (getParnames() gives "disp~" for a
+            ## dispformula without fixed effects)
+            nl[[cmp]] <- character(0)
+        } else if (length(e) == length(nl[[cmp]])) {
+            nl[[cmp]] <- if (cmp == "cond") e else paste(cmp, e, sep = "~")
+        }
+    }
+    map <- object$obj$env$map
+    fl <- getParnames(object, full = TRUE, include_dropped = FALSE)
+    for (p in intersect(names(map), c("theta", "thetazi", "thetadisp", "psi"))) {
+        mp <- as.integer(map[[p]])
+        lev <- sort(unique(mp[!is.na(mp)]))
+        if (length(fl[[p]]) == length(mp) && length(nl[[p]]) == length(lev)) {
+            nl[[p]] <- fl[[p]][match(lev, mp)]
+        }
+    }
+    nms <- unlist(nl, use.names = FALSE)
+    if (length(nms) == n) nms else default
+}
+
 ## A %*% V_est %*% t(A): lift an estimated-space covariance matrix to the
 ## X-space. Tied coefficients get identical (perfectly correlated)
 ## rows/columns, map-fixed coefficients zero variance (they are known
@@ -777,13 +788,17 @@ printDispersion <- function(ff,s) {
 ## (nominal) matrix the NA rows/columns of map-fixed coefficients are
 ## replaced by zeros (known constants, zero sampling variance) so they do
 ## not propagate through linear-hypothesis algebra. No-op when no
-## coefficients are mapped
-pad_mapped_vcov <- function(object, V, component = "cond") {
+## coefficients are mapped. 'reduced' says which of the two V is; by
+## default it is guessed from the size, which cannot tell them apart for
+## a 'map' that only permutes the coefficients, so a caller with a nominal
+## matrix passes reduced = FALSE
+pad_mapped_vcov <- function(object, V, component = "cond", reduced = NULL) {
     map_nm <- switch(component, cond = "beta", zi = "betazi", disp = "betadisp")
     if (is.null(dim(V)) || is.null(object$obj$env$map[[map_nm]])) return(V)
     sp <- .beta_spaces(object, component)
     if (!sp$mapped) return(V)
-    if (nrow(V) == sp$p_est) return(.lift_vcov_X(V, sp))
+    if (is.null(reduced)) reduced <- nrow(V) == sp$p_est
+    if (reduced) return(.lift_vcov_X(V, sp))
     if (nrow(V) == sp$p_nom) {
         fixed <- which(sp$keep)[sp$pinned]
         V[fixed, ] <- 0
@@ -2233,7 +2248,16 @@ getGroups.glmmTMB <- function(object, form = formula(object), level, data, sep =
 #'   By default, \code{FALSE} such that the names are sanitized to user friendly names.
 #' @param ... ignored additional arguments (only for methods compatibility).
 #' 
-#' @return The bread matrix, which is just the variance-covariance matrix.
+#' @return The bread matrix, which is just the variance-covariance matrix
+#'   of the estimated parameters, in the order that
+#'   \code{\link[sandwich]{estfun}} uses: \code{vcov(x, include_nonest =
+#'   FALSE)$cond} with \code{full = FALSE}, \code{vcov(x, full = TRUE,
+#'   include_nonest = FALSE)} with \code{full = TRUE}. TMB orders the
+#'   estimated parameters by the levels of a \code{map} factor; each row is
+#'   named after the first coefficient (with \code{full = TRUE}, the first
+#'   parameter) that its estimated parameter belongs to. Coefficients or
+#'   parameters tied via \code{map} share one row; those fixed via
+#'   \code{map}, and coefficients dropped for rank deficiency, have no row.
 #' 
 #' @importFrom sandwich bread
 #' @export bread
@@ -2250,13 +2274,22 @@ bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
     stopifnot(is.logical(full) && length(full) == 1L)
     stopifnot(is.logical(rawnames) && length(rawnames) == 1L)
     
-    res <- vcov(x, full = full)
+    ## the estimated parameters, in the order TMB uses for them, as
+    ## estfun() does (the default vcov() follows the coefficients and has
+    ## rows for coefficients fixed via 'map' or dropped)
+    res <- vcov(x, full = full, include_nonest = FALSE)
     if (full) {
-        parnames <- if (rawnames) names(x$fit$par) else unname(rownames(res))
+        parnames <- if (rawnames) names(x$fit$par) else
+            .est_parnames(x, nrow(res), unname(rownames(res)))
         rownames(res) <- colnames(res) <- parnames
         res
     } else {
         res_cond <- res$cond
+        if (is.null(res_cond)) res_cond <- matrix(0, 0, 0)
+        ## the reduced matrix carries the coefficient names in coefficient
+        ## order; name each estimated parameter after its first coefficient
+        nm <- .beta_est_names(x, "cond")
+        dimnames(res_cond) <- list(nm, nm)
         if (rawnames) rownames(res_cond) <- colnames(res_cond) <- rep("beta", nrow(res_cond))
         res_cond
     }
@@ -2278,6 +2311,10 @@ bread.glmmTMB <- function(x, full = FALSE, rawnames = FALSE, ...) {
 #' @return A matrix where each row corresponds to a cluster and each column
 #'   corresponds to a parameter in the model. The values are the empirical estimating functions
 #'  (score vectors) for each parameter in each cluster.
+#'   The columns are named and ordered as the rows of
+#'   \code{\link{bread.glmmTMB}} with the same \code{full}: the estimated
+#'   conditional fixed-effect parameters with \code{full = FALSE}, all
+#'   estimated parameters with \code{full = TRUE}.
 #' 
 #' @note If crossed random effects are used in the model, this function will not correctly 
 #'   calculate the score vectors in general, and warnings will be issued. In general,
@@ -2375,18 +2412,17 @@ estfun.glmmTMB <- function(x, full = FALSE, cluster = getGroups(x), rawnames = F
 
     # Assign names: clusters for the rows, parameters for the columns.
     rownames(cluster_score_vectors) <- levels(cluster)
-    par_names <- if (rawnames) {
-        names(x$fit$par)
-    } else {
-        unlist(getParnames(object = x, full = TRUE), use.names = FALSE)
-    }
-    colnames(cluster_score_vectors) <- par_names
+    colnames(cluster_score_vectors) <- names(x$fit$par)
     
     # If we don't want the full score vectors,
-    # only keep the fixed effects part.
+    # only keep the fixed effects part, named as in bread().
     if (!full) {
         beta_inds <- which(names(x$fit$par) == "beta")
         cluster_score_vectors <- cluster_score_vectors[, beta_inds, drop = FALSE]
+        if (!rawnames) colnames(cluster_score_vectors) <- .beta_est_names(x, "cond")
+    } else if (!rawnames) {
+        colnames(cluster_score_vectors) <-
+            .est_parnames(x, ncol(cluster_score_vectors), names(x$fit$par))
     }
     cluster_score_vectors
 }

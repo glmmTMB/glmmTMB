@@ -50,6 +50,25 @@
       \item \code{simulate_new()} now supports the \code{ordinal} family;
       the number of categories comes from \code{newparams$psi}, and each
       simulation is an ordered factor
+      \item \code{vcov()} no longer warns about combining \code{map} with
+      rank deficiency, since that combination now gives the matrix of the
+      equivalent fit without \code{map}; the warning also came for any
+      rank-deficient \code{zi} or \code{disp} model without a \code{map}
+      (GH #1377, Paul Schmidt)
+      \item \code{bread()} now returns the covariance matrix of the
+      estimated parameters (\code{vcov(., include_nonest = FALSE)}), in the
+      order \code{estfun()} uses (by the levels of a \code{map} factor),
+      with each row named after the first coefficient (with
+      \code{full = TRUE}, parameter) that its estimated parameter belongs
+      to; it no longer has rows for coefficients (with \code{full = TRUE},
+      parameters) fixed via \code{map}, or for coefficients dropped for
+      rank deficiency, also without a \code{map}. \code{estfun()} names its
+      columns the same way; before, it named them in the order of the
+      coefficients and parameters and failed whenever a parameter was tied
+      or fixed via \code{map} (also through the internal \code{map} of
+      \code{propto()}), coefficients were dropped, or the dispersion model
+      had no fixed effects. \code{sandwich()}, \code{vcovHC()} and
+      \code{vcov(., sandwich = TRUE)} now work for such models (GH #1377, Paul Schmidt)
     } % itemize
   } % user-visible changes
   \subsection{BUG FIXES}{
@@ -101,6 +120,15 @@
       without dispersion; \code{dof_satt()},
       \code{summary(., ddf = "satterthwaite")}, \code{emmeans()} and
       \code{confint()} now work for such models (GH #1344)
+      \item \code{vcov()} returned the covariance matrix of the estimated
+      parameters in the order of the levels of a \code{map} factor on
+      \code{beta}, \code{betazi} or \code{betadisp}, but labelled it in the
+      order of the coefficients. When the levels were not in coefficient
+      order and no coefficients were tied, \code{summary()} showed
+      standard errors at the wrong coefficients, \code{sandwich()} and
+      \code{vcovHC()} put their values at the wrong coefficients, and
+      \code{car::Anova()} could be wrong when the map also fixed a
+      coefficient or the model was rank deficient (GH #1377, Paul Schmidt)
       \item an \code{ordinal} fit with a user \code{map} on another
       parameter vector (e.g. \code{map = list(betazi = factor())}) no
       longer leaves the fixed-effect intercept free: partial matching of

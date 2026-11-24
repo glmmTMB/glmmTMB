@@ -166,3 +166,216 @@ test_that("Wald confint() refuses a family parameter by name with random effects
     ci <- confint(ft)
     expect_equal(confint(ft, parm = "x"), ci["x", , drop = FALSE])
 })
+
+## 'map' factors whose levels are not in coefficient order. TMB orders the
+## estimated parameters by factor level of the map, not by coefficient;
+## vcov() used to label that order with the coefficient names, so
+## summary() showed swapped standard errors. The maps are cycles rather
+## than swaps, so that a map read in the wrong direction fails as well;
+## each map is compared with a fit without 'map'
+data(sleepstudy, package = "lme4")
+ss <- sleepstudy
+ss$Days2 <- ss$Days^2
+ss$Days3 <- ss$Days^3
+ss$Dcopy <- ss$Days
+ss$g <- factor(rep(c("a", "b", "c"), length.out = nrow(ss)))
+m0 <- glmmTMB(Reaction ~ Days + Days2 + (1 | Subject), data = ss, REML = TRUE)
+## the same model, with the parameters relabelled
+m1 <- update(m0, map = list(beta = factor(c(3, 1, 2))))
+## a permutation together with a fixed coefficient: Days2 fixed at 0 is
+## the model without Days2, and Days3 fixed at 0 is m0
+m2 <- update(m0, map = list(beta = factor(c(2, 1, NA))),
+             start = list(beta = c(0, 0, 0)))
+m3 <- glmmTMB(Reaction ~ Days + (1 | Subject), data = ss, REML = TRUE)
+m4 <- glmmTMB(Reaction ~ Days + Days2 + Days3 + (1 | Subject), data = ss,
+              REML = TRUE, map = list(beta = factor(c(3, 1, 2, NA))),
+              start = list(beta = c(0, 0, 0, 0)))
+## the same in a rank-deficient model (Dcopy is dropped, and the map
+## refers to the remaining columns)
+r1 <- suppressMessages(glmmTMB(Reaction ~ Days + Dcopy + Days2 + (1 | Subject),
+                               data = ss, REML = TRUE,
+                               map = list(beta = factor(c(3, 1, 2)))))
+r2 <- suppressMessages(glmmTMB(Reaction ~ Days + Dcopy + Days2 + (1 | Subject),
+                               data = ss, REML = TRUE,
+                               map = list(beta = factor(c(2, 1, NA))),
+                               start = list(beta = c(0, 0, 0))))
+
+test_that("vcov() follows the coefficients when 'map' reorders the estimated parameters", {
+    expect_equal(c(logLik(m1)), c(logLik(m0)), tolerance = 1e-8)
+    expect_equal(vcov(m1)$cond, vcov(m0)$cond, tolerance = 1e-6)
+    expect_equal(coef(summary(m1))$cond[, "Std. Error"],
+                 coef(summary(m0))$cond[, "Std. Error"], tolerance = 1e-6)
+    ## the reduced matrix stays in map-level order; pad_mapped_vcov()
+    ## lifts it to the coefficients
+    Vred <- vcov(m1, include_nonest = FALSE)$cond
+    expect_equal(glmmTMB:::pad_mapped_vcov(m1, Vred, "cond"),
+                 vcov(m0)$cond, tolerance = 1e-6, ignore_attr = TRUE)
+    V2 <- vcov(m2)$cond
+    expect_true(all(is.na(V2["Days2", ])) && all(is.na(V2[, "Days2"])))
+    expect_equal(V2[1:2, 1:2], vcov(m3)$cond, tolerance = 1e-6)
+    V4 <- vcov(m4)$cond
+    expect_true(all(is.na(V4["Days3", ])) && all(is.na(V4[, "Days3"])))
+    expect_equal(V4[1:3, 1:3], vcov(m0)$cond, tolerance = 1e-6)
+})
+
+test_that("vcov() follows the coefficients in a rank-deficient model, without a warning", {
+    expect_no_warning(vcov(r1))
+    Vr1 <- suppressWarnings(vcov(r1)$cond)
+    expect_true(all(is.na(Vr1["Dcopy", ])) && all(is.na(Vr1[, "Dcopy"])))
+    expect_equal(Vr1[-3, -3], vcov(m0)$cond, tolerance = 1e-6)
+    expect_no_warning(vcov(r2))
+    Vr2 <- suppressWarnings(vcov(r2)$cond)
+    expect_true(all(is.na(Vr2[c("Dcopy", "Days2"), ])))
+    expect_equal(Vr2[1:2, 1:2], vcov(m3)$cond, tolerance = 1e-6)
+    ## ... nor for a rank-deficient dispersion model without any map
+    rd <- suppressMessages(glmmTMB(Reaction ~ Days + (1 | Subject),
+                                   dispformula = ~ Days + Dcopy,
+                                   data = ss, REML = TRUE))
+    expect_no_warning(vcov(rd))
+})
+
+test_that("vcov() follows the coefficients in the dispersion and zero-inflation models", {
+    d0 <- glmmTMB(Reaction ~ Days + (1 | Subject), dispformula = ~ g,
+                  data = ss, REML = TRUE)
+    d1 <- update(d0, map = list(betadisp = factor(c(3, 1, 2))))
+    expect_equal(vcov(d1)$disp, vcov(d0)$disp, tolerance = 1e-6)
+    set.seed(3)
+    ss$cnt <- rpois(nrow(ss), 2)
+    ss$cnt[sample(nrow(ss), 40)] <- 0
+    z0 <- glmmTMB(cnt ~ Days + (1 | Subject), ziformula = ~ g,
+                  family = poisson, data = ss)
+    z1 <- update(z0, map = list(betazi = factor(c(3, 1, 2))))
+    expect_equal(vcov(z1)$zi, vcov(z0)$zi, tolerance = 1e-6)
+})
+
+test_that("bread() and estfun() name the estimated parameters after the coefficients", {
+    ## the estimated parameters in the order TMB uses (here the
+    ## coefficients 2, 3, 1)
+    b0 <- update(m0, REML = FALSE)
+    b1 <- update(b0, map = list(beta = factor(c(3, 1, 2))))
+    o <- order(c(3, 1, 2))
+    hs <- function(m) bread(m) %*% crossprod(estfun(m)) %*% bread(m)
+    expect_equal(unname(hs(b1)), unname(hs(b0)[o, o]), tolerance = 1e-6)
+    expect_equal(bread(b1), bread(b0)[o, o], tolerance = 1e-6)
+    expect_equal(estfun(b1), estfun(b0)[, o], tolerance = 1e-6)
+    ## a tie out of order: Days and Days2 share the coefficient of DD
+    bt <- update(b0, map = list(beta = factor(c(2, 1, 1))))
+    ss$DD <- ss$Days + ss$Days2
+    btw <- glmmTMB(Reaction ~ DD + (1 | Subject), data = ss, REML = FALSE)
+    expect_identical(rownames(bread(bt)), c("Days", "(Intercept)"))
+    expect_equal(unname(bread(bt)[c("(Intercept)", "Days"), c("(Intercept)", "Days")]),
+                 unname(bread(btw)), tolerance = 1e-6)
+    expect_identical(colnames(estfun(bt)), rownames(bread(bt)))
+    expect_equal(unname(hs(bt)[c("(Intercept)", "Days"), c("(Intercept)", "Days")]),
+                 unname(hs(btw)), tolerance = 1e-6)
+    ## a fixed coefficient: Days2 fixed at 0 is the model without Days2
+    bp <- update(b0, map = list(beta = factor(c(2, 1, NA))),
+                 start = list(beta = c(0, 0, 0)))
+    bw <- update(b0, . ~ . - Days2)
+    expect_identical(colnames(estfun(bp)), rownames(bread(bp)))
+    expect_equal(estfun(bp)[, c("(Intercept)", "Days")], estfun(bw), tolerance = 1e-6)
+    ## no rows for coefficients dropped for rank deficiency (a column in
+    ## the middle) ...
+    bn <- suppressMessages(glmmTMB(Reaction ~ Days + Dcopy + Days2 + (1 | Subject),
+                                   data = ss, REML = FALSE))
+    expect_equal(bread(bn), bread(b0), tolerance = 1e-6)
+    expect_equal(estfun(bn), estfun(b0), tolerance = 1e-6)
+    ## ... or fixed via 'map'
+    ba <- update(b0, map = list(beta = factor(c(NA, NA, NA))),
+                 start = list(beta = unname(fixef(b0)$cond)))
+    expect_identical(dim(bread(ba)), c(0L, 0L))
+    expect_identical(dim(bread(ba, rawnames = TRUE)), c(0L, 0L))
+    expect_identical(ncol(estfun(ba)), 0L)
+    ## ordinal: the intercept is fixed via an internal 'map'
+    skip_if_not_installed("ordinal")
+    data("wine", package = "ordinal")
+    bo <- glmmTMB(rating ~ temp + contact + (1 | judge), data = wine,
+                  family = ordinal())
+    expect_identical(rownames(bread(bo)), c("tempwarm", "contactyes"))
+    expect_identical(colnames(estfun(bo)), rownames(bread(bo)))
+})
+
+test_that("sandwich(), vcovHC() and vcov(sandwich = TRUE) follow the coefficients with a 'map'", {
+    ## bread(full = TRUE) and estfun(full = TRUE) work in the space of the
+    ## estimated parameters, so the sandwich exists whenever estfun()
+    ## does; each fit is compared with a fit without 'map' (same model)
+    b0 <- update(m0, REML = FALSE)
+    sw <- function(m) list(sandwich = glmmTMB::sandwich(m),
+                           vcovHC = sandwich::vcovHC(m),
+                           vcov = vcov(m, sandwich = TRUE)$cond)
+    cmp <- function(m, twin, nm, tnm = nm) {
+        s <- sw(m); st <- sw(twin)
+        for (k in names(s)) {
+            expect_equal(unname(s[[k]][nm, nm]), unname(st[[k]][tnm, tnm]),
+                         tolerance = 1e-6, info = k)
+        }
+    }
+    nm <- c("(Intercept)", "Days", "Days2")
+    ## a permutation
+    cmp(update(b0, map = list(beta = factor(c(3, 1, 2)))), b0, nm)
+    ## a tie out of order: Days and Days2 share the coefficient of DD
+    ss$DD <- ss$Days + ss$Days2
+    bt <- update(b0, map = list(beta = factor(c(2, 1, 1))))
+    btw <- glmmTMB(Reaction ~ DD + (1 | Subject), data = ss, REML = FALSE)
+    cmp(bt, btw, c("(Intercept)", "Days"), c("(Intercept)", "DD"))
+    ## the parameters other than beta in the full sandwich
+    expect_equal(unname(diag(glmmTMB::sandwich(bt, full = TRUE))[-(1:2)]),
+                 unname(diag(glmmTMB::sandwich(btw, full = TRUE))[-(1:2)]),
+                 tolerance = 1e-6)
+    ## a fixed coefficient: Days2 fixed at 0 is the model without Days2
+    bp <- update(b0, map = list(beta = factor(c(2, 1, NA))),
+                 start = list(beta = c(0, 0, 0)))
+    cmp(bp, update(b0, . ~ . - Days2), c("(Intercept)", "Days"))
+    ## a coefficient dropped for rank deficiency
+    bn <- suppressMessages(glmmTMB(Reaction ~ Days + Dcopy + Days2 + (1 | Subject),
+                                   data = ss, REML = FALSE))
+    cmp(bn, b0, nm)
+    ## full = TRUE: the zi and disp blocks, theta and psi are named in the
+    ## same way, and estfun() uses the names of bread()
+    d0 <- glmmTMB(Reaction ~ Days + (1 | Subject), dispformula = ~ g,
+                  data = ss, REML = FALSE)
+    d1 <- update(d0, map = list(betadisp = factor(c(3, 1, 2))))
+    nd <- c("disp~(Intercept)", "disp~gb", "disp~gc")
+    expect_equal(glmmTMB::sandwich(d1, full = TRUE)[nd, nd],
+                 glmmTMB::sandwich(d0, full = TRUE)[nd, nd], tolerance = 1e-6)
+    expect_identical(colnames(estfun(d1, full = TRUE)), rownames(bread(d1, full = TRUE)))
+    expect_identical(colnames(estfun(bt, full = TRUE)), rownames(bread(bt, full = TRUE)))
+    ## a tie of standard deviations out of order: both slopes share the
+    ## parameter of map level 1
+    f3 <- Reaction ~ Days + (1 | Subject) + (0 + Days | Subject) + (0 + Days2 | Subject)
+    tt <- glmmTMB(f3, data = ss, REML = FALSE,
+                  map = list(theta = factor(c(2, 1, 1))))
+    ttw <- update(tt, map = list(theta = factor(c(1, 2, 2))))
+    nt <- c("theta_1|Subject.1", "theta_0+Days|Subject.1")
+    expect_equal(glmmTMB::sandwich(tt, full = TRUE)[nt, nt],
+                 glmmTMB::sandwich(ttw, full = TRUE)[nt, nt], tolerance = 1e-6)
+    expect_identical(colnames(estfun(tt, full = TRUE)), rownames(bread(tt, full = TRUE)))
+    ## without 'map' the names are those of getParnames(), except that a
+    ## dispformula without fixed effects has no "disp~" row
+    expect_identical(rownames(bread(d0, full = TRUE)),
+                     unlist(glmmTMB:::getParnames(d0, full = TRUE), use.names = FALSE))
+    ss$off <- log(30)
+    dz <- glmmTMB(Reaction ~ Days + (1 | Subject), dispformula = ~ 0 + offset(off),
+                  data = ss, REML = FALSE)
+    expect_identical(rownames(bread(dz, full = TRUE)),
+                     c("(Intercept)", "Days", "theta_1|Subject.1"))
+})
+
+test_that("emmeans() follows the coefficients when 'map' reorders them", {
+    skip_if_not_installed("emmeans")
+    at <- list(Days = c(0, 7), Days2 = c(0, 49))
+    expect_equal(summary(emmeans::emmeans(m1, ~ Days + Days2, at = at))$SE,
+                 summary(emmeans::emmeans(m0, ~ Days + Days2, at = at))$SE,
+                 tolerance = 1e-6)
+})
+
+test_that("car::Anova() follows the coefficients when 'map' reorders them", {
+    skip_if_not_installed("car")
+    expect_equal(car::Anova(m1)$Chisq, car::Anova(m0)$Chisq, tolerance = 1e-6)
+    expect_equal(car::Anova(m2)["Days", "Chisq"],
+                 car::Anova(m3)["Days", "Chisq"], tolerance = 1e-6)
+    expect_equal(car::Anova(r1)[c("Days", "Days2"), "Chisq"],
+                 car::Anova(m0)$Chisq, tolerance = 1e-6)
+    expect_equal(car::Anova(r2)["Days", "Chisq"],
+                 car::Anova(m3)["Days", "Chisq"], tolerance = 1e-6)
+})
