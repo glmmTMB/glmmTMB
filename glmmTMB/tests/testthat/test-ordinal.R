@@ -860,20 +860,7 @@ test_that("ordinal emmeans forces asymptotic ddf", {
     expect_true(all(summary(em)$df == Inf))
 })
 
-## tied 'map' entries (GH #1363). Oracle records for the numeric
-## assertions (ID: type; asserting block; source):
-##   ORD-TIE-1: closed-form; "ordinal tied psi map: threshold standard
-##     errors", the delta method written out in the test, with a central
-##     finite-difference gradient of
-##     theta_j = qlogis(cumsum(softmax(c(psi, 0))))_j over the free
-##     parameters and their covariance read from fit$sdr$cov.fixed
-##   ORD-TIE-2: invariant; "ordinal tied beta map: emmeans", a refit in
-##     which the tied factor levels are merged into one level is the same
-##     model (two routes to the same estimates)
-##   ORD-TIE-3: invariant; "ordinal tied psi map: vcov labels and
-##     profile", vcov(full = TRUE) rows against fit$sdr$cov.fixed and the
-##     uniroot Estimate column against get_pars() (two routes to the same
-##     numbers)
+## tied 'map' entries (GH #1363)
 
 ## thresholds as a function of the full psi vector
 ord_thr <- function(psi) {

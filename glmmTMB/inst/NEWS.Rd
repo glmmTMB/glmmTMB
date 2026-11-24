@@ -166,13 +166,14 @@
       wrong element for a threshold label (GH #1363, GH #1360)
       \item when the levels of a \code{map} were out of first-appearance
       order (e.g. \code{map = list(beta = factor(c(2, 1, 3)))}),
-      \code{vcov()} and \code{vcov(., full = TRUE)} put the variances of
-      the mapped parameters on the wrong rows, and Wald \code{confint()}
-      gave fixed-effect coefficients the wrong standard errors.
-      \code{vcov(., full = TRUE)} now places them correctly; the rows of
-      \code{vcov()}, \code{vcov(., full = TRUE, include_nonest = FALSE)}
-      and Wald \code{confint()} follow the levels of the \code{map}, the
-      order in which TMB estimates the parameters (GH #1363)
+      \code{vcov(., full = TRUE)} put the variances of the mapped
+      parameters on the wrong rows, and Wald \code{confint()} gave
+      fixed-effect coefficients the wrong standard errors. Both are
+      fixed; the rows of \code{vcov(., full = TRUE, include_nonest =
+      FALSE)} and of Wald \code{confint()} now follow the levels of the
+      \code{map}, the order in which TMB estimates the parameters. The
+      default \code{vcov()} and \code{summary()} can still pair
+      coefficients with the wrong standard errors for such a map (GH #1363)
     } % itemize
   } % bug fixes
 } % 1.1.15.9000
