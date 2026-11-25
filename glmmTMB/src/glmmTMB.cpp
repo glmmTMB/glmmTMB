@@ -96,7 +96,8 @@ enum valid_covStruct {
   hetar1_covstruct = 12,
   homcs_covstruct = 13,
   homtoep_covstruct = 14,
-  equalto_covstruct = 15
+  equalto_covstruct = 15,
+  cor_covstruct = 16
 };
 
 // should probably be named just 'predictCode';
@@ -437,7 +438,34 @@ Type termwise_nll(array<Type> &U, vector<Type> theta, per_term_info<Type>& term,
 
     // FIXME: DRY/make this into a function or macro
     SET_COR;
-    
+
+    term.sd = sd;             // For report
+  }
+  else if (term.blockCode == cor_covstruct){
+    // case: cor_covstruct (unstructured correlation, unit variances)
+    int n = term.blockSize;
+    vector<Type> sd(n);
+    sd.fill(Type(1));
+    density::UNSTRUCTURED_CORR_t<Type> nldens(theta);
+    for(int i = 0; i < term.blockReps; i++){
+      ans += nldens(U.col(i));
+      if (do_simulate) {
+        switch(term.simCode) {
+        case fix_simcode:
+          break;
+        case zero_simcode:
+          for (int j=0; j < U.rows(); j++) {
+            U(j,i) = Type(0);
+          };
+          break;
+        case random_simcode:
+          U.col(i) = nldens.simulate();
+          break;
+        default: error ("unknown simcode");
+        } // simcode
+      }
+    }
+    SET_COR;
     term.sd = sd;             // For report
   }
   else if (term.blockCode == cs_covstruct || term.blockCode == homcs_covstruct) {
