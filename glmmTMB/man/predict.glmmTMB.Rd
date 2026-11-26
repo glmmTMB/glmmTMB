@@ -48,10 +48,13 @@ equivalently the conditional mean on the scale of the link function
 (this equivalence does not hold for truncated distributions, where
 the link-scaled value is not adjusted for the effect of truncation on the mean; to get the corrected value of the conditional mean on the linear predictor
 scale, use \code{family(m)$linkfun(predict(m, type = "conditional"))})}
-\item{"response"}{expected value; this is \eqn{mu*(1-p)} for zero-inflated models
-and \code{mu} otherwise}
-\item{"conditional"}{mean of the conditional response; \code{mu} for all models
-(i.e., synonymous with \code{"response"} in the absence of zero-inflation}
+\item{"response"}{expected value, including endpoint masses for \code{ordbeta};
+for zero-inflated models this is multiplied by \eqn{1-p}.
+When \code{se.fit=TRUE}, ordered-beta response standard errors include
+cutoff uncertainty}
+\item{"conditional"}{\code{mu}; for \code{ordbeta}, this is the interior beta
+mean. For other models it is synonymous with \code{"response"} in the
+absence of zero-inflation}
 \item{"zprob"}{the probability of a structural zero (returns 0 for non-zero-inflated models)}
 \item{"zlink"}{predicted zero-inflation probability on the scale of
 the logit link function (returns \code{-Inf} for non-zero-inflated models)}

@@ -28,9 +28,11 @@ Compute residuals for a glmmTMB object
 }
 \details{
 \itemize{
-\item Residuals are computed based on predictions of type "response",
-i.e. equal to the conditional mean for non-zero-inflated models and to \code{mu*(1-p)}
-for zero-inflated models
+\item Residuals are based on predictions of type \code{"response"},
+which equal the conditional mean \code{mu} without zero inflation and
+\code{mu * (1 - p)} with zero inflation, where \code{p} is the probability
+of an extra zero. For \code{ordbeta}, \code{mu} is the mean of the full
+ordered-beta distribution, including zeros and ones.
 \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
 function from the object's \code{family} component; at present this returns \code{NA} for most
 "exotic" families (i.e. deviance residuals are currently only

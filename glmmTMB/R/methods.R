@@ -894,6 +894,10 @@ printFamily <- function(object) {
         cat("\nThreshold coefficients:",
             paste(names(val), formatC(val, digits = 3), sep = " = ",
                   collapse = ", "), "\n")
+    } else if (object$modelInfo$family$family == "ordbeta") {
+        cat("\nOrdered beta cutoffs:\n",
+            paste(names(val), formatC(val, digits = 3), sep = " = ",
+                  collapse = "\n"), "\n", sep = "")
     } else if (length(val) > 0) {
         cat(sprintf("\n%s estimate: %s",
                     names(val)[1],
@@ -968,9 +972,11 @@ model.frame.glmmTMB <- function(formula, ...) {
 ##' @importFrom stats fitted model.response residuals
 ##' @details
 ##' \itemize{
-##' \item Residuals are computed based on predictions of type "response",
-##' i.e. equal to the conditional mean for non-zero-inflated models and to \code{mu*(1-p)}
-##' for zero-inflated models
+##' \item Residuals are based on predictions of type \code{"response"},
+##' which equal the conditional mean \code{mu} without zero inflation and
+##' \code{mu * (1 - p)} with zero inflation, where \code{p} is the probability
+##' of an extra zero. For \code{ordbeta}, \code{mu} is the mean of the full
+##' ordered-beta distribution, including zeros and ones.
 ##' \item Computing deviance residuals depends on the implementation of the \code{dev.resids}
 ##' function from the object's \code{family} component; at present this returns \code{NA} for most
 ##' "exotic" families (i.e. deviance residuals are currently only
@@ -1020,8 +1026,28 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
            response=r,
            working = {
                mu.eta <- fam$mu.eta
-               p <- predict(object, type = "link", fast = TRUE)
-               r/mu.eta(p)
+                if (fam$family == "ordbeta") {
+                    ## Working residual = (y-M) divided by the slope of M.
+                    ## Differentiate M = p1 + pc * interior at fixed cutoffs.
+                    ## pc' = p0*(1-p0) - p1*(1-p1). Collect both gate slopes, then add pc*interior'.
+                    p <- predict(object, type = "link", re.form = re.form,
+                                 fast = !pop_pred)
+                    cutpoints <- getParList(object)$psi
+                    interior <- fam$linkinv(p)
+                    p0 <- plogis(cutpoints[1] - p)
+                    p1 <- plogis(p - cutpoints[2])
+                    pc <- plogis(p - cutpoints[1]) - p1
+                    derivative <- p1 * (1 - p1) * (1 - interior) +
+                        p0 * (1 - p0) * interior + pc * mu.eta(p)
+                    if (!noZI(object)) {
+                        derivative <- derivative * (1 - predict(
+                            object, type = "zprob", re.form = re.form))
+                    }
+                    r/derivative
+                } else {
+                    p <- predict(object, type = "link", fast = TRUE)
+                    r/mu.eta(p)
+                }
            },
            "dunn-smyth" = {
                if (fam$family == "ordinal") {
@@ -1077,8 +1103,9 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                     } else mu
              ## wts holds the number of trials for binomial-type responses
              vv <- full_variance(fam, vmu, phi = theta,
-                                 shape = family_params(object),
-                                 size = wts)
+                                 shape = family_params(object), size = wts,
+                                 cutpoints = getParList(object)$psi,
+                                 eta = predict(object, type = "link", re.form = re.form))
              ## variance functions taking only mu are scaled by the dispersion
              ##  (except Bell's, which is complete)
              scaled_var <- identical(names(formals(fam$variance)), "mu") &&
@@ -1088,6 +1115,15 @@ residuals.glmmTMB <- function(object, type=c("response", "pearson", "working", "
                ##   Var[Y] = Var[X] * E[B^2] + E[X]^2 * Var[B]
                ##          = Var[X] * E[B] + E[X]^2 * Var[B]
                ##          = Var[X] * (1 - zprob) + E[X]^2 * zprob * (1 - zprob)
+                if (fam$family == "ordbeta") {
+                  ## Use M = p1 + pc*mu for observations from the non-extra-zero group.
+                  ## The Bernoulli mixture below weights its variance by 1-zprob and adds between-group variance.
+                  eta <- predict(object, type = "link", re.form = re.form)
+                  cutpoints <- getParList(object)$psi
+                  p1 <- plogis(eta - cutpoints[2])
+                  pc <- plogis(eta - cutpoints[1]) - p1
+                  mu <- p1 + pc * mu
+                }
                vv <- vv * (1 - zprob) + mu^2 * zprob * (1 - zprob)
              } ## noZI
              if (scaled_var && trivialDisp(object)) {

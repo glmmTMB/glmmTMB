@@ -7,6 +7,22 @@
 \section{CHANGES IN VERSION 1.1.15.9000}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
+      \item For \code{ordbeta}, simulation now matches the fitted endpoint
+      probabilities in TMB and RTMB. \code{type="response"} returns the full
+      mean and its standard error includes cutoff uncertainty;
+      \code{type="conditional"} retains the interior beta mean.
+      The variance function requires precision \code{phi} and link-scale
+      \code{cutpoints}, with optional \code{eta}; Pearson and working residuals
+      use the full moments and mean derivative, including zero inflation.
+      Both cutoffs are labelled in printed fits and included in summaries
+      with model-based standard errors. Simulated values for a given seed
+      change (GH #1359, item 1).
+      The \code{ordbeta()} family now warns for links other than \code{logit},
+      \code{probit}, and \code{cloglog}, explaining that their inverse links
+      can return values outside (0, 1).
+      Formula references: Kubinec (2023, \doi{10.1017/pan.2022.20});
+      Ospina and Ferrari (2010, \doi{10.1007/s00362-008-0125-4});
+      Oehlert (1992, \doi{10.1080/00031305.1992.10475842}).
       \item Starting values for the amount of smoothing in the main
       (conditional) model now take account of the response and smooth terms.
       This applies to Gaussian, Poisson, negative-binomial, binomial, beta,

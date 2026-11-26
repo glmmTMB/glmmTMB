@@ -1064,12 +1064,14 @@ Type objective_function<Type>::operator() ()
 	  // std::cout << "middle " << asDouble(eta(i)) << " " << asDouble(psi(0)) << " " << asDouble(psi(1)) << " " << asDouble(s3) << " " << asDouble(tmp_loglik) << " " << asDouble(s1) << " " << asDouble(s2) << " " << asDouble(mu(i)) << " " << asDouble(phi(i)) << std::endl;
 	}
 	SIMULATE{
+	  // Split a single uniform draw at p0 and 1-p1 to obtain all three probabilities.
+	  Type u = runif(Type(0), Type(1));
 	  s3 = invlogit(psi(0) - eta(i));
-	  if (runif(Type(0), Type(1)) < s3) {
+	  if (u < s3) {
 	    yobs(i) = 0;
 	  } else {
 	    s3 = invlogit(eta(i) - psi(1));
-	    if (runif(Type(0), Type(1)) < s3) {
+	    if (u > Type(1)-s3) {
 	      yobs(i) = 1;
 	    } else {
 	      s1 = mu(i)*phi(i);
@@ -1441,6 +1443,16 @@ Type objective_function<Type>::operator() ()
     if (trunc_Family(family)) {
       // convert from mean of *un-truncated* to mean of *truncated* distribution
       mu /= exp(log_nzprob);
+    }
+    if (family == ordbeta_family && ziPredictCode == corrected_zipredictcode) {
+      // Factor the difference of the two logistic gates to compute the interior mass.
+      // Report the full mean so AD includes derivatives with respect to the cutoffs.
+      for (int i=0; i<mu.size(); ++i) {
+        const Type p1 = invlogit(eta(i)-psi(1));
+        const Type pc = invlogit(psi(1)-eta(i))*invlogit(eta(i)-psi(0))*
+          (-expm1(psi(0)-psi(1)));
+        mu(i) = p1+pc*mu(i);
+      }
     }
     if (zi_flag) {
       switch(ziPredictCode){
