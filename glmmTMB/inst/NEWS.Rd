@@ -54,6 +54,13 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item \code{fixef_disp} priors with named or blank \code{coef} now match
+      dispersion fixed-effect parameters (previously \code{compsyn} mapped
+      \code{disp} to \code{"d"} rather than \code{"disp"}, causing named
+      coefficients to error and blank \code{coef} to be silently dropped);
+      blank \code{coef} priors on an empty component now error instead of
+      dropping silently, and \code{sparseX = c(cond = TRUE)} preserves
+      fixed-effect names for priors (GH #1372).
       \item With the RTMB back end, \code{simulate()} now applies the
       factor loadings to \code{rr()} random effects (they were
       previously simulated as independent N(0,1) values), and works for
