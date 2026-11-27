@@ -181,3 +181,54 @@ test_that("prior on ranef for multiple components works (GH #1263)", {
   expect_equal(summary(m1)$priors, sprior)
 })
 
+test_that("fixef_disp priors with named and blank coef (GH #1372)", {
+  data("sleepstudy", package = "lme4")
+  f0 <- glmmTMB(Reaction ~ Days + (1 | Subject), data = sleepstudy)
+  pri <- function(coef) {
+    data.frame(prior = "normal(0,0.01)", class = "fixef_disp", coef = coef)
+  }
+
+  f_named <- update(f0, priors = pri("(Intercept)"))
+  f_index <- update(f0, priors = pri("1"))
+  expect_equal(fixef(f_named)$disp, fixef(f_index)$disp, tolerance = 1e-6)
+  expect_equal(
+    f_named$obj$env$data[c("prior_whichpar", "prior_elstart", "prior_elend")],
+    list(prior_whichpar = 2L, prior_elstart = 0L, prior_elend = 0L)
+  )
+
+  f_disp <- glmmTMB(
+    Reaction ~ Days + (1 | Subject),
+    dispformula = ~Days,
+    data = sleepstudy
+  )
+  f_disp_blank <- update(f_disp, priors = pri(""))
+  f_disp_days <- update(f_disp, priors = pri("Days"))
+  expect_equal(fixef(f_disp_blank)$disp, fixef(f_disp_days)$disp, tolerance = 1e-6)
+  expect_lt(abs(fixef(f_disp_blank)$disp[["Days"]]), abs(fixef(f_disp)$disp[["Days"]]))
+  expect_equal(
+    f_disp_blank$obj$env$data[c("prior_whichpar", "prior_elstart", "prior_elend")],
+    list(prior_whichpar = 2L, prior_elstart = 1L, prior_elend = 1L)
+  )
+
+  ## blank coef on a component with no fixed effects should error, not drop silently
+  expect_error(
+    update(f0, priors = data.frame(prior = "normal(0,1)", class = "fixef_zi", coef = "")),
+    "no fixed-effect parameters"
+  )
+
+  ## sparseX conditional model matrix preserves fixed-effect names for priors
+  f_sparse <- glmmTMB(
+    Reaction ~ Days + (1 | Subject),
+    data = sleepstudy,
+    sparseX = c(cond = TRUE),
+    priors = data.frame(prior = "normal(0,0.01)", class = "fixef", coef = "Days")
+  )
+  f_dense <- glmmTMB(
+    Reaction ~ Days + (1 | Subject),
+    data = sleepstudy,
+    priors = data.frame(prior = "normal(0,0.01)", class = "fixef", coef = "Days")
+  )
+  expect_equal(fixef(f_sparse)$cond, fixef(f_dense)$cond, tolerance = 1e-5)
+})
+
+

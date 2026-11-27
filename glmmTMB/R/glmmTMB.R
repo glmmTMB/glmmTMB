@@ -452,7 +452,7 @@ mkTMBStruc <- function(formula, ziformula, dispformula,
   ## isolate names for localizing priors
   get_fixnm <- function(x) c(colnames(x[[1]]), colnames(x[[2]]))
     
-  fix_nms <- list(cond = get_fixnm(Xlist[c("X", "Xs")]),
+  fix_nms <- list(cond = get_fixnm(Xlist[c("X", "XS")]),
                   zi = get_fixnm(Xlist[c("Xzi", "XziS")]),
                   disp = get_fixnm(Xlist[c("Xdisp", "XdispS")]))
 

@@ -1130,7 +1130,7 @@ set_class <- function(x, cls, prepend = TRUE) {
 
 ## convert from parameter name to component name or vice versa
 ## first name shoudl be em
-compsyn <- c(cond = "", zi = "zi", disp = "d")
+compsyn <- c(cond = "", zi = "zi", disp = "disp")
 match_names <- function(x, to_parvec = FALSE, prefix = "beta") {
     if (to_parvec) {
         ## "cond" -> "theta" etc.

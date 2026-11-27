@@ -112,13 +112,21 @@ proc_priors <- function(priors, info = NULL) {
         pc <- trimws(pc)
         if (pc == "") {
             if (substr(cl, 1, 4) == "beta") {
-                prior_elend[i] <- length(info$fix[[match_names(cl)]])-1
-                if ("(Intercept)" %in% info$fix[[match_names(cl)]]) {
+                comp <- match_names(cl)
+                if (is.na(comp) || length(info$fix[[comp]]) == 0L) {
+                    stop(sprintf("no fixed-effect parameters found for prior class '%s'", pcl))
+                }
+                prior_elend[i] <- length(info$fix[[comp]]) - 1
+                if ("(Intercept)" %in% info$fix[[comp]]) {
                     prior_elstart[i] <- 1 ## skip intercept
                     ## (assume intercept is first column of model matrix ...)
                 }
             } else {
-                prior_elend[i] <- nthetavec[[match_names(cl, prefix = "theta")]][["..total"]] -1 
+                comp <- match_names(cl, prefix = "theta")
+                if (is.na(comp) || length(nthetavec[[comp]]) == 0L) {
+                    stop(sprintf("no random-effect parameters found for prior class '%s'", pcl))
+                }
+                prior_elend[i] <- nthetavec[[comp]][["..total"]] - 1
             }
         } else {
             ## single numeric index (subtract 1 for R to C++ indexing shift)
