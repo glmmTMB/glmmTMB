@@ -2086,23 +2086,44 @@ fitTMB <- function(TMBStruc, doOptim = TRUE) {
 
     ## avoid repetition; rely on environment for parameters
     optfun <- function() {
-        res <- with(obj,
-             if( length(par) ) {
-                 do.call(control$optimizer,
-                         c(list(par, fn, gr,
-                                control = control $ optCtrl),
-                           control $ optArgs))
-             } else {
-                 list( par=par, objective=fn(par))
-             })
-        ## make optim() results look like nlminb() results (which is
-        ## what glmmTMB is expecting downstream)
-        ## FIXME: what does nloptr output look like?
-        ## nlminb components: par, objective, convergence, message
-        ## optim components: par, value, counts, convergence, message
-        if ("value" %in% names(res)) {
-            res$objective <- res$value
-            res$value <- NULL
+        fit_once <- function(start_par) {
+            res <- with(obj,
+                 if( length(start_par) ) {
+                     do.call(control$optimizer,
+                             c(list(start_par, fn, gr,
+                                    control = control $ optCtrl),
+                               control $ optArgs))
+                 } else {
+                     list(par = start_par, objective = fn(start_par))
+                 })
+            ## make optim() results look like nlminb() results
+            if ("value" %in% names(res)) {
+                res$objective <- res$value
+                res$value <- NULL
+            }
+            res
+        }
+        res <- fit_once(obj$par)
+        psi <- which(names(obj$par) == "psi")
+        if (TMBStruc$data.tmb$family_name == "skewnormal" &&
+            length(psi) == 1L && TMBStruc$parameters$psi == 0) {
+            ## Zero shape is stationary even for skewed data. Start on both
+            ## sides, using the symmetric fit's location and scale (GH #1375).
+            symmetric <- res$par
+            for (shape_start in c(-1, 1)) {
+                par <- symmetric
+                par[psi] <- shape_start
+                candidate <- try(fit_once(par), silent = TRUE)
+                if (!inherits(candidate, "try-error") &&
+                    is.finite(candidate$objective) &&
+                    (!is.finite(res$objective) ||
+                     candidate$objective < res$objective)) {
+                    res <- candidate
+                }
+            }
+            ## A discarded trial may have changed last.par.best.
+            obj$env$value.best <- Inf
+            obj$fn(res$par)
         }
         return(res)
     }
