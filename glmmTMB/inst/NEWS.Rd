@@ -54,6 +54,12 @@
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{
+      \item \code{skewnormal} fits starting with a free shape parameter at
+      zero now try both negative and positive shape starts after the
+      symmetric fit, keeping the best likelihood. This avoids stopping at
+      the stationary zero-shape solution for skewed data (GH #1375).
+      It adds two optimizer runs for these fits; nonzero shape starts and
+      fixed shape parameters are unchanged.
       \item With the RTMB back end, \code{simulate()} now applies the
       factor loadings to \code{rr()} random effects (they were
       previously simulated as independent N(0,1) values), and works for
